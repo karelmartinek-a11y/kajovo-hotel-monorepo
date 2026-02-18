@@ -1,0 +1,45 @@
+{
+  "dry_run": false,
+  "started_at": "2026-02-18T11:10:00.000000+00:00",
+  "finished_at": "2026-02-18T11:10:03.000000+00:00",
+  "totals": {
+    "scanned": 842,
+    "imported": 820,
+    "skipped": 18,
+    "errors": 4
+  },
+  "domains": {
+    "sklad": {
+      "scanned": 410,
+      "imported": 398,
+      "skipped": 10,
+      "errors": 2
+    },
+    "snidane": {
+      "scanned": 120,
+      "imported": 120,
+      "skipped": 0,
+      "errors": 0
+    },
+    "zavady": {
+      "scanned": 190,
+      "imported": 184,
+      "skipped": 4,
+      "errors": 2
+    },
+    "ztraty-a-nalezy": {
+      "scanned": 122,
+      "imported": 118,
+      "skipped": 4,
+      "errors": 0
+    }
+  },
+  "errors": [
+    {
+      "domain": "zavady",
+      "legacy_table": "reports",
+      "legacy_pk": "331",
+      "error": "(psycopg.errors.StringDataRightTruncation) value too long for type character varying(255)"
+    }
+  ]
+}
