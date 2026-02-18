@@ -13,120 +13,64 @@ import {
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
 import { AppShell, Badge, Card, DataTable, FormField, StateView, Timeline } from '@kajovo/ui';
+import {
+  apiClient,
+  type BreakfastDailySummary,
+  type BreakfastOrderCreate,
+  type BreakfastOrderRead,
+  type BreakfastStatus,
+  type InventoryItemCreate,
+  type InventoryItemRead,
+  type InventoryItemWithAuditRead,
+  type InventoryMovementRead,
+  type InventoryMovementType,
+  type IssueCreate,
+  type IssuePriority,
+  type IssueRead,
+  type IssueStatus,
+  type LostFoundItemCreate,
+  type LostFoundItemRead,
+  type LostFoundItemType,
+  type LostFoundStatus,
+  type ReportCreate,
+  type ReportRead,
+} from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
-type BreakfastStatus = 'pending' | 'preparing' | 'served' | 'cancelled';
-type LostFoundStatus = 'stored' | 'claimed' | 'returned' | 'disposed';
-type LostFoundType = 'lost' | 'found';
+type LostFoundType = LostFoundItemType;
 
-type BreakfastOrder = {
-  id: number;
-  service_date: string;
-  room_number: string;
-  guest_name: string;
-  guest_count: number;
-  status: BreakfastStatus;
-  note: string | null;
-};
+type BreakfastOrder = BreakfastOrderRead;
 
-type BreakfastPayload = Omit<BreakfastOrder, 'id'>;
+type BreakfastPayload = BreakfastOrderCreate;
 
-type BreakfastSummary = {
-  service_date: string;
-  total_orders: number;
-  total_guests: number;
-  status_counts: Record<BreakfastStatus, number>;
-};
+type BreakfastSummary = BreakfastDailySummary;
 
-type LostFoundItem = {
-  id: number;
-  item_type: LostFoundType;
-  description: string;
-  category: string;
-  location: string;
-  event_at: string;
-  status: LostFoundStatus;
-  claimant_name: string | null;
-  claimant_contact: string | null;
-  handover_note: string | null;
-  claimed_at: string | null;
-  returned_at: string | null;
-};
+type LostFoundItem = LostFoundItemRead;
 
-type LostFoundPayload = Omit<LostFoundItem, 'id'>;
+type LostFoundPayload = LostFoundItemCreate;
 
-type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
-type IssueStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
 
-type Issue = {
-  id: number;
-  title: string;
-  description: string | null;
-  location: string;
-  room_number: string | null;
-  priority: IssuePriority;
-  status: IssueStatus;
-  assignee: string | null;
-  in_progress_at: string | null;
-  resolved_at: string | null;
-  closed_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type Issue = IssueRead;
 
-type IssuePayload = Omit<Issue, 'id' | 'created_at' | 'updated_at' | 'in_progress_at' | 'resolved_at' | 'closed_at'>;
+type IssuePayload = IssueCreate;
 
-type InventoryMovementType = 'in' | 'out' | 'adjust';
 
-type InventoryItem = {
-  id: number;
-  name: string;
-  unit: string;
-  min_stock: number;
-  current_stock: number;
-  supplier: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type InventoryItem = InventoryItemRead;
 
-type InventoryMovement = {
-  id: number;
-  item_id: number;
-  movement_type: InventoryMovementType;
-  quantity: number;
-  note: string | null;
-  created_at: string;
-};
+type InventoryMovement = InventoryMovementRead;
 
-type InventoryAuditLog = {
-  id: number;
-  entity: string;
-  entity_id: number;
-  action: string;
-  detail: string;
-  created_at: string;
-};
 
-type InventoryDetail = InventoryItem & {
-  movements: InventoryMovement[];
-  audit_logs: InventoryAuditLog[];
-};
 
-type InventoryItemPayload = Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>;
+type InventoryDetail = InventoryItemWithAuditRead;
+
+type InventoryItemPayload = InventoryItemCreate;
 
 type ReportStatus = 'open' | 'in_progress' | 'closed';
 
-type Report = {
-  id: number;
-  title: string;
-  description: string | null;
-  status: ReportStatus;
-  created_at: string;
-  updated_at: string;
-};
+type Report = ReportRead;
 
-type ReportPayload = Omit<Report, 'id' | 'created_at' | 'updated_at'>;
+type ReportPayload = ReportCreate;
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
@@ -246,11 +190,45 @@ function StateSwitcher(): JSX.Element {
 }
 
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error('API request failed');
-  }
-  return (await response.json()) as T;
+  const method = init?.method ?? 'GET';
+  const url = new URL(input, window.location.origin);
+  const path = url.pathname;
+  const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+
+  if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
+  if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
+  const breakfastId = path.match(/^\/api\/v1\/breakfast\/(\d+)$/);
+  if (breakfastId && method === 'GET') return (await apiClient.getBreakfastOrderApiV1BreakfastOrderIdGet(Number(breakfastId[1]))) as T;
+  if (breakfastId && method === 'PUT') return (await apiClient.updateBreakfastOrderApiV1BreakfastOrderIdPut(Number(breakfastId[1]), body as BreakfastOrderCreate)) as T;
+  if (path === '/api/v1/breakfast' && method === 'POST') return (await apiClient.createBreakfastOrderApiV1BreakfastPost(body as BreakfastOrderCreate)) as T;
+
+  if (path === '/api/v1/lost-found' && method === 'GET') return (await apiClient.listLostFoundItemsApiV1LostFoundGet({ type: url.searchParams.get('type') as LostFoundItemType | null, status: url.searchParams.get('status') as LostFoundStatus | null, category: url.searchParams.get('category') })) as T;
+  const lostFoundId = path.match(/^\/api\/v1\/lost-found\/(\d+)$/);
+  if (lostFoundId && method === 'GET') return (await apiClient.getLostFoundItemApiV1LostFoundItemIdGet(Number(lostFoundId[1]))) as T;
+  if (lostFoundId && method === 'PUT') return (await apiClient.updateLostFoundItemApiV1LostFoundItemIdPut(Number(lostFoundId[1]), body as LostFoundItemCreate)) as T;
+  if (path === '/api/v1/lost-found' && method === 'POST') return (await apiClient.createLostFoundItemApiV1LostFoundPost(body as LostFoundItemCreate)) as T;
+
+  if (path === '/api/v1/issues' && method === 'GET') return (await apiClient.listIssuesApiV1IssuesGet({ priority: url.searchParams.get('priority') as IssuePriority | null, status: url.searchParams.get('status') as IssueStatus | null, location: url.searchParams.get('location'), room_number: url.searchParams.get('room_number') })) as T;
+  const issueId = path.match(/^\/api\/v1\/issues\/(\d+)$/);
+  if (issueId && method === 'GET') return (await apiClient.getIssueApiV1IssuesIssueIdGet(Number(issueId[1]))) as T;
+  if (issueId && method === 'PUT') return (await apiClient.updateIssueApiV1IssuesIssueIdPut(Number(issueId[1]), body as IssueCreate)) as T;
+  if (path === '/api/v1/issues' && method === 'POST') return (await apiClient.createIssueApiV1IssuesPost(body as IssueCreate)) as T;
+
+  if (path === '/api/v1/inventory' && method === 'GET') return (await apiClient.listItemsApiV1InventoryGet({ low_stock: false })) as T;
+  const inventoryId = path.match(/^\/api\/v1\/inventory\/(\d+)$/);
+  if (inventoryId && method === 'GET') return (await apiClient.getItemApiV1InventoryItemIdGet(Number(inventoryId[1]))) as T;
+  if (inventoryId && method === 'PUT') return (await apiClient.updateItemApiV1InventoryItemIdPut(Number(inventoryId[1]), body as InventoryItemCreate)) as T;
+  if (path === '/api/v1/inventory' && method === 'POST') return (await apiClient.createItemApiV1InventoryPost(body as InventoryItemCreate)) as T;
+  const inventoryMoveId = path.match(/^\/api\/v1\/inventory\/(\d+)\/movements$/);
+  if (inventoryMoveId && method === 'POST') return (await apiClient.addMovementApiV1InventoryItemIdMovementsPost(Number(inventoryMoveId[1]), body as { movement_type: InventoryMovementType; quantity: number; note?: string | null })) as T;
+
+  if (path === '/api/v1/reports' && method === 'GET') return (await apiClient.listReportsApiV1ReportsGet({ status: url.searchParams.get('status') })) as T;
+  const reportId = path.match(/^\/api\/v1\/reports\/(\d+)$/);
+  if (reportId && method === 'GET') return (await apiClient.getReportApiV1ReportsReportIdGet(Number(reportId[1]))) as T;
+  if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
+  if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
+
+  throw new Error(`Unsupported API call: ${method} ${path}`);
 }
 
 function Dashboard(): JSX.Element {
