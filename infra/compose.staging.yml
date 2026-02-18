@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kajovo_hotel_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-kajovo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kajovo_staging_password}
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kajovo} -d ${POSTGRES_DB:-kajovo_hotel_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kajovo_net_staging
+
+  api:
+    build:
+      context: ../apps/kajovo-hotel-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    environment:
+      KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-KájovoHotel API}
+      KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
+      KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-staging}
+      KAJOVO_API_DATABASE_URL: ${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://kajovo:kajovo_staging_password@postgres:5432/kajovo_hotel_staging}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kajovo_net_staging
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/kajovo-hotel-web/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.staging
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8081}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kajovo_net_staging
+
+networks:
+  kajovo_net_staging:
+    driver: bridge
+
+volumes:
+  postgres_data_staging:
