@@ -98,6 +98,14 @@ curl -i http://localhost:8000/ready
 
 Proveďte smoke test dle checklistu modulů v cutover plánu (včetně `infra/smoke/smoke.sh`).
 
+### 1.6 Backup/restore drill (krátký checklist)
+
+- [ ] Ověřen dostupný poslední backup soubor (`infra/backups/*.sql`).
+- [ ] Ověřen test backup příkaz: `pwsh -File infra/ops/backup.ps1`.
+- [ ] Ověřen test restore příkaz do cílové DB: `pwsh -File infra/ops/restore.ps1 -BackupFile "<backup.sql>"`.
+- [ ] Po restore ověřen `/ready` endpoint a základní smoke kritických modulů.
+
+
 ---
 
 ## 2) Go-live steps (cutover okno)
