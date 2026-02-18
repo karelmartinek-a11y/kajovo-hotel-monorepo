@@ -29,6 +29,14 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" build --pull
 
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --no-deps api web
+
+postgres_id="$(COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" ps -q postgres || true)"
+if [[ -n "$postgres_id" ]]; then
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" stop postgres
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" rm -f -v postgres
+fi
 
 printf '%s HOTEL web: deploy z monorepa (%s)\n' "$(date '+%F %T')" "$(git rev-parse --short HEAD)" >> "$LOG_FILE"
