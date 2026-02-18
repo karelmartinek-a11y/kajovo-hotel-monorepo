@@ -13,120 +13,64 @@ import {
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
 import { AppShell, Badge, Card, DataTable, FormField, StateView, Timeline } from '@kajovo/ui';
+import {
+  apiClient,
+  type BreakfastDailySummary,
+  type BreakfastOrderCreate,
+  type BreakfastOrderRead,
+  type BreakfastStatus,
+  type InventoryItemCreate,
+  type InventoryItemRead,
+  type InventoryItemWithAuditRead,
+  type InventoryMovementRead,
+  type InventoryMovementType,
+  type IssueCreate,
+  type IssuePriority,
+  type IssueRead,
+  type IssueStatus,
+  type LostFoundItemCreate,
+  type LostFoundItemRead,
+  type LostFoundItemType,
+  type LostFoundStatus,
+  type ReportCreate,
+  type ReportRead,
+} from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
-type BreakfastStatus = 'pending' | 'preparing' | 'served' | 'cancelled';
-type LostFoundStatus = 'stored' | 'claimed' | 'returned' | 'disposed';
-type LostFoundType = 'lost' | 'found';
+type LostFoundType = LostFoundItemType;
 
-type BreakfastOrder = {
-  id: number;
-  service_date: string;
-  room_number: string;
-  guest_name: string;
-  guest_count: number;
-  status: BreakfastStatus;
-  note: string | null;
-};
+type BreakfastOrder = BreakfastOrderRead;
 
-type BreakfastPayload = Omit<BreakfastOrder, 'id'>;
+type BreakfastPayload = BreakfastOrderCreate;
 
-type BreakfastSummary = {
-  service_date: string;
-  total_orders: number;
-  total_guests: number;
-  status_counts: Record<BreakfastStatus, number>;
-};
+type BreakfastSummary = BreakfastDailySummary;
 
-type LostFoundItem = {
-  id: number;
-  item_type: LostFoundType;
-  description: string;
-  category: string;
-  location: string;
-  event_at: string;
-  status: LostFoundStatus;
-  claimant_name: string | null;
-  claimant_contact: string | null;
-  handover_note: string | null;
-  claimed_at: string | null;
-  returned_at: string | null;
-};
+type LostFoundItem = LostFoundItemRead;
 
-type LostFoundPayload = Omit<LostFoundItem, 'id'>;
+type LostFoundPayload = LostFoundItemCreate;
 
-type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
-type IssueStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
 
-type Issue = {
-  id: number;
-  title: string;
-  description: string | null;
-  location: string;
-  room_number: string | null;
-  priority: IssuePriority;
-  status: IssueStatus;
-  assignee: string | null;
-  in_progress_at: string | null;
-  resolved_at: string | null;
-  closed_at: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type Issue = IssueRead;
 
-type IssuePayload = Omit<Issue, 'id' | 'created_at' | 'updated_at' | 'in_progress_at' | 'resolved_at' | 'closed_at'>;
+type IssuePayload = IssueCreate;
 
-type InventoryMovementType = 'in' | 'out' | 'adjust';
 
-type InventoryItem = {
-  id: number;
-  name: string;
-  unit: string;
-  min_stock: number;
-  current_stock: number;
-  supplier: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type InventoryItem = InventoryItemRead;
 
-type InventoryMovement = {
-  id: number;
-  item_id: number;
-  movement_type: InventoryMovementType;
-  quantity: number;
-  note: string | null;
-  created_at: string;
-};
+type InventoryMovement = InventoryMovementRead;
 
-type InventoryAuditLog = {
-  id: number;
-  entity: string;
-  entity_id: number;
-  action: string;
-  detail: string;
-  created_at: string;
-};
 
-type InventoryDetail = InventoryItem & {
-  movements: InventoryMovement[];
-  audit_logs: InventoryAuditLog[];
-};
 
-type InventoryItemPayload = Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>;
+type InventoryDetail = InventoryItemWithAuditRead;
+
+type InventoryItemPayload = InventoryItemCreate;
 
 type ReportStatus = 'open' | 'in_progress' | 'closed';
 
-type Report = {
-  id: number;
-  title: string;
-  description: string | null;
-  status: ReportStatus;
-  created_at: string;
-  updated_at: string;
-};
+type Report = ReportRead;
 
-type ReportPayload = Omit<Report, 'id' | 'created_at' | 'updated_at'>;
+type ReportPayload = ReportCreate;
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
@@ -177,6 +121,43 @@ const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   adjust: 'Úprava',
 };
 
+
+
+function breakfastStatusLabel(status: BreakfastStatus | null | undefined): string {
+  return status ? statusLabels[status] : '-';
+}
+
+function lostFoundStatusLabel(status: LostFoundStatus | null | undefined): string {
+  return status ? lostFoundStatusLabels[status] : '-';
+}
+
+function lostFoundTypeLabel(itemType: LostFoundType | null | undefined): string {
+  return itemType ? lostFoundTypeLabels[itemType] : '-';
+}
+
+function issuePriorityLabel(priority: IssuePriority | null | undefined): string {
+  return priority ? issuePriorityLabels[priority] : '-';
+}
+
+function issueStatusLabel(status: IssueStatus | null | undefined): string {
+  return status ? issueStatusLabels[status] : '-';
+}
+
+function inventoryMovementLabel(movementType: InventoryMovementType | null | undefined): string {
+  return movementType ? inventoryMovementLabels[movementType] : '-';
+}
+
+function reportStatusLabel(status: string | null | undefined): string {
+  if (status === 'open' || status === 'in_progress' || status === 'closed') {
+    return reportStatusLabels[status];
+  }
+  return status ?? '-';
+}
+
+function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStatus): number {
+  const value = summary?.status_counts?.[status];
+  return typeof value === 'number' ? value : 0;
+}
 const stateLabels: Record<ViewState, string> = {
   default: 'Výchozí',
   loading: 'Načítání',
@@ -246,11 +227,53 @@ function StateSwitcher(): JSX.Element {
 }
 
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  if (!response.ok) {
-    throw new Error('API request failed');
+  const method = init?.method ?? 'GET';
+  const url = new URL(input, window.location.origin);
+  const path = url.pathname;
+  const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+
+  if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
+  if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
+  const breakfastId = path.match(/^\/api\/v1\/breakfast\/(\d+)$/);
+  if (breakfastId && method === 'GET') return (await apiClient.getBreakfastOrderApiV1BreakfastOrderIdGet(Number(breakfastId[1]))) as T;
+  if (breakfastId && method === 'PUT') return (await apiClient.updateBreakfastOrderApiV1BreakfastOrderIdPut(Number(breakfastId[1]), body as BreakfastOrderCreate)) as T;
+  if (path === '/api/v1/breakfast' && method === 'POST') return (await apiClient.createBreakfastOrderApiV1BreakfastPost(body as BreakfastOrderCreate)) as T;
+
+  if (path === '/api/v1/lost-found' && method === 'GET') return (await apiClient.listLostFoundItemsApiV1LostFoundGet({ type: url.searchParams.get('type') as LostFoundItemType | null, status: url.searchParams.get('status') as LostFoundStatus | null, category: url.searchParams.get('category') })) as T;
+  const lostFoundId = path.match(/^\/api\/v1\/lost-found\/(\d+)$/);
+  if (lostFoundId && method === 'GET') return (await apiClient.getLostFoundItemApiV1LostFoundItemIdGet(Number(lostFoundId[1]))) as T;
+  if (lostFoundId && method === 'PUT') return (await apiClient.updateLostFoundItemApiV1LostFoundItemIdPut(Number(lostFoundId[1]), body as LostFoundItemCreate)) as T;
+  if (path === '/api/v1/lost-found' && method === 'POST') return (await apiClient.createLostFoundItemApiV1LostFoundPost(body as LostFoundItemCreate)) as T;
+
+  if (path === '/api/v1/issues' && method === 'GET') return (await apiClient.listIssuesApiV1IssuesGet({ priority: url.searchParams.get('priority') as IssuePriority | null, status: url.searchParams.get('status') as IssueStatus | null, location: url.searchParams.get('location'), room_number: url.searchParams.get('room_number') })) as T;
+  const issueId = path.match(/^\/api\/v1\/issues\/(\d+)$/);
+  if (issueId && method === 'GET') return (await apiClient.getIssueApiV1IssuesIssueIdGet(Number(issueId[1]))) as T;
+  if (issueId && method === 'PUT') return (await apiClient.updateIssueApiV1IssuesIssueIdPut(Number(issueId[1]), body as IssueCreate)) as T;
+  if (path === '/api/v1/issues' && method === 'POST') return (await apiClient.createIssueApiV1IssuesPost(body as IssueCreate)) as T;
+
+  if (path === '/api/v1/inventory' && method === 'GET') return (await apiClient.listItemsApiV1InventoryGet({ low_stock: false })) as T;
+  const inventoryId = path.match(/^\/api\/v1\/inventory\/(\d+)$/);
+  if (inventoryId && method === 'GET') return (await apiClient.getItemApiV1InventoryItemIdGet(Number(inventoryId[1]))) as T;
+  if (inventoryId && method === 'PUT') return (await apiClient.updateItemApiV1InventoryItemIdPut(Number(inventoryId[1]), body as InventoryItemCreate)) as T;
+  if (path === '/api/v1/inventory' && method === 'POST') return (await apiClient.createItemApiV1InventoryPost(body as InventoryItemCreate)) as T;
+  const inventoryMoveId = path.match(/^\/api\/v1\/inventory\/(\d+)\/movements$/);
+  if (inventoryMoveId && method === 'POST') return (await apiClient.addMovementApiV1InventoryItemIdMovementsPost(Number(inventoryMoveId[1]), body as { movement_type: InventoryMovementType; quantity: number; note?: string | null })) as T;
+
+  if (path === '/api/v1/reports' && method === 'GET') return (await apiClient.listReportsApiV1ReportsGet({ status: url.searchParams.get('status') })) as T;
+  const reportId = path.match(/^\/api\/v1\/reports\/(\d+)$/);
+  if (reportId && method === 'GET') return (await apiClient.getReportApiV1ReportsReportIdGet(Number(reportId[1]))) as T;
+  if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
+  if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
+
+  throw new Error(`Unsupported API call: ${method} ${path}`);
+}
+
+
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return '-';
   }
-  return (await response.json()) as T;
+  return new Date(value).toLocaleString('cs-CZ');
 }
 
 function Dashboard(): JSX.Element {
@@ -347,7 +370,7 @@ function BreakfastList(): JSX.Element {
               <strong>{summary?.total_guests ?? 0}</strong>
             </Card>
             <Card title="Čekající">
-              <strong>{summary?.status_counts.pending ?? 0}</strong>
+              <strong>{getSummaryCount(summary, 'pending')}</strong>
             </Card>
           </div>
           <div className="k-toolbar">
@@ -369,7 +392,7 @@ function BreakfastList(): JSX.Element {
               item.room_number,
               item.guest_name,
               item.guest_count,
-              statusLabels[item.status],
+              breakfastStatusLabel(item.status),
               item.note ?? '-',
               <Link className="k-nav-link" to={`/snidane/${item.id}`} key={item.id}>
                 Detail
@@ -579,7 +602,7 @@ function BreakfastDetail(): JSX.Element {
               ['Pokoj', item.room_number],
               ['Host', item.guest_name],
               ['Počet hostů', item.guest_count],
-              ['Stav', statusLabels[item.status]],
+              ['Stav', breakfastStatusLabel(item.status)],
               ['Poznámka', item.note ?? '-'],
             ]}
           />
@@ -675,11 +698,11 @@ function LostFoundList(): JSX.Element {
           <DataTable
             headers={['Typ', 'Kategorie', 'Místo', 'Čas', 'Stav', 'Akce']}
             rows={items.map((item) => [
-              lostFoundTypeLabels[item.item_type],
+              lostFoundTypeLabel(item.item_type),
               item.category,
               item.location,
               new Date(item.event_at).toLocaleString('cs-CZ'),
-              lostFoundStatusLabels[item.status],
+              lostFoundStatusLabel(item.status),
               <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>
                 Detail
               </Link>,
@@ -904,11 +927,11 @@ function LostFoundDetail(): JSX.Element {
           <DataTable
             headers={['Položka', 'Hodnota']}
             rows={[
-              ['Typ', lostFoundTypeLabels[item.item_type]],
+              ['Typ', lostFoundTypeLabel(item.item_type)],
               ['Kategorie', item.category],
               ['Místo', item.location],
               ['Datum a čas', new Date(item.event_at).toLocaleString('cs-CZ')],
-              ['Stav', lostFoundStatusLabels[item.status]],
+              ['Stav', lostFoundStatusLabel(item.status)],
               ['Popis', item.description],
               ['Jméno žadatele', item.claimant_name ?? '-'],
               ['Kontakt', item.claimant_contact ?? '-'],
@@ -964,7 +987,7 @@ function IssuesList(): JSX.Element {
             <Link className="k-button" to="/zavady/nova">Nová závada</Link>
           </div>
           <DataTable headers={['Název', 'Lokace', 'Pokoj', 'Priorita', 'Stav', 'Přiřazeno', 'Akce']} rows={items.map((item) => [
-            item.title, item.location, item.room_number ?? '-', issuePriorityLabels[item.priority], issueStatusLabels[item.status], item.assignee ?? '-',
+            item.title, item.location, item.room_number ?? '-', issuePriorityLabel(item.priority), issueStatusLabel(item.status), item.assignee ?? '-',
             <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>Detail</Link>,
           ])} />
         </>
@@ -1025,7 +1048,7 @@ function IssuesDetail(): JSX.Element {
   }, [id, state]);
 
   const timeline = item ? [
-    { label: 'Vytvořeno', value: new Date(item.created_at).toLocaleString('cs-CZ') },
+    { label: 'Vytvořeno', value: formatDateTime(item.created_at) },
     ...(item.in_progress_at ? [{ label: 'V řešení', value: new Date(item.in_progress_at).toLocaleString('cs-CZ') }] : []),
     ...(item.resolved_at ? [{ label: 'Vyřešeno', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
     ...(item.closed_at ? [{ label: 'Uzavřeno', value: new Date(item.closed_at).toLocaleString('cs-CZ') }] : []),
@@ -1034,7 +1057,7 @@ function IssuesDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="issues-detail-page">
       <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabels[item.priority]],[ 'Stav', issueStatusLabels[item.status]],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <StateView title="Načítání" description="Načítáme detail závady." />}
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <StateView title="Načítání" description="Načítáme detail závady." />}
     </main>
   );
 }
@@ -1133,7 +1156,7 @@ function InventoryDetail(): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [new Date(movement.created_at).toLocaleString('cs-CZ'), inventoryMovementLabels[movement.movement_type], movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
+  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabel(movement.movement_type), movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
 }
 
 function GenericModule({ title }: { title: string }): JSX.Element {
@@ -1162,7 +1185,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabels[item.status]}</Badge>, new Date(item.created_at).toLocaleString('cs-CZ'), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -1210,7 +1233,7 @@ function ReportsDetail(): JSX.Element {
       .catch(() => setError('Hlášení nebylo nalezeno.'));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabels[item.status]],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', new Date(item.created_at).toLocaleString('cs-CZ') ],[ 'Aktualizováno', new Date(item.updated_at).toLocaleString('cs-CZ') ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
 }
 
 function UtilityStatePage({ title, description }: { title: string; description: string }): JSX.Element {
