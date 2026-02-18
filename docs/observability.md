@@ -4,7 +4,9 @@
 
 API emits structured JSON logs for every request with these fields:
 - `request_id` (from `x-request-id` header or generated UUID)
-- `user` (from `x-user`, `x-user-id`, or `x-forwarded-user`, fallback `anonymous`)
+- `user` (display value from `x-user`, fallback to identity value)
+- `user_id` (from `x-user-id`, `x-user`, or `x-forwarded-user`, fallback `anonymous`)
+- `role` (from `x-user-role`, normalized RBAC role, fallback `manager`)
 - `module` (derived from `/api/v1/<module>/...` path)
 - `status`
 - `latency_ms`
@@ -24,6 +26,8 @@ Use `/health` for liveness and `/ready` for traffic readiness checks.
 Write operations (`POST`, `PUT`, `PATCH`, `DELETE`) under `/api/v1/*` are stored in `audit_trail` table with:
 - request ID
 - actor
+- actor_id
+- actor_role
 - module
 - action
 - resource path

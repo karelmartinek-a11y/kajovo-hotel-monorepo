@@ -11,6 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.db.models import AuditTrail
 from app.db.session import SessionLocal
+from app.security.rbac import parse_identity
 
 logger = logging.getLogger("kajovo.api")
 
@@ -54,15 +55,6 @@ def _module_from_path(path: str) -> str:
     return "system"
 
 
-def _actor_from_headers(request: Request) -> str:
-    return (
-        request.headers.get("x-user")
-        or request.headers.get("x-user-id")
-        or request.headers.get("x-forwarded-user")
-        or "anonymous"
-    )
-
-
 def _should_audit(request: Request, status_code: int) -> bool:
     return (
         request.method in {"POST", "PUT", "PATCH", "DELETE"}
@@ -76,9 +68,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         module = _module_from_path(request.url.path)
-        actor = _actor_from_headers(request)
+        actor_id, actor_name, actor_role = parse_identity(request)
         request.state.request_id = request_id
-        request.state.actor = actor
+        request.state.actor = actor_name
+        request.state.actor_id = actor_id
+        request.state.actor_role = actor_role
 
         request_body: str | None = None
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
@@ -92,7 +86,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
         log_context = {
             "request_id": request_id,
-            "user": actor,
+            "user": actor_name,
+            "user_id": actor_id,
+            "role": actor_role,
             "module": module,
             "method": request.method,
             "path": request.url.path,
@@ -107,7 +103,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 db.add(
                     AuditTrail(
                         request_id=request_id,
-                        actor=actor,
+                        actor=actor_name,
+                        actor_id=actor_id,
+                        actor_role=actor_role,
                         module=module,
                         action=request.method,
                         resource=request.url.path,

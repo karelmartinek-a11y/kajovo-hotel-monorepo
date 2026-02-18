@@ -13,8 +13,13 @@ from app.api.schemas import (
 )
 from app.db.models import BreakfastOrder
 from app.db.session import get_db
+from app.security.rbac import module_access_dependency
 
-router = APIRouter(prefix="/api/v1/breakfast", tags=["breakfast"])
+router = APIRouter(
+    prefix="/api/v1/breakfast",
+    tags=["breakfast"],
+    dependencies=[Depends(module_access_dependency("breakfast"))],
+)
 
 
 def _build_daily_summary(service_date: date, orders: list[BreakfastOrder]) -> BreakfastDailySummary:

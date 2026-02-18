@@ -226,6 +226,8 @@ class AuditTrail(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     request_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     actor: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    actor_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    actor_role: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     module: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     action: Mapped[str] = mapped_column(String(16), nullable=False)
     resource: Mapped[str] = mapped_column(String(255), nullable=False)

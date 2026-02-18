@@ -29,7 +29,12 @@ def upgrade() -> None:
         sa.Column("resource", sa.String(length=255), nullable=False),
         sa.Column("status_code", sa.Integer(), nullable=False),
         sa.Column("detail", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=True,
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_audit_trail_id"), "audit_trail", ["id"], unique=False)

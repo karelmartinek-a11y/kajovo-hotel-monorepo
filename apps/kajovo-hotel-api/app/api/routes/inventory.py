@@ -14,8 +14,13 @@ from app.api.schemas import (
 )
 from app.db.models import InventoryAuditLog, InventoryItem, InventoryMovement
 from app.db.session import get_db
+from app.security.rbac import module_access_dependency
 
-router = APIRouter(prefix="/api/v1/inventory", tags=["inventory"])
+router = APIRouter(
+    prefix="/api/v1/inventory",
+    tags=["inventory"],
+    dependencies=[Depends(module_access_dependency("inventory"))],
+)
 
 
 def _log_audit(db: Session, entity: str, entity_id: int, action: str, detail: str) -> None:
