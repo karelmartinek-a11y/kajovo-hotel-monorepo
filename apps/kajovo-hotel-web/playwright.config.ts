@@ -10,7 +10,7 @@ export default defineConfig({
   },
   webServer: {
     command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 4173',
-    cwd: __dirname,
+    cwd: '.',
     port: 4173,
     reuseExistingServer: true,
   },

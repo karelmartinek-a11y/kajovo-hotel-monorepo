@@ -423,6 +423,12 @@ body {
   background: var(--k-color-surface-raised);
 }
 
+.k-badge--warning {
+  border-color: var(--k-color-warning);
+  color: var(--k-color-warning);
+  background: var(--k-color-surface-raised);
+}
+
 .k-badge--info {
   border-color: var(--k-color-info);
   color: var(--k-color-info);

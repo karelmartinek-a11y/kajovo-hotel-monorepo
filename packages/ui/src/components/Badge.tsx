@@ -1,6 +1,6 @@
 import React from 'react';
 
-type BadgeTone = 'neutral' | 'danger' | 'success' | 'info';
+type BadgeTone = 'neutral' | 'danger' | 'success' | 'info' | 'warning';
 
 type BadgeProps = {
   children: React.ReactNode;
