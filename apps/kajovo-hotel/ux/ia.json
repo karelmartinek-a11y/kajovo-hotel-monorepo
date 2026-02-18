@@ -320,6 +320,90 @@
       ],
       "signageRequired": true,
       "maxBrandElements": 2
+    },
+    {
+      "key": "issues_list",
+      "route": "/zavady",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "issues_detail",
+      "route": "/zavady/:id",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "issues_create",
+      "route": "/zavady/nova",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "issues_edit",
+      "route": "/zavady/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     }
   ],
   "viewStatePolicy": {

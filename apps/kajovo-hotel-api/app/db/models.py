@@ -87,3 +87,49 @@ class LostFoundItem(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class IssuePriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IssueStatus(StrEnum):
+    NEW = "new"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+
+class Issue(Base):
+    __tablename__ = "issues"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    room_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    priority: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default=IssuePriority.MEDIUM.value,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=IssueStatus.NEW.value,
+        index=True,
+    )
+    assignee: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    in_progress_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

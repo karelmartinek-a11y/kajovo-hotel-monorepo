@@ -113,3 +113,52 @@ class LostFoundItemRead(LostFoundItemBase):
     id: int
     created_at: datetime | None
     updated_at: datetime | None
+
+
+class IssuePriority(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class IssueStatus(StrEnum):
+    NEW = "new"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+
+class IssueBase(BaseModel):
+    title: str = Field(min_length=3, max_length=255)
+    description: str | None = Field(default=None, max_length=4000)
+    location: str = Field(min_length=1, max_length=255)
+    room_number: str | None = Field(default=None, min_length=1, max_length=32)
+    priority: IssuePriority = IssuePriority.MEDIUM
+    status: IssueStatus = IssueStatus.NEW
+    assignee: str | None = Field(default=None, max_length=255)
+
+
+class IssueCreate(IssueBase):
+    pass
+
+
+class IssueUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=255)
+    description: str | None = Field(default=None, max_length=4000)
+    location: str | None = Field(default=None, min_length=1, max_length=255)
+    room_number: str | None = Field(default=None, min_length=1, max_length=32)
+    priority: IssuePriority | None = None
+    status: IssueStatus | None = None
+    assignee: str | None = Field(default=None, max_length=255)
+
+
+class IssueRead(IssueBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    in_progress_at: datetime | None
+    resolved_at: datetime | None
+    closed_at: datetime | None
+    created_at: datetime | None
+    updated_at: datetime | None
