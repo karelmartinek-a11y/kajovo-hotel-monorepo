@@ -196,26 +196,28 @@ function useViewState(): ViewState {
 function stateViewForRoute(state: ViewState, title: string, fallbackRoute: string): JSX.Element | null {
   switch (state) {
     case 'loading':
-      return <StateView title="Načítání" description={`Připravujeme data modulu ${title}.`} />;
+      return <StateView title="Načítání" description={`Připravujeme data modulu ${title}.`} stateKey="loading" />;
     case 'empty':
-      return <StateView title="Prázdný stav" description={`Pro modul ${title} zatím nejsou dostupná data.`} />;
+      return <StateView title="Prázdný stav" description={`Pro modul ${title} zatím nejsou dostupná data.`} stateKey="empty" />;
     case 'error':
       return (
         <StateView
           title="Chyba"
           description="Nepodařilo se načíst data. Zkuste stránku obnovit."
+          stateKey="error"
           action={<button className="k-button">Obnovit</button>}
         />
       );
     case 'offline':
-      return <StateView title="Offline" description="Aplikace je dočasně bez připojení." />;
+      return <StateView title="Offline" description="Aplikace je dočasně bez připojení." stateKey="offline" />;
     case 'maintenance':
-      return <StateView title="Údržba" description="Modul je dočasně v režimu údržby." />;
+      return <StateView title="Údržba" description="Modul je dočasně v režimu údržby." stateKey="maintenance" />;
     case '404':
       return (
         <StateView
           title="404"
           description="Požadovaný obsah nebyl nalezen."
+          stateKey="404"
           action={
             <Link className="k-nav-link" to={fallbackRoute}>
               Zpět
@@ -1256,6 +1258,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/hlaseni/nove" element={<ReportsForm mode="create" />} />
         <Route path="/hlaseni/:id" element={<ReportsDetail />} />
         <Route path="/hlaseni/:id/edit" element={<ReportsForm mode="edit" />} />
+        <Route path="/intro" element={<UtilityStatePage title="Intro" description="Úvodní obrazovka aplikace." />} />
         <Route path="/offline" element={<UtilityStatePage title="Offline" description="Aplikace je bez připojení." />} />
         <Route
           path="/maintenance"

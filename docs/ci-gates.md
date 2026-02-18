@@ -1,29 +1,42 @@
 # CI gates pro Kájovo Hotel
 
-Tento dokument popisuje minimální CI scaffolding pro vymahatelnost SSOT pravidel v `apps/kajovo-hotel/*`.
+Tento dokument popisuje **blokující** CI gate pravidla pro PR i `main` větev.
 
 ## Přehled gate kroků
 
-1. **Token-only lint**
-   - Ověřuje JSON konzistenci tokenových SSOT souborů:
+1. **Token-only lint (`pnpm ci:tokens`)**
+   - Ověřuje SSOT konzistenci v:
      - `apps/kajovo-hotel/ui-tokens/tokens.json`
      - `apps/kajovo-hotel/palette/palette.json`
      - `apps/kajovo-hotel/ui-motion/motion.json`
+   - Failne build, pokud se mimo token usage objeví ad-hoc hodnoty pro:
+     - color
+     - spacing
+     - radius
+     - shadow
+     - z-index
+     - motion
    - Kontroluje závazné SIGNACE hodnoty (`KÁJOVO`, `#FF0000`, `#FFFFFF`, fixed-left-bottom, visible on scroll).
 
-2. **Signage presence test scaffold**
-   - Ověřuje, že IA obsahuje explicitní brand policy a limity:
-     - SIGNACE pravidla
-     - max 2 brand prvky na view
-     - `signageRequired: true` na view úrovni (mimo PopUp pravidla)
+2. **SIGNACE gate (`pnpm ci:signage`)**
+   - Playwright test přes IA routes:
+     - SIGNACE existuje na každé route (mimo PopUp kontext),
+     - má text `KÁJOVO`,
+     - je viditelná i při scrollu,
+     - není occluded jiným prvkem.
+   - Konvenční limit brand elementů: max 2 na view (`[data-brand-element="true"]`) na klíčových stránkách.
 
-3. **View-states completeness scaffold**
-   - Ověřuje, že každé view deklaruje minimálně stavy:
-     - `loading`, `empty`, `error`, `offline`, `maintenance`, `404`
-   - Ověřuje responsivní layout pokrytí:
-     - `phone`, `tablet`, `desktop`
+3. **View-states gate (`pnpm ci:view-states`)**
+   - Playwright test, který pro každou route z `apps/kajovo-hotel/ux/ia.json` (module views) ověří dostupnost stavů přes test ID:
+     - `loading`
+     - `empty`
+     - `error`
+     - `offline`
+     - `404`
 
-## Spouštění lokálně
+## Lokální spuštění
+
+Kompletní gate run:
 
 ```bash
 pnpm ci:gates
@@ -37,6 +50,21 @@ pnpm ci:signage
 pnpm ci:view-states
 ```
 
+Doporučené před prvním během Playwright gate:
+
+```bash
+pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+```
+
 ## CI workflow
 
-Workflow je v `.github/workflows/ci-gates.yml` a spouští uvedené tři gate kroky na `push` a `pull_request`.
+Workflow je v `.github/workflows/ci-gates.yml`.
+
+Pipeline je blokující v PR i pro push do `main` a obsahuje:
+
+1. dependency install
+2. playwright browser install
+3. `pnpm lint`
+4. `pnpm ci:tokens`
+5. `pnpm ci:signage`
+6. `pnpm ci:view-states`

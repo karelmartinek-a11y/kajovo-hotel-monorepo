@@ -3,6 +3,8 @@ name: CI Gates - Kájovo Hotel
 on:
   pull_request:
   push:
+    branches:
+      - main
 
 jobs:
   ci-gates:
@@ -25,11 +27,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Install Playwright browser
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+
+      - name: Lint TypeScript
+        run: pnpm lint
+
       - name: Token-only lint
         run: pnpm ci:tokens
 
-      - name: Signage presence scaffold
+      - name: SIGNACE gate
         run: pnpm ci:signage
 
-      - name: View-states completeness scaffold
+      - name: View-states gate
         run: pnpm ci:view-states
