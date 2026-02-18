@@ -8,3 +8,5 @@ export * from './components/StateView';
 export * from './types/navigation';
 export * from './components/Timeline';
 export * from './components/Badge';
+
+export * from './components/Skeleton';

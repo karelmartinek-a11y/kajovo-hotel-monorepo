@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import ia from '../../kajovo-hotel/ux/ia.json';
 
-const requiredStates = ['loading', 'empty', 'error', 'offline', '404'] as const;
+const requiredStates = ['loading', 'empty', 'error', 'offline', 'maintenance', '404'] as const;
 
 const listPayload = [
   {

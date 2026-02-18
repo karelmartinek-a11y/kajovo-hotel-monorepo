@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   type BreakfastDailySummary,
@@ -74,6 +74,28 @@ type ReportPayload = ReportCreate;
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
+
+
+const IntroRoute = React.lazy(async () => {
+  const module = await import('./routes/utilityStates');
+  return { default: module.IntroRoute };
+});
+
+const OfflineRoute = React.lazy(async () => {
+  const module = await import('./routes/utilityStates');
+  return { default: module.OfflineRoute };
+});
+
+const MaintenanceRoute = React.lazy(async () => {
+  const module = await import('./routes/utilityStates');
+  return { default: module.MaintenanceRoute };
+});
+
+const NotFoundRoute = React.lazy(async () => {
+  const module = await import('./routes/utilityStates');
+  return { default: module.NotFoundRoute };
+});
+
 
 const statusLabels: Record<BreakfastStatus, string> = {
   pending: 'Čeká',
@@ -177,22 +199,43 @@ function useViewState(): ViewState {
 function stateViewForRoute(state: ViewState, title: string, fallbackRoute: string): JSX.Element | null {
   switch (state) {
     case 'loading':
-      return <StateView title="Načítání" description={`Připravujeme data modulu ${title}.`} stateKey="loading" />;
+      return <SkeletonPage />;
     case 'empty':
-      return <StateView title="Prázdný stav" description={`Pro modul ${title} zatím nejsou dostupná data.`} stateKey="empty" />;
+      return (
+        <StateView
+          title="Prázdný stav"
+          description={`Pro modul ${title} zatím nejsou dostupná data.`}
+          stateKey="empty"
+          action={<Link className="k-button secondary" to={fallbackRoute}>Obnovit data</Link>}
+        />
+      );
     case 'error':
       return (
         <StateView
           title="Chyba"
           description="Nepodařilo se načíst data. Zkuste stránku obnovit."
           stateKey="error"
-          action={<button className="k-button">Obnovit</button>}
+          action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
         />
       );
     case 'offline':
-      return <StateView title="Offline" description="Aplikace je dočasně bez připojení." stateKey="offline" />;
+      return (
+        <StateView
+          title="Offline"
+          description="Aplikace je dočasně bez připojení."
+          stateKey="offline"
+          action={<Link className="k-button secondary" to="/offline">Diagnostika připojení</Link>}
+        />
+      );
     case 'maintenance':
-      return <StateView title="Údržba" description="Modul je dočasně v režimu údržby." stateKey="maintenance" />;
+      return (
+        <StateView
+          title="Údržba"
+          description="Modul je dočasně v režimu údržby."
+          stateKey="maintenance"
+          action={<Link className="k-button secondary" to="/maintenance">Zobrazit status</Link>}
+        />
+      );
     case '404':
       return (
         <StateView
@@ -357,9 +400,9 @@ function BreakfastList(): JSX.Element {
       {stateUI ? (
         stateUI
       ) : error ? (
-        <StateView title="Chyba" description={error} />
+        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : filteredItems.length === 0 ? (
-        <StateView title="Prázdný stav" description="Nebyly nalezeny žádné objednávky." />
+        <StateView title="Prázdný stav" description="Nebyly nalezeny žádné objednávky." stateKey="empty" action={<Link className="k-button" to="/snidane/nova">Nová objednávka</Link>} />
       ) : (
         <>
           <div className="k-grid cards-3">
@@ -473,7 +516,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       {stateUI ? (
         stateUI
       ) : error ? (
-        <StateView title="Chyba" description={error} />
+        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <div className="k-card">
           <div className="k-toolbar">
@@ -584,7 +627,7 @@ function BreakfastDetail(): JSX.Element {
       {stateUI ? (
         stateUI
       ) : notFound ? (
-        <StateView title="404" description={error ?? 'Objednávka neexistuje.'} />
+        <StateView title="404" description={error ?? 'Objednávka neexistuje.'} stateKey="404" action={<Link className="k-button secondary" to="/snidane">Zpět na seznam</Link>} />
       ) : item ? (
         <div className="k-card">
           <div className="k-toolbar">
@@ -608,7 +651,7 @@ function BreakfastDetail(): JSX.Element {
           />
         </div>
       ) : (
-        <StateView title="Načítání" description="Načítáme detail objednávky." />
+        <SkeletonPage />
       )}
     </main>
   );
@@ -652,9 +695,9 @@ function LostFoundList(): JSX.Element {
       {stateUI ? (
         stateUI
       ) : error ? (
-        <StateView title="Chyba" description={error} />
+        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : items.length === 0 ? (
-        <StateView title="Prázdný stav" description="Zatím není evidována žádná položka." />
+        <StateView title="Prázdný stav" description="Zatím není evidována žádná položka." stateKey="empty" action={<Link className="k-button" to="/ztraty-a-nalezy/novy">Přidat záznam</Link>} />
       ) : (
         <>
           <div className="k-grid cards-3">
@@ -781,7 +824,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       {stateUI ? (
         stateUI
       ) : error ? (
-        <StateView title="Chyba" description={error} />
+        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <div className="k-card">
           <div className="k-toolbar">
@@ -940,7 +983,7 @@ function LostFoundDetail(): JSX.Element {
           />
         </div>
       ) : (
-        <StateView title="Načítání" description="Načítáme detail položky." />
+        <SkeletonPage />
       )}
     </main>
   );
@@ -972,8 +1015,8 @@ function IssuesList(): JSX.Element {
     <main className="k-page" data-testid="issues-list-page">
       <h1>Závady</h1>
       <StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? (
-        <StateView title="Prázdný stav" description="Zatím nejsou evidované žádné závady." />
+      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? (
+        <StateView title="Prázdný stav" description="Zatím nejsou evidované žádné závady." stateKey="empty" action={<Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link>} />
       ) : (
         <>
           <div className="k-toolbar">
@@ -1024,7 +1067,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     } catch { setError('Závadu se nepodařilo uložit.'); }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}><h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
+  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}><h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
 <FormField id="issue_title" label="Název"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
 <FormField id="issue_location" label="Lokalita"><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
 <FormField id="issue_room_number" label="Pokoj (volitelné)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
@@ -1057,7 +1100,7 @@ function IssuesDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="issues-detail-page">
       <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <StateView title="Načítání" description="Načítáme detail závady." />}
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <SkeletonPage />}
     </main>
   );
 }
@@ -1079,7 +1122,7 @@ function InventoryList(): JSX.Element {
       .catch(() => setError('Položky skladu se nepodařilo načíst.'));
   }, [state]);
 
-  return <main className="k-page" data-testid="inventory-list-page"><h1>Skladové hospodářství</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Ve skladu zatím nejsou položky." /> : <><div className="k-toolbar"><Link className="k-button" to="/sklad/nova">Nová položka</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']} rows={items.map((item) => [item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-', item.current_stock <= item.min_stock ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge> : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>, <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="inventory-list-page"><h1>Skladové hospodářství</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Ve skladu zatím nejsou položky." stateKey="empty" action={<Link className="k-button" to="/sklad/nova">Nová položka</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/sklad/nova">Nová položka</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']} rows={items.map((item) => [item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-', item.current_stock <= item.min_stock ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge> : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>, <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -1114,7 +1157,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}><h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="inventory_name" label="Název"><input id="inventory_name" className="k-input" value={payload.name} onChange={(e) => setPayload((prev) => ({ ...prev, name: e.target.value }))} /></FormField><FormField id="inventory_unit" label="Jednotka"><input id="inventory_unit" className="k-input" value={payload.unit} onChange={(e) => setPayload((prev) => ({ ...prev, unit: e.target.value }))} /></FormField><FormField id="inventory_min_stock" label="Minimální stav"><input id="inventory_min_stock" type="number" className="k-input" value={payload.min_stock} onChange={(e) => setPayload((prev) => ({ ...prev, min_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_current_stock" label="Aktuální stav"><input id="inventory_current_stock" type="number" className="k-input" value={payload.current_stock} onChange={(e) => setPayload((prev) => ({ ...prev, current_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_supplier" label="Dodavatel (volitelné)"><input id="inventory_supplier" className="k-input" value={payload.supplier ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, supplier: e.target.value }))} /></FormField></div></div>}</main>;
+  return <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}><h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="inventory_name" label="Název"><input id="inventory_name" className="k-input" value={payload.name} onChange={(e) => setPayload((prev) => ({ ...prev, name: e.target.value }))} /></FormField><FormField id="inventory_unit" label="Jednotka"><input id="inventory_unit" className="k-input" value={payload.unit} onChange={(e) => setPayload((prev) => ({ ...prev, unit: e.target.value }))} /></FormField><FormField id="inventory_min_stock" label="Minimální stav"><input id="inventory_min_stock" type="number" className="k-input" value={payload.min_stock} onChange={(e) => setPayload((prev) => ({ ...prev, min_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_current_stock" label="Aktuální stav"><input id="inventory_current_stock" type="number" className="k-input" value={payload.current_stock} onChange={(e) => setPayload((prev) => ({ ...prev, current_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_supplier" label="Dodavatel (volitelné)"><input id="inventory_supplier" className="k-input" value={payload.supplier ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, supplier: e.target.value }))} /></FormField></div></div>}</main>;
 }
 
 function InventoryDetail(): JSX.Element {
@@ -1156,7 +1199,7 @@ function InventoryDetail(): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabel(movement.movement_type), movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
+  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabel(movement.movement_type), movement.quantity, movement.note ?? '-'])} /></div></> : <SkeletonPage />}</main>;
 }
 
 function GenericModule({ title }: { title: string }): JSX.Element {
@@ -1185,7 +1228,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -1217,7 +1260,7 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     }
   }
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
+  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
 }
 
 function ReportsDetail(): JSX.Element {
@@ -1233,15 +1276,7 @@ function ReportsDetail(): JSX.Element {
       .catch(() => setError('Hlášení nebylo nalezeno.'));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
-}
-
-function UtilityStatePage({ title, description }: { title: string; description: string }): JSX.Element {
-  return (
-    <main className="k-page">
-      <StateView title={title} description={description} />
-    </main>
-  );
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
 function AppRoutes(): JSX.Element {
@@ -1281,13 +1316,30 @@ function AppRoutes(): JSX.Element {
         <Route path="/hlaseni/nove" element={<ReportsForm mode="create" />} />
         <Route path="/hlaseni/:id" element={<ReportsDetail />} />
         <Route path="/hlaseni/:id/edit" element={<ReportsForm mode="edit" />} />
-        <Route path="/intro" element={<UtilityStatePage title="Intro" description="Úvodní obrazovka aplikace." />} />
-        <Route path="/offline" element={<UtilityStatePage title="Offline" description="Aplikace je bez připojení." />} />
+        <Route
+          path="/intro"
+          element={
+            <React.Suspense fallback={<SkeletonPage />}><IntroRoute /></React.Suspense>
+          }
+        />
+        <Route
+          path="/offline"
+          element={
+            <React.Suspense fallback={<SkeletonPage />}><OfflineRoute /></React.Suspense>
+          }
+        />
         <Route
           path="/maintenance"
-          element={<UtilityStatePage title="Maintenance" description="Probíhá údržba systému." />}
+          element={
+            <React.Suspense fallback={<SkeletonPage />}><MaintenanceRoute /></React.Suspense>
+          }
         />
-        <Route path="/404" element={<UtilityStatePage title="404" description="Stránka nebyla nalezena." />} />
+        <Route
+          path="/404"
+          element={
+            <React.Suspense fallback={<SkeletonPage />}><NotFoundRoute /></React.Suspense>
+          }
+        />
         <Route path="/dalsi" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>

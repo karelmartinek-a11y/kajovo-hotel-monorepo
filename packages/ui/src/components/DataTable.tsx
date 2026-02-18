@@ -7,7 +7,7 @@ type Props = {
 
 export function DataTable({ headers, rows }: Props): JSX.Element {
   return (
-    <div className="k-table-wrap">
+    <div className="k-table-wrap" role="region" aria-label="Tabulka" tabIndex={0}>
       <table className="k-table">
         <thead>
           <tr>
