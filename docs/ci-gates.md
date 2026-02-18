@@ -68,3 +68,19 @@ Pipeline je blokující v PR i pro push do `main` a obsahuje:
 4. `pnpm ci:tokens`
 5. `pnpm ci:signage`
 6. `pnpm ci:view-states`
+
+
+## Lokální Playwright sweep (smoke + SIGNACE + snapshoty)
+
+Pro kompletní vizuální sweep (IA smoke navigace, SIGNACE, view-states a screenshot baseline):
+
+```bash
+pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --project=desktop tests/ci-gates.spec.ts
+pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --update-snapshots tests/visual.spec.ts
+```
+
+Tip: pokud měníte pouze subset modulů, můžete spustit jen cílený grep:
+
+```bash
+pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --update-snapshots --grep "breakfast|inventory|reports|issues|lost found" tests/visual.spec.ts
+```
