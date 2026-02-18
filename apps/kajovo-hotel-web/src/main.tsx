@@ -1221,10 +1221,19 @@ function UtilityStatePage({ title, description }: { title: string; description: 
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const modules = ia.modules;
+  const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
+  const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
+    ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
+    : [];
+  const modules = [...ia.modules, ...injectedModules];
 
   return (
-    <AppShell modules={modules} navigationRules={ia.navigation.rules} currentPath={location.pathname}>
+    <AppShell
+      modules={modules}
+      navigationRules={ia.navigation.rules}
+      navigationSections={ia.navigation.sections}
+      currentPath={location.pathname}
+    >
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/snidane" element={<BreakfastList />} />

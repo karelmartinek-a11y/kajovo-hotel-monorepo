@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "KájovoHotel",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "ssot": "Manifest.md"
   },
   "navigation": {
@@ -9,8 +9,31 @@
       "maxTopLevelItemsDesktop": 6,
       "overflowLabel": "Další",
       "enableSearchInMenuOnPhone": true,
-      "grouping": true
-    }
+      "grouping": true,
+      "maxTopLevelItemsTablet": 4,
+      "phoneDrawerLabel": "Menu",
+      "phoneSearchPlaceholder": "Hledat v menu"
+    },
+    "sections": [
+      {
+        "key": "overview",
+        "label": "Přehled",
+        "icon": "layout-dashboard",
+        "order": 1
+      },
+      {
+        "key": "operations",
+        "label": "Provoz",
+        "icon": "briefcase",
+        "order": 2
+      },
+      {
+        "key": "records",
+        "label": "Evidence",
+        "icon": "folder",
+        "order": 3
+      }
+    ]
   },
   "brandPolicy": {
     "signage": {
@@ -29,28 +52,44 @@
       "label": "Přehled",
       "route": "/",
       "icon": "layout-dashboard",
-      "active": true
+      "active": true,
+      "section": "overview",
+      "permissions": [
+        "read"
+      ]
     },
     {
       "key": "breakfast",
       "label": "Snídaně",
       "route": "/snidane",
       "icon": "utensils",
-      "active": true
+      "active": true,
+      "section": "operations",
+      "permissions": [
+        "read"
+      ]
     },
     {
       "key": "lost_found",
       "label": "Ztráty a nálezy",
       "route": "/ztraty-a-nalezy",
       "icon": "search",
-      "active": true
+      "active": true,
+      "section": "records",
+      "permissions": [
+        "read"
+      ]
     },
     {
       "key": "issues",
       "label": "Závady",
       "route": "/zavady",
       "icon": "tool",
-      "active": true
+      "active": true,
+      "section": "operations",
+      "permissions": [
+        "read"
+      ]
     },
     {
       "key": "inventory",
@@ -63,6 +102,10 @@
         "/sklad/:id",
         "/sklad/nova",
         "/sklad/:id/edit"
+      ],
+      "section": "records",
+      "permissions": [
+        "read"
       ]
     },
     {
@@ -76,6 +119,10 @@
         "/hlaseni/:id",
         "/hlaseni/nove",
         "/hlaseni/:id/edit"
+      ],
+      "section": "records",
+      "permissions": [
+        "read"
       ]
     },
     {
@@ -83,7 +130,11 @@
       "label": "Další",
       "route": "/dalsi",
       "icon": "grid",
-      "active": true
+      "active": false,
+      "section": "records",
+      "permissions": [
+        "read"
+      ]
     }
   ],
   "views": [
