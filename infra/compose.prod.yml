@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kajovo_hotel}
+      POSTGRES_USER: ${POSTGRES_USER:-kajovo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kajovo_dev_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kajovo} -d ${POSTGRES_DB:-kajovo_hotel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kajovo_net
+
+  api:
+    build:
+      context: ../apps/kajovo-hotel-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-KájovoHotel API}
+      KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
+      KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-production}
+      KAJOVO_API_DATABASE_URL: ${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://kajovo:kajovo_dev_password@postgres:5432/kajovo_hotel}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - kajovo_net
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/kajovo-hotel-web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kajovo_net
+
+networks:
+  kajovo_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
