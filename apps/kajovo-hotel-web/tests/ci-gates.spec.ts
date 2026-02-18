@@ -39,6 +39,8 @@ const oneItem = {
 
 const toConcreteRoute = (route: string): string => route.replace(/:id/g, '1');
 
+const smokeRoutes = ia.views.map((view) => toConcreteRoute(view.route));
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
   await page.route('**/api/v1/breakfast/daily-summary?*', async (route) => route.fulfill({ json: summaryPayload }));
@@ -81,6 +83,15 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
       return elementAtCenter !== node && !node.contains(elementAtCenter);
     });
     expect(isOccluded, `SIGNACE is occluded on route ${view.route}`).toBeFalsy();
+  }
+});
+
+test('all IA routes support smoke navigation', async ({ page }) => {
+  for (const route of smokeRoutes) {
+    await page.goto(route);
+    await expect(page.locator('main').first(), `Main content missing on route ${route}`).toBeVisible();
+    const pathname = new URL(page.url()).pathname;
+    expect(pathname, `Navigation did not land on route ${route}`).toBe(route);
   }
 });
 
