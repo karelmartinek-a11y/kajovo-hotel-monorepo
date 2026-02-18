@@ -1,16 +1,19 @@
 :root {
   --k-color-brand-red: #ff0000;
   --k-color-brand-white: #ffffff;
-  --k-color-ink: #000000;
+  --k-color-ink: #111111;
+  --k-color-ink-secondary: #333333;
+  --k-color-ink-muted: #666666;
   --k-color-metal: #737578;
   --k-color-subtle-metal: #9aa0a6;
-  --k-color-surface: #f6f7f8;
-  --k-color-surface-raised: #ffffff;
-  --k-color-border: #dde1e4;
-  --k-color-info: #1c66e5;
-  --k-color-error: #c62828;
-  --k-color-success: #2e7d32;
-  --k-color-warning: #ed6c02;
+  --k-color-surface: #ffffff;
+  --k-color-surface-raised: #f5f5f5;
+  --k-color-surface-muted: #eeeeee;
+  --k-color-border: #e0e0e0;
+  --k-color-info: #0d47a1;
+  --k-color-error: #b71c1c;
+  --k-color-success: #1b5e20;
+  --k-color-warning: #e65100;
 
   --k-spacing-0: 0;
   --k-spacing-1: 4px;
@@ -33,11 +36,22 @@
   --k-font-size-sm: 14px;
   --k-font-size-md: 16px;
   --k-font-size-lg: 20px;
-  --k-font-size-xl: 28px;
+  --k-font-size-xl: 24px;
+  --k-font-size-2xl: 32px;
 
   --k-weight-regular: 400;
   --k-weight-bold: 700;
-  --k-letter-caps: 0.06em;
+  --k-letter-caps: 0.08em;
+
+  --k-line-height-h1: 40px;
+  --k-line-height-h2: 32px;
+  --k-line-height-h3: 28px;
+  --k-line-height-body: 24px;
+  --k-line-height-sm: 20px;
+  --k-line-height-xs: 16px;
+
+  --k-focus-ring-width: 2px;
+  --k-focus-ring-offset: 2px;
 
   --k-sign-min-thickness: 24px;
   --k-shell-max-width: 1320px;
@@ -48,10 +62,10 @@
   --k-z-sign: 60;
 
   --k-shadow-elevated: 0 8px 20px var(--k-shadow-color);
-  --k-shadow-color: rgba(0, 0, 0, 0.08);
+  --k-shadow-color: rgba(0, 0, 0, 0.18);
 
-  --k-motion-duration-fast: 160ms;
-  --k-motion-duration-standard: 280ms;
+  --k-motion-duration-fast: 120ms;
+  --k-motion-duration-standard: 200ms;
   --k-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -64,6 +78,12 @@ body {
   font-family: var(--k-font-family);
   color: var(--k-color-ink);
   background: var(--k-color-surface);
+  line-height: var(--k-line-height-body);
+}
+
+:focus-visible {
+  outline: var(--k-focus-ring-width) solid var(--k-color-info);
+  outline-offset: var(--k-focus-ring-offset);
 }
 
 .k-app-shell {
@@ -106,9 +126,11 @@ body {
 
 .k-nav-group-label {
   font-size: var(--k-font-size-xs);
+  line-height: var(--k-line-height-xs);
   color: var(--k-color-metal);
   margin-right: var(--k-spacing-2);
 }
+
 
 .k-nav-link {
   border: 1px solid var(--k-color-border);
@@ -118,6 +140,7 @@ body {
   padding: var(--k-spacing-2) var(--k-spacing-3);
   text-decoration: none;
   font-size: var(--k-font-size-sm);
+  line-height: var(--k-line-height-sm);
 }
 
 .k-nav-link[aria-current='page'] {
@@ -199,7 +222,8 @@ body {
 
 .k-page h1 {
   margin: 0 0 var(--k-spacing-4);
-  font-size: var(--k-font-size-xl);
+  font-size: var(--k-font-size-2xl);
+  line-height: var(--k-line-height-h1);
 }
 
 .k-grid {
@@ -217,6 +241,7 @@ body {
   border-radius: var(--k-radius-2);
   padding: var(--k-spacing-4);
 }
+  line-height: var(--k-line-height-body);
 
 .k-state-view {
   border: 1px dashed var(--k-color-border);
@@ -231,10 +256,12 @@ body {
   gap: var(--k-spacing-3);
   transition: border-color var(--k-motion-duration-fast) var(--k-motion-ease-standard);
 }
+  line-height: var(--k-line-height-body);
 
 .k-state-view h2 {
   margin-top: 0;
-  font-size: var(--k-font-size-lg);
+  font-size: var(--k-font-size-xl);
+  line-height: var(--k-line-height-h2);
 }
 
 .k-toolbar {
@@ -261,6 +288,7 @@ body {
   font: inherit;
   background: var(--k-color-surface-raised);
 }
+  line-height: var(--k-line-height-body);
 
 .k-button {
   border: 1px solid var(--k-color-ink);
@@ -287,6 +315,7 @@ body {
   display: block;
   margin-bottom: var(--k-spacing-1);
   font-size: var(--k-font-size-sm);
+  line-height: var(--k-line-height-sm);
 }
 
 .k-table-wrap {
@@ -312,6 +341,7 @@ body {
   text-align: left;
   font-size: var(--k-font-size-sm);
 }
+  line-height: var(--k-line-height-body);
 
 .k-table tbody tr:last-child td {
   border-bottom: 0;
@@ -319,8 +349,8 @@ body {
 
 .kajovo-sign {
   position: fixed;
-  left: var(--k-spacing-4);
-  bottom: var(--k-spacing-4);
+  left: var(--k-spacing-5);
+  bottom: var(--k-spacing-5);
   z-index: var(--k-z-sign);
   background: var(--k-color-brand-red);
   color: var(--k-color-brand-white);
@@ -369,8 +399,8 @@ body {
   }
 
   .kajovo-sign {
-    left: var(--k-spacing-3);
-    bottom: var(--k-spacing-3);
+    left: var(--k-spacing-4);
+    bottom: var(--k-spacing-4);
   }
 }
 
@@ -462,7 +492,7 @@ body {
 
 .k-state-view--offline,
 .k-state-view--maintenance {
-  border-color: color-mix(in srgb, var(--k-color-warning) 35%, var(--k-color-border));
+  border-color: var(--k-color-warning);
 }
 
 .k-skeleton-page {
@@ -479,7 +509,7 @@ body {
 .k-skeleton-block {
   display: inline-flex;
   border-radius: var(--k-radius-1);
-  background: linear-gradient(100deg, var(--k-color-surface) 20%, #eceff1 40%, var(--k-color-surface) 60%);
+  background: linear-gradient(100deg, var(--k-color-surface) 20%, var(--k-color-surface-raised) 40%, var(--k-color-surface) 60%);
   background-size: 200% 100%;
   animation: k-skeleton-wave var(--k-motion-duration-standard) var(--k-motion-ease-standard) infinite;
 }

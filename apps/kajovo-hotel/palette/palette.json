@@ -2,46 +2,43 @@
   "meta": {
     "app": "KájovoHotel",
     "version": "1.0.0",
-    "ssot": "Manifest.md",
+    "ssot": "ManifestDesignKájovo.md",
     "notes": "Brand red (#FF0000) is reserved for SIGNACE and must not be reused as a general UI primary."
   },
   "brand": {
     "red": "#FF0000",
     "white": "#FFFFFF",
-    "black": "#000000"
+    "ink": "#000000",
+    "metal": "#737578",
+    "subtleMetal": "#9AA0A6"
   },
   "neutral": {
-    "n0": "#FFFFFF",
-    "n25": "#FAFAFA",
-    "n50": "#F5F5F5",
-    "n100": "#EDEDED",
-    "n200": "#D6D6D6",
-    "n300": "#BDBDBD",
-    "n400": "#9E9E9E",
-    "n500": "#757575",
-    "n600": "#616161",
-    "n700": "#424242",
-    "n800": "#2B2B2B",
-    "n900": "#121212"
+    "ink900": "#111111",
+    "ink700": "#333333",
+    "ink500": "#666666",
+    "line300": "#E0E0E0",
+    "surface100": "#FFFFFF",
+    "surface200": "#F5F5F5",
+    "surface300": "#EEEEEE"
   },
   "state": {
-    "success": "#1B8A5A",
-    "warning": "#B86A00",
-    "danger": "#B00020",
-    "info": "#1F5FBF"
+    "success": "#1B5E20",
+    "warning": "#E65100",
+    "error": "#B71C1C",
+    "info": "#0D47A1"
   },
   "surface": {
-    "background": "{neutral.n25}",
-    "panel": "{neutral.n0}",
-    "panelSubtle": "{neutral.n50}",
-    "border": "{neutral.n200}",
-    "divider": "{neutral.n100}"
+    "background": "{neutral.surface100}",
+    "panel": "{neutral.surface200}",
+    "panelSubtle": "{neutral.surface300}",
+    "border": "{neutral.line300}",
+    "divider": "{neutral.line300}"
   },
   "text": {
-    "primary": "{neutral.n900}",
-    "secondary": "{neutral.n700}",
-    "muted": "{neutral.n500}",
-    "inverse": "{neutral.n0}"
+    "primary": "{neutral.ink900}",
+    "secondary": "{neutral.ink700}",
+    "muted": "{neutral.ink500}",
+    "inverse": "{neutral.surface100}"
   },
   "focus": {
     "ring": "{state.info}"

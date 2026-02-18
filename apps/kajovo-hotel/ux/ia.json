@@ -1,268 +1,664 @@
 {
-  "app": {
-    "name": "KájovoHotel",
-    "purpose": "Zaměstnanecký portál pro řízení provozu hotelu Chodov ASC.",
-    "defaultRoute": "/dashboard"
-  },
-  "deviceClasses": {
-    "phone": { "min": 360, "max": 480 },
-    "tablet": { "min": 768, "max": 1024 },
-    "desktop": { "min": 1280, "max": 1920 }
+  "meta": {
+    "app": "KájovoHotel",
+    "version": "1.2.0",
+    "ssot": "ManifestDesignKájovo.md"
   },
   "navigation": {
-    "strategy": "data-driven",
-    "overflow": {
-      "desktopVisibleLimit": 6,
-      "tabletVisibleLimit": 4,
-      "moreLabel": "Další"
+    "rules": {
+      "maxTopLevelItemsDesktop": 6,
+      "overflowLabel": "Další",
+      "enableSearchInMenuOnPhone": true,
+      "grouping": true,
+      "maxTopLevelItemsTablet": 4,
+      "phoneDrawerLabel": "Menu",
+      "phoneSearchPlaceholder": "Hledat v menu"
     },
     "sections": [
       {
-        "id": "ops",
-        "label": "Provoz",
-        "items": [
-          { "id": "dashboard", "label": "Přehled", "route": "/dashboard", "icon": "LayoutDashboard", "roles": ["Reception", "Maintenance", "Warehouse", "Manager", "Admin"] },
-          { "id": "breakfast", "label": "Snídaně", "route": "/snidane", "icon": "Coffee", "roles": ["Reception", "Manager", "Admin"] },
-          { "id": "lostFound", "label": "Ztráty a nálezy", "route": "/ztraty-a-nalezy", "icon": "Search", "roles": ["Reception", "Manager", "Admin"] },
-          { "id": "issues", "label": "Závady", "route": "/zavady", "icon": "Wrench", "roles": ["Maintenance", "Manager", "Admin"] },
-          { "id": "inventory", "label": "Sklad", "route": "/sklad", "icon": "Boxes", "roles": ["Warehouse", "Manager", "Admin"] }
-        ]
+        "key": "overview",
+        "label": "Přehled",
+        "icon": "layout-dashboard",
+        "order": 1
       },
       {
-        "id": "admin",
-        "label": "Správa",
-        "items": [
-          { "id": "users", "label": "Uživatelé", "route": "/admin/uzivatele", "icon": "Users", "roles": ["Admin"] },
-          { "id": "settings", "label": "Nastavení", "route": "/admin/nastaveni", "icon": "Settings", "roles": ["Admin"] }
-        ]
+        "key": "operations",
+        "label": "Provoz",
+        "icon": "briefcase",
+        "order": 2
+      },
+      {
+        "key": "records",
+        "label": "Evidence",
+        "icon": "folder",
+        "order": 3
       }
     ]
   },
+  "brandPolicy": {
+    "signage": {
+      "text": "KÁJOVO",
+      "background": "#FF0000",
+      "textColor": "#FFFFFF",
+      "requiredOutsidePopUp": true,
+      "position": "fixed-left-bottom",
+      "alwaysVisibleOnScroll": true
+    },
+    "maxBrandElementsPerView": 2
+  },
+  "modules": [
+    {
+      "key": "dashboard",
+      "label": "Přehled",
+      "route": "/",
+      "icon": "layout-dashboard",
+      "active": true,
+      "section": "overview",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
+      "key": "breakfast",
+      "label": "Snídaně",
+      "route": "/snidane",
+      "icon": "utensils",
+      "active": true,
+      "section": "operations",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
+      "key": "lost_found",
+      "label": "Ztráty a nálezy",
+      "route": "/ztraty-a-nalezy",
+      "icon": "search",
+      "active": true,
+      "section": "records",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
+      "key": "issues",
+      "label": "Závady",
+      "route": "/zavady",
+      "icon": "tool",
+      "active": true,
+      "section": "operations",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
+      "key": "inventory",
+      "label": "Skladové hospodářství",
+      "route": "/sklad",
+      "icon": "boxes",
+      "active": true,
+      "routes": [
+        "/sklad",
+        "/sklad/:id",
+        "/sklad/nova",
+        "/sklad/:id/edit"
+      ],
+      "section": "records",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
+      "key": "reports",
+      "label": "Hlášení",
+      "route": "/hlaseni",
+      "icon": "file-text",
+      "active": true,
+      "routes": [
+        "/hlaseni",
+        "/hlaseni/:id",
+        "/hlaseni/nove",
+        "/hlaseni/:id/edit"
+      ],
+      "section": "records",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
+      "key": "other",
+      "label": "Další",
+      "route": "/dalsi",
+      "icon": "grid",
+      "active": false,
+      "section": "records",
+      "permissions": [
+        "read"
+      ]
+    }
+  ],
   "views": [
     {
-      "id": "dashboard",
-      "route": "/dashboard",
-      "titleKey": "dashboard.h1",
-      "primaryCta": { "labelKey": "dashboard.primaryCta", "action": "nav:/zavady/novy" },
-      "secondaryActions": [
-        { "labelKey": "dashboard.quick.breakfast", "action": "nav:/snidane" },
-        { "labelKey": "dashboard.quick.inventory", "action": "nav:/sklad" }
+      "key": "intro",
+      "route": "/intro",
+      "type": "intro",
+      "requiresFullLockup": true,
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
       ],
-      "dataNeeds": ["summaryCards", "recentIssues", "todayBreakfast", "lowStock"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": {
-        "phone": { "layout": "stack", "nav": "drawer" },
-        "tablet": { "layout": "2-col", "nav": "hybrid" },
-        "desktop": { "layout": "3-col", "nav": "sidebar" }
-      }
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
-
     {
-      "id": "breakfastList",
+      "key": "not_found",
+      "route": "/404",
+      "type": "utility",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "offline",
+      "route": "/offline",
+      "type": "utility",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "maintenance",
+      "route": "/maintenance",
+      "type": "utility",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "breakfast_list",
       "route": "/snidane",
-      "titleKey": "breakfast.list.h1",
-      "primaryCta": { "labelKey": "breakfast.list.primaryCta", "action": "nav:/snidane/novy" },
-      "secondaryActions": [
-        { "labelKey": "breakfast.list.secondary.export", "action": "cmd:breakfast.export" }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
       ],
-      "dataNeeds": ["breakfastList", "filters"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": {
-        "phone": { "layout": "stack", "table": "cards" },
-        "tablet": { "layout": "2-col", "table": "scroll-x-container" },
-        "desktop": { "layout": "2-col", "table": "full" }
-      }
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "breakfastCreate",
-      "route": "/snidane/novy",
-      "titleKey": "breakfast.create.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:breakfast.save" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/snidane" }],
-      "dataNeeds": ["formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
-    },
-    {
-      "id": "breakfastDetail",
+      "key": "breakfast_detail",
       "route": "/snidane/:id",
-      "titleKey": "breakfast.detail.h1",
-      "primaryCta": { "labelKey": "common.edit", "action": "nav:/snidane/:id/upravit" },
-      "secondaryActions": [{ "labelKey": "common.backToList", "action": "nav:/snidane" }],
-      "dataNeeds": ["breakfastDetail"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "2-col" }, "desktop": { "layout": "2-col" } }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "breakfastEdit",
-      "route": "/snidane/:id/upravit",
-      "titleKey": "breakfast.edit.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:breakfast.update" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/snidane/:id" }],
-      "dataNeeds": ["breakfastDetail", "formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
+      "key": "breakfast_form",
+      "route": "/snidane/nova",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
-
     {
-      "id": "lostFoundList",
+      "key": "breakfast_edit",
+      "route": "/snidane/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "lost_found_list",
       "route": "/ztraty-a-nalezy",
-      "titleKey": "lostFound.list.h1",
-      "primaryCta": { "labelKey": "lostFound.list.primaryCta", "action": "nav:/ztraty-a-nalezy/novy" },
-      "secondaryActions": [{ "labelKey": "lostFound.list.secondary.filter", "action": "cmd:lostFound.filter" }],
-      "dataNeeds": ["lostFoundList", "filters"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": {
-        "phone": { "layout": "stack", "list": "cards" },
-        "tablet": { "layout": "2-col", "list": "table-scroll-x" },
-        "desktop": { "layout": "2-col", "list": "table" }
-      }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "lostFoundCreate",
-      "route": "/ztraty-a-nalezy/novy",
-      "titleKey": "lostFound.create.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:lostFound.save" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/ztraty-a-nalezy" }],
-      "dataNeeds": ["formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
-    },
-    {
-      "id": "lostFoundDetail",
+      "key": "lost_found_detail",
       "route": "/ztraty-a-nalezy/:id",
-      "titleKey": "lostFound.detail.h1",
-      "primaryCta": { "labelKey": "common.edit", "action": "nav:/ztraty-a-nalezy/:id/upravit" },
-      "secondaryActions": [{ "labelKey": "common.backToList", "action": "nav:/ztraty-a-nalezy" }],
-      "dataNeeds": ["lostFoundDetail"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "2-col" }, "desktop": { "layout": "2-col" } }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "lostFoundEdit",
-      "route": "/ztraty-a-nalezy/:id/upravit",
-      "titleKey": "lostFound.edit.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:lostFound.update" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/ztraty-a-nalezy/:id" }],
-      "dataNeeds": ["lostFoundDetail", "formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
+      "key": "lost_found_create",
+      "route": "/ztraty-a-nalezy/novy",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
-
     {
-      "id": "issuesList",
+      "key": "lost_found_edit",
+      "route": "/ztraty-a-nalezy/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "issues_list",
       "route": "/zavady",
-      "titleKey": "issues.list.h1",
-      "primaryCta": { "labelKey": "issues.list.primaryCta", "action": "nav:/zavady/novy" },
-      "secondaryActions": [
-        { "labelKey": "issues.list.secondary.filter", "action": "cmd:issues.filter" }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
       ],
-      "dataNeeds": ["issuesList", "filters"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": {
-        "phone": { "layout": "stack", "list": "cards" },
-        "tablet": { "layout": "2-col", "list": "table-scroll-x" },
-        "desktop": { "layout": "2-col", "list": "table" }
-      }
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "issuesCreate",
-      "route": "/zavady/novy",
-      "titleKey": "issues.create.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:issues.save" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/zavady" }],
-      "dataNeeds": ["formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
-    },
-    {
-      "id": "issuesDetail",
+      "key": "issues_detail",
       "route": "/zavady/:id",
-      "titleKey": "issues.detail.h1",
-      "primaryCta": { "labelKey": "issues.detail.primaryCta", "action": "cmd:issues.progress" },
-      "secondaryActions": [
-        { "labelKey": "common.edit", "action": "nav:/zavady/:id/upravit" },
-        { "labelKey": "common.backToList", "action": "nav:/zavady" }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
       ],
-      "dataNeeds": ["issueDetail", "issueTimeline"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "2-col" }, "desktop": { "layout": "2-col" } }
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "issuesEdit",
-      "route": "/zavady/:id/upravit",
-      "titleKey": "issues.edit.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:issues.update" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/zavady/:id" }],
-      "dataNeeds": ["issueDetail", "formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
+      "key": "issues_create",
+      "route": "/zavady/nova",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
-
     {
-      "id": "inventoryList",
+      "key": "issues_edit",
+      "route": "/zavady/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "inventory_list",
       "route": "/sklad",
-      "titleKey": "inventory.list.h1",
-      "primaryCta": { "labelKey": "inventory.list.primaryCta", "action": "nav:/sklad/nova-polozka" },
-      "secondaryActions": [{ "labelKey": "inventory.list.secondary.movement", "action": "nav:/sklad/pohyb" }],
-      "dataNeeds": ["inventoryList", "filters"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": {
-        "phone": { "layout": "stack", "list": "cards" },
-        "tablet": { "layout": "2-col", "list": "table-scroll-x" },
-        "desktop": { "layout": "2-col", "list": "table" }
-      }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "inventoryItemCreate",
-      "route": "/sklad/nova-polozka",
-      "titleKey": "inventory.create.h1",
-      "primaryCta": { "labelKey": "common.save", "action": "cmd:inventory.saveItem" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/sklad" }],
-      "dataNeeds": ["formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
-    },
-    {
-      "id": "inventoryMovementCreate",
-      "route": "/sklad/pohyb",
-      "titleKey": "inventory.movement.h1",
-      "primaryCta": { "labelKey": "inventory.movement.primaryCta", "action": "cmd:inventory.addMovement" },
-      "secondaryActions": [{ "labelKey": "common.cancel", "action": "nav:/sklad" }],
-      "dataNeeds": ["inventoryList", "formSchema"],
-      "states": ["loading", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
-    },
-    {
-      "id": "inventoryDetail",
+      "key": "inventory_detail",
       "route": "/sklad/:id",
-      "titleKey": "inventory.detail.h1",
-      "primaryCta": { "labelKey": "inventory.detail.primaryCta", "action": "nav:/sklad/pohyb" },
-      "secondaryActions": [{ "labelKey": "common.backToList", "action": "nav:/sklad" }],
-      "dataNeeds": ["inventoryDetail", "inventoryMovements"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "2-col" }, "desktop": { "layout": "2-col" } }
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
-
     {
-      "id": "adminUsers",
-      "route": "/admin/uzivatele",
-      "titleKey": "admin.users.h1",
-      "primaryCta": { "labelKey": "admin.users.primaryCta", "action": "cmd:admin.createUser" },
-      "secondaryActions": [],
-      "dataNeeds": ["usersList"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "2-col" }, "desktop": { "layout": "2-col" } }
+      "key": "inventory_create",
+      "route": "/sklad/nova",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
-      "id": "adminSettings",
-      "route": "/admin/nastaveni",
-      "titleKey": "admin.settings.h1",
-      "primaryCta": { "labelKey": "admin.settings.primaryCta", "action": "cmd:admin.saveSettings" },
-      "secondaryActions": [],
-      "dataNeeds": ["settings"],
-      "states": ["loading", "empty", "error", "offline", "notFound"],
-      "responsiveness": { "phone": { "layout": "stack" }, "tablet": { "layout": "stack" }, "desktop": { "layout": "2-col" } }
+      "key": "inventory_edit",
+      "route": "/sklad/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_list",
+      "route": "/hlaseni",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_detail",
+      "route": "/hlaseni/:id",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_create",
+      "route": "/hlaseni/nove",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_edit",
+      "route": "/hlaseni/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     }
-  ]
+  ],
+  "viewStatePolicy": {
+    "requiredStates": [
+      "default",
+      "loading",
+      "empty",
+      "error",
+      "offline",
+      "maintenance",
+      "404"
+    ],
+    "requiredResponsiveLayouts": [
+      "phone",
+      "tablet",
+      "desktop"
+    ],
+    "note": "Each view must have finished UI for required states across phone/tablet/desktop."
+  }
 }

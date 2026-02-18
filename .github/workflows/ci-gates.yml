@@ -49,6 +49,9 @@ jobs:
       - name: Token-only lint
         run: pnpm ci:tokens
 
+      - name: Brand assets lint
+        run: pnpm ci:brand-assets
+
       - name: SIGNACE gate
         run: pnpm ci:signage
 

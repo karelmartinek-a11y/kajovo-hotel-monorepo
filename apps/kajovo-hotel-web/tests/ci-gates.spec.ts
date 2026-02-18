@@ -40,6 +40,7 @@ const oneItem = {
 const toConcreteRoute = (route: string): string => route.replace(/:id/g, '1');
 
 const smokeRoutes = ia.views.map((view) => toConcreteRoute(view.route));
+const uniqueRoutes = Array.from(new Set(smokeRoutes));
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
@@ -66,6 +67,18 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
     await expect(sign, `Missing SIGNACE for route ${view.route}`).toBeVisible();
     await expect(sign).toHaveText('KÁJOVO');
 
+    const signStyles = await sign.evaluate((node) => {
+      const styles = window.getComputedStyle(node);
+      return {
+        position: styles.position,
+        background: styles.backgroundColor,
+        color: styles.color,
+      };
+    });
+    expect(signStyles.position).toBe('fixed');
+    expect(signStyles.background).toBe('rgb(255, 0, 0)');
+    expect(signStyles.color).toBe('rgb(255, 255, 255)');
+
     const before = await sign.boundingBox();
     await page.mouse.wheel(0, 3000);
     const after = await sign.boundingBox();
@@ -75,6 +88,7 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
     if (before && after) {
       expect(Math.round(before.x)).toBe(Math.round(after.x));
       expect(Math.round(before.y)).toBe(Math.round(after.y));
+      expect(before.height).toBeGreaterThanOrEqual(24);
     }
 
     const isOccluded = await sign.evaluate((node) => {
@@ -96,9 +110,7 @@ test('all IA routes support smoke navigation', async ({ page }) => {
 });
 
 test('brand elements convention: maximum 2 per key views', async ({ page }) => {
-  const keyRoutes = ['/', '/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni'];
-
-  for (const route of keyRoutes) {
+  for (const route of uniqueRoutes) {
     await page.goto(route);
     const count = await page.locator('[data-brand-element="true"]').count();
     expect(count, `Too many brand elements on ${route}`).toBeLessThanOrEqual(2);
@@ -114,6 +126,44 @@ test('IA routes expose required view states via state test IDs', async ({ page }
     for (const state of requiredStates) {
       await page.goto(`${route}?state=${state}`);
       await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
+      await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
     }
   }
+});
+
+test('SIGNACE offset respects minimum per device class', async ({ page }) => {
+  const scenarios = [
+    { name: 'phone', width: 390, height: 844, minOffset: 16 },
+    { name: 'tablet', width: 834, height: 1112, minOffset: 20 },
+    { name: 'desktop', width: 1440, height: 900, minOffset: 24 },
+  ];
+
+  for (const scenario of scenarios) {
+    await page.setViewportSize({ width: scenario.width, height: scenario.height });
+    await page.goto('/');
+    const sign = page.getByTestId('kajovo-sign');
+    await expect(sign).toBeVisible();
+
+    const offsets = await sign.evaluate((node) => {
+      const styles = window.getComputedStyle(node);
+      return {
+        left: Number.parseFloat(styles.left || '0'),
+        bottom: Number.parseFloat(styles.bottom || '0'),
+      };
+    });
+
+    expect(offsets.left, `SIGNACE left offset too small on ${scenario.name}`).toBeGreaterThanOrEqual(scenario.minOffset);
+    expect(offsets.bottom, `SIGNACE bottom offset too small on ${scenario.name}`).toBeGreaterThanOrEqual(scenario.minOffset);
+  }
+});
+
+test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?state=loading');
+
+  const skeleton = page.locator('.k-skeleton-block').first();
+  await expect(skeleton).toBeVisible();
+
+  const animationName = await skeleton.evaluate((node) => window.getComputedStyle(node).animationName);
+  expect(animationName).toBe('none');
 });

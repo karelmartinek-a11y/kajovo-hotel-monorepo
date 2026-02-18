@@ -18,7 +18,16 @@ Tento dokument popisuje **blokující** CI gate pravidla pro PR i `main` větev.
      - motion
    - Kontroluje závazné SIGNACE hodnoty (`KÁJOVO`, `#FF0000`, `#FFFFFF`, fixed-left-bottom, visible on scroll).
 
-2. **SIGNACE gate (`pnpm ci:signage`)**
+2. **Brand assets lint (`pnpm ci:brand-assets`)**
+   - Ověřuje SSOT soubor `ManifestDesignKájovo.md`.
+   - Kontroluje povinnou strukturu assetů:
+     - `/signace/signace.(svg|pdf|png)`
+     - `apps/kajovo-hotel/logo/sources/logo_master.svg`
+     - `apps/kajovo-hotel/logo/exports/{full,mark,wordmark,signace}/{svg,pdf,png}`
+   - Validuje technický standard SVG (bez `<text>`, bez efektů, bez opacity < 1, bez stroke).
+   - Hlídá povinné barvy a názvosloví exportů včetně PNG velikostí.
+
+3. **SIGNACE gate (`pnpm ci:signage`)**
    - Playwright test přes IA routes:
      - SIGNACE existuje na každé route (mimo PopUp kontext),
      - má text `KÁJOVO`,
@@ -26,7 +35,7 @@ Tento dokument popisuje **blokující** CI gate pravidla pro PR i `main` větev.
      - není occluded jiným prvkem.
    - Konvenční limit brand elementů: max 2 na view (`[data-brand-element="true"]`) na klíčových stránkách.
 
-3. **View-states gate (`pnpm ci:view-states`)**
+4. **View-states gate (`pnpm ci:view-states`)**
    - Playwright test, který pro každou route z `apps/kajovo-hotel/ux/ia.json` (module views) ověří dostupnost stavů přes test ID:
      - `loading`
      - `empty`
@@ -46,6 +55,7 @@ Samostatně:
 
 ```bash
 pnpm ci:tokens
+pnpm ci:brand-assets
 pnpm ci:signage
 pnpm ci:view-states
 ```
@@ -66,8 +76,9 @@ Pipeline je blokující v PR i pro push do `main` a obsahuje:
 2. playwright browser install
 3. `pnpm lint`
 4. `pnpm ci:tokens`
-5. `pnpm ci:signage`
-6. `pnpm ci:view-states`
+5. `pnpm ci:brand-assets`
+6. `pnpm ci:signage`
+7. `pnpm ci:view-states`
 
 
 ## Lokální Playwright sweep (smoke + SIGNACE + snapshoty)

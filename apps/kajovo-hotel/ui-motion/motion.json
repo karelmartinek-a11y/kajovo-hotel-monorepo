@@ -2,15 +2,15 @@
   "meta": {
     "app": "KájovoHotel",
     "version": "1.0.0",
-    "ssot": "Manifest.md",
+    "ssot": "ManifestDesignKájovo.md",
     "notes": "All motion must reference these tokens. Respect prefers-reduced-motion."
   },
   "durationsMs": {
     "instant": 0,
     "fast": 120,
     "normal": 200,
-    "slow": 320,
-    "toast": 400
+    "slow": 240,
+    "toast": 220
   },
   "easing": {
     "standard": "cubic-bezier(0.2, 0.0, 0.0, 1.0)",
