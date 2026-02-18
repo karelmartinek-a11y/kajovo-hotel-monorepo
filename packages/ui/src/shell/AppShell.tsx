@@ -1,18 +1,27 @@
-import React from "react";
-import "../tokens.css";
-import { KajovoSign } from "./KajovoSign";
+import React from 'react';
+import '../tokens.css';
+import { KajovoSign } from './KajovoSign';
+import { ModuleNavigation } from '../navigation/ModuleNavigation';
+import type { NavModule, NavigationRules } from '../types/navigation';
 
 type AppShellProps = {
   children: React.ReactNode;
-  /** Set true only when rendering a PopUp that should not show the floating SIGNACE. */
   isPopup?: boolean;
+  modules: NavModule[];
+  navigationRules: NavigationRules;
+  currentPath: string;
 };
 
-export function AppShell(props: AppShellProps): JSX.Element {
+export function AppShell({ children, isPopup, modules, navigationRules, currentPath }: AppShellProps): JSX.Element {
   return (
-    <div className="app-shell">
-      {!props.isPopup ? <KajovoSign /> : null}
-      {props.children}
+    <div className="k-app-shell">
+      <header className="k-app-header">
+        <div className="k-shell-inner">
+          <ModuleNavigation modules={modules} rules={navigationRules} currentPath={currentPath} />
+        </div>
+      </header>
+      {children}
+      {!isPopup ? <KajovoSign /> : null}
     </div>
   );
 }
