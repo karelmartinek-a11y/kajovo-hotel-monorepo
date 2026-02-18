@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "app": "KájovoHotel",
+    "version": "1.0.0",
+    "ssot": "Manifest.md",
+    "notes": "All motion must reference these tokens. Respect prefers-reduced-motion."
+  },
+  "durationsMs": {
+    "instant": 0,
+    "fast": 120,
+    "normal": 200,
+    "slow": 320,
+    "toast": 400
+  },
+  "easing": {
+    "standard": "cubic-bezier(0.2, 0.0, 0.0, 1.0)",
+    "emphasized": "cubic-bezier(0.2, 0.0, 0.0, 1.0)",
+    "decelerate": "cubic-bezier(0.0, 0.0, 0.0, 1.0)",
+    "accelerate": "cubic-bezier(0.3, 0.0, 1.0, 1.0)"
+  },
+  "transitions": {
+    "viewFade": {
+      "duration": "{durationsMs.slow}",
+      "easing": "{easing.standard}"
+    },
+    "drawer": {
+      "duration": "{durationsMs.slow}",
+      "easing": "{easing.emphasized}"
+    },
+    "popover": {
+      "duration": "{durationsMs.normal}",
+      "easing": "{easing.standard}"
+    },
+    "button": {
+      "duration": "{durationsMs.fast}",
+      "easing": "{easing.standard}"
+    }
+  },
+  "reducedMotion": {
+    "respectPrefersReducedMotion": true,
+    "strategy": "reduce",
+    "disable": {
+      "parallax": true,
+      "bouncy": true,
+      "autoScrolling": true
+    }
+  }
+}

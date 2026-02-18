@@ -1,0 +1,12 @@
+{
+  "name": "kajovo-hotel-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "lint": "echo \"TODO: add lint\"",
+    "test": "echo \"TODO: add tests\""
+  }
+}

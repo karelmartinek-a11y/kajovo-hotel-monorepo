@@ -1,0 +1,96 @@
+{
+  "meta": {
+    "app": "KájovoHotel",
+    "version": "1.0.0",
+    "ssot": "Manifest.md"
+  },
+  "navigation": {
+    "rules": {
+      "maxTopLevelItemsDesktop": 6,
+      "overflowLabel": "Další",
+      "enableSearchInMenuOnPhone": true,
+      "grouping": true
+    }
+  },
+  "modules": [
+    {
+      "key": "dashboard",
+      "label": "Přehled",
+      "route": "/",
+      "icon": "layout-dashboard",
+      "active": true
+    },
+    {
+      "key": "breakfast",
+      "label": "Snídaně",
+      "route": "/snidane",
+      "icon": "utensils",
+      "active": true
+    },
+    {
+      "key": "lost_found",
+      "label": "Ztráty a nálezy",
+      "route": "/ztraty-a-nalezy",
+      "icon": "search",
+      "active": true
+    },
+    {
+      "key": "issues",
+      "label": "Závady",
+      "route": "/zavady",
+      "icon": "tool",
+      "active": true
+    },
+    {
+      "key": "inventory",
+      "label": "Skladové hospodářství",
+      "route": "/sklad",
+      "icon": "boxes",
+      "active": true
+    },
+    {
+      "key": "other",
+      "label": "Další",
+      "route": "/dalsi",
+      "icon": "grid",
+      "active": true
+    }
+  ],
+  "views": [
+    {
+      "key": "intro",
+      "route": "/intro",
+      "type": "intro",
+      "requiresFullLockup": true
+    },
+    {
+      "key": "not_found",
+      "route": "/404",
+      "type": "utility"
+    },
+    {
+      "key": "offline",
+      "route": "/offline",
+      "type": "utility"
+    },
+    {
+      "key": "maintenance",
+      "route": "/maintenance",
+      "type": "utility"
+    }
+  ],
+  "viewStatePolicy": {
+    "requiredStates": [
+      "default",
+      "hover",
+      "focus",
+      "active",
+      "loading",
+      "empty",
+      "error",
+      "offline",
+      "404"
+    ],
+    "note": "Each view must have finished UI for required states across phone/tablet/desktop."
+  }
+}
