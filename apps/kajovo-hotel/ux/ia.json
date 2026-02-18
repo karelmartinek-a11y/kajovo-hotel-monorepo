@@ -1,7 +1,7 @@
 {
   "meta": {
     "app": "KájovoHotel",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "ssot": "Manifest.md"
   },
   "navigation": {
@@ -11,6 +11,17 @@
       "enableSearchInMenuOnPhone": true,
       "grouping": true
     }
+  },
+  "brandPolicy": {
+    "signage": {
+      "text": "KÁJOVO",
+      "background": "#FF0000",
+      "textColor": "#FFFFFF",
+      "requiredOutsidePopUp": true,
+      "position": "fixed-left-bottom",
+      "alwaysVisibleOnScroll": true
+    },
+    "maxBrandElementsPerView": 2
   },
   "modules": [
     {
@@ -61,36 +72,51 @@
       "key": "intro",
       "route": "/intro",
       "type": "intro",
-      "requiresFullLockup": true
+      "requiresFullLockup": true,
+      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
+      "responsive": ["phone", "tablet", "desktop"],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
       "key": "not_found",
       "route": "/404",
-      "type": "utility"
+      "type": "utility",
+      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
+      "responsive": ["phone", "tablet", "desktop"],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
       "key": "offline",
       "route": "/offline",
-      "type": "utility"
+      "type": "utility",
+      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
+      "responsive": ["phone", "tablet", "desktop"],
+      "signageRequired": true,
+      "maxBrandElements": 2
     },
     {
       "key": "maintenance",
       "route": "/maintenance",
-      "type": "utility"
+      "type": "utility",
+      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
+      "responsive": ["phone", "tablet", "desktop"],
+      "signageRequired": true,
+      "maxBrandElements": 2
     }
   ],
   "viewStatePolicy": {
     "requiredStates": [
       "default",
-      "hover",
-      "focus",
-      "active",
       "loading",
       "empty",
       "error",
       "offline",
+      "maintenance",
       "404"
     ],
+    "requiredResponsiveLayouts": ["phone", "tablet", "desktop"],
     "note": "Each view must have finished UI for required states across phone/tablet/desktop."
   }
 }

@@ -7,6 +7,10 @@
   ],
   "scripts": {
     "lint": "echo \"TODO: add lint\"",
-    "test": "echo \"TODO: add tests\""
+    "test": "echo \"TODO: add tests\"",
+    "ci:tokens": "node apps/kajovo-hotel/ci/lint-tokens.mjs",
+    "ci:signage": "node apps/kajovo-hotel/ci/test-signage-presence.mjs",
+    "ci:view-states": "node apps/kajovo-hotel/ci/test-view-states.mjs",
+    "ci:gates": "pnpm ci:tokens && pnpm ci:signage && pnpm ci:view-states"
   }
 }

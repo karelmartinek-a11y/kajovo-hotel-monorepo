@@ -1,17 +1,42 @@
-# CI Gates (Manifest compliance)
+# CI gates pro Kájovo Hotel
 
-These checks are blocking for any release, based on Manifest.md:
+Tento dokument popisuje minimální CI scaffolding pro vymahatelnost SSOT pravidel v `apps/kajovo-hotel/*`.
 
-1) Token-only styling: reject ad-hoc values for colors/spacing/radius/elevation/duration/easing/z-index/component states.
-2) SIGNACE presence:
-   - present on every view outside PopUp (min 1, max 2 brand elements per view)
-   - visible on scroll, not covered by overlays (cookie/chat/etc.)
-   - #FF0000 background, #FFFFFF text, label KÁJOVO, Montserrat Bold
-3) Responsive classes:
-   - Phone 360–480, Tablet 768–1024, Desktop 1280–1920
-   - no horizontal scroll except inside table containers
-4) View completeness: every view must implement finished states:
-   loading, empty, error, offline/maintenance, 404 (and interactive states where applicable).
-5) Accessibility: minimum WCAG 2.2 AA; keyboard focus visible.
+## Přehled gate kroků
 
-Codex refactor should implement automated tests for all of the above.
+1. **Token-only lint**
+   - Ověřuje JSON konzistenci tokenových SSOT souborů:
+     - `apps/kajovo-hotel/ui-tokens/tokens.json`
+     - `apps/kajovo-hotel/palette/palette.json`
+     - `apps/kajovo-hotel/ui-motion/motion.json`
+   - Kontroluje závazné SIGNACE hodnoty (`KÁJOVO`, `#FF0000`, `#FFFFFF`, fixed-left-bottom, visible on scroll).
+
+2. **Signage presence test scaffold**
+   - Ověřuje, že IA obsahuje explicitní brand policy a limity:
+     - SIGNACE pravidla
+     - max 2 brand prvky na view
+     - `signageRequired: true` na view úrovni (mimo PopUp pravidla)
+
+3. **View-states completeness scaffold**
+   - Ověřuje, že každé view deklaruje minimálně stavy:
+     - `loading`, `empty`, `error`, `offline`, `maintenance`, `404`
+   - Ověřuje responsivní layout pokrytí:
+     - `phone`, `tablet`, `desktop`
+
+## Spouštění lokálně
+
+```bash
+pnpm ci:gates
+```
+
+Samostatně:
+
+```bash
+pnpm ci:tokens
+pnpm ci:signage
+pnpm ci:view-states
+```
+
+## CI workflow
+
+Workflow je v `.github/workflows/ci-gates.yml` a spouští uvedené tři gate kroky na `push` a `pull_request`.
