@@ -43,6 +43,9 @@ Tento dokument popisuje **blokující** CI gate pravidla pro PR i `main` větev.
      - `offline`
      - `404`
 
+5. **WCAG gate (`pnpm ci:wcag`)**
+   - Playwright + axe-core kontrola WCAG 2.2 AA (tagy `wcag2*`, `wcag21*`, `wcag22aa`) na IA routách.
+
 ## Lokální spuštění
 
 Kompletní gate run:
@@ -58,6 +61,7 @@ pnpm ci:tokens
 pnpm ci:brand-assets
 pnpm ci:signage
 pnpm ci:view-states
+pnpm ci:wcag
 ```
 
 Doporučené před prvním během Playwright gate:
@@ -79,6 +83,7 @@ Pipeline je blokující v PR i pro push do `main` a obsahuje:
 5. `pnpm ci:brand-assets`
 6. `pnpm ci:signage`
 7. `pnpm ci:view-states`
+8. `pnpm ci:wcag`
 
 
 ## Lokální Playwright sweep (smoke + SIGNACE + snapshoty)

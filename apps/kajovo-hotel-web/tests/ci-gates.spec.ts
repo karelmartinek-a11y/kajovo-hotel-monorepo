@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import ia from '../../kajovo-hotel/ux/ia.json';
 
@@ -41,6 +42,7 @@ const toConcreteRoute = (route: string): string => route.replace(/:id/g, '1');
 
 const smokeRoutes = ia.views.map((view) => toConcreteRoute(view.route));
 const uniqueRoutes = Array.from(new Set(smokeRoutes));
+const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
@@ -166,4 +168,15 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
 
   const animationName = await skeleton.evaluate((node) => window.getComputedStyle(node).animationName);
   expect(animationName).toBe('none');
+});
+
+test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
+  for (const route of uniqueRoutes) {
+    await page.goto(route);
+    const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
+    expect(
+      results.violations,
+      `WCAG violations on ${route}: ${results.violations.map((v) => v.id).join(', ')}`
+    ).toEqual([]);
+  }
 });

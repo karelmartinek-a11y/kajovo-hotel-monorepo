@@ -57,3 +57,6 @@ jobs:
 
       - name: View-states gate
         run: pnpm ci:view-states
+
+      - name: WCAG gate
+        run: pnpm ci:wcag
