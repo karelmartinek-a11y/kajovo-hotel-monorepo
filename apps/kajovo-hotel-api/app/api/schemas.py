@@ -5,8 +5,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ReportCreate(BaseModel):
-    title: str
-    description: str | None = None
+    title: str = Field(min_length=3, max_length=255)
+    description: str | None = Field(default=None, max_length=4000)
+    status: str = Field(default="open", pattern="^(open|in_progress|closed)$")
+
+
+class ReportUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=255)
+    description: str | None = Field(default=None, max_length=4000)
+    status: str | None = Field(default=None, pattern="^(open|in_progress|closed)$")
 
 
 class ReportRead(BaseModel):
@@ -17,6 +24,7 @@ class ReportRead(BaseModel):
     description: str | None
     status: str
     created_at: datetime | None
+    updated_at: datetime | None
 
 
 class BreakfastStatus(StrEnum):

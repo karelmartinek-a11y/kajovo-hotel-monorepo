@@ -66,6 +66,19 @@
       ]
     },
     {
+      "key": "reports",
+      "label": "Hlášení",
+      "route": "/hlaseni",
+      "icon": "file-text",
+      "active": true,
+      "routes": [
+        "/hlaseni",
+        "/hlaseni/:id",
+        "/hlaseni/nove",
+        "/hlaseni/:id/edit"
+      ]
+    },
+    {
       "key": "other",
       "label": "Další",
       "route": "/dalsi",
@@ -477,6 +490,90 @@
     {
       "key": "inventory_edit",
       "route": "/sklad/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_list",
+      "route": "/hlaseni",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_detail",
+      "route": "/hlaseni/:id",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_create",
+      "route": "/hlaseni/nove",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "reports_edit",
+      "route": "/hlaseni/:id/edit",
       "type": "module",
       "states": [
         "default",

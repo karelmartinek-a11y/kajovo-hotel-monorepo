@@ -17,6 +17,11 @@ class Report(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
 class BreakfastStatus(StrEnum):
@@ -87,6 +92,11 @@ class LostFoundItem(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
 class IssuePriority(StrEnum):
@@ -133,6 +143,11 @@ class Issue(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
 class InventoryMovementType(StrEnum):
@@ -151,6 +166,11 @@ class InventoryItem(Base):
     current_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     supplier: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
     updated_at: Mapped[str] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -175,6 +195,11 @@ class InventoryMovement(Base):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     item: Mapped[InventoryItem] = relationship(back_populates="movements")
 
@@ -188,3 +213,8 @@ class InventoryAuditLog(Base):
     action: Mapped[str] = mapped_column(String(32), nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
