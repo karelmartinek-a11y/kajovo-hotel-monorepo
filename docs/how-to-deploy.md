@@ -1,5 +1,26 @@
 # How to deploy (production containers)
 
+## hotel.hcasc.cz (monorepo source of truth)
+
+Použijte override `infra/compose.prod.hotel-hcasc.yml` a externí DB (stávající `hotelapp-postgres`).
+
+```bash
+cd /opt/kajovo-hotel-monorepo/infra
+cp .env.example .env
+# upravte .env (KAJOVO_API_DATABASE_URL, API_PORT, WEB_PORT)
+```
+
+```bash
+cd /opt/kajovo-hotel-monorepo
+COMPOSE_PROJECT_NAME=kajovo-prod \
+  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env build --pull
+
+COMPOSE_PROJECT_NAME=kajovo-prod \
+  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env up -d
+```
+
+Alternativa: použijte skript `infra/ops/deploy-production.sh`.
+
 ## 1) Prepare environment
 
 ```bash

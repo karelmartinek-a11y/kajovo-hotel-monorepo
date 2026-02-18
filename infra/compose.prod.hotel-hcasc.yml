@@ -1,0 +1,16 @@
+services:
+  api:
+    ports:
+      - "${API_PORT:-8202}:8000"
+    networks:
+      - kajovo_net
+      - hotelapp_net
+
+  web:
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+networks:
+  hotelapp_net:
+    external: true
+    name: deploy_hotelapp_net

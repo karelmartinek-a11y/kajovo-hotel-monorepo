@@ -1,0 +1,27 @@
+name: Deploy - hotel.hcasc.cz
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOTEL_DEPLOY_HOST }}
+          username: ${{ secrets.HOTEL_DEPLOY_USER }}
+          key: ${{ secrets.HOTEL_DEPLOY_KEY }}
+          port: ${{ secrets.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
+              git clone https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
+            fi
+            git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
+            /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh

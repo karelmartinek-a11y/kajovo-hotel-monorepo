@@ -31,4 +31,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=5 \
   CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "if [ \"${KAJOVO_API_SKIP_MIGRATIONS:-0}\" != \"1\" ]; then alembic upgrade head; fi; uvicorn app.main:app --host 0.0.0.0 --port 8000"]

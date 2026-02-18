@@ -2,7 +2,7 @@ FROM node:20.18.1-alpine3.20 AS builder
 
 WORKDIR /workspace
 
-RUN corepack enable
+RUN npm install -g pnpm@9.15.0
 
 COPY package.json pnpm-workspace.yaml tsconfig.base.json /workspace/
 COPY apps/kajovo-hotel-web/package.json /workspace/apps/kajovo-hotel-web/package.json
