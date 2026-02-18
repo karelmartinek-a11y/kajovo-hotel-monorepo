@@ -1,9 +1,10 @@
-from fastapi.testclient import TestClient
-from app.main import app
+import json
+import urllib.request
 
-client = TestClient(app)
 
-def test_health():
-    r = client.get("/health")
-    assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+def test_health(api_base_url):
+    with urllib.request.urlopen(f"{api_base_url}/health", timeout=2) as response:
+        assert response.status == 200
+        payload = json.loads(response.read().decode("utf-8"))
+
+    assert payload == {"status": "ok"}

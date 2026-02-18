@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="KájovoHotel API", version="0.1.0")
+from app.api.routes.health import router as health_router
+from app.api.routes.reports import router as reports_router
+from app.config import get_settings
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+settings = get_settings()
+
+
+def create_app() -> FastAPI:
+    app = FastAPI(title=settings.app_name, version=settings.app_version)
+    app.include_router(health_router)
+    app.include_router(reports_router)
+    return app
+
+
+app = create_app()
