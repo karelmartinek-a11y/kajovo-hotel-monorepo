@@ -9,6 +9,8 @@
   --k-color-border: #dde1e4;
   --k-color-info: #1c66e5;
   --k-color-error: #c62828;
+  --k-color-success: #2e7d32;
+  --k-color-warning: #ed6c02;
 
   --k-spacing-0: 0;
   --k-spacing-1: 4px;
@@ -328,4 +330,34 @@ body {
 .k-timeline-description {
   font-size: var(--k-font-size-sm);
   color: var(--k-color-metal);
+}
+
+
+.k-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: var(--k-spacing-1) var(--k-spacing-2);
+  font-size: var(--k-font-size-xs);
+  font-weight: var(--k-weight-bold);
+  border: 1px solid var(--k-color-border);
+  background: var(--k-color-surface);
+}
+
+.k-badge--danger {
+  border-color: var(--k-color-error);
+  color: var(--k-color-error);
+  background: var(--k-color-surface-raised);
+}
+
+.k-badge--success {
+  border-color: var(--k-color-success);
+  color: var(--k-color-success);
+  background: var(--k-color-surface-raised);
+}
+
+.k-badge--info {
+  border-color: var(--k-color-info);
+  color: var(--k-color-info);
+  background: var(--k-color-surface-raised);
 }

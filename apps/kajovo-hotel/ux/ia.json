@@ -57,7 +57,13 @@
       "label": "Skladové hospodářství",
       "route": "/sklad",
       "icon": "boxes",
-      "active": true
+      "active": true,
+      "routes": [
+        "/sklad",
+        "/sklad/:id",
+        "/sklad/nova",
+        "/sklad/:id/edit"
+      ]
     },
     {
       "key": "other",
@@ -387,6 +393,90 @@
     {
       "key": "issues_edit",
       "route": "/zavady/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "inventory_list",
+      "route": "/sklad",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "inventory_detail",
+      "route": "/sklad/:id",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "inventory_create",
+      "route": "/sklad/nova",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "inventory_edit",
+      "route": "/sklad/:id/edit",
       "type": "module",
       "states": [
         "default",

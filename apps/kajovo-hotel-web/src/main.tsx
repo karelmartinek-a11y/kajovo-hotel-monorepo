@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Card, DataTable, FormField, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, StateView, Timeline } from '@kajovo/ui';
 import '@kajovo/ui/src/tokens.css';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
@@ -77,6 +77,44 @@ type Issue = {
 
 type IssuePayload = Omit<Issue, 'id' | 'created_at' | 'updated_at' | 'in_progress_at' | 'resolved_at' | 'closed_at'>;
 
+type InventoryMovementType = 'in' | 'out' | 'adjust';
+
+type InventoryItem = {
+  id: number;
+  name: string;
+  unit: string;
+  min_stock: number;
+  current_stock: number;
+  supplier: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type InventoryMovement = {
+  id: number;
+  item_id: number;
+  movement_type: InventoryMovementType;
+  quantity: number;
+  note: string | null;
+  created_at: string;
+};
+
+type InventoryAuditLog = {
+  id: number;
+  entity: string;
+  entity_id: number;
+  action: string;
+  detail: string;
+  created_at: string;
+};
+
+type InventoryDetail = InventoryItem & {
+  movements: InventoryMovement[];
+  audit_logs: InventoryAuditLog[];
+};
+
+type InventoryItemPayload = Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>;
+
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
 
@@ -111,6 +149,13 @@ const issueStatusLabels: Record<IssueStatus, string> = {
   in_progress: 'V řešení',
   resolved: 'Vyřešena',
   closed: 'Uzavřena',
+};
+
+
+const inventoryMovementLabels: Record<InventoryMovementType, string> = {
+  in: 'Naskladnění',
+  out: 'Výdej',
+  adjust: 'Úprava',
 };
 
 const stateLabels: Record<ViewState, string> = {
@@ -973,6 +1018,103 @@ function IssuesDetail(): JSX.Element {
   );
 }
 
+
+function InventoryList(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
+  const [items, setItems] = React.useState<InventoryItem[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default') return;
+    fetchJson<InventoryItem[]>('/api/v1/inventory')
+      .then((response) => {
+        setItems(response);
+        setError(null);
+      })
+      .catch(() => setError('Položky skladu se nepodařilo načíst.'));
+  }, [state]);
+
+  return <main className="k-page" data-testid="inventory-list-page"><h1>Skladové hospodářství</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Ve skladu zatím nejsou položky." /> : <><div className="k-toolbar"><Link className="k-button" to="/sklad/nova">Nová položka</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']} rows={items.map((item) => [item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-', item.current_stock <= item.min_stock ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge> : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>, <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>])} /></>}</main>;
+}
+
+function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [payload, setPayload] = React.useState<InventoryItemPayload>({ name: '', unit: 'ks', min_stock: 0, current_stock: 0, supplier: '' });
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (mode !== 'edit' || state !== 'default' || !id) return;
+    fetchJson<InventoryDetail>(`/api/v1/inventory/${id}`).then((item) => setPayload({
+      name: item.name,
+      unit: item.unit,
+      min_stock: item.min_stock,
+      current_stock: item.current_stock,
+      supplier: item.supplier ?? '',
+    })).catch(() => setError('Položku se nepodařilo načíst.'));
+  }, [id, mode, state]);
+
+  const save = async (): Promise<void> => {
+    try {
+      const saved = await fetchJson<InventoryItem>(mode === 'create' ? '/api/v1/inventory' : `/api/v1/inventory/${id}`, {
+        method: mode === 'create' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, supplier: payload.supplier || null }),
+      });
+      navigate(`/sklad/${saved.id}`);
+    } catch {
+      setError('Položku se nepodařilo uložit.');
+    }
+  };
+
+  return <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}><h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="inventory_name" label="Název"><input id="inventory_name" className="k-input" value={payload.name} onChange={(e) => setPayload((prev) => ({ ...prev, name: e.target.value }))} /></FormField><FormField id="inventory_unit" label="Jednotka"><input id="inventory_unit" className="k-input" value={payload.unit} onChange={(e) => setPayload((prev) => ({ ...prev, unit: e.target.value }))} /></FormField><FormField id="inventory_min_stock" label="Minimální stav"><input id="inventory_min_stock" type="number" className="k-input" value={payload.min_stock} onChange={(e) => setPayload((prev) => ({ ...prev, min_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_current_stock" label="Aktuální stav"><input id="inventory_current_stock" type="number" className="k-input" value={payload.current_stock} onChange={(e) => setPayload((prev) => ({ ...prev, current_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_supplier" label="Dodavatel (volitelné)"><input id="inventory_supplier" className="k-input" value={payload.supplier ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, supplier: e.target.value }))} /></FormField></div></div>}</main>;
+}
+
+function InventoryDetail(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
+  const { id } = useParams();
+  const [item, setItem] = React.useState<InventoryDetail | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [movementType, setMovementType] = React.useState<InventoryMovementType>('in');
+  const [quantity, setQuantity] = React.useState<number>(0);
+  const [note, setNote] = React.useState<string>('');
+
+  const loadDetail = React.useCallback(() => {
+    if (!id) return;
+    fetchJson<InventoryDetail>(`/api/v1/inventory/${id}`).then((response) => {
+      setItem(response);
+      setError(null);
+    }).catch(() => setError('Položka nebyla nalezena.'));
+  }, [id]);
+
+  React.useEffect(() => {
+    if (state !== 'default') return;
+    loadDetail();
+  }, [loadDetail, state]);
+
+  const addMovement = async (): Promise<void> => {
+    if (!id) return;
+    try {
+      const response = await fetchJson<InventoryDetail>(`/api/v1/inventory/${id}/movements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movement_type: movementType, quantity, note: note || null }),
+      });
+      setItem((prev) => (prev ? { ...prev, current_stock: response.current_stock, movements: response.movements } : response));
+      setQuantity(0);
+      setNote('');
+    } catch {
+      setError('Pohyb se nepodařilo uložit.');
+    }
+  };
+
+  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [new Date(movement.created_at).toLocaleString('cs-CZ'), inventoryMovementLabels[movement.movement_type], movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
+}
+
 function GenericModule({ title }: { title: string }): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, title, '/');
@@ -1014,7 +1156,10 @@ function AppRoutes(): JSX.Element {
         <Route path="/zavady/nova" element={<IssuesForm mode="create" />} />
         <Route path="/zavady/:id" element={<IssuesDetail />} />
         <Route path="/zavady/:id/edit" element={<IssuesForm mode="edit" />} />
-        <Route path="/sklad" element={<GenericModule title="Skladové hospodářství" />} />
+        <Route path="/sklad" element={<InventoryList />} />
+        <Route path="/sklad/nova" element={<InventoryForm mode="create" />} />
+        <Route path="/sklad/:id" element={<InventoryDetail />} />
+        <Route path="/sklad/:id/edit" element={<InventoryForm mode="edit" />} />
         <Route path="/offline" element={<UtilityStatePage title="Offline" description="Aplikace je bez připojení." />} />
         <Route
           path="/maintenance"

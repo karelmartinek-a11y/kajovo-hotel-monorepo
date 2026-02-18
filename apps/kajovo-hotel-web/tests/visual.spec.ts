@@ -51,6 +51,54 @@ const issuesListPayload = [
   },
 ];
 
+
+const inventoryListPayload = [
+  {
+    id: 1,
+    name: 'Mléko',
+    unit: 'l',
+    min_stock: 10,
+    current_stock: 4,
+    supplier: 'FreshTrade',
+    created_at: '2026-02-18T09:00:00Z',
+    updated_at: '2026-02-18T09:00:00Z',
+  },
+  {
+    id: 2,
+    name: 'Káva',
+    unit: 'kg',
+    min_stock: 2,
+    current_stock: 8,
+    supplier: null,
+    created_at: '2026-02-18T09:00:00Z',
+    updated_at: '2026-02-18T09:00:00Z',
+  },
+];
+
+const inventoryDetailPayload = {
+  ...inventoryListPayload[0],
+  movements: [
+    {
+      id: 12,
+      item_id: 1,
+      movement_type: 'out',
+      quantity: 2,
+      note: 'Snídaně',
+      created_at: '2026-02-18T10:00:00Z',
+    },
+  ],
+  audit_logs: [
+    {
+      id: 51,
+      entity: 'item',
+      entity_id: 1,
+      action: 'movement',
+      detail: 'Recorded movement out (2).',
+      created_at: '2026-02-18T10:00:00Z',
+    },
+  ],
+};
+
 const lostFoundListPayload = [
   {
     id: 1,
@@ -118,6 +166,34 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: issuesListPayload[0] });
   });
 
+
+  await page.route('**/api/v1/inventory?*', async (route) => {
+    await route.fulfill({ json: inventoryListPayload });
+  });
+
+  await page.route('**/api/v1/inventory', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = await route.request().postDataJSON();
+      await route.fulfill({ json: { ...body, id: 3, created_at: '2026-02-18T11:00:00Z', updated_at: '2026-02-18T11:00:00Z' } });
+      return;
+    }
+    await route.fulfill({ json: inventoryListPayload });
+  });
+
+  await page.route('**/api/v1/inventory/1/movements', async (route) => {
+    const body = await route.request().postDataJSON();
+    await route.fulfill({ json: { ...inventoryDetailPayload, current_stock: body.movement_type === 'out' ? 2 : 6 } });
+  });
+
+  await page.route('**/api/v1/inventory/1', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = await route.request().postDataJSON();
+      await route.fulfill({ json: { ...inventoryListPayload[0], ...body, id: 1 } });
+      return;
+    }
+    await route.fulfill({ json: inventoryDetailPayload });
+  });
+
   await page.route('**/api/v1/lost-found?*', async (route) => {
     await route.fulfill({ json: lostFoundListPayload });
   });
@@ -166,6 +242,28 @@ test.describe('visual states', () => {
       await page.goto('/ztraty-a-nalezy/1/edit');
       await expect(page.getByTestId('lost-found-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`lost-found-edit-${viewport.name}.png`, { fullPage: true });
+    });
+
+
+    test(`inventory list snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/sklad');
+      await expect(page.getByTestId('inventory-list-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`inventory-list-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`inventory detail snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/sklad/1');
+      await expect(page.getByTestId('inventory-detail-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`inventory-detail-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`inventory edit snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/sklad/1/edit');
+      await expect(page.getByTestId('inventory-edit-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`inventory-edit-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`issues list snapshot ${viewport.name}`, async ({ page }) => {

@@ -162,3 +162,74 @@ class IssueRead(IssueBase):
     closed_at: datetime | None
     created_at: datetime | None
     updated_at: datetime | None
+
+
+class InventoryMovementType(StrEnum):
+    IN = "in"
+    OUT = "out"
+    ADJUST = "adjust"
+
+
+class InventoryItemBase(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    unit: str = Field(min_length=1, max_length=32)
+    min_stock: int = Field(ge=0)
+    current_stock: int = Field(ge=0)
+    supplier: str | None = Field(default=None, max_length=255)
+
+
+class InventoryItemCreate(InventoryItemBase):
+    pass
+
+
+class InventoryItemUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    unit: str | None = Field(default=None, min_length=1, max_length=32)
+    min_stock: int | None = Field(default=None, ge=0)
+    current_stock: int | None = Field(default=None, ge=0)
+    supplier: str | None = Field(default=None, max_length=255)
+
+
+class InventoryMovementBase(BaseModel):
+    movement_type: InventoryMovementType
+    quantity: int = Field(ge=0)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class InventoryMovementCreate(InventoryMovementBase):
+    pass
+
+
+class InventoryMovementRead(InventoryMovementBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    item_id: int
+    created_at: datetime | None
+
+
+class InventoryAuditLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    entity: str
+    entity_id: int
+    action: str
+    detail: str
+    created_at: datetime | None
+
+
+class InventoryItemRead(InventoryItemBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime | None
+    updated_at: datetime | None
+
+
+class InventoryItemDetailRead(InventoryItemRead):
+    movements: list[InventoryMovementRead]
+
+
+class InventoryItemWithAuditRead(InventoryItemDetailRead):
+    audit_logs: list[InventoryAuditLogRead]
