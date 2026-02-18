@@ -33,6 +33,24 @@ const summaryPayload = {
   },
 };
 
+const issuesListPayload = [
+  {
+    id: 1,
+    title: 'Nefunkční světlo',
+    description: 'Světlo v koupelně bliká',
+    location: '2. patro',
+    room_number: '204',
+    priority: 'high',
+    status: 'in_progress',
+    assignee: 'Petr Údržba',
+    in_progress_at: '2026-02-18T10:30:00Z',
+    resolved_at: null,
+    closed_at: null,
+    created_at: '2026-02-18T10:00:00Z',
+    updated_at: '2026-02-18T10:30:00Z',
+  },
+];
+
 const lostFoundListPayload = [
   {
     id: 1,
@@ -75,6 +93,29 @@ test.beforeEach(async ({ page }) => {
 
   await page.route('**/api/v1/breakfast/1', async (route) => {
     await route.fulfill({ json: listPayload[0] });
+  });
+
+
+  await page.route('**/api/v1/issues?*', async (route) => {
+    await route.fulfill({ json: issuesListPayload });
+  });
+
+  await page.route('**/api/v1/issues', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = await route.request().postDataJSON();
+      await route.fulfill({ json: { ...issuesListPayload[0], ...body, id: 2 } });
+      return;
+    }
+    await route.fulfill({ json: issuesListPayload });
+  });
+
+  await page.route('**/api/v1/issues/1', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = await route.request().postDataJSON();
+      await route.fulfill({ json: { ...issuesListPayload[0], ...body, id: 1 } });
+      return;
+    }
+    await route.fulfill({ json: issuesListPayload[0] });
   });
 
   await page.route('**/api/v1/lost-found?*', async (route) => {
@@ -126,6 +167,28 @@ test.describe('visual states', () => {
       await expect(page.getByTestId('lost-found-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`lost-found-edit-${viewport.name}.png`, { fullPage: true });
     });
+
+    test(`issues list snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/zavady');
+      await expect(page.getByTestId('issues-list-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`issues-list-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`issues detail snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/zavady/1');
+      await expect(page.getByTestId('issues-detail-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`issues-detail-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`issues edit snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/zavady/1/edit');
+      await expect(page.getByTestId('issues-edit-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`issues-edit-${viewport.name}.png`, { fullPage: true });
+    });
+
   }
 
   test('dashboard snapshot', async ({ page }) => {

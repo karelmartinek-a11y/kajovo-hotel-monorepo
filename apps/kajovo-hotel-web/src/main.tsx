@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Card, DataTable, FormField, StateView } from '@kajovo/ui';
+import { AppShell, Card, DataTable, FormField, StateView, Timeline } from '@kajovo/ui';
 import '@kajovo/ui/src/tokens.css';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
@@ -56,6 +56,27 @@ type LostFoundItem = {
 
 type LostFoundPayload = Omit<LostFoundItem, 'id'>;
 
+type IssuePriority = 'low' | 'medium' | 'high' | 'critical';
+type IssueStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
+
+type Issue = {
+  id: number;
+  title: string;
+  description: string | null;
+  location: string;
+  room_number: string | null;
+  priority: IssuePriority;
+  status: IssueStatus;
+  assignee: string | null;
+  in_progress_at: string | null;
+  resolved_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type IssuePayload = Omit<Issue, 'id' | 'created_at' | 'updated_at' | 'in_progress_at' | 'resolved_at' | 'closed_at'>;
+
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
 
@@ -76,6 +97,20 @@ const lostFoundStatusLabels: Record<LostFoundStatus, string> = {
 const lostFoundTypeLabels: Record<LostFoundType, string> = {
   lost: 'Ztraceno',
   found: 'Nalezeno',
+};
+
+const issuePriorityLabels: Record<IssuePriority, string> = {
+  low: 'Nízká',
+  medium: 'Střední',
+  high: 'Vysoká',
+  critical: 'Kritická',
+};
+
+const issueStatusLabels: Record<IssueStatus, string> = {
+  new: 'Nová',
+  in_progress: 'V řešení',
+  resolved: 'Vyřešena',
+  closed: 'Uzavřena',
 };
 
 const stateLabels: Record<ViewState, string> = {
@@ -822,6 +857,122 @@ function LostFoundDetail(): JSX.Element {
   );
 }
 
+
+function IssuesList(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
+  const [items, setItems] = React.useState<Issue[]>([]);
+  const [priorityFilter, setPriorityFilter] = React.useState<'all' | IssuePriority>('all');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | IssueStatus>('all');
+  const [locationFilter, setLocationFilter] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default') return;
+    const params = new URLSearchParams();
+    if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    if (locationFilter.trim()) params.set('location', locationFilter.trim());
+    const query = params.toString();
+    fetchJson<Issue[]>(query ? `/api/v1/issues?${query}` : '/api/v1/issues')
+      .then((response) => { setItems(response); setError(null); })
+      .catch(() => setError('Nepodařilo se načíst seznam závad.'));
+  }, [locationFilter, priorityFilter, state, statusFilter]);
+
+  return (
+    <main className="k-page" data-testid="issues-list-page">
+      <h1>Závady</h1>
+      <StateSwitcher />
+      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? (
+        <StateView title="Prázdný stav" description="Zatím nejsou evidované žádné závady." />
+      ) : (
+        <>
+          <div className="k-toolbar">
+            <select className="k-select" aria-label="Filtr priority" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as 'all' | IssuePriority)}>
+              <option value="all">Všechny priority</option><option value="low">Nízká</option><option value="medium">Střední</option><option value="high">Vysoká</option><option value="critical">Kritická</option>
+            </select>
+            <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | IssueStatus)}>
+              <option value="all">Všechny stavy</option><option value="new">Nová</option><option value="in_progress">V řešení</option><option value="resolved">Vyřešena</option><option value="closed">Uzavřena</option>
+            </select>
+            <input className="k-input" aria-label="Filtr lokace" placeholder="Lokalita" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} />
+            <Link className="k-button" to="/zavady/nova">Nová závada</Link>
+          </div>
+          <DataTable headers={['Název', 'Lokace', 'Pokoj', 'Priorita', 'Stav', 'Přiřazeno', 'Akce']} rows={items.map((item) => [
+            item.title, item.location, item.room_number ?? '-', issuePriorityLabels[item.priority], issueStatusLabels[item.status], item.assignee ?? '-',
+            <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>Detail</Link>,
+          ])} />
+        </>
+      )}
+    </main>
+  );
+}
+
+function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [payload, setPayload] = React.useState<IssuePayload>({
+    title: '', description: '', location: '', room_number: '', priority: 'medium', status: 'new', assignee: '',
+  });
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (mode !== 'edit' || state !== 'default' || !id) return;
+    fetchJson<Issue>(`/api/v1/issues/${id}`).then((item) => setPayload({
+      title: item.title, description: item.description ?? '', location: item.location, room_number: item.room_number ?? '', priority: item.priority, status: item.status, assignee: item.assignee ?? '',
+    })).catch(() => setError('Závadu se nepodařilo načíst.'));
+  }, [id, mode, state]);
+
+  const save = async (): Promise<void> => {
+    try {
+      const saved = await fetchJson<Issue>(mode === 'create' ? '/api/v1/issues' : `/api/v1/issues/${id}`, {
+        method: mode === 'create' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, description: payload.description || null, room_number: payload.room_number || null, assignee: payload.assignee || null }),
+      });
+      navigate(`/zavady/${saved.id}`);
+    } catch { setError('Závadu se nepodařilo uložit.'); }
+  };
+
+  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}><h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
+<FormField id="issue_title" label="Název"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
+<FormField id="issue_location" label="Lokalita"><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
+<FormField id="issue_room_number" label="Pokoj (volitelné)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
+<FormField id="issue_priority" label="Priorita"><select id="issue_priority" className="k-select" value={payload.priority} onChange={(e) => setPayload((prev) => ({ ...prev, priority: e.target.value as IssuePriority }))}><option value="low">Nízká</option><option value="medium">Střední</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select></FormField>
+<FormField id="issue_status" label="Stav"><select id="issue_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as IssueStatus }))}><option value="new">Nová</option><option value="in_progress">V řešení</option><option value="resolved">Vyřešena</option><option value="closed">Uzavřena</option></select></FormField>
+<FormField id="issue_assignee" label="Přiřazeno (volitelné)"><input id="issue_assignee" className="k-input" value={payload.assignee ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, assignee: e.target.value }))} /></FormField>
+<FormField id="issue_description" label="Popis"><textarea id="issue_description" className="k-textarea" rows={3} value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField>
+</div></div>}</main>;
+}
+
+function IssuesDetail(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
+  const { id } = useParams();
+  const [item, setItem] = React.useState<Issue | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default' || !id) return;
+    fetchJson<Issue>(`/api/v1/issues/${id}`).then((response) => { setItem(response); setError(null); }).catch(() => setError('Závada nebyla nalezena.'));
+  }, [id, state]);
+
+  const timeline = item ? [
+    { label: 'Vytvořeno', value: new Date(item.created_at).toLocaleString('cs-CZ') },
+    ...(item.in_progress_at ? [{ label: 'V řešení', value: new Date(item.in_progress_at).toLocaleString('cs-CZ') }] : []),
+    ...(item.resolved_at ? [{ label: 'Vyřešeno', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
+    ...(item.closed_at ? [{ label: 'Uzavřeno', value: new Date(item.closed_at).toLocaleString('cs-CZ') }] : []),
+  ] : [];
+
+  return (
+    <main className="k-page" data-testid="issues-detail-page">
+      <h1>Detail závady</h1><StateSwitcher />
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabels[item.priority]],[ 'Stav', issueStatusLabels[item.status]],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <StateView title="Načítání" description="Načítáme detail závady." />}
+    </main>
+  );
+}
+
 function GenericModule({ title }: { title: string }): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, title, '/');
@@ -859,7 +1010,10 @@ function AppRoutes(): JSX.Element {
         <Route path="/ztraty-a-nalezy/novy" element={<LostFoundForm mode="create" />} />
         <Route path="/ztraty-a-nalezy/:id" element={<LostFoundDetail />} />
         <Route path="/ztraty-a-nalezy/:id/edit" element={<LostFoundForm mode="edit" />} />
-        <Route path="/zavady" element={<GenericModule title="Závady" />} />
+        <Route path="/zavady" element={<IssuesList />} />
+        <Route path="/zavady/nova" element={<IssuesForm mode="create" />} />
+        <Route path="/zavady/:id" element={<IssuesDetail />} />
+        <Route path="/zavady/:id/edit" element={<IssuesForm mode="edit" />} />
         <Route path="/sklad" element={<GenericModule title="Skladové hospodářství" />} />
         <Route path="/offline" element={<UtilityStatePage title="Offline" description="Aplikace je bez připojení." />} />
         <Route

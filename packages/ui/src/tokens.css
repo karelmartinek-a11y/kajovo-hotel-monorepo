@@ -291,3 +291,41 @@ body {
     bottom: var(--k-spacing-3);
   }
 }
+
+
+.k-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--k-spacing-3);
+}
+
+.k-timeline-item {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: var(--k-spacing-3);
+  align-items: flex-start;
+}
+
+.k-timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--k-color-ink);
+  margin-top: var(--k-spacing-1);
+}
+
+.k-timeline-label {
+  font-size: var(--k-font-size-xs);
+  color: var(--k-color-metal);
+}
+
+.k-timeline-value {
+  font-weight: var(--k-weight-bold);
+}
+
+.k-timeline-description {
+  font-size: var(--k-font-size-sm);
+  color: var(--k-color-metal);
+}
