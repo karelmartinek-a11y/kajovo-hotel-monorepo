@@ -13,8 +13,13 @@ from app.api.schemas import (
 )
 from app.db.models import LostFoundItem
 from app.db.session import get_db
+from app.security.rbac import module_access_dependency
 
-router = APIRouter(prefix="/api/v1/lost-found", tags=["lost-found"])
+router = APIRouter(
+    prefix="/api/v1/lost-found",
+    tags=["lost-found"],
+    dependencies=[Depends(module_access_dependency("lost_found"))],
+)
 
 
 @router.get("", response_model=list[LostFoundItemRead])

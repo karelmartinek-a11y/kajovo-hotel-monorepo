@@ -5,8 +5,13 @@ from sqlalchemy.orm import Session
 from app.api.schemas import ReportCreate, ReportRead, ReportUpdate
 from app.db.models import Report
 from app.db.session import get_db
+from app.security.rbac import module_access_dependency
 
-router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
+router = APIRouter(
+    prefix="/api/v1/reports",
+    tags=["reports"],
+    dependencies=[Depends(module_access_dependency("reports"))],
+)
 
 
 @router.get("", response_model=list[ReportRead])

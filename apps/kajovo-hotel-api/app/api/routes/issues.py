@@ -13,8 +13,13 @@ from app.api.schemas import (
 )
 from app.db.models import Issue
 from app.db.session import get_db
+from app.security.rbac import module_access_dependency
 
-router = APIRouter(prefix="/api/v1/issues", tags=["issues"])
+router = APIRouter(
+    prefix="/api/v1/issues",
+    tags=["issues"],
+    dependencies=[Depends(module_access_dependency("issues"))],
+)
 
 
 def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
