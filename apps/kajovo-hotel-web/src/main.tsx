@@ -17,6 +17,8 @@ import '@kajovo/ui/src/tokens.css';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type BreakfastStatus = 'pending' | 'preparing' | 'served' | 'cancelled';
+type LostFoundStatus = 'stored' | 'claimed' | 'returned' | 'disposed';
+type LostFoundType = 'lost' | 'found';
 
 type BreakfastOrder = {
   id: number;
@@ -37,6 +39,23 @@ type BreakfastSummary = {
   status_counts: Record<BreakfastStatus, number>;
 };
 
+type LostFoundItem = {
+  id: number;
+  item_type: LostFoundType;
+  description: string;
+  category: string;
+  location: string;
+  event_at: string;
+  status: LostFoundStatus;
+  claimant_name: string | null;
+  claimant_contact: string | null;
+  handover_note: string | null;
+  claimed_at: string | null;
+  returned_at: string | null;
+};
+
+type LostFoundPayload = Omit<LostFoundItem, 'id'>;
+
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
 
@@ -45,6 +64,18 @@ const statusLabels: Record<BreakfastStatus, string> = {
   preparing: 'Připravuje se',
   served: 'Vydáno',
   cancelled: 'Zrušeno',
+};
+
+const lostFoundStatusLabels: Record<LostFoundStatus, string> = {
+  stored: 'Uloženo',
+  claimed: 'Nárokováno',
+  returned: 'Vráceno',
+  disposed: 'Zlikvidováno',
+};
+
+const lostFoundTypeLabels: Record<LostFoundType, string> = {
+  lost: 'Ztraceno',
+  found: 'Nalezeno',
 };
 
 const stateLabels: Record<ViewState, string> = {
@@ -63,12 +94,12 @@ function useViewState(): ViewState {
   return input && requiredStates.includes(input) ? input : 'default';
 }
 
-function stateViewForRoute(state: ViewState, fallbackRoute: string): JSX.Element | null {
+function stateViewForRoute(state: ViewState, title: string, fallbackRoute: string): JSX.Element | null {
   switch (state) {
     case 'loading':
-      return <StateView title="Načítání" description="Připravujeme data modulu Snídaně." />;
+      return <StateView title="Načítání" description={`Připravujeme data modulu ${title}.`} />;
     case 'empty':
-      return <StateView title="Prázdný stav" description="Pro zvolený den zatím nejsou objednávky." />;
+      return <StateView title="Prázdný stav" description={`Pro modul ${title} zatím nejsou dostupná data.`} />;
     case 'error':
       return (
         <StateView
@@ -123,7 +154,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
 
 function Dashboard(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, '/');
+  const stateUI = stateViewForRoute(state, 'Přehled', '/');
 
   return (
     <main className="k-page" data-testid="dashboard-page">
@@ -151,7 +182,7 @@ function Dashboard(): JSX.Element {
 
 function BreakfastList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, '/snidane');
+  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -252,7 +283,7 @@ function BreakfastList(): JSX.Element {
 
 function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, '/snidane');
+  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
   const navigate = useNavigate();
   const { id } = useParams();
   const [payload, setPayload] = React.useState<BreakfastPayload>({
@@ -400,7 +431,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
 function BreakfastDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, '/snidane');
+  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
   const { id } = useParams();
   const [item, setItem] = React.useState<BreakfastOrder | null>(null);
   const [notFound, setNotFound] = React.useState(false);
@@ -459,9 +490,341 @@ function BreakfastDetail(): JSX.Element {
   );
 }
 
+function LostFoundList(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Ztráty a nálezy', '/ztraty-a-nalezy');
+  const [items, setItems] = React.useState<LostFoundItem[]>([]);
+  const [statusFilter, setStatusFilter] = React.useState<'all' | LostFoundStatus>('all');
+  const [typeFilter, setTypeFilter] = React.useState<'all' | LostFoundType>('all');
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default') {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (statusFilter !== 'all') {
+      params.set('status', statusFilter);
+    }
+    if (typeFilter !== 'all') {
+      params.set('type', typeFilter);
+    }
+
+    const query = params.toString();
+    const url = query ? `/api/v1/lost-found?${query}` : '/api/v1/lost-found';
+    fetchJson<LostFoundItem[]>(url)
+      .then((response) => {
+        setItems(response);
+        setError(null);
+      })
+      .catch(() => setError('Nepodařilo se načíst položky ztrát a nálezů.'));
+  }, [state, statusFilter, typeFilter]);
+
+  return (
+    <main className="k-page" data-testid="lost-found-list-page">
+      <h1>Ztráty a nálezy</h1>
+      <StateSwitcher />
+      {stateUI ? (
+        stateUI
+      ) : error ? (
+        <StateView title="Chyba" description={error} />
+      ) : items.length === 0 ? (
+        <StateView title="Prázdný stav" description="Zatím není evidována žádná položka." />
+      ) : (
+        <>
+          <div className="k-grid cards-3">
+            <Card title="Celkem položek">
+              <strong>{items.length}</strong>
+            </Card>
+            <Card title="Uložené">
+              <strong>{items.filter((item) => item.status === 'stored').length}</strong>
+            </Card>
+            <Card title="Vrácené">
+              <strong>{items.filter((item) => item.status === 'returned').length}</strong>
+            </Card>
+          </div>
+          <div className="k-toolbar">
+            <select
+              className="k-select"
+              aria-label="Filtr typu"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as 'all' | LostFoundType)}
+            >
+              <option value="all">Všechny typy</option>
+              <option value="lost">Ztracené</option>
+              <option value="found">Nalezené</option>
+            </select>
+            <select
+              className="k-select"
+              aria-label="Filtr stavu"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}
+            >
+              <option value="all">Všechny stavy</option>
+              <option value="stored">Uloženo</option>
+              <option value="claimed">Nárokováno</option>
+              <option value="returned">Vráceno</option>
+              <option value="disposed">Zlikvidováno</option>
+            </select>
+            <Link className="k-button" to="/ztraty-a-nalezy/novy">
+              Nová položka
+            </Link>
+          </div>
+          <DataTable
+            headers={['Typ', 'Kategorie', 'Místo', 'Čas', 'Stav', 'Akce']}
+            rows={items.map((item) => [
+              lostFoundTypeLabels[item.item_type],
+              item.category,
+              item.location,
+              new Date(item.event_at).toLocaleString('cs-CZ'),
+              lostFoundStatusLabels[item.status],
+              <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>
+                Detail
+              </Link>,
+            ])}
+          />
+        </>
+      )}
+    </main>
+  );
+}
+
+function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Ztráty a nálezy', '/ztraty-a-nalezy');
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [payload, setPayload] = React.useState<LostFoundPayload>({
+    item_type: 'found',
+    description: '',
+    category: '',
+    location: '',
+    event_at: '2026-02-18T10:00:00Z',
+    status: 'stored',
+    claimant_name: '',
+    claimant_contact: '',
+    handover_note: '',
+    claimed_at: null,
+    returned_at: null,
+  });
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (mode !== 'edit' || state !== 'default' || !id) {
+      return;
+    }
+
+    fetchJson<LostFoundItem>(`/api/v1/lost-found/${id}`)
+      .then((item) => {
+        setPayload({
+          ...item,
+          claimant_name: item.claimant_name ?? '',
+          claimant_contact: item.claimant_contact ?? '',
+          handover_note: item.handover_note ?? '',
+        });
+      })
+      .catch(() => setError('Položku se nepodařilo načíst.'));
+  }, [id, mode, state]);
+
+  const save = async (): Promise<void> => {
+    const body: LostFoundPayload = {
+      ...payload,
+      claimant_name: payload.claimant_name || null,
+      claimant_contact: payload.claimant_contact || null,
+      handover_note: payload.handover_note || null,
+    };
+
+    const target = mode === 'create' ? '/api/v1/lost-found' : `/api/v1/lost-found/${id}`;
+    const method = mode === 'create' ? 'POST' : 'PUT';
+
+    try {
+      const saved = await fetchJson<LostFoundItem>(target, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      navigate(`/ztraty-a-nalezy/${saved.id}`);
+    } catch {
+      setError('Položku se nepodařilo uložit.');
+    }
+  };
+
+  return (
+    <main className="k-page" data-testid={mode === 'create' ? 'lost-found-create-page' : 'lost-found-edit-page'}>
+      <h1>{mode === 'create' ? 'Nová položka' : 'Upravit položku'}</h1>
+      <StateSwitcher />
+      {stateUI ? (
+        stateUI
+      ) : error ? (
+        <StateView title="Chyba" description={error} />
+      ) : (
+        <div className="k-card">
+          <div className="k-toolbar">
+            <Link className="k-nav-link" to="/ztraty-a-nalezy">
+              Zpět na seznam
+            </Link>
+            <button className="k-button" type="button" onClick={() => void save()}>
+              Uložit
+            </button>
+          </div>
+          <div className="k-form-grid">
+            <FormField id="item_type" label="Typ záznamu">
+              <select
+                id="item_type"
+                className="k-select"
+                value={payload.item_type}
+                onChange={(event) => setPayload((prev) => ({ ...prev, item_type: event.target.value as LostFoundType }))}
+              >
+                <option value="found">Nalezeno</option>
+                <option value="lost">Ztraceno</option>
+              </select>
+            </FormField>
+            <FormField id="category" label="Kategorie">
+              <input
+                id="category"
+                className="k-input"
+                value={payload.category}
+                onChange={(event) => setPayload((prev) => ({ ...prev, category: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="location" label="Místo nálezu/ztráty">
+              <input
+                id="location"
+                className="k-input"
+                value={payload.location}
+                onChange={(event) => setPayload((prev) => ({ ...prev, location: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="event_at" label="Datum a čas">
+              <input
+                id="event_at"
+                type="datetime-local"
+                className="k-input"
+                value={payload.event_at.slice(0, 16)}
+                onChange={(event) =>
+                  setPayload((prev) => ({ ...prev, event_at: `${event.target.value}:00Z` }))
+                }
+              />
+            </FormField>
+            <FormField id="status" label="Stav workflow">
+              <select
+                id="status"
+                className="k-select"
+                value={payload.status}
+                onChange={(event) =>
+                  setPayload((prev) => ({ ...prev, status: event.target.value as LostFoundStatus }))
+                }
+              >
+                <option value="stored">Uloženo</option>
+                <option value="claimed">Nárokováno</option>
+                <option value="returned">Vráceno</option>
+                <option value="disposed">Zlikvidováno</option>
+              </select>
+            </FormField>
+            <FormField id="description" label="Popis položky">
+              <textarea
+                id="description"
+                className="k-textarea"
+                rows={3}
+                value={payload.description}
+                onChange={(event) => setPayload((prev) => ({ ...prev, description: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="claimant_name" label="Jméno nálezce/žadatele (volitelné)">
+              <input
+                id="claimant_name"
+                className="k-input"
+                value={payload.claimant_name ?? ''}
+                onChange={(event) => setPayload((prev) => ({ ...prev, claimant_name: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="claimant_contact" label="Kontakt (volitelné)">
+              <input
+                id="claimant_contact"
+                className="k-input"
+                value={payload.claimant_contact ?? ''}
+                onChange={(event) => setPayload((prev) => ({ ...prev, claimant_contact: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="handover_note" label="Předávací záznam (volitelné)">
+              <textarea
+                id="handover_note"
+                className="k-textarea"
+                rows={2}
+                value={payload.handover_note ?? ''}
+                onChange={(event) => setPayload((prev) => ({ ...prev, handover_note: event.target.value }))}
+              />
+            </FormField>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function LostFoundDetail(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Ztráty a nálezy', '/ztraty-a-nalezy');
+  const { id } = useParams();
+  const [item, setItem] = React.useState<LostFoundItem | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default' || !id) {
+      return;
+    }
+    fetchJson<LostFoundItem>(`/api/v1/lost-found/${id}`)
+      .then((response) => {
+        setItem(response);
+        setError(null);
+      })
+      .catch(() => setError('Položka nebyla nalezena.'));
+  }, [id, state]);
+
+  return (
+    <main className="k-page" data-testid="lost-found-detail-page">
+      <h1>Detail položky</h1>
+      <StateSwitcher />
+      {stateUI ? (
+        stateUI
+      ) : error ? (
+        <StateView title="404" description={error} />
+      ) : item ? (
+        <div className="k-card">
+          <div className="k-toolbar">
+            <Link className="k-nav-link" to="/ztraty-a-nalezy">
+              Zpět na seznam
+            </Link>
+            <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>
+              Upravit
+            </Link>
+          </div>
+          <DataTable
+            headers={['Položka', 'Hodnota']}
+            rows={[
+              ['Typ', lostFoundTypeLabels[item.item_type]],
+              ['Kategorie', item.category],
+              ['Místo', item.location],
+              ['Datum a čas', new Date(item.event_at).toLocaleString('cs-CZ')],
+              ['Stav', lostFoundStatusLabels[item.status]],
+              ['Popis', item.description],
+              ['Jméno žadatele', item.claimant_name ?? '-'],
+              ['Kontakt', item.claimant_contact ?? '-'],
+              ['Předávací záznam', item.handover_note ?? '-'],
+            ]}
+          />
+        </div>
+      ) : (
+        <StateView title="Načítání" description="Načítáme detail položky." />
+      )}
+    </main>
+  );
+}
+
 function GenericModule({ title }: { title: string }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, '/');
+  const stateUI = stateViewForRoute(state, title, '/');
 
   return (
     <main className="k-page">
@@ -492,7 +855,10 @@ function AppRoutes(): JSX.Element {
         <Route path="/snidane/nova" element={<BreakfastForm mode="create" />} />
         <Route path="/snidane/:id" element={<BreakfastDetail />} />
         <Route path="/snidane/:id/edit" element={<BreakfastForm mode="edit" />} />
-        <Route path="/ztraty-a-nalezy" element={<GenericModule title="Ztráty a nálezy" />} />
+        <Route path="/ztraty-a-nalezy" element={<LostFoundList />} />
+        <Route path="/ztraty-a-nalezy/novy" element={<LostFoundForm mode="create" />} />
+        <Route path="/ztraty-a-nalezy/:id" element={<LostFoundDetail />} />
+        <Route path="/ztraty-a-nalezy/:id/edit" element={<LostFoundForm mode="edit" />} />
         <Route path="/zavady" element={<GenericModule title="Závady" />} />
         <Route path="/sklad" element={<GenericModule title="Skladové hospodářství" />} />
         <Route path="/offline" element={<UtilityStatePage title="Offline" description="Aplikace je bez připojení." />} />

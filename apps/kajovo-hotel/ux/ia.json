@@ -236,6 +236,90 @@
       ],
       "signageRequired": true,
       "maxBrandElements": 2
+    },
+    {
+      "key": "lost_found_list",
+      "route": "/ztraty-a-nalezy",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "lost_found_detail",
+      "route": "/ztraty-a-nalezy/:id",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "lost_found_create",
+      "route": "/ztraty-a-nalezy/novy",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "lost_found_edit",
+      "route": "/ztraty-a-nalezy/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
     }
   ],
   "viewStatePolicy": {
