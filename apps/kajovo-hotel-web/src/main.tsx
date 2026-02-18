@@ -121,6 +121,43 @@ const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   adjust: 'Úprava',
 };
 
+
+
+function breakfastStatusLabel(status: BreakfastStatus | null | undefined): string {
+  return status ? statusLabels[status] : '-';
+}
+
+function lostFoundStatusLabel(status: LostFoundStatus | null | undefined): string {
+  return status ? lostFoundStatusLabels[status] : '-';
+}
+
+function lostFoundTypeLabel(itemType: LostFoundType | null | undefined): string {
+  return itemType ? lostFoundTypeLabels[itemType] : '-';
+}
+
+function issuePriorityLabel(priority: IssuePriority | null | undefined): string {
+  return priority ? issuePriorityLabels[priority] : '-';
+}
+
+function issueStatusLabel(status: IssueStatus | null | undefined): string {
+  return status ? issueStatusLabels[status] : '-';
+}
+
+function inventoryMovementLabel(movementType: InventoryMovementType | null | undefined): string {
+  return movementType ? inventoryMovementLabels[movementType] : '-';
+}
+
+function reportStatusLabel(status: string | null | undefined): string {
+  if (status === 'open' || status === 'in_progress' || status === 'closed') {
+    return reportStatusLabels[status];
+  }
+  return status ?? '-';
+}
+
+function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStatus): number {
+  const value = summary?.status_counts?.[status];
+  return typeof value === 'number' ? value : 0;
+}
 const stateLabels: Record<ViewState, string> = {
   default: 'Výchozí',
   loading: 'Načítání',
@@ -333,7 +370,7 @@ function BreakfastList(): JSX.Element {
               <strong>{summary?.total_guests ?? 0}</strong>
             </Card>
             <Card title="Čekající">
-              <strong>{summary?.status_counts.pending ?? 0}</strong>
+              <strong>{getSummaryCount(summary, 'pending')}</strong>
             </Card>
           </div>
           <div className="k-toolbar">
@@ -355,7 +392,7 @@ function BreakfastList(): JSX.Element {
               item.room_number,
               item.guest_name,
               item.guest_count,
-              statusLabels[item.status],
+              breakfastStatusLabel(item.status),
               item.note ?? '-',
               <Link className="k-nav-link" to={`/snidane/${item.id}`} key={item.id}>
                 Detail
@@ -565,7 +602,7 @@ function BreakfastDetail(): JSX.Element {
               ['Pokoj', item.room_number],
               ['Host', item.guest_name],
               ['Počet hostů', item.guest_count],
-              ['Stav', statusLabels[item.status]],
+              ['Stav', breakfastStatusLabel(item.status)],
               ['Poznámka', item.note ?? '-'],
             ]}
           />
@@ -661,11 +698,11 @@ function LostFoundList(): JSX.Element {
           <DataTable
             headers={['Typ', 'Kategorie', 'Místo', 'Čas', 'Stav', 'Akce']}
             rows={items.map((item) => [
-              lostFoundTypeLabels[item.item_type],
+              lostFoundTypeLabel(item.item_type),
               item.category,
               item.location,
               new Date(item.event_at).toLocaleString('cs-CZ'),
-              lostFoundStatusLabels[item.status],
+              lostFoundStatusLabel(item.status),
               <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>
                 Detail
               </Link>,
@@ -890,11 +927,11 @@ function LostFoundDetail(): JSX.Element {
           <DataTable
             headers={['Položka', 'Hodnota']}
             rows={[
-              ['Typ', lostFoundTypeLabels[item.item_type]],
+              ['Typ', lostFoundTypeLabel(item.item_type)],
               ['Kategorie', item.category],
               ['Místo', item.location],
               ['Datum a čas', new Date(item.event_at).toLocaleString('cs-CZ')],
-              ['Stav', lostFoundStatusLabels[item.status]],
+              ['Stav', lostFoundStatusLabel(item.status)],
               ['Popis', item.description],
               ['Jméno žadatele', item.claimant_name ?? '-'],
               ['Kontakt', item.claimant_contact ?? '-'],
@@ -950,7 +987,7 @@ function IssuesList(): JSX.Element {
             <Link className="k-button" to="/zavady/nova">Nová závada</Link>
           </div>
           <DataTable headers={['Název', 'Lokace', 'Pokoj', 'Priorita', 'Stav', 'Přiřazeno', 'Akce']} rows={items.map((item) => [
-            item.title, item.location, item.room_number ?? '-', issuePriorityLabels[item.priority], issueStatusLabels[item.status], item.assignee ?? '-',
+            item.title, item.location, item.room_number ?? '-', issuePriorityLabel(item.priority), issueStatusLabel(item.status), item.assignee ?? '-',
             <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>Detail</Link>,
           ])} />
         </>
@@ -1020,7 +1057,7 @@ function IssuesDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="issues-detail-page">
       <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabels[item.priority]],[ 'Stav', issueStatusLabels[item.status]],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <StateView title="Načítání" description="Načítáme detail závady." />}
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <StateView title="Načítání" description="Načítáme detail závady." />}
     </main>
   );
 }
@@ -1119,7 +1156,7 @@ function InventoryDetail(): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabels[movement.movement_type], movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
+  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabel(movement.movement_type), movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
 }
 
 function GenericModule({ title }: { title: string }): JSX.Element {
@@ -1148,7 +1185,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabels[item.status]}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -1196,7 +1233,7 @@ function ReportsDetail(): JSX.Element {
       .catch(() => setError('Hlášení nebylo nalezeno.'));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabels[item.status]],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
 }
 
 function UtilityStatePage({ title, description }: { title: string; description: string }): JSX.Element {
