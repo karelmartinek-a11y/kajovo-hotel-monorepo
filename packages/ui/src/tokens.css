@@ -26,6 +26,7 @@
   --k-radius-1: 8px;
   --k-radius-2: 12px;
   --k-radius-3: 16px;
+  --k-radius-pill: 999px;
 
   --k-font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   --k-font-size-xs: 12px;
@@ -45,6 +46,9 @@
   --k-z-header: 20;
   --k-z-nav-drawer: 30;
   --k-z-sign: 60;
+
+  --k-shadow-elevated: 0 8px 20px var(--k-shadow-color);
+  --k-shadow-color: rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -130,7 +134,7 @@ body {
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);
   background: var(--k-color-surface-raised);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--k-shadow-elevated);
   padding: var(--k-spacing-2);
 }
 
@@ -152,7 +156,7 @@ body {
   border-radius: var(--k-radius-2);
   background: var(--k-color-surface-raised);
   padding: var(--k-spacing-3);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--k-shadow-elevated);
 }
 
 .k-nav-drawer-search {
@@ -176,7 +180,7 @@ body {
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: 0;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -376,7 +380,7 @@ body {
 .k-timeline-dot {
   width: 12px;
   height: 12px;
-  border-radius: 999px;
+  border-radius: var(--k-radius-pill);
   background: var(--k-color-ink);
   margin-top: var(--k-spacing-1);
 }
@@ -399,7 +403,7 @@ body {
 .k-badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  border-radius: var(--k-radius-pill);
   padding: var(--k-spacing-1) var(--k-spacing-2);
   font-size: var(--k-font-size-xs);
   font-weight: var(--k-weight-bold);

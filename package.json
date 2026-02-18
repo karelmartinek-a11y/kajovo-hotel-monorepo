@@ -9,8 +9,8 @@
     "lint": "pnpm -r lint",
     "test": "pnpm --filter @kajovo/kajovo-hotel-web test",
     "ci:tokens": "node apps/kajovo-hotel/ci/lint-tokens.mjs",
-    "ci:signage": "node apps/kajovo-hotel/ci/test-signage-presence.mjs",
-    "ci:view-states": "node apps/kajovo-hotel/ci/test-view-states.mjs",
+    "ci:signage": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"SIGNACE|brand elements\" tests/ci-gates.spec.ts",
+    "ci:view-states": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"view states\" tests/ci-gates.spec.ts",
     "ci:gates": "pnpm ci:tokens && pnpm ci:signage && pnpm ci:view-states"
   }
 }
