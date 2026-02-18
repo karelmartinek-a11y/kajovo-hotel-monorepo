@@ -72,6 +72,56 @@ type Report = ReportRead;
 
 type ReportPayload = ReportCreate;
 
+
+type ErrorBoundaryProps = { children: React.ReactNode };
+type ErrorBoundaryState = { hasError: boolean; message?: string };
+
+class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, message: error.message };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    const payload = {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      path: window.location.pathname,
+      timestamp: new Date().toISOString(),
+    };
+    console.error('client.error_boundary', payload);
+
+    const endpoint = (window as Window & { __KAJOVO_ERROR_ENDPOINT__?: string }).__KAJOVO_ERROR_ENDPOINT__;
+    if (endpoint) {
+      void fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {
+        console.warn('client.error_boundary.report_failed');
+      });
+    }
+  }
+
+  render(): React.ReactNode {
+    if (this.state.hasError) {
+      return (
+        <main className="k-page">
+          <StateView
+            title="Chyba"
+            description={this.state.message ?? 'Aplikace narazila na neočekávanou chybu.'}
+            stateKey="error"
+            action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
+          />
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
 
@@ -1349,8 +1399,10 @@ function AppRoutes(): JSX.Element {
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <ClientErrorBoundary>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </ClientErrorBoundary>
   </React.StrictMode>,
 );

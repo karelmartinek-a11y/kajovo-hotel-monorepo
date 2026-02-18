@@ -321,4 +321,7 @@ export const apiClient = {
   async healthHealthGet(): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('GET', `/health`, undefined, undefined);
   },
+  async readyReadyGet(): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>('GET', `/ready`, undefined, undefined);
+  },
 };
