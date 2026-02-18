@@ -115,6 +115,19 @@ type InventoryDetail = InventoryItem & {
 
 type InventoryItemPayload = Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>;
 
+type ReportStatus = 'open' | 'in_progress' | 'closed';
+
+type Report = {
+  id: number;
+  title: string;
+  description: string | null;
+  status: ReportStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+type ReportPayload = Omit<Report, 'id' | 'created_at' | 'updated_at'>;
+
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = '2026-02-19';
 
@@ -149,6 +162,12 @@ const issueStatusLabels: Record<IssueStatus, string> = {
   in_progress: 'V řešení',
   resolved: 'Vyřešena',
   closed: 'Uzavřena',
+};
+
+const reportStatusLabels: Record<ReportStatus, string> = {
+  open: 'Otevřené',
+  in_progress: 'V řešení',
+  closed: 'Uzavřené',
 };
 
 
@@ -1128,6 +1147,70 @@ function GenericModule({ title }: { title: string }): JSX.Element {
   );
 }
 
+
+function ReportsList(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
+  const [items, setItems] = React.useState<Report[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetchJson<Report[]>('/api/v1/reports')
+      .then(setItems)
+      .catch(() => setError('Hlášení se nepodařilo načíst.'));
+  }, []);
+
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabels[item.status]}</Badge>, new Date(item.created_at).toLocaleString('cs-CZ'), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+}
+
+function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [error, setError] = React.useState<string | null>(null);
+  const [payload, setPayload] = React.useState<ReportPayload>({ title: '', description: '', status: 'open' });
+
+  React.useEffect(() => {
+    if (mode === 'edit' && id) {
+      fetchJson<Report>(`/api/v1/reports/${id}`)
+        .then((item) => setPayload({ title: item.title, description: item.description, status: item.status }))
+        .catch(() => setError('Detail hlášení se nepodařilo načíst.'));
+    }
+  }, [id, mode]);
+
+  async function save(): Promise<void> {
+    try {
+      const saved = await fetchJson<Report>(mode === 'create' ? '/api/v1/reports' : `/api/v1/reports/${id}`, {
+        method: mode === 'create' ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      navigate(`/hlaseni/${saved.id}`);
+    } catch {
+      setError('Hlášení se nepodařilo uložit.');
+    }
+  }
+
+  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
+}
+
+function ReportsDetail(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
+  const { id } = useParams();
+  const [item, setItem] = React.useState<Report | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetchJson<Report>(`/api/v1/reports/${id}`)
+      .then(setItem)
+      .catch(() => setError('Hlášení nebylo nalezeno.'));
+  }, [id]);
+
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabels[item.status]],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', new Date(item.created_at).toLocaleString('cs-CZ') ],[ 'Aktualizováno', new Date(item.updated_at).toLocaleString('cs-CZ') ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
+}
+
 function UtilityStatePage({ title, description }: { title: string; description: string }): JSX.Element {
   return (
     <main className="k-page">
@@ -1160,6 +1243,10 @@ function AppRoutes(): JSX.Element {
         <Route path="/sklad/nova" element={<InventoryForm mode="create" />} />
         <Route path="/sklad/:id" element={<InventoryDetail />} />
         <Route path="/sklad/:id/edit" element={<InventoryForm mode="edit" />} />
+        <Route path="/hlaseni" element={<ReportsList />} />
+        <Route path="/hlaseni/nove" element={<ReportsForm mode="create" />} />
+        <Route path="/hlaseni/:id" element={<ReportsDetail />} />
+        <Route path="/hlaseni/:id/edit" element={<ReportsForm mode="edit" />} />
         <Route path="/offline" element={<UtilityStatePage title="Offline" description="Aplikace je bez připojení." />} />
         <Route
           path="/maintenance"
