@@ -1,0 +1,33 @@
+{
+  "definitionOfDone": {
+    "note": "Kontrolní seznam pro kvalitu generování a gate. Nesmí měnit pravidla značky (Manifest.md je SSOT).",
+    "requiredStates": [
+      "loading",
+      "empty",
+      "error",
+      "offline",
+      "notFound"
+    ],
+    "requiredResponsiveBreakpoints": ["phone", "tablet", "desktop"],
+    "requirements": [
+      "tokenOnlyStyling",
+      "signagePresentOutsidePopup",
+      "signageVisibleOnScroll",
+      "maxTwoBrandElementsPerView",
+      "noGlobalHorizontalScrollExceptTableContainers",
+      "keyboardFocusVisible",
+      "wcagAA"
+    ]
+  },
+  "views": [
+    { "id": "dashboard", "routes": ["/dashboard"], "states": ["loading", "empty", "error", "offline", "notFound"] },
+
+    { "id": "breakfast", "routes": ["/snidane", "/snidane/novy", "/snidane/:id", "/snidane/:id/upravit"], "states": ["loading", "empty", "error", "offline", "notFound"] },
+    { "id": "lostFound", "routes": ["/ztraty-a-nalezy", "/ztraty-a-nalezy/novy", "/ztraty-a-nalezy/:id", "/ztraty-a-nalezy/:id/upravit"], "states": ["loading", "empty", "error", "offline", "notFound"] },
+    { "id": "issues", "routes": ["/zavady", "/zavady/novy", "/zavady/:id", "/zavady/:id/upravit"], "states": ["loading", "empty", "error", "offline", "notFound"] },
+    { "id": "inventory", "routes": ["/sklad", "/sklad/nova-polozka", "/sklad/pohyb", "/sklad/:id"], "states": ["loading", "empty", "error", "offline", "notFound"] },
+
+    { "id": "adminUsers", "routes": ["/admin/uzivatele"], "states": ["loading", "empty", "error", "offline", "notFound"] },
+    { "id": "adminSettings", "routes": ["/admin/nastaveni"], "states": ["loading", "empty", "error", "offline", "notFound"] }
+  ]
+}

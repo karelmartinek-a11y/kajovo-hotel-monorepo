@@ -1,0 +1,63 @@
+# Hlas značky pro UI (KájovoHotel)
+Tento soubor slouží pouze k řízení UI textů (microcopy) při generování. Nesmí měnit pravidla značky a integrace definovaná v Manifest.md (NORMA je SSOT).
+
+## Tón
+- Elegantní, věcný, klidný. Profesionální „hotel operations“ jazyk.
+- Stručné věty. Žádná ironie, žádný slang, žádné vykřičníky.
+- Vždy orientace na akci: co se stalo + co uživatel může udělat teď.
+
+## Styl
+- Vykání. Aktivní rod: „Uloženo“, „Nelze načíst“, „Zkuste znovu“.
+- Přesnost: používat názvy modulů tak, jak jsou v navigaci.
+- Pokud je vhodné, přidat jeden řádek „co dál“ (CTA).
+
+## Zakázaná slova a fráze
+- „MVP“, „placeholder“, „nějak“, „asi“, „možná“, „quick fix“, „dočasně“.
+- Emoční výplně: „Jejda“, „Ups“, „Haha“.
+- Anglicismy v UI, pokud není důvod (OK je „Dashboard“ jen pokud je to interní standard, jinak „Přehled“).
+
+## Slovník (preferované termíny)
+- „Přehled“ místo „Dashboard“ (v UI).
+- „Závada“ (ne „issue“), „Sklad“ (ne „inventory“), „Ztráty a nálezy“.
+- „Uložit“, „Zrušit“, „Zpět na seznam“, „Zobrazit detail“, „Upravit“.
+
+## Microcopy šablony
+
+### Loading
+- Titulek: „Načítání…“
+- Popis: „Připravujeme data.“
+- CTA: žádné, případně „Zrušit“ (u formulářů).
+
+### Empty
+- Titulek: „Zatím bez záznamů“
+- Popis: „Až přidáte první položku, zobrazí se zde.“
+- CTA: „Vytvořit …“ (konkrétně dle modulu)
+
+### Error (request)
+- Titulek: „Nepodařilo se načíst“
+- Popis: „Zkuste to znovu. Pokud problém přetrvá, kontaktujte správce.“
+- CTA: „Zkusit znovu“
+
+### Error (save)
+- Titulek: „Nepodařilo se uložit“
+- Popis: „Zkontrolujte vyplněná pole a zkuste to znovu.“
+- CTA: „Zkusit znovu“ + sekundární „Zrušit“
+
+### Offline / Maintenance
+- Titulek: „Systém je dočasně nedostupný“
+- Popis: „Zkuste to prosím později.“
+- CTA: „Obnovit stránku“
+
+### Access denied
+- Titulek: „Nemáte oprávnění“
+- Popis: „K této části nemáte přístup. Pokud je to chyba, kontaktujte správce.“
+- CTA: „Zpět na Přehled“
+
+### 404
+- Titulek: „Stránka nebyla nalezena“
+- Popis: „Zkontrolujte adresu nebo se vraťte zpět.“
+- CTA: „Zpět na Přehled“
+
+## Formuláře
+- Chyby validace: krátké, konkrétní („Vyplňte název“, „Vyberte místnost“).
+- Pomocné texty: 1 věta, bez nadbytečné stylistiky.

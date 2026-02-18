@@ -1,0 +1,63 @@
+{
+  "dashboard": {
+    "h1": "Přehled provozu",
+    "subtitle": "Rychlý přístup k dnešku: snídaně, závady a kritické stavy skladu.",
+    "primaryCta": "Nová závada",
+    "quick": {
+      "breakfast": "Snídaně",
+      "inventory": "Sklad"
+    }
+  },
+  "breakfast": {
+    "list": {
+      "h1": "Snídaně",
+      "subtitle": "Denní evidence a kontrola průběhu snídaní.",
+      "primaryCta": "Založit záznam"
+    },
+    "create": { "h1": "Nový záznam snídaně" },
+    "detail": { "h1": "Detail snídaně" },
+    "edit": { "h1": "Upravit snídani" }
+  },
+  "lostFound": {
+    "list": {
+      "h1": "Ztráty a nálezy",
+      "subtitle": "Evidence nalezených a ztracených věcí včetně stavu předání.",
+      "primaryCta": "Přidat položku"
+    },
+    "create": { "h1": "Nová položka" },
+    "detail": { "h1": "Detail položky" },
+    "edit": { "h1": "Upravit položku" }
+  },
+  "issues": {
+    "list": {
+      "h1": "Závady",
+      "subtitle": "Záznam, prioritizace a průběžné řešení závad.",
+      "primaryCta": "Nahlásit závadu"
+    },
+    "create": { "h1": "Nová závada" },
+    "detail": { "h1": "Detail závady" },
+    "edit": { "h1": "Upravit závadu" }
+  },
+  "inventory": {
+    "list": {
+      "h1": "Sklad",
+      "subtitle": "Položky, minimální zásoby a pohyby ve skladu.",
+      "primaryCta": "Nová položka",
+      "secondaryCta": "Přidat pohyb"
+    },
+    "create": { "h1": "Nová skladová položka" },
+    "movement": { "h1": "Pohyb skladu" },
+    "detail": { "h1": "Detail položky" }
+  },
+  "admin": {
+    "users": { "h1": "Uživatelé", "primaryCta": "Přidat uživatele" },
+    "settings": { "h1": "Nastavení", "primaryCta": "Uložit změny" }
+  },
+  "common": {
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "edit": "Upravit",
+    "backToList": "Zpět na seznam",
+    "retry": "Zkusit znovu"
+  }
+}
