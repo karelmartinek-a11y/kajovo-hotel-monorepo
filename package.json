@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "echo \"TODO: add lint\"",
-    "test": "echo \"TODO: add tests\"",
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter @kajovo/kajovo-hotel-web test",
     "ci:tokens": "node apps/kajovo-hotel/ci/lint-tokens.mjs",
     "ci:signage": "node apps/kajovo-hotel/ci/test-signage-presence.mjs",
     "ci:view-states": "node apps/kajovo-hotel/ci/test-view-states.mjs",
