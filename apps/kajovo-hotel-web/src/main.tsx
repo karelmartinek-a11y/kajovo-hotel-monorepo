@@ -231,6 +231,14 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   throw new Error(`Unsupported API call: ${method} ${path}`);
 }
 
+
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+  return new Date(value).toLocaleString('cs-CZ');
+}
+
 function Dashboard(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Přehled', '/');
@@ -1003,7 +1011,7 @@ function IssuesDetail(): JSX.Element {
   }, [id, state]);
 
   const timeline = item ? [
-    { label: 'Vytvořeno', value: new Date(item.created_at).toLocaleString('cs-CZ') },
+    { label: 'Vytvořeno', value: formatDateTime(item.created_at) },
     ...(item.in_progress_at ? [{ label: 'V řešení', value: new Date(item.in_progress_at).toLocaleString('cs-CZ') }] : []),
     ...(item.resolved_at ? [{ label: 'Vyřešeno', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
     ...(item.closed_at ? [{ label: 'Uzavřeno', value: new Date(item.closed_at).toLocaleString('cs-CZ') }] : []),
@@ -1111,7 +1119,7 @@ function InventoryDetail(): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [new Date(movement.created_at).toLocaleString('cs-CZ'), inventoryMovementLabels[movement.movement_type], movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
+  return <main className="k-page" data-testid="inventory-detail-page"><h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabels[movement.movement_type], movement.quantity, movement.note ?? '-'])} /></div></> : <StateView title="Načítání" description="Načítáme detail položky." />}</main>;
 }
 
 function GenericModule({ title }: { title: string }): JSX.Element {
@@ -1140,7 +1148,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabels[item.status]}</Badge>, new Date(item.created_at).toLocaleString('cs-CZ'), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabels[item.status]}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -1188,7 +1196,7 @@ function ReportsDetail(): JSX.Element {
       .catch(() => setError('Hlášení nebylo nalezeno.'));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabels[item.status]],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', new Date(item.created_at).toLocaleString('cs-CZ') ],[ 'Aktualizováno', new Date(item.updated_at).toLocaleString('cs-CZ') ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabels[item.status]],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <StateView title="Načítání" description="Načítáme detail hlášení." />}</main>;
 }
 
 function UtilityStatePage({ title, description }: { title: string; description: string }): JSX.Element {
