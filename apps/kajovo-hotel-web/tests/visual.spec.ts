@@ -33,6 +33,37 @@ const summaryPayload = {
   },
 };
 
+const lostFoundListPayload = [
+  {
+    id: 1,
+    item_type: 'found',
+    description: 'Černá peněženka',
+    category: 'Osobní věci',
+    location: 'Wellness',
+    event_at: '2026-02-18T10:00:00Z',
+    status: 'stored',
+    claimant_name: null,
+    claimant_contact: null,
+    handover_note: null,
+    claimed_at: null,
+    returned_at: null,
+  },
+  {
+    id: 2,
+    item_type: 'lost',
+    description: 'Náramek',
+    category: 'Šperky',
+    location: 'Pokoj 203',
+    event_at: '2026-02-18T11:00:00Z',
+    status: 'claimed',
+    claimant_name: 'Jan Novák',
+    claimant_contact: '+420777888999',
+    handover_note: 'Kontaktován host',
+    claimed_at: '2026-02-18T12:00:00Z',
+    returned_at: null,
+  },
+];
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/breakfast?service_date=2026-02-19', async (route) => {
     await route.fulfill({ json: listPayload });
@@ -45,9 +76,58 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/breakfast/1', async (route) => {
     await route.fulfill({ json: listPayload[0] });
   });
+
+  await page.route('**/api/v1/lost-found?*', async (route) => {
+    await route.fulfill({ json: lostFoundListPayload });
+  });
+
+  await page.route('**/api/v1/lost-found', async (route) => {
+    if (route.request().method() === 'POST') {
+      const body = await route.request().postDataJSON();
+      await route.fulfill({ json: { ...body, id: 3 } });
+      return;
+    }
+    await route.fulfill({ json: lostFoundListPayload });
+  });
+
+  await page.route('**/api/v1/lost-found/1', async (route) => {
+    if (route.request().method() === 'PUT') {
+      const body = await route.request().postDataJSON();
+      await route.fulfill({ json: { ...lostFoundListPayload[0], ...body, id: 1 } });
+      return;
+    }
+    await route.fulfill({ json: lostFoundListPayload[0] });
+  });
 });
 
 test.describe('visual states', () => {
+  for (const viewport of [
+    { name: 'phone', size: { width: 390, height: 844 } },
+    { name: 'tablet', size: { width: 820, height: 1180 } },
+    { name: 'desktop', size: { width: 1440, height: 900 } },
+  ]) {
+    test(`lost found list snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/ztraty-a-nalezy');
+      await expect(page.getByTestId('lost-found-list-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`lost-found-list-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`lost found detail snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/ztraty-a-nalezy/1');
+      await expect(page.getByTestId('lost-found-detail-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`lost-found-detail-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`lost found edit snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/ztraty-a-nalezy/1/edit');
+      await expect(page.getByTestId('lost-found-edit-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`lost-found-edit-${viewport.name}.png`, { fullPage: true });
+    });
+  }
+
   test('dashboard snapshot', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByTestId('dashboard-page')).toBeVisible();
@@ -73,7 +153,7 @@ test.describe('visual states', () => {
   });
 
   test('signage stays visible while scrolling', async ({ page }) => {
-    await page.goto('/snidane');
+    await page.goto('/ztraty-a-nalezy');
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign).toBeVisible();
     const before = await sign.boundingBox();

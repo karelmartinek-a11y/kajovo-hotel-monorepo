@@ -61,3 +61,55 @@ class BreakfastDailySummary(BaseModel):
     total_orders: int
     total_guests: int
     status_counts: dict[BreakfastStatus, int]
+
+
+class LostFoundItemType(StrEnum):
+    LOST = "lost"
+    FOUND = "found"
+
+
+class LostFoundStatus(StrEnum):
+    STORED = "stored"
+    CLAIMED = "claimed"
+    RETURNED = "returned"
+    DISPOSED = "disposed"
+
+
+class LostFoundItemBase(BaseModel):
+    item_type: LostFoundItemType = LostFoundItemType.FOUND
+    description: str = Field(min_length=3, max_length=4000)
+    category: str = Field(min_length=1, max_length=64)
+    location: str = Field(min_length=1, max_length=255)
+    event_at: datetime
+    status: LostFoundStatus = LostFoundStatus.STORED
+    claimant_name: str | None = Field(default=None, max_length=255)
+    claimant_contact: str | None = Field(default=None, max_length=255)
+    handover_note: str | None = Field(default=None, max_length=2000)
+    claimed_at: datetime | None = None
+    returned_at: datetime | None = None
+
+
+class LostFoundItemCreate(LostFoundItemBase):
+    pass
+
+
+class LostFoundItemUpdate(BaseModel):
+    item_type: LostFoundItemType | None = None
+    description: str | None = Field(default=None, min_length=3, max_length=4000)
+    category: str | None = Field(default=None, min_length=1, max_length=64)
+    location: str | None = Field(default=None, min_length=1, max_length=255)
+    event_at: datetime | None = None
+    status: LostFoundStatus | None = None
+    claimant_name: str | None = Field(default=None, max_length=255)
+    claimant_contact: str | None = Field(default=None, max_length=255)
+    handover_note: str | None = Field(default=None, max_length=2000)
+    claimed_at: datetime | None = None
+    returned_at: datetime | None = None
+
+
+class LostFoundItemRead(LostFoundItemBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime | None
+    updated_at: datetime | None
