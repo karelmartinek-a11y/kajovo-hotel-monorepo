@@ -354,29 +354,60 @@ test.describe('visual states', () => {
 
   }
 
-  test('dashboard snapshot', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('dashboard-page')).toBeVisible();
-    await expect(page).toHaveScreenshot('dashboard.png', { fullPage: true });
-  });
+  for (const viewport of [
+    { name: 'phone', size: { width: 390, height: 844 } },
+    { name: 'tablet', size: { width: 820, height: 1180 } },
+    { name: 'desktop', size: { width: 1440, height: 900 } },
+  ]) {
+    test(`dashboard snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/');
+      await expect(page.getByTestId('dashboard-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`dashboard-${viewport.name}.png`, { fullPage: true });
+    });
 
-  test('breakfast list snapshot', async ({ page }) => {
-    await page.goto('/snidane');
-    await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
-    await expect(page).toHaveScreenshot('breakfast-list.png', { fullPage: true });
-  });
+    test(`breakfast list snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/snidane');
+      await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`breakfast-list-${viewport.name}.png`, { fullPage: true });
+    });
 
-  test('breakfast detail snapshot', async ({ page }) => {
-    await page.goto('/snidane/1');
-    await expect(page.getByTestId('breakfast-detail-page')).toBeVisible();
-    await expect(page).toHaveScreenshot('breakfast-detail.png', { fullPage: true });
-  });
+    test(`breakfast detail snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/snidane/1');
+      await expect(page.getByTestId('breakfast-detail-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`breakfast-detail-${viewport.name}.png`, { fullPage: true });
+    });
 
-  test('breakfast edit snapshot', async ({ page }) => {
-    await page.goto('/snidane/1/edit');
-    await expect(page.getByTestId('breakfast-edit-page')).toBeVisible();
-    await expect(page).toHaveScreenshot('breakfast-edit.png', { fullPage: true });
-  });
+    test(`breakfast edit snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/snidane/1/edit');
+      await expect(page.getByTestId('breakfast-edit-page')).toBeVisible();
+      await expect(page).toHaveScreenshot(`breakfast-edit-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`offline snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/offline');
+      await expect(page.getByTestId('state-view-offline')).toBeVisible();
+      await expect(page).toHaveScreenshot(`offline-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`maintenance snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/maintenance');
+      await expect(page.getByTestId('state-view-maintenance')).toBeVisible();
+      await expect(page).toHaveScreenshot(`maintenance-${viewport.name}.png`, { fullPage: true });
+    });
+
+    test(`404 snapshot ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize(viewport.size);
+      await page.goto('/404');
+      await expect(page.getByTestId('state-view-404')).toBeVisible();
+      await expect(page).toHaveScreenshot(`404-${viewport.name}.png`, { fullPage: true });
+    });
+  }
 
   test('signage stays visible while scrolling', async ({ page }) => {
     await page.goto('/ztraty-a-nalezy');

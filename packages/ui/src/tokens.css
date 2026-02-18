@@ -49,6 +49,10 @@
 
   --k-shadow-elevated: 0 8px 20px var(--k-shadow-color);
   --k-shadow-color: rgba(0, 0, 0, 0.08);
+
+  --k-motion-duration-fast: 160ms;
+  --k-motion-duration-standard: 280ms;
+  --k-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 * {
@@ -220,6 +224,12 @@ body {
   border-radius: var(--k-radius-3);
   padding: var(--k-spacing-6);
   text-align: center;
+  min-height: 320px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--k-spacing-3);
+  transition: border-color var(--k-motion-duration-fast) var(--k-motion-ease-standard);
 }
 
 .k-state-view h2 {
@@ -280,10 +290,13 @@ body {
 }
 
 .k-table-wrap {
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   background: var(--k-color-surface-raised);
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);
+  scrollbar-gutter: stable both-edges;
 }
 
 .k-table {
@@ -433,4 +446,56 @@ body {
   border-color: var(--k-color-info);
   color: var(--k-color-info);
   background: var(--k-color-surface-raised);
+}
+
+
+.k-state-view-action {
+  display: inline-flex;
+  gap: var(--k-spacing-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.k-state-view--error {
+  border-color: color-mix(in srgb, var(--k-color-error) 35%, var(--k-color-border));
+}
+
+.k-state-view--offline,
+.k-state-view--maintenance {
+  border-color: color-mix(in srgb, var(--k-color-warning) 35%, var(--k-color-border));
+}
+
+.k-skeleton-page {
+  min-height: 320px;
+  display: grid;
+  gap: var(--k-spacing-4);
+}
+
+.k-skeleton-grid {
+  display: grid;
+  gap: var(--k-spacing-3);
+}
+
+.k-skeleton-block {
+  display: inline-flex;
+  border-radius: var(--k-radius-1);
+  background: linear-gradient(100deg, var(--k-color-surface) 20%, #eceff1 40%, var(--k-color-surface) 60%);
+  background-size: 200% 100%;
+  animation: k-skeleton-wave var(--k-motion-duration-standard) var(--k-motion-ease-standard) infinite;
+}
+
+@keyframes k-skeleton-wave {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .k-state-view {
+    transition: none;
+  }
+
+  .k-skeleton-block {
+    animation: none;
+    background: var(--k-color-surface);
+  }
 }
