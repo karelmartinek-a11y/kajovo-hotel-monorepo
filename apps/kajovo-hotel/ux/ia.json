@@ -73,8 +73,20 @@
       "route": "/intro",
       "type": "intro",
       "requiresFullLockup": true,
-      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
-      "responsive": ["phone", "tablet", "desktop"],
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
       "signageRequired": true,
       "maxBrandElements": 2
     },
@@ -82,8 +94,20 @@
       "key": "not_found",
       "route": "/404",
       "type": "utility",
-      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
-      "responsive": ["phone", "tablet", "desktop"],
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
       "signageRequired": true,
       "maxBrandElements": 2
     },
@@ -91,8 +115,20 @@
       "key": "offline",
       "route": "/offline",
       "type": "utility",
-      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
-      "responsive": ["phone", "tablet", "desktop"],
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
       "signageRequired": true,
       "maxBrandElements": 2
     },
@@ -100,8 +136,104 @@
       "key": "maintenance",
       "route": "/maintenance",
       "type": "utility",
-      "states": ["default", "loading", "empty", "error", "offline", "maintenance", "404"],
-      "responsive": ["phone", "tablet", "desktop"],
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "breakfast_list",
+      "route": "/snidane",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "breakfast_detail",
+      "route": "/snidane/:id",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "breakfast_form",
+      "route": "/snidane/nova",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "breakfast_edit",
+      "route": "/snidane/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
       "signageRequired": true,
       "maxBrandElements": 2
     }
@@ -116,7 +248,11 @@
       "maintenance",
       "404"
     ],
-    "requiredResponsiveLayouts": ["phone", "tablet", "desktop"],
+    "requiredResponsiveLayouts": [
+      "phone",
+      "tablet",
+      "desktop"
+    ],
     "note": "Each view must have finished UI for required states across phone/tablet/desktop."
   }
 }
