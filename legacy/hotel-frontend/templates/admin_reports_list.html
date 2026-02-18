@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Seznam hlášení{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Filtrace a řazení reportů</strong></div>
+  <div class="card-body">
+    <form method="get" action="{{ base_path }}" class="grid three">
+      <div class="field">
+        <label>Kategorie</label>
+        <select name="category">
+          <option value="">Vše</option>
+          <option value="FIND" {% if filters.category == 'FIND' %}selected{% endif %}>Nález</option>
+          <option value="ISSUE" {% if filters.category == 'ISSUE' %}selected{% endif %}>Závada</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Stav</label>
+        <select name="status">
+          <option value="">Vše</option>
+          <option value="OPEN" {% if filters.status == 'OPEN' %}selected{% endif %}>Otevřené</option>
+          <option value="DONE" {% if filters.status == 'DONE' %}selected{% endif %}>Vyřešené</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Pokoj</label>
+        <select name="room">
+          <option value="">Všechny</option>
+          {% for room_no in rooms %}<option value="{{ room_no }}" {% if filters.room == room_no %}selected{% endif %}>{{ room_no }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Datum</label><input type="date" name="date" value="{{ filters.date or '' }}" /></div>
+      <div class="field">
+        <label>Řazení</label>
+        <select name="sort">
+          <option value="created_desc" {% if filters.sort == 'created_desc' %}selected{% endif %}>Nejnovější</option>
+          <option value="created_asc" {% if filters.sort == 'created_asc' %}selected{% endif %}>Nejstarší</option>
+          <option value="room_asc" {% if filters.sort == 'room_asc' %}selected{% endif %}>Pokoj ↑</option>
+          <option value="room_desc" {% if filters.sort == 'room_desc' %}selected{% endif %}>Pokoj ↓</option>
+          <option value="status_asc" {% if filters.sort == 'status_asc' %}selected{% endif %}>Stav ↑</option>
+          <option value="status_desc" {% if filters.sort == 'status_desc' %}selected{% endif %}>Stav ↓</option>
+        </select>
+      </div>
+      <div class="field"><label>Na stránku</label><input type="number" name="per_page" min="10" max="100" value="{{ filters.per_page or 25 }}" /></div>
+      <div style="display:flex; gap:8px; align-items:end;">
+        <button class="btn primary" type="submit">Použít filtry</button>
+        <a class="btn secondary" href="{{ base_path }}">Reset</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+    <strong>Výsledky ({{ total }})</strong>
+    <span class="hint">Strana {{ page }} z {{ pages_total }}</span>
+  </div>
+  <div class="card-body">
+    <table>
+      <thead><tr><th>ID</th><th>Kategorie</th><th>Stav</th><th>Pokoj</th><th>Vytvořeno</th><th>Vyřešeno</th><th>Trvání</th><th>Foto</th><th>Akce</th></tr></thead>
+      <tbody>
+        {% for item in reports %}
+        <tr>
+          <td>#{{ item.id }}</td>
+          <td><span class="badge">{{ item.category }}</span></td>
+          <td><span class="badge {{ 'ok' if item.status == 'DONE' else '' }}">{{ item.status }}</span></td>
+          <td>{{ item.room }}</td>
+          <td>{{ item.created_at_local }}</td>
+          <td>{{ item.done_at_local or '—' }}</td>
+          <td>{{ item.duration_hours ~ ' h' if item.duration_hours is not none else '—' }}</td>
+          <td>{{ item.photos|length }}</td>
+          <td><a class="btn secondary" href="/admin/reports/{{ item.id }}">Detail</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9">Nebyla nalezena žádná hlášení pro zvolené filtry.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:space-between;margin-top:14px;gap:10px;">
+      <a class="btn secondary" href="{{ query_url(page=page-1) if page > 1 else base_path }}">← Předchozí</a>
+      <a class="btn secondary" href="{{ query_url(page=page+1) if page < pages_total else query_url(page=pages_total) }}">Další →</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,121 @@
+# ruff: noqa: B008
+from __future__ import annotations
+
+from collections.abc import Generator
+from dataclasses import dataclass
+
+from fastapi import Depends, Header, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from app.config import Settings, get_settings
+from app.db import models
+from app.db.session import SessionLocal
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_client_ip(request: Request) -> str:
+    # Trust Nginx to pass X-Forwarded-For; take the left-most as original client.
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def require_admin_session(request: Request, settings: Settings = Depends(get_settings)) -> None:
+    # Admin session is stored server-side by Starlette SessionMiddleware.
+    # We use a single flag in the session.
+    if not request.session.get("admin_logged_in"):
+        raise HTTPException(status_code=401, detail="ADMIN_NOT_AUTHENTICATED")
+
+
+def require_csrf(request: Request, x_csrf_token: str | None = Header(default=None)) -> None:
+    # CSRF strategy:
+    # - backend sets a per-session csrf_token in session and also exposes it to templates.
+    # - HTMX or JS sends it back in X-CSRF-Token header.
+    expected = request.session.get("csrf_token")
+    if not expected:
+        raise HTTPException(status_code=403, detail="CSRF_NOT_INITIALIZED")
+    if not x_csrf_token or x_csrf_token != expected:
+        raise HTTPException(status_code=403, detail="CSRF_INVALID")
+
+
+@dataclass(frozen=True)
+class Pagination:
+    limit: int
+    offset: int
+
+
+def get_pagination(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> Pagination:
+    # We accept query params: ?limit=..&offset=..
+    # Hard bounds to keep admin UI snappy and to protect the DB.
+    qp = request.query_params
+    try:
+        limit = int(qp.get("limit", str(settings.admin_list_default_limit)))
+        offset = int(qp.get("offset", "0"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="PAGINATION_INVALID") from exc
+
+    if limit < 1:
+        limit = 1
+    if limit > settings.admin_list_max_limit:
+        limit = settings.admin_list_max_limit
+    if offset < 0:
+        offset = 0
+
+    return Pagination(limit=limit, offset=offset)
+
+
+def require_device_token(
+    request: Request,
+    x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
+    authorization: str | None = Header(default=None),
+) -> str:
+    raise HTTPException(status_code=410, detail="LEGACY_DEVICE_API_DISABLED")
+
+
+@dataclass(frozen=True)
+class DeviceAuthContext:
+    token: str
+    client_ip: str
+
+
+def get_device_auth_context(
+    request: Request,
+    token: str = Depends(require_device_token),
+) -> DeviceAuthContext:
+    return DeviceAuthContext(token=token, client_ip=get_client_ip(request))
+
+
+def require_device(
+    request: Request,
+    x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
+    x_device_id: str | None = Header(default=None, alias="X-Device-Id"),
+    x_device_name: str | None = Header(default=None, alias="X-Device-Name"),
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> models.Device:
+    raise HTTPException(status_code=410, detail="LEGACY_DEVICE_API_DISABLED")
+
+
+def _maybe_update_display_name(db: Session, device: models.Device, raw_name: str | None) -> None:
+    if not raw_name:
+        return
+    name = raw_name.strip()
+    if not name or name == device.display_name:
+        return
+    device.display_name = name
+    db.add(device)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()

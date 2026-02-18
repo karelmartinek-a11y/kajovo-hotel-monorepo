@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Správa snídaní{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Konfigurace IMAP importu</strong></div>
+  <div class="card-body grid two">
+    <form method="post" action="/admin/breakfast/save" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="grid two">
+        <div class="field"><label>Host</label><input name="imap_host" value="{{ cfg.imap_host or '' }}" required /></div>
+        <div class="field"><label>Port</label><input type="number" name="imap_port" value="{{ cfg.imap_port or 993 }}" min="1" max="65535" required /></div>
+        <div class="field"><label>Uživatel</label><input name="imap_username" value="{{ cfg.username or '' }}" /></div>
+        <div class="field"><label>Heslo</label><input type="password" name="imap_password" placeholder="Prázdné = beze změny" /></div>
+        <div class="field"><label>Zabezpečení</label><select name="imap_security"><option value="SSL" {% if (cfg.imap_security or 'SSL') == 'SSL' %}selected{% endif %}>SSL</option><option value="STARTTLS" {% if cfg.imap_security == 'STARTTLS' %}selected{% endif %}>STARTTLS</option><option value="PLAIN" {% if cfg.imap_security == 'PLAIN' %}selected{% endif %}>PLAIN</option></select></div>
+        <div class="field"><label>Mailbox</label><input name="imap_mailbox" value="{{ cfg.imap_mailbox or 'INBOX' }}" /></div>
+        <div class="field"><label>Filtr "From" obsahuje</label><input name="filter_from" value="{{ cfg.filter_from or cfg.from_contains or '' }}" /></div>
+        <div class="field"><label>Filtr "Subject" obsahuje</label><input name="filter_subject" value="{{ cfg.filter_subject or cfg.subject_contains or '' }}" /></div>
+      </div>
+      <button class="btn primary" type="submit">Uložit nastavení importu</button>
+    </form>
+
+    <div class="stack">
+      <article class="panel">
+        <div style="font-weight:700;">Diagnostika fetcheru</div>
+        <p style="margin:8px 0 0;"><strong>Poslední pokus:</strong> {{ diag.last_attempt_at_human or '—' }}</p>
+        <p style="margin:8px 0 0;"><strong>Poslední úspěch:</strong> {{ diag.last_success_at_human or '—' }}</p>
+        <p style="margin:8px 0 0;"><strong>Poslední chyba:</strong> {{ diag.last_error or 'žádná' }}</p>
+      </article>
+      <article class="panel">
+        <div style="font-weight:700;">Poslední importovaný den</div>
+        {% if latest_breakfast %}
+          <p style="margin:8px 0 0;"><strong>Datum:</strong> {{ latest_breakfast.day }}</p>
+          <p style="margin:8px 0 0;"><strong>Položek:</strong> {{ latest_breakfast.entries|length }}</p>
+        {% else %}
+          <p style="margin:8px 0 0;" class="hint">Zatím nebyl proveden úspěšný import.</p>
+        {% endif %}
+      </article>
+      <article class="panel">
+        <div style="font-weight:700;">Ruční import PDF</div>
+        <form method="post" action="/admin/breakfast/upload" enctype="multipart/form-data" class="stack" style="margin-top:8px;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <div class="field"><label>Nahrát soubor</label><input type="file" name="file" accept="application/pdf" required /></div>
+          <button class="btn secondary" type="submit">Nahrát a analyzovat</button>
+        </form>
+      </article>
+    </div>
+  </div>
+</section>
+{% endblock %}

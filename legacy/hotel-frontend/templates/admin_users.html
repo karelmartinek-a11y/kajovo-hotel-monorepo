@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Správa uživatelů{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Uživatelé portálu</strong></div>
+  <div class="card-body">
+    <table>
+      <thead><tr><th>ID</th><th>Jméno</th><th>E-mail</th><th>Role</th><th>Heslo</th><th>Akce</th></tr></thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.id }}</td>
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.role_label }}</td>
+          <td><span class="badge {{ 'ok' if user.has_password else 'bad' }}">{{ 'Nastaveno' if user.has_password else 'Chybí' }}</span></td>
+          <td>
+            <form method="post" action="/admin/users/{{ user.id }}/send-reset">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+              <button class="btn secondary" type="submit">Poslat reset odkaz</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">Zatím nejsou registrováni žádní uživatelé.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><strong>Vytvoření nového uživatele</strong></div>
+  <div class="card-body">
+    <form method="post" action="/admin/users/create" class="grid three">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field"><label for="name">Jméno</label><input id="name" name="name" required /></div>
+      <div class="field"><label for="email">E-mail</label><input id="email" type="email" name="email" required /></div>
+      <div class="field"><label for="role">Role</label><select id="role" name="role">{% for row in role_options %}<option value="{{ row.value }}">{{ row.label }}</option>{% endfor %}</select></div>
+      <div><button class="btn primary" type="submit">Vytvořit účet</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

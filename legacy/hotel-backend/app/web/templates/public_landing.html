@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}KájovoHotel{% endblock %}
+
+{% block body_content %}
+<section class="mx-auto max-w-4xl px-4 py-12">
+  <div class="space-y-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div class="flex items-center gap-4">
+      <img
+        src="{{ url_for('static', path='brand/logo.png') }}"
+        alt="KájovoHotel"
+        class="h-14 w-auto select-none drop-shadow-lg"
+        draggable="false"
+      />
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">KájovoHotel</h1>
+        <p class="mt-1 text-sm text-slate-600">
+          Jednotný vstup do webového portálu a administrace.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid gap-4 sm:flex sm:items-center">
+      <a class="inline-flex items-center justify-center rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500" href="/admin">Přihlásit se do portálu</a>
+      <a class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50" href="mailto:support@hcasc.cz">Podpora</a>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-4 text-xs text-slate-600">
+      <div><span class="font-medium text-slate-700">Doména:</span> hotel.hcasc.cz</div>
+      <div><span class="font-medium text-slate-700">Verze:</span> {{ app_version or '—' }}</div>
+    </div>
+  </div>
+</section>
+{% endblock %}

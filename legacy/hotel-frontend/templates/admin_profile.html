@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Profil správce{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card" style="max-width:760px;">
+  <div class="card-head"><strong>Bezpečnost administrátorského účtu</strong></div>
+  <div class="card-body stack">
+    <div class="panel">
+      <div style="font-weight:700; margin-bottom:6px;">Doporučení</div>
+      <ul style="margin:0; padding-left:18px; color:var(--muted); line-height:1.5;">
+        <li>Používejte minimálně 10 znaků s kombinací písmen, čísel a speciálních znaků.</li>
+        <li>Heslo měňte pravidelně a nesdílejte ho mezi členy týmu.</li>
+      </ul>
+    </div>
+    <form method="post" action="/admin/profile/password" class="grid two">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field"><label>Aktuální heslo</label><input type="password" name="current_password" required /></div>
+      <div class="field"><label>Nové heslo</label><input type="password" name="new_password" required minlength="10" /></div>
+      <div class="field"><label>Potvrzení nového hesla</label><input type="password" name="new_password_confirm" required minlength="10" /></div>
+      <div style="display:flex;align-items:end;"><button class="btn primary" type="submit">Bezpečně změnit heslo</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

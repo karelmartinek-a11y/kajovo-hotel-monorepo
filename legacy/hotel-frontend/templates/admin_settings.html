@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Nastavení SMTP{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>SMTP konfigurace pro reset hesla</strong></div>
+  <div class="card-body">
+    <form method="post" action="/admin/settings/smtp" class="grid two">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field"><label>SMTP host</label><input name="host" value="{{ smtp.host or '' }}" placeholder="smtp.provider.tld" /></div>
+      <div class="field"><label>Port</label><input type="number" name="port" value="{{ smtp.port or 587 }}" min="1" max="65535" /></div>
+      <div class="field"><label>Zabezpečení</label><select name="security"><option value="SSL" {% if (smtp.security or 'SSL') == 'SSL' %}selected{% endif %}>SSL</option><option value="STARTTLS" {% if smtp.security == 'STARTTLS' %}selected{% endif %}>STARTTLS</option><option value="PLAIN" {% if smtp.security == 'PLAIN' %}selected{% endif %}>PLAIN</option></select></div>
+      <div class="field"><label>Uživatelské jméno</label><input name="username" value="{{ smtp.username or '' }}" /></div>
+      <div class="field"><label>Nové heslo</label><input type="password" name="password" placeholder="Nechat prázdné = bez změny" /></div>
+      <div class="field"><label>Odesílací e-mail</label><input type="email" name="from_email" value="{{ smtp.from_email or '' }}" /></div>
+      <div class="field"><label>Jméno odesílatele</label><input name="from_name" value="{{ smtp.from_name or '' }}" /></div>
+      <div style="display:flex;align-items:end;"><button class="btn primary" type="submit">Uložit SMTP konfiguraci</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

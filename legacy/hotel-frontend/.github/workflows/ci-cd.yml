@@ -1,0 +1,52 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Basic syntax check
+        run: python -m compileall .
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          password: ${{ secrets.DEPLOY_PASS }}
+          script: |
+            set -e
+            if [ ! -d /srv/hcasc/_repos/hotel-frontend/.git ]; then
+              git clone https://github.com/karelmartinek-a11y/hotel-frontend.git /srv/hcasc/_repos/hotel-frontend
+            fi
+            cd /srv/hcasc/_repos/hotel-frontend
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            FRONT_TAG=$(git rev-parse --short HEAD)
+            printf '{"frontend_commit":"%s"}\n' "$FRONT_TAG" > /srv/hcasc/_repos/hotel-frontend/static/frontend-version.json
+            # Nasazujeme pouze statické soubory a šablony, abychom nezasáhli Python backend kód.
+            rsync -a --delete /srv/hcasc/_repos/hotel-frontend/static/ /opt/hotelapp/backend/app/web/static/
+            rsync -a --delete /srv/hcasc/_repos/hotel-frontend/templates/ /opt/hotelapp/backend/app/web/templates/
+            if [ ! -d /srv/hcasc/_repos/hotel-backend/.git ]; then
+              git clone https://github.com/karelmartinek-a11y/hotel-backend.git /srv/hcasc/_repos/hotel-backend
+            fi
+            cd /srv/hcasc/_repos/hotel-backend
+            git fetch origin main
+            git checkout main
+            git reset --hard origin/main
+            install -m 755 /srv/hcasc/_repos/hotel-backend/deploy/sandbox/run-tests.sh /opt/hotelapp/deploy/sandbox/run-tests.sh
+            cd /opt/hotelapp/deploy/sandbox && ./run-tests.sh || echo 'Sandbox tests failed, pokracuji v deploy; viz /var/log/hotelapp/sandbox-tests.log'
+            cd /opt/hotelapp/deploy && docker compose build backend
+            cd /opt/hotelapp/deploy && docker compose up -d --no-deps backend
+            printf '%s HOTEL frontend: auto-deploy main\n' "$(date '+%F %T')" >> /var/log/hotelapp/deploy.log

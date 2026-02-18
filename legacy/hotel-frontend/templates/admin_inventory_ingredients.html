@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Suroviny{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Katalog surovin</strong></div>
+  <div class="card-body stack">
+    <div class="panel">
+      <div style="font-weight:700; margin-bottom:8px;">Návrh provozních polí</div>
+      <ul style="margin:0; padding-left:18px; line-height:1.6; color:var(--muted);">
+        <li>Kód suroviny, název, kategorie, základní jednotka, koeficient přepočtu.</li>
+        <li>Minimální a cílová zásoba pro automatické upozornění.</li>
+        <li>Dodavatel, poslední nákupní cena, interní poznámky HACCP.</li>
+      </ul>
+    </div>
+    <table>
+      <thead><tr><th>Pole</th><th>Účel</th><th>Příklad hodnoty</th></tr></thead>
+      <tbody>
+        <tr><td>ingredient_code</td><td>Jednoznačný interní identifikátor položky.</td><td>EGG-L-30</td></tr>
+        <tr><td>unit</td><td>Základní měrná jednotka evidence skladových pohybů.</td><td>ks / kg / l</td></tr>
+        <tr><td>reorder_level</td><td>Hranice, při které systém hlásí nutnost doobjednávky.</td><td>12.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

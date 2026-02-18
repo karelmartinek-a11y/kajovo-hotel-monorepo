@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Pohyby skladu{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Auditní stopa skladových pohybů</strong></div>
+  <div class="card-body stack">
+    <div class="panel">
+      <form class="grid three" method="get" action="#">
+        <div class="field"><label>Období od</label><input type="date" /></div>
+        <div class="field"><label>Období do</label><input type="date" /></div>
+        <div class="field"><label>Typ pohybu</label><select><option>Příjem</option><option>Výdej</option><option>Inventurní korekce</option></select></div>
+      </form>
+    </div>
+    <table>
+      <thead><tr><th>Čas</th><th>Položka</th><th>Typ</th><th>Množství</th><th>Uživatel</th><th>Poznámka</th></tr></thead>
+      <tbody>
+        <tr><td>08:15</td><td>Šunka 95%</td><td>Příjem</td><td>+4.0 kg</td><td>Směna AM</td><td>Dodávka #2026-014</td></tr>
+        <tr><td>09:42</td><td>Vejce L</td><td>Výdej</td><td>-2.0 plato</td><td>Kuchyně</td><td>Snídaňový servis</td></tr>
+        <tr><td>11:05</td><td>Máslo</td><td>Inventura</td><td>-0.2 kg</td><td>Manager</td><td>Korekce po kontrole</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,15 @@
+<nav class="stack" aria-label="Admin navigace">
+  <a class="btn {{ 'primary' if active_nav == 'dashboard' else 'secondary' }}" href="/admin">Přehled systému</a>
+  <a class="btn {{ 'primary' if active_nav in ['findings','issues','reports'] else 'secondary' }}" href="/admin/reports">Hlášení & incidenty</a>
+  <a class="btn {{ 'primary' if active_nav == 'users' else 'secondary' }}" href="/admin/users">Uživatelé portálu</a>
+  <a class="btn {{ 'primary' if active_nav == 'settings' else 'secondary' }}" href="/admin/settings">SMTP nastavení</a>
+  <a class="btn {{ 'primary' if active_nav == 'breakfast' else 'secondary' }}" href="/admin/breakfast">Snídaňový import</a>
+  <a class="btn {{ 'primary' if active_nav == 'profile' else 'secondary' }}" href="/admin/profile">Můj profil</a>
+  <div class="panel">
+    <div style="font-weight:700; margin-bottom:8px;">Bezpečnost relace</div>
+    <form method="post" action="/admin/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button class="btn danger" style="width:100%;" type="submit">Odhlásit administrátora</button>
+    </form>
+  </div>
+</nav>

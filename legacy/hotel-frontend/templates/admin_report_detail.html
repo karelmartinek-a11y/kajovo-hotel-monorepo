@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Detail hlášení{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head" style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+    <strong>Hlášení #{{ report.id }}</strong>
+    <span class="badge {{ 'ok' if report.status == 'DONE' else '' }}">{{ report.status }}</span>
+  </div>
+  <div class="card-body stack">
+    <div class="grid two">
+      <div class="panel">
+        <div><strong>Typ:</strong> {{ report.type }}</div>
+        <div><strong>Pokoj:</strong> {{ report.room }}</div>
+        <div><strong>Vytvořeno:</strong> {{ report.created_at_human }}</div>
+        <div><strong>Zařízení:</strong> {{ report.created_by_device_id }}</div>
+      </div>
+      <div class="panel">
+        <div><strong>Foto:</strong> {{ report.photo_count }}</div>
+        <div><strong>Vyřešeno:</strong> {{ report.done_at_human or '—' }}</div>
+        <div><strong>Vyřídil:</strong> {{ report.done_by_device_id or 'admin' if report.done_at_human else '—' }}</div>
+        <div><strong>Doba řešení:</strong> {{ report.duration_hours ~ ' h' if report.duration_hours is not none else '—' }}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="font-weight:700; margin-bottom:6px;">Popis hlášení</div>
+      <div style="white-space:pre-wrap; line-height:1.5;">{{ report.description }}</div>
+    </div>
+
+    <div class="grid two">
+      <form method="post" action="/admin/reports/{{ report.id }}/done" class="panel">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <div style="font-weight:700; margin-bottom:8px;">Uzavření reportu</div>
+        <p class="hint">Použijte, pokud je incident vyřešen a není nutná další akce.</p>
+        <button class="btn primary" type="submit">Označit jako DONE</button>
+      </form>
+      <form method="post" action="/admin/reports/{{ report.id }}/reopen" class="panel">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <div style="font-weight:700; margin-bottom:8px;">Re-open reportu</div>
+        <p class="hint">Znovu otevře incident pro následné řešení.</p>
+        <button class="btn warn" type="submit">Znovu otevřít</button>
+      </form>
+    </div>
+
+    <form method="post" action="/admin/reports/{{ report.id }}/delete" class="panel">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:700;">Trvalé smazání hlášení</div>
+          <div class="hint">Smaže report i navázaná média (pokud existují).</div>
+        </div>
+        <button class="btn danger" type="submit" onclick="return confirm('Opravdu chcete smazat toto hlášení?');">Smazat report</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><strong>Fotodokumentace</strong></div>
+  <div class="card-body grid three">
+    {% for photo in photos %}
+      <a class="panel" href="/admin/media/{{ photo.id }}/original" target="_blank" style="text-decoration:none;color:inherit;">
+        <img src="/admin/media/{{ photo.id }}/thumb" alt="Foto {{ photo.id }}" style="display:block;width:100%;border-radius:8px;border:1px solid var(--line);" />
+        <div style="margin-top:8px;font-size:13px;">Foto #{{ photo.id }} · {{ photo.size_kb }} kB</div>
+      </a>
+    {% else %}
+      <div class="panel">K hlášení nejsou připojené žádné fotografie.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head"><strong>Historie změn</strong></div>
+  <div class="card-body">
+    <table>
+      <thead><tr><th>Akce</th><th>Kdy</th><th>Kdo</th><th>Poznámka</th></tr></thead>
+      <tbody>
+        {% for row in history %}
+        <tr>
+          <td>{{ row.action_label }}</td>
+          <td>{{ row.at_human }}</td>
+          <td>{{ 'Administrátor' if row.by_admin else (row.by_device_id or 'Systém') }}</td>
+          <td>{{ row.note or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">Historie je zatím prázdná.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,88 @@
+:root{
+  --hn-bg:#f3f3f3;
+  --hn-surface:rgba(255,255,255,.96);
+  --hn-ink:#151515;
+  --hn-muted:#666;
+  --hn-line:rgba(21,21,21,.12);
+  --hn-red:#ff0000;
+  --hn-red-deep:#b80000;
+  --hn-black:#1a1a1a;
+  --hn-radius:18px;
+  --hn-shadow:0 14px 36px rgba(0,0,0,.12);
+  --hn-shell-max:1240px;
+}
+
+@keyframes hnFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes hnGlow{0%,100%{box-shadow:0 0 0 0 rgba(184,0,0,.14)}50%{box-shadow:0 0 0 10px rgba(184,0,0,.05)}}
+
+body{background:radial-gradient(1200px 600px at 0 -20%, rgba(255,0,0,.12), transparent 60%),linear-gradient(180deg,var(--hn-bg),#fff);color:var(--hn-ink)}
+
+.kajovo-container,.container{max-width:var(--hn-shell-max);margin:0 auto}
+.kajovo-shell,.admin-shell{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+.kajovo-sidebar{position:sticky;top:76px}
+
+.kajovo-surface,.card,.panel,.admin-panel{background:var(--hn-surface);border:1px solid var(--hn-line);border-radius:var(--hn-radius);box-shadow:var(--hn-shadow);animation:hnFadeUp .24s ease both}
+.kajovo-card,.pad{padding:18px}
+
+.kajovo-pagehead h1{font-size:28px;font-weight:900;letter-spacing:-.02em}
+.kajovo-subtitle,.mini,.help{color:var(--hn-muted)}
+
+.kajovo-btn,.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;padding:10px 14px;font-weight:760;border:1px solid var(--hn-line);background:#fff;color:var(--hn-ink);text-decoration:none;transition:transform .14s ease, box-shadow .14s ease}
+.kajovo-btn:hover,.btn:hover{transform:translateY(-1px)}
+.kajovo-btn--primary,.btn.solid{background:linear-gradient(180deg,var(--hn-red),var(--hn-red-deep));border-color:rgba(184,0,0,.5);color:#fff;animation:hnGlow 2.4s ease-in-out infinite}
+.kajovo-btn--secondary{background:#fff}
+
+.kajovo-form,.stack{display:grid;gap:12px}
+.kajovo-field label,.label{display:block;font-size:12px;font-weight:700;color:var(--hn-muted);margin-bottom:6px}
+.kajovo-field input,.kajovo-field textarea,.kajovo-field select,.input{width:100%;border:1px solid var(--hn-line);border-radius:12px;padding:10px 12px;background:#fff}
+.kajovo-field input:focus,.kajovo-field textarea:focus,.kajovo-field select:focus,.input:focus{outline:none;border-color:rgba(184,0,0,.5);box-shadow:0 0 0 4px rgba(184,0,0,.13)}
+
+.kajovo-alert{border-radius:12px;padding:12px 14px;border:1px solid var(--hn-line)}
+.kajovo-alert--critical{background:#fff1f2;border-color:#fecdd3;color:#9f1239}
+.kajovo-alert--success{background:#ecfdf3;border-color:#86efac;color:#14532d}
+
+.table,.kajovo-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--hn-line);border-radius:14px;overflow:hidden;background:#fff}
+.table th,.table td,.kajovo-table th,.kajovo-table td{padding:10px 12px;border-bottom:1px solid var(--hn-line)}
+.table th,.kajovo-table th{background:rgba(21,21,21,.05);color:var(--hn-muted);font-weight:800;text-align:left}
+
+.pill,.badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:800;border:1px solid var(--hn-line);background:#fff}
+.badge.active{background:rgba(255,0,0,.08);border-color:rgba(184,0,0,.4)}
+.b-dot{width:8px;height:8px;border-radius:50%;background:var(--hn-red)}
+
+.admin-menu-shell{background:linear-gradient(160deg,#171717,#2c2c2c);padding:1px;border-radius:22px;box-shadow:0 24px 52px rgba(0,0,0,.3)}
+.admin-menu{background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(247,247,247,.98));border-radius:21px;padding:14px}
+.admin-menu__brand{border-bottom:1px solid var(--hn-line);padding-bottom:12px;margin-bottom:12px}
+.admin-menu__logo{max-width:200px;width:100%;height:auto}
+.admin-menu__subtitle{font-size:12px;color:var(--hn-muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+.admin-menu__nav{display:grid;gap:7px}
+.admin-menu__link{display:block;padding:10px 12px;border-radius:12px;border:1px solid var(--hn-line);background:#fff;text-decoration:none;font-weight:700;color:var(--hn-ink)}
+.admin-menu__link[aria-current="page"]{background:linear-gradient(140deg,var(--hn-red),var(--hn-red-deep));color:#fff;border-color:rgba(184,0,0,.5)}
+.admin-menu__logout{margin-top:12px;padding-top:12px;border-top:1px solid var(--hn-line)}
+.admin-menu__logout-button{width:100%}
+
+.kajovo-brand-rail{background:linear-gradient(100deg,#111,#2a2a2a 45%,#444)}
+.kajovo-signage{background:linear-gradient(135deg,var(--hn-red),var(--hn-red-deep));border:1px solid rgba(255,255,255,.3)}
+
+.portal-hero{display:grid;gap:16px}
+.portal-hero__header{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.portal-hero__logo{height:56px;width:auto}
+
+@media (min-width:1180px){.kajovo-container,.container{padding:22px 18px 50px}}
+@media (min-width:768px) and (max-width:1179px){.kajovo-shell,.admin-shell{grid-template-columns:230px 1fr}.grid-2{grid-template-columns:1fr}}
+@media (max-width:767px){body{padding-top:60px}.kajovo-brand-rail{height:60px}.kajovo-brand-rail__inner{padding:0 10px}.kajovo-product-wordmark{max-width:150px;height:18px}.kajovo-floating-logo{width:38px;height:38px}.kajovo-floating-logo img{width:22px;height:22px}.kajovo-shell,.admin-shell{grid-template-columns:1fr}.kajovo-container,.container{padding:12px 10px 80px}.kajovo-card,.pad{padding:12px}.grid-2{grid-template-columns:1fr}.row,.rowline{flex-wrap:wrap}.btn,.kajovo-btn{width:100%}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+
+.kajovo-brand-rail{position:fixed;top:0;left:0;right:0;height:56px;z-index:10000}
+.kajovo-brand-rail__inner{height:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:var(--hn-shell-max);margin:0 auto;padding:0 14px}
+.kajovo-brand-rail__product{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.95);font-weight:700}
+.kajovo-product-logo{width:28px;height:28px;object-fit:contain}
+.kajovo-product-wordmark{height:22px;width:auto;max-width:250px;object-fit:contain}
+.kajovo-product-name{white-space:nowrap}
+.kajovo-signage{height:26px;border-radius:999px;padding:0 12px;display:flex;align-items:center}
+.kajovo-signage__text{color:#fff;font-size:12px;font-weight:800;letter-spacing:.02em}
+body{padding-top:56px}
+.kajovo-floating-logo{position:fixed;right:12px;bottom:12px;width:42px;height:42px;border-radius:12px;background:#fff;border:1px solid rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;z-index:10010;box-shadow:0 10px 24px rgba(0,0,0,.2)}
+.kajovo-floating-logo img{width:26px;height:26px;object-fit:contain}
+.kajovo-alert{margin-bottom:10px}
+.kajovo-actions{display:flex;gap:10px;flex-wrap:wrap}

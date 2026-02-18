@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Portál přihlášení{% endblock %}
+{% block hero_title %}Zaměstnanecký portál{% endblock %}
+{% block hero_subtitle %}Bezpečný vstup pro housekeeping, recepci, údržbu a snídaňový provoz.{% endblock %}
+{% block body_content %}
+<section class="card" style="max-width:560px;margin:0 auto;">
+  <div class="card-head"><strong>Přihlášení do portálu</strong></div>
+  <div class="card-body stack">
+    {% if error %}<div class="flash bad" style="margin:0;">{{ error }}</div>{% endif %}
+    <form method="post" action="/login" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="field"><label>E-mail</label><input type="email" name="email" required autocomplete="username" /></div>
+      <div class="field"><label>Heslo</label><input type="password" name="password" required autocomplete="current-password" /></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a href="/login/forgot">Zapomenuté heslo</a>
+        <button class="btn primary" type="submit">Přihlásit</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

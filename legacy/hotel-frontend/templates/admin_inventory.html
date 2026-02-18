@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Skladový rozcestník{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Skladové hospodářství — řídicí centrum</strong></div>
+  <div class="card-body grid three">
+    <article class="panel"><h3 style="margin:0 0 8px;">Suroviny</h3><p class="hint">Katalog ingrediencí, jednotky, minimální zásoby, archivace položek.</p><a class="btn secondary" href="/admin/inventory/ingredients">Otevřít správu surovin</a></article>
+    <article class="panel"><h3 style="margin:0 0 8px;">Stavy skladu</h3><p class="hint">Aktuální množství, predikce spotřeby a upozornění na kritické minimum.</p><a class="btn secondary" href="/admin/inventory/stock">Zobrazit stavy</a></article>
+    <article class="panel"><h3 style="margin:0 0 8px;">Pohyby</h3><p class="hint">Auditní stopa příjmů, výdejů a inventurních korekcí napříč směnami.</p><a class="btn secondary" href="/admin/inventory/movements">Projít pohyby</a></article>
+  </div>
+</section>
+{% endblock %}

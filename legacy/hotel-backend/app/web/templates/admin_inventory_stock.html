@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% set use_sidebar = true %}
+
+{% block sidebar %}
+  {% include "admin_sidebar.html" %}
+{% endblock %}
+{% set inventory_base_path = inventory_base_path|default('/admin/inventory') %}
+{% set readonly = readonly|default(false) %}
+{% set show_admin_sidebar = show_admin_sidebar|default(true) %}
+{% set back_url = back_url|default('') %}
+
+{% block title %}KájovoHotel — Skladové hospodářství (Stav skladu){% endblock %}
+
+{% block head_extra %}{% endblock %}
+
+{% block body_content %}
+<div class="page">
+  <div class="container admin-shell">
+    {% if show_admin_sidebar %}
+      {% include "admin_sidebar.html" %}
+    {% endif %}
+
+    <main class="admin-main">
+      <div class="stack" style="gap:14px;">
+        {% if back_url %}
+          <div class="rowline">
+            <a href="{{ back_url }}" class="btn">Zpět</a>
+          </div>
+        {% endif %}
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:20px;font-weight:850;">Skladové hospodářství</div>
+          <div style="color:var(--muted);">Suroviny pro snídaně + příjmové/výdajové karty.</div>
+        </div>
+
+        <div class="rowline" style="gap:10px;">
+          <a href="{{ inventory_base_path }}/ingredients" class="btn {% if inventory_section=='ingredients' %}solid{% endif %}">SPRÁVA SUROVIN</a>
+          <a href="{{ inventory_base_path }}/stock" class="btn {% if inventory_section=='stock' %}solid{% endif %}">STAV SKLADU</a>
+          <a href="{{ inventory_base_path }}/movements" class="btn {% if inventory_section=='movements' %}solid{% endif %}">POHYBY NA SKLADU</a>
+        </div>
+
+        <section class="card pad">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-weight:850;">Stav skladu</div>
+              <div class="mini" style="margin-top:4px;">Aktuální množství každé položky v základní jednotce i podle definovaných kusů.</div>
+            </div>
+            <button class="btn" type="button" onclick="window.print()">Export do PDF</button>
+          </div>
+          <div style="overflow:auto;margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Surovina</th>
+                  <th>1 ks</th>
+                  <th>Stav</th>
+                  <th>Základ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in inventory_summary %}
+                  <tr>
+                    <td>{{ row.name }}</td>
+                    <td>
+                      {% if row.per_piece %}
+                        {{ row.per_piece }} {{ row.unit_label }}
+                      {% else %}
+                        <span class="mini">nenastaveno</span>
+                      {% endif %}
+                    </td>
+                    <td style="font-weight:850;">{{ row.stock_text }}</td>
+                    <td class="mini">{{ row.base_qty }} {{ row.unit_label }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+{% endblock %}

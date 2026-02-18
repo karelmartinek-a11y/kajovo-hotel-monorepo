@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Portál domů{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Vítejte, {{ user.name }}</strong></div>
+  <div class="card-body stack">
+    <div class="panel">
+      <div><strong>E-mail:</strong> {{ user.email }}</div>
+      <div><strong>Role:</strong> {{ user.role }}</div>
+    </div>
+    <div class="grid two">
+      <a class="panel" href="/portal/report/find" style="text-decoration:none;color:inherit;"><h3 style="margin-top:0;">Nahlásit nález</h3><p class="hint">Evidence nalezených předmětů hostů a interní předání.</p></a>
+      <a class="panel" href="/portal/report/issue" style="text-decoration:none;color:inherit;"><h3 style="margin-top:0;">Nahlásit závadu</h3><p class="hint">Technické incidenty, škody a provozní odchylky.</p></a>
+    </div>
+    <form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button class="btn secondary" type="submit">Odhlásit se</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

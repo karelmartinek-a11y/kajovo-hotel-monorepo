@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+{% block title %}Stavy skladu{% endblock %}
+{% block sidebar %}{% include "admin_sidebar.html" %}{% endblock %}
+{% block body_content %}
+<section class="card">
+  <div class="card-head"><strong>Stavy skladu a kontrolní prahy</strong></div>
+  <div class="card-body grid two">
+    <article class="panel">
+      <h3 style="margin:0 0 8px;">Kontrolní dashboard</h3>
+      <p class="hint">Tato šablona je připravená pro napojení na živá data (zásoba, rezervace, predikce spotřeby).</p>
+      <ul style="margin:0; padding-left:18px; line-height:1.6; color:var(--muted);">
+        <li>Stav dnes vs. průměrná denní spotřeba.</li>
+        <li>Predikce dní do vyčerpání při aktuálním trendu.</li>
+        <li>Prioritní položky pro nejbližší objednávku.</li>
+      </ul>
+    </article>
+    <article class="panel">
+      <h3 style="margin:0 0 8px;">Příklad monitoringu</h3>
+      <table>
+        <thead><tr><th>Surovina</th><th>Stav</th><th>Minimum</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Vejce L</td><td>84 ks</td><td>60 ks</td><td><span class="badge ok">Stabilní</span></td></tr>
+          <tr><td>Mléko 3,5%</td><td>9 l</td><td>12 l</td><td><span class="badge bad">Objednat</span></td></tr>
+          <tr><td>Máslo</td><td>3,2 kg</td><td>2,5 kg</td><td><span class="badge">Sledovat</span></td></tr>
+        </tbody>
+      </table>
+    </article>
+  </div>
+</section>
+{% endblock %}

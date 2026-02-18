@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% set use_sidebar = true %}
+
+{% block sidebar %}
+  {% include "admin_sidebar.html" %}
+{% endblock %}
+
+{% block title %}KájovoHotel — Dashboard{% endblock %}
+
+{% block body_content %}
+<section class="kajovo-surface kajovo-card">
+  <div class="kajovo-pagehead">
+    <div>
+      <h1>Dashboard</h1>
+      <div class="kajovo-subtitle">Stav aplikace a rychlé přehledy</div>
+    </div>
+    <div class="kajovo-actions">
+      <a class="kajovo-btn kajovo-btn--secondary" href="{{ stats.api_base }}" target="_blank" rel="noreferrer">API</a>
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="kajovo-surface kajovo-card">
+      <div class="text-sm font-semibold text-slate-600">Otevřené závady</div>
+      <div class="mt-2 text-3xl font-extrabold tracking-tight">{{ stats.open_issues }}</div>
+      <div class="mt-3"><a class="kajovo-btn kajovo-btn--secondary" href="/admin/reports/issues">Zobrazit</a></div>
+    </div>
+    <div class="kajovo-surface kajovo-card">
+      <div class="text-sm font-semibold text-slate-600">Ztráty a nálezy</div>
+      <div class="mt-2 text-3xl font-extrabold tracking-tight">{{ stats.open_finds }}</div>
+      <div class="mt-3"><a class="kajovo-btn kajovo-btn--secondary" href="/admin/reports/findings">Zobrazit</a></div>
+    </div>
+    <div class="kajovo-surface kajovo-card">
+      <div class="text-sm font-semibold text-slate-600">Zdraví aplikace</div>
+      <div class="mt-2 text-3xl font-extrabold tracking-tight">OK</div>
+      <div class="mt-3"><a class="kajovo-btn kajovo-btn--secondary" href="/admin">Obnovit</a></div>
+    </div>
+  </div>
+
+  <div class="mt-5 text-sm text-slate-600">
+    Generováno: <span class="font-semibold text-slate-800">{{ stats.generated_at_human }}</span>
+  </div>
+</section>
+{% endblock %}

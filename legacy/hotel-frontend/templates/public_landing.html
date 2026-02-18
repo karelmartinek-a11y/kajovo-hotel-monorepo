@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}KájovoHotel · vstup{% endblock %}
+{% block hero_title %}Hotelový operační systém{% endblock %}
+{% block hero_subtitle %}Jednotný vstupní bod pro administraci, interní portál a provozní reporty.{% endblock %}
+{% block body_content %}
+<section class="grid two">
+  <article class="card">
+    <div class="card-head"><strong>Administrace</strong></div>
+    <div class="card-body stack">
+      <p class="hint" style="margin:0;">Rozšířené řízení provozu, správa uživatelů, audit hlášení, konfigurace SMTP a importů.</p>
+      <a class="btn primary" href="/admin">Vstoupit do administrace</a>
+    </div>
+  </article>
+  <article class="card">
+    <div class="card-head"><strong>Portál zaměstnanců</strong></div>
+    <div class="card-body stack">
+      <p class="hint" style="margin:0;">Nahlášení nálezů a závad z provozu v reálném čase.</p>
+      <a class="btn secondary" href="/login">Přihlásit se do portálu</a>
+    </div>
+  </article>
+</section>
+{% endblock %}

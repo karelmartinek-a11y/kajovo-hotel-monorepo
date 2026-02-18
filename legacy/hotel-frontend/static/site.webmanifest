@@ -1,0 +1,22 @@
+{
+  "name": "KájovoHotel — Hotel App",
+  "short_name": "KájovoHotel",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#FF0000",
+  "icons": [
+    {
+      "src": "/static/LOGO/assets/svg/logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/LOGO/assets/svg/logo-mark-dark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
