@@ -127,7 +127,7 @@ body {
 .k-nav-group-label {
   font-size: var(--k-font-size-xs);
   line-height: var(--k-line-height-xs);
-  color: var(--k-color-ink-muted);
+  color: var(--k-color-metal);
   margin-right: var(--k-spacing-2);
 }
 
@@ -199,7 +199,7 @@ body {
 .k-nav-empty {
   margin: 0;
   font-size: var(--k-font-size-sm);
-  color: var(--k-color-ink-muted);
+  color: var(--k-color-metal);
 }
 
 .k-nav-sr-only {
@@ -355,8 +355,6 @@ body {
   border-radius: var(--k-radius-2);
   letter-spacing: var(--k-letter-caps);
   font-weight: var(--k-weight-bold);
-  font-size: var(--k-font-size-lg);
-  line-height: var(--k-line-height-body);
   text-transform: uppercase;
   display: inline-flex;
   align-items: center;
@@ -428,7 +426,7 @@ body {
 
 .k-timeline-label {
   font-size: var(--k-font-size-xs);
-  color: var(--k-color-ink-muted);
+  color: var(--k-color-metal);
 }
 
 .k-timeline-value {
@@ -437,7 +435,7 @@ body {
 
 .k-timeline-description {
   font-size: var(--k-font-size-sm);
-  color: var(--k-color-ink-muted);
+  color: var(--k-color-metal);
 }
 
 
