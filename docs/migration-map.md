@@ -10,7 +10,7 @@
 
 | Legacy source path | Target path | Decision | Rationale |
 |---|---|---|---|
-| `legacy/hotel-backend/app/main.py` | `apps/kajovo-hotel-api/app/main.py` | **Rewrite (guided port)** | Current API app is a skeleton; keep FastAPI architecture but align imports, settings, and router composition to new app boundaries. |
+| `legacy/hotel-backend/app/main.py` | `apps/kajovo-hotel-api/app/main.py` | **Rewrite (guided port)** | API app keeps FastAPI architecture; continue aligning imports, settings, and router composition to new app boundaries. |
 | `legacy/hotel-backend/app/config.py` | `apps/kajovo-hotel-api/app/config.py` | **Rewrite** | Move to monorepo env conventions and remove legacy compatibility shims only after parity tests pass. |
 | `legacy/hotel-backend/app/db/*` | `apps/kajovo-hotel-api/app/db/*` | **Move-as-is (phase 1), then cleanup** | Preserve schema and migration history first to avoid data drift; refactor naming/type cleanup in phase 2. |
 | `legacy/hotel-backend/app/db/migrations/*` | `apps/kajovo-hotel-api/app/db/migrations/*` | **Move-as-is** | Alembic history must stay intact for reproducible upgrades. |

@@ -1,3 +1,3 @@
 # KájovoHotel Web
 
-Web application skeleton. UI must use @kajovo/ui and tokens in apps/kajovo-hotel.
+Web application using @kajovo/ui and design tokens in apps/kajovo-hotel.

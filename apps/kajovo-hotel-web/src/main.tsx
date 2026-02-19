@@ -124,7 +124,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 }
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
-const defaultServiceDate = '2026-02-19';
+const defaultServiceDate = new Date().toISOString().slice(0, 10);
 
 
 const IntroRoute = React.lazy(async () => {
@@ -359,7 +359,14 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
   if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
 
-  throw new Error(`Unsupported API call: ${method} ${path}`);
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    throw new Error(`API request failed: ${method} ${path} (${response.status})`);
+  }
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
 }
 
 
