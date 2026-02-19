@@ -1,0 +1,145 @@
+version: 0
+baseline:
+  source:
+    frontend: legacy/hotel-frontend
+    backend: legacy/hotel-backend
+  mode: read-only-forensics
+  no_copy: true
+
+modules:
+  - key: public_landing
+    routes: ["/"]
+    roles: [public]
+  - key: portal_auth
+    routes: ["/login", "/login/forgot", "/login/reset", "/logout", "/portal"]
+    roles: [portal_user]
+  - key: admin_dashboard
+    routes: ["/admin", "/admin/login", "/admin/dashboard"]
+    roles: [admin]
+  - key: reports
+    routes:
+      - /admin/reports
+      - /admin/reports/findings
+      - /admin/reports/issues
+      - /admin/reports/{report_id}
+      - /admin/reports/{report_id}/done
+      - /admin/reports/{report_id}/reopen
+      - /admin/reports/{report_id}/delete
+      - /admin/media/{photo_id}/{kind}
+    roles: [admin, device_active]
+  - key: breakfast
+    routes:
+      - /admin/breakfast
+      - /admin/breakfast/day
+      - /admin/breakfast/check
+      - /admin/breakfast/note
+      - /admin/breakfast/import
+      - /admin/breakfast/save
+      - /admin/breakfast/upload
+      - /admin/breakfast/test
+    roles: [admin, portal_breakfast]
+  - key: inventory
+    routes:
+      - /admin/inventory
+      - /admin/inventory/ingredients
+      - /admin/inventory/stock
+      - /admin/inventory/movements
+      - /admin/inventory/ingredient/create
+      - /admin/inventory/ingredient/{ingredient_id}/update
+      - /admin/inventory/ingredient/{ingredient_id}/delete
+      - /admin/inventory/ingredient/{ingredient_id}/pictogram
+      - /admin/inventory/cards/create
+      - /admin/inventory/cards/{card_id}/update
+      - /admin/inventory/cards/{card_id}/delete
+      - /admin/inventory/media/{ingredient_id}/{kind}
+    roles: [admin]
+  - key: users_settings_profile
+    routes:
+      - /admin/users
+      - /admin/users/create
+      - /admin/users/{user_id}/send-reset
+      - /admin/settings
+      - /admin/settings/smtp
+      - /admin/profile
+      - /admin/profile/password
+    roles: [admin]
+  - key: device_provisioning
+    routes:
+      - /device/register
+      - /device/status
+      - /device/{device_id}/status
+      - /device/challenge
+      - /device/verify
+    roles: [device_pre_registered, device_active]
+
+api_endpoints:
+  legacy_reports:
+    - method: POST
+      path: /reports
+      auth: device_token
+    - method: GET
+      path: /reports/open
+      auth: device_token
+    - method: POST
+      path: /reports/mark-done
+      auth: device_token
+    - method: GET
+      path: /reports/photos/{photo_id}/thumb
+      auth: device_token
+    - method: GET
+      path: /poll/new-since
+      auth: device_token
+  legacy_breakfast_api:
+    - method: GET
+      path: /day
+      auth: legacy_device_disabled
+    - method: POST
+      path: /check
+      auth: legacy_device_disabled
+    - method: POST
+      path: /import
+      auth: legacy_device_disabled
+    - method: POST
+      path: /note
+      auth: legacy_device_disabled
+  health:
+    - method: GET
+      path: /api/health
+      auth: none
+    - method: GET
+      path: /api/v1/health
+      auth: none
+    - method: GET
+      path: /api/version
+      auth: none
+
+roles:
+  - key: admin
+    permissions: ["admin:*", "reports:write", "inventory:write", "breakfast:write"]
+  - key: portal_housekeeping
+    permissions: ["portal:login", "reports:create"]
+  - key: portal_frontdesk
+    permissions: ["portal:login", "reports:create", "breakfast:read"]
+  - key: portal_maintenance
+    permissions: ["portal:login", "issues:update"]
+  - key: portal_breakfast
+    permissions: ["portal:login", "breakfast:check", "breakfast:note"]
+  - key: device_active
+    permissions: ["device:ingest", "reports:create", "reports:poll"]
+
+entities:
+  - admin_singleton
+  - portal_users
+  - portal_user_reset_tokens
+  - portal_smtp_settings
+  - devices
+  - reports
+  - report_photos
+  - report_history
+  - breakfast_mail_config
+  - breakfast_days
+  - breakfast_entries
+  - breakfast_fetch_status
+  - inventory_ingredients
+  - inventory_stock_cards
+  - inventory_stock_card_lines
