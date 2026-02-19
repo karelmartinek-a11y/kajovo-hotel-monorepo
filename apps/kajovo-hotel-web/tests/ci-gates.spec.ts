@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import ia from '../../kajovo-hotel/ux/ia.json' with { type: 'json' };
+import ia from '../../kajovo-hotel/ux/ia.json';
 
 const requiredStates = ['loading', 'empty', 'error', 'offline', 'maintenance', '404'] as const;
 

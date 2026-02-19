@@ -25,6 +25,5 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "playwright test"
-  },
-  "type": "module"
+  }
 }
