@@ -1,0 +1,728 @@
+schema_version: 1
+product:
+  legacy:
+    host: hotel.hcasc.cz
+    source_paths:
+      - legacy/hotel-frontend/**
+      - legacy/hotel-backend/**
+  target:
+    name: KájovoHotel
+parity:
+  ia:
+    modules:
+      - id: dashboard
+        label: Přehled
+        source: legacy
+        parity_status: baseline
+      - id: breakfast
+        label: Snídaně
+        source: legacy
+        parity_status: baseline
+      - id: lost_found
+        label: Ztráty a nálezy
+        source: legacy
+        parity_status: baseline
+      - id: issues
+        label: Závady
+        source: legacy
+        parity_status: baseline
+      - id: inventory
+        label: Skladové hospodářství
+        source: legacy
+        parity_status: baseline
+      - id: reports
+        label: Hlášení
+        source: legacy
+        parity_status: baseline
+      - id: users
+        label: Uživatelé
+        source: legacy
+        parity_status: baseline
+      - id: settings
+        label: Nastavení
+        source: legacy
+        parity_status: baseline
+      - id: profile
+        label: Profil
+        source: legacy
+        parity_status: baseline
+    routes:
+      - id: public_home
+        path: /
+        description: Veřejný vstup a rozcestník.
+        source: legacy
+        parity_status: baseline
+      - id: admin_home
+        path: /admin
+        description: Administrátorský vstup.
+        source: legacy
+        parity_status: baseline
+      - id: admin_login
+        path: /admin/login
+        description: Přihlášení administrátora.
+        source: legacy
+        parity_status: baseline
+      - id: portal_login
+        path: /login
+        description: Přihlášení do portálu.
+        source: legacy
+        parity_status: baseline
+      - id: portal_forgot
+        path: /login/forgot
+        description: Obnova hesla v portálu.
+        source: legacy
+        parity_status: baseline
+      - id: portal_reset
+        path: /login/reset
+        description: Nastavení nového hesla.
+        source: legacy
+        parity_status: baseline
+      - id: portal_home
+        path: /portal
+        description: Domovská stránka portálu.
+        source: legacy
+        parity_status: baseline
+      - id: logout
+        path: /logout
+        description: Odhlášení uživatele portálu.
+        source: legacy
+        parity_status: baseline
+      - id: admin_logout
+        path: /admin/logout
+        description: Odhlášení administrátora.
+        source: legacy
+        parity_status: baseline
+      - id: admin_reports
+        path: /admin/reports
+        description: Seznam hlášení.
+        source: legacy
+        parity_status: baseline
+      - id: admin_reports_findings
+        path: /admin/reports/findings
+        description: Přehled nálezů.
+        source: legacy
+        parity_status: baseline
+      - id: admin_reports_issues
+        path: /admin/reports/issues
+        description: Přehled závad.
+        source: legacy
+        parity_status: baseline
+      - id: admin_report_detail
+        path: /admin/reports/{report_id}
+        description: Detail hlášení.
+        source: legacy
+        parity_status: baseline
+      - id: admin_report_done
+        path: /admin/reports/{report_id}/done
+        description: Označení hlášení jako vyřešené.
+        source: legacy
+        parity_status: baseline
+      - id: admin_report_reopen
+        path: /admin/reports/{report_id}/reopen
+        description: Znovuotevření hlášení.
+        source: legacy
+        parity_status: baseline
+      - id: admin_report_delete
+        path: /admin/reports/{report_id}/delete
+        description: Smazání hlášení.
+        source: legacy
+        parity_status: baseline
+      - id: admin_media
+        path: /admin/media/{photo_id}/{kind}
+        description: Servírování médií a thumbnailů.
+        source: legacy
+        parity_status: baseline
+      - id: admin_users
+        path: /admin/users
+        description: Správa uživatelů.
+        source: legacy
+        parity_status: baseline
+      - id: admin_users_create
+        path: /admin/users/create
+        description: Vytvoření uživatele.
+        source: legacy
+        parity_status: baseline
+      - id: admin_users_send_reset
+        path: /admin/users/{user_id}/send-reset
+        description: Odeslání reset tokenu.
+        source: legacy
+        parity_status: baseline
+      - id: admin_settings
+        path: /admin/settings
+        description: Obecná nastavení.
+        source: legacy
+        parity_status: baseline
+      - id: admin_settings_smtp
+        path: /admin/settings/smtp
+        description: SMTP konfigurace.
+        source: legacy
+        parity_status: baseline
+      - id: admin_profile
+        path: /admin/profile
+        description: Profil administrátora.
+        source: legacy
+        parity_status: baseline
+      - id: admin_profile_password
+        path: /admin/profile/password
+        description: Změna hesla administrátora.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast
+        path: /admin/breakfast
+        description: Snídaňový panel.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_day
+        path: /admin/breakfast/day
+        description: Denní přehled snídaní.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_check
+        path: /admin/breakfast/check
+        description: Check/uncheck položek snídaně.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_note
+        path: /admin/breakfast/note
+        description: Poznámky ke snídani.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_import
+        path: /admin/breakfast/import
+        description: Import snídaňových dat.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_save
+        path: /admin/breakfast/save
+        description: Uložení snídaňového stavu.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_upload
+        path: /admin/breakfast/upload
+        description: Upload podkladů ke snídaním.
+        source: legacy
+        parity_status: baseline
+      - id: admin_breakfast_test
+        path: /admin/breakfast/test
+        description: Test importního kanálu.
+        source: legacy
+        parity_status: baseline
+      - id: admin_inventory
+        path: /admin/inventory
+        description: Rozcestník skladu.
+        source: legacy
+        parity_status: baseline
+      - id: admin_inventory_ingredients
+        path: /admin/inventory/ingredients
+        description: Ingredience skladu.
+        source: legacy
+        parity_status: baseline
+      - id: admin_inventory_stock
+        path: /admin/inventory/stock
+        description: Stav zásob.
+        source: legacy
+        parity_status: baseline
+      - id: admin_inventory_movements
+        path: /admin/inventory/movements
+        description: Pohyby skladu.
+        source: legacy
+        parity_status: baseline
+      - id: web_intro
+        path: /intro
+        description: Utility intro stránka nového webu.
+        source: current
+        parity_status: unknown
+      - id: web_offline
+        path: /offline
+        description: Utility offline stránka nového webu.
+        source: current
+        parity_status: unknown
+      - id: web_maintenance
+        path: /maintenance
+        description: Utility maintenance stránka nového webu.
+        source: current
+        parity_status: unknown
+      - id: web_not_found
+        path: /404
+        description: Utility not-found stránka nového webu.
+        source: current
+        parity_status: unknown
+      - id: web_dalsi
+        path: /dalsi
+        description: Overflow routa navigace.
+        source: current
+        parity_status: unknown
+  api:
+    endpoints:
+      - id: breakfast_day
+        method: GET
+        path: /v1/breakfast/day
+        source: legacy
+        parity_status: baseline
+      - id: breakfast_check
+        method: POST
+        path: /v1/breakfast/check
+        source: legacy
+        parity_status: baseline
+      - id: breakfast_import
+        method: POST
+        path: /v1/breakfast/import
+        source: legacy
+        parity_status: baseline
+      - id: breakfast_note
+        method: POST
+        path: /v1/breakfast/note
+        source: legacy
+        parity_status: baseline
+      - id: reports_create
+        method: POST
+        path: /reports
+        source: legacy
+        parity_status: baseline
+      - id: reports_open
+        method: GET
+        path: /reports/open
+        source: legacy
+        parity_status: baseline
+      - id: reports_mark_done
+        method: POST
+        path: /reports/mark-done
+        source: legacy
+        parity_status: baseline
+      - id: reports_thumb
+        method: GET
+        path: /reports/photos/{photo_id}/thumb
+        source: legacy
+        parity_status: baseline
+      - id: reports_poll_new_since
+        method: GET
+        path: /poll/new-since
+        source: legacy
+        parity_status: baseline
+      - id: device_register
+        method: POST
+        path: /device/register
+        source: legacy
+        parity_status: baseline
+      - id: device_status
+        method: GET
+        path: /device/status
+        source: legacy
+        parity_status: baseline
+      - id: device_status_by_id
+        method: GET
+        path: /device/{device_id}/status
+        source: legacy
+        parity_status: baseline
+      - id: device_challenge
+        method: POST
+        path: /device/challenge
+        source: legacy
+        parity_status: baseline
+      - id: device_verify
+        method: POST
+        path: /device/verify
+        source: legacy
+        parity_status: baseline
+      - id: health_api
+        method: GET
+        path: /api/health
+        source: legacy
+        parity_status: baseline
+      - id: health_version
+        method: GET
+        path: /api/version
+        source: legacy
+        parity_status: baseline
+      - id: health_api_v1
+        method: GET
+        path: /api/v1/health
+        source: legacy
+        parity_status: baseline
+      - id: internal_media_auth
+        method: GET
+        path: /api/internal/media-auth
+        source: legacy
+        parity_status: baseline
+      - id: api_v1_breakfast_list
+        method: GET
+        path: /api/v1/breakfast
+        source: current
+        parity_status: unknown
+      - id: api_v1_breakfast_create
+        method: POST
+        path: /api/v1/breakfast
+        source: current
+        parity_status: unknown
+      - id: api_v1_breakfast_summary
+        method: GET
+        path: /api/v1/breakfast/daily-summary
+        source: current
+        parity_status: unknown
+      - id: api_v1_breakfast_get
+        method: GET
+        path: /api/v1/breakfast/{order_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_breakfast_update
+        method: PUT
+        path: /api/v1/breakfast/{order_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_breakfast_delete
+        method: DELETE
+        path: /api/v1/breakfast/{order_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_inventory_list
+        method: GET
+        path: /api/v1/inventory
+        source: current
+        parity_status: unknown
+      - id: api_v1_inventory_create
+        method: POST
+        path: /api/v1/inventory
+        source: current
+        parity_status: unknown
+      - id: api_v1_inventory_get
+        method: GET
+        path: /api/v1/inventory/{item_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_inventory_update
+        method: PUT
+        path: /api/v1/inventory/{item_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_inventory_delete
+        method: DELETE
+        path: /api/v1/inventory/{item_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_inventory_movement
+        method: POST
+        path: /api/v1/inventory/{item_id}/movements
+        source: current
+        parity_status: unknown
+      - id: api_v1_issues_list
+        method: GET
+        path: /api/v1/issues
+        source: current
+        parity_status: unknown
+      - id: api_v1_issues_create
+        method: POST
+        path: /api/v1/issues
+        source: current
+        parity_status: unknown
+      - id: api_v1_issues_get
+        method: GET
+        path: /api/v1/issues/{issue_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_issues_update
+        method: PUT
+        path: /api/v1/issues/{issue_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_issues_delete
+        method: DELETE
+        path: /api/v1/issues/{issue_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_lost_found_list
+        method: GET
+        path: /api/v1/lost-found
+        source: current
+        parity_status: unknown
+      - id: api_v1_lost_found_create
+        method: POST
+        path: /api/v1/lost-found
+        source: current
+        parity_status: unknown
+      - id: api_v1_lost_found_get
+        method: GET
+        path: /api/v1/lost-found/{item_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_lost_found_update
+        method: PUT
+        path: /api/v1/lost-found/{item_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_lost_found_delete
+        method: DELETE
+        path: /api/v1/lost-found/{item_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_reports_list
+        method: GET
+        path: /api/v1/reports
+        source: current
+        parity_status: unknown
+      - id: api_v1_reports_create
+        method: POST
+        path: /api/v1/reports
+        source: current
+        parity_status: unknown
+      - id: api_v1_reports_get
+        method: GET
+        path: /api/v1/reports/{report_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_reports_update
+        method: PUT
+        path: /api/v1/reports/{report_id}
+        source: current
+        parity_status: unknown
+      - id: api_v1_reports_delete
+        method: DELETE
+        path: /api/v1/reports/{report_id}
+        source: current
+        parity_status: unknown
+      - id: health_root
+        method: GET
+        path: /health
+        source: current
+        parity_status: unknown
+      - id: ready_root
+        method: GET
+        path: /ready
+        source: current
+        parity_status: unknown
+  data:
+    entities:
+      - id: admin_singleton
+        table: admin_singleton
+        source: legacy
+        parity_status: baseline
+      - id: portal_users
+        table: portal_users
+        source: legacy
+        parity_status: baseline
+      - id: portal_user_reset_tokens
+        table: portal_user_reset_tokens
+        source: legacy
+        parity_status: baseline
+      - id: portal_smtp_settings
+        table: portal_smtp_settings
+        source: legacy
+        parity_status: baseline
+      - id: devices
+        table: devices
+        source: legacy
+        parity_status: baseline
+      - id: report
+        table: report
+        source: legacy
+        parity_status: baseline
+      - id: report_history
+        table: report_history
+        source: legacy
+        parity_status: baseline
+      - id: report_photo
+        table: report_photo
+        source: legacy
+        parity_status: baseline
+      - id: breakfast_entry
+        table: breakfast_entry
+        source: legacy
+        parity_status: baseline
+      - id: breakfast_check
+        table: breakfast_check
+        source: legacy
+        parity_status: baseline
+      - id: inventory_ingredient
+        table: inventory_ingredient
+        source: legacy
+        parity_status: baseline
+      - id: inventory_card
+        table: inventory_card
+        source: legacy
+        parity_status: baseline
+      - id: inventory_card_item
+        table: inventory_card_item
+        source: legacy
+        parity_status: baseline
+      - id: reports
+        table: reports
+        source: current
+        parity_status: unknown
+      - id: breakfast_orders
+        table: breakfast_orders
+        source: current
+        parity_status: unknown
+      - id: lost_found_items
+        table: lost_found_items
+        source: current
+        parity_status: unknown
+      - id: issues
+        table: issues
+        source: current
+        parity_status: unknown
+      - id: inventory_items
+        table: inventory_items
+        source: current
+        parity_status: unknown
+      - id: inventory_movements
+        table: inventory_movements
+        source: current
+        parity_status: unknown
+      - id: inventory_audit_logs
+        table: inventory_audit_logs
+        source: current
+        parity_status: unknown
+      - id: audit_trail
+        table: audit_trail
+        source: current
+        parity_status: unknown
+    migrations:
+      - id: legacy_0001_device_roles
+        table: devices
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0002_breakfast_tables
+        table: breakfast_entry
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0003_breakfast_checks
+        table: breakfast_check
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0004_breakfast_admin_config
+        table: breakfast_admin_config
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0005_breakfast_guest_name
+        table: breakfast_entry
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0006_breakfast_note
+        table: breakfast_entry
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0007_inventory_qty_pieces
+        table: inventory_ingredient
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0008_portal_users_smtp
+        table: portal_users
+        source: legacy
+        parity_status: baseline
+      - id: legacy_0009_auth_refactor
+        table: portal_user_reset_tokens
+        source: legacy
+        parity_status: baseline
+      - id: current_0001_create_reports_table
+        table: reports
+        source: current
+        parity_status: unknown
+      - id: current_0002_create_breakfast_orders_table
+        table: breakfast_orders
+        source: current
+        parity_status: unknown
+      - id: current_0003_create_lost_found_items_table
+        table: lost_found_items
+        source: current
+        parity_status: unknown
+      - id: current_0004_create_issues_table
+        table: issues
+        source: current
+        parity_status: unknown
+      - id: current_0005_create_inventory_tables
+        table: inventory_items
+        source: current
+        parity_status: unknown
+      - id: current_0006_add_updated_at_to_reports
+        table: reports
+        source: current
+        parity_status: unknown
+      - id: current_0007_create_audit_trail_table
+        table: audit_trail
+        source: current
+        parity_status: unknown
+      - id: current_0008_add_actor_identity_to_audit_trail
+        table: audit_trail
+        source: current
+        parity_status: unknown
+  jobs:
+    scheduled:
+      - id: breakfast_fetch_loop
+        trigger: daily time-window background loop
+        source: legacy
+        parity_status: baseline
+      - id: daily_summary_refresh
+        trigger: unknown
+        source: current
+        parity_status: unknown
+    ingest:
+      - id: breakfast_email_pdf_ingest
+        trigger: IMAP mailbox polling
+        source: legacy
+        parity_status: baseline
+      - id: breakfast_manual_pdf_upload
+        trigger: admin upload action
+        source: legacy
+        parity_status: baseline
+  rbac:
+    roles:
+      - id: admin
+        source: legacy+current
+        parity_status: baseline
+      - id: manager
+        source: current
+        parity_status: unknown
+      - id: reception
+        source: current
+        parity_status: unknown
+      - id: maintenance
+        source: current
+        parity_status: unknown
+      - id: warehouse
+        source: current
+        parity_status: unknown
+      - id: device_guest
+        source: legacy
+        parity_status: baseline
+      - id: device_staff
+        source: legacy
+        parity_status: baseline
+      - id: portal_user
+        source: legacy
+        parity_status: baseline
+    permissions:
+      - id: dashboard:read
+        source: current
+        parity_status: unknown
+      - id: breakfast:read
+        source: current
+        parity_status: unknown
+      - id: breakfast:write
+        source: current
+        parity_status: unknown
+      - id: lost_found:read
+        source: current
+        parity_status: unknown
+      - id: lost_found:write
+        source: current
+        parity_status: unknown
+      - id: issues:read
+        source: current
+        parity_status: unknown
+      - id: issues:write
+        source: current
+        parity_status: unknown
+      - id: inventory:read
+        source: current
+        parity_status: unknown
+      - id: inventory:write
+        source: current
+        parity_status: unknown
+      - id: reports:read
+        source: current
+        parity_status: unknown
+      - id: reports:write
+        source: current
+        parity_status: unknown
+conventions:
+  url_compatibility: true
+  language: cs-CZ
