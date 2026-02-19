@@ -5,6 +5,7 @@
   --k-color-ink-secondary: #333333;
   --k-color-ink-muted: #666666;
   --k-color-metal: #737578;
+  --k-color-metal-accessible: #707070;
   --k-color-subtle-metal: #9aa0a6;
   --k-color-surface: #ffffff;
   --k-color-surface-raised: #f5f5f5;
@@ -127,7 +128,7 @@ body {
 .k-nav-group-label {
   font-size: var(--k-font-size-xs);
   line-height: var(--k-line-height-xs);
-  color: var(--k-color-metal);
+  color: var(--k-color-metal-accessible);
   margin-right: var(--k-spacing-2);
 }
 
@@ -240,8 +241,8 @@ body {
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);
   padding: var(--k-spacing-4);
-}
   line-height: var(--k-line-height-body);
+}
 
 .k-state-view {
   border: 1px dashed var(--k-color-border);
@@ -255,8 +256,8 @@ body {
   justify-items: center;
   gap: var(--k-spacing-3);
   transition: border-color var(--k-motion-duration-fast) var(--k-motion-ease-standard);
-}
   line-height: var(--k-line-height-body);
+}
 
 .k-state-view h2 {
   margin-top: 0;
@@ -287,8 +288,8 @@ body {
   padding: var(--k-spacing-2) var(--k-spacing-3);
   font: inherit;
   background: var(--k-color-surface-raised);
-}
   line-height: var(--k-line-height-body);
+}
 
 .k-button {
   border: 1px solid var(--k-color-ink);
@@ -340,8 +341,8 @@ body {
   border-bottom: 1px solid var(--k-color-border);
   text-align: left;
   font-size: var(--k-font-size-sm);
-}
   line-height: var(--k-line-height-body);
+}
 
 .k-table tbody tr:last-child td {
   border-bottom: 0;
@@ -359,6 +360,8 @@ body {
   border-radius: var(--k-radius-2);
   letter-spacing: var(--k-letter-caps);
   font-weight: var(--k-weight-bold);
+  font-size: var(--k-font-size-lg);
+  line-height: var(--k-line-height-sm);
   text-transform: uppercase;
   display: inline-flex;
   align-items: center;
