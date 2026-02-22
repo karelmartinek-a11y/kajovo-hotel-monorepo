@@ -145,6 +145,23 @@ modules:
     links:
       - "docs/regen/05-admin-users/verification.md"
 
+  - module: auth_constraints_fixed_admin_immutable_password
+    required_behavior: "Fixed admin + immutable password model; forgot admin password pouze hint email flow"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/security/admin_auth.py"
+      docs:
+        - "docs/regen/07-auth/verification.md"
+        - "docs/regen/07-auth/security-notes.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
+      - "apps/kajovo-hotel-api/app/services/mail.py"
+      - "apps/kajovo-hotel-api/tests/test_auth_constraints.py"
+      - "apps/kajovo-hotel-admin/src/main.tsx"
+    links:
+      - "docs/regen/07-auth/verification.md"
+
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
     evidence:
