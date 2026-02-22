@@ -1406,6 +1406,7 @@ function AppRoutes(): JSX.Element {
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
   });
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
+  const panelLayout = auth.role === 'admin' ? 'admin' : 'portal';
 
   return (
     <AppShell
@@ -1413,6 +1414,7 @@ function AppRoutes(): JSX.Element {
       navigationRules={ia.navigation.rules}
       navigationSections={ia.navigation.sections}
       currentPath={location.pathname}
+      panelLayout={panelLayout}
     >
       <Routes>
         <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={auth.role} userId={auth.userId} />} />
