@@ -33,7 +33,7 @@
 - FAIL (environment): `pnpm typecheck`
   - Důvod: v prostředí chybí `node_modules` / frontend závislosti (`react`, `@playwright/test`, atd.), takže TypeScript lint pro web/admin není spustitelný bez instalace dependencies.
 
-## E) Rizika / known limits
+## E) Rizika/known limits
 - Top-level `detail` je zatím zachováno kvůli kompatibilitě starších klientů; při budoucím hard cutu bude potřeba migration notice.
 - `pnpm typecheck` je v tomto běhu blokovaný chybějícími frontend dependencies v prostředí runneru.
 
