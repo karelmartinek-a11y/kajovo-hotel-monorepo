@@ -57,3 +57,27 @@
 
 ### Rizika / known limits
 - Pro PR diff je stále potřeba dostupný `origin/<base>`; při selhání se používá fallback lokálního diffu.
+
+
+---
+
+## Oprava CI failu po merge (follow-up 2)
+
+### Cíl
+- Opravit pád `guardrails` jobu v CI: `pnpm contract:check` musí mít v jobu připravené Python dependency.
+
+### Jak ověřeno
+1. `pnpm ci:policy`
+   - Očekávání: sentinel projde.
+2. `pnpm ci:verification-doc`
+   - Očekávání: mimo PR korektní skip.
+3. `pnpm typecheck`
+   - Očekávání: TS typecheck projde.
+
+### Co se změnilo
+- `.github/workflows/ci-gates.yml` (`guardrails` job):
+  - přidán `actions/setup-python@v5` s Python 3.11,
+  - přidána instalace minimálních API Python balíčků před `pnpm contract:check`.
+
+### Rizika / known limits
+- Lokálně nelze plně emulovat GitHub runner kontext včetně `origin/<base>` dostupnosti; finální validace probíhá v CI.

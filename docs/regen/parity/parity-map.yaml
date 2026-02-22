@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-02-23"
+updated_at: "2026-02-24"
 notes:
   - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
   - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
@@ -141,6 +141,7 @@ modules:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
       - "this-pr"
+      - "this-pr-fix2"
       - "this-pr-followup"
 
   - module: web_e2e_browser_bootstrap
