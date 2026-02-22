@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
@@ -11,7 +12,6 @@ from app.api.routes.users import router as users_router
 from app.config import get_settings
 from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
-from fastapi.responses import JSONResponse
 
 settings = get_settings()
 
