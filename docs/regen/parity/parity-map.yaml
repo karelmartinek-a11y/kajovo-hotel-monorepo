@@ -321,6 +321,17 @@ modules:
       - "apps/kajovo-hotel-api/openapi.json"
       - "packages/shared/src/generated/client.ts"
 
+  - module: web_nav_initial_media_state_stability
+    required_behavior: "Navigace má deterministický initial phone/tablet state bez prvního desktop renderu na tablet viewportu"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/15-nav-tablet-initial-state-fix/verification.md"
+    status: DONE
+    target_location:
+      - "packages/ui/src/navigation/ModuleNavigation.tsx"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:

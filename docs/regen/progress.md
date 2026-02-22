@@ -19,7 +19,7 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 12 | DONE | `docs/regen/12-api-test-tmpdir-fix` | `ORF-12 (current)` | None | Slot 12 uzavřen (API test DB tmpdir hardening). |
 | 13 | DONE | `docs/regen/13-uvicorn-cwd-fix` | `ORF-13 (current)` | None | Slot 13 uzavřen (uvicorn subprocess cwd fix). |
 | 14 | DONE | `docs/regen/14-contract-sync-fix` | `ORF-14 (current)` | None | Slot 14 uzavřen (OpenAPI + generated client contract sync). |
-| 15 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/15-*/verification.md` a provést prompt scope. |
+| 15 | DONE | `docs/regen/15-nav-tablet-initial-state-fix` | `ORF-15 (current)` | Playwright local binary missing in this environment. | Slot 15 uzavřen (nav initial media-state stabilization). |
 
 ## Mapping poznámky (mimo-plán / nested evidence)
 
