@@ -67,7 +67,10 @@ def read_session_cookie(cookie_value: str | None) -> dict[str, str] | None:
 def require_session(request: Request) -> dict[str, str]:
     session = read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
     if not session:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
     return session
 
 
@@ -78,8 +81,15 @@ def ensure_csrf(request: Request) -> None:
         return
     cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
     header_token = request.headers.get(CSRF_HEADER_NAME)
-    if not cookie_token or not header_token or not secrets.compare_digest(cookie_token, header_token):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
+    if (
+        not cookie_token
+        or not header_token
+        or not secrets.compare_digest(cookie_token, header_token)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="CSRF validation failed",
+        )
 
 
 def get_permissions(role: str) -> list[str]:

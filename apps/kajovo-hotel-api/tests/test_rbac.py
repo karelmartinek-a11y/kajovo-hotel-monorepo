@@ -74,7 +74,9 @@ def test_rbac_denies_breakfast_for_warehouse(api_base_url: str) -> None:
     assert data["detail"] == "Missing permission: breakfast:read"
 
 
-def test_rbac_write_denied_is_audited_with_actor_identity(api_base_url: str) -> None:
+def test_rbac_write_denied_is_audited_with_actor_identity(
+    api_base_url: str, api_db_path: Path
+) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -98,7 +100,7 @@ def test_rbac_write_denied_is_audited_with_actor_identity(api_base_url: str) -> 
     assert status == 403
     assert isinstance(data, dict)
 
-    db_path = Path("./test_kajovo_hotel.db")
+    db_path = api_db_path
     with sqlite3.connect(db_path) as connection:
         row = connection.execute(
             """
