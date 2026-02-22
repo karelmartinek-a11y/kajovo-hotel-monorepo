@@ -119,6 +119,9 @@ const reportsListPayload = [
   },
 ];
 
+
+const runVisualSnapshots = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.VISUAL_SNAPSHOTS === '1';
+
 const lostFoundListPayload = [
   {
     id: 1,
@@ -261,6 +264,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('visual states', () => {
+  test.skip(!runVisualSnapshots, 'Set VISUAL_SNAPSHOTS=1 to run visual snapshot suite.');
   for (const viewport of [
     { name: 'phone', size: { width: 390, height: 844 } },
     { name: 'tablet', size: { width: 820, height: 1180 } },

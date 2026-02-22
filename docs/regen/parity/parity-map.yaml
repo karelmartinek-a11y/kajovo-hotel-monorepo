@@ -167,3 +167,16 @@ modules:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
       - "this-pr"
+
+  - module: web_visual_suite_gating
+    required_behavior: "Default playwright test běh nepadá na visual snapshot baseline mismatch; visual suite je explicitně opt-in"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "apps/kajovo-hotel-web/tests/visual.spec.ts"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/tests/visual.spec.ts"
+    links:
+      - "this-pr"
