@@ -66,7 +66,9 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     status, users = api_request(opener, api_base_url, "/api/v1/users")
     assert status == 200
     assert isinstance(users, list)
-    assert any(isinstance(user, dict) and user.get("email") == "new.user@example.com" for user in users)
+    assert any(
+        isinstance(user, dict) and user.get("email") == "new.user@example.com" for user in users
+    )
 
     status, detail = api_request(opener, api_base_url, f"/api/v1/users/{user_id}")
     assert status == 200
@@ -119,7 +121,9 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     assert identity["email"] == "new.user@example.com"
 
 
-def test_password_not_logged_in_audit_detail(api_base_url: str) -> None:
+def test_password_not_logged_in_audit_detail(
+    api_base_url: str, api_db_path: Path
+) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -153,7 +157,7 @@ def test_password_not_logged_in_audit_detail(api_base_url: str) -> None:
     )
     assert status == 200
 
-    db_path = Path("./test_kajovo_hotel.db")
+    db_path = api_db_path
     with sqlite3.connect(db_path) as connection:
         row = connection.execute(
             """

@@ -1,38 +1,10 @@
-import json
-import urllib.error
-import urllib.parse
-import urllib.request
+from collections.abc import Callable
+
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
 
-def api_request(
-    base_url: str,
-    path: str,
-    method: str = "GET",
-    payload: dict[str, object] | None = None,
-    params: dict[str, str] | None = None,
-) -> tuple[int, dict[str, object] | list[dict[str, object]] | None]:
-    url = f"{base_url}{path}"
-    if params:
-        url = f"{url}?{urllib.parse.urlencode(params)}"
-
-    data = None
-    headers: dict[str, str] = {}
-    if payload is not None:
-        data = json.dumps(payload).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-
-    request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            raw = response.read().decode("utf-8")
-            return response.status, json.loads(raw) if raw else None
-    except urllib.error.HTTPError as exc:
-        raw = exc.read().decode("utf-8")
-        parsed = json.loads(raw) if raw else None
-        return exc.code, parsed
-
-
-def create_item(base_url: str, **overrides: object) -> dict[str, object]:
+def create_item(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "name": "Pomerančový džus",
         "unit": "l",
@@ -41,22 +13,21 @@ def create_item(base_url: str, **overrides: object) -> dict[str, object]:
         "supplier": "FreshTrade",
     }
     payload.update(overrides)
-    status, data = api_request(base_url, "/api/v1/inventory", method="POST", payload=payload)
+    status, data = api_request("/api/v1/inventory", method="POST", payload=payload)
     assert status == 201
     assert isinstance(data, dict)
     return data
 
 
-def test_inventory_crud_movements_and_audit(api_base_url: str) -> None:
-    created = create_item(api_base_url)
+def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
+    created = create_item(api_request)
 
-    status, listed = api_request(api_base_url, "/api/v1/inventory")
+    status, listed = api_request("/api/v1/inventory")
     assert status == 200
     assert isinstance(listed, list)
     assert len(listed) == 1
 
     update_status, updated = api_request(
-        api_base_url,
         f"/api/v1/inventory/{created['id']}",
         method="PUT",
         payload={"supplier": "Updated Supplier", "min_stock": 15},
@@ -67,7 +38,6 @@ def test_inventory_crud_movements_and_audit(api_base_url: str) -> None:
     assert updated["min_stock"] == 15
 
     movement_status, movement_result = api_request(
-        api_base_url,
         f"/api/v1/inventory/{created['id']}/movements",
         method="POST",
         payload={"movement_type": "out", "quantity": 3, "note": "Snídaně"},
@@ -78,7 +48,6 @@ def test_inventory_crud_movements_and_audit(api_base_url: str) -> None:
     assert len(movement_result["movements"]) == 1
 
     adjust_status, adjust_result = api_request(
-        api_base_url,
         f"/api/v1/inventory/{created['id']}/movements",
         method="POST",
         payload={"movement_type": "adjust", "quantity": 20, "note": "Inventura"},
@@ -87,26 +56,23 @@ def test_inventory_crud_movements_and_audit(api_base_url: str) -> None:
     assert isinstance(adjust_result, dict)
     assert adjust_result["current_stock"] == 20
 
-    detail_status, detail = api_request(api_base_url, f"/api/v1/inventory/{created['id']}")
+    detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
     assert detail_status == 200
     assert isinstance(detail, dict)
     assert len(detail["audit_logs"]) >= 4
 
 
-def test_inventory_low_stock_filter_and_validation(api_base_url: str) -> None:
-    low = create_item(api_base_url, name="Mléko", min_stock=10, current_stock=2)
-    create_item(api_base_url, name="Káva", min_stock=3, current_stock=8)
+def test_inventory_low_stock_filter_and_validation(api_request: ApiRequest) -> None:
+    low = create_item(api_request, name="Mléko", min_stock=10, current_stock=2)
+    create_item(api_request, name="Káva", min_stock=3, current_stock=8)
 
-    filter_status, filtered = api_request(
-        api_base_url, "/api/v1/inventory", params={"low_stock": "true"}
-    )
+    filter_status, filtered = api_request("/api/v1/inventory", params={"low_stock": "true"})
     assert filter_status == 200
     assert isinstance(filtered, list)
     assert len(filtered) == 1
     assert filtered[0]["id"] == low["id"]
 
     out_status, out_error = api_request(
-        api_base_url,
         f"/api/v1/inventory/{low['id']}/movements",
         method="POST",
         payload={"movement_type": "out", "quantity": 999},
