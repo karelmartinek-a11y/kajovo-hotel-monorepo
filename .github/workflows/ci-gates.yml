@@ -7,12 +7,13 @@ on:
       - main
 
 jobs:
-  ci-gates:
+  lint:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,6 +27,89 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Token-only lint
+        run: pnpm ci:tokens
+
+      - name: Brand assets lint
+        run: pnpm ci:brand-assets
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API dependencies (dev)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+  policy-guardrails:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_NAME: ${{ github.event_name }}
+      GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Enforce PR regen verification file
+        run: pnpm ci:regen-verification
+
+      - name: Enforce repository guardrails
+        run: pnpm ci:guardrails
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -42,15 +126,6 @@ jobs:
 
       - name: Install Playwright browser
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
-
-      - name: Lint TypeScript
-        run: pnpm lint
-
-      - name: Token-only lint
-        run: pnpm ci:tokens
-
-      - name: Brand assets lint
-        run: pnpm ci:brand-assets
 
       - name: SIGNACE gate
         run: pnpm ci:signage

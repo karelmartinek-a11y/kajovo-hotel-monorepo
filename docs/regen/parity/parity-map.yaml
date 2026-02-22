@@ -208,3 +208,19 @@ modules:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
     links:
       - "this-pr"
+
+
+  - module: repo_guardrails_sentinel
+    required_behavior: "CI sentinely brání /device/*, textu Entity ID (mimo legacy), sdílení page/view mezi admin a portal; brand/** má whitelist hardcoded barev"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/api/device.py"
+      docs:
+        - "docs/regen/01-guardrails/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel/ci/guardrails-sentinel.mjs"
+      - "apps/kajovo-hotel/ci/check-regen-verification.mjs"
+      - ".github/workflows/ci-gates.yml"
+    links:
+      - "this-pr"
