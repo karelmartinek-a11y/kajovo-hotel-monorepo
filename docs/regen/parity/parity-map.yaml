@@ -1,0 +1,130 @@
+version: 1
+updated_at: "2026-02-22"
+notes:
+  - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
+  - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
+
+modules:
+  - module: dashboard
+    required_behavior: "Přehledová route a navigační vstup dle IA"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/web/routes.py:/admin/dashboard"
+      docs:
+        - "apps/kajovo-hotel/ux/ia.json: modules.dashboard"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx: route '/'"
+
+  - module: breakfast
+    required_behavior: "CRUD + denní souhrn snídaní v UI/API"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/api/breakfast.py"
+        - "legacy/hotel-backend/app/web/routes_admin.py:/admin/breakfast*"
+      docs:
+        - "apps/kajovo-hotel/ux/ia.json: /snidane*"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx: /snidane*"
+      - "apps/kajovo-hotel-api/app/api/routes/breakfast.py"
+
+  - module: lost_found
+    required_behavior: "Evidence ztrát a nálezů (list/detail/create/edit/delete)"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/web/routes.py:/admin/reports/findings"
+      docs:
+        - "apps/kajovo-hotel/ux/ia.json: /ztraty-a-nalezy*"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx: /ztraty-a-nalezy*"
+      - "apps/kajovo-hotel-api/app/api/routes/lost_found.py"
+
+  - module: issues
+    required_behavior: "Evidence závad (list/detail/create/edit/delete)"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/web/routes.py:/admin/reports/issues"
+      docs:
+        - "apps/kajovo-hotel/ux/ia.json: /zavady*"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx: /zavady*"
+      - "apps/kajovo-hotel-api/app/api/routes/issues.py"
+
+  - module: inventory
+    required_behavior: "Sklad + pohyby + audit"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/web/routes_inventory.py"
+      docs:
+        - "apps/kajovo-hotel/ux/ia.json: /sklad*"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx: /sklad*"
+      - "apps/kajovo-hotel-api/app/api/routes/inventory.py"
+
+  - module: reports
+    required_behavior: "Hlášení (list/detail/create/edit/delete)"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/api/reports.py"
+        - "legacy/hotel-backend/app/web/routes.py:/admin/reports*"
+      docs:
+        - "apps/kajovo-hotel/ux/ia.json: /hlaseni*"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx: /hlaseni*"
+      - "apps/kajovo-hotel-api/app/api/routes/reports.py"
+
+  - module: admin_portal_split
+    required_behavior: "Striktní oddělení Admin UI a Portal UI (separate login + separate app/entry)"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/web/routes.py: /admin/login, /login, /portal"
+      docs:
+        - "brand/panel/login_admin.png"
+        - "brand/panel/login_user_fail.png"
+    status: MISSING
+    target_location:
+      - "apps/kajovo-hotel-web/src/admin/*"
+      - "apps/kajovo-hotel-web/src/portal/*"
+
+  - module: user_management_only_auth
+    required_behavior: "Jediná autorizace přes správu uživatelů v Admin menu; email=username"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/db/models.py: PortalUser"
+      docs:
+        - "docs/test-accounts.md"
+    status: IN_PROGRESS
+    target_location:
+      - "apps/kajovo-hotel-api/app/security/rbac.py"
+      - "apps/kajovo-hotel-web/src/rbac.ts"
+
+  - module: device
+    required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/api/device.py"
+      docs:
+        - "docs/legacy-inventory.md"
+    status: DROPPED
+    decision: "Device modul: DROPPED"
+    target_location:
+      - "N/A"
+    verification:
+      - "No /device/* routes in apps/kajovo-hotel-api/app/api/routes/*.py"
+      - "No Device entity in apps/kajovo-hotel-api/app/db/models.py"
+      - "No device provisioning route in apps/kajovo-hotel-web/src/main.tsx"
+
+  - module: entity_id_flow
+    required_behavior: "Entity ID auth/provisioning flow"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/api/device.py"
+    status: DROPPED
+    decision: "Entity ID flow is not allowed in target architecture"
+    target_location:
+      - "N/A"
