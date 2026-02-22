@@ -24,7 +24,7 @@ Auditovatelně uzavřít Prompt 05 doplněním evidence mapy panel design -> adm
 - FAIL (env/deps): `pnpm typecheck`
 - PASS: `pnpm unit`
 
-## E) Rizika / known limits
+## E) Rizika/known limits
 - Nav map je evidence-layer dokument; sám o sobě nemění behavior navigace.
 - Některé panelové varianty reprezentují roli/scénář (recepční/pokojská/údržba), které jsou v nové architektuře mapovány přes RBAC nad společnou route sadou.
 - `pnpm lint` a `pnpm typecheck` aktuálně padají na `apps/kajovo-hotel-admin` kvůli chybějícím `node_modules` (missing dependencies v prostředí běhu).

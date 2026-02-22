@@ -24,7 +24,7 @@ Auditovatelně uzavřít Prompt 04 doplněním evidence pro Portal route coverag
 - FAIL (env/deps): `pnpm typecheck`
 - PASS: `pnpm unit`
 
-## E) Rizika / known limits
+## E) Rizika/known limits
 - Coverage je evidence-level mapování (dokumentace); nepřidává nové runtime chování.
 - Test references ukazují na existující suite, která je integrační/E2E; route-level unit testy nejsou vedené samostatně pro každou stránku.
 - `pnpm lint` a `pnpm typecheck` aktuálně padají na `apps/kajovo-hotel-admin` kvůli chybějícím `node_modules` (missing dependencies v prostředí běhu).
