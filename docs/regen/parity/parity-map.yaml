@@ -128,3 +128,16 @@ modules:
     decision: "Entity ID flow is not allowed in target architecture"
     target_location:
       - "N/A"
+
+  - module: api_packaging
+    required_behavior: "Editable install pro apps/kajovo-hotel-api funguje v CI bez setuptools discovery chyby"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "apps/kajovo-hotel-api/pyproject.toml"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/pyproject.toml"
+    links:
+      - "this-pr"

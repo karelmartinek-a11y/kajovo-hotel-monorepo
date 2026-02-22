@@ -19,6 +19,10 @@ dev = [
   "ruff>=0.6.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
