@@ -369,6 +369,17 @@ modules:
       - "apps/kajovo-hotel-web/src/main.tsx"
       - "apps/kajovo-hotel-web/src/rbac.ts"
 
+  - module: web_ci_view_states_auth_me_mock
+    required_behavior: "CI gate view-states má deterministický auth/me mock a neselhává na bootstrap auth endpointu"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/15-view-states-auth-me-mock-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/tests/ci-gates.spec.ts"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:
