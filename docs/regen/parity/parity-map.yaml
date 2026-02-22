@@ -141,3 +141,16 @@ modules:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
       - "this-pr"
+
+  - module: web_e2e_browser_bootstrap
+    required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "apps/kajovo-hotel-web/package.json"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/package.json:scripts.pretest"
+    links:
+      - "this-pr"

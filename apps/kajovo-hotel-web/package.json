@@ -24,6 +24,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "playwright test"
+    "test": "playwright test",
+    "pretest": "playwright install chromium"
   }
 }
