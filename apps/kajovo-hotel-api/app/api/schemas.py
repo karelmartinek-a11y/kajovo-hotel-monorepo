@@ -229,7 +229,7 @@ class InventoryAuditLogRead(BaseModel):
 
     id: int
     entity: str
-    entity_id: int
+    resource_id: int
     action: str
     detail: str
     created_at: datetime | None

@@ -56,8 +56,8 @@ export type InventoryAuditLogRead = {
   "created_at": string | null;
   "detail": string;
   "entity": string;
-  "entity_id": number;
   "id": number;
+  "resource_id": number;
 };
 export type InventoryItemCreate = {
   "current_stock": number;

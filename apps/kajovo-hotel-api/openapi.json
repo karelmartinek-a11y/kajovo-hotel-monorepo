@@ -356,19 +356,19 @@
             "title": "Entity",
             "type": "string"
           },
-          "entity_id": {
-            "title": "Entity Id",
-            "type": "integer"
-          },
           "id": {
             "title": "Id",
+            "type": "integer"
+          },
+          "resource_id": {
+            "title": "Resource Id",
             "type": "integer"
           }
         },
         "required": [
           "id",
           "entity",
-          "entity_id",
+          "resource_id",
           "action",
           "detail",
           "created_at"

@@ -332,6 +332,20 @@ modules:
     target_location:
       - "packages/ui/src/navigation/ModuleNavigation.tsx"
 
+  - module: policy_entity_id_rename_guard
+    required_behavior: "Policy sentinel nehlásí zakázaný Entity ID naming v API schemas/models ani generated client"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/15-policy-entityid-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/api/schemas.py"
+      - "apps/kajovo-hotel-api/app/db/models.py"
+      - "apps/kajovo-hotel-api/app/api/routes/inventory.py"
+      - "packages/shared/src/generated/client.ts"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:

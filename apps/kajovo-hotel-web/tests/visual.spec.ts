@@ -91,7 +91,7 @@ const inventoryDetailPayload = {
     {
       id: 51,
       entity: 'item',
-      entity_id: 1,
+      resource_id: 1,
       action: 'movement',
       detail: 'Recorded movement out (2).',
       created_at: '2026-02-18T10:00:00Z',

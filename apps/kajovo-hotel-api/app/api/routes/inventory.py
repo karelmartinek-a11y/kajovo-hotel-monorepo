@@ -23,11 +23,11 @@ router = APIRouter(
 )
 
 
-def _log_audit(db: Session, entity: str, entity_id: int, action: str, detail: str) -> None:
+def _log_audit(db: Session, entity: str, resource_id: int, action: str, detail: str) -> None:
     db.add(
         InventoryAuditLog(
             entity=entity,
-            entity_id=entity_id,
+            resource_id=resource_id,
             action=action,
             detail=detail,
         )
@@ -70,7 +70,7 @@ def get_item(item_id: int, db: Session = Depends(get_db)) -> InventoryItemWithAu
     audit_logs = list(
         db.scalars(
             select(InventoryAuditLog)
-            .where(InventoryAuditLog.entity == "item", InventoryAuditLog.entity_id == item.id)
+            .where(InventoryAuditLog.entity == "item", InventoryAuditLog.resource_id == item.id)
             .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
         )
     )
