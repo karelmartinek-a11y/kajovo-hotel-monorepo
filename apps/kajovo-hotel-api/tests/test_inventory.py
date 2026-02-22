@@ -1,7 +1,10 @@
 from collections.abc import Callable
 
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
-def create_item(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]], **overrides: object) -> dict[str, object]:
+
+def create_item(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "name": "Pomerančový džus",
         "unit": "l",
@@ -16,7 +19,7 @@ def create_item(api_request: Callable[..., tuple[int, dict[str, object] | list[d
     return data
 
 
-def test_inventory_crud_movements_and_audit(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
     created = create_item(api_request)
 
     status, listed = api_request("/api/v1/inventory")
@@ -59,7 +62,7 @@ def test_inventory_crud_movements_and_audit(api_request: Callable[..., tuple[int
     assert len(detail["audit_logs"]) >= 4
 
 
-def test_inventory_low_stock_filter_and_validation(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_inventory_low_stock_filter_and_validation(api_request: ApiRequest) -> None:
     low = create_item(api_request, name="Mléko", min_stock=10, current_stock=2)
     create_item(api_request, name="Káva", min_stock=3, current_stock=8)
 

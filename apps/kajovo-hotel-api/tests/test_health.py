@@ -1,20 +1,23 @@
 import sqlite3
 from collections.abc import Callable
 
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
-def test_health(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+
+def test_health(api_request: ApiRequest) -> None:
     status, payload = api_request("/health")
     assert status == 200
     assert payload == {"status": "ok"}
 
 
-def test_ready(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_ready(api_request: ApiRequest) -> None:
     status, payload = api_request("/ready")
     assert status == 200
     assert payload == {"status": "ready"}
 
 
-def test_write_requests_are_audited(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_write_requests_are_audited(api_request: ApiRequest) -> None:
     status, created = api_request(
         "/api/v1/reports",
         method="POST",

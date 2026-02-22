@@ -1,7 +1,10 @@
 from collections.abc import Callable
 
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
-def create_report(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]], **overrides: object) -> dict[str, object]:
+
+def create_report(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "title": "Prasklá žárovka",
         "description": "Pokoj 104",
@@ -14,7 +17,7 @@ def create_report(api_request: Callable[..., tuple[int, dict[str, object] | list
     return data
 
 
-def test_reports_crud_and_filters(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_reports_crud_and_filters(api_request: ApiRequest) -> None:
     first = create_report(api_request, title="Report A", status="open")
     create_report(api_request, title="Report B", status="closed")
 
@@ -37,7 +40,7 @@ def test_reports_crud_and_filters(api_request: Callable[..., tuple[int, dict[str
     assert delete_status == 204
 
 
-def test_reports_validation(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_reports_validation(api_request: ApiRequest) -> None:
     status, _ = api_request(
         "/api/v1/reports",
         method="POST",

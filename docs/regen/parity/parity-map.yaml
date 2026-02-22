@@ -235,6 +235,20 @@ modules:
       - "apps/kajovo-hotel-api/tests/test_lost_found.py"
       - "apps/kajovo-hotel-api/tests/test_reports.py"
 
+  - module: api_python_lint_ci_stability
+    required_behavior: "Python API lint gate je zelená (Ruff E/F/I), včetně CSRF middleware formátování"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-api-lint-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/security/auth.py"
+      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
+      - "apps/kajovo-hotel-api/app/api/routes/users.py"
+      - "apps/kajovo-hotel-api/alembic/versions/0009_create_portal_users_table.py"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:

@@ -1,8 +1,11 @@
 from collections.abc import Callable
 from datetime import date
 
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
-def create_order(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]], **overrides: object) -> dict[str, object]:
+
+def create_order(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "service_date": "2026-02-19",
         "room_number": "201",
@@ -18,7 +21,7 @@ def create_order(api_request: Callable[..., tuple[int, dict[str, object] | list[
     return data
 
 
-def test_create_and_read_breakfast_order(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_create_and_read_breakfast_order(api_request: ApiRequest) -> None:
     created = create_order(api_request)
 
     status, data = api_request(f"/api/v1/breakfast/{created['id']}")
@@ -30,7 +33,7 @@ def test_create_and_read_breakfast_order(api_request: Callable[..., tuple[int, d
     assert data["guest_count"] == 2
 
 
-def test_breakfast_list_filter_and_daily_summary(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_breakfast_list_filter_and_daily_summary(api_request: ApiRequest) -> None:
     create_order(
         api_request,
         service_date="2026-02-22",
@@ -70,7 +73,7 @@ def test_breakfast_list_filter_and_daily_summary(api_request: Callable[..., tupl
     assert summary["status_counts"]["served"] == 1
 
 
-def test_update_and_delete_breakfast_order(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_update_and_delete_breakfast_order(api_request: ApiRequest) -> None:
     created = create_order(api_request, note="Původní")
 
     status, updated = api_request(
@@ -94,7 +97,7 @@ def test_update_and_delete_breakfast_order(api_request: Callable[..., tuple[int,
     assert read_status == 404
 
 
-def test_breakfast_validation_errors(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_breakfast_validation_errors(api_request: ApiRequest) -> None:
     status, _ = api_request(
         "/api/v1/breakfast",
         method="POST",

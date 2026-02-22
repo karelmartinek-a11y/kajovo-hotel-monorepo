@@ -1,7 +1,10 @@
 from collections.abc import Callable
 
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
-def create_record(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]], **overrides: object) -> dict[str, object]:
+
+def create_record(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "item_type": "found",
         "description": "Stříbrná náušnice",
@@ -17,7 +20,7 @@ def create_record(api_request: Callable[..., tuple[int, dict[str, object] | list
     return data
 
 
-def test_lost_found_crud(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_lost_found_crud(api_request: ApiRequest) -> None:
     created = create_record(api_request)
 
     read_status, detail = api_request(f"/api/v1/lost-found/{created['id']}")
@@ -39,7 +42,7 @@ def test_lost_found_crud(api_request: Callable[..., tuple[int, dict[str, object]
     assert delete_status == 204
 
 
-def test_lost_found_filters(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_lost_found_filters(api_request: ApiRequest) -> None:
     create_record(api_request, category="Kabelka", status="stored")
     create_record(api_request, category="Peněženka", status="claimed")
 

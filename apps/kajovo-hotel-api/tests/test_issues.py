@@ -1,7 +1,10 @@
 from collections.abc import Callable
 
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
-def create_issue(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]], **overrides: object) -> dict[str, object]:
+
+def create_issue(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "title": "Nefunkční světlo",
         "description": "Pokoj 301",
@@ -16,7 +19,7 @@ def create_issue(api_request: Callable[..., tuple[int, dict[str, object] | list[
     return data
 
 
-def test_issues_crud_and_workflow(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_issues_crud_and_workflow(api_request: ApiRequest) -> None:
     created = create_issue(api_request)
 
     read_status, detail = api_request(f"/api/v1/issues/{created['id']}")
@@ -47,7 +50,7 @@ def test_issues_crud_and_workflow(api_request: Callable[..., tuple[int, dict[str
     assert delete_status == 204
 
 
-def test_issues_filters(api_request: Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]) -> None:
+def test_issues_filters(api_request: ApiRequest) -> None:
     create_issue(api_request, title="Issue A", status="new", priority="low")
     create_issue(api_request, title="Issue B", status="closed", priority="high")
 

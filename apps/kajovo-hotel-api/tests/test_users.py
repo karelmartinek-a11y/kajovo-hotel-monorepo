@@ -66,7 +66,9 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     status, users = api_request(opener, api_base_url, "/api/v1/users")
     assert status == 200
     assert isinstance(users, list)
-    assert any(isinstance(user, dict) and user.get("email") == "new.user@example.com" for user in users)
+    assert any(
+        isinstance(user, dict) and user.get("email") == "new.user@example.com" for user in users
+    )
 
     status, detail = api_request(opener, api_base_url, f"/api/v1/users/{user_id}")
     assert status == 200

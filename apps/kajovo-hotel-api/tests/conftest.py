@@ -38,11 +38,19 @@ def api_base_url() -> Generator[str, None, None]:
     with sqlite3.connect(db_path) as connection:
         connection.execute(
             "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
-            ("warehouse@example.com", "warehouse", _scrypt_hash("warehouse-pass", b"warehouse-salt")),
+            (
+                "warehouse@example.com",
+                "warehouse",
+                _scrypt_hash("warehouse-pass", b"warehouse-salt"),
+            ),
         )
         connection.execute(
             "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
-            ("maintenance@example.com", "maintenance", _scrypt_hash("maintenance-pass", b"maintenance-salt")),
+            (
+                "maintenance@example.com",
+                "maintenance",
+                _scrypt_hash("maintenance-pass", b"maintenance-salt"),
+            ),
         )
         connection.commit()
 
@@ -85,11 +93,15 @@ def api_base_url() -> Generator[str, None, None]:
 
 
 @pytest.fixture
-def api_request(api_base_url: str) -> Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]:
+def api_request(
+    api_base_url: str,
+) -> Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]:
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
-    login_payload = json.dumps({"email": "admin@kajovohotel.local", "password": "admin123"}).encode("utf-8")
+    login_payload = json.dumps({"email": "admin@kajovohotel.local", "password": "admin123"}).encode(
+        "utf-8"
+    )
     login_request = urllib.request.Request(
         url=f"{api_base_url}/api/auth/admin/login",
         data=login_payload,

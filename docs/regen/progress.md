@@ -12,7 +12,7 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 05 | PARTIAL (split evidence) | mapped core `docs/regen/05-admin-users`, mapped fix `docs/regen/05-webtest-command-fix` | `4f670b8`, `a6a9958` | Slot 05 obsahuje user-admin doménu i test command fix. | Při ORF-05 closure potvrdit, že doménové acceptance je splněné nezávisle na fix části. |
 | 06 | DONE | `docs/regen/06-playwright-tablet-browser-fix` | `1c00e2c` | None | Slot 06 uzavřen. |
 | 07 | DONE | `docs/regen/07-api-test-csrf-fix` | `ORF-07 (current)` | None | Slot 07 uzavřen (API test setup + CSRF/session). |
-| 08 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/08-*/verification.md` a provést prompt scope. |
+| 08 | DONE | `docs/regen/08-api-lint-fix` | `ORF-08 (current)` | None | Slot 08 uzavřen (API lint/CI fix-only). |
 | 09 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/09-*/verification.md` a provést prompt scope. |
 | 10 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/10-*/verification.md` a provést prompt scope. |
 | 11 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/11-*/verification.md` a provést prompt scope. |
