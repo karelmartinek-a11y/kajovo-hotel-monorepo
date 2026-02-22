@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -8,12 +8,13 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@router.get("/api/health")
+def health(request: Request) -> dict[str, str | None]:
+    return {"status": "ok", "request_id": getattr(request.state, "request_id", None)}
 
 
 @router.get("/ready")
-def ready(db: Session = Depends(get_db)) -> dict[str, str]:
+def ready(request: Request, db: Session = Depends(get_db)) -> dict[str, str | None]:
     try:
         db.execute(text("SELECT 1"))
     except Exception as exc:  # pragma: no cover - defensive response
@@ -21,4 +22,4 @@ def ready(db: Session = Depends(get_db)) -> dict[str, str]:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="database not ready",
         ) from exc
-    return {"status": "ready"}
+    return {"status": "ready", "request_id": getattr(request.state, "request_id", None)}

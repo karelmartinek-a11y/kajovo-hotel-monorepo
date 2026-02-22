@@ -251,6 +251,23 @@ modules:
     links:
       - "docs/regen/06-playwright-tablet-browser-fix/verification.md"
 
+  - module: api_foundation_prompt_06
+    required_behavior: "API foundation má health/readiness endpointy, jednotný error envelope a request_id/audit evidenci"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/main.py: /api/health"
+      docs:
+        - "docs/regen/06-api-foundation/verification.md"
+        - "docs/observability.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/api/routes/health.py"
+      - "apps/kajovo-hotel-api/app/main.py"
+      - "apps/kajovo-hotel-api/app/observability.py"
+      - "apps/kajovo-hotel-api/tests/test_health.py"
+    links:
+      - "docs/regen/06-api-foundation/verification.md"
+
 
   - module: api_test_csrf_session_setup
     required_behavior: "API test setup používá validní session + CSRF token pro write requesty a stabilní uvicorn bootstrap"

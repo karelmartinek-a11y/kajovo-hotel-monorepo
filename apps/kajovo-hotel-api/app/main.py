@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.routes.auth import router as auth_router
@@ -21,12 +22,65 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(RequestContextMiddleware)
 
+    def _request_id(request: Request) -> str | None:
+        return getattr(request.state, "request_id", None) or request.headers.get("x-request-id")
+
+    def _error_response(
+        request: Request,
+        status_code: int,
+        code: str,
+        message: str,
+        details: object | None = None,
+    ) -> JSONResponse:
+        request_id = _request_id(request)
+        content = {
+            "error": {
+                "code": code,
+                "message": message,
+                "request_id": request_id,
+                "details": details,
+            },
+            # backward-compatible top-level detail for older clients
+            "detail": message,
+            "request_id": request_id,
+        }
+        return JSONResponse(status_code=status_code, content=content)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        message = str(exc.detail) if not isinstance(exc.detail, dict) else "Request failed"
+        return _error_response(
+            request=request,
+            status_code=exc.status_code,
+            code=f"HTTP_{exc.status_code}",
+            message=message,
+            details=exc.detail,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        return _error_response(
+            request=request,
+            status_code=422,
+            code="REQUEST_VALIDATION_ERROR",
+            message="Request validation failed",
+            details=exc.errors(),
+        )
+
     @app.middleware("http")
     async def csrf_middleware(request: Request, call_next):
         try:
             ensure_csrf(request)
         except HTTPException as exc:
-            return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+            return _error_response(
+                request=request,
+                status_code=exc.status_code,
+                code="CSRF_VALIDATION_FAILED",
+                message=str(exc.detail),
+                details=exc.detail,
+            )
         return await call_next(request)
 
     app.include_router(auth_router)
