@@ -7,6 +7,7 @@ from app.api.routes.inventory import router as inventory_router
 from app.api.routes.issues import router as issues_router
 from app.api.routes.lost_found import router as lost_found_router
 from app.api.routes.reports import router as reports_router
+from app.api.routes.users import router as users_router
 from app.config import get_settings
 from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(lost_found_router)
     app.include_router(issues_router)
     app.include_router(inventory_router)
+    app.include_router(users_router)
     return app
 
 

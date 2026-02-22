@@ -1,5 +1,12 @@
 from datetime import date, datetime
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        pass
+
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -242,6 +249,31 @@ class InventoryItemDetailRead(InventoryItemRead):
 class InventoryItemWithAuditRead(InventoryItemDetailRead):
     audit_logs: list[InventoryAuditLogRead]
 
+
+
+
+class PortalUserCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=8, max_length=255)
+
+
+class PortalUserPasswordSet(BaseModel):
+    password: str = Field(min_length=8, max_length=255)
+
+
+class PortalUserStatusUpdate(BaseModel):
+    is_active: bool
+
+
+class PortalUserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime | None
+    updated_at: datetime | None
 
 class AdminLoginRequest(BaseModel):
     email: str

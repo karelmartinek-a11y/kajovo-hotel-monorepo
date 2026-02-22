@@ -2,8 +2,6 @@ from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
 
-from app.security.auth import read_session_cookie, require_session
-
 Role = str
 Permission = str
 
@@ -20,6 +18,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "inventory:write",
         "reports:read",
         "reports:write",
+        "users:read",
+        "users:write",
     },
     "manager": {
         "dashboard:read",
@@ -67,6 +67,8 @@ def normalize_role(raw_role: str | None) -> str:
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:
+    from app.security.auth import read_session_cookie
+
     session = read_session_cookie(request.cookies.get("kajovo_session"))
     if not session:
         return "anonymous", "anonymous", "manager"
@@ -85,6 +87,8 @@ def require_permission(module: str, action: str) -> Callable[[Request], None]:
     required = f"{module}:{action}"
 
     def _check_permission(request: Request) -> None:
+        from app.security.auth import require_session
+
         session = require_session(request)
         actor_id = session["email"]
         actor_role = normalize_role(session["role"])
@@ -113,6 +117,8 @@ def module_access_dependency(module: str) -> Callable[[Request], None]:
 
 
 def inject_identity(request: Request) -> None:
+    from app.security.auth import require_session
+
     session = require_session(request)
     actor_id = session["email"]
     actor_role = normalize_role(session["role"])

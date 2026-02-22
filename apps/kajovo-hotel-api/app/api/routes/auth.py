@@ -34,6 +34,12 @@ def _verify_password(password: str, stored_hash: str) -> bool:
     return secrets.compare_digest(calc.hex(), digest_hex)
 
 
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
+    return f"scrypt${salt.hex()}${digest.hex()}"
+
+
 @router.post("/admin/login", response_model=AuthIdentityResponse)
 def admin_login(payload: AdminLoginRequest, response: Response) -> AuthIdentityResponse:
     settings = get_settings()

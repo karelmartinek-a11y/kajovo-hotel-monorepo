@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -23,7 +23,7 @@ router = APIRouter(
 
 
 def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     if next_status == IssueStatus.IN_PROGRESS.value and issue.in_progress_at is None:
         issue.in_progress_at = now
     if next_status == IssueStatus.RESOLVED.value and issue.resolved_at is None:
