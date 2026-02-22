@@ -3588,7 +3588,14 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "title": "Response Health Health Get",
                   "type": "object"
@@ -3613,7 +3620,14 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "title": "Response Ready Ready Get",
                   "type": "object"
