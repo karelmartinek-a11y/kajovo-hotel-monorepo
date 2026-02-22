@@ -2,6 +2,8 @@ from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
 
+from app.security.auth import read_session_cookie, require_session
+
 Role = str
 Permission = str
 
@@ -65,14 +67,12 @@ def normalize_role(raw_role: str | None) -> str:
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:
-    actor_id = (
-        request.headers.get("x-user-id")
-        or request.headers.get("x-user")
-        or request.headers.get("x-forwarded-user")
-        or "anonymous"
-    )
-    actor_name = request.headers.get("x-user") or actor_id
-    actor_role = normalize_role(request.headers.get("x-user-role"))
+    session = read_session_cookie(request.cookies.get("kajovo_session"))
+    if not session:
+        return "anonymous", "anonymous", "manager"
+    actor_id = session["email"]
+    actor_name = session["email"]
+    actor_role = normalize_role(session["role"])
     return actor_id, actor_name, actor_role
 
 
@@ -85,7 +85,9 @@ def require_permission(module: str, action: str) -> Callable[[Request], None]:
     required = f"{module}:{action}"
 
     def _check_permission(request: Request) -> None:
-        actor_id, _, actor_role = parse_identity(request)
+        session = require_session(request)
+        actor_id = session["email"]
+        actor_role = normalize_role(session["role"])
         request.state.actor_id = actor_id
         request.state.actor_role = actor_role
         if not has_permission(actor_role, required):
@@ -111,7 +113,9 @@ def module_access_dependency(module: str) -> Callable[[Request], None]:
 
 
 def inject_identity(request: Request) -> None:
-    actor_id, _, actor_role = parse_identity(request)
+    session = require_session(request)
+    actor_id = session["email"]
+    actor_role = normalize_role(session["role"])
     request.state.actor_id = actor_id
     request.state.actor_role = actor_role
 

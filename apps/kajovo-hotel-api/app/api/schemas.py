@@ -241,3 +241,24 @@ class InventoryItemDetailRead(InventoryItemRead):
 
 class InventoryItemWithAuditRead(InventoryItemDetailRead):
     audit_logs: list[InventoryAuditLogRead]
+
+
+class AdminLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class PortalLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LogoutResponse(BaseModel):
+    ok: bool = True
+
+
+class AuthIdentityResponse(BaseModel):
+    email: str
+    role: str
+    permissions: list[str]
+    actor_type: str
