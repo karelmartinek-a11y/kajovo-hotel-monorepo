@@ -86,10 +86,13 @@ modules:
       docs:
         - "brand/panel/login_admin.png"
         - "brand/panel/login_user_fail.png"
-    status: MISSING
+    status: DONE
     target_location:
-      - "apps/kajovo-hotel-web/src/admin/*"
-      - "apps/kajovo-hotel-web/src/portal/*"
+      - "apps/kajovo-hotel-web/src/main.tsx"
+      - "apps/kajovo-hotel-admin/src/main.tsx"
+      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
+    links:
+      - "docs/regen/03-monorepo-structure/verification.md"
 
   - module: user_management_only_auth
     required_behavior: "Jediná autorizace přes správu uživatelů v Admin menu; email=username"

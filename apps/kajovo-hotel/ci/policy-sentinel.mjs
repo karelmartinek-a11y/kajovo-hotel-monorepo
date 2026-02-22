@@ -48,6 +48,7 @@ const bannedPatterns = [
 ];
 
 const crossImportPattern = /from\s+["'][^"']*(admin|portal)\/(pages|views)\/[^"']*["']/g;
+const appSplitCrossImportPattern = /from\s+["'][^"']*apps\/(kajovo-hotel-admin|kajovo-hotel-web)\/src\/[^"']*(pages|views)\/[^"']*["']/g;
 
 for (const rel of filesToScan) {
   if (rel === 'apps/kajovo-hotel/ci/policy-sentinel.mjs') continue;

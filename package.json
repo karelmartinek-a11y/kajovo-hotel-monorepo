@@ -18,7 +18,7 @@
     "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
     "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
     "contract:check": "pnpm contract:generate && git diff --exit-code -- apps/kajovo-hotel-api/openapi.json packages/shared/src/generated/client.ts",
-    "typecheck": "pnpm --filter @kajovo/kajovo-hotel-web lint",
+    "typecheck": "pnpm --filter @kajovo/kajovo-hotel-web lint && pnpm --filter @kajovo/kajovo-hotel-admin lint",
     "unit": "python -m pytest apps/kajovo-hotel-api/tests",
     "ci:policy": "node apps/kajovo-hotel/ci/policy-sentinel.mjs",
     "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs",
