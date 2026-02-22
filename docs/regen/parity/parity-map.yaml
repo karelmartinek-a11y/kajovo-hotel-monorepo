@@ -103,9 +103,7 @@ modules:
       - "apps/kajovo-hotel-api/app/security/rbac.py"
       - "apps/kajovo-hotel-web/src/rbac.ts"
     links:
-      - "this-pr"
-      - "this-pr-05-admin-users"
-      - "this-pr-fix-commit-pr"
+      - "docs/regen/05-admin-users/verification.md"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
@@ -144,11 +142,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
-      - "this-pr"
-      - "this-pr-fix-signage-tests"
-      - "this-pr-fix2"
-      - "this-pr-fix3"
-      - "this-pr-followup"
+      - "docs/regen/01-packaging-fix/verification.md"
 
   - module: web_e2e_browser_bootstrap
     required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
@@ -161,7 +155,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/package.json:scripts.pretest"
     links:
-      - "this-pr"
+      - "docs/regen/04-webtest-exit1-fix/verification.md"
 
   - module: web_visual_snapshot_project_scope
     required_behavior: "Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop projekty"
@@ -174,7 +168,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/06-playwright-tablet-browser-fix/verification.md"
 
   - module: web_visual_suite_gating
     required_behavior: "Default playwright test běh nepadá na visual snapshot baseline mismatch; visual suite je explicitně opt-in"
@@ -187,7 +181,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/05-webtest-command-fix/verification.md"
 
   - module: web_test_command_split
     required_behavior: "Default web test command je stabilní (core gates), visual suite běží separátně"
@@ -201,7 +195,7 @@ modules:
       - "apps/kajovo-hotel-web/package.json:scripts.test"
       - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
     links:
-      - "this-pr"
+      - "docs/regen/05-webtest-command-fix/verification.md"
 
   - module: web_playwright_browser_parity
     required_behavior: "Playwright projekty používají browser engine dostupný v CI install kroku"
@@ -215,7 +209,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
     links:
-      - "this-pr"
+      - "docs/regen/06-playwright-tablet-browser-fix/verification.md"
 
 
   - module: api_test_csrf_session_setup
@@ -408,7 +402,7 @@ modules:
       - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
       - ".github/workflows/ci-gates.yml"
     links:
-      - "this-pr"
+      - "docs/regen/01-orf-ci-hardening/verification.md"
 
 
   - module: design_foundation_tokens_signage_panel
@@ -426,4 +420,4 @@ modules:
       - "packages/ui/src/shell/AppShell.tsx"
       - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/02-design-foundation/verification.md"

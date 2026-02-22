@@ -21,6 +21,7 @@
     "typecheck": "pnpm --filter @kajovo/kajovo-hotel-web lint",
     "unit": "python -m pytest apps/kajovo-hotel-api/tests",
     "ci:policy": "node apps/kajovo-hotel/ci/policy-sentinel.mjs",
-    "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
+    "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs",
+    "ci:parity-placeholders": "node apps/kajovo-hotel/ci/check-parity-map-placeholders.mjs"
   }
 }
