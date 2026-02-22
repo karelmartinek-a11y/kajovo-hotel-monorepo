@@ -94,6 +94,43 @@ modules:
     links:
       - "docs/regen/03-monorepo-structure/verification.md"
 
+  - module: portal_route_coverage_evidence
+    required_behavior: "Prompt 04 má auditovatelný route coverage matrix (IA route -> komponenta -> stav -> test)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/04-portal/route-coverage.md"
+        - "docs/regen/04-portal/verification.md"
+        - "apps/kajovo-hotel/ux/ia.json"
+        - "apps/kajovo-hotel-web/src/main.tsx"
+        - "apps/kajovo-hotel-web/tests/ci-gates.spec.ts"
+        - "apps/kajovo-hotel-web/tests/nav-robustness.spec.ts"
+    status: DONE
+    target_location:
+      - "docs/regen/04-portal/route-coverage.md"
+      - "docs/regen/04-portal/verification.md"
+    links:
+      - "docs/regen/04-portal/verification.md"
+
+  - module: admin_shell_nav_map_evidence
+    required_behavior: "Prompt 05 má auditovatelnou mapu panel design -> admin route/view"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/05-admin-shell/nav-map.md"
+        - "docs/regen/05-admin-shell/verification.md"
+        - "brand/panel/menu_admin.png"
+        - "brand/panel/login_admin.png"
+        - "apps/kajovo-hotel-admin/src/main.tsx"
+    status: DONE
+    target_location:
+      - "docs/regen/05-admin-shell/nav-map.md"
+      - "docs/regen/05-admin-shell/verification.md"
+    links:
+      - "docs/regen/05-admin-shell/verification.md"
+
   - module: user_management_only_auth
     required_behavior: "Jediná autorizace přes správu uživatelů v Admin menu; email=username"
     evidence:
