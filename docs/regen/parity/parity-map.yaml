@@ -217,6 +217,19 @@ modules:
     links:
       - "this-pr"
 
+  - module: delivery_tracker
+    required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/progress.md"
+        - "docs/regen/00-orf-normalization/verification.md"
+    status: DONE
+    target_location:
+      - "docs/regen/progress.md"
+      - "docs/regen/parity/parity-map.yaml"
+
 
   - module: repo_guardrails_and_ci_policy
     required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
