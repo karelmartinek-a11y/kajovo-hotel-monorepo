@@ -208,3 +208,20 @@ modules:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
     links:
       - "this-pr"
+
+
+  - module: repo_guardrails_and_ci_policy
+    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/01-guardrails/verification.md"
+        - ".github/workflows/ci-gates.yml"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
+      - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
+      - ".github/workflows/ci-gates.yml"
+    links:
+      - "this-pr"
