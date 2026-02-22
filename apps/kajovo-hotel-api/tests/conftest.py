@@ -1,16 +1,23 @@
 import hashlib
+import http.cookiejar
+import json
 import os
 import socket
 import sqlite3
 import subprocess
 import time
-from collections.abc import Generator
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections.abc import Callable, Generator
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
 
 from app.db.models import Base
+
+WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def _scrypt_hash(password: str, salt: bytes) -> str:
@@ -20,7 +27,7 @@ def _scrypt_hash(password: str, salt: bytes) -> str:
 
 @pytest.fixture(scope="session")
 def api_base_url() -> Generator[str, None, None]:
-    db_path = Path("./test_kajovo_hotel.db")
+    db_path = Path("/workspace/kajovo-hotel-monorepo/test_kajovo_hotel.db")
     if db_path.exists():
         db_path.unlink()
 
@@ -48,25 +55,25 @@ def api_base_url() -> Generator[str, None, None]:
 
     proc = subprocess.Popen(
         ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
-        cwd=".",
+        cwd="apps/kajovo-hotel-api",
         env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
 
     base_url = f"http://127.0.0.1:{port}"
     for _ in range(50):
         try:
-            import urllib.request
-
             with urllib.request.urlopen(f"{base_url}/health", timeout=1) as response:
                 if response.status == 200:
                     break
         except Exception:
             time.sleep(0.1)
     else:
+        output = proc.stdout.read() if proc.stdout else ""
         proc.terminate()
-        raise RuntimeError("API did not start in time")
+        raise RuntimeError(f"API did not start in time. Uvicorn output:\n{output}")
 
     try:
         yield base_url
@@ -75,3 +82,52 @@ def api_base_url() -> Generator[str, None, None]:
         proc.wait(timeout=10)
         if db_path.exists():
             db_path.unlink()
+
+
+@pytest.fixture
+def api_request(api_base_url: str) -> Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]:
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    login_payload = json.dumps({"email": "admin@kajovohotel.local", "password": "admin123"}).encode("utf-8")
+    login_request = urllib.request.Request(
+        url=f"{api_base_url}/api/auth/admin/login",
+        data=login_payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with opener.open(login_request, timeout=10) as response:
+        assert response.status == 200
+
+    def _request(
+        path: str,
+        method: str = "GET",
+        payload: dict[str, object] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> tuple[int, dict[str, object] | list[dict[str, object]] | None]:
+        url = f"{api_base_url}{path}"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        data = None
+        headers: dict[str, str] = {}
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+
+        if method.upper() in WRITE_METHODS:
+            csrf_token = next((cookie.value for cookie in jar if cookie.name == "kajovo_csrf"), "")
+            if csrf_token:
+                headers["x-csrf-token"] = csrf_token
+
+        request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
+        try:
+            with opener.open(request, timeout=10) as response:
+                raw = response.read().decode("utf-8")
+                return response.status, json.loads(raw) if raw else None
+        except urllib.error.HTTPError as exc:
+            raw = exc.read().decode("utf-8")
+            parsed = json.loads(raw) if raw else None
+            return exc.code, parsed
+
+    return _request

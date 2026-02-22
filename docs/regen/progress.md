@@ -11,7 +11,7 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 04 | PARTIAL (split evidence) | mapped core `docs/regen/04-auth-foundation`, mapped fix `docs/regen/04-webtest-exit1-fix` | `ea591e8`, `a1047d9` | Funkční auth základ hotový, ale slot 04 obsahuje i test-stability fix mimo doménové jádro. | Při ORF-04 closure potvrdit finální scope a případně oddělit fix historii poznámkou v release docs. |
 | 05 | PARTIAL (split evidence) | mapped core `docs/regen/05-admin-users`, mapped fix `docs/regen/05-webtest-command-fix` | `4f670b8`, `a6a9958` | Slot 05 obsahuje user-admin doménu i test command fix. | Při ORF-05 closure potvrdit, že doménové acceptance je splněné nezávisle na fix části. |
 | 06 | DONE | `docs/regen/06-playwright-tablet-browser-fix` | `1c00e2c` | None | Slot 06 uzavřen. |
-| 07 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/07-*/verification.md` a provést prompt scope. |
+| 07 | DONE | `docs/regen/07-api-test-csrf-fix` | `ORF-07 (current)` | None | Slot 07 uzavřen (API test setup + CSRF/session). |
 | 08 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/08-*/verification.md` a provést prompt scope. |
 | 09 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/09-*/verification.md` a provést prompt scope. |
 | 10 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/10-*/verification.md` a provést prompt scope. |
