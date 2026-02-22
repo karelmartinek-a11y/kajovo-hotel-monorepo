@@ -194,3 +194,17 @@ modules:
       - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
     links:
       - "this-pr"
+
+  - module: web_playwright_browser_parity
+    required_behavior: "Playwright projekty používají browser engine dostupný v CI install kroku"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "apps/kajovo-hotel-web/playwright.config.ts"
+        - ".github/workflows/ci-full.yml"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
+    links:
+      - "this-pr"
