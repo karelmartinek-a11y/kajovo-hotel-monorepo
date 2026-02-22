@@ -287,6 +287,17 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/tests/conftest.py"
 
+  - module: api_test_db_tmpdir_isolation
+    required_behavior: "API test SQLite DB běží v pytest tmpdir (write-safe, bez host-specific /workspace závislosti)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/12-api-test-tmpdir-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:
