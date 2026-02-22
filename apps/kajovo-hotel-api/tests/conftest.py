@@ -72,9 +72,11 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     env = os.environ.copy()
     env["KAJOVO_API_DATABASE_URL"] = database_url
 
+    api_app_dir = Path(__file__).resolve().parents[1]
+
     proc = subprocess.Popen(
         ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
-        cwd="apps/kajovo-hotel-api",
+        cwd=str(api_app_dir),
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

@@ -298,6 +298,17 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/tests/conftest.py"
 
+  - module: api_test_uvicorn_cwd_stability
+    required_behavior: "API test fixture spouští uvicorn s cwd nezávislým na aktuálním pracovním adresáři"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/13-uvicorn-cwd-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:

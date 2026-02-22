@@ -17,7 +17,7 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 10 | DONE | `docs/regen/10-sqlite-ci-data-dir-fix` | `ORF-10 (current)` | None | Slot 10 uzavřen (SQLite CI data dir alignment). |
 | 11 | DONE | `docs/regen/11-workspace-path-portability-fix` | `ORF-11 (current)` | None | Slot 11 uzavřen (workspace-path portability fix). |
 | 12 | DONE | `docs/regen/12-api-test-tmpdir-fix` | `ORF-12 (current)` | None | Slot 12 uzavřen (API test DB tmpdir hardening). |
-| 13 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/13-*/verification.md` a provést prompt scope. |
+| 13 | DONE | `docs/regen/13-uvicorn-cwd-fix` | `ORF-13 (current)` | None | Slot 13 uzavřen (uvicorn subprocess cwd fix). |
 | 14 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/14-*/verification.md` a provést prompt scope. |
 | 15 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/15-*/verification.md` a provést prompt scope. |
 
