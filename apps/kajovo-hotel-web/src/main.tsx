@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   type BreakfastDailySummary,
@@ -37,10 +37,11 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
-import { canReadModule, resolveAuthProfile } from './rbac';
+import { resolveAuthProfile } from './rbac';
 import { AdminLoginPage } from './admin/AdminLoginPage';
-import { AdminHomePage } from './admin/AdminHomePage';
+import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
+import { PortalRoutes } from './portal/PortalRoutes';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
@@ -1373,96 +1374,6 @@ function ReportsDetail(): JSX.Element {
   return <main className="k-page" data-testid="reports-detail-page">{stateMarker}<h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
-type AccessDeniedProps = {
-  moduleLabel: string;
-  role: string;
-  userId: string;
-};
-
-function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX.Element {
-  return (
-    <main className="k-page" data-testid="access-denied-page">
-      <StateView
-        title="Přístup odepřen"
-        description={`Role ${role} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`}
-        stateKey="error"
-        action={<Link className="k-button secondary" to="/">Zpět na přehled</Link>}
-      />
-    </main>
-  );
-}
-
-function AdminShellRoutes({ currentPath }: { currentPath: string }): JSX.Element {
-  return (
-    <AppShell
-      panelLayout="admin"
-      modules={[]}
-      navigationRules={ia.navigation.rules}
-      navigationSections={ia.navigation.sections}
-      currentPath={currentPath}
-    >
-      <Routes>
-        <Route path="" element={<AdminHomePage />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
-    </AppShell>
-  );
-}
-
-function PortalShellRoutes({
-  currentPath,
-  isAllowed,
-  role,
-  userId,
-  modules,
-}: {
-  currentPath: string;
-  isAllowed: (moduleKey: string) => boolean;
-  role: string;
-  userId: string;
-  modules: typeof ia.modules;
-}): JSX.Element {
-  return (
-    <AppShell
-      panelLayout="portal"
-      modules={modules}
-      navigationRules={ia.navigation.rules}
-      navigationSections={ia.navigation.sections}
-      currentPath={currentPath}
-    >
-      <Routes>
-        <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={role} userId={userId} />} />
-        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={role} userId={userId} />} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={role} userId={userId} />} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={role} userId={userId} />} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Snídaně" role={role} userId={userId} />} />
-        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={role} userId={userId} />} />
-        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={role} userId={userId} />} />
-        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={role} userId={userId} />} />
-        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={role} userId={userId} />} />
-        <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={role} userId={userId} />} />
-        <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={role} userId={userId} />} />
-        <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={role} userId={userId} />} />
-        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="Závady" role={role} userId={userId} />} />
-        <Route path="/sklad" element={isAllowed('inventory') ? <InventoryList /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={role} userId={userId} />} />
-        <Route path="/sklad/nova" element={isAllowed('inventory') ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={role} userId={userId} />} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={role} userId={userId} />} />
-        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={role} userId={userId} />} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={role} userId={userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={role} userId={userId} />} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={role} userId={userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={role} userId={userId} />} />
-        <Route path="/intro" element={<React.Suspense fallback={<SkeletonPage />}><IntroRoute /></React.Suspense>} />
-        <Route path="/offline" element={<React.Suspense fallback={<SkeletonPage />}><OfflineRoute /></React.Suspense>} />
-        <Route path="/maintenance" element={<React.Suspense fallback={<SkeletonPage />}><MaintenanceRoute /></React.Suspense>} />
-        <Route path="/404" element={<React.Suspense fallback={<SkeletonPage />}><NotFoundRoute /></React.Suspense>} />
-        <Route path="/dalsi" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/404" replace />} />
-      </Routes>
-    </AppShell>
-  );
-}
-
 function AppRoutes(): JSX.Element {
   const location = useLocation();
   const auth = React.useMemo(() => resolveAuthProfile(location.search), [location.search]);
@@ -1479,22 +1390,41 @@ function AppRoutes(): JSX.Element {
     }
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
   });
-  const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
 
   return (
     <Routes>
       <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin/*" element={<AdminShellRoutes currentPath={location.pathname} />} />
+      <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
       <Route path="/login" element={<PortalLoginPage />} />
       <Route
         path="*"
         element={
-          <PortalShellRoutes
+          <PortalRoutes
             currentPath={location.pathname}
-            isAllowed={isAllowed}
-            role={auth.role}
-            userId={auth.userId}
+            auth={auth}
             modules={allowedModules}
+            deps={{
+              Dashboard,
+              BreakfastList,
+              BreakfastForm,
+              BreakfastDetail,
+              LostFoundList,
+              LostFoundForm,
+              LostFoundDetail,
+              IssuesList,
+              IssuesForm,
+              IssuesDetail,
+              InventoryList,
+              InventoryForm,
+              InventoryDetail,
+              ReportsList,
+              ReportsForm,
+              ReportsDetail,
+              IntroRoute,
+              OfflineRoute,
+              MaintenanceRoute,
+              NotFoundRoute,
+            }}
           />
         }
       />
