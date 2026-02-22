@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-02-22"
+updated_at: "2026-02-23"
 notes:
   - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
   - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
@@ -141,6 +141,7 @@ modules:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
       - "this-pr"
+      - "this-pr-followup"
 
   - module: web_e2e_browser_bootstrap
     required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
