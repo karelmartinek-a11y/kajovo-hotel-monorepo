@@ -89,6 +89,7 @@ modules:
     status: IN_PROGRESS
     links:
       - "this-pr"
+      - "this-pr-fix-main-tsx-conflict"
       - "this-pr-fix-verification-doc-fallback"
     target_location:
       - "apps/kajovo-hotel-web/src/admin/*"
