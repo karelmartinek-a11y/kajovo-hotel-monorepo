@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     database_url: str = "sqlite:///./kajovo_hotel.db"
+    admin_email: str = "admin@kajovohotel.local"
+    admin_password: str = "admin123"
+    admin_password_hint: str = "Výchozí heslo pro lokální vývoj"
+    smtp_enabled: bool = False
+    smtp_from_email: str = "noreply@kajovohotel.local"
 
     model_config = SettingsConfigDict(env_prefix="KAJOVO_API_")
 

@@ -36,7 +36,7 @@ import {
   type ReportRead,
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
-import { canReadModule, resolveAuthProfile } from './rbac';
+import { canReadModule, resolveAuthProfile, type AuthProfile } from './rbac';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
@@ -1390,7 +1390,16 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const auth = React.useMemo(() => resolveAuthProfile(location.search), [location.search]);
+  const [auth, setAuth] = React.useState<AuthProfile | null>(null);
+
+  React.useEffect(() => {
+    void resolveAuthProfile().then(setAuth).catch(() => setAuth({ userId: 'anonymous', role: 'manager', permissions: new Set(), actorType: 'portal' }));
+  }, []);
+
+  if (!auth) {
+    return <SkeletonPage />;
+  }
+
   const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])

@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-02-25"
+updated_at: "2026-02-26"
 notes:
   - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
   - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
@@ -98,10 +98,12 @@ modules:
         - "legacy/hotel-backend/app/db/models.py: PortalUser"
       docs:
         - "docs/test-accounts.md"
-    status: IN_PROGRESS
+    status: DONE
     target_location:
       - "apps/kajovo-hotel-api/app/security/rbac.py"
       - "apps/kajovo-hotel-web/src/rbac.ts"
+    links:
+      - "this-pr"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"

@@ -1,5 +1,7 @@
+import hashlib
 import os
 import socket
+import sqlite3
 import subprocess
 import time
 from collections.abc import Generator
@@ -11,6 +13,11 @@ from sqlalchemy import create_engine
 from app.db.models import Base
 
 
+def _scrypt_hash(password: str, salt: bytes) -> str:
+    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
+    return f"scrypt${salt.hex()}${digest.hex()}"
+
+
 @pytest.fixture(scope="session")
 def api_base_url() -> Generator[str, None, None]:
     db_path = Path("./test_kajovo_hotel.db")
@@ -20,6 +27,17 @@ def api_base_url() -> Generator[str, None, None]:
     database_url = f"sqlite:///{db_path}"
     engine = create_engine(database_url)
     Base.metadata.create_all(bind=engine)
+
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
+            ("warehouse@example.com", "warehouse", _scrypt_hash("warehouse-pass", b"warehouse-salt")),
+        )
+        connection.execute(
+            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
+            ("maintenance@example.com", "maintenance", _scrypt_hash("maintenance-pass", b"maintenance-salt")),
+        )
+        connection.commit()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))

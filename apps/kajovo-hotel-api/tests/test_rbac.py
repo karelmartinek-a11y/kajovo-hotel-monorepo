@@ -2,10 +2,12 @@ import json
 import sqlite3
 import urllib.error
 import urllib.request
+from http.cookiejar import CookieJar
 from pathlib import Path
 
 
 def api_request(
+    opener: urllib.request.OpenerDirector,
     base_url: str,
     path: str,
     method: str = "GET",
@@ -22,7 +24,7 @@ def api_request(
 
     request = urllib.request.Request(url=url, data=data, headers=request_headers, method=method)
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with opener.open(request, timeout=10) as response:
             raw = response.read().decode("utf-8")
             return response.status, json.loads(raw) if raw else None
     except urllib.error.HTTPError as exc:
@@ -31,23 +33,41 @@ def api_request(
         return exc.code, parsed
 
 
-def test_rbac_allows_inventory_for_warehouse(api_base_url: str) -> None:
-    status, data = api_request(
-        api_base_url,
-        "/api/v1/inventory",
-        headers={"x-user-id": "warehouse-11", "x-user-role": "warehouse"},
-    )
+def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
+    token = next((cookie.value for cookie in cookie_jar if cookie.name == "kajovo_csrf"), "")
+    return {"x-csrf-token": token} if token else {}
 
+
+def test_rbac_allows_inventory_for_warehouse(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "warehouse@example.com", "password": "warehouse-pass"},
+    )
+    assert status == 200
+
+    status, data = api_request(opener, api_base_url, "/api/v1/inventory")
     assert status == 200
     assert isinstance(data, list)
 
 
 def test_rbac_denies_breakfast_for_warehouse(api_base_url: str) -> None:
-    status, data = api_request(
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
         api_base_url,
-        "/api/v1/breakfast",
-        headers={"x-user-id": "warehouse-11", "x-user-role": "warehouse"},
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "warehouse@example.com", "password": "warehouse-pass"},
     )
+    assert status == 200
+
+    status, data = api_request(opener, api_base_url, "/api/v1/breakfast")
 
     assert status == 403
     assert isinstance(data, dict)
@@ -55,12 +75,24 @@ def test_rbac_denies_breakfast_for_warehouse(api_base_url: str) -> None:
 
 
 def test_rbac_write_denied_is_audited_with_actor_identity(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "maintenance@example.com", "password": "maintenance-pass"},
+    )
+    assert status == 200
+
     status, data = api_request(
+        opener,
         api_base_url,
         "/api/v1/reports",
         method="POST",
         payload={"title": "No access", "status": "open"},
-        headers={"x-user": "marta", "x-user-id": "maint-4", "x-user-role": "maintenance"},
+        headers=csrf_header(jar),
     )
 
     assert status == 403
@@ -76,12 +108,12 @@ def test_rbac_write_denied_is_audited_with_actor_identity(api_base_url: str) -> 
             ORDER BY id DESC
             LIMIT 1
             """,
-            ("maint-4",),
+            ("maintenance@example.com",),
         ).fetchone()
 
     assert row is not None
-    assert row[0] == "marta"
-    assert row[1] == "maint-4"
+    assert row[0] == "maintenance@example.com"
+    assert row[1] == "maintenance@example.com"
     assert row[2] == "maintenance"
     assert row[3] == "POST"
     assert row[4] == "/api/v1/reports"

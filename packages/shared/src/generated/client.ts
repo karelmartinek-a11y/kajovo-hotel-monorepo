@@ -225,11 +225,23 @@ function buildQuery(query: Record<string, QueryValue> | undefined): string {
   return encoded ? `?${encoded}` : '';
 }
 
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const found = document.cookie.split('; ').find((cookie) => cookie.startsWith(`${name}=`));
+  return found ? decodeURIComponent(found.split('=')[1]) : null;
+}
+
 async function request<T>(method: string, path: string, query?: Record<string, QueryValue>, body?: unknown): Promise<T> {
+  const csrfToken = readCookie('kajovo_csrf');
+  const isWrite = method !== 'GET' && method !== 'HEAD';
+  const headers: Record<string, string> = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (isWrite && csrfToken) headers['x-csrf-token'] = csrfToken;
   const response = await fetch(`${path}${buildQuery(query)}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
+    credentials: 'include',
   });
   if (!response.ok) throw new Error('API request failed');
   if (response.status === 204) return undefined as T;
