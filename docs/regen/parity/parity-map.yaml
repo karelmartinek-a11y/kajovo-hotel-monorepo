@@ -264,6 +264,18 @@ modules:
       - "apps/kajovo-hotel-api/tests/test_users.py"
       - ".github/workflows/ci-full.yml"
 
+  - module: api_test_sqlite_ci_data_dir_alignment
+    required_behavior: "CI i pytest fixture používají shodný SQLite data adresář apps/kajovo-hotel-api/data"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/10-sqlite-ci-data-dir-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+      - ".github/workflows/ci-full.yml"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:

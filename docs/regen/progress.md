@@ -14,7 +14,7 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 07 | DONE | `docs/regen/07-api-test-csrf-fix` | `ORF-07 (current)` | None | Slot 07 uzavřen (API test setup + CSRF/session). |
 | 08 | DONE | `docs/regen/08-api-lint-fix` | `ORF-08 (current)` | None | Slot 08 uzavřen (API lint/CI fix-only). |
 | 09 | DONE | `docs/regen/09-sqlite-db-path-fix` | `ORF-09 (current)` | None | Slot 09 uzavřen (SQLite test DB path/dir stabilizace). |
-| 10 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/10-*/verification.md` a provést prompt scope. |
+| 10 | DONE | `docs/regen/10-sqlite-ci-data-dir-fix` | `ORF-10 (current)` | None | Slot 10 uzavřen (SQLite CI data dir alignment). |
 | 11 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/11-*/verification.md` a provést prompt scope. |
 | 12 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/12-*/verification.md` a provést prompt scope. |
 | 13 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/13-*/verification.md` a provést prompt scope. |
