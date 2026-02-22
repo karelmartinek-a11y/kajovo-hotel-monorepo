@@ -29,7 +29,8 @@ def _scrypt_hash(password: str, salt: bytes) -> str:
 
 @pytest.fixture(scope="session")
 def api_db_path() -> Generator[Path, None, None]:
-    db_dir = Path("/workspace/kajovo-hotel-monorepo/apps/kajovo-hotel-api/data")
+    repo_root = Path(os.getenv("GITHUB_WORKSPACE", Path(__file__).resolve().parents[3]))
+    db_dir = repo_root / "apps" / "kajovo-hotel-api" / "data"
     db_dir.mkdir(parents=True, exist_ok=True)
     db_path = db_dir / "test_kajovo_hotel.db"
     if db_path.exists():
