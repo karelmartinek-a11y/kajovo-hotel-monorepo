@@ -16,8 +16,8 @@ Dodat jediný kanál autorizace přes Admin správu uživatelů: API CRUD + Admi
   - očekáváno: audit detail neobsahuje plaintext hesla.
 - `pytest apps/kajovo-hotel-api/tests/test_rbac.py`
   - očekáváno: RBAC stále funguje a deny zápis se auditují.
-- `pnpm --filter @kajovo/hotel-web test -- --runInBand`
-  - očekáváno: web test suite projde po přidání nové admin users route.
+- `pnpm --filter @kajovo/kajovo-hotel-web lint`
+  - očekáváno: TypeScript build/lint projde po přidání nové admin users route.
 
 ## Rizika / known limits
 - V jednom web entrypointu zůstává společný shell pro admin/portal; separace na oddělené app entrypointy je nad rámec kroku a zůstává v parity mapě jako `admin_portal_split`.
