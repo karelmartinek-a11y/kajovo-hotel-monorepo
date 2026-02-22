@@ -1,6 +1,16 @@
 /* eslint-disable */
 // Generated from apps/kajovo-hotel-api/openapi.json. Do not edit manually.
 
+export type AdminLoginRequest = {
+  "email": string;
+  "password": string;
+};
+export type AuthIdentityResponse = {
+  "actor_type": string;
+  "email": string;
+  "permissions": Array<string>;
+  "role": string;
+};
 export type BreakfastDailySummary = {
   "service_date": string;
   "status_counts": Record<string, unknown>;
@@ -37,6 +47,9 @@ export type BreakfastOrderUpdate = {
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
 export type HTTPValidationError = {
   "detail"?: Array<ValidationError>;
+};
+export type HintRequest = {
+  "email": string;
 };
 export type InventoryAuditLogRead = {
   "action": string;
@@ -142,6 +155,9 @@ export type IssueUpdate = {
   "status"?: IssueStatus | null;
   "title"?: string | null;
 };
+export type LogoutResponse = {
+  "ok"?: boolean;
+};
 export type LostFoundItemCreate = {
   "category": string;
   "claimant_contact"?: string | null;
@@ -186,6 +202,28 @@ export type LostFoundItemUpdate = {
   "status"?: LostFoundStatus | null;
 };
 export type LostFoundStatus = "stored" | "claimed" | "returned" | "disposed";
+export type PortalLoginRequest = {
+  "email": string;
+  "password": string;
+};
+export type PortalUserCreate = {
+  "email": string;
+  "password": string;
+};
+export type PortalUserPasswordSet = {
+  "password": string;
+};
+export type PortalUserRead = {
+  "created_at": string | null;
+  "email": string;
+  "id": number;
+  "is_active": boolean;
+  "role": string;
+  "updated_at": string | null;
+};
+export type PortalUserStatusUpdate = {
+  "is_active": boolean;
+};
 export type ReportCreate = {
   "description"?: string | null;
   "status"?: string;
@@ -225,23 +263,11 @@ function buildQuery(query: Record<string, QueryValue> | undefined): string {
   return encoded ? `?${encoded}` : '';
 }
 
-function readCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const found = document.cookie.split('; ').find((cookie) => cookie.startsWith(`${name}=`));
-  return found ? decodeURIComponent(found.split('=')[1]) : null;
-}
-
 async function request<T>(method: string, path: string, query?: Record<string, QueryValue>, body?: unknown): Promise<T> {
-  const csrfToken = readCookie('kajovo_csrf');
-  const isWrite = method !== 'GET' && method !== 'HEAD';
-  const headers: Record<string, string> = {};
-  if (body) headers['Content-Type'] = 'application/json';
-  if (isWrite && csrfToken) headers['x-csrf-token'] = csrfToken;
   const response = await fetch(`${path}${buildQuery(query)}`, {
     method,
-    headers: Object.keys(headers).length > 0 ? headers : undefined,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include',
   });
   if (!response.ok) throw new Error('API request failed');
   if (response.status === 204) return undefined as T;
@@ -249,6 +275,24 @@ async function request<T>(method: string, path: string, query?: Record<string, Q
 }
 
 export const apiClient = {
+  async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/admin/hint`, undefined, body);
+  },
+  async adminLoginApiAuthAdminLoginPost(body: AdminLoginRequest): Promise<AuthIdentityResponse> {
+    return request<AuthIdentityResponse>('POST', `/api/auth/admin/login`, undefined, body);
+  },
+  async adminLogoutApiAuthAdminLogoutPost(): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/admin/logout`, undefined, undefined);
+  },
+  async portalLoginApiAuthLoginPost(body: PortalLoginRequest): Promise<AuthIdentityResponse> {
+    return request<AuthIdentityResponse>('POST', `/api/auth/login`, undefined, body);
+  },
+  async portalLogoutApiAuthLogoutPost(): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/logout`, undefined, undefined);
+  },
+  async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
+    return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
+  },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);
   },
@@ -329,6 +373,24 @@ export const apiClient = {
   },
   async updateReportApiV1ReportsReportIdPut(report_id: number, body: ReportUpdate): Promise<ReportRead> {
     return request<ReportRead>('PUT', `/api/v1/reports/${report_id}`, undefined, body);
+  },
+  async listUsersApiV1UsersGet(): Promise<Array<PortalUserRead>> {
+    return request<Array<PortalUserRead>>('GET', `/api/v1/users`, undefined, undefined);
+  },
+  async createUserApiV1UsersPost(body: PortalUserCreate): Promise<PortalUserRead> {
+    return request<PortalUserRead>('POST', `/api/v1/users`, undefined, body);
+  },
+  async getUserApiV1UsersUserIdGet(user_id: number): Promise<PortalUserRead> {
+    return request<PortalUserRead>('GET', `/api/v1/users/${user_id}`, undefined, undefined);
+  },
+  async setUserActiveApiV1UsersUserIdActivePatch(user_id: number, body: PortalUserStatusUpdate): Promise<PortalUserRead> {
+    return request<PortalUserRead>('PATCH', `/api/v1/users/${user_id}/active`, undefined, body);
+  },
+  async setUserPasswordApiV1UsersUserIdPasswordPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
+    return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password`, undefined, body);
+  },
+  async resetUserPasswordApiV1UsersUserIdPasswordResetPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
+    return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password/reset`, undefined, body);
   },
   async healthHealthGet(): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('GET', `/health`, undefined, undefined);

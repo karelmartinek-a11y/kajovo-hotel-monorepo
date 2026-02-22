@@ -23,6 +23,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
+      - name: Ensure SQLite database directory exists
+        run: mkdir -p apps/kajovo-hotel-api/data
+
       - name: API tests (pytest)
         run: |
           cd apps/kajovo-hotel-api
