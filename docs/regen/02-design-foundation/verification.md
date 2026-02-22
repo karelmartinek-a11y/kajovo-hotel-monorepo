@@ -14,6 +14,7 @@
 - `packages/ui/src/shell/AppShell.tsx` podporuje `panelLayout` (`admin`/`portal`) a propaguje jej do shellu.
 - `apps/kajovo-hotel-web/src/main.tsx` mapuje roli na `panelLayout`.
 - `apps/kajovo-hotel-web/tests/signage-routes.spec.ts` přidán e2e smoke test přítomnosti signace na klíčových routách.
+- `apps/kajovo-hotel-web/tests/ci-gates.spec.ts` upraven pro SVG-based signaci (ověřuje `aria-label`, přítomnost `<img>` a `src` na `signace.svg` místo textové/flat-color varianty).
 - `apps/kajovo-hotel/ui-tokens/tokens.css` je delegační import na shared runtime tokeny (bez duplicity implementace).
 
 ## Ověření (příkazy + očekávání)
@@ -22,6 +23,8 @@
   - výsledek v tomto prostředí: nelze dokončit, protože Playwright browser binary chybí a CDN vrací 403 při instalaci (`pnpm exec playwright install chromium`).
 - `pnpm --filter @kajovo/kajovo-hotel-web lint`
   - očekávání: TypeScript/React lint build bez chyb.
+- `pnpm ci:tokens`
+  - očekávání: token lint pass (SSOT token schema + signage constraints).
 
 ## Rizika / known limits
 

@@ -67,19 +67,18 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
     await page.goto(toConcreteRoute(view.route));
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign, `Missing SIGNACE for route ${view.route}`).toBeVisible();
-    await expect(sign).toHaveText('KÁJOVO');
+    await expect(sign).toHaveAttribute('aria-label', 'KÁJOVO');
+    const signImage = sign.locator('img');
+    await expect(signImage).toBeVisible();
+    await expect(signImage).toHaveAttribute('src', /signace\.svg$/);
 
     const signStyles = await sign.evaluate((node) => {
       const styles = window.getComputedStyle(node);
       return {
         position: styles.position,
-        background: styles.backgroundColor,
-        color: styles.color,
       };
     });
     expect(signStyles.position).toBe('fixed');
-    expect(signStyles.background).toBe('rgb(255, 0, 0)');
-    expect(signStyles.color).toBe('rgb(255, 255, 255)');
 
     const before = await sign.boundingBox();
     await page.mouse.wheel(0, 3000);

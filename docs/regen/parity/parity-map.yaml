@@ -141,6 +141,7 @@ modules:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
       - "this-pr"
+      - "this-pr-fix-signage-tests"
       - "this-pr-fix2"
       - "this-pr-fix3"
       - "this-pr-followup"
