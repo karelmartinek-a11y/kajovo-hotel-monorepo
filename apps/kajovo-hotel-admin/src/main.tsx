@@ -1498,7 +1498,7 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
   );
 }
 
-function PortalLoginPage(): JSX.Element {
+function AdminLoginPage(): JSX.Element {
   const navigate = useNavigate();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -1508,7 +1508,7 @@ function PortalLoginPage(): JSX.Element {
     event.preventDefault();
     setError(null);
     try {
-      await apiClient.portalLoginApiAuthLoginPost({ email, password });
+      await apiClient.adminLoginApiAuthAdminLoginPost({ email, password });
       navigate('/', { replace: true });
     } catch {
       setError('Neplatné přihlašovací údaje.');
@@ -1516,14 +1516,14 @@ function PortalLoginPage(): JSX.Element {
   }
 
   return (
-    <main className="k-page" data-testid="portal-login-page">
-      <Card title="KájovoHotel Portal login">
+    <main className="k-page" data-testid="admin-login-page">
+      <Card title="KájovoHotel Admin login">
         <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
-          <FormField id="portal_login_email" label="Email">
-            <input id="portal_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
+          <FormField id="admin_login_email" label="Admin email">
+            <input id="admin_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
           </FormField>
-          <FormField id="portal_login_password" label="Heslo">
-            <input id="portal_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <FormField id="admin_login_password" label="Admin heslo">
+            <input id="admin_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </FormField>
           {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
           <button className="k-button" type="submit">Přihlásit</button>
@@ -1555,10 +1555,10 @@ function AppRoutes(): JSX.Element {
   }
 
   if (location.pathname === '/login') {
-    return <PortalLoginPage />;
+    return <AdminLoginPage />;
   }
 
-  if (auth.actorType !== 'portal') {
+  if (auth.actorType !== 'admin') {
     return <Navigate to="/login" replace />;
   }
 
@@ -1566,7 +1566,8 @@ function AppRoutes(): JSX.Element {
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
     : [];
-  const modules = [...ia.modules, ...injectedModules];
+  const adminModules = auth.role === 'admin' ? [{ key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] }] : [];
+  const modules = [...ia.modules, ...adminModules, ...injectedModules];
   const allowedModules = modules.filter((module) => {
     const required =
       Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
@@ -1577,7 +1578,7 @@ function AppRoutes(): JSX.Element {
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
   });
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
-  const panelLayout = 'portal';
+  const panelLayout = auth.role === 'admin' ? 'admin' : 'portal';
 
   return (
     <AppShell
@@ -1609,7 +1610,8 @@ function AppRoutes(): JSX.Element {
         <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={auth.role} userId={auth.userId} />} />
+        <Route path="/login" element={<AdminLoginPage />} />
         <Route
           path="/intro"
           element={
