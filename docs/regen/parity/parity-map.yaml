@@ -251,3 +251,18 @@ modules:
       - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
     links:
       - "this-pr"
+
+  - module: prompt_cascade_recovery_plan
+    required_behavior: "Forenzně vyhodnotit průběh promptů 00-15 a definovat konkrétní recovery postup pro dosažení parity"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/16-cascade-recovery/prompt-cascade-assessment.md"
+        - "docs/regen/16-cascade-recovery/verification.md"
+    status: DONE
+    target_location:
+      - "docs/regen/16-cascade-recovery/prompt-cascade-assessment.md"
+      - "docs/regen/16-cascade-recovery/verification.md"
+    links:
+      - "this-pr"
