@@ -23,6 +23,7 @@ from app.security.auth import (
     get_permissions,
     require_session,
 )
+from app.services.mail import send_admin_password_hint
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -97,7 +98,7 @@ def admin_hint(payload: HintRequest) -> LogoutResponse:
     settings = get_settings()
     if payload.email.strip().lower() != settings.admin_email.strip().lower():
         return LogoutResponse()
-    # SMTP is intentionally disabled until P06; keep endpoint deterministic.
+    send_admin_password_hint(settings=settings, recipient=settings.admin_email)
     return LogoutResponse()
 
 

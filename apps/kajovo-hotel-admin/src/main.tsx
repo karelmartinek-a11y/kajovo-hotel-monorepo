@@ -1503,16 +1503,27 @@ function AdminLoginPage(): JSX.Element {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [hintStatus, setHintStatus] = React.useState<string | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError(null);
+    setHintStatus(null);
     try {
       await apiClient.adminLoginApiAuthAdminLoginPost({ email, password });
       navigate('/', { replace: true });
     } catch {
       setError('Neplatné přihlašovací údaje.');
     }
+  }
+
+  async function sendPasswordHint(): Promise<void> {
+    setHintStatus(null);
+    await fetchJson('/api/auth/admin/hint', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    setHintStatus('Pokud email odpovídá admin účtu, byl odeslán hint hesla.');
   }
 
   return (
@@ -1526,7 +1537,18 @@ function AdminLoginPage(): JSX.Element {
             <input id="admin_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </FormField>
           {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
-          <button className="k-button" type="submit">Přihlásit</button>
+          {hintStatus ? <StateView title="Info" description={hintStatus} stateKey="empty" /> : null}
+          <div className="k-toolbar">
+            <button className="k-button" type="submit">Přihlásit</button>
+            <button
+              className="k-button secondary"
+              type="button"
+              onClick={() => void sendPasswordHint()}
+              disabled={!email.trim()}
+            >
+              Poslat hint hesla
+            </button>
+          </div>
         </form>
       </Card>
     </main>
