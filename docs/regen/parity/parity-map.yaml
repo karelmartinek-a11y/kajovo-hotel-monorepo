@@ -180,3 +180,17 @@ modules:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
       - "this-pr"
+
+  - module: web_test_command_split
+    required_behavior: "Default web test command je stabilní (core gates), visual suite běží separátně"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "apps/kajovo-hotel-web/package.json"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/package.json:scripts.test"
+      - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
+    links:
+      - "this-pr"
