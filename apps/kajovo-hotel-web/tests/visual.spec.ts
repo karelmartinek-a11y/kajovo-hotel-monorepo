@@ -265,7 +265,7 @@ test.describe('visual states', () => {
     { name: 'phone', size: { width: 390, height: 844 } },
     { name: 'tablet', size: { width: 820, height: 1180 } },
     { name: 'desktop', size: { width: 1440, height: 900 } },
-  ]) {
+  ] as const) {
     test(`lost found list snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
       await page.goto('/ztraty-a-nalezy');
@@ -358,50 +358,57 @@ test.describe('visual states', () => {
     { name: 'phone', size: { width: 390, height: 844 } },
     { name: 'tablet', size: { width: 820, height: 1180 } },
     { name: 'desktop', size: { width: 1440, height: 900 } },
-  ]) {
-    test(`dashboard snapshot ${viewport.name}`, async ({ page }) => {
+  ] as const) {
+    test(`dashboard snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/');
       await expect(page.getByTestId('dashboard-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`dashboard-${viewport.name}.png`, { fullPage: true });
     });
 
-    test(`breakfast list snapshot ${viewport.name}`, async ({ page }) => {
+    test(`breakfast list snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/snidane');
       await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`breakfast-list-${viewport.name}.png`, { fullPage: true });
     });
 
-    test(`breakfast detail snapshot ${viewport.name}`, async ({ page }) => {
+    test(`breakfast detail snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/snidane/1');
       await expect(page.getByTestId('breakfast-detail-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`breakfast-detail-${viewport.name}.png`, { fullPage: true });
     });
 
-    test(`breakfast edit snapshot ${viewport.name}`, async ({ page }) => {
+    test(`breakfast edit snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/snidane/1/edit');
       await expect(page.getByTestId('breakfast-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`breakfast-edit-${viewport.name}.png`, { fullPage: true });
     });
 
-    test(`offline snapshot ${viewport.name}`, async ({ page }) => {
+    test(`offline snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/offline');
       await expect(page.getByTestId('state-view-offline')).toBeVisible();
       await expect(page).toHaveScreenshot(`offline-${viewport.name}.png`, { fullPage: true });
     });
 
-    test(`maintenance snapshot ${viewport.name}`, async ({ page }) => {
+    test(`maintenance snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/maintenance');
       await expect(page.getByTestId('state-view-maintenance')).toBeVisible();
       await expect(page).toHaveScreenshot(`maintenance-${viewport.name}.png`, { fullPage: true });
     });
 
-    test(`404 snapshot ${viewport.name}`, async ({ page }) => {
+    test(`404 snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+      if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
       await page.goto('/404');
       await expect(page.getByTestId('state-view-404')).toBeVisible();
@@ -425,10 +432,11 @@ test.describe('visual states', () => {
       { name: 'phone', size: { width: 390, height: 844 } },
       { name: 'tablet', size: { width: 820, height: 1180 } },
       { name: 'desktop', size: { width: 1440, height: 900 } },
-    ]) {
+    ] as const) {
       for (const view of keyRoutes) {
         for (const state of states) {
-          test(`${view.key} ${state} state snapshot ${viewport.name}`, async ({ page }) => {
+          test(`${view.key} ${state} state snapshot ${viewport.name}`, async ({ page }, testInfo) => {
+            if (testInfo.project.name !== viewport.name) return;
             await page.setViewportSize(viewport.size);
             await page.goto(`${view.route}?state=${state}`);
             await expect(page.getByTestId(view.marker)).toBeVisible();

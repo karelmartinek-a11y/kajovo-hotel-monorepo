@@ -154,3 +154,16 @@ modules:
       - "apps/kajovo-hotel-web/package.json:scripts.pretest"
     links:
       - "this-pr"
+
+  - module: web_visual_snapshot_project_scope
+    required_behavior: "Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop projekty"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "apps/kajovo-hotel-web/tests/visual.spec.ts"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/tests/visual.spec.ts"
+    links:
+      - "this-pr"
