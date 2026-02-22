@@ -25,7 +25,7 @@
 - PASS: `pnpm unit`
 - PASS: `pnpm ci:policy`
 
-## E) Rizika / known limits
+## E) Rizika/known limits
 - Admin app je v tomto kroku technický split s převzatými route moduly; hlubší IA/feature pruning pro admin-only scope je navazující práce.
 - E2E test matrix zatím běží primárně nad portal app; admin specifické E2E lze rozšířit v dalším promptu.
 
