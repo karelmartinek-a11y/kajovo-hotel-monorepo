@@ -282,6 +282,21 @@ modules:
     links:
       - "docs/regen/16-api-foundation-contract-sync-fix/verification.md"
 
+  - module: api_health_alias_schema_fix
+    required_behavior: "Alias /api/health je dostupný runtime, ale negeneruje public OpenAPI/SDK endpoint"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/main.py: /api/health"
+      docs:
+        - "docs/regen/17-api-health-alias-schema-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/api/routes/health.py"
+      - "apps/kajovo-hotel-api/openapi.json"
+      - "packages/shared/src/generated/client.ts"
+    links:
+      - "docs/regen/17-api-health-alias-schema-fix/verification.md"
+
 
   - module: api_test_csrf_session_setup
     required_behavior: "API test setup používá validní session + CSRF token pro write requesty a stabilní uvicorn bootstrap"

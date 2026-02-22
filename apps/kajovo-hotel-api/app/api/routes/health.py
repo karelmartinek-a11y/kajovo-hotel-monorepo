@@ -8,7 +8,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-@router.get("/api/health")
+@router.get("/api/health", include_in_schema=False)
 def health(request: Request) -> dict[str, str | None]:
     return {"status": "ok", "request_id": getattr(request.state, "request_id", None)}
 

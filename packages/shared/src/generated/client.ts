@@ -293,9 +293,6 @@ export const apiClient = {
   async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
   },
-  async healthApiHealthGet(): Promise<Record<string, unknown>> {
-    return request<Record<string, unknown>>('GET', `/api/health`, undefined, undefined);
-  },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);
   },
