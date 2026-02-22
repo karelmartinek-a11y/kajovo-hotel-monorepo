@@ -86,7 +86,9 @@ modules:
       docs:
         - "brand/panel/login_admin.png"
         - "brand/panel/login_user_fail.png"
-    status: MISSING
+    status: IN_PROGRESS
+    links:
+      - "this-pr"
     target_location:
       - "apps/kajovo-hotel-web/src/admin/*"
       - "apps/kajovo-hotel-web/src/portal/*"

@@ -7,6 +7,7 @@ import type { NavModule, NavigationRules, NavigationSection } from '../types/nav
 type AppShellProps = {
   children: React.ReactNode;
   isPopup?: boolean;
+  panelLayout?: 'admin' | 'portal';
   modules: NavModule[];
   navigationRules: NavigationRules;
   navigationSections?: NavigationSection[];
@@ -16,13 +17,14 @@ type AppShellProps = {
 export function AppShell({
   children,
   isPopup,
+  panelLayout = 'portal',
   modules,
   navigationRules,
   navigationSections,
   currentPath,
 }: AppShellProps): JSX.Element {
   return (
-    <div className="k-app-shell">
+    <div className="k-app-shell" data-panel-layout={panelLayout}>
       <header className="k-app-header">
         <div className="k-shell-inner">
           <ModuleNavigation
