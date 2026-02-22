@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -59,7 +60,11 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
 
 
 @router.patch("/{user_id}/active", response_model=PortalUserRead)
-def set_user_active(user_id: int, payload: PortalUserStatusUpdate, db: Session = Depends(get_db)) -> PortalUserRead:
+def set_user_active(
+    user_id: int,
+    payload: PortalUserStatusUpdate,
+    db: Session = Depends(get_db),
+) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -72,7 +77,12 @@ def set_user_active(user_id: int, payload: PortalUserStatusUpdate, db: Session =
 
 
 @router.post("/{user_id}/password", response_model=PortalUserRead)
-def set_user_password(user_id: int, payload: PortalUserPasswordSet, request: Request, db: Session = Depends(get_db)) -> PortalUserRead:
+def set_user_password(
+    user_id: int,
+    payload: PortalUserPasswordSet,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -81,12 +91,19 @@ def set_user_password(user_id: int, payload: PortalUserPasswordSet, request: Req
     db.add(user)
     db.commit()
     db.refresh(user)
-    request.state.audit_detail_override = f"{{\"password_action\": \"set\", \"user_id\": {user_id}}}"
+    request.state.audit_detail_override = json.dumps(
+        {"password_action": "set", "user_id": user_id}
+    )
     return PortalUserRead.model_validate(user)
 
 
 @router.post("/{user_id}/password/reset", response_model=PortalUserRead)
-def reset_user_password(user_id: int, payload: PortalUserPasswordSet, request: Request, db: Session = Depends(get_db)) -> PortalUserRead:
+def reset_user_password(
+    user_id: int,
+    payload: PortalUserPasswordSet,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -95,5 +112,7 @@ def reset_user_password(user_id: int, payload: PortalUserPasswordSet, request: R
     db.add(user)
     db.commit()
     db.refresh(user)
-    request.state.audit_detail_override = f"{{\"password_action\": \"reset\", \"user_id\": {user_id}}}"
+    request.state.audit_detail_override = json.dumps(
+        {"password_action": "reset", "user_id": user_id}
+    )
     return PortalUserRead.model_validate(user)
