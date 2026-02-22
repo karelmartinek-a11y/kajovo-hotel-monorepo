@@ -268,6 +268,20 @@ modules:
     links:
       - "docs/regen/06-api-foundation/verification.md"
 
+  - module: api_foundation_contract_sync_fix
+    required_behavior: "Po změně API foundation jsou OpenAPI contract a generated TS client synchronizované"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/16-api-foundation-contract-sync-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/openapi.json"
+      - "packages/shared/src/generated/client.ts"
+    links:
+      - "docs/regen/16-api-foundation-contract-sync-fix/verification.md"
+
 
   - module: api_test_csrf_session_setup
     required_behavior: "API test setup používá validní session + CSRF token pro write requesty a stabilní uvicorn bootstrap"
