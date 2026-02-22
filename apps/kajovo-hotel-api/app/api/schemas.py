@@ -1,4 +1,5 @@
 from datetime import date, datetime
+
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover
