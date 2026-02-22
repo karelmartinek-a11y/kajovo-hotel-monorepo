@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-02-22"
+updated_at: "2026-02-25"
 notes:
   - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
   - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
@@ -141,6 +141,9 @@ modules:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
       - "this-pr"
+      - "this-pr-fix2"
+      - "this-pr-fix3"
+      - "this-pr-followup"
 
   - module: web_e2e_browser_bootstrap
     required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
@@ -206,5 +209,22 @@ modules:
     status: DONE
     target_location:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
+    links:
+      - "this-pr"
+
+
+  - module: repo_guardrails_and_ci_policy
+    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/01-guardrails/verification.md"
+        - ".github/workflows/ci-gates.yml"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
+      - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
+      - ".github/workflows/ci-gates.yml"
     links:
       - "this-pr"
