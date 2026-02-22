@@ -1,0 +1,214 @@
+KASKÁDA PROMPTŮ ORF – KájovoHotel monorepo (stabilizační verze pro Codex)
+Verze: 2026-02-22 ORF
+Cíl: zvýšit úspěšnost průchodů (first-pass merge rate) bez snižování kvality, zachovat parity cíl vůči /legacy (read-only evidence) a SSOT pravidla.
+
+──────────────────────────────────────────────────────────────────────────────
+[GLOBAL RULES – ORF HARDENED]
+──────────────────────────────────────────────────────────────────────────────
+0) Režim práce (povinné):
+   - Každý prompt = samostatný commit/PR.
+   - Nejprve „Plan + Evidence scope“, pak implementace, pak verifikace, pak update docs/regen/parity.
+   - Žádné velké batch změny napříč více prompty.
+
+1) Zdroj pravdy:
+   - Pouze aktuální GitHub repo.
+   - /legacy/** je read-only evidence.
+
+2) SSOT:
+   - ManifestDesignKájovo.md
+   - brand/** včetně brand/panel/**
+   - apps/kajovo-hotel/ux/ia.json
+   - docs/** + docs/regen/** + docs/regen/parity/parity-map.yaml
+
+3) Výstup do chatu:
+   - Pouze 1 řádek: `PR: <url>` (preferováno) nebo `COMMIT: <sha>`.
+   - Detaily ukládej do repo souborů.
+
+4) NO-COPY:
+   - Nekopírovat legacy UI/template/CSS/JS.
+   - Guided port jen pro DB schema/migrations nebo malé backend utility, pokud nutné.
+   - Vždy přidej `docs/regen/<NN>-<slug>/no-copy-justification.md` pokud se guided port použije.
+
+5) Branding a naming:
+   - Produkt textově všude „KájovoHotel“.
+   - Staré názvy nepoužívat v nových UI/docs.
+
+6) Admin vs Portal separace:
+   - Samostatné entrypointy/loginy.
+   - Nesmí sdílet page/view komponenty (jen primitives, tokens, shared types).
+
+7) Auth constraints (non-negotiable):
+   - Žádné /device/*, žádné Entity ID flow, žádné provisioning/pairing.
+   - Uživatel = email; email = username.
+   - Admin heslo pevné a neměnné.
+   - Forgot admin password => pouze hint email, ne změna hesla.
+
+8) Evidence povinně v každém kroku:
+   - `docs/regen/<NN>-<slug>/verification.md` se sekcemi:
+     A) Cíl
+     B) Exit criteria
+     C) Změny
+     D) Ověření (přesné příkazy + PASS/FAIL)
+     E) Rizika/known limits
+     F) Handoff pro další prompt
+   - `docs/regen/parity/parity-map.yaml` update (stav + konkrétní link/reference)
+
+9) Quality gates (minimum před uzavřením kroku):
+   - lint + typecheck + unit musí projít, nebo musí být explicitně zdokumentovaný environment blocker.
+   - Pokud je krok UI-visible, přidej screenshot artefakt.
+
+10) ORF anti-failure pravidla:
+   - Pokud krok padá, nejdřív udělej „fix-only PR“ pro tooling/CI, až pak pokračuj funkcionalitou.
+   - Nepoužívej placeholder references typu `this-pr` v parity mapě.
+   - Každý prompt musí mít max 1 hlavní doménový cíl + 1 podpůrný cíl (malé PR).
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-00 – Normalizace stavu a tracker
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Vytvoř `docs/regen/progress.md` jako SSOT tracker promptů 00–15:
+   - sloupce: Prompt, Status, Evidence dir, PR/commit, Blockers, Next owner action.
+B) Srovnej aktuální evidenci na mapu 00–15:
+   - pokud existují mimo-plán složky (`*-fix`, `04-auth-foundation`, `05-admin-users`), namapuj je v trackeru.
+C) Aktualizuj parity-map modulem `delivery_tracker` = DONE.
+D) Vytvoř `docs/regen/00-orf-normalization/verification.md`.
+
+Akceptace:
+- Je jasně vidět co je hotové, co partial, co missing, bez nejasností číslování.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-01 – CI kontrakt a deterministické gates
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Přidej CI gate, která failne pokud v parity-map zůstane `this-pr` placeholder.
+B) Přidej CI gate, která ověří že změněný prompt adresář obsahuje `verification.md` se sekcemi A–F.
+C) Stabilizuj test bootstrap pro API health testy (deterministický start/stop, log při failu).
+D) Dodej `docs/regen/01-orf-ci-hardening/verification.md`.
+
+Akceptace:
+- Guardrails + quality jobs jsou reprodukovatelné lokálně i v CI.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-02 – Prompt 03 restart: skutečný admin/portal split
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Dodělej prompt 03 podle původního cíle:
+   - apps/kajovo-hotel-web (PORTAL)
+   - apps/kajovo-hotel-admin (ADMIN)
+   - apps/kajovo-hotel-api (API)
+B) Zakaž sdílení page/view mezi web/admin policy sentinel pravidlem.
+C) Vytvoř `docs/regen/03-monorepo-structure/app-map.md` + `verification.md`.
+D) Parity update: `admin_portal_split` => IN_PROGRESS nebo DONE dle reality.
+
+Akceptace:
+- Web a Admin běží odděleně se separátními login entrypointy.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-03 – Prompt 04+05 evidence close
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Doplň chybějící evidence soubory:
+   - `docs/regen/04-portal/route-coverage.md`
+   - `docs/regen/04-portal/verification.md`
+   - `docs/regen/05-admin-shell/nav-map.md`
+   - `docs/regen/05-admin-shell/verification.md`
+B) Route coverage musí mapovat IA route -> komponenta -> stav -> test.
+C) Nav map musí mapovat panel design -> admin route/view.
+
+Akceptace:
+- Prompty 04 a 05 jsou auditovatelně uzavřené.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-04 – Prompt 06 API foundation completion
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Uzavři prompt 06 se skutečnou evidencí:
+   - /health + /ready (+ /api/health pokud očekáváno)
+   - jednotný error model
+   - request_id + audit skeleton
+B) Přidej/rozšiř testy pro health/ready + error envelope.
+C) Dodej `docs/regen/06-api-foundation/verification.md`.
+
+Akceptace:
+- API foundation je testově i dokumentačně konzistentní.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-05 – Prompt 07 auth constraints completion
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Ověř a dotáhni fixed admin + immutable password model.
+B) Hint email flow (API + UI) musí používat jednotný mail service contract (může být mock transport pokud SMTP ještě není).
+C) Přidej explicitní test na zákaz password change endpointu admina.
+D) Dodej `docs/regen/07-auth/verification.md` + `security-notes.md`.
+
+Akceptace:
+- Auth model splňuje všechny závazné restrikce.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-06 – Prompt 08 RBAC hardening
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Server-side permission checks na všech admin endpoints.
+B) UI access handling: hide unauthorized nav + AccessDenied při direct entry.
+C) Testy: API deny matrix + minimálně 1 e2e unauthorized direct-route test.
+D) `docs/regen/08-rbac/verification.md`.
+
+Akceptace:
+- Bez oprávnění nelze provést admin write/read akce.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-07 – Prompt 10 SMTP + mail service
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Admin Settings SMTP: secure storage + masked secrets + test-email.
+B) Jednotný EmailService využitý pro hint flow i onboarding (pokud existuje).
+C) Přidej integrační test přes mock SMTP transport.
+D) `docs/regen/10-smtp/verification.md` + `security-notes.md`.
+
+Akceptace:
+- Test-email i hint-email chodí přes stejný modul.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-08 – Prompt 13 e2e stabilizace
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) Stabilizuj Playwright smoke v CI (instalace browseru, services orchestration, timeout budget).
+B) Povinné scénáře:
+   1. admin login (fixed admin)
+   2. hint email flow (mock transport)
+   3. user create + portal login
+C) `docs/regen/13-ci-tests/verification.md` + flake notes.
+
+Akceptace:
+- E2E smoke je deterministické (min. 3 po sobě jdoucí běhy bez flake).
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+PROMPT ORF-09 – Prompt 14/15 closeout
+──────────────────────────────────────────────────────────────────────────────
+Úkol:
+A) `docs/runbook/cutover.md` jako primární runbook:
+   - krok, příkaz, očekávaný výsledek, rollback.
+B) `docs/regen/15-closeout/parity-verdict.md` + `release-checklist.md` + `verification.md`.
+C) Každý modul v parity mapě musí mít stav DONE/BLOCKED + ověřovací odkaz.
+
+Akceptace:
+- Release readiness je objektivně ověřitelná krok za krokem.
+Výstup do chatu: PR URL.
+
+──────────────────────────────────────────────────────────────────────────────
+DOPORUČENÝ OPERÁTORSKÝ POSTUP PRO TEBE (při copy/paste do Codex)
+──────────────────────────────────────────────────────────────────────────────
+1) Pouštěj vždy jen 1 prompt (ORF-00, pak ORF-01, ...).
+2) Nepouštěj další prompt, dokud předchozí PR nemá green CI.
+3) Pokud CI failne na tooling, vrať se o krok a udělej fix-only prompt.
+4) Trvej na tom, že výstup v chatu je pouze PR URL, detaily pouze do repo docs.
+5) Každý 3. prompt proveď mini-audit parity-map konzistence.
