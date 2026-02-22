@@ -10,3 +10,5 @@ export * from './components/Timeline';
 export * from './components/Badge';
 
 export * from './components/Skeleton';
+
+export * from './shell/panelLayout';

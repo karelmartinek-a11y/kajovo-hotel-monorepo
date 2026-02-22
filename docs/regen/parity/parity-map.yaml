@@ -141,6 +141,7 @@ modules:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
       - "this-pr"
+      - "this-pr-fix-signage-tests"
       - "this-pr-fix2"
       - "this-pr-fix3"
       - "this-pr-followup"
@@ -226,5 +227,23 @@ modules:
       - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
       - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
       - ".github/workflows/ci-gates.yml"
+    links:
+      - "this-pr"
+
+
+  - module: design_foundation_tokens_signage_panel
+    required_behavior: "Jednotné tokeny (Portal/Admin), signace dle manifestu a panel layout mechanismus"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/02-design-foundation/token-map.md"
+        - "docs/regen/02-design-foundation/verification.md"
+    status: DONE
+    target_location:
+      - "packages/ui/src/tokens.css"
+      - "packages/ui/src/shell/KajovoSign.tsx"
+      - "packages/ui/src/shell/AppShell.tsx"
+      - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
     links:
       - "this-pr"
