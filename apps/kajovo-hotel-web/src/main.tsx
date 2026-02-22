@@ -36,7 +36,7 @@ import {
   type ReportRead,
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
-import { canReadModule, resolveAuthProfile, type AuthProfile } from './rbac';
+import { canReadModule, resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
@@ -1503,7 +1503,16 @@ function AppRoutes(): JSX.Element {
   const [auth, setAuth] = React.useState<AuthProfile | null>(null);
 
   React.useEffect(() => {
-    void resolveAuthProfile().then(setAuth).catch(() => setAuth({ userId: 'anonymous', role: 'manager', permissions: new Set(), actorType: 'portal' }));
+    void resolveAuthProfile()
+      .then(setAuth)
+      .catch(() =>
+        setAuth({
+          userId: 'anonymous',
+          role: 'manager',
+          permissions: rolePermissions('manager'),
+          actorType: 'portal',
+        })
+      );
   }, []);
 
   if (!auth) {

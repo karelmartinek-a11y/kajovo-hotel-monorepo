@@ -45,6 +45,24 @@ const uniqueRoutes = Array.from(new Set(smokeRoutes));
 const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 test.beforeEach(async ({ page }) => {
+
+  await page.route('**/api/auth/me', async (route) =>
+    route.fulfill({
+      json: {
+        email: 'manager@example.com',
+        role: 'manager',
+        permissions: [
+          'dashboard:read',
+          'breakfast:read',
+          'lost_found:read',
+          'issues:read',
+          'inventory:read',
+          'reports:read',
+        ],
+        actor_type: 'portal',
+      },
+    })
+  );
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
   await page.route('**/api/v1/breakfast/daily-summary?*', async (route) => route.fulfill({ json: summaryPayload }));
   await page.route('**/api/v1/breakfast/1', async (route) => route.fulfill({ json: listPayload[0] }));

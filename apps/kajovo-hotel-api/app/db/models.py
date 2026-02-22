@@ -1,4 +1,5 @@
 from datetime import date, datetime
+
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover
@@ -216,7 +217,7 @@ class InventoryAuditLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     entity: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    entity_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    resource_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     action: Mapped[str] = mapped_column(String(32), nullable=False)
     detail: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())

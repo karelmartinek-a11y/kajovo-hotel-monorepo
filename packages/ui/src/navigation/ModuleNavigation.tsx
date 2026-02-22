@@ -15,6 +15,14 @@ type GroupedModules = {
   order: number;
 };
 
+
+function mediaMatches(query: string): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  return window.matchMedia(query).matches;
+}
+
 function normalize(input: string): string {
   return input
     .toLocaleLowerCase('cs-CZ')
@@ -30,8 +38,8 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
   const [overflowOpen, setOverflowOpen] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
-  const [isPhone, setIsPhone] = React.useState(false);
-  const [isTablet, setIsTablet] = React.useState(false);
+  const [isPhone, setIsPhone] = React.useState(() => mediaMatches('(max-width: 767px)'));
+  const [isTablet, setIsTablet] = React.useState(() => mediaMatches('(min-width: 768px) and (max-width: 1024px)'));
 
   React.useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
