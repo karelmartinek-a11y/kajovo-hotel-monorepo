@@ -73,6 +73,19 @@ type Report = ReportRead;
 
 type ReportPayload = ReportCreate;
 
+type PortalUser = {
+  id: number;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type PortalUserCreatePayload = {
+  email: string;
+  password: string;
+};
 
 type ErrorBoundaryProps = { children: React.ReactNode };
 type ErrorBoundaryState = { hasError: boolean; message?: string };
@@ -365,6 +378,46 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (reportId && method === 'GET') return (await apiClient.getReportApiV1ReportsReportIdGet(Number(reportId[1]))) as T;
   if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
   if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
+
+
+
+  if (path === '/api/v1/users' && method === 'GET') {
+    const response = await fetch(path, { credentials: 'include' });
+    if (!response.ok) throw new Error('Nepodařilo se načíst uživatele.');
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/users' && method === 'POST') {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+  const userActiveId = path.match(/^\/api\/v1\/users\/(\d+)\/active$/);
+  if (userActiveId && method === 'PATCH') {
+    const response = await fetch(path, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+  const userPasswordId = path.match(/^\/api\/v1\/users\/(\d+)\/password(\/reset)?$/);
+  if (userPasswordId && method === 'POST') {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
 
   throw new Error(`Unsupported API call: ${method} ${path}`);
 }
@@ -1369,6 +1422,63 @@ function ReportsDetail(): JSX.Element {
   return <main className="k-page" data-testid="reports-detail-page">{stateMarker}<h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
+function UsersAdmin(): JSX.Element {
+  const [users, setUsers] = React.useState<PortalUser[] | null>(null);
+  const [selected, setSelected] = React.useState<PortalUser | null>(null);
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const load = React.useCallback(() => {
+    setError(null);
+    void fetchJson<PortalUser[]>('/api/v1/users')
+      .then((items) => {
+        setUsers(items);
+        if (items.length > 0 && !selected) setSelected(items[0]);
+      })
+      .catch(() => setError('Nepodařilo se načíst uživatele.'));
+  }, [selected]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  async function createUser(): Promise<void> {
+    if (!emailValid || password.length < 8 || users?.some((u) => u.email === email.trim().toLowerCase())) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await fetchJson<PortalUser>('/api/v1/users', { method: 'POST', body: JSON.stringify({ email, password } satisfies PortalUserCreatePayload) });
+      setUsers((prev) => (prev ? [...prev, created] : [created]));
+      setSelected(created);
+      setEmail('');
+      setPassword('');
+    } catch (e) {
+      setError('Uživatele se nepodařilo vytvořit.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleActive(user: PortalUser): Promise<void> {
+    const updated = await fetchJson<PortalUser>(`/api/v1/users/${user.id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: !user.is_active }) });
+    setUsers((prev) => prev?.map((u) => (u.id === user.id ? updated : u)) ?? null);
+    setSelected(updated);
+  }
+
+  async function resetPassword(user: PortalUser): Promise<void> {
+    if (newPassword.length < 8) return;
+    await fetchJson<PortalUser>(`/api/v1/users/${user.id}/password/reset`, { method: 'POST', body: JSON.stringify({ password: newPassword }) });
+    setNewPassword('');
+  }
+
+  return <main className="k-page" data-testid="users-admin-page"><h1>Uživatelé</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : users === null ? <SkeletonPage /> : users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : <div className="k-grid cards-2"><Card title="Seznam"><DataTable headers={['Email', 'Role', 'Stav']} rows={users.map((u) => [<button key={u.id} className="k-nav-link" type="button" onClick={() => setSelected(u)}>{u.email}</button>, u.role, u.is_active ? 'Aktivní' : 'Neaktivní'])} /></Card><Card title="Detail">{selected ? <div className="k-stack"><p><strong>{selected.email}</strong></p><p>Role: {selected.role}</p><p>Stav: {selected.is_active ? 'Aktivní' : 'Neaktivní'}</p><div className="k-toolbar"><button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>{selected.is_active ? 'Zakázat' : 'Povolit'}</button></div><FormField id="reset_pwd" label="Nové heslo"><input id="reset_pwd" className="k-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></FormField><button className="k-button" type="button" onClick={() => void resetPassword(selected)} disabled={newPassword.length < 8}>Resetovat heslo</button></div> : <p>Vyberte uživatele.</p>}</Card></div>}<Card title="Přidat uživatele"><div className="k-form-grid"><FormField id="user_email" label="Email"><input id="user_email" className="k-input" value={email} onChange={(e) => setEmail(e.target.value)} /></FormField><FormField id="user_password" label="Dočasné heslo"><input id="user_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></FormField><button className="k-button" type="button" onClick={() => void createUser()} disabled={!emailValid || password.length < 8 || saving || Boolean(users?.some((u) => u.email === email.trim().toLowerCase()))}>Vytvořit uživatele</button></div></Card></main>;
+}
+
 type AccessDeniedProps = {
   moduleLabel: string;
   role: string;
@@ -1404,7 +1514,8 @@ function AppRoutes(): JSX.Element {
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
     : [];
-  const modules = [...ia.modules, ...injectedModules];
+  const adminModules = auth.role === 'admin' ? [{ key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] }] : [];
+  const modules = [...ia.modules, ...adminModules, ...injectedModules];
   const allowedModules = modules.filter((module) => {
     const required =
       Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
@@ -1447,6 +1558,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
+        <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={auth.role} userId={auth.userId} />} />
         <Route
           path="/intro"
           element={

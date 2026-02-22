@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
@@ -19,7 +19,7 @@ logger = logging.getLogger("kajovo.api")
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
         }
@@ -78,7 +78,14 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             body_bytes = await request.body()
             if body_bytes:
-                request_body = body_bytes.decode("utf-8", errors="ignore")[:2000]
+                raw_body = body_bytes.decode("utf-8", errors="ignore")
+                try:
+                    parsed = json.loads(raw_body)
+                    if isinstance(parsed, dict) and "password" in parsed:
+                        parsed = {**parsed, "password": "***"}
+                    request_body = json.dumps(parsed, ensure_ascii=False)[:2000]
+                except json.JSONDecodeError:
+                    request_body = raw_body[:2000]
 
         response = await call_next(request)
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
@@ -110,7 +117,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                         action=request.method,
                         resource=request.url.path,
                         status_code=response.status_code,
-                        detail=request_body,
+                        detail=getattr(request.state, "audit_detail_override", request_body),
                     )
                 )
                 db.commit()

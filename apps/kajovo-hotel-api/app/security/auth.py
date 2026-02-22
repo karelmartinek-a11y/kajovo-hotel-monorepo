@@ -4,7 +4,7 @@ import hmac
 import json
 import os
 import secrets
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, Request, status
 
@@ -32,7 +32,7 @@ def create_session_cookie(email: str, role: str, actor_type: str) -> str:
         "email": email,
         "role": normalize_role(role),
         "actor_type": actor_type,
-        "iat": int(datetime.now(UTC).timestamp()),
+        "iat": int(datetime.now(timezone.utc).timestamp()),
     }
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     body = base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
