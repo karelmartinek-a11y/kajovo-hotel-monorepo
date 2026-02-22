@@ -1,5 +1,6 @@
 import sqlite3
 from collections.abc import Callable
+from pathlib import Path
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
@@ -17,7 +18,9 @@ def test_ready(api_request: ApiRequest) -> None:
     assert payload == {"status": "ready"}
 
 
-def test_write_requests_are_audited(api_request: ApiRequest) -> None:
+def test_write_requests_are_audited(
+    api_request: ApiRequest, api_db_path: Path
+) -> None:
     status, created = api_request(
         "/api/v1/reports",
         method="POST",
@@ -29,7 +32,7 @@ def test_write_requests_are_audited(api_request: ApiRequest) -> None:
     delete_status, _ = api_request(f"/api/v1/reports/{created['id']}", method="DELETE")
     assert delete_status == 204
 
-    conn = sqlite3.connect("/workspace/kajovo-hotel-monorepo/test_kajovo_hotel.db")
+    conn = sqlite3.connect(str(api_db_path))
     try:
         row = conn.execute(
             "SELECT actor, module, action, resource, status_code "

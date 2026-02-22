@@ -18,6 +18,8 @@ from sqlalchemy import create_engine
 from app.db.models import Base
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+ResponseData = dict[str, object] | list[dict[str, object]] | None
+ApiRequest = Callable[..., tuple[int, ResponseData]]
 
 
 def _scrypt_hash(password: str, salt: bytes) -> str:
@@ -26,16 +28,26 @@ def _scrypt_hash(password: str, salt: bytes) -> str:
 
 
 @pytest.fixture(scope="session")
-def api_base_url() -> Generator[str, None, None]:
-    db_path = Path("/workspace/kajovo-hotel-monorepo/test_kajovo_hotel.db")
+def api_db_path() -> Generator[Path, None, None]:
+    db_dir = Path("/workspace/kajovo-hotel-monorepo/.tmp/api-tests")
+    db_dir.mkdir(parents=True, exist_ok=True)
+    db_path = db_dir / "test_kajovo_hotel.db"
     if db_path.exists():
         db_path.unlink()
 
-    database_url = f"sqlite:///{db_path}"
+    yield db_path
+
+    if db_path.exists():
+        db_path.unlink()
+
+
+@pytest.fixture(scope="session")
+def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
+    database_url = f"sqlite:///{api_db_path}"
     engine = create_engine(database_url)
     Base.metadata.create_all(bind=engine)
 
-    with sqlite3.connect(db_path) as connection:
+    with sqlite3.connect(api_db_path) as connection:
         connection.execute(
             "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
             (
@@ -88,14 +100,10 @@ def api_base_url() -> Generator[str, None, None]:
     finally:
         proc.terminate()
         proc.wait(timeout=10)
-        if db_path.exists():
-            db_path.unlink()
 
 
 @pytest.fixture
-def api_request(
-    api_base_url: str,
-) -> Callable[..., tuple[int, dict[str, object] | list[dict[str, object]] | None]]:
+def api_request(api_base_url: str) -> ApiRequest:
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
@@ -116,7 +124,7 @@ def api_request(
         method: str = "GET",
         payload: dict[str, object] | None = None,
         params: dict[str, str] | None = None,
-    ) -> tuple[int, dict[str, object] | list[dict[str, object]] | None]:
+    ) -> tuple[int, ResponseData]:
         url = f"{api_base_url}{path}"
         if params:
             url = f"{url}?{urllib.parse.urlencode(params)}"
