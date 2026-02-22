@@ -15,7 +15,7 @@ const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
   warehouse: ['dashboard:read', 'inventory:read', 'reports:read'],
 };
 
-function rolePermissions(role: Role): Set<string> {
+export function rolePermissions(role: Role): Set<string> {
   return new Set(ROLE_READ_PERMISSIONS[role] ?? []);
 }
 

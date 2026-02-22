@@ -19,7 +19,7 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 12 | DONE | `docs/regen/12-api-test-tmpdir-fix` | `ORF-12 (current)` | None | Slot 12 uzavřen (API test DB tmpdir hardening). |
 | 13 | DONE | `docs/regen/13-uvicorn-cwd-fix` | `ORF-13 (current)` | None | Slot 13 uzavřen (uvicorn subprocess cwd fix). |
 | 14 | DONE | `docs/regen/14-contract-sync-fix` | `ORF-14 (current)` | None | Slot 14 uzavřen (OpenAPI + generated client contract sync). |
-| 15 | DONE | `docs/regen/15-nav-tablet-initial-state-fix`, `docs/regen/15-policy-entityid-fix`, `docs/regen/15-view-states-auth-fallback-fix` | `ORF-15 (current)` | None | Slot 15 uzavřen (nav media-state + policy Entity ID rename + view-state auth fallback fix). |
+| 15 | DONE | `docs/regen/15-nav-tablet-initial-state-fix`, `docs/regen/15-policy-entityid-fix`, `docs/regen/15-view-states-auth-fallback-fix`, `docs/regen/15-view-states-auth-catch-fix` | `ORF-15 (current)` | None | Slot 15 uzavřen (nav media-state + policy Entity ID rename + view-state auth fallback fix). |
 
 ## Mapping poznámky (mimo-plán / nested evidence)
 

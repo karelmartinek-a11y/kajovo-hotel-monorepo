@@ -357,6 +357,18 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/src/rbac.ts"
 
+  - module: web_view_states_auth_catch_fallback
+    required_behavior: "AppRoutes auth bootstrap catch používá read fallback permissions místo prázdné sady"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/15-view-states-auth-catch-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-web/src/main.tsx"
+      - "apps/kajovo-hotel-web/src/rbac.ts"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:
