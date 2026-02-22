@@ -212,3 +212,99 @@ DOPORUČENÝ OPERÁTORSKÝ POSTUP PRO TEBE (při copy/paste do Codex)
 3) Pokud CI failne na tooling, vrať se o krok a udělej fix-only prompt.
 4) Trvej na tom, že výstup v chatu je pouze PR URL, detaily pouze do repo docs.
 5) Každý 3. prompt proveď mini-audit parity-map konzistence.
+
+──────────────────────────────────────────────────────────────────────────────
+OPERÁTORSKÝ PLAYBOOK (CTRL+C / CTRL+V) – BEZ PROGRAMOVÁNÍ
+──────────────────────────────────────────────────────────────────────────────
+
+KROK 1 — Spusť vždy jen jeden pracovní prompt (ORF-00 až ORF-09)
+(PROMPT ZKOPÍRUJ CELÝ A VLOŽ DO CODEXU)
+
+"""
+Použij přesně tento prompt: ORF-00 z kaskadaORF.txt.
+
+Pravidla:
+- Udělej jen tento krok, nic navíc.
+- Dodrž GLOBAL RULES z kaskadaORF.txt.
+- Výstup do chatu dej pouze jako jeden řádek: PR: <url>
+- Všechny detaily dej pouze do repo souborů docs/regen.
+"""
+
+Po ORF-00 stejný wrapper používej i pro ORF-01, ORF-02... ORF-09.
+Pouze změň číslo promptu.
+
+
+KROK 2 — Jak poznáš „tooling fail“ v CI (jednoduché pravidlo)
+Tooling fail je, když pipeline padá na INFRA/TOOLING, ne na business funkci.
+
+BERE SE JAKO TOOLING FAIL, když chyba obsahuje např.:
+- install/setup error (pnpm install, pip install, playwright install)
+- missing runtime/bin/dependency (node/python/browser not found)
+- workflow/config error (.github/workflows, environment variables, permissions)
+- test bootstrap/startup error bez změny feature logiky (app nenastartuje, fixture timeout)
+- lint/typecheck selže kvůli konfiguraci toolu, ne kvůli nové feature logice
+
+NEBERE SE JAKO TOOLING FAIL, když:
+- neprojde acceptance test nové funkcionality
+- endpoint/UI vrací špatná business data
+- chybí implementace požadovaného chování promptu
+
+
+KROK 3 — Co přesně udělat, když je tooling fail
+(ZKOPÍRUJ A VLOŽ TENHLE PROMPT DO CODEXU)
+
+"""
+Uděláme FIX-ONLY krok.
+
+Cíl:
+- Opravit POUZE tooling/CI problém z posledního failed PR.
+- Bez nové funkcionality, bez rozšiřování scope.
+
+Povinně:
+1) Identifikuj konkrétní failing CI job a root cause.
+2) Proveď minimální změny jen v tooling/CI/test bootstrap konfiguraci.
+3) Přidej docs/regen/<NN>-fix-only/verification.md se sekcemi:
+   A) Cíl
+   B) Exit criteria
+   C) Změny
+   D) Ověření (přesné příkazy + PASS/FAIL)
+   E) Rizika/known limits
+   F) Handoff pro návrat na původní ORF krok
+4) Aktualizuj docs/regen/parity/parity-map.yaml (modul fix-only tooling stability).
+5) Výstup do chatu pouze jeden řádek: PR: <url>
+
+Zakázáno:
+- Nepřidávej žádnou novou business feature.
+- Neměň scope původního ORF promptu.
+"""
+
+
+KROK 4 — Po fix-only kroku co dál
+(ZKOPÍRUJ A VLOŽ TENHLE PROMPT DO CODEXU)
+
+"""
+Navazujeme po fix-only PR.
+
+Použij znovu původní ORF prompt, který byl předtím blokovaný (stejné číslo).
+Pravidla:
+- Scope drž přesně dle původního ORF promptu.
+- Ověř, že fix-only změny jsou využity a CI je stabilní.
+- Výstup do chatu pouze: PR: <url>
+"""
+
+
+KROK 5 — Mini audit po každém 3. promptu
+(ZKOPÍRUJ A VLOŽ TENHLE PROMPT DO CODEXU)
+
+"""
+Proveď mini-audit parity konzistence po posledních 3 krocích.
+
+Povinně zkontroluj:
+1) docs/regen/parity/parity-map.yaml nemá placeholder `this-pr`.
+2) Každý dokončený krok má vlastní docs/regen/<NN>-<slug>/verification.md.
+3) Statusy MISSING/IN_PROGRESS/DONE/BLOCKED odpovídají realitě změn.
+4) Vygeneruj krátký report do docs/regen/<NN>-mini-audit/verification.md.
+
+Výstup do chatu pouze: PR: <url>
+"""
+
