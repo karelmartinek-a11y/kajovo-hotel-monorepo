@@ -81,3 +81,24 @@
 
 ### Rizika / known limits
 - Lokálně nelze plně emulovat GitHub runner kontext včetně `origin/<base>` dostupnosti; finální validace probíhá v CI.
+
+
+---
+
+## Oprava CI failu (follow-up 3)
+
+### Cíl
+- Opravit pády CI v `ci-gates.yml`: chybějící instalace Playwright browseru v `guardrails` jobu a chybějící Node/pnpm setup v `unit-tests` jobu.
+
+### Jak ověřeno
+1. `pnpm ci:policy`
+2. `pnpm ci:verification-doc`
+3. `pnpm typecheck`
+
+### Co se změnilo
+- `.github/workflows/ci-gates.yml`:
+  - `guardrails`: přidán krok `playwright install --with-deps chromium` před e2e smoke gates.
+  - `unit-tests`: doplněn `setup-node`, `setup-pnpm` a `pnpm install` před `pnpm unit`.
+
+### Rizika / known limits
+- Lokální prostředí neodpovídá plně GH runneru; finální validace závisí na běhu CI v PR.
