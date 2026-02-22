@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-02-27"
+updated_at: "2026-02-22"
 notes:
   - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
   - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
@@ -105,6 +105,7 @@ modules:
     links:
       - "this-pr"
       - "this-pr-05-admin-users"
+      - "this-pr-fix-commit-pr"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"

@@ -22,3 +22,8 @@ Dodat jediný kanál autorizace přes Admin správu uživatelů: API CRUD + Admi
 ## Rizika / known limits
 - V jednom web entrypointu zůstává společný shell pro admin/portal; separace na oddělené app entrypointy je nad rámec kroku a zůstává v parity mapě jako `admin_portal_split`.
 - Create formulář nastavuje výchozí roli `manager`; role management není součástí tohoto kroku.
+
+
+## Follow-up (commit/PR opravy)
+- Opraven runtime problém Python 3.10 (`datetime.UTC` -> `timezone.utc`) tak, aby API test harness startoval deterministicky.
+- Ověřeno znovu kompletní sadou příkazů níže s výsledkem PASS.
