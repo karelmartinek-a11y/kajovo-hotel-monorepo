@@ -1,0 +1,80 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12]:
+          - /url: /snidane
+        - link "Závady" [ref=e13]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15]:
+          - /url: /ztraty-a-nalezy
+        - button "Další" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - heading "Upravit položku" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23]:
+          - /url: /ztraty-a-nalezy/1/edit?state=default
+        - link "Načítání" [ref=e24]:
+          - /url: /ztraty-a-nalezy/1/edit?state=loading
+        - link "Prázdno" [ref=e25]:
+          - /url: /ztraty-a-nalezy/1/edit?state=empty
+        - link "Chyba" [ref=e26]:
+          - /url: /ztraty-a-nalezy/1/edit?state=error
+        - link "Offline" [ref=e27]:
+          - /url: /ztraty-a-nalezy/1/edit?state=offline
+        - link "Údržba" [ref=e28]:
+          - /url: /ztraty-a-nalezy/1/edit?state=maintenance
+        - link "404" [ref=e29]:
+          - /url: /ztraty-a-nalezy/1/edit?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - link "Zpět na seznam" [ref=e32]:
+          - /url: /ztraty-a-nalezy
+        - button "Uložit" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: Typ záznamu
+          - combobox "Typ záznamu" [ref=e37]:
+            - option "Nalezeno" [selected]
+            - option "Ztraceno"
+        - generic [ref=e38]:
+          - generic [ref=e39]: Kategorie
+          - textbox "Kategorie" [ref=e40]: Osobní věci
+        - generic [ref=e41]:
+          - generic [ref=e42]: Místo nálezu/ztráty
+          - textbox "Místo nálezu/ztráty" [ref=e43]: Wellness
+        - generic [ref=e44]:
+          - generic [ref=e45]: Datum a čas
+          - textbox "Datum a čas" [ref=e46]: 2026-02-18T10:00
+        - generic [ref=e47]:
+          - generic [ref=e48]: Stav workflow
+          - combobox "Stav workflow" [ref=e49]:
+            - option "Uloženo" [selected]
+            - option "Nárokováno"
+            - option "Vráceno"
+            - option "Zlikvidováno"
+        - generic [ref=e50]:
+          - generic [ref=e51]: Popis položky
+          - textbox "Popis položky" [ref=e52]: Černá peněženka
+        - generic [ref=e53]:
+          - generic [ref=e54]: Jméno nálezce/žadatele (volitelné)
+          - textbox "Jméno nálezce/žadatele (volitelné)" [ref=e55]
+        - generic [ref=e56]:
+          - generic [ref=e57]: Kontakt (volitelné)
+          - textbox "Kontakt (volitelné)" [ref=e58]
+        - generic [ref=e59]:
+          - generic [ref=e60]: Předávací záznam (volitelné)
+          - textbox "Předávací záznam (volitelné)" [ref=e61]
+  - link "KÁJOVO" [ref=e62]:
+    - /url: /
+```

@@ -1,0 +1,65 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Skladové hospodářství" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /sklad?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /sklad?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /sklad?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /sklad?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /sklad?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /sklad?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /sklad?state=404
+    - link "Nová položka" [ref=e22] [cursor=pointer]:
+      - /url: /sklad/nova
+    - region "Tabulka" [ref=e23]:
+      - table [ref=e24]:
+        - rowgroup [ref=e25]:
+          - row "Položka Skladem Minimum Jednotka Dodavatel Status Akce" [ref=e26]:
+            - columnheader "Položka" [ref=e27]
+            - columnheader "Skladem" [ref=e28]
+            - columnheader "Minimum" [ref=e29]
+            - columnheader "Jednotka" [ref=e30]
+            - columnheader "Dodavatel" [ref=e31]
+            - columnheader "Status" [ref=e32]
+            - columnheader "Akce" [ref=e33]
+        - rowgroup [ref=e34]:
+          - row "Mléko 4 10 l FreshTrade Pod minimem Detail" [ref=e35]:
+            - cell "Mléko" [ref=e36]
+            - cell "4" [ref=e37]
+            - cell "10" [ref=e38]
+            - cell "l" [ref=e39]
+            - cell "FreshTrade" [ref=e40]
+            - cell "Pod minimem" [ref=e41]:
+              - generic [ref=e42]: Pod minimem
+            - cell "Detail" [ref=e43]:
+              - link "Detail" [ref=e44] [cursor=pointer]:
+                - /url: /sklad/1
+          - row "Káva 8 2 kg - OK Detail" [ref=e45]:
+            - cell "Káva" [ref=e46]
+            - cell "8" [ref=e47]
+            - cell "2" [ref=e48]
+            - cell "kg" [ref=e49]
+            - cell "-" [ref=e50]
+            - cell "OK" [ref=e51]:
+              - generic [ref=e52]: OK
+            - cell "Detail" [ref=e53]:
+              - link "Detail" [ref=e54] [cursor=pointer]:
+                - /url: /sklad/2
+  - link "KÁJOVO" [ref=e55] [cursor=pointer]:
+    - /url: /
+```

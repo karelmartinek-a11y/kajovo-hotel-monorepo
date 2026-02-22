@@ -1,0 +1,60 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Detail snídaně" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14]:
+          - /url: /snidane/1?state=default
+        - link "Načítání" [ref=e15]:
+          - /url: /snidane/1?state=loading
+        - link "Prázdno" [ref=e16]:
+          - /url: /snidane/1?state=empty
+        - link "Chyba" [ref=e17]:
+          - /url: /snidane/1?state=error
+        - link "Offline" [ref=e18]:
+          - /url: /snidane/1?state=offline
+        - link "Údržba" [ref=e19]:
+          - /url: /snidane/1?state=maintenance
+        - link "404" [ref=e20]:
+          - /url: /snidane/1?state=404
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - link "Zpět na seznam" [ref=e23]:
+          - /url: /snidane
+        - link "Upravit" [ref=e24] [cursor=pointer]:
+          - /url: /snidane/1/edit
+      - region "Tabulka" [ref=e25]:
+        - table [ref=e26]:
+          - rowgroup [ref=e27]:
+            - row "Položka Hodnota" [ref=e28]:
+              - columnheader "Položka" [ref=e29]
+              - columnheader "Hodnota" [ref=e30]
+          - rowgroup [ref=e31]:
+            - row "Datum služby 2026-02-19" [ref=e32]:
+              - cell "Datum služby" [ref=e33]
+              - cell "2026-02-19" [ref=e34]
+            - row "Pokoj 101" [ref=e35]:
+              - cell "Pokoj" [ref=e36]
+              - cell "101" [ref=e37]
+            - row "Host Novák" [ref=e38]:
+              - cell "Host" [ref=e39]
+              - cell "Novák" [ref=e40]
+            - row "Počet hostů 2" [ref=e41]:
+              - cell "Počet hostů" [ref=e42]
+              - cell "2" [ref=e43]
+            - row "Stav Čeká" [ref=e44]:
+              - cell "Stav" [ref=e45]
+              - cell "Čeká" [ref=e46]
+            - row "Poznámka Bez lepku" [ref=e47]:
+              - cell "Poznámka" [ref=e48]
+              - cell "Bez lepku" [ref=e49]
+  - link "KÁJOVO" [ref=e50]:
+    - /url: /
+```

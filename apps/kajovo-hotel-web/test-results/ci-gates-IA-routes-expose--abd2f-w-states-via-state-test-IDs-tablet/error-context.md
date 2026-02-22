@@ -1,0 +1,49 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12]:
+          - /url: /snidane
+        - link "Závady" [ref=e13]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15]:
+          - /url: /ztraty-a-nalezy
+        - link "Skladové hospodářství" [ref=e16]:
+          - /url: /sklad
+        - link "Hlášení" [ref=e17]:
+          - /url: /hlaseni
+  - main [ref=e18]:
+    - heading "Nová závada" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23]:
+          - /url: /zavady/nova?state=default
+        - link "Načítání" [ref=e24]:
+          - /url: /zavady/nova?state=loading
+        - link "Prázdno" [ref=e25]:
+          - /url: /zavady/nova?state=empty
+        - link "Chyba" [ref=e26]:
+          - /url: /zavady/nova?state=error
+        - link "Offline" [ref=e27]:
+          - /url: /zavady/nova?state=offline
+        - link "Údržba" [ref=e28]:
+          - /url: /zavady/nova?state=maintenance
+        - link "404" [ref=e29]:
+          - /url: /zavady/nova?state=404
+    - generic [ref=e30]:
+      - heading "404" [level=2] [ref=e31]
+      - paragraph [ref=e32]: Požadovaný obsah nebyl nalezen.
+      - link "Zpět" [ref=e34]:
+        - /url: /zavady
+  - link "KÁJOVO" [ref=e35]:
+    - /url: /
+```

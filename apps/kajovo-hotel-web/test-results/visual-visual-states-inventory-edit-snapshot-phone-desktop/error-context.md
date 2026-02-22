@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Upravit skladovou položku" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=404
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - link "Zpět na seznam" [ref=e23] [cursor=pointer]:
+          - /url: /sklad
+        - button "Uložit" [ref=e24] [cursor=pointer]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Název
+          - textbox "Název" [ref=e28]: Mléko
+        - generic [ref=e29]:
+          - generic [ref=e30]: Jednotka
+          - textbox "Jednotka" [ref=e31]: l
+        - generic [ref=e32]:
+          - generic [ref=e33]: Minimální stav
+          - spinbutton "Minimální stav" [ref=e34]: "10"
+        - generic [ref=e35]:
+          - generic [ref=e36]: Aktuální stav
+          - spinbutton "Aktuální stav" [ref=e37]: "4"
+        - generic [ref=e38]:
+          - generic [ref=e39]: Dodavatel (volitelné)
+          - textbox "Dodavatel (volitelné)" [ref=e40]: FreshTrade
+  - link "KÁJOVO" [ref=e41] [cursor=pointer]:
+    - /url: /
+```

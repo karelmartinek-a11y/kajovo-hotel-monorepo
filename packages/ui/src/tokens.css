@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
 :root {
   --k-color-brand-red: #ff0000;
   --k-color-brand-white: #ffffff;
@@ -124,10 +126,18 @@ body {
   align-items: center;
 }
 
+.k-state-marker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
 .k-nav-group-label {
   font-size: var(--k-font-size-xs);
   line-height: var(--k-line-height-xs);
-  color: var(--k-color-metal);
+  color: var(--k-color-ink-muted);
   margin-right: var(--k-spacing-2);
 }
 
@@ -241,7 +251,6 @@ body {
   border-radius: var(--k-radius-2);
   padding: var(--k-spacing-4);
 }
-  line-height: var(--k-line-height-body);
 
 .k-state-view {
   border: 1px dashed var(--k-color-border);
@@ -256,7 +265,6 @@ body {
   gap: var(--k-spacing-3);
   transition: border-color var(--k-motion-duration-fast) var(--k-motion-ease-standard);
 }
-  line-height: var(--k-line-height-body);
 
 .k-state-view h2 {
   margin-top: 0;
@@ -288,7 +296,6 @@ body {
   font: inherit;
   background: var(--k-color-surface-raised);
 }
-  line-height: var(--k-line-height-body);
 
 .k-button {
   border: 1px solid var(--k-color-ink);
@@ -341,7 +348,6 @@ body {
   text-align: left;
   font-size: var(--k-font-size-sm);
 }
-  line-height: var(--k-line-height-body);
 
 .k-table tbody tr:last-child td {
   border-bottom: 0;
@@ -354,6 +360,7 @@ body {
   z-index: var(--k-z-sign);
   background: var(--k-color-brand-red);
   color: var(--k-color-brand-white);
+  font-size: var(--k-font-size-xl);
   padding: var(--k-spacing-2) var(--k-spacing-4);
   min-height: var(--k-sign-min-thickness);
   border-radius: var(--k-radius-2);
@@ -377,13 +384,13 @@ body {
 }
 
 @media (max-width: 768px) {
-  .k-nav-desktop {
-    display: none;
-  }
+.k-nav-desktop {
+  display: none;
+}
 
-  .k-nav-phone {
-    display: block;
-  }
+.k-nav-phone {
+  display: block;
+}
 
   .k-shell-inner,
   .k-page {
@@ -430,7 +437,7 @@ body {
 
 .k-timeline-label {
   font-size: var(--k-font-size-xs);
-  color: var(--k-color-metal);
+  color: var(--k-color-ink);
 }
 
 .k-timeline-value {

@@ -1,0 +1,72 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - link "Skladové hospodářství" [ref=e16] [cursor=pointer]:
+          - /url: /sklad
+        - link "Hlášení" [ref=e17] [cursor=pointer]:
+          - /url: /hlaseni
+  - main [ref=e18]:
+    - heading "Upravit snídani" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - link "Zpět na seznam" [ref=e32] [cursor=pointer]:
+          - /url: /snidane
+        - button "Uložit" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: Datum služby
+          - textbox "Datum služby" [ref=e37]: 2026-02-19
+        - generic [ref=e38]:
+          - generic [ref=e39]: Pokoj
+          - textbox "Pokoj" [ref=e40]: "101"
+        - generic [ref=e41]:
+          - generic [ref=e42]: Host
+          - textbox "Host" [ref=e43]: Novák
+        - generic [ref=e44]:
+          - generic [ref=e45]: Počet hostů
+          - spinbutton "Počet hostů" [ref=e46]: "2"
+        - generic [ref=e47]:
+          - generic [ref=e48]: Stav
+          - combobox "Stav" [ref=e49]:
+            - option "Čeká" [selected]
+            - option "Připravuje se"
+            - option "Vydáno"
+            - option "Zrušeno"
+        - generic [ref=e50]:
+          - generic [ref=e51]: Poznámka
+          - textbox "Poznámka" [ref=e52]: Bez lepku
+  - link "KÁJOVO" [ref=e53] [cursor=pointer]:
+    - /url: /
+```

@@ -1,0 +1,57 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - button "Další" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - heading "Přehled" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "Snídaně dnes" [level=3] [ref=e32]
+        - generic [ref=e33]:
+          - strong [ref=e34]: "18"
+          - paragraph [ref=e35]: 3 čekající objednávky
+      - generic [ref=e36]:
+        - heading "Závady" [level=3] [ref=e37]
+        - generic [ref=e38]:
+          - strong [ref=e39]: "4"
+          - paragraph [ref=e40]: 1 kritická závada
+      - generic [ref=e41]:
+        - heading "Sklad" [level=3] [ref=e42]
+        - generic [ref=e43]:
+          - strong [ref=e44]: "12"
+          - paragraph [ref=e45]: 2 položky pod minimem
+  - link "KÁJOVO" [ref=e46] [cursor=pointer]:
+    - /url: /
+```

@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Hlášení" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /hlaseni?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /hlaseni?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /hlaseni?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /hlaseni?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /hlaseni?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /hlaseni?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /hlaseni?state=404
+    - link "Nové hlášení" [ref=e22] [cursor=pointer]:
+      - /url: /hlaseni/nove
+    - region "Tabulka" [ref=e23]:
+      - table [ref=e24]:
+        - rowgroup [ref=e25]:
+          - row "Název Stav Vytvořeno Akce" [ref=e26]:
+            - columnheader "Název" [ref=e27]
+            - columnheader "Stav" [ref=e28]
+            - columnheader "Vytvořeno" [ref=e29]
+            - columnheader "Akce" [ref=e30]
+        - rowgroup [ref=e31]:
+          - row "Nefunkční lampa na chodbě V řešení 18. 2. 2026 11:00:00 Detail" [ref=e32]:
+            - cell "Nefunkční lampa na chodbě" [ref=e33]
+            - cell "V řešení" [ref=e34]:
+              - generic [ref=e35]: V řešení
+            - cell "18. 2. 2026 11:00:00" [ref=e36]
+            - cell "Detail" [ref=e37]:
+              - link "Detail" [ref=e38] [cursor=pointer]:
+                - /url: /hlaseni/1
+          - row "Poškozený koberec Otevřené 18. 2. 2026 10:00:00 Detail" [ref=e39]:
+            - cell "Poškozený koberec" [ref=e40]
+            - cell "Otevřené" [ref=e41]:
+              - generic [ref=e42]: Otevřené
+            - cell "18. 2. 2026 10:00:00" [ref=e43]
+            - cell "Detail" [ref=e44]:
+              - link "Detail" [ref=e45] [cursor=pointer]:
+                - /url: /hlaseni/2
+  - link "KÁJOVO" [ref=e46] [cursor=pointer]:
+    - /url: /
+```

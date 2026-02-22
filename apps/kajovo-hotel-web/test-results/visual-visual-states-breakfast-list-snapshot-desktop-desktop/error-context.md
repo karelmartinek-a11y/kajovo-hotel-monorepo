@@ -1,0 +1,91 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - link "Skladové hospodářství" [ref=e16] [cursor=pointer]:
+          - /url: /sklad
+        - link "Hlášení" [ref=e17] [cursor=pointer]:
+          - /url: /hlaseni
+  - main [ref=e18]:
+    - heading "Snídaně" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /snidane?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /snidane?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /snidane?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /snidane?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /snidane?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /snidane?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /snidane?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - heading "Objednávky dne" [level=3] [ref=e32]
+        - strong [ref=e34]: "2"
+      - generic [ref=e35]:
+        - heading "Hosté dne" [level=3] [ref=e36]
+        - strong [ref=e38]: "3"
+      - generic [ref=e39]:
+        - heading "Čekající" [level=3] [ref=e40]
+        - strong [ref=e42]: "1"
+    - generic [ref=e43]:
+      - textbox "Hledat" [ref=e44]:
+        - /placeholder: Hledat dle pokoje nebo hosta
+      - link "Nová objednávka" [ref=e45] [cursor=pointer]:
+        - /url: /snidane/nova
+    - region "Tabulka" [ref=e46]:
+      - table [ref=e47]:
+        - rowgroup [ref=e48]:
+          - row "Datum Pokoj Host Počet Stav Poznámka Akce" [ref=e49]:
+            - columnheader "Datum" [ref=e50]
+            - columnheader "Pokoj" [ref=e51]
+            - columnheader "Host" [ref=e52]
+            - columnheader "Počet" [ref=e53]
+            - columnheader "Stav" [ref=e54]
+            - columnheader "Poznámka" [ref=e55]
+            - columnheader "Akce" [ref=e56]
+        - rowgroup [ref=e57]:
+          - row "2026-02-19 101 Novák 2 Čeká Bez lepku Detail" [ref=e58]:
+            - cell "2026-02-19" [ref=e59]
+            - cell "101" [ref=e60]
+            - cell "Novák" [ref=e61]
+            - cell "2" [ref=e62]
+            - cell "Čeká" [ref=e63]
+            - cell "Bez lepku" [ref=e64]
+            - cell "Detail" [ref=e65]:
+              - link "Detail" [ref=e66] [cursor=pointer]:
+                - /url: /snidane/1
+          - row "2026-02-19 205 Svoboda 1 Vydáno Standard Detail" [ref=e67]:
+            - cell "2026-02-19" [ref=e68]
+            - cell "205" [ref=e69]
+            - cell "Svoboda" [ref=e70]
+            - cell "1" [ref=e71]
+            - cell "Vydáno" [ref=e72]
+            - cell "Standard" [ref=e73]
+            - cell "Detail" [ref=e74]:
+              - link "Detail" [ref=e75] [cursor=pointer]:
+                - /url: /snidane/2
+  - link "KÁJOVO" [ref=e76] [cursor=pointer]:
+    - /url: /
+```

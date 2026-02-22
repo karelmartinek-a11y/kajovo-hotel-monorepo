@@ -1,0 +1,85 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - button "Další" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - heading "Detail závady" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /zavady/1?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /zavady/1?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /zavady/1?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /zavady/1?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /zavady/1?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /zavady/1?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /zavady/1?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - link "Zpět na seznam" [ref=e32] [cursor=pointer]:
+          - /url: /zavady
+        - link "Upravit" [ref=e33] [cursor=pointer]:
+          - /url: /zavady/1/edit
+      - region "Tabulka" [ref=e34]:
+        - table [ref=e35]:
+          - rowgroup [ref=e36]:
+            - row "Položka Hodnota" [ref=e37]:
+              - columnheader "Položka" [ref=e38]
+              - columnheader "Hodnota" [ref=e39]
+          - rowgroup [ref=e40]:
+            - row "Název Nefunkční světlo" [ref=e41]:
+              - cell "Název" [ref=e42]
+              - cell "Nefunkční světlo" [ref=e43]
+            - row "Lokace 2. patro" [ref=e44]:
+              - cell "Lokace" [ref=e45]
+              - cell "2. patro" [ref=e46]
+            - row "Pokoj 204" [ref=e47]:
+              - cell "Pokoj" [ref=e48]
+              - cell "204" [ref=e49]
+            - row "Priorita Vysoká" [ref=e50]:
+              - cell "Priorita" [ref=e51]
+              - cell "Vysoká" [ref=e52]
+            - row "Stav V řešení" [ref=e53]:
+              - cell "Stav" [ref=e54]
+              - cell "V řešení" [ref=e55]
+            - row "Přiřazeno Petr Údržba" [ref=e56]:
+              - cell "Přiřazeno" [ref=e57]
+              - cell "Petr Údržba" [ref=e58]
+            - row "Popis Světlo v koupelně bliká" [ref=e59]:
+              - cell "Popis" [ref=e60]
+              - cell "Světlo v koupelně bliká" [ref=e61]
+      - heading "Timeline" [level=2] [ref=e62]
+      - list [ref=e63]:
+        - listitem [ref=e64]:
+          - generic [ref=e66]:
+            - generic [ref=e67]: Vytvořeno
+            - generic [ref=e68]: 18. 2. 2026 11:00:00
+        - listitem [ref=e69]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: V řešení
+            - generic [ref=e73]: 18. 2. 2026 11:30:00
+  - link "KÁJOVO" [ref=e74] [cursor=pointer]:
+    - /url: /
+```

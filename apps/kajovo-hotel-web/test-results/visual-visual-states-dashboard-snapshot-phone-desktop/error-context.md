@@ -1,0 +1,45 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Přehled" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /?state=404
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - heading "Snídaně dnes" [level=3] [ref=e23]
+        - generic [ref=e24]:
+          - strong [ref=e25]: "18"
+          - paragraph [ref=e26]: 3 čekající objednávky
+      - generic [ref=e27]:
+        - heading "Závady" [level=3] [ref=e28]
+        - generic [ref=e29]:
+          - strong [ref=e30]: "4"
+          - paragraph [ref=e31]: 1 kritická závada
+      - generic [ref=e32]:
+        - heading "Sklad" [level=3] [ref=e33]
+        - generic [ref=e34]:
+          - strong [ref=e35]: "12"
+          - paragraph [ref=e36]: 2 položky pod minimem
+  - link "KÁJOVO" [ref=e37] [cursor=pointer]:
+    - /url: /
+```

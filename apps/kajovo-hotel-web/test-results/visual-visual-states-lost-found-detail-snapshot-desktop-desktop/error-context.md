@@ -1,0 +1,84 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - link "Skladové hospodářství" [ref=e16] [cursor=pointer]:
+          - /url: /sklad
+        - link "Hlášení" [ref=e17] [cursor=pointer]:
+          - /url: /hlaseni
+  - main [ref=e18]:
+    - heading "Detail položky" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - link "Zpět na seznam" [ref=e32] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - link "Upravit" [ref=e33] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy/1/edit
+      - region "Tabulka" [ref=e34]:
+        - table [ref=e35]:
+          - rowgroup [ref=e36]:
+            - row "Položka Hodnota" [ref=e37]:
+              - columnheader "Položka" [ref=e38]
+              - columnheader "Hodnota" [ref=e39]
+          - rowgroup [ref=e40]:
+            - row "Typ Nalezeno" [ref=e41]:
+              - cell "Typ" [ref=e42]
+              - cell "Nalezeno" [ref=e43]
+            - row "Kategorie Osobní věci" [ref=e44]:
+              - cell "Kategorie" [ref=e45]
+              - cell "Osobní věci" [ref=e46]
+            - row "Místo Wellness" [ref=e47]:
+              - cell "Místo" [ref=e48]
+              - cell "Wellness" [ref=e49]
+            - row "Datum a čas 18. 2. 2026 11:00:00" [ref=e50]:
+              - cell "Datum a čas" [ref=e51]
+              - cell "18. 2. 2026 11:00:00" [ref=e52]
+            - row "Stav Uloženo" [ref=e53]:
+              - cell "Stav" [ref=e54]
+              - cell "Uloženo" [ref=e55]
+            - row "Popis Černá peněženka" [ref=e56]:
+              - cell "Popis" [ref=e57]
+              - cell "Černá peněženka" [ref=e58]
+            - row "Jméno žadatele -" [ref=e59]:
+              - cell "Jméno žadatele" [ref=e60]
+              - cell "-" [ref=e61]
+            - row "Kontakt -" [ref=e62]:
+              - cell "Kontakt" [ref=e63]
+              - cell "-" [ref=e64]
+            - row "Předávací záznam -" [ref=e65]:
+              - cell "Předávací záznam" [ref=e66]
+              - cell "-" [ref=e67]
+  - link "KÁJOVO" [ref=e68] [cursor=pointer]:
+    - /url: /
+```

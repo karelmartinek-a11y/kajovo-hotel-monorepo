@@ -1,0 +1,65 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - link "Skladové hospodářství" [ref=e16] [cursor=pointer]:
+          - /url: /sklad
+        - link "Hlášení" [ref=e17] [cursor=pointer]:
+          - /url: /hlaseni
+  - main [ref=e18]:
+    - heading "Upravit skladovou položku" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /sklad/1/edit?state=404
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - link "Zpět na seznam" [ref=e32] [cursor=pointer]:
+          - /url: /sklad
+        - button "Uložit" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: Název
+          - textbox "Název" [ref=e37]: Mléko
+        - generic [ref=e38]:
+          - generic [ref=e39]: Jednotka
+          - textbox "Jednotka" [ref=e40]: l
+        - generic [ref=e41]:
+          - generic [ref=e42]: Minimální stav
+          - spinbutton "Minimální stav" [ref=e43]: "10"
+        - generic [ref=e44]:
+          - generic [ref=e45]: Aktuální stav
+          - spinbutton "Aktuální stav" [ref=e46]: "4"
+        - generic [ref=e47]:
+          - generic [ref=e48]: Dodavatel (volitelné)
+          - textbox "Dodavatel (volitelné)" [ref=e49]: FreshTrade
+  - link "KÁJOVO" [ref=e50] [cursor=pointer]:
+    - /url: /
+```

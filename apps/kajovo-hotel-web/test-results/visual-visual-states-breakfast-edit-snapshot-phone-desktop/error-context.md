@@ -1,0 +1,57 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Upravit snídani" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /snidane/1/edit?state=404
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - link "Zpět na seznam" [ref=e23] [cursor=pointer]:
+          - /url: /snidane
+        - button "Uložit" [ref=e24] [cursor=pointer]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Datum služby
+          - textbox "Datum služby" [ref=e28]: 2026-02-19
+        - generic [ref=e29]:
+          - generic [ref=e30]: Pokoj
+          - textbox "Pokoj" [ref=e31]: "101"
+        - generic [ref=e32]:
+          - generic [ref=e33]: Host
+          - textbox "Host" [ref=e34]: Novák
+        - generic [ref=e35]:
+          - generic [ref=e36]: Počet hostů
+          - spinbutton "Počet hostů" [ref=e37]: "2"
+        - generic [ref=e38]:
+          - generic [ref=e39]: Stav
+          - combobox "Stav" [ref=e40]:
+            - option "Čeká" [selected]
+            - option "Připravuje se"
+            - option "Vydáno"
+            - option "Zrušeno"
+        - generic [ref=e41]:
+          - generic [ref=e42]: Poznámka
+          - textbox "Poznámka" [ref=e43]: Bez lepku
+  - link "KÁJOVO" [ref=e44] [cursor=pointer]:
+    - /url: /
+```

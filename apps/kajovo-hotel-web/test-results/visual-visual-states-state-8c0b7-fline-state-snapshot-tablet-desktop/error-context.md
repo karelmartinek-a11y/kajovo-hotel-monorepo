@@ -1,0 +1,46 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12] [cursor=pointer]:
+          - /url: /snidane
+        - link "Závady" [ref=e13] [cursor=pointer]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15] [cursor=pointer]:
+          - /url: /ztraty-a-nalezy
+        - button "Další" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - heading "Závady" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23] [cursor=pointer]:
+          - /url: /zavady?state=default
+        - link "Načítání" [ref=e24] [cursor=pointer]:
+          - /url: /zavady?state=loading
+        - link "Prázdno" [ref=e25] [cursor=pointer]:
+          - /url: /zavady?state=empty
+        - link "Chyba" [ref=e26] [cursor=pointer]:
+          - /url: /zavady?state=error
+        - link "Offline" [ref=e27] [cursor=pointer]:
+          - /url: /zavady?state=offline
+        - link "Údržba" [ref=e28] [cursor=pointer]:
+          - /url: /zavady?state=maintenance
+        - link "404" [ref=e29] [cursor=pointer]:
+          - /url: /zavady?state=404
+    - generic [ref=e30]:
+      - heading "Offline" [level=2] [ref=e31]
+      - paragraph [ref=e32]: Aplikace je dočasně bez připojení.
+      - link "Diagnostika připojení" [ref=e34] [cursor=pointer]:
+        - /url: /offline
+  - link "KÁJOVO" [ref=e35] [cursor=pointer]:
+    - /url: /
+```

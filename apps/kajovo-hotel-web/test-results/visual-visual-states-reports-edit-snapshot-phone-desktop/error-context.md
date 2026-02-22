@@ -1,0 +1,47 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Upravit hlášení" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /hlaseni/1/edit?state=404
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - link "Zpět na seznam" [ref=e23] [cursor=pointer]:
+          - /url: /hlaseni
+        - button "Uložit" [ref=e24] [cursor=pointer]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Název
+          - textbox "Název" [ref=e28]: Nefunkční lampa na chodbě
+        - generic [ref=e29]:
+          - generic [ref=e30]: Stav
+          - combobox "Stav" [ref=e31]:
+            - option "Otevřené"
+            - option "V řešení" [selected]
+            - option "Uzavřené"
+        - generic [ref=e32]:
+          - generic [ref=e33]: Popis (volitelné)
+          - textbox "Popis (volitelné)" [ref=e34]: 2. patro - bliká světlo před pokojem 204
+  - link "KÁJOVO" [ref=e35] [cursor=pointer]:
+    - /url: /
+```

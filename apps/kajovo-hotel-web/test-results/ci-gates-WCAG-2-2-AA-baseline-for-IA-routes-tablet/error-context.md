@@ -1,0 +1,45 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: Přehled
+        - link "Přehled" [ref=e10]:
+          - /url: /
+        - generic [ref=e11]: Provoz
+        - link "Snídaně" [ref=e12]:
+          - /url: /snidane
+        - link "Závady" [ref=e13]:
+          - /url: /zavady
+        - generic [ref=e14]: Evidence
+        - link "Ztráty a nálezy" [ref=e15]:
+          - /url: /ztraty-a-nalezy
+        - button "Další" [ref=e17] [cursor=pointer]
+  - main [ref=e18]:
+    - heading "Závady" [level=1] [ref=e19]
+    - generic [ref=e20]:
+      - generic [ref=e21]: "Stavy view:"
+      - generic [ref=e22]:
+        - link "Výchozí" [ref=e23]:
+          - /url: /zavady?state=default
+        - link "Načítání" [ref=e24]:
+          - /url: /zavady?state=loading
+        - link "Prázdno" [ref=e25]:
+          - /url: /zavady?state=empty
+        - link "Chyba" [ref=e26]:
+          - /url: /zavady?state=error
+        - link "Offline" [ref=e27]:
+          - /url: /zavady?state=offline
+        - link "Údržba" [ref=e28]:
+          - /url: /zavady?state=maintenance
+        - link "404" [ref=e29]:
+          - /url: /zavady?state=404
+    - generic [ref=e30]:
+      - heading "Chyba" [level=2] [ref=e31]
+      - paragraph [ref=e32]: Nepodařilo se načíst seznam závad.
+      - button "Obnovit" [ref=e34] [cursor=pointer]
+  - link "KÁJOVO" [ref=e35]:
+    - /url: /
+```

@@ -1,0 +1,68 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - navigation "Hlavní navigace" [ref=e6]:
+      - button "Menu" [ref=e8] [cursor=pointer]
+  - main [ref=e9]:
+    - heading "Závady" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - generic [ref=e12]: "Stavy view:"
+      - generic [ref=e13]:
+        - link "Výchozí" [ref=e14] [cursor=pointer]:
+          - /url: /zavady?state=default
+        - link "Načítání" [ref=e15] [cursor=pointer]:
+          - /url: /zavady?state=loading
+        - link "Prázdno" [ref=e16] [cursor=pointer]:
+          - /url: /zavady?state=empty
+        - link "Chyba" [ref=e17] [cursor=pointer]:
+          - /url: /zavady?state=error
+        - link "Offline" [ref=e18] [cursor=pointer]:
+          - /url: /zavady?state=offline
+        - link "Údržba" [ref=e19] [cursor=pointer]:
+          - /url: /zavady?state=maintenance
+        - link "404" [ref=e20] [cursor=pointer]:
+          - /url: /zavady?state=404
+    - generic [ref=e21]:
+      - combobox "Filtr priority" [ref=e22]:
+        - option "Všechny priority" [selected]
+        - option "Nízká"
+        - option "Střední"
+        - option "Vysoká"
+        - option "Kritická"
+      - combobox "Filtr stavu" [ref=e23]:
+        - option "Všechny stavy" [selected]
+        - option "Nová"
+        - option "V řešení"
+        - option "Vyřešena"
+        - option "Uzavřena"
+      - textbox "Filtr lokace" [ref=e24]:
+        - /placeholder: Lokalita
+      - link "Nová závada" [ref=e25] [cursor=pointer]:
+        - /url: /zavady/nova
+    - region "Tabulka" [ref=e26]:
+      - table [ref=e27]:
+        - rowgroup [ref=e28]:
+          - row "Název Lokace Pokoj Priorita Stav Přiřazeno Akce" [ref=e29]:
+            - columnheader "Název" [ref=e30]
+            - columnheader "Lokace" [ref=e31]
+            - columnheader "Pokoj" [ref=e32]
+            - columnheader "Priorita" [ref=e33]
+            - columnheader "Stav" [ref=e34]
+            - columnheader "Přiřazeno" [ref=e35]
+            - columnheader "Akce" [ref=e36]
+        - rowgroup [ref=e37]:
+          - row "Nefunkční světlo 2. patro 204 Vysoká V řešení Petr Údržba Detail" [ref=e38]:
+            - cell "Nefunkční světlo" [ref=e39]
+            - cell "2. patro" [ref=e40]
+            - cell "204" [ref=e41]
+            - cell "Vysoká" [ref=e42]
+            - cell "V řešení" [ref=e43]
+            - cell "Petr Údržba" [ref=e44]
+            - cell "Detail" [ref=e45]:
+              - link "Detail" [ref=e46] [cursor=pointer]:
+                - /url: /zavady/1
+  - link "KÁJOVO" [ref=e47] [cursor=pointer]:
+    - /url: /
+```
