@@ -612,3 +612,22 @@ modules:
       - "docs/regen/08-rbac/verification.md"
     links:
       - "docs/regen/08-rbac/verification.md"
+
+
+  - module: ci_e2e_smoke_auth_stabilization
+    required_behavior: "CI má deterministický Playwright smoke pro admin login, admin hint flow a user-create+portal-login včetně browser provisioning, service orchestrace a validní verification.md sekcí A-F a stabilní webServer URL readiness bez timeoutu včetně CI-friendly startup režimu: prebuild v workflow + preview-only webServer pro admin/portal smoke a korektní Playwright testDir discovery pro smoke suite a stabilní hint-flow krok bez flaky UI assertion"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/13-ci-tests/verification.md"
+    status: IN_PROGRESS
+    target_location:
+      - ".github/workflows/ci-gates.yml"
+      - "apps/kajovo-hotel-web/tests/e2e-smoke.config.ts"
+      - "apps/kajovo-hotel-web/tests/e2e-smoke/auth-smoke.spec.ts"
+      - "apps/kajovo-hotel-api/scripts/init_e2e_smoke_db.py"
+      - "apps/kajovo-hotel-admin/vite.config.ts"
+      - "apps/kajovo-hotel-web/vite.config.ts"
+    links:
+      - "docs/regen/13-ci-tests/verification.md"
