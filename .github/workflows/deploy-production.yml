@@ -20,7 +20,11 @@ jobs:
             echo "Chybí secret HOTEL_DEPLOY_KEY" >&2
             exit 1
           fi
-          printf '%s\n' "$DEPLOY_KEY" > deploy_key.pem
+          if grep -q "BEGIN .*PRIVATE KEY" <<<"$DEPLOY_KEY"; then
+            printf '%b' "$DEPLOY_KEY" > deploy_key.pem
+          else
+            echo "$DEPLOY_KEY" | base64 -d > deploy_key.pem || printf '%b' "$DEPLOY_KEY" > deploy_key.pem
+          fi
           chmod 600 deploy_key.pem
           ssh-keygen -lf deploy_key.pem || true
 
