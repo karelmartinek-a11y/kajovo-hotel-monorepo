@@ -11,12 +11,25 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Připrav SSH klíč
+        shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "Chybí secret HOTEL_DEPLOY_KEY" >&2
+            exit 1
+          fi
+          printf '%s\n' "$DEPLOY_KEY" > deploy_key.pem
+          chmod 600 deploy_key.pem
+          ssh-keygen -lf deploy_key.pem || true
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOTEL_DEPLOY_HOST }}
           username: ${{ secrets.HOTEL_DEPLOY_USER }}
-          key: ${{ secrets.HOTEL_DEPLOY_KEY }}
+          key_path: deploy_key.pem
           port: ${{ secrets.HOTEL_DEPLOY_PORT }}
           script: |
             set -euo pipefail
