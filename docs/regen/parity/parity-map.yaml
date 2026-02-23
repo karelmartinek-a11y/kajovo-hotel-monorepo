@@ -676,7 +676,8 @@ modules:
     - N/A
     docs:
     - docs/regen/13-ci-tests/verification.md
-  status: BLOCKED
+    - docs/regen/19-e2e-smoke-admin-hint-fix/verification.md
+  status: DONE
   target_location:
   - .github/workflows/ci-gates.yml
   - apps/kajovo-hotel-web/tests/e2e-smoke.config.ts
@@ -687,3 +688,4 @@ modules:
   links:
   - docs/regen/13-ci-tests/verification.md
   - docs/regen/15-closeout/parity-verdict.md#module-ci-e2e-smoke-auth-stabilization
+  - docs/regen/19-e2e-smoke-admin-hint-fix/verification.md

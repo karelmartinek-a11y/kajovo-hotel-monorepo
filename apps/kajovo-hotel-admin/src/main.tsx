@@ -419,6 +419,17 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   }
 
+  if (path === '/api/auth/admin/hint' && method === 'POST') {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+
   throw new Error(`Unsupported API call: ${method} ${path}`);
 }
 
