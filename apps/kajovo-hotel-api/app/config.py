@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     admin_password_hint: str = "Výchozí heslo pro lokální vývoj"
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
+    smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
 
     model_config = SettingsConfigDict(env_prefix="KAJOVO_API_")
 

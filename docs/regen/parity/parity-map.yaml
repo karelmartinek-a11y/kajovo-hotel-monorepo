@@ -199,6 +199,26 @@ modules:
     links:
       - "docs/regen/08-rbac/verification.md"
 
+
+  - module: smtp_settings_and_unified_email_service
+    required_behavior: "Admin SMTP settings secure storage + masked secret + test-email; hint + onboarding přes jednotný EmailService"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/db/models.py: portal_smtp_settings"
+      docs:
+        - "docs/regen/10-smtp/verification.md"
+        - "docs/regen/10-smtp/security-notes.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/services/mail.py"
+      - "apps/kajovo-hotel-api/app/api/routes/settings.py"
+      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
+      - "apps/kajovo-hotel-api/app/api/routes/users.py"
+      - "apps/kajovo-hotel-api/tests/test_smtp_email_service.py"
+      - "docs/regen/10-smtp/verification.md"
+    links:
+      - "docs/regen/10-smtp/verification.md"
+
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
     evidence:
