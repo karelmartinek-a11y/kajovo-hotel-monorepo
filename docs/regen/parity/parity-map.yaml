@@ -184,6 +184,21 @@ modules:
     links:
       - "docs/regen/08-rbac/verification.md"
 
+  - module: rbac_verification_doc_section_fix
+    required_behavior: "CI verification-doc checker projde pro ORF-06 Prompt 08 (přesný název sekce E)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-rbac/verification.md"
+        - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
+    status: DONE
+    target_location:
+      - "docs/regen/08-rbac/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+    links:
+      - "docs/regen/08-rbac/verification.md"
+
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
     evidence:

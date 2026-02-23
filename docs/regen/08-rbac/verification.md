@@ -26,7 +26,7 @@
 - FAIL (environment): `cd apps/kajovo-hotel-admin && pnpm exec playwright install chromium` (Playwright CDN vrací 403 Forbidden)
 - FAIL (environment): `pnpm --filter @kajovo/kajovo-hotel-admin test -- --project=desktop tests/rbac-access.spec.ts` (není dostupný Playwright Chromium binary v prostředí)
 
-## E) Rizika / known limits
+## E) Rizika/known limits
 - E2E verifikace unauthorized direct-route v tomto běhu nebyla dokončena kvůli environment download blockeru Playwright browseru (403 z CDN). Lokální/CI běh s dostupným browser artefaktem by měl test validně spustit.
 - RBAC enforcement je závislý na konzistenci session `actor_type` a role claimů v auth cookie.
 
