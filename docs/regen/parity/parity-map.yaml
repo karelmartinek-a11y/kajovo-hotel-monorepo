@@ -295,3 +295,17 @@ modules:
       - "docs/regen/parity/parity-map.yaml"
     links:
       - "docs/regen/06-conflict-autoresolve/verification.md"
+
+
+  - module: github_publish_instructions
+    required_behavior: "Proces publikace lokálních commitů na GitHub je zdokumentovaný pro případy bez nastaveného remote"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/07-apply-commits/verification.md"
+    status: DONE
+    target_location:
+      - "docs/regen/07-apply-commits/verification.md"
+    links:
+      - "docs/regen/07-apply-commits/verification.md"
