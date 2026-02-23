@@ -79,6 +79,14 @@ def api_server(api_db_path: Path) -> Generator[tuple[str, deque[str]], None, Non
                 _scrypt_hash("maintenance-pass", b"maintenance-salt"),
             ),
         )
+        connection.execute(
+            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
+            (
+                "manager@example.com",
+                "manager",
+                _scrypt_hash("manager-pass", b"manager-salt-manager"),
+            ),
+        )
         connection.commit()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:

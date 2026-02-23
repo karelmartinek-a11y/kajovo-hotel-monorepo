@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
         email: 'maintenance@example.com',
         role: 'maintenance',
         permissions: ['dashboard:read', 'issues:read', 'issues:write', 'reports:read'],
-        actor_type: 'portal',
+        actor_type: 'admin',
       }),
     });
   });
