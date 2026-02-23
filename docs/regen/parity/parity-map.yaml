@@ -1,633 +1,691 @@
 version: 1
-updated_at: "2026-02-23"
+updated_at: '2026-02-23'
 notes:
-  - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
-  - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
-
+- 'Deterministická parity mapa: modul -> požadované chování -> evidence -> stav ->
+  cílové umístění.'
+- 'Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED'
 modules:
-  - module: dashboard
-    required_behavior: "Přehledová route a navigační vstup dle IA"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/web/routes.py:/admin/dashboard"
-      docs:
-        - "apps/kajovo-hotel/ux/ia.json: modules.dashboard"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx: route '/'"
-
-  - module: breakfast
-    required_behavior: "CRUD + denní souhrn snídaní v UI/API"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/api/breakfast.py"
-        - "legacy/hotel-backend/app/web/routes_admin.py:/admin/breakfast*"
-      docs:
-        - "apps/kajovo-hotel/ux/ia.json: /snidane*"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx: /snidane*"
-      - "apps/kajovo-hotel-api/app/api/routes/breakfast.py"
-
-  - module: lost_found
-    required_behavior: "Evidence ztrát a nálezů (list/detail/create/edit/delete)"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/web/routes.py:/admin/reports/findings"
-      docs:
-        - "apps/kajovo-hotel/ux/ia.json: /ztraty-a-nalezy*"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx: /ztraty-a-nalezy*"
-      - "apps/kajovo-hotel-api/app/api/routes/lost_found.py"
-
-  - module: issues
-    required_behavior: "Evidence závad (list/detail/create/edit/delete)"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/web/routes.py:/admin/reports/issues"
-      docs:
-        - "apps/kajovo-hotel/ux/ia.json: /zavady*"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx: /zavady*"
-      - "apps/kajovo-hotel-api/app/api/routes/issues.py"
-
-  - module: inventory
-    required_behavior: "Sklad + pohyby + audit"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/web/routes_inventory.py"
-      docs:
-        - "apps/kajovo-hotel/ux/ia.json: /sklad*"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx: /sklad*"
-      - "apps/kajovo-hotel-api/app/api/routes/inventory.py"
-
-  - module: reports
-    required_behavior: "Hlášení (list/detail/create/edit/delete)"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/api/reports.py"
-        - "legacy/hotel-backend/app/web/routes.py:/admin/reports*"
-      docs:
-        - "apps/kajovo-hotel/ux/ia.json: /hlaseni*"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx: /hlaseni*"
-      - "apps/kajovo-hotel-api/app/api/routes/reports.py"
-
-  - module: admin_portal_split
-    required_behavior: "Striktní oddělení Admin UI a Portal UI (separate login + separate app/entry)"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/web/routes.py: /admin/login, /login, /portal"
-      docs:
-        - "brand/panel/login_admin.png"
-        - "brand/panel/login_user_fail.png"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx"
-      - "apps/kajovo-hotel-admin/src/main.tsx"
-      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
-    links:
-      - "docs/regen/03-monorepo-structure/verification.md"
-
-  - module: portal_route_coverage_evidence
-    required_behavior: "Prompt 04 má auditovatelný route coverage matrix (IA route -> komponenta -> stav -> test)"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/04-portal/route-coverage.md"
-        - "docs/regen/04-portal/verification.md"
-        - "apps/kajovo-hotel/ux/ia.json"
-        - "apps/kajovo-hotel-web/src/main.tsx"
-        - "apps/kajovo-hotel-web/tests/ci-gates.spec.ts"
-        - "apps/kajovo-hotel-web/tests/nav-robustness.spec.ts"
-    status: DONE
-    target_location:
-      - "docs/regen/04-portal/route-coverage.md"
-      - "docs/regen/04-portal/verification.md"
-    links:
-      - "docs/regen/04-portal/verification.md"
-
-  - module: admin_shell_nav_map_evidence
-    required_behavior: "Prompt 05 má auditovatelnou mapu panel design -> admin route/view"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/05-admin-shell/nav-map.md"
-        - "docs/regen/05-admin-shell/verification.md"
-        - "brand/panel/menu_admin.png"
-        - "brand/panel/login_admin.png"
-        - "apps/kajovo-hotel-admin/src/main.tsx"
-    status: DONE
-    target_location:
-      - "docs/regen/05-admin-shell/nav-map.md"
-      - "docs/regen/05-admin-shell/verification.md"
-    links:
-      - "docs/regen/05-admin-shell/verification.md"
-
-  - module: user_management_only_auth
-    required_behavior: "Jediná autorizace přes správu uživatelů v Admin menu; email=username"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/db/models.py: PortalUser"
-      docs:
-        - "docs/test-accounts.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/security/rbac.py"
-      - "apps/kajovo-hotel-web/src/rbac.ts"
-    links:
-      - "docs/regen/05-admin-users/verification.md"
-
-  - module: auth_constraints_fixed_admin_immutable_password
-    required_behavior: "Fixed admin + immutable password model; forgot admin password pouze hint email flow"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/security/admin_auth.py"
-      docs:
-        - "docs/regen/07-auth/verification.md"
-        - "docs/regen/07-auth/security-notes.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
-      - "apps/kajovo-hotel-api/app/services/mail.py"
-      - "apps/kajovo-hotel-api/tests/test_auth_constraints.py"
-      - "apps/kajovo-hotel-admin/src/main.tsx"
-    links:
-      - "docs/regen/07-auth/verification.md"
-
-  - module: rbac_hardening_admin_endpoints
-    required_behavior: "Server-side RBAC checks + actor-type guard na admin endpointy; UI unauthorized handling + deny matrix evidence"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/08-rbac/verification.md"
-        - "apps/kajovo-hotel-api/app/security/rbac.py"
-        - "apps/kajovo-hotel-api/app/api/routes/users.py"
-        - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
-        - "apps/kajovo-hotel-admin/tests/rbac-access.spec.ts"
-        - "apps/kajovo-hotel-web/tests/rbac-access.spec.ts"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/security/rbac.py"
-      - "apps/kajovo-hotel-api/app/api/routes/users.py"
-      - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
-      - "apps/kajovo-hotel-admin/tests/rbac-access.spec.ts"
-      - "docs/regen/08-rbac/verification.md"
-    links:
-      - "docs/regen/08-rbac/verification.md"
-
-  - module: rbac_verification_doc_section_fix
-    required_behavior: "CI verification-doc checker projde pro ORF-06 Prompt 08 (přesný název sekce E)"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/08-rbac/verification.md"
-        - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
-    status: DONE
-    target_location:
-      - "docs/regen/08-rbac/verification.md"
-      - "docs/regen/parity/parity-map.yaml"
-    links:
-      - "docs/regen/08-rbac/verification.md"
-
-
-  - module: smtp_settings_and_unified_email_service
-    required_behavior: "Admin SMTP settings secure storage + masked secret + test-email; hint + onboarding přes jednotný EmailService"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/db/models.py: portal_smtp_settings"
-      docs:
-        - "docs/regen/10-smtp/verification.md"
-        - "docs/regen/10-smtp/security-notes.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/services/mail.py"
-      - "apps/kajovo-hotel-api/app/api/routes/settings.py"
-      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
-      - "apps/kajovo-hotel-api/app/api/routes/users.py"
-      - "apps/kajovo-hotel-api/tests/test_smtp_email_service.py"
-      - "apps/kajovo-hotel-api/openapi.json"
-      - "packages/shared/src/generated/client.ts"
-      - "docs/regen/10-smtp/verification.md"
-    links:
-      - "docs/regen/10-smtp/verification.md"
-
-  - module: device
-    required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/api/device.py"
-      docs:
-        - "docs/legacy-inventory.md"
-    status: DROPPED
-    decision: "Device modul: DROPPED"
-    target_location:
-      - "N/A"
-    verification:
-      - "No /device/* routes in apps/kajovo-hotel-api/app/api/routes/*.py"
-      - "No Device entity in apps/kajovo-hotel-api/app/db/models.py"
-      - "No device provisioning route in apps/kajovo-hotel-web/src/main.tsx"
-
-  - module: entity_id_flow
-    required_behavior: "Entity ID auth/provisioning flow"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/api/device.py"
-    status: DROPPED
-    decision: "Entity ID flow is not allowed in target architecture"
-    target_location:
-      - "N/A"
-
-  - module: api_packaging
-    required_behavior: "Editable install pro apps/kajovo-hotel-api funguje v CI bez setuptools discovery chyby"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "apps/kajovo-hotel-api/pyproject.toml"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/pyproject.toml"
-    links:
-      - "docs/regen/01-packaging-fix/verification.md"
-
-  - module: web_e2e_browser_bootstrap
-    required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "apps/kajovo-hotel-web/package.json"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/package.json:scripts.pretest"
-    links:
-      - "docs/regen/04-webtest-exit1-fix/verification.md"
-
-  - module: web_visual_snapshot_project_scope
-    required_behavior: "Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop projekty"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "apps/kajovo-hotel-web/tests/visual.spec.ts"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/tests/visual.spec.ts"
-    links:
-      - "docs/regen/06-playwright-tablet-browser-fix/verification.md"
-
-  - module: web_visual_suite_gating
-    required_behavior: "Default playwright test běh nepadá na visual snapshot baseline mismatch; visual suite je explicitně opt-in"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "apps/kajovo-hotel-web/tests/visual.spec.ts"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/tests/visual.spec.ts"
-    links:
-      - "docs/regen/05-webtest-command-fix/verification.md"
-
-  - module: web_test_command_split
-    required_behavior: "Default web test command je stabilní (core gates), visual suite běží separátně"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "apps/kajovo-hotel-web/package.json"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/package.json:scripts.test"
-      - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
-    links:
-      - "docs/regen/05-webtest-command-fix/verification.md"
-
-  - module: web_playwright_browser_parity
-    required_behavior: "Playwright projekty používají browser engine dostupný v CI install kroku"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "apps/kajovo-hotel-web/playwright.config.ts"
-        - ".github/workflows/ci-full.yml"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
-    links:
-      - "docs/regen/06-playwright-tablet-browser-fix/verification.md"
-
-  - module: api_foundation_prompt_06
-    required_behavior: "API foundation má health/readiness endpointy, jednotný error envelope a request_id/audit evidenci"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/main.py: /api/health"
-      docs:
-        - "docs/regen/06-api-foundation/verification.md"
-        - "docs/observability.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/api/routes/health.py"
-      - "apps/kajovo-hotel-api/app/main.py"
-      - "apps/kajovo-hotel-api/app/observability.py"
-      - "apps/kajovo-hotel-api/tests/test_health.py"
-    links:
-      - "docs/regen/06-api-foundation/verification.md"
-
-  - module: api_foundation_contract_sync_fix
-    required_behavior: "Po změně API foundation jsou OpenAPI contract a generated TS client synchronizované"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/16-api-foundation-contract-sync-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/openapi.json"
-      - "packages/shared/src/generated/client.ts"
-    links:
-      - "docs/regen/16-api-foundation-contract-sync-fix/verification.md"
-
-  - module: api_health_alias_schema_fix
-    required_behavior: "Alias /api/health je dostupný runtime, ale negeneruje public OpenAPI/SDK endpoint"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/main.py: /api/health"
-      docs:
-        - "docs/regen/17-api-health-alias-schema-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/api/routes/health.py"
-      - "apps/kajovo-hotel-api/openapi.json"
-      - "packages/shared/src/generated/client.ts"
-    links:
-      - "docs/regen/17-api-health-alias-schema-fix/verification.md"
-
-  - module: verification_doc_section_header_fix_prompt_06
-    required_behavior: "Verification doc pro prompt 06 splňuje přesný název sekce E) Rizika/known limits"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/06-api-foundation/verification.md"
-        - "docs/regen/18-verification-section-header-fix/verification.md"
-    status: DONE
-    target_location:
-      - "docs/regen/06-api-foundation/verification.md"
-      - "docs/regen/18-verification-section-header-fix/verification.md"
-    links:
-      - "docs/regen/18-verification-section-header-fix/verification.md"
-
-
-  - module: api_test_csrf_session_setup
-    required_behavior: "API test setup používá validní session + CSRF token pro write requesty a stabilní uvicorn bootstrap"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/07-api-test-csrf-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-      - "apps/kajovo-hotel-api/tests/test_breakfast.py"
-      - "apps/kajovo-hotel-api/tests/test_health.py"
-      - "apps/kajovo-hotel-api/tests/test_inventory.py"
-      - "apps/kajovo-hotel-api/tests/test_issues.py"
-      - "apps/kajovo-hotel-api/tests/test_lost_found.py"
-      - "apps/kajovo-hotel-api/tests/test_reports.py"
-
-  - module: api_python_lint_ci_stability
-    required_behavior: "Python API lint gate je zelená (Ruff E/F/I), včetně CSRF middleware formátování"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/08-api-lint-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/security/auth.py"
-      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
-      - "apps/kajovo-hotel-api/app/api/routes/users.py"
-      - "apps/kajovo-hotel-api/alembic/versions/0009_create_portal_users_table.py"
-
-  - module: api_test_sqlite_db_path_stability
-    required_behavior: "API test SQLite DB běží na existující zapisovatelné cestě v lokálu i CI"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/09-sqlite-db-path-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-      - "apps/kajovo-hotel-api/tests/test_health.py"
-      - "apps/kajovo-hotel-api/tests/test_rbac.py"
-      - "apps/kajovo-hotel-api/tests/test_users.py"
-      - ".github/workflows/ci-full.yml"
-
-  - module: api_test_sqlite_ci_data_dir_alignment
-    required_behavior: "CI i pytest fixture používají shodný SQLite data adresář apps/kajovo-hotel-api/data"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/10-sqlite-ci-data-dir-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-      - ".github/workflows/ci-full.yml"
-
-  - module: api_test_workspace_path_portability
-    required_behavior: "API test DB path není hardcoded na /workspace a funguje v GitHub Actions i lokálně"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/11-workspace-path-portability-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-
-  - module: api_test_db_tmpdir_isolation
-    required_behavior: "API test SQLite DB běží v pytest tmpdir (write-safe, bez host-specific /workspace závislosti)"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/12-api-test-tmpdir-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-
-  - module: api_test_uvicorn_cwd_stability
-    required_behavior: "API test fixture spouští uvicorn s cwd nezávislým na aktuálním pracovním adresáři"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/13-uvicorn-cwd-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-
-  - module: contract_generated_client_sync
-    required_behavior: "OpenAPI export a generated shared client jsou synchronní po API změnách (včetně user password endpointů)"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/14-contract-sync-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/openapi.json"
-      - "packages/shared/src/generated/client.ts"
-
-  - module: web_nav_initial_media_state_stability
-    required_behavior: "Navigace má deterministický initial phone/tablet state bez prvního desktop renderu na tablet viewportu"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-nav-tablet-initial-state-fix/verification.md"
-    status: DONE
-    target_location:
-      - "packages/ui/src/navigation/ModuleNavigation.tsx"
-
-  - module: policy_entity_id_rename_guard
-    required_behavior: "Policy sentinel nehlásí zakázaný Entity ID naming v API schemas/models ani generated client"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-policy-entityid-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/api/schemas.py"
-      - "apps/kajovo-hotel-api/app/db/models.py"
-      - "apps/kajovo-hotel-api/app/api/routes/inventory.py"
-      - "packages/shared/src/generated/client.ts"
-
-  - module: web_view_states_auth_fallback_permissions
-    required_behavior: "View-states smoke route nezkončí na AccessDenied při neúspěšném /api/auth/me; read fallback je deterministický"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-view-states-auth-fallback-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/rbac.ts"
-
-  - module: web_view_states_auth_catch_fallback
-    required_behavior: "AppRoutes auth bootstrap catch používá read fallback permissions místo prázdné sady"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-view-states-auth-catch-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx"
-      - "apps/kajovo-hotel-web/src/rbac.ts"
-
-  - module: web_ci_view_states_auth_me_mock
-    required_behavior: "CI gate view-states má deterministický auth/me mock a neselhává na bootstrap auth endpointu"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-view-states-auth-me-mock-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/tests/ci-gates.spec.ts"
-
-  - module: delivery_tracker
-    required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/progress.md"
-        - "docs/regen/00-orf-normalization/verification.md"
-    status: DONE
-    target_location:
-      - "docs/regen/progress.md"
-      - "docs/regen/parity/parity-map.yaml"
-
-
-  - module: repo_guardrails_and_ci_policy
-    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view, respektuje whitelist brand/** a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/01-guardrails/verification.md"
-        - ".github/workflows/ci-gates.yml"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
-      - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
-      - ".github/workflows/ci-gates.yml"
-    links:
-      - "docs/regen/01-guardrails/verification.md"
-
-
-  - module: design_foundation_tokens_signage_panel
-    required_behavior: "Jednotné tokeny (Portal/Admin), signace dle manifestu a panel layout mechanismus"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/02-design-foundation/token-map.md"
-        - "docs/regen/02-design-foundation/verification.md"
-    status: DONE
-    target_location:
-      - "packages/ui/src/tokens.css"
-      - "packages/ui/src/shell/KajovoSign.tsx"
-      - "packages/ui/src/shell/AppShell.tsx"
-      - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
-    links:
-      - "docs/regen/02-design-foundation/verification.md"
-
-  - module: api_rbac_deny_matrix_ruff_compliance
-    required_behavior: "RBAC deny-matrix test je Ruff compliant (import order + max line length) a neblokuje API lint gate"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/08-rbac/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
-      - "docs/regen/08-rbac/verification.md"
-    links:
-      - "docs/regen/08-rbac/verification.md"
-
-
-  - module: ci_e2e_smoke_auth_stabilization
-    required_behavior: "CI má deterministický Playwright smoke pro admin login, admin hint flow a user-create+portal-login včetně browser provisioning, service orchestrace a validní verification.md sekcí A-F a stabilní webServer URL readiness bez timeoutu včetně CI-friendly startup režimu: prebuild v workflow + preview-only webServer pro admin/portal smoke a korektní Playwright testDir discovery pro smoke suite a stabilní hint-flow krok bez flaky UI assertion"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/13-ci-tests/verification.md"
-    status: IN_PROGRESS
-    target_location:
-      - ".github/workflows/ci-gates.yml"
-      - "apps/kajovo-hotel-web/tests/e2e-smoke.config.ts"
-      - "apps/kajovo-hotel-web/tests/e2e-smoke/auth-smoke.spec.ts"
-      - "apps/kajovo-hotel-api/scripts/init_e2e_smoke_db.py"
-      - "apps/kajovo-hotel-admin/vite.config.ts"
-      - "apps/kajovo-hotel-web/vite.config.ts"
-    links:
-      - "docs/regen/13-ci-tests/verification.md"
+- module: dashboard
+  required_behavior: Přehledová route a navigační vstup dle IA
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/web/routes.py:/admin/dashboard
+    docs:
+    - 'apps/kajovo-hotel/ux/ia.json: modules.dashboard'
+  status: DONE
+  target_location:
+  - 'apps/kajovo-hotel-web/src/main.tsx: route ''/'''
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-dashboard
+- module: breakfast
+  required_behavior: CRUD + denní souhrn snídaní v UI/API
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/api/breakfast.py
+    - legacy/hotel-backend/app/web/routes_admin.py:/admin/breakfast*
+    docs:
+    - 'apps/kajovo-hotel/ux/ia.json: /snidane*'
+  status: DONE
+  target_location:
+  - 'apps/kajovo-hotel-web/src/main.tsx: /snidane*'
+  - apps/kajovo-hotel-api/app/api/routes/breakfast.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-breakfast
+- module: lost_found
+  required_behavior: Evidence ztrát a nálezů (list/detail/create/edit/delete)
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/web/routes.py:/admin/reports/findings
+    docs:
+    - 'apps/kajovo-hotel/ux/ia.json: /ztraty-a-nalezy*'
+  status: DONE
+  target_location:
+  - 'apps/kajovo-hotel-web/src/main.tsx: /ztraty-a-nalezy*'
+  - apps/kajovo-hotel-api/app/api/routes/lost_found.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-lost-found
+- module: issues
+  required_behavior: Evidence závad (list/detail/create/edit/delete)
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/web/routes.py:/admin/reports/issues
+    docs:
+    - 'apps/kajovo-hotel/ux/ia.json: /zavady*'
+  status: DONE
+  target_location:
+  - 'apps/kajovo-hotel-web/src/main.tsx: /zavady*'
+  - apps/kajovo-hotel-api/app/api/routes/issues.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-issues
+- module: inventory
+  required_behavior: Sklad + pohyby + audit
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/web/routes_inventory.py
+    docs:
+    - 'apps/kajovo-hotel/ux/ia.json: /sklad*'
+  status: DONE
+  target_location:
+  - 'apps/kajovo-hotel-web/src/main.tsx: /sklad*'
+  - apps/kajovo-hotel-api/app/api/routes/inventory.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-inventory
+- module: reports
+  required_behavior: Hlášení (list/detail/create/edit/delete)
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/api/reports.py
+    - legacy/hotel-backend/app/web/routes.py:/admin/reports*
+    docs:
+    - 'apps/kajovo-hotel/ux/ia.json: /hlaseni*'
+  status: DONE
+  target_location:
+  - 'apps/kajovo-hotel-web/src/main.tsx: /hlaseni*'
+  - apps/kajovo-hotel-api/app/api/routes/reports.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-reports
+- module: admin_portal_split
+  required_behavior: Striktní oddělení Admin UI a Portal UI (separate login + separate
+    app/entry)
+  evidence:
+    legacy:
+    - 'legacy/hotel-backend/app/web/routes.py: /admin/login, /login, /portal'
+    docs:
+    - brand/panel/login_admin.png
+    - brand/panel/login_user_fail.png
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/src/main.tsx
+  - apps/kajovo-hotel-admin/src/main.tsx
+  - apps/kajovo-hotel/ci/policy-sentinel.mjs
+  links:
+  - docs/regen/03-monorepo-structure/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-admin-portal-split
+- module: portal_route_coverage_evidence
+  required_behavior: Prompt 04 má auditovatelný route coverage matrix (IA route ->
+    komponenta -> stav -> test)
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/04-portal/route-coverage.md
+    - docs/regen/04-portal/verification.md
+    - apps/kajovo-hotel/ux/ia.json
+    - apps/kajovo-hotel-web/src/main.tsx
+    - apps/kajovo-hotel-web/tests/ci-gates.spec.ts
+    - apps/kajovo-hotel-web/tests/nav-robustness.spec.ts
+  status: DONE
+  target_location:
+  - docs/regen/04-portal/route-coverage.md
+  - docs/regen/04-portal/verification.md
+  links:
+  - docs/regen/04-portal/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-portal-route-coverage-evidence
+- module: admin_shell_nav_map_evidence
+  required_behavior: Prompt 05 má auditovatelnou mapu panel design -> admin route/view
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/05-admin-shell/nav-map.md
+    - docs/regen/05-admin-shell/verification.md
+    - brand/panel/menu_admin.png
+    - brand/panel/login_admin.png
+    - apps/kajovo-hotel-admin/src/main.tsx
+  status: DONE
+  target_location:
+  - docs/regen/05-admin-shell/nav-map.md
+  - docs/regen/05-admin-shell/verification.md
+  links:
+  - docs/regen/05-admin-shell/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-admin-shell-nav-map-evidence
+- module: user_management_only_auth
+  required_behavior: Jediná autorizace přes správu uživatelů v Admin menu; email=username
+  evidence:
+    legacy:
+    - 'legacy/hotel-backend/app/db/models.py: PortalUser'
+    docs:
+    - docs/test-accounts.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/security/rbac.py
+  - apps/kajovo-hotel-web/src/rbac.ts
+  links:
+  - docs/regen/05-admin-users/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-user-management-only-auth
+- module: auth_constraints_fixed_admin_immutable_password
+  required_behavior: Fixed admin + immutable password model; forgot admin password
+    pouze hint email flow
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/security/admin_auth.py
+    docs:
+    - docs/regen/07-auth/verification.md
+    - docs/regen/07-auth/security-notes.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/api/routes/auth.py
+  - apps/kajovo-hotel-api/app/services/mail.py
+  - apps/kajovo-hotel-api/tests/test_auth_constraints.py
+  - apps/kajovo-hotel-admin/src/main.tsx
+  links:
+  - docs/regen/07-auth/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-auth-constraints-fixed-admin-immutable-password
+- module: rbac_hardening_admin_endpoints
+  required_behavior: Server-side RBAC checks + actor-type guard na admin endpointy;
+    UI unauthorized handling + deny matrix evidence
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/08-rbac/verification.md
+    - apps/kajovo-hotel-api/app/security/rbac.py
+    - apps/kajovo-hotel-api/app/api/routes/users.py
+    - apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py
+    - apps/kajovo-hotel-admin/tests/rbac-access.spec.ts
+    - apps/kajovo-hotel-web/tests/rbac-access.spec.ts
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/security/rbac.py
+  - apps/kajovo-hotel-api/app/api/routes/users.py
+  - apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py
+  - apps/kajovo-hotel-admin/tests/rbac-access.spec.ts
+  - docs/regen/08-rbac/verification.md
+  links:
+  - docs/regen/08-rbac/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-rbac-hardening-admin-endpoints
+- module: rbac_verification_doc_section_fix
+  required_behavior: CI verification-doc checker projde pro ORF-06 Prompt 08 (přesný
+    název sekce E)
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/08-rbac/verification.md
+    - apps/kajovo-hotel/ci/check-pr-verification-doc.mjs
+  status: DONE
+  target_location:
+  - docs/regen/08-rbac/verification.md
+  - docs/regen/parity/parity-map.yaml
+  links:
+  - docs/regen/08-rbac/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-rbac-verification-doc-section-fix
+- module: smtp_settings_and_unified_email_service
+  required_behavior: Admin SMTP settings secure storage + masked secret + test-email;
+    hint + onboarding přes jednotný EmailService
+  evidence:
+    legacy:
+    - 'legacy/hotel-backend/app/db/models.py: portal_smtp_settings'
+    docs:
+    - docs/regen/10-smtp/verification.md
+    - docs/regen/10-smtp/security-notes.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/services/mail.py
+  - apps/kajovo-hotel-api/app/api/routes/settings.py
+  - apps/kajovo-hotel-api/app/api/routes/auth.py
+  - apps/kajovo-hotel-api/app/api/routes/users.py
+  - apps/kajovo-hotel-api/tests/test_smtp_email_service.py
+  - apps/kajovo-hotel-api/openapi.json
+  - packages/shared/src/generated/client.ts
+  - docs/regen/10-smtp/verification.md
+  links:
+  - docs/regen/10-smtp/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-smtp-settings-and-unified-email-service
+- module: device
+  required_behavior: Device provisioning/pairing/challenge/verify + Entity ID flow
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/api/device.py
+    docs:
+    - docs/legacy-inventory.md
+  status: BLOCKED
+  decision: 'Device modul: DROPPED'
+  target_location:
+  - N/A
+  verification:
+  - No /device/* routes in apps/kajovo-hotel-api/app/api/routes/*.py
+  - No Device entity in apps/kajovo-hotel-api/app/db/models.py
+  - No device provisioning route in apps/kajovo-hotel-web/src/main.tsx
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-device
+- module: entity_id_flow
+  required_behavior: Entity ID auth/provisioning flow
+  evidence:
+    legacy:
+    - legacy/hotel-backend/app/api/device.py
+  status: BLOCKED
+  decision: Entity ID flow is not allowed in target architecture
+  target_location:
+  - N/A
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-entity-id-flow
+- module: api_packaging
+  required_behavior: Editable install pro apps/kajovo-hotel-api funguje v CI bez setuptools
+    discovery chyby
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - apps/kajovo-hotel-api/pyproject.toml
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/pyproject.toml
+  links:
+  - docs/regen/01-packaging-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-api-packaging
+- module: web_e2e_browser_bootstrap
+  required_behavior: Web test job vždy zajistí dostupný Playwright Chromium před spuštěním
+    testů
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - apps/kajovo-hotel-web/package.json
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/package.json:scripts.pretest
+  links:
+  - docs/regen/04-webtest-exit1-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-web-e2e-browser-bootstrap
+- module: web_visual_snapshot_project_scope
+  required_behavior: Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop
+    projekty
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - apps/kajovo-hotel-web/tests/visual.spec.ts
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/tests/visual.spec.ts
+  links:
+  - docs/regen/06-playwright-tablet-browser-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-web-visual-snapshot-project-scope
+- module: web_visual_suite_gating
+  required_behavior: Default playwright test běh nepadá na visual snapshot baseline
+    mismatch; visual suite je explicitně opt-in
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - apps/kajovo-hotel-web/tests/visual.spec.ts
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/tests/visual.spec.ts
+  links:
+  - docs/regen/05-webtest-command-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-web-visual-suite-gating
+- module: web_test_command_split
+  required_behavior: Default web test command je stabilní (core gates), visual suite
+    běží separátně
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - apps/kajovo-hotel-web/package.json
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/package.json:scripts.test
+  - apps/kajovo-hotel-web/package.json:scripts.test:visual
+  links:
+  - docs/regen/05-webtest-command-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-web-test-command-split
+- module: web_playwright_browser_parity
+  required_behavior: Playwright projekty používají browser engine dostupný v CI install
+    kroku
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - apps/kajovo-hotel-web/playwright.config.ts
+    - .github/workflows/ci-full.yml
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/playwright.config.ts:projects.tablet
+  links:
+  - docs/regen/06-playwright-tablet-browser-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-web-playwright-browser-parity
+- module: api_foundation_prompt_06
+  required_behavior: API foundation má health/readiness endpointy, jednotný error
+    envelope a request_id/audit evidenci
+  evidence:
+    legacy:
+    - 'legacy/hotel-backend/app/main.py: /api/health'
+    docs:
+    - docs/regen/06-api-foundation/verification.md
+    - docs/observability.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/api/routes/health.py
+  - apps/kajovo-hotel-api/app/main.py
+  - apps/kajovo-hotel-api/app/observability.py
+  - apps/kajovo-hotel-api/tests/test_health.py
+  links:
+  - docs/regen/06-api-foundation/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-api-foundation-prompt-06
+- module: api_foundation_contract_sync_fix
+  required_behavior: Po změně API foundation jsou OpenAPI contract a generated TS
+    client synchronizované
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/16-api-foundation-contract-sync-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/openapi.json
+  - packages/shared/src/generated/client.ts
+  links:
+  - docs/regen/16-api-foundation-contract-sync-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-api-foundation-contract-sync-fix
+- module: api_health_alias_schema_fix
+  required_behavior: Alias /api/health je dostupný runtime, ale negeneruje public
+    OpenAPI/SDK endpoint
+  evidence:
+    legacy:
+    - 'legacy/hotel-backend/app/main.py: /api/health'
+    docs:
+    - docs/regen/17-api-health-alias-schema-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/api/routes/health.py
+  - apps/kajovo-hotel-api/openapi.json
+  - packages/shared/src/generated/client.ts
+  links:
+  - docs/regen/17-api-health-alias-schema-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-api-health-alias-schema-fix
+- module: verification_doc_section_header_fix_prompt_06
+  required_behavior: Verification doc pro prompt 06 splňuje přesný název sekce E)
+    Rizika/known limits
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/06-api-foundation/verification.md
+    - docs/regen/18-verification-section-header-fix/verification.md
+  status: DONE
+  target_location:
+  - docs/regen/06-api-foundation/verification.md
+  - docs/regen/18-verification-section-header-fix/verification.md
+  links:
+  - docs/regen/18-verification-section-header-fix/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-verification-doc-section-header-fix-prompt-06
+- module: api_test_csrf_session_setup
+  required_behavior: API test setup používá validní session + CSRF token pro write
+    requesty a stabilní uvicorn bootstrap
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/07-api-test-csrf-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/conftest.py
+  - apps/kajovo-hotel-api/tests/test_breakfast.py
+  - apps/kajovo-hotel-api/tests/test_health.py
+  - apps/kajovo-hotel-api/tests/test_inventory.py
+  - apps/kajovo-hotel-api/tests/test_issues.py
+  - apps/kajovo-hotel-api/tests/test_lost_found.py
+  - apps/kajovo-hotel-api/tests/test_reports.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-test-csrf-session-setup
+- module: api_python_lint_ci_stability
+  required_behavior: Python API lint gate je zelená (Ruff E/F/I), včetně CSRF middleware
+    formátování
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/08-api-lint-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/security/auth.py
+  - apps/kajovo-hotel-api/app/api/routes/auth.py
+  - apps/kajovo-hotel-api/app/api/routes/users.py
+  - apps/kajovo-hotel-api/alembic/versions/0009_create_portal_users_table.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-python-lint-ci-stability
+- module: api_test_sqlite_db_path_stability
+  required_behavior: API test SQLite DB běží na existující zapisovatelné cestě v lokálu
+    i CI
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/09-sqlite-db-path-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/conftest.py
+  - apps/kajovo-hotel-api/tests/test_health.py
+  - apps/kajovo-hotel-api/tests/test_rbac.py
+  - apps/kajovo-hotel-api/tests/test_users.py
+  - .github/workflows/ci-full.yml
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-test-sqlite-db-path-stability
+- module: api_test_sqlite_ci_data_dir_alignment
+  required_behavior: CI i pytest fixture používají shodný SQLite data adresář apps/kajovo-hotel-api/data
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/10-sqlite-ci-data-dir-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/conftest.py
+  - .github/workflows/ci-full.yml
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-test-sqlite-ci-data-dir-alignment
+- module: api_test_workspace_path_portability
+  required_behavior: API test DB path není hardcoded na /workspace a funguje v GitHub
+    Actions i lokálně
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/11-workspace-path-portability-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/conftest.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-test-workspace-path-portability
+- module: api_test_db_tmpdir_isolation
+  required_behavior: API test SQLite DB běží v pytest tmpdir (write-safe, bez host-specific
+    /workspace závislosti)
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/12-api-test-tmpdir-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/conftest.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-test-db-tmpdir-isolation
+- module: api_test_uvicorn_cwd_stability
+  required_behavior: API test fixture spouští uvicorn s cwd nezávislým na aktuálním
+    pracovním adresáři
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/13-uvicorn-cwd-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/conftest.py
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-api-test-uvicorn-cwd-stability
+- module: contract_generated_client_sync
+  required_behavior: OpenAPI export a generated shared client jsou synchronní po API
+    změnách (včetně user password endpointů)
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/14-contract-sync-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/openapi.json
+  - packages/shared/src/generated/client.ts
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-contract-generated-client-sync
+- module: web_nav_initial_media_state_stability
+  required_behavior: Navigace má deterministický initial phone/tablet state bez prvního
+    desktop renderu na tablet viewportu
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/15-nav-tablet-initial-state-fix/verification.md
+  status: DONE
+  target_location:
+  - packages/ui/src/navigation/ModuleNavigation.tsx
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-web-nav-initial-media-state-stability
+- module: policy_entity_id_rename_guard
+  required_behavior: Policy sentinel nehlásí zakázaný Entity ID naming v API schemas/models
+    ani generated client
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/15-policy-entityid-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/app/api/schemas.py
+  - apps/kajovo-hotel-api/app/db/models.py
+  - apps/kajovo-hotel-api/app/api/routes/inventory.py
+  - packages/shared/src/generated/client.ts
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-policy-entity-id-rename-guard
+- module: web_view_states_auth_fallback_permissions
+  required_behavior: View-states smoke route nezkončí na AccessDenied při neúspěšném
+    /api/auth/me; read fallback je deterministický
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/15-view-states-auth-fallback-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/src/rbac.ts
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-web-view-states-auth-fallback-permissions
+- module: web_view_states_auth_catch_fallback
+  required_behavior: AppRoutes auth bootstrap catch používá read fallback permissions
+    místo prázdné sady
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/15-view-states-auth-catch-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/src/main.tsx
+  - apps/kajovo-hotel-web/src/rbac.ts
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-web-view-states-auth-catch-fallback
+- module: web_ci_view_states_auth_me_mock
+  required_behavior: CI gate view-states má deterministický auth/me mock a neselhává
+    na bootstrap auth endpointu
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/15-view-states-auth-me-mock-fix/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-web/tests/ci-gates.spec.ts
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-web-ci-view-states-auth-me-mock
+- module: delivery_tracker
+  required_behavior: Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování
+    fix větví
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/progress.md
+    - docs/regen/00-orf-normalization/verification.md
+  status: DONE
+  target_location:
+  - docs/regen/progress.md
+  - docs/regen/parity/parity-map.yaml
+  links:
+  - docs/regen/15-closeout/parity-verdict.md#module-delivery-tracker
+- module: repo_guardrails_and_ci_policy
+  required_behavior: CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal
+    page-view, respektuje whitelist brand/** a při chybějícím docs/regen/<NN>-<slug>/verification.md
+    v PR
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/01-guardrails/verification.md
+    - .github/workflows/ci-gates.yml
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel/ci/policy-sentinel.mjs
+  - apps/kajovo-hotel/ci/check-pr-verification-doc.mjs
+  - .github/workflows/ci-gates.yml
+  links:
+  - docs/regen/01-guardrails/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-repo-guardrails-and-ci-policy
+- module: design_foundation_tokens_signage_panel
+  required_behavior: Jednotné tokeny (Portal/Admin), signace dle manifestu a panel
+    layout mechanismus
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/02-design-foundation/token-map.md
+    - docs/regen/02-design-foundation/verification.md
+  status: DONE
+  target_location:
+  - packages/ui/src/tokens.css
+  - packages/ui/src/shell/KajovoSign.tsx
+  - packages/ui/src/shell/AppShell.tsx
+  - apps/kajovo-hotel-web/tests/signage-routes.spec.ts
+  links:
+  - docs/regen/02-design-foundation/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-design-foundation-tokens-signage-panel
+- module: api_rbac_deny_matrix_ruff_compliance
+  required_behavior: RBAC deny-matrix test je Ruff compliant (import order + max line
+    length) a neblokuje API lint gate
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/08-rbac/verification.md
+  status: DONE
+  target_location:
+  - apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py
+  - docs/regen/08-rbac/verification.md
+  links:
+  - docs/regen/08-rbac/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-api-rbac-deny-matrix-ruff-compliance
+- module: ci_e2e_smoke_auth_stabilization
+  required_behavior: 'CI má deterministický Playwright smoke pro admin login, admin
+    hint flow a user-create+portal-login včetně browser provisioning, service orchestrace
+    a validní verification.md sekcí A-F a stabilní webServer URL readiness bez timeoutu
+    včetně CI-friendly startup režimu: prebuild v workflow + preview-only webServer
+    pro admin/portal smoke a korektní Playwright testDir discovery pro smoke suite
+    a stabilní hint-flow krok bez flaky UI assertion'
+  evidence:
+    legacy:
+    - N/A
+    docs:
+    - docs/regen/13-ci-tests/verification.md
+    - docs/regen/19-e2e-smoke-admin-hint-fix/verification.md
+  status: DONE
+  target_location:
+  - .github/workflows/ci-gates.yml
+  - apps/kajovo-hotel-web/tests/e2e-smoke.config.ts
+  - apps/kajovo-hotel-web/tests/e2e-smoke/auth-smoke.spec.ts
+  - apps/kajovo-hotel-api/scripts/init_e2e_smoke_db.py
+  - apps/kajovo-hotel-admin/vite.config.ts
+  - apps/kajovo-hotel-web/vite.config.ts
+  links:
+  - docs/regen/13-ci-tests/verification.md
+  - docs/regen/15-closeout/parity-verdict.md#module-ci-e2e-smoke-auth-stabilization
+  - docs/regen/19-e2e-smoke-admin-hint-fix/verification.md
