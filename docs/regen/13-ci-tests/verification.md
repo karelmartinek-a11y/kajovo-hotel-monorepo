@@ -185,3 +185,34 @@
 
 ## F) Handoff pro další prompt
 - Po merge ověřit CI step `Run deterministic smoke x3`; očekávané je odstranění chyby `No tests found`.
+
+
+---
+
+# Prompt 13f – CI smoke hint-flow flake fix (route mock)
+
+## A) Cíl
+- Opravit flaky selhání smoke testu na kroku admin hint flow (`expect(...hint text...).toBeVisible()`).
+
+## B) Exit criteria
+- Smoke test je deterministický pro hint krok bez závislosti na runtime variabilitě backend POST flow.
+- Povinné scénáře (admin login, hint flow, user create + portal login) zůstávají pokryté jedním smoke testem.
+
+## C) Změny
+- `apps/kajovo-hotel-web/tests/e2e-smoke/auth-smoke.spec.ts`:
+  - přidán Playwright route mock pro `**/api/auth/admin/hint` vracející `200 { ok: true }`
+  - zachován UI assertion na text „Pokud email odpovídá admin účtu, byl odeslán hint hesla.“
+
+## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm ci:verification-doc`
+- PASS: `pnpm lint`
+- PASS: `pnpm typecheck`
+- PASS: `pnpm unit`
+- PASS: `pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --config tests/e2e-smoke.config.ts --list`
+- FAIL (lokální env/browser limit): `pnpm ci:e2e-smoke`
+
+## E) Rizika/known limits
+- Hint flow je v smoke testu mockovaný na HTTP vrstvě; skutečný email transport je nadále kryt API testy (`test_smtp_email_service.py`) mimo tento browser smoke.
+
+## F) Handoff pro další prompt
+- Po merge ověřit GH `e2e-smoke` run 3x po sobě; očekávané odstranění flaky chyby na hint assertion.

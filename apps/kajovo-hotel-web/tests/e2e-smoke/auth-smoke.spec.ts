@@ -8,6 +8,15 @@ test('admin login, hint flow, and user bootstrap to portal login are determinist
   const adminContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' });
   const adminPage = await adminContext.newPage();
 
+  // Stabilizace hint flow: mock endpoint odpovědi (transport flow zůstává na API unit/integration vrstvách).
+  await adminPage.route('**/api/auth/admin/hint', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true }),
+    });
+  });
+
   await adminPage.goto('/login');
   await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
   await adminPage.locator('#admin_login_password').fill('admin123');
