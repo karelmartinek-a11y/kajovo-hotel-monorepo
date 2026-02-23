@@ -38,7 +38,7 @@ def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
     return {"x-csrf-token": token} if token else {}
 
 
-def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
+def test_admin_can_crud_and_portal_login(api_base_url: str, api_db_path: Path) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
@@ -51,17 +51,37 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     )
     assert status == 200
 
+    create_payload = {
+        "first_name": "Nova",
+        "last_name": "Uzivatelka",
+        "email": "new.user@example.com",
+        "password": "new-user-pass",
+        "roles": ["recepce", "snídaně"],
+        "phone": "+420123456789",
+        "note": "Test account",
+    }
     status, created = api_request(
         opener,
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "new.user@example.com", "password": "new-user-pass"},
+        payload=create_payload,
         headers=csrf_header(jar),
     )
     assert status == 201
     assert isinstance(created, dict)
+    assert created["roles"] == ["recepce", "snídaně"]
     user_id = int(created["id"])
+
+    with sqlite3.connect(api_db_path) as connection:
+        db_roles = [
+            row[0]
+            for row in connection.execute(
+                "SELECT role FROM portal_user_roles WHERE user_id = ? ORDER BY role",
+                (user_id,),
+            ).fetchall()
+        ]
+    assert db_roles == ["recepce", "snídaně"]
 
     status, users = api_request(opener, api_base_url, "/api/v1/users")
     assert status == 200
@@ -74,6 +94,25 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     assert status == 200
     assert isinstance(detail, dict)
     assert detail["email"] == "new.user@example.com"
+
+    status, updated = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+        method="PATCH",
+        payload={
+            "first_name": "Nova",
+            "last_name": "Uzivatelka",
+            "email": "new.user@example.com",
+            "roles": ["recepce"],
+            "phone": "+420777888999",
+            "note": "Updated",
+        },
+        headers=csrf_header(jar),
+    )
+    assert status == 200
+    assert isinstance(updated, dict)
+    assert updated["roles"] == ["recepce"]
 
     status, disabled = api_request(
         opener,
@@ -100,12 +139,22 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     status, _ = api_request(
         opener,
         api_base_url,
-        f"/api/v1/users/{user_id}/password/reset",
+        f"/api/v1/users/{user_id}/password",
         method="POST",
         payload={"password": "reset-user-pass"},
         headers=csrf_header(jar),
     )
     assert status == 200
+
+    status, reset_link = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}/password/reset-link",
+        method="POST",
+        headers=csrf_header(jar),
+    )
+    assert status == 200
+    assert reset_link == {"ok": True}
 
     portal_jar = CookieJar()
     portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
@@ -119,6 +168,70 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     assert status == 200
     assert isinstance(identity, dict)
     assert identity["email"] == "new.user@example.com"
+
+
+def test_user_validation_rules(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    invalid_payloads = [
+        {
+            "first_name": "",
+            "last_name": "Prijmeni",
+            "email": "valid@example.com",
+            "password": "valid-pass-1",
+            "roles": ["recepce"],
+        },
+        {
+            "first_name": "Jmeno",
+            "last_name": "",
+            "email": "valid@example.com",
+            "password": "valid-pass-1",
+            "roles": ["recepce"],
+        },
+        {
+            "first_name": "Jmeno",
+            "last_name": "Prijmeni",
+            "email": "not-an-email",
+            "password": "valid-pass-1",
+            "roles": ["recepce"],
+        },
+        {
+            "first_name": "Jmeno",
+            "last_name": "Prijmeni",
+            "email": "valid@example.com",
+            "password": "valid-pass-1",
+            "roles": [],
+        },
+        {
+            "first_name": "Jmeno",
+            "last_name": "Prijmeni",
+            "email": "valid@example.com",
+            "password": "valid-pass-1",
+            "roles": ["recepce"],
+            "phone": "123456",
+        },
+    ]
+
+    for payload in invalid_payloads:
+        status, _ = api_request(
+            opener,
+            api_base_url,
+            "/api/v1/users",
+            method="POST",
+            payload=payload,
+            headers=csrf_header(jar),
+        )
+        assert status == 422
 
 
 def test_password_not_logged_in_audit_detail(
@@ -140,7 +253,13 @@ def test_password_not_logged_in_audit_detail(
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "audit.user@example.com", "password": "audit-user-pass"},
+        payload={
+            "first_name": "Audit",
+            "last_name": "User",
+            "email": "audit.user@example.com",
+            "password": "audit-user-pass",
+            "roles": ["recepce"],
+        },
         headers=csrf_header(jar),
     )
     assert status == 201

@@ -121,7 +121,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 
   render(): React.ReactNode {
     if (this.state.hasError) {
-      return (
+  return (
         <main className="k-page">
           <StateView
             title="Chyba"
@@ -467,6 +467,7 @@ function BreakfastList(): JSX.Element {
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
 
   React.useEffect(() => {
@@ -578,6 +579,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     note: '',
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) {
@@ -721,6 +723,7 @@ function BreakfastDetail(): JSX.Element {
   const [item, setItem] = React.useState<BreakfastOrder | null>(null);
   const [notFound, setNotFound] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -784,6 +787,7 @@ function LostFoundList(): JSX.Element {
   const [statusFilter, setStatusFilter] = React.useState<'all' | LostFoundStatus>('all');
   const [typeFilter, setTypeFilter] = React.useState<'all' | LostFoundType>('all');
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') {
@@ -898,6 +902,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     returned_at: null,
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) {
@@ -1060,6 +1065,7 @@ function LostFoundDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<LostFoundItem | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -1124,6 +1130,7 @@ function IssuesList(): JSX.Element {
   const [statusFilter, setStatusFilter] = React.useState<'all' | IssueStatus>('all');
   const [locationFilter, setLocationFilter] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') return;
@@ -1176,6 +1183,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     title: '', description: '', location: '', room_number: '', priority: 'medium', status: 'new', assignee: '',
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -1213,6 +1221,7 @@ function IssuesDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<Issue | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) return;
@@ -1242,6 +1251,7 @@ function InventoryList(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') return;
@@ -1264,6 +1274,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const navigate = useNavigate();
   const [payload, setPayload] = React.useState<InventoryItemPayload>({ name: '', unit: 'ks', min_stock: 0, current_stock: 0, supplier: '' });
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -1299,6 +1310,7 @@ function InventoryDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [movementType, setMovementType] = React.useState<InventoryMovementType>('in');
   const [quantity, setQuantity] = React.useState<number>(0);
   const [note, setNote] = React.useState<string>('');
@@ -1355,6 +1367,7 @@ function ReportsList(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<Report[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') {
@@ -1375,6 +1388,7 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const { id } = useParams();
   const navigate = useNavigate();
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [payload, setPayload] = React.useState<ReportPayload>({ title: '', description: '', status: 'open' });
 
   React.useEffect(() => {
@@ -1409,6 +1423,7 @@ function ReportsDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<Report | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -1429,6 +1444,7 @@ function UsersAdmin(): JSX.Element {
   const [password, setPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -1451,6 +1467,7 @@ function UsersAdmin(): JSX.Element {
     if (!emailValid || password.length < 8 || users?.some((u) => u.email === email.trim().toLowerCase())) return;
     setSaving(true);
     setError(null);
+    setForgotStatus(null);
     try {
       const created = await fetchJson<PortalUser>('/api/v1/users', { method: 'POST', body: JSON.stringify({ email, password } satisfies PortalUserCreatePayload) });
       setUsers((prev) => (prev ? [...prev, created] : [created]));
@@ -1503,15 +1520,30 @@ function PortalLoginPage(): JSX.Element {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError(null);
+    setForgotStatus(null);
     try {
       await apiClient.portalLoginApiAuthLoginPost({ email, password });
       navigate('/', { replace: true });
     } catch {
       setError('Neplatné přihlašovací údaje.');
+    }
+  }
+
+  async function forgotPassword(): Promise<void> {
+    setForgotStatus(null);
+    try {
+      await fetchJson('/api/auth/forgot', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+      setForgotStatus('Pokud účet existuje, byl odeslán odkaz pro reset/odblokování.');
+    } catch {
+      setForgotStatus('Obnova hesla není nyní dostupná.');
     }
   }
 
@@ -1526,8 +1558,71 @@ function PortalLoginPage(): JSX.Element {
             <input id="portal_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </FormField>
           {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
-          <button className="k-button" type="submit">Přihlásit</button>
+          {forgotStatus ? <StateView title="Info" description={forgotStatus} stateKey="empty" /> : null}
+          <div className="k-toolbar">
+            <button className="k-button" type="submit">Přihlásit</button>
+            <button className="k-button secondary" type="button" onClick={() => void forgotPassword()} disabled={!email.trim()}>Zapomenuté heslo</button>
+          </div>
         </form>
+      </Card>
+    </main>
+  );
+}
+
+
+
+function PortalPasswordPage(): JSX.Element {
+  const [oldPassword, setOldPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [status, setStatus] = React.useState<string | null>(null);
+
+  async function changePassword(): Promise<void> {
+    setStatus(null);
+    try {
+      await fetchJson('/api/auth/password', {
+        method: 'POST',
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+      });
+      setStatus('Heslo bylo změněno.');
+      setOldPassword('');
+      setNewPassword('');
+    } catch {
+      setStatus('Změnu hesla se nepodařilo dokončit.');
+    }
+  }
+
+  return (
+    <main className="k-page" data-testid="portal-password-page">
+      <Card title="Profil – změna hesla">
+        <div className="k-form-grid">
+          <FormField id="profile_old_password" label="Aktuální heslo">
+            <input id="profile_old_password" className="k-input" type="password" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} />
+          </FormField>
+          <FormField id="profile_new_password" label="Nové heslo">
+            <input id="profile_new_password" className="k-input" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+          </FormField>
+          {status ? <StateView title="Info" description={status} stateKey="empty" /> : null}
+          <button className="k-button" type="button" onClick={() => void changePassword()} disabled={oldPassword.length < 8 || newPassword.length < 8}>Změnit heslo</button>
+        </div>
+      </Card>
+    </main>
+  );
+}
+
+
+
+function RolePickerPage({ roles, onSelected }: { roles: string[]; onSelected: (role: string) => Promise<void> }): JSX.Element {
+  const [error, setError] = React.useState<string | null>(null);
+
+  return (
+    <main className="k-page" data-testid="role-picker-page">
+      <Card title="Za jakou roli chcete vystupovat?">
+        {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+        <div className="k-toolbar">
+          {roles.map((role) => (
+            <button key={role} className="k-button" type="button" onClick={() => void onSelected(role)}>{role}</button>
+          ))}
+        </div>
       </Card>
     </main>
   );
@@ -1543,8 +1638,8 @@ function AppRoutes(): JSX.Element {
       .catch(() =>
         setAuth({
           userId: 'anonymous',
-          role: 'manager',
-          permissions: rolePermissions('manager'),
+          role: 'recepce',
+          permissions: rolePermissions('recepce'),
           actorType: 'portal',
         })
       );
@@ -1560,6 +1655,18 @@ function AppRoutes(): JSX.Element {
 
   if (auth.actorType !== 'portal') {
     return <Navigate to="/login" replace />;
+  }
+
+  if (auth.roles.length > 1 && !auth.activeRole) {
+    return (
+      <RolePickerPage
+        roles={auth.roles}
+        onSelected={async (role) => {
+          await fetchJson('/api/auth/select-role', { method: 'POST', body: JSON.stringify({ role }) });
+          window.location.href = '/';
+        }}
+      />
+    );
   }
 
   const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
@@ -1610,6 +1717,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="/profil" element={<PortalPasswordPage />} />
         <Route
           path="/intro"
           element={

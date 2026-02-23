@@ -63,30 +63,24 @@ def api_server(api_db_path: Path) -> Generator[tuple[str, deque[str]], None, Non
     Base.metadata.create_all(bind=engine)
 
     with sqlite3.connect(api_db_path) as connection:
-        connection.execute(
-            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
-            (
-                "warehouse@example.com",
-                "warehouse",
-                _scrypt_hash("warehouse-pass", b"warehouse-salt"),
-            ),
-        )
-        connection.execute(
-            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
-            (
-                "maintenance@example.com",
-                "maintenance",
-                _scrypt_hash("maintenance-pass", b"maintenance-salt"),
-            ),
-        )
-        connection.execute(
-            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
-            (
-                "manager@example.com",
-                "manager",
-                _scrypt_hash("manager-pass", b"manager-salt-manager"),
-            ),
-        )
+        seeded = [
+            ("snidane@example.com", "Snídaně", "Operator", "snidane-pass", "snídaně"),
+            ("maintenance@example.com", "Udrzba", "Operator", "maintenance-pass", "údržba"),
+            ("reception@example.com", "Recepce", "Operator", "reception-pass", "recepce"),
+        ]
+        for email, first_name, last_name, password, role in seeded:
+            cursor = connection.execute(
+                """
+                INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
+                VALUES (?, ?, ?, ?, 1)
+                """,
+                (first_name, last_name, email, _scrypt_hash(password, email.encode('utf-8')[:16])),
+            )
+            user_id = int(cursor.lastrowid)
+            connection.execute(
+                "INSERT INTO portal_user_roles (user_id, role) VALUES (?, ?)",
+                (user_id, role),
+            )
         connection.commit()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -95,6 +89,7 @@ def api_server(api_db_path: Path) -> Generator[tuple[str, deque[str]], None, Non
 
     env = os.environ.copy()
     env["KAJOVO_API_DATABASE_URL"] = database_url
+    env["KAJOVO_API_ADMIN_PASSWORD"] = "admin123"
 
     api_app_dir = Path(__file__).resolve().parents[1]
 
