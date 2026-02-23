@@ -306,3 +306,29 @@ class AuthIdentityResponse(BaseModel):
     role: str
     permissions: list[str]
     actor_type: str
+
+
+class SmtpSettingsUpsert(BaseModel):
+    host: str = Field(min_length=1, max_length=255)
+    port: int = Field(ge=1, le=65535)
+    username: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=1, max_length=1024)
+    use_tls: bool = True
+    use_ssl: bool = False
+
+
+class SmtpSettingsRead(BaseModel):
+    host: str
+    port: int
+    username: str
+    use_tls: bool
+    use_ssl: bool
+    password_masked: str
+
+
+class SmtpTestEmailRequest(BaseModel):
+    recipient: str = Field(min_length=3, max_length=255)
+
+
+class SmtpTestEmailResponse(BaseModel):
+    ok: bool = True

@@ -13,7 +13,7 @@ from app.api.schemas import (
     PortalLoginRequest,
 )
 from app.config import get_settings
-from app.db.models import PortalUser
+from app.db.models import PortalSmtpSettings, PortalUser
 from app.db.session import get_db
 from app.security.auth import (
     CSRF_COOKIE_NAME,
@@ -23,7 +23,7 @@ from app.security.auth import (
     get_permissions,
     require_session,
 )
-from app.services.mail import send_admin_password_hint
+from app.services.mail import StoredSmtpConfig, build_email_service, send_admin_password_hint
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -94,11 +94,29 @@ def admin_logout(response: Response) -> LogoutResponse:
 
 
 @router.post("/admin/hint", response_model=LogoutResponse)
-def admin_hint(payload: HintRequest) -> LogoutResponse:
+def admin_hint(payload: HintRequest, db: Session = Depends(get_db)) -> LogoutResponse:
     settings = get_settings()
     if payload.email.strip().lower() != settings.admin_email.strip().lower():
         return LogoutResponse()
-    send_admin_password_hint(settings=settings, recipient=settings.admin_email)
+    smtp = db.get(PortalSmtpSettings, 1)
+    smtp_config = (
+        StoredSmtpConfig(
+            host=smtp.host,
+            port=smtp.port,
+            username=smtp.username,
+            use_tls=smtp.use_tls,
+            use_ssl=smtp.use_ssl,
+            password_encrypted=smtp.password_encrypted,
+        )
+        if smtp is not None
+        else None
+    )
+    service = build_email_service(settings, smtp_config)
+    send_admin_password_hint(
+        service=service,
+        recipient=settings.admin_email,
+        hint=settings.admin_password_hint,
+    )
     return LogoutResponse()
 
 

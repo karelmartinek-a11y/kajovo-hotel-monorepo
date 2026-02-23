@@ -258,3 +258,20 @@ class PortalUser(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class PortalSmtpSettings(Base):
+    __tablename__ = "portal_smtp_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    host: Mapped[str] = mapped_column(String(255), nullable=False)
+    port: Mapped[int] = mapped_column(Integer, nullable=False)
+    username: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    use_tls: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    use_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

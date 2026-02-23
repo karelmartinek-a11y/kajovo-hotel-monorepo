@@ -242,6 +242,28 @@ export type ReportUpdate = {
   "status"?: string | null;
   "title"?: string | null;
 };
+export type SmtpSettingsRead = {
+  "host": string;
+  "password_masked": string;
+  "port": number;
+  "use_ssl": boolean;
+  "use_tls": boolean;
+  "username": string;
+};
+export type SmtpSettingsUpsert = {
+  "host": string;
+  "password": string;
+  "port": number;
+  "use_ssl"?: boolean;
+  "use_tls"?: boolean;
+  "username": string;
+};
+export type SmtpTestEmailRequest = {
+  "recipient": string;
+};
+export type SmtpTestEmailResponse = {
+  "ok"?: boolean;
+};
 export type ValidationError = {
   "ctx"?: Record<string, unknown>;
   "input"?: unknown;
@@ -292,6 +314,15 @@ export const apiClient = {
   },
   async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
+  },
+  async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
+    return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);
+  },
+  async putSmtpSettingsApiV1AdminSettingsSmtpPut(body: SmtpSettingsUpsert): Promise<SmtpSettingsRead> {
+    return request<SmtpSettingsRead>('PUT', `/api/v1/admin/settings/smtp`, undefined, body);
+  },
+  async testSmtpEmailApiV1AdminSettingsSmtpTestEmailPost(body: SmtpTestEmailRequest): Promise<SmtpTestEmailResponse> {
+    return request<SmtpTestEmailResponse>('POST', `/api/v1/admin/settings/smtp/test-email`, undefined, body);
   },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);

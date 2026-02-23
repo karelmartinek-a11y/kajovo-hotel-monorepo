@@ -12,9 +12,11 @@ from app.api.schemas import (
     PortalUserRead,
     PortalUserStatusUpdate,
 )
-from app.db.models import PortalUser
+from app.config import get_settings
+from app.db.models import PortalSmtpSettings, PortalUser
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
+from app.services.mail import StoredSmtpConfig, build_email_service, send_portal_onboarding
 
 router = APIRouter(
     prefix="/api/v1/users",
@@ -56,6 +58,23 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    settings = get_settings()
+    smtp = db.get(PortalSmtpSettings, 1)
+    smtp_config = (
+        StoredSmtpConfig(
+            host=smtp.host,
+            port=smtp.port,
+            username=smtp.username,
+            use_tls=smtp.use_tls,
+            use_ssl=smtp.use_ssl,
+            password_encrypted=smtp.password_encrypted,
+        )
+        if smtp is not None
+        else None
+    )
+    service = build_email_service(settings, smtp_config)
+    send_portal_onboarding(service=service, recipient=user.email)
     return PortalUserRead.model_validate(user)
 
 
@@ -73,6 +92,23 @@ def set_user_active(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    settings = get_settings()
+    smtp = db.get(PortalSmtpSettings, 1)
+    smtp_config = (
+        StoredSmtpConfig(
+            host=smtp.host,
+            port=smtp.port,
+            username=smtp.username,
+            use_tls=smtp.use_tls,
+            use_ssl=smtp.use_ssl,
+            password_encrypted=smtp.password_encrypted,
+        )
+        if smtp is not None
+        else None
+    )
+    service = build_email_service(settings, smtp_config)
+    send_portal_onboarding(service=service, recipient=user.email)
     return PortalUserRead.model_validate(user)
 
 
