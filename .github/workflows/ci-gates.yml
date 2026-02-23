@@ -7,6 +7,47 @@ on:
       - main
 
 jobs:
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Install Playwright browser
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+
+      - name: Run deterministic smoke x3
+        run: |
+          set -euo pipefail
+          for run in 1 2 3; do
+            echo "[e2e-smoke] run ${run}/3"
+            pnpm ci:e2e-smoke
+          done
   guardrails:
     runs-on: ubuntu-latest
     steps:
