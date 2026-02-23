@@ -157,3 +157,31 @@
 ## F) Handoff pro další prompt
 - Po merge potvrdit běh CI na problematickém jobu/steppu (`Run deterministic smoke x3`).
 - Pokud by timeout přetrval, doplnit artifact upload z Playwright webServer stdout/stderr pro admin/portal preview procesy.
+
+
+---
+
+# Prompt 13e – CI smoke test discovery path fix
+
+## A) Cíl
+- Opravit CI chybu `Error: No tests found` v `ci:e2e-smoke` způsobenou chybným `testDir` relativně ke config souboru.
+
+## B) Exit criteria
+- Playwright config pro smoke používá `testDir`, který odpovídá reálné lokaci `auth-smoke.spec.ts`.
+- `ci:e2e-smoke` už neselže na discovery fázi (`No tests found`).
+
+## C) Změny
+- `apps/kajovo-hotel-web/tests/e2e-smoke.config.ts`: změněno `testDir` z `./tests/e2e-smoke` na `./e2e-smoke` (config je uložen v `tests/`, takže původní cesta mířila na neexistující `tests/tests/e2e-smoke`).
+
+## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm ci:verification-doc`
+- PASS: `pnpm lint`
+- PASS: `pnpm typecheck`
+- PASS: `pnpm unit`
+- FAIL (lokální env/browser limit): `pnpm ci:e2e-smoke`
+
+## E) Rizika/known limits
+- Lokálně není plně ověřitelný celý e2e běh kvůli browser runtime omezením; fix je cílený na test discovery vrstvu v CI.
+
+## F) Handoff pro další prompt
+- Po merge ověřit CI step `Run deterministic smoke x3`; očekávané je odstranění chyby `No tests found`.

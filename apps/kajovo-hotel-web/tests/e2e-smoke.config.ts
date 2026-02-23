@@ -5,7 +5,7 @@ const adminPort = 4173;
 const portalPort = 4174;
 
 export default defineConfig({
-  testDir: './tests/e2e-smoke',
+  testDir: './e2e-smoke',
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
