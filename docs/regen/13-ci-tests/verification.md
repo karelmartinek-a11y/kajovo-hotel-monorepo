@@ -24,6 +24,7 @@
 - Rozšířen CI workflow (`.github/workflows/ci-gates.yml`) o job `e2e-smoke` (setup browseru + 3 po sobě jdoucí běhy smoke).
 
 ## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm ci:verification-doc`
 - PASS: `pnpm install --frozen-lockfile=false`
 - FAIL (env proxy blokuje PyPI): `python -m pip install -e ./apps/kajovo-hotel-api[dev]`
 - PASS: `pnpm lint`
@@ -32,7 +33,7 @@
 - FAIL (lokální env limit / runner process orchestrace): `pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium`
 - FAIL (lokální env limit / orchestrace nedokončila běh v tomto runneru): `pnpm ci:e2e-smoke`
 
-## E) Rizika / known limits
+## E) Rizika/known limits
 - V tomto běhovém prostředí je blokovaný apt/pypi proxy (HTTP 403), takže nelze lokálně potvrdit browser deps provisioning přes `--with-deps`.
 - CI workflow je navržen tak, aby provisioning proběhl v GitHub runneru; lokální sandbox nemá stejné síťové podmínky.
 - Lokální smoke běh zůstal neuzavřený kvůli omezení prostředí; determinismus 3x po sobě je implementován přímo v CI jobu smyčkou.
