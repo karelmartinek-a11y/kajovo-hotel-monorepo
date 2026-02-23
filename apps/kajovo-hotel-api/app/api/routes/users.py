@@ -14,12 +14,12 @@ from app.api.schemas import (
 )
 from app.db.models import PortalUser
 from app.db.session import get_db
-from app.security.rbac import module_access_dependency
+from app.security.rbac import module_access_dependency, require_actor_type
 
 router = APIRouter(
     prefix="/api/v1/users",
     tags=["users"],
-    dependencies=[Depends(module_access_dependency("users"))],
+    dependencies=[Depends(require_actor_type("admin")), Depends(module_access_dependency("users"))],
 )
 
 

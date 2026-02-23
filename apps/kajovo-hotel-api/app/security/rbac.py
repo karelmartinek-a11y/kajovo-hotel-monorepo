@@ -103,6 +103,21 @@ def require_permission(module: str, action: str) -> Callable[[Request], None]:
     return _check_permission
 
 
+def require_actor_type(expected_actor_type: str) -> Callable[[Request], None]:
+    def _check_actor_type(request: Request) -> None:
+        from app.security.auth import require_session
+
+        session = require_session(request)
+        actor_type = session.get("actor_type", "portal")
+        if actor_type != expected_actor_type:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing actor type: {expected_actor_type}",
+            )
+
+    return _check_actor_type
+
+
 def require_module_access(module: str, request: Request) -> None:
     action = "write" if request.method in WRITE_METHODS else "read"
     checker = require_permission(module, action)

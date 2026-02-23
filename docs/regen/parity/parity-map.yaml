@@ -1,5 +1,5 @@
 version: 1
-updated_at: "2026-02-22"
+updated_at: "2026-02-23"
 notes:
   - "Deterministická parity mapa: modul -> požadované chování -> evidence -> stav -> cílové umístění."
   - "Status enum: MISSING | IN_PROGRESS | DONE | BLOCKED | DROPPED"
@@ -161,6 +161,43 @@ modules:
       - "apps/kajovo-hotel-admin/src/main.tsx"
     links:
       - "docs/regen/07-auth/verification.md"
+
+  - module: rbac_hardening_admin_endpoints
+    required_behavior: "Server-side RBAC checks + actor-type guard na admin endpointy; UI unauthorized handling + deny matrix evidence"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-rbac/verification.md"
+        - "apps/kajovo-hotel-api/app/security/rbac.py"
+        - "apps/kajovo-hotel-api/app/api/routes/users.py"
+        - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
+        - "apps/kajovo-hotel-admin/tests/rbac-access.spec.ts"
+        - "apps/kajovo-hotel-web/tests/rbac-access.spec.ts"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/security/rbac.py"
+      - "apps/kajovo-hotel-api/app/api/routes/users.py"
+      - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
+      - "apps/kajovo-hotel-admin/tests/rbac-access.spec.ts"
+      - "docs/regen/08-rbac/verification.md"
+    links:
+      - "docs/regen/08-rbac/verification.md"
+
+  - module: rbac_verification_doc_section_fix
+    required_behavior: "CI verification-doc checker projde pro ORF-06 Prompt 08 (přesný název sekce E)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-rbac/verification.md"
+        - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
+    status: DONE
+    target_location:
+      - "docs/regen/08-rbac/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+    links:
+      - "docs/regen/08-rbac/verification.md"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
@@ -539,3 +576,17 @@ modules:
       - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
     links:
       - "docs/regen/02-design-foundation/verification.md"
+
+  - module: api_rbac_deny_matrix_ruff_compliance
+    required_behavior: "RBAC deny-matrix test je Ruff compliant (import order + max line length) a neblokuje API lint gate"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-rbac/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
+      - "docs/regen/08-rbac/verification.md"
+    links:
+      - "docs/regen/08-rbac/verification.md"
