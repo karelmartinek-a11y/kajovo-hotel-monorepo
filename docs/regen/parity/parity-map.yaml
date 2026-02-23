@@ -140,7 +140,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_e2e_browser_bootstrap
     required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
@@ -153,7 +153,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/package.json:scripts.pretest"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_visual_snapshot_project_scope
     required_behavior: "Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop projekty"
@@ -166,7 +166,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_visual_suite_gating
     required_behavior: "Default playwright test běh nepadá na visual snapshot baseline mismatch; visual suite je explicitně opt-in"
@@ -179,7 +179,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_test_command_split
     required_behavior: "Default web test command je stabilní (core gates), visual suite běží separátně"
@@ -193,7 +193,7 @@ modules:
       - "apps/kajovo-hotel-web/package.json:scripts.test"
       - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_playwright_browser_parity
     required_behavior: "Playwright projekty používají browser engine dostupný v CI install kroku"
@@ -207,7 +207,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
 
   - module: repo_guardrails_sentinel
@@ -240,3 +240,22 @@ modules:
       - ".github/workflows/ci-gates.yml:jobs.unit-tests.steps"
     links:
       - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+
+
+  - module: merge_conflict_resolution_guardrails
+    required_behavior: "Konfliktní soubory CI/policy mají konzistentní finální podobu bez conflict markerů"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/01-guardrails/verification.md"
+        - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+        - "docs/regen/04-conflict-resolution/verification.md"
+    status: DONE
+    target_location:
+      - ".github/workflows/ci-gates.yml"
+      - "docs/regen/01-guardrails/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+      - "package.json"
+    links:
+      - "docs/regen/04-conflict-resolution/verification.md"

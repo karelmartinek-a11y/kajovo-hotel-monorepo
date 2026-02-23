@@ -6,21 +6,22 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "pnpm -r lint",
-    "test": "pnpm --filter @kajovo/kajovo-hotel-web test",
-    "ci:tokens": "node apps/kajovo-hotel/ci/lint-tokens.mjs",
+    "api:generate-contract": "PYTHONPATH=apps/kajovo-hotel-api python apps/kajovo-hotel-api/scripts/export_openapi.py",
     "ci:brand-assets": "node apps/kajovo-hotel/ci/lint-brand-assets.mjs",
+    "ci:gates": "pnpm ci:tokens && pnpm ci:brand-assets && pnpm ci:signage && pnpm ci:view-states && pnpm ci:wcag",
+    "ci:guardrails": "node apps/kajovo-hotel/ci/guardrails-sentinel.mjs",
+    "ci:regen-verification": "node apps/kajovo-hotel/ci/check-regen-verification.mjs",
     "ci:signage": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"SIGNACE|brand elements\" tests/ci-gates.spec.ts",
+    "ci:tokens": "node apps/kajovo-hotel/ci/lint-tokens.mjs",
+    "ci:unit": "cd apps/kajovo-hotel-api && python -m pytest",
     "ci:view-states": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"view states\" tests/ci-gates.spec.ts",
     "ci:wcag": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"WCAG\" tests/ci-gates.spec.ts",
-    "ci:gates": "pnpm ci:tokens && pnpm ci:brand-assets && pnpm ci:signage && pnpm ci:view-states && pnpm ci:wcag",
-    "api:generate-contract": "PYTHONPATH=apps/kajovo-hotel-api python apps/kajovo-hotel-api/scripts/export_openapi.py",
-    "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
-    "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
     "contract:check": "pnpm contract:generate && git diff --exit-code -- apps/kajovo-hotel-api/openapi.json packages/shared/src/generated/client.ts",
-    "typecheck": "pnpm -r lint",
+    "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
+    "lint": "pnpm -r lint",
+    "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
+    "test": "pnpm --filter @kajovo/kajovo-hotel-web test",
     "test:unit": "cd apps/kajovo-hotel-api && python -m pytest",
-    "ci:guardrails": "node apps/kajovo-hotel/ci/guardrails-sentinel.mjs",
-    "ci:regen-verification": "node apps/kajovo-hotel/ci/check-regen-verification.mjs"
+    "typecheck": "pnpm -r lint"
   }
 }

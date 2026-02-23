@@ -1,4 +1,4 @@
-name: CI Gates - Kájovo Hotel
+name: CI Gates - KájovoHotel
 
 on:
   pull_request:
@@ -79,6 +79,7 @@ jobs:
 
       - name: Unit tests
         run: |
+          python --version
           cd apps/kajovo-hotel-api
           python -m pytest
 
