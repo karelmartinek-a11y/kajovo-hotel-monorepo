@@ -87,3 +87,38 @@
 ## F) Handoff pro další prompt
 - Po merge zkontrolovat `e2e-smoke` job; očekávané zlepšení: odstranění timeoutu `config.webServer` díky URL readiness + delším timeoutům.
 - Pokud by timeout přetrval, přidat startup log artifact upload pro každý webServer proces.
+
+
+---
+
+# Prompt 13c – CI smoke webServer startup mode fix
+
+## A) Cíl
+- Odstranit timeout `config.webServer` způsobený nestabilním startem Vite dev serverů v CI orchestrace.
+
+## B) Exit criteria
+- Smoke config startuje admin/portal přes `pnpm build` + `pnpm exec vite preview` místo `dev` režimu.
+- Readiness pro admin/portal je explicitní URL (`/`) a timeout budget je navýšený pro build cold-start.
+- API orchestrace i auth smoke scénáře zůstávají beze změny funkcionality.
+
+## C) Změny
+- `apps/kajovo-hotel-web/tests/e2e-smoke.config.ts`:
+  - admin webServer command změněn na `corepack pnpm build` + `corepack pnpm exec vite preview --host 127.0.0.1 --port 4173 --strictPort` (spuštěno z `apps/kajovo-hotel-admin`)
+  - portal webServer command změněn na `corepack pnpm build` + `corepack pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort` (spuštěno z `apps/kajovo-hotel-web`)
+  - timeout pro admin/portal webServer navýšen na `300_000`
+  - zachována repo-root rezoluce přes `git rev-parse --show-toplevel`
+
+## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm ci:verification-doc`
+- PASS: `pnpm lint`
+- PASS: `pnpm typecheck`
+- PASS: `pnpm unit`
+- FAIL (lokální env/browser procesy): `pnpm ci:e2e-smoke`
+
+## E) Rizika/known limits
+- Lokální sandbox má omezení pro stabilní browser/e2e běh; definitivní verifikace timeout fixu je v GitHub Actions runneru.
+- `build + preview` je pomalejší než `dev`; proto je navýšen timeout budget v smoke configu.
+
+## F) Handoff pro další prompt
+- Po merge zkontrolovat `e2e-smoke` job zejména během `run 1/3`; očekávané je odstranění `Timed out waiting ... from config.webServer`.
+- Pokud by timeout přetrval, přidat krokový log marker před/po `build` a `preview` commandech jako artifact.

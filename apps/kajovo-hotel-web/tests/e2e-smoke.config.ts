@@ -26,18 +26,18 @@ export default defineConfig({
     },
     {
       command:
-        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-admin\"; corepack pnpm dev -- --host 127.0.0.1 --port 4173 --strictPort'",
+        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-admin\"; corepack pnpm build; corepack pnpm exec vite preview --host 127.0.0.1 --port 4173 --strictPort'",
       cwd: '.',
       url: `http://127.0.0.1:${adminPort}/`,
-      timeout: 180_000,
+      timeout: 300_000,
       reuseExistingServer: false,
     },
     {
       command:
-        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-web\"; corepack pnpm dev -- --host 127.0.0.1 --port 4174 --strictPort'",
+        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-web\"; corepack pnpm build; corepack pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort'",
       cwd: '.',
       url: `http://127.0.0.1:${portalPort}/`,
-      timeout: 180_000,
+      timeout: 300_000,
       reuseExistingServer: false,
     },
   ],

@@ -615,7 +615,7 @@ modules:
 
 
   - module: ci_e2e_smoke_auth_stabilization
-    required_behavior: "CI má deterministický Playwright smoke pro admin login, admin hint flow a user-create+portal-login včetně browser provisioning, service orchestrace a validní verification.md sekcí A-F a stabilní webServer URL readiness bez timeoutu"
+    required_behavior: "CI má deterministický Playwright smoke pro admin login, admin hint flow a user-create+portal-login včetně browser provisioning, service orchestrace a validní verification.md sekcí A-F a stabilní webServer URL readiness bez timeoutu včetně CI-friendly startup režimu build+preview pro admin/portal smoke"
     evidence:
       legacy:
         - "N/A"
