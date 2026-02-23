@@ -27,10 +27,13 @@ def _sign(raw: bytes) -> str:
     return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
 
 
-def create_session_cookie(email: str, role: str, actor_type: str) -> str:
+def create_session_cookie(email: str, role: str, actor_type: str, roles: list[str] | None = None, active_role: str | None = None) -> str:
+    normalized_roles = [normalize_role(r) for r in (roles or [role])]
     payload = {
         "email": email,
         "role": normalize_role(role),
+        "roles": normalized_roles,
+        "active_role": normalize_role(active_role) if active_role else None,
         "actor_type": actor_type,
         "iat": int(datetime.now(timezone.utc).timestamp()),
     }
@@ -39,7 +42,7 @@ def create_session_cookie(email: str, role: str, actor_type: str) -> str:
     return f"{body}.{_sign(raw)}"
 
 
-def read_session_cookie(cookie_value: str | None) -> dict[str, str] | None:
+def read_session_cookie(cookie_value: str | None) -> dict[str, str | list[str] | None] | None:
     if not cookie_value or "." not in cookie_value:
         return None
     body, signature = cookie_value.split(".", 1)
@@ -59,12 +62,16 @@ def read_session_cookie(cookie_value: str | None) -> dict[str, str] | None:
     email = str(data.get("email", "")).strip().lower()
     role = normalize_role(str(data.get("role", "")))
     actor_type = str(data.get("actor_type", "portal"))
+    raw_roles = data.get("roles", [role])
+    roles = [normalize_role(str(item)) for item in raw_roles] if isinstance(raw_roles, list) else [role]
+    active_role_raw = data.get("active_role")
+    active_role = normalize_role(str(active_role_raw)) if active_role_raw else None
     if not email:
         return None
-    return {"email": email, "role": role, "actor_type": actor_type}
+    return {"email": email, "role": role, "roles": roles, "active_role": active_role, "actor_type": actor_type}
 
 
-def require_session(request: Request) -> dict[str, str]:
+def require_session(request: Request) -> dict[str, str | list[str] | None]:
     session = read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
     if not session:
         raise HTTPException(

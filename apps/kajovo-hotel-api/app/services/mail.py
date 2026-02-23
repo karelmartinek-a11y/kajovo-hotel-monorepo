@@ -192,6 +192,37 @@ def send_portal_onboarding(*, service: EmailService, recipient: str) -> None:
     )
 
 
+
+
+def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> None:
+    service.send(
+        MailMessage(
+            recipient=recipient,
+            subject="KájovoHotel admin unlock",
+            body=f"Pro odblokování admin účtu použijte odkaz: {unlock_link}",
+        )
+    )
+
+
+def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> None:
+    service.send(
+        MailMessage(
+            recipient=recipient,
+            subject="KájovoHotel unlock účtu",
+            body=f"Pro odblokování účtu použijte odkaz: {unlock_link}",
+        )
+    )
+
+
+def send_user_password_reset_link(*, service: EmailService, recipient: str, reset_link: str) -> None:
+    service.send(
+        MailMessage(
+            recipient=recipient,
+            subject="KájovoHotel reset hesla",
+            body=f"Pro reset hesla použijte odkaz: {reset_link}",
+        )
+    )
+
 def build_email_service(
     settings: Settings,
     smtp_config: StoredSmtpConfig | None,

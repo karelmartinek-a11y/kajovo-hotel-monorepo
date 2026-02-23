@@ -17,13 +17,16 @@ COPY apps/kajovo-hotel-web /workspace/apps/kajovo-hotel-web
 COPY packages/shared /workspace/packages/shared
 COPY packages/ui /workspace/packages/ui
 COPY apps/kajovo-hotel /workspace/apps/kajovo-hotel
+COPY scripts/collect-brand-assets.mjs /workspace/scripts/collect-brand-assets.mjs
 
+RUN node /workspace/scripts/collect-brand-assets.mjs apps/kajovo-hotel-web
 RUN pnpm --filter @kajovo/kajovo-hotel-web build
 
 FROM nginx:1.27.2-alpine3.20 AS runtime
 
 COPY apps/kajovo-hotel-web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /workspace/apps/kajovo-hotel-web/dist /usr/share/nginx/html
+COPY --from=builder /workspace/apps/kajovo-hotel-web/public/brand /usr/share/nginx/html/brand
 
 EXPOSE 80
 

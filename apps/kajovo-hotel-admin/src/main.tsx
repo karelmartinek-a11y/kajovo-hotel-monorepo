@@ -73,17 +73,33 @@ type Report = ReportRead;
 
 type ReportPayload = ReportCreate;
 
+type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně';
+
+const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně'];
+
 type PortalUser = {
   id: number;
+  first_name: string;
+  last_name: string;
   email: string;
-  role: string;
+  roles: PortalRole[];
+  phone: string | null;
+  note: string | null;
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
 };
 
-type PortalUserCreatePayload = {
+type PortalUserUpsertPayload = {
+  first_name: string;
+  last_name: string;
   email: string;
+  roles: PortalRole[];
+  phone?: string;
+  note?: string;
+};
+
+type PortalUserCreatePayload = PortalUserUpsertPayload & {
   password: string;
 };
 
@@ -1436,20 +1452,74 @@ function ReportsDetail(): JSX.Element {
 function UsersAdmin(): JSX.Element {
   const [users, setUsers] = React.useState<PortalUser[] | null>(null);
   const [selected, setSelected] = React.useState<PortalUser | null>(null);
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
 
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const [createFirstName, setCreateFirstName] = React.useState('');
+  const [createLastName, setCreateLastName] = React.useState('');
+  const [createEmail, setCreateEmail] = React.useState('');
+  const [createPassword, setCreatePassword] = React.useState('');
+  const [createRoles, setCreateRoles] = React.useState<PortalRole[]>([]);
+  const [createPhone, setCreatePhone] = React.useState('');
+  const [createNote, setCreateNote] = React.useState('');
+
+  const [editFirstName, setEditFirstName] = React.useState('');
+  const [editLastName, setEditLastName] = React.useState('');
+  const [editEmail, setEditEmail] = React.useState('');
+  const [editRoles, setEditRoles] = React.useState<PortalRole[]>([]);
+  const [editPhone, setEditPhone] = React.useState('');
+  const [editNote, setEditNote] = React.useState('');
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const e164Regex = /^\+[1-9]\d{1,14}$/;
+
+  const createEmailValid = emailRegex.test(createEmail.trim().toLowerCase());
+  const editEmailValid = emailRegex.test(editEmail.trim().toLowerCase());
+  const createPhoneValid = createPhone.trim() === '' || e164Regex.test(createPhone.trim());
+  const editPhoneValid = editPhone.trim() === '' || e164Regex.test(editPhone.trim());
+
+  const createValid =
+    createFirstName.trim().length > 0
+    && createLastName.trim().length > 0
+    && createEmailValid
+    && createPassword.length >= 8
+    && createRoles.length > 0
+    && createPhoneValid;
+
+  const editValid =
+    editFirstName.trim().length > 0
+    && editLastName.trim().length > 0
+    && editEmailValid
+    && editRoles.length > 0
+    && editPhoneValid;
+
+  function syncEdit(user: PortalUser | null): void {
+    if (!user) {
+      setEditFirstName('');
+      setEditLastName('');
+      setEditEmail('');
+      setEditRoles([]);
+      setEditPhone('');
+      setEditNote('');
+      return;
+    }
+    setEditFirstName(user.first_name);
+    setEditLastName(user.last_name);
+    setEditEmail(user.email);
+    setEditRoles(user.roles);
+    setEditPhone(user.phone ?? '');
+    setEditNote(user.note ?? '');
+  }
 
   const load = React.useCallback(() => {
     setError(null);
     void fetchJson<PortalUser[]>('/api/v1/users')
       .then((items) => {
         setUsers(items);
-        if (items.length > 0 && !selected) setSelected(items[0]);
+        const nextSelected = selected ? items.find((item) => item.id === selected.id) ?? items[0] ?? null : items[0] ?? null;
+        setSelected(nextSelected);
+        syncEdit(nextSelected);
       })
       .catch(() => setError('Nepodařilo se načíst uživatele.'));
   }, [selected]);
@@ -1459,35 +1529,186 @@ function UsersAdmin(): JSX.Element {
   }, [load]);
 
   async function createUser(): Promise<void> {
-    if (!emailValid || password.length < 8 || users?.some((u) => u.email === email.trim().toLowerCase())) return;
+    if (!createValid) return;
     setSaving(true);
     setError(null);
+    setMessage(null);
     try {
-      const created = await fetchJson<PortalUser>('/api/v1/users', { method: 'POST', body: JSON.stringify({ email, password } satisfies PortalUserCreatePayload) });
+      const payload: PortalUserCreatePayload = {
+        first_name: createFirstName.trim(),
+        last_name: createLastName.trim(),
+        email: createEmail.trim().toLowerCase(),
+        password: createPassword,
+        roles: createRoles,
+        ...(createPhone.trim() ? { phone: createPhone.trim() } : {}),
+        ...(createNote.trim() ? { note: createNote.trim() } : {}),
+      };
+      const created = await fetchJson<PortalUser>('/api/v1/users', { method: 'POST', body: JSON.stringify(payload) });
       setUsers((prev) => (prev ? [...prev, created] : [created]));
       setSelected(created);
-      setEmail('');
-      setPassword('');
-    } catch (e) {
+      syncEdit(created);
+      setCreateFirstName('');
+      setCreateLastName('');
+      setCreateEmail('');
+      setCreatePassword('');
+      setCreateRoles([]);
+      setCreatePhone('');
+      setCreateNote('');
+      setMessage('Uživatel byl vytvořen.');
+    } catch {
       setError('Uživatele se nepodařilo vytvořit.');
     } finally {
       setSaving(false);
     }
   }
 
+  async function saveSelectedUser(): Promise<void> {
+    if (!selected || !editValid) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const payload: PortalUserUpsertPayload = {
+        first_name: editFirstName.trim(),
+        last_name: editLastName.trim(),
+        email: editEmail.trim().toLowerCase(),
+        roles: editRoles,
+        ...(editPhone.trim() ? { phone: editPhone.trim() } : {}),
+        ...(editNote.trim() ? { note: editNote.trim() } : {}),
+      };
+      const updated = await fetchJson<PortalUser>(`/api/v1/users/${selected.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? null);
+      setSelected(updated);
+      syncEdit(updated);
+      setMessage('Uživatel byl upraven.');
+    } catch {
+      setError('Uživatele se nepodařilo upravit.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function toggleActive(user: PortalUser): Promise<void> {
-    const updated = await fetchJson<PortalUser>(`/api/v1/users/${user.id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: !user.is_active }) });
-    setUsers((prev) => prev?.map((u) => (u.id === user.id ? updated : u)) ?? null);
-    setSelected(updated);
+    try {
+      const updated = await fetchJson<PortalUser>(`/api/v1/users/${user.id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: !user.is_active }) });
+      setUsers((prev) => prev?.map((u) => (u.id === user.id ? updated : u)) ?? null);
+      setSelected(updated);
+      syncEdit(updated);
+    } catch {
+      setError('Nepodařilo se změnit stav uživatele.');
+    }
   }
 
-  async function resetPassword(user: PortalUser): Promise<void> {
-    if (newPassword.length < 8) return;
-    await fetchJson<PortalUser>(`/api/v1/users/${user.id}/password/reset`, { method: 'POST', body: JSON.stringify({ password: newPassword }) });
-    setNewPassword('');
+  async function sendPasswordResetLink(user: PortalUser): Promise<void> {
+    try {
+      await fetchJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, { method: 'POST' });
+    } finally {
+      setMessage('Pokud účet existuje a je dostupný e-mail, byl odeslán odkaz na změnu hesla.');
+    }
   }
 
-  return <main className="k-page" data-testid="users-admin-page"><h1>Uživatelé</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : users === null ? <SkeletonPage /> : users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : <div className="k-grid cards-2"><Card title="Seznam"><DataTable headers={['Email', 'Role', 'Stav']} rows={users.map((u) => [<button key={u.id} className="k-nav-link" type="button" onClick={() => setSelected(u)}>{u.email}</button>, u.role, u.is_active ? 'Aktivní' : 'Neaktivní'])} /></Card><Card title="Detail">{selected ? <div className="k-stack"><p><strong>{selected.email}</strong></p><p>Role: {selected.role}</p><p>Stav: {selected.is_active ? 'Aktivní' : 'Neaktivní'}</p><div className="k-toolbar"><button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>{selected.is_active ? 'Zakázat' : 'Povolit'}</button></div><FormField id="reset_pwd" label="Nové heslo"><input id="reset_pwd" className="k-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></FormField><button className="k-button" type="button" onClick={() => void resetPassword(selected)} disabled={newPassword.length < 8}>Resetovat heslo</button></div> : <p>Vyberte uživatele.</p>}</Card></div>}<Card title="Přidat uživatele"><div className="k-form-grid"><FormField id="user_email" label="Email"><input id="user_email" className="k-input" value={email} onChange={(e) => setEmail(e.target.value)} /></FormField><FormField id="user_password" label="Dočasné heslo"><input id="user_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></FormField><button className="k-button" type="button" onClick={() => void createUser()} disabled={!emailValid || password.length < 8 || saving || Boolean(users?.some((u) => u.email === email.trim().toLowerCase()))}>Vytvořit uživatele</button></div></Card></main>;
+  const roleToggle = (selectedRoles: PortalRole[], setter: (value: PortalRole[]) => void, role: PortalRole): void => {
+    setter(selectedRoles.includes(role) ? selectedRoles.filter((item) => item !== role) : [...selectedRoles, role]);
+  };
+
+  return (
+    <main className="k-page" data-testid="users-admin-page">
+      <h1>Uživatelé</h1>
+      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
+      {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
+      {users === null ? <SkeletonPage /> : (
+        <div className="k-grid cards-2">
+          <Card title="Seznam uživatelů">
+            {users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : (
+              <DataTable
+                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Stav']}
+                rows={users.map((u) => [
+                  <button key={u.id} className="k-nav-link" type="button" onClick={() => { setSelected(u); syncEdit(u); }}>{u.first_name}</button>,
+                  u.last_name,
+                  u.email,
+                  u.roles.join(', '),
+                  u.is_active ? 'Aktivní' : 'Neaktivní',
+                ])}
+              />
+            )}
+          </Card>
+
+          <Card title="Detail / úprava">
+            {!selected ? <p>Vyberte uživatele.</p> : (
+              <div className="k-form-grid">
+                <FormField id="edit_first_name" label="Jméno">
+                  <input id="edit_first_name" className="k-input" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+                </FormField>
+                <FormField id="edit_last_name" label="Příjmení">
+                  <input id="edit_last_name" className="k-input" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+                </FormField>
+                <FormField id="edit_email" label="Email">
+                  <input id="edit_email" className="k-input" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                </FormField>
+                {!editEmailValid ? <small>Neplatný email.</small> : null}
+                <FormField id="edit_phone" label="Telefon (E.164, volitelné)">
+                  <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+420123456789" />
+                </FormField>
+                {!editPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+                <FormField id="edit_note" label="Poznámka (volitelné)">
+                  <textarea id="edit_note" className="k-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
+                </FormField>
+                <fieldset className="k-card"><legend>Role</legend>
+                  {portalRoleOptions.map((role) => (
+                    <label key={`edit-role-${role}`} style={{ display: 'block' }}>
+                      <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {role}
+                    </label>
+                  ))}
+                </fieldset>
+                <div className="k-toolbar">
+                  <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={!editValid || saving}>Uložit změny</button>
+                  <button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>
+                    {selected.is_active ? 'Zakázat' : 'Povolit'}
+                  </button>
+                  <button className="k-button secondary" type="button" onClick={() => void sendPasswordResetLink(selected)}>
+                    Poslat link na změnu hesla
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <Card title="Vytvořit uživatele">
+            <div className="k-form-grid">
+              <FormField id="create_first_name" label="Jméno">
+                <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
+              </FormField>
+              <FormField id="create_last_name" label="Příjmení">
+                <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
+              </FormField>
+              <FormField id="create_email" label="Email">
+                <input id="create_email" className="k-input" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
+              </FormField>
+              {!createEmailValid && createEmail.trim() ? <small>Neplatný email.</small> : null}
+              <FormField id="create_password" label="Dočasné heslo">
+                <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
+              </FormField>
+              <FormField id="create_phone" label="Telefon (E.164, volitelné)">
+                <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="+420123456789" />
+              </FormField>
+              {!createPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+              <FormField id="create_note" label="Poznámka (volitelné)">
+                <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
+              </FormField>
+              <fieldset className="k-card"><legend>Role</legend>
+                {portalRoleOptions.map((role) => (
+                  <label key={`create-role-${role}`} style={{ display: 'block' }}>
+                    <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {role}
+                  </label>
+                ))}
+              </fieldset>
+              <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>Vytvořit uživatele</button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </main>
+  );
 }
 
 type AccessDeniedProps = {
@@ -1534,7 +1755,7 @@ function AdminLoginPage(): JSX.Element {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
-    setHintStatus('Pokud email odpovídá admin účtu, byl odeslán hint hesla.');
+    setHintStatus('Pokud účet existuje, byl odeslán odkaz pro odblokování.');
   }
 
   return (
@@ -1557,7 +1778,7 @@ function AdminLoginPage(): JSX.Element {
               onClick={() => void sendPasswordHint()}
               disabled={!email.trim()}
             >
-              Poslat hint hesla
+              Zapomenuté heslo
             </button>
           </div>
         </form>
@@ -1576,8 +1797,8 @@ function AppRoutes(): JSX.Element {
       .catch(() =>
         setAuth({
           userId: 'anonymous',
-          role: 'manager',
-          permissions: rolePermissions('manager'),
+          role: 'recepce',
+          permissions: rolePermissions('recepce'),
           actorType: 'portal',
         })
       );
@@ -1679,7 +1900,7 @@ function AppRoutes(): JSX.Element {
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ClientErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/admin">
         <AppRoutes />
       </BrowserRouter>
     </ClientErrorBoundary>

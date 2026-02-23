@@ -21,40 +21,31 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "users:read",
         "users:write",
     },
-    "manager": {
+    "pokojská": {
+        "dashboard:read",
+        "lost_found:read",
+        "lost_found:write",
+        "issues:read",
+    },
+    "údržba": {
+        "dashboard:read",
+        "issues:read",
+        "issues:write",
+        "reports:read",
+    },
+    "recepce": {
         "dashboard:read",
         "breakfast:read",
         "breakfast:write",
         "lost_found:read",
         "lost_found:write",
-        "issues:read",
-        "issues:write",
-        "inventory:read",
-        "inventory:write",
         "reports:read",
-        "reports:write",
     },
-    "reception": {
+    "snídaně": {
         "dashboard:read",
         "breakfast:read",
         "breakfast:write",
-        "lost_found:read",
-        "lost_found:write",
-        "issues:read",
-        "issues:write",
-        "reports:read",
-    },
-    "maintenance": {
-        "dashboard:read",
-        "issues:read",
-        "issues:write",
-        "reports:read",
-    },
-    "warehouse": {
-        "dashboard:read",
         "inventory:read",
-        "inventory:write",
-        "reports:read",
     },
 }
 
@@ -62,8 +53,8 @@ WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def normalize_role(raw_role: str | None) -> str:
-    role = (raw_role or "manager").strip().lower()
-    return role if role in ROLE_PERMISSIONS else "manager"
+    role = (raw_role or "recepce").strip().lower()
+    return role if role in ROLE_PERMISSIONS else "recepce"
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:
@@ -71,10 +62,11 @@ def parse_identity(request: Request) -> tuple[str, str, str]:
 
     session = read_session_cookie(request.cookies.get("kajovo_session"))
     if not session:
-        return "anonymous", "anonymous", "manager"
+        return "anonymous", "anonymous", "recepce"
     actor_id = session["email"]
     actor_name = session["email"]
-    actor_role = normalize_role(session["role"])
+    selected = session.get("active_role") or session.get("role")
+    actor_role = normalize_role(str(selected) if selected else None)
     return actor_id, actor_name, actor_role
 
 
@@ -91,9 +83,15 @@ def require_permission(module: str, action: str) -> Callable[[Request], None]:
 
         session = require_session(request)
         actor_id = session["email"]
-        actor_role = normalize_role(session["role"])
+        selected = session.get("active_role") or session.get("role")
+        actor_role = normalize_role(str(selected) if selected else None)
         request.state.actor_id = actor_id
         request.state.actor_role = actor_role
+        if session.get("actor_type") == "portal" and not session.get("active_role"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Active role must be selected",
+            )
         if not has_permission(actor_role, required):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -136,7 +134,8 @@ def inject_identity(request: Request) -> None:
 
     session = require_session(request)
     actor_id = session["email"]
-    actor_role = normalize_role(session["role"])
+    selected = session.get("active_role") or session.get("role")
+    actor_role = normalize_role(str(selected) if selected else None)
     request.state.actor_id = actor_id
     request.state.actor_role = actor_role
 

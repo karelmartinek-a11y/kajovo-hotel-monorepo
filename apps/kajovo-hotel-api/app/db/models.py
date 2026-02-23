@@ -248,9 +248,12 @@ class PortalUser(Base):
     __tablename__ = "portal_users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    first_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
-    role: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[str] = mapped_column(
@@ -258,6 +261,19 @@ class PortalUser(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    roles: Mapped[list["PortalUserRole"]] = relationship(
+        "PortalUserRole",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
+class PortalUserRole(Base):
+    __tablename__ = "portal_user_roles"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("portal_users.id", ondelete="CASCADE"), primary_key=True)
+    role: Mapped[str] = mapped_column(String(32), primary_key=True, index=True)
+    user: Mapped[PortalUser] = relationship("PortalUser", back_populates="roles")
 
 
 class PortalSmtpSettings(Base):
@@ -275,3 +291,34 @@ class PortalSmtpSettings(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class AuthLockoutState(Base):
+    __tablename__ = "auth_lockout_states"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    principal: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    first_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_forgot_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class AuthUnlockToken(Base):
+    __tablename__ = "auth_unlock_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    principal: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())

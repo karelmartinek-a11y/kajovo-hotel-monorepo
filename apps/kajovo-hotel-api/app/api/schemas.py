@@ -9,7 +9,7 @@ except ImportError:  # pragma: no cover
         pass
 
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ApiErrorDetail(BaseModel):
@@ -264,9 +264,62 @@ class InventoryItemWithAuditRead(InventoryItemDetailRead):
 
 
 
-class PortalUserCreate(BaseModel):
+ALLOWED_PORTAL_ROLES = {"pokojská", "údržba", "recepce", "snídaně"}
+
+
+class PortalUserBasePayload(BaseModel):
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
     email: str = Field(min_length=3, max_length=255)
+    roles: list[str] = Field(min_length=1)
+    phone: str | None = Field(default=None, max_length=16)
+    note: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("roles")
+    @classmethod
+    def validate_roles(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for role in value:
+            normalized = role.strip().lower()
+            if normalized not in ALLOWED_PORTAL_ROLES:
+                raise ValueError(f"Role must be one of: {', '.join(sorted(ALLOWED_PORTAL_ROLES))}")
+            if normalized not in cleaned:
+                cleaned.append(normalized)
+        if not cleaned:
+            raise ValueError("At least one role is required")
+        return cleaned
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        email = value.strip().lower()
+        import re
+
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            raise ValueError("Email must be valid")
+        return email
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        phone = value.strip()
+        if not phone:
+            return None
+        import re
+
+        if not re.match(r"^\+[1-9]\d{1,14}$", phone):
+            raise ValueError("Phone must be in E.164 format")
+        return phone
+
+
+class PortalUserCreate(PortalUserBasePayload):
     password: str = Field(min_length=8, max_length=255)
+
+
+class PortalUserUpdate(PortalUserBasePayload):
+    pass
 
 
 class PortalUserPasswordSet(BaseModel):
@@ -281,8 +334,12 @@ class PortalUserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    first_name: str
+    last_name: str
     email: str
-    role: str
+    roles: list[str]
+    phone: str | None
+    note: str | None
     is_active: bool
     created_at: datetime | None
     updated_at: datetime | None
@@ -301,9 +358,25 @@ class LogoutResponse(BaseModel):
     ok: bool = True
 
 
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+
+
+class PortalPasswordChangeRequest(BaseModel):
+    old_password: str = Field(min_length=8, max_length=255)
+    new_password: str = Field(min_length=8, max_length=255)
+
+
+class SelectRoleRequest(BaseModel):
+    role: str = Field(min_length=1, max_length=32)
+
+
 class AuthIdentityResponse(BaseModel):
     email: str
     role: str
+    roles: list[str] = []
+    active_role: str | None = None
     permissions: list[str]
     actor_type: str
 

@@ -58,6 +58,25 @@ services:
     networks:
       - kajovo_net
 
+  admin:
+    build:
+      context: ..
+      dockerfile: apps/kajovo-hotel-admin/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${ADMIN_PORT:-8081}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - kajovo_net
+
 networks:
   kajovo_net:
     driver: bridge
