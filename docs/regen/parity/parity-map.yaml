@@ -251,6 +251,7 @@ modules:
         - "docs/regen/01-guardrails/verification.md"
         - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
         - "docs/regen/04-conflict-resolution/verification.md"
+      - "docs/regen/05-conflict-resolution-2/verification.md"
     status: DONE
     target_location:
       - ".github/workflows/ci-gates.yml"
@@ -259,3 +260,20 @@ modules:
       - "package.json"
     links:
       - "docs/regen/04-conflict-resolution/verification.md"
+
+
+  - module: merge_conflict_resolution_guardrails_v2
+    required_behavior: "Konfliktní sada souborů je stabilizována do merge-friendly tvaru pro CI guardrails PR"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/05-conflict-resolution-2/verification.md"
+    status: DONE
+    target_location:
+      - ".github/workflows/ci-gates.yml"
+      - "docs/regen/01-guardrails/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+      - "package.json"
+    links:
+      - "docs/regen/05-conflict-resolution-2/verification.md"
