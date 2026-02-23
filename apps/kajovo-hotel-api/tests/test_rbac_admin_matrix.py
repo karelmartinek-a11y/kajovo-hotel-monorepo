@@ -4,7 +4,6 @@ import urllib.request
 from dataclasses import dataclass
 from http.cookiejar import CookieJar
 
-
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 
 
@@ -52,12 +51,54 @@ def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
 
 def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -> None:
     deny_cases = [
-        DenyCase("maintenance", "maintenance@example.com", "maintenance-pass", "GET", "/api/v1/inventory", "Missing permission: inventory:read"),
-        DenyCase("maintenance", "maintenance@example.com", "maintenance-pass", "POST", "/api/v1/inventory", "Missing permission: inventory:write"),
-        DenyCase("warehouse", "warehouse@example.com", "warehouse-pass", "GET", "/api/v1/breakfast", "Missing permission: breakfast:read"),
-        DenyCase("warehouse", "warehouse@example.com", "warehouse-pass", "POST", "/api/v1/reports", "Missing permission: reports:write"),
-        DenyCase("manager", "manager@example.com", "manager-pass", "GET", "/api/v1/users", "Missing actor type: admin"),
-        DenyCase("manager", "manager@example.com", "manager-pass", "POST", "/api/v1/users", "Missing actor type: admin"),
+        DenyCase(
+            role="maintenance",
+            email="maintenance@example.com",
+            password="maintenance-pass",
+            method="GET",
+            path="/api/v1/inventory",
+            expected_permission="Missing permission: inventory:read",
+        ),
+        DenyCase(
+            role="maintenance",
+            email="maintenance@example.com",
+            password="maintenance-pass",
+            method="POST",
+            path="/api/v1/inventory",
+            expected_permission="Missing permission: inventory:write",
+        ),
+        DenyCase(
+            role="warehouse",
+            email="warehouse@example.com",
+            password="warehouse-pass",
+            method="GET",
+            path="/api/v1/breakfast",
+            expected_permission="Missing permission: breakfast:read",
+        ),
+        DenyCase(
+            role="warehouse",
+            email="warehouse@example.com",
+            password="warehouse-pass",
+            method="POST",
+            path="/api/v1/reports",
+            expected_permission="Missing permission: reports:write",
+        ),
+        DenyCase(
+            role="manager",
+            email="manager@example.com",
+            password="manager-pass",
+            method="GET",
+            path="/api/v1/users",
+            expected_permission="Missing actor type: admin",
+        ),
+        DenyCase(
+            role="manager",
+            email="manager@example.com",
+            password="manager-pass",
+            method="POST",
+            path="/api/v1/users",
+            expected_permission="Missing actor type: admin",
+        ),
     ]
 
     for case in deny_cases:

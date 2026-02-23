@@ -17,9 +17,11 @@
 - Rozšířen test setup o `manager` test účet pro deny matrix.
 - Přidán API deny matrix test pokrývající zamítnutí read/write akcí pro nedostatečné role a actor-type mismatch.
 - E2E unauthorized direct-route test v admin app byl upraven na `actor_type='admin'`, aby validoval skutečný admin entrypoint scénář se sníženou rolí.
+- Fix-only CI korekce: `apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py` byl upraven na Ruff-compliant import ordering a line-length <= 100.
 
 ## D) Ověření (přesné příkazy + PASS/FAIL)
 - PASS: `python -m pytest apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py apps/kajovo-hotel-api/tests/test_rbac.py`
+- PASS: `python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests`
 - PASS: `pnpm lint`
 - PASS: `pnpm typecheck`
 - PASS: `pnpm unit`

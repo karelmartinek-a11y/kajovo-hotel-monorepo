@@ -576,3 +576,17 @@ modules:
       - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
     links:
       - "docs/regen/02-design-foundation/verification.md"
+
+  - module: api_rbac_deny_matrix_ruff_compliance
+    required_behavior: "RBAC deny-matrix test je Ruff compliant (import order + max line length) a neblokuje API lint gate"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-rbac/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py"
+      - "docs/regen/08-rbac/verification.md"
+    links:
+      - "docs/regen/08-rbac/verification.md"
