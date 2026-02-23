@@ -122,3 +122,38 @@
 ## F) Handoff pro další prompt
 - Po merge zkontrolovat `e2e-smoke` job zejména během `run 1/3`; očekávané je odstranění `Timed out waiting ... from config.webServer`.
 - Pokud by timeout přetrval, přidat krokový log marker před/po `build` a `preview` commandech jako artifact.
+
+
+---
+
+# Prompt 13d – CI smoke prebuild + preview-only webServer fix
+
+## A) Cíl
+- Opravit timeout v CI e2e-smoke odstraněním build contention uvnitř paralelních Playwright `webServer` procesů.
+
+## B) Exit criteria
+- CI `e2e-smoke` job dělá prebuild admin+portal před spuštěním smoke loop.
+- `e2e-smoke.config.ts` startuje admin/portal pouze přes `vite preview` (bez `pnpm build` uvnitř webServer commandu).
+- Deterministic smoke loop (`run 1/3` až `run 3/3`) zůstává beze změny.
+
+## C) Změny
+- `.github/workflows/ci-gates.yml`:
+  - přidán krok `Prebuild admin + portal for smoke preview` před `Run deterministic smoke x3`.
+- `apps/kajovo-hotel-web/tests/e2e-smoke.config.ts`:
+  - admin/portal webServer commandy upraveny na preview-only režim (`corepack pnpm exec vite preview ...`).
+  - API orchestrace i readiness URL beze změny.
+
+## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm ci:verification-doc`
+- PASS: `pnpm lint`
+- PASS: `pnpm typecheck`
+- PASS: `pnpm unit`
+- FAIL (lokální env limit pro browser/e2e): `pnpm ci:e2e-smoke`
+
+## E) Rizika/known limits
+- Lokální prostředí stále neumožňuje plnou e2e validaci; fix cílí na CI race/timeout pattern z GH runneru.
+- Prebuild zvyšuje délku běhu jobu, ale snižuje riziko timeoutu při startu `webServer`.
+
+## F) Handoff pro další prompt
+- Po merge potvrdit běh CI na problematickém jobu/steppu (`Run deterministic smoke x3`).
+- Pokud by timeout přetrval, doplnit artifact upload z Playwright webServer stdout/stderr pro admin/portal preview procesy.

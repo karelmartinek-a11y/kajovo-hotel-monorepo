@@ -41,6 +41,11 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 
+      - name: Prebuild admin + portal for smoke preview
+        run: |
+          corepack pnpm --filter @kajovo/kajovo-hotel-admin build
+          corepack pnpm --filter @kajovo/kajovo-hotel-web build
+
       - name: Run deterministic smoke x3
         run: |
           set -euo pipefail
