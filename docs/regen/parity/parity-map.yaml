@@ -225,3 +225,18 @@ modules:
       - ".github/workflows/ci-gates.yml"
     links:
       - "docs/regen/02-guardrails-self-fix/verification.md"
+
+
+  - module: unit_tests_ci_runtime_bootstrap
+    required_behavior: "CI unit-tests job běží bez závislosti na pnpm binárce; testy se spouští přímo přes Python"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - ".github/workflows/ci-gates.yml"
+        - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+    status: DONE
+    target_location:
+      - ".github/workflows/ci-gates.yml:jobs.unit-tests.steps"
+    links:
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"

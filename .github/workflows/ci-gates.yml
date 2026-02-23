@@ -78,7 +78,9 @@ jobs:
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Unit tests
-        run: pnpm test:unit
+        run: |
+          cd apps/kajovo-hotel-api
+          python -m pytest
 
   policy-guardrails:
     runs-on: ubuntu-latest
