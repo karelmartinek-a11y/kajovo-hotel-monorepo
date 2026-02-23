@@ -217,10 +217,11 @@ modules:
         - "legacy/hotel-backend/app/api/device.py"
       docs:
         - "docs/regen/01-guardrails/verification.md"
+        - "docs/regen/02-guardrails-self-fix/verification.md"
     status: DONE
     target_location:
       - "apps/kajovo-hotel/ci/guardrails-sentinel.mjs"
       - "apps/kajovo-hotel/ci/check-regen-verification.mjs"
       - ".github/workflows/ci-gates.yml"
     links:
-      - "this-pr"
+      - "docs/regen/02-guardrails-self-fix/verification.md"

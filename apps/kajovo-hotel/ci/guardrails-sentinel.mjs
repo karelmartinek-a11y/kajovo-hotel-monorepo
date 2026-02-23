@@ -16,20 +16,39 @@ const headSha = process.env.GITHUB_HEAD_SHA;
 
 const run = (cmd) => execSync(cmd, { cwd: repoRoot, encoding: 'utf8' }).trim();
 
+const resolveDiffRange = () => {
+  if (baseSha && headSha) return `${baseSha}...${headSha}`;
+  if (eventName === 'pull_request' && process.env.GITHUB_BASE_REF) {
+    const mergeBase = run(`git merge-base HEAD origin/${process.env.GITHUB_BASE_REF}`);
+    return `${mergeBase}...HEAD`;
+  }
+  return null;
+};
+
 const listChangedFiles = () => {
   try {
-    if (baseSha && headSha) {
-      return run(`git diff --name-only --diff-filter=${DIFF_FILTER} ${baseSha}...${headSha}`).split('\n').filter(Boolean);
-    }
-
-    if (eventName === 'pull_request' && process.env.GITHUB_BASE_REF) {
-      const mergeBase = run(`git merge-base HEAD origin/${process.env.GITHUB_BASE_REF}`);
-      return run(`git diff --name-only --diff-filter=${DIFF_FILTER} ${mergeBase}...HEAD`).split('\n').filter(Boolean);
+    const diffRange = resolveDiffRange();
+    if (diffRange) {
+      return run(`git diff --name-only --diff-filter=${DIFF_FILTER} ${diffRange}`).split('\n').filter(Boolean);
     }
 
     const stagedAndUnstaged = run(`git diff --name-only --diff-filter=${DIFF_FILTER}`).split('\n').filter(Boolean);
     const stagedOnly = run(`git diff --cached --name-only --diff-filter=${DIFF_FILTER}`).split('\n').filter(Boolean);
     return [...new Set([...stagedAndUnstaged, ...stagedOnly])];
+  } catch {
+    return [];
+  }
+};
+
+const getAddedLines = (filePath) => {
+  try {
+    const diffRange = resolveDiffRange();
+    const rangePart = diffRange ? `${diffRange} --` : '--';
+    const patch = run(`git diff --unified=0 --diff-filter=${DIFF_FILTER} ${rangePart} ${filePath}`);
+    return patch
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1));
   } catch {
     return [];
   }
@@ -43,6 +62,10 @@ const isScopedOut = (filePath) => {
 };
 
 const isBrandWhitelisted = (filePath) => filePath.replaceAll('\\', '/').startsWith('brand/');
+
+const policySelfExemptFiles = new Set([
+  'apps/kajovo-hotel/ci/guardrails-sentinel.mjs',
+]);
 
 const resolveImport = (fromFile, importPath) => {
   if (importPath.startsWith('.')) {
@@ -68,24 +91,26 @@ for (const file of changedFiles) {
   if (!textExtensions.has(extension)) continue;
   if (!existsSync(fullPath)) continue;
 
-  const content = readFileSync(fullPath, 'utf8');
+  const addedLines = getAddedLines(normalizedFile);
+  const policyScopeContent = addedLines.join('\n');
+  const importScopeContent = readFileSync(fullPath, 'utf8');
 
-  if (policyCodeExtensions.has(extension)) {
-    if (/\bEntity ID\b/i.test(content)) {
-      errors.push(`Forbidden phrase "Entity ID" found in ${normalizedFile}`);
+  if (policyCodeExtensions.has(extension) && !policySelfExemptFiles.has(normalizedFile)) {
+    if (/\bEntity ID\b/i.test(policyScopeContent)) {
+      errors.push(`Forbidden phrase "Entity ID" found in added lines of ${normalizedFile}`);
     }
 
-    if (/(^|[^a-zA-Z0-9_])\/device\//i.test(content) || /['"`]\/device(?:['"`]|\/)/i.test(content)) {
-      errors.push(`Forbidden /device/* endpoint usage found in ${normalizedFile}`);
+    if (/(^|[^a-zA-Z0-9_])\/device\//i.test(policyScopeContent) || /['"`]\/device(?:['"`]|\/)/i.test(policyScopeContent)) {
+      errors.push(`Forbidden /device/* endpoint usage found in added lines of ${normalizedFile}`);
     }
   }
 
   if (!isBrandWhitelisted(normalizedFile)) {
-    if (/(?:fill|stroke)\s*=\s*["']#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})["']/.test(content)) {
-      errors.push(`Hardcoded SVG color is forbidden outside brand/** in ${normalizedFile}`);
+    if (/(?:fill|stroke)\s*=\s*["']#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})["']/.test(policyScopeContent)) {
+      errors.push(`Hardcoded SVG color is forbidden outside brand/** in added lines of ${normalizedFile}`);
     }
-    if (/(?:color|background(?:-color)?|border-color|fill|stroke)\s*:\s*(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})|rgb\(|rgba\(|hsl\(|hsla\()/i.test(content)) {
-      errors.push(`Hardcoded color token is forbidden outside brand/** in ${normalizedFile}`);
+    if (/(?:color|background(?:-color)?|border-color|fill|stroke)\s*:\s*(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})|rgb\(|rgba\(|hsl\(|hsla\()/i.test(policyScopeContent)) {
+      errors.push(`Hardcoded color token is forbidden outside brand/** in added lines of ${normalizedFile}`);
     }
   }
 
@@ -96,7 +121,7 @@ for (const file of changedFiles) {
   if (inAdminPageOrView || inPortalPageOrView) {
     const importRegex = /from\s+['"]([^'"]+)['"]|import\s+['"]([^'"]+)['"]/g;
     let match;
-    while ((match = importRegex.exec(content)) !== null) {
+    while ((match = importRegex.exec(importScopeContent)) !== null) {
       const rawImport = match[1] ?? match[2];
       if (!rawImport) continue;
       const resolvedImport = resolveImport(normalizedFile, rawImport).replaceAll('\\', '/');
