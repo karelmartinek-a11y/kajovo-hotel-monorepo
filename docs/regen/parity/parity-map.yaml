@@ -566,7 +566,7 @@ modules:
 
 
   - module: repo_guardrails_and_ci_policy
-    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
+    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view, respektuje whitelist brand/** a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
     evidence:
       legacy:
         - "N/A"
@@ -579,7 +579,7 @@ modules:
       - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
       - ".github/workflows/ci-gates.yml"
     links:
-      - "docs/regen/01-orf-ci-hardening/verification.md"
+      - "docs/regen/01-guardrails/verification.md"
 
 
   - module: design_foundation_tokens_signage_panel

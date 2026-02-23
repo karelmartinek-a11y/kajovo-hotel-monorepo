@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
-import { extname, relative, resolve } from 'node:path';
+import { extname, resolve } from 'node:path';
 
 const repoRoot = process.cwd();
 const baseRef = process.env.GITHUB_BASE_REF;
@@ -9,18 +9,16 @@ const ignorePrefixes = ['legacy/'];
 const codeExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py']);
 const errors = [];
 
+const list = (cmd) =>
+  execSync(cmd, { encoding: 'utf8' })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
 const changedFiles = () => {
   const fallback = () => {
-    const tracked = execSync('git diff --name-only HEAD', { encoding: 'utf8' })
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    const untracked = execSync('git ls-files --others --exclude-standard', { encoding: 'utf8' })
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-
+    const tracked = list('git diff --name-only HEAD');
+    const untracked = list('git ls-files --others --exclude-standard');
     return [...new Set([...tracked, ...untracked])];
   };
 
@@ -28,10 +26,7 @@ const changedFiles = () => {
 
   try {
     execSync(`git fetch origin ${baseRef} --depth=1`, { stdio: 'ignore' });
-    return execSync(`git diff --name-only origin/${baseRef}...HEAD`, { encoding: 'utf8' })
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
+    return list(`git diff --name-only origin/${baseRef}...HEAD`);
   } catch {
     return fallback();
   }
@@ -47,8 +42,29 @@ const bannedPatterns = [
   { label: 'Entity ID', regex: /\bentity\s+id\b|\bentity_id\b|\bentityId\b|\bentityid\b/i },
 ];
 
-const crossImportPattern = /from\s+["'][^"']*(admin|portal)\/(pages|views)\/[^"']*["']/g;
-const appSplitCrossImportPattern = /from\s+["'][^"']*apps\/(kajovo-hotel-admin|kajovo-hotel-web)\/src\/[^"']*(pages|views)\/[^"']*["']/g;
+const webPageViewCrossImport = /from\s+["'][^"']*(admin|portal)\/(pages|views)\/[^"']*["']/g;
+const crossAppPageViewImport = /from\s+["'][^"']*apps\/(kajovo-hotel-admin|kajovo-hotel-web)\/src\/[^"']*(pages|views)\/[^"']*["']/g;
+
+const isAppLocalImportViolation = (filePath, statement) => {
+  const normalized = filePath.replaceAll('\\\\', '/');
+  const isPortalFile = normalized.includes('/portal/');
+  const isAdminFile = normalized.includes('/admin/');
+
+  if (isAdminFile && /portal\/(pages|views)\//.test(statement)) return true;
+  if (isPortalFile && /admin\/(pages|views)\//.test(statement)) return true;
+  return false;
+};
+
+const isCrossAppViolation = (filePath, statement) => {
+  const normalized = filePath.replaceAll('\\\\', '/');
+  if (normalized.startsWith('apps/kajovo-hotel-admin/')) {
+    return statement.includes('apps/kajovo-hotel-web') && /(pages|views)\//.test(statement);
+  }
+  if (normalized.startsWith('apps/kajovo-hotel-web/')) {
+    return statement.includes('apps/kajovo-hotel-admin') && /(pages|views)\//.test(statement);
+  }
+  return false;
+};
 
 for (const rel of filesToScan) {
   if (rel === 'apps/kajovo-hotel/ci/policy-sentinel.mjs') continue;
@@ -61,21 +77,18 @@ for (const rel of filesToScan) {
   }
 
   const normalized = rel.replaceAll('\\\\', '/');
-  if (!normalized.startsWith('apps/kajovo-hotel-web/src/')) continue;
-
-  const isAdminFile = normalized.includes('/admin/');
-  const isPortalFile = normalized.includes('/portal/');
-
-  if (!isAdminFile && !isPortalFile) continue;
-
-  const imports = source.match(crossImportPattern) ?? [];
+  const imports = source.match(webPageViewCrossImport) ?? [];
   for (const statement of imports) {
-    if (isAdminFile && /portal\/(pages|views)\//.test(statement)) {
-      errors.push(`Admin source must not import Portal pages/views: ${rel}`);
+    if (isAppLocalImportViolation(normalized, statement)) {
+      errors.push(`Page/view sharing is forbidden between Admin and Portal: ${rel}`);
       break;
     }
-    if (isPortalFile && /admin\/(pages|views)\//.test(statement)) {
-      errors.push(`Portal source must not import Admin pages/views: ${rel}`);
+  }
+
+  const crossAppImports = source.match(crossAppPageViewImport) ?? [];
+  for (const statement of crossAppImports) {
+    if (isCrossAppViolation(normalized, statement)) {
+      errors.push(`Cross-app page/view import is forbidden (admin <-> portal): ${rel}`);
       break;
     }
   }

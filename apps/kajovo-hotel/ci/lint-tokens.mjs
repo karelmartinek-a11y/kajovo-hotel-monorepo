@@ -214,7 +214,12 @@ if (!inRange(durations.toast, 160, 260)) {
 }
 
 const allowedCssValuePattern = /var\(--k-[\w-]+\)|\b0\b|\bnone\b|\bauto\b|\binherit\b|\binitial\b|\btransparent\b|\bcurrentColor\b/;
-const lintRoots = [resolve(repoRoot, 'packages/ui/src'), resolve(repoRoot, 'apps/kajovo-hotel-web/src')];
+const lintRoots = [
+  resolve(repoRoot, 'packages/ui/src'),
+  resolve(repoRoot, 'apps/kajovo-hotel-web/src'),
+  resolve(repoRoot, 'apps/kajovo-hotel-admin/src'),
+];
+const hardcodedColorWhitelistPrefixes = ['brand/'];
 const colorProperties = ['color', 'background', 'background-color', 'border-color', 'fill', 'stroke'];
 const spacingProperties = [
   'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
@@ -278,7 +283,10 @@ for (const scopeRoot of lintRoots) {
     }
 
     const source = readFileSync(file, 'utf8');
-    const fileLabel = relative(repoRoot, file);
+    const fileLabel = relative(repoRoot, file).replaceAll('\\', '/');
+    if (hardcodedColorWhitelistPrefixes.some((prefix) => fileLabel.startsWith(prefix))) {
+      continue;
+    }
 
     if (extension === '.css') {
       let match;
