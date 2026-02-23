@@ -51,3 +51,39 @@
   - `retries: 1`
   - čistý DB reset před každým během (`rm -f data/e2e-smoke.sqlite3`)
 - CI `e2e-smoke` job běží smoke třikrát po sobě v jedné pipeline (`for run in 1 2 3`).
+
+
+---
+
+# Prompt 13b – CI smoke webServer timeout fix
+
+## A) Cíl
+- Opravit timeout `config.webServer` v `ci:e2e-smoke` tak, aby Playwright čekal na správné readiness URL a používal stabilní cwd per service.
+
+## B) Exit criteria
+- `apps/kajovo-hotel-web/tests/e2e-smoke.config.ts` používá robustní workspace resolution přes `git rev-parse --show-toplevel` uvnitř každého webServer commandu.
+- Každý service entry používá `url` readiness check (API `/health`, admin/portal `/`) místo obecného `port` waitu.
+- Timeout budget je zvýšen pro pomalejší GH cold start.
+
+## C) Změny
+- Upravena orchestrace v `apps/kajovo-hotel-web/tests/e2e-smoke.config.ts`:
+  - API service: shell command dopočítá repo root přes `git rev-parse --show-toplevel` a startuje API z `apps/kajovo-hotel-api`, readiness `http://127.0.0.1:8000/health`.
+  - Admin service: shell command startuje admin Vite z `apps/kajovo-hotel-admin`, readiness `http://127.0.0.1:4173/`.
+  - Portal service: shell command startuje portal Vite z `apps/kajovo-hotel-web`, readiness `http://127.0.0.1:4174/`.
+  - timeout navýšen na `180_000` pro všechny služby.
+
+## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm ci:verification-doc`
+- PASS: `pnpm lint`
+- PASS: `pnpm typecheck`
+- PASS: `pnpm unit`
+- FAIL (env proxy blokuje browser dependencies): `pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium`
+- FAIL (env limit navazující na browser deps): `pnpm ci:e2e-smoke`
+
+## E) Rizika/known limits
+- Lokální runner má síťové omezení (apt proxy 403), které blokuje Playwright browser provisioning; e2e smoke nelze plně dokončit lokálně.
+- Finální potvrzení determinismu je v GitHub Actions runneru.
+
+## F) Handoff pro další prompt
+- Po merge zkontrolovat `e2e-smoke` job; očekávané zlepšení: odstranění timeoutu `config.webServer` díky URL readiness + delším timeoutům.
+- Pokud by timeout přetrval, přidat startup log artifact upload pro každý webServer proces.
