@@ -93,3 +93,46 @@ jobs:
 
       - name: Contract freshness check
         run: pnpm contract:check
+
+
+  e2e-auth-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Install Playwright browser
+        run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
+
+      - name: Auth smoke (3 deterministic runs)
+        env:
+          KAJOVO_API_DATABASE_URL: sqlite:///./apps/kajovo-hotel-api/data/e2e-smoke.db
+          KAJOVO_API_SMTP_ENABLED: 'false'
+        run: |
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
