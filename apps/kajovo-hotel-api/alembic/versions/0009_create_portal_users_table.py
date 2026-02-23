@@ -1,7 +1,7 @@
 """create portal users table
 
 Revision ID: 0009_create_portal_users_table
-Revises: 0008_add_actor_identity_to_audit_trail
+Revises: 0008_portal_users_smtp
 Create Date: 2026-02-26 00:00:00.000000
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0009_create_portal_users_table"
-down_revision = "0008_add_actor_identity_to_audit_trail"
+down_revision = "0008_portal_users_smtp"
 branch_labels = None
 depends_on = None
 
