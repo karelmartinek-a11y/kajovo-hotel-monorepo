@@ -215,6 +215,8 @@ modules:
       - "apps/kajovo-hotel-api/app/api/routes/auth.py"
       - "apps/kajovo-hotel-api/app/api/routes/users.py"
       - "apps/kajovo-hotel-api/tests/test_smtp_email_service.py"
+      - "apps/kajovo-hotel-api/openapi.json"
+      - "packages/shared/src/generated/client.ts"
       - "docs/regen/10-smtp/verification.md"
     links:
       - "docs/regen/10-smtp/verification.md"

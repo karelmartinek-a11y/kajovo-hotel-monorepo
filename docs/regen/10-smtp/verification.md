@@ -8,6 +8,7 @@
 - Existuje integrační test s mock SMTP transportem, který ověřuje hint + test-email + onboarding flow.
 
 ## C) Změny
+- Synchronizován API kontrakt po SMTP změnách: aktualizovány `apps/kajovo-hotel-api/openapi.json` a `packages/shared/src/generated/client.ts` přes `pnpm contract:generate`.
 - Přidána persistovaná SMTP konfigurace (`portal_smtp_settings`) + migrace.
 - Přidán nový `settings` router: `GET/PUT /api/v1/admin/settings/smtp`, `POST /api/v1/admin/settings/smtp/test-email`.
 - Refaktor `app/services/mail.py` na jednotný `EmailService` modul s:
@@ -20,6 +21,8 @@
 - Přidán integrační test `test_smtp_email_service.py` s mock SMTP transportem.
 
 ## D) Ověření (přesné příkazy + PASS/FAIL)
+- PASS: `pnpm contract:generate`
+- PASS: `pnpm contract:check`
 - PASS: `cd apps/kajovo-hotel-api && ruff check app tests`
 - PASS: `cd apps/kajovo-hotel-api && pytest -q tests/test_smtp_email_service.py tests/test_auth_constraints.py`
 
