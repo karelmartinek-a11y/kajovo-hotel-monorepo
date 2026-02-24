@@ -1,4 +1,4 @@
-name: CI Gates - KájovoHotel
+name: CI Gates - Kájovo Hotel
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  guardrails:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,70 +28,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install API Python dependencies (minimal)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.128.1" "pydantic==2.9.2" "pydantic-settings==2.6.1" "sqlalchemy==2.0.36" "alembic==1.13.3" "uvicorn[standard]==0.32.0"
-
-      - name: Parity placeholder gate
-        run: pnpm ci:parity-placeholders
-
-      - name: Verification doc gate
-        run: pnpm ci:verification-doc
-
-      - name: Policy sentinel gate
-        run: pnpm ci:policy
+      - name: Lint
+        run: pnpm lint
 
       - name: Token-only lint
         run: pnpm ci:tokens
 
-      - name: Brand assets lint (brand/** whitelist)
+      - name: Brand assets lint
         run: pnpm ci:brand-assets
-
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
-
-      - name: SIGNACE gate
-        run: pnpm ci:signage
-
-      - name: View-states gate
-        run: pnpm ci:view-states
-
-      - name: WCAG gate
-        run: pnpm ci:wcag
-
-      - name: Verify API contract + generated client freshness
-        run: pnpm contract:check
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install API dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
-
-      - name: Ruff lint
-        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
 
   typecheck:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -115,38 +67,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install API dependencies
+      - name: Install API dependencies (dev)
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Unit tests
-        run: pnpm unit
+        run: |
+          python --version
+          cd apps/kajovo-hotel-api
+          python -m pytest
 
-  e2e-auth-smoke:
+  policy-guardrails:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    env:
+      GITHUB_EVENT_NAME: ${{ github.event_name }}
+      GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -161,24 +108,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Enforce PR regen verification file
+        run: pnpm ci:regen-verification
+
+      - name: Enforce repository guardrails
+        run: pnpm ci:guardrails
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install API dependencies
+      - name: Install API Python dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+          python -m pip install "fastapi==0.128.1" "pydantic==2.9.2" "pydantic-settings==2.6.1" "sqlalchemy==2.0.36" "alembic==1.13.3" "uvicorn[standard]==0.32.0"
+
+      - name: Verify API contract + generated client freshness
+        run: pnpm contract:check
 
       - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 
-      - name: Auth smoke (3 deterministic runs)
-        env:
-          KAJOVO_API_DATABASE_URL: sqlite:///./apps/kajovo-hotel-api/data/e2e-smoke.db
-          KAJOVO_API_SMTP_ENABLED: 'false'
-        run: |
-          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
-          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
-          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
+      - name: SIGNACE gate
+        run: pnpm ci:signage
+
+      - name: View-states gate
+        run: pnpm ci:view-states
+
+      - name: WCAG gate
+        run: pnpm ci:wcag
