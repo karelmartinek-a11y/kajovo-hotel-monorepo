@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "kajovo-hotel-api"
 version = "0.1.0"
@@ -23,10 +19,6 @@ dev = [
   "ruff>=0.6.0",
 ]
 
-[tool.setuptools.packages.find]
-include = ["app*"]
-exclude = ["alembic*"]
-
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
@@ -38,6 +30,11 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.setuptools.packages.find]
 include = ["app*"]
-exclude = ["alembic*", "tests*", "tools*"]
+exclude = ["tests*", "alembic*"]

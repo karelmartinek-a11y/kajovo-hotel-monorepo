@@ -1,3 +1,3 @@
-# KájovoHotel Portal
+# KájovoHotel Web
 
-Portal application with dedicated login entrypoint.
+Web application using @kajovo/ui and design tokens in apps/kajovo-hotel.

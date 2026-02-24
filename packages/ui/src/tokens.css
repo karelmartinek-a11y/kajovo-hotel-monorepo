@@ -240,7 +240,6 @@ body {
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);
   padding: var(--k-spacing-4);
-  line-height: var(--k-line-height-body);
 }
 
 .k-state-view {
@@ -255,7 +254,6 @@ body {
   justify-items: center;
   gap: var(--k-spacing-3);
   transition: border-color var(--k-motion-duration-fast) var(--k-motion-ease-standard);
-  line-height: var(--k-line-height-body);
 }
 
 .k-state-view h2 {
@@ -287,7 +285,6 @@ body {
   padding: var(--k-spacing-2) var(--k-spacing-3);
   font: inherit;
   background: var(--k-color-surface-raised);
-  line-height: var(--k-line-height-body);
 }
 
 .k-button {
@@ -340,7 +337,6 @@ body {
   border-bottom: 1px solid var(--k-color-border);
   text-align: left;
   font-size: var(--k-font-size-sm);
-  line-height: var(--k-line-height-body);
 }
 
 .k-table tbody tr:last-child td {
