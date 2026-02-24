@@ -27,6 +27,9 @@ services:
       KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
       KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-production}
       KAJOVO_API_DATABASE_URL: ${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://kajovo:kajovo_dev_password@postgres:5432/kajovo_hotel}
+      KAJOVO_API_ADMIN_EMAIL: ${KAJOVO_API_ADMIN_EMAIL:-}
+      KAJOVO_API_ADMIN_PASSWORD: ${KAJOVO_API_ADMIN_PASSWORD:-}
+      KAJOVO_API_ADMIN_PASSWORD_HINT: ${KAJOVO_API_ADMIN_PASSWORD_HINT:-}
     depends_on:
       postgres:
         condition: service_healthy
