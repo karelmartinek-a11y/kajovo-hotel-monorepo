@@ -15,11 +15,11 @@ SSOT tracker pro prompty ORF-00 až ORF-15. Číslování je deterministické: k
 | 08 | DONE | `docs/regen/08-api-lint-fix` | `ORF-08 (current)` | None | Slot 08 uzavřen (API lint/CI fix-only). |
 | 09 | DONE | `docs/regen/09-sqlite-db-path-fix` | `ORF-09 (current)` | None | Slot 09 uzavřen (SQLite test DB path/dir stabilizace). |
 | 10 | DONE | `docs/regen/10-sqlite-ci-data-dir-fix` | `ORF-10 (current)` | None | Slot 10 uzavřen (SQLite CI data dir alignment). |
-| 11 | DONE | `docs/regen/11-workspace-path-portability-fix` | `ORF-11 (current)` | None | Slot 11 uzavřen (workspace-path portability fix). |
-| 12 | DONE | `docs/regen/12-api-test-tmpdir-fix` | `ORF-12 (current)` | None | Slot 12 uzavřen (API test DB tmpdir hardening). |
-| 13 | DONE | `docs/regen/13-uvicorn-cwd-fix` | `ORF-13 (current)` | None | Slot 13 uzavřen (uvicorn subprocess cwd fix). |
-| 14 | DONE | `docs/regen/14-contract-sync-fix` | `ORF-14 (current)` | None | Slot 14 uzavřen (OpenAPI + generated client contract sync). |
-| 15 | DONE | `docs/regen/15-nav-tablet-initial-state-fix`, `docs/regen/15-policy-entityid-fix`, `docs/regen/15-view-states-auth-fallback-fix`, `docs/regen/15-view-states-auth-catch-fix`, `docs/regen/15-view-states-auth-me-mock-fix` | `ORF-15 (current)` | None | Slot 15 uzavřen (nav media-state + policy Entity ID rename + view-state auth fallback fix). |
+| 11 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/11-*/verification.md` a provést prompt scope. |
+| 12 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/12-*/verification.md` a provést prompt scope. |
+| 13 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/13-*/verification.md` a provést prompt scope. |
+| 14 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/14-*/verification.md` a provést prompt scope. |
+| 15 | MISSING | — | — | Chybí evidence adresář i verification soubor. | Založit `docs/regen/15-*/verification.md` a provést prompt scope. |
 
 ## Mapping poznámky (mimo-plán / nested evidence)
 

@@ -218,6 +218,78 @@ modules:
       - "this-pr"
 
 
+  - module: api_test_csrf_session_setup
+    required_behavior: "API test setup používá validní session + CSRF token pro write requesty a stabilní uvicorn bootstrap"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/07-api-test-csrf-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+      - "apps/kajovo-hotel-api/tests/test_breakfast.py"
+      - "apps/kajovo-hotel-api/tests/test_health.py"
+      - "apps/kajovo-hotel-api/tests/test_inventory.py"
+      - "apps/kajovo-hotel-api/tests/test_issues.py"
+      - "apps/kajovo-hotel-api/tests/test_lost_found.py"
+      - "apps/kajovo-hotel-api/tests/test_reports.py"
+
+  - module: api_python_lint_ci_stability
+    required_behavior: "Python API lint gate je zelená (Ruff E/F/I), včetně CSRF middleware formátování"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/08-api-lint-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/app/security/auth.py"
+      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
+      - "apps/kajovo-hotel-api/app/api/routes/users.py"
+      - "apps/kajovo-hotel-api/alembic/versions/0009_create_portal_users_table.py"
+
+  - module: api_test_sqlite_db_path_stability
+    required_behavior: "API test SQLite DB běží na existující zapisovatelné cestě v lokálu i CI"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/09-sqlite-db-path-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+      - "apps/kajovo-hotel-api/tests/test_health.py"
+      - "apps/kajovo-hotel-api/tests/test_rbac.py"
+      - "apps/kajovo-hotel-api/tests/test_users.py"
+      - ".github/workflows/ci-full.yml"
+
+  - module: api_test_sqlite_ci_data_dir_alignment
+    required_behavior: "CI i pytest fixture používají shodný SQLite data adresář apps/kajovo-hotel-api/data"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/10-sqlite-ci-data-dir-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+      - ".github/workflows/ci-full.yml"
+
+  - module: delivery_tracker
+    required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/progress.md"
+        - "docs/regen/00-orf-normalization/verification.md"
+    status: DONE
+    target_location:
+      - "docs/regen/progress.md"
+      - "docs/regen/parity/parity-map.yaml"
+
+
   - module: repo_guardrails_and_ci_policy
     required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
     evidence:
