@@ -86,12 +86,7 @@ modules:
       docs:
         - "brand/panel/login_admin.png"
         - "brand/panel/login_user_fail.png"
-    status: IN_PROGRESS
-    links:
-      - "this-pr"
-      - "this-pr-fix-main-tsx-conflict"
-      - "this-pr-main-route-conflict-proof"
-      - "this-pr-fix-verification-doc-fallback"
+    status: MISSING
     target_location:
       - "apps/kajovo-hotel-web/src/admin/*"
       - "apps/kajovo-hotel-web/src/portal/*"
@@ -103,10 +98,14 @@ modules:
         - "legacy/hotel-backend/app/db/models.py: PortalUser"
       docs:
         - "docs/test-accounts.md"
-    status: IN_PROGRESS
+    status: DONE
     target_location:
       - "apps/kajovo-hotel-api/app/security/rbac.py"
       - "apps/kajovo-hotel-web/src/rbac.ts"
+    links:
+      - "this-pr"
+      - "this-pr-05-admin-users"
+      - "this-pr-fix-commit-pr"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
@@ -145,7 +144,11 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
+      - "this-pr-fix-signage-tests"
+      - "this-pr-fix2"
+      - "this-pr-fix3"
+      - "this-pr-followup"
 
   - module: web_e2e_browser_bootstrap
     required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
@@ -158,7 +161,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/package.json:scripts.pretest"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
 
   - module: web_visual_snapshot_project_scope
     required_behavior: "Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop projekty"
@@ -171,7 +174,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
 
   - module: web_visual_suite_gating
     required_behavior: "Default playwright test běh nepadá na visual snapshot baseline mismatch; visual suite je explicitně opt-in"
@@ -184,7 +187,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
 
   - module: web_test_command_split
     required_behavior: "Default web test command je stabilní (core gates), visual suite běží separátně"
@@ -198,7 +201,7 @@ modules:
       - "apps/kajovo-hotel-web/package.json:scripts.test"
       - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
 
   - module: web_playwright_browser_parity
     required_behavior: "Playwright projekty používají browser engine dostupný v CI install kroku"
@@ -212,73 +215,54 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
 
 
-  - module: repo_guardrails_sentinel
-    required_behavior: "CI sentinely brání /device/*, textu Entity ID (mimo legacy), sdílení page/view mezi admin a portal; brand/** má whitelist hardcoded barev"
-    evidence:
-      legacy:
-        - "legacy/hotel-backend/app/api/device.py"
-      docs:
-        - "docs/regen/01-guardrails/verification.md"
-        - "docs/regen/02-guardrails-self-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel/ci/guardrails-sentinel.mjs"
-      - "apps/kajovo-hotel/ci/check-regen-verification.mjs"
-      - ".github/workflows/ci-gates.yml"
-    links:
-      - "docs/regen/02-guardrails-self-fix/verification.md"
-
-
-  - module: unit_tests_ci_runtime_bootstrap
-    required_behavior: "CI unit-tests job běží bez závislosti na pnpm binárce; testy se spouští přímo přes Python"
+  - module: repo_guardrails_and_ci_policy
+    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
     evidence:
       legacy:
         - "N/A"
       docs:
+        - "docs/regen/01-guardrails/verification.md"
         - ".github/workflows/ci-gates.yml"
-        - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
     status: DONE
     target_location:
-      - ".github/workflows/ci-gates.yml:jobs.unit-tests.steps"
+      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
+      - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
+      - ".github/workflows/ci-gates.yml"
     links:
-      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+      - "this-pr"
 
 
-  - module: merge_conflict_resolution_guardrails
-    required_behavior: "Konfliktní soubory CI/policy mají konzistentní finální podobu bez conflict markerů"
+  - module: design_foundation_tokens_signage_panel
+    required_behavior: "Jednotné tokeny (Portal/Admin), signace dle manifestu a panel layout mechanismus"
     evidence:
       legacy:
         - "N/A"
       docs:
-        - "docs/regen/01-guardrails/verification.md"
-        - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
-        - "docs/regen/04-conflict-resolution/verification.md"
-      - "docs/regen/05-conflict-resolution-2/verification.md"
+        - "docs/regen/02-design-foundation/token-map.md"
+        - "docs/regen/02-design-foundation/verification.md"
     status: DONE
     target_location:
-      - ".github/workflows/ci-gates.yml"
-      - "docs/regen/01-guardrails/verification.md"
-      - "docs/regen/parity/parity-map.yaml"
-      - "package.json"
+      - "packages/ui/src/tokens.css"
+      - "packages/ui/src/shell/KajovoSign.tsx"
+      - "packages/ui/src/shell/AppShell.tsx"
+      - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
     links:
-      - "docs/regen/04-conflict-resolution/verification.md"
+      - "this-pr"
 
-
-  - module: merge_conflict_resolution_guardrails_v2
-    required_behavior: "Konfliktní sada souborů je stabilizována do merge-friendly tvaru pro CI guardrails PR"
+  - module: prompt_cascade_recovery_plan
+    required_behavior: "Forenzně vyhodnotit průběh promptů 00-15 a definovat konkrétní recovery postup pro dosažení parity"
     evidence:
       legacy:
         - "N/A"
       docs:
-        - "docs/regen/05-conflict-resolution-2/verification.md"
+        - "docs/regen/16-cascade-recovery/prompt-cascade-assessment.md"
+        - "docs/regen/16-cascade-recovery/verification.md"
     status: DONE
     target_location:
-      - ".github/workflows/ci-gates.yml"
-      - "docs/regen/01-guardrails/verification.md"
-      - "docs/regen/parity/parity-map.yaml"
-      - "package.json"
+      - "docs/regen/16-cascade-recovery/prompt-cascade-assessment.md"
+      - "docs/regen/16-cascade-recovery/verification.md"
     links:
-      - "docs/regen/05-conflict-resolution-2/verification.md"
+      - "this-pr"
