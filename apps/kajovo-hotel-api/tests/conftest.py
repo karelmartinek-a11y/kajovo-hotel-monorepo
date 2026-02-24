@@ -67,6 +67,7 @@ def api_server(api_db_path: Path) -> Generator[tuple[str, deque[str]], None, Non
             ("snidane@example.com", "Snídaně", "Operator", "snidane-pass", "snídaně"),
             ("maintenance@example.com", "Udrzba", "Operator", "maintenance-pass", "údržba"),
             ("reception@example.com", "Recepce", "Operator", "reception-pass", "recepce"),
+            ("warehouse@example.com", "Sklad", "Operator", "warehouse-pass", "sklad"),
         ]
         for email, first_name, last_name, password, role in seeded:
             cursor = connection.execute(

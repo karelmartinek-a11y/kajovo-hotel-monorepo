@@ -47,13 +47,26 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "breakfast:write",
         "inventory:read",
     },
+    "sklad": {
+        "dashboard:read",
+        "inventory:read",
+        "inventory:write",
+        "reports:read",
+    },
 }
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 def normalize_role(raw_role: str | None) -> str:
-    role = (raw_role or "recepce").strip().lower()
+    aliases = {
+        "housekeeping": "pokojská",
+        "maintenance": "údržba",
+        "reception": "recepce",
+        "breakfast": "snídaně",
+        "warehouse": "sklad",
+    }
+    role = aliases.get((raw_role or "recepce").strip().lower(), (raw_role or "recepce").strip().lower())
     return role if role in ROLE_PERMISSIONS else "recepce"
 
 
