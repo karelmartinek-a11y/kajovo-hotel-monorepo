@@ -1,24 +1,25 @@
 import { defineConfig } from '@playwright/test';
 
+const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:18000';
+const smokeDbPath = process.env.SMOKE_DB_PATH ?? '/tmp/kajovo-smoke-e2e.db';
+
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'auth-smoke.spec.ts',
-  timeout: 40_000,
-  expect: {
-    timeout: 5_000,
-  },
+  testMatch: 'e2e-smoke.spec.ts',
+  timeout: 90_000,
   fullyParallel: false,
   workers: 1,
-  retries: 0,
   use: {
-    baseURL: 'http://127.0.0.1:8010',
+    baseURL: apiBaseUrl,
     trace: 'retain-on-failure',
   },
   webServer: {
-    command:
-      'corepack pnpm --dir ../kajovo-hotel-api exec python -m app.tools.e2e_seed && corepack pnpm --dir ../kajovo-hotel-api exec uvicorn app.main:app --host 127.0.0.1 --port 8010',
+    command: [
+      `PYTHONPATH=../kajovo-hotel-api python ../kajovo-hotel-api/scripts/init_smoke_db.py ${smokeDbPath}`,
+      `PYTHONPATH=../kajovo-hotel-api KAJOVO_API_DATABASE_URL=sqlite:///${smokeDbPath} KAJOVO_API_SMTP_ENABLED=false KAJOVO_API_ENVIRONMENT=test uvicorn app.main:app --host 127.0.0.1 --port 18000`,
+    ].join(' && '),
     cwd: '.',
-    port: 8010,
+    url: `${apiBaseUrl}/health`,
     timeout: 120_000,
     reuseExistingServer: false,
   },

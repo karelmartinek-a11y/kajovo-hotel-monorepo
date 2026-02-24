@@ -221,6 +221,29 @@ modules:
     links:
       - "docs/regen/10-smtp/verification.md"
 
+
+  - module: ci_e2e_smoke_stabilization
+    required_behavior: "Deterministický CI E2E smoke pro auth flows (admin login, hint email flow, user create + portal login)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/13-ci-tests/verification.md"
+        - "docs/regen/13-ci-tests/flake-notes.md"
+        - ".github/workflows/ci-gates.yml"
+        - ".github/workflows/ci-full.yml"
+        - "apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts"
+        - "apps/kajovo-hotel-admin/playwright.smoke.config.ts"
+    status: DONE
+    target_location:
+      - ".github/workflows/ci-gates.yml"
+      - ".github/workflows/ci-full.yml"
+      - "apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts"
+      - "apps/kajovo-hotel-admin/playwright.smoke.config.ts"
+      - "docs/regen/13-ci-tests/verification.md"
+    links:
+      - "docs/regen/13-ci-tests/verification.md"
+
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
     evidence:
