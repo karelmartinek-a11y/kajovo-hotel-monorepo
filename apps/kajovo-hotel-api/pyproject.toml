@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "kajovo-hotel-api"
 version = "0.1.0"
@@ -33,3 +37,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*", "tests*", "tools*"]
