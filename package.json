@@ -18,10 +18,11 @@
     "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
     "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
     "contract:check": "pnpm contract:generate && git diff --exit-code -- apps/kajovo-hotel-api/openapi.json packages/shared/src/generated/client.ts",
-    "typecheck": "pnpm -r lint",
-    "test:unit": "cd apps/kajovo-hotel-api && python -m pytest",
-    "ci:unit": "cd apps/kajovo-hotel-api && python -m pytest",
-    "ci:guardrails": "node apps/kajovo-hotel/ci/guardrails-sentinel.mjs",
-    "ci:regen-verification": "node apps/kajovo-hotel/ci/check-regen-verification.mjs"
+    "typecheck": "pnpm --filter @kajovo/kajovo-hotel-web lint && pnpm --filter @kajovo/kajovo-hotel-admin lint",
+    "unit": "python -m pytest apps/kajovo-hotel-api/tests",
+    "ci:policy": "node apps/kajovo-hotel/ci/policy-sentinel.mjs",
+    "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs",
+    "ci:parity-placeholders": "node apps/kajovo-hotel/ci/check-parity-map-placeholders.mjs",
+    "ci:e2e-smoke": "pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --config tests/e2e-smoke.config.ts"
   }
 }
