@@ -276,6 +276,39 @@ modules:
       - "apps/kajovo-hotel-api/tests/conftest.py"
       - ".github/workflows/ci-full.yml"
 
+  - module: api_test_workspace_path_portability
+    required_behavior: "API test DB path není hardcoded na /workspace a funguje v GitHub Actions i lokálně"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/11-workspace-path-portability-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+
+  - module: api_test_db_tmpdir_isolation
+    required_behavior: "API test SQLite DB běží v pytest tmpdir (write-safe, bez host-specific /workspace závislosti)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/12-api-test-tmpdir-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+
+  - module: api_test_uvicorn_cwd_stability
+    required_behavior: "API test fixture spouští uvicorn s cwd nezávislým na aktuálním pracovním adresáři"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/13-uvicorn-cwd-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/tests/conftest.py"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:
@@ -321,20 +354,5 @@ modules:
       - "packages/ui/src/shell/KajovoSign.tsx"
       - "packages/ui/src/shell/AppShell.tsx"
       - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
-    links:
-      - "this-pr"
-
-  - module: prompt_cascade_recovery_plan
-    required_behavior: "Forenzně vyhodnotit průběh promptů 00-15 a definovat konkrétní recovery postup pro dosažení parity"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/16-cascade-recovery/prompt-cascade-assessment.md"
-        - "docs/regen/16-cascade-recovery/verification.md"
-    status: DONE
-    target_location:
-      - "docs/regen/16-cascade-recovery/prompt-cascade-assessment.md"
-      - "docs/regen/16-cascade-recovery/verification.md"
     links:
       - "this-pr"
