@@ -1,0 +1,5 @@
+# ORF conflict guardrails for repeatedly conflicting PR files
+.github/workflows/ci-gates.yml merge=ours
+package.json merge=ours
+docs/regen/01-guardrails/verification.md merge=ours
+docs/regen/parity/parity-map.yaml merge=ours

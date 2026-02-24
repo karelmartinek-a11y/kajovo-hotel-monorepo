@@ -98,14 +98,10 @@ modules:
         - "legacy/hotel-backend/app/db/models.py: PortalUser"
       docs:
         - "docs/test-accounts.md"
-    status: DONE
+    status: IN_PROGRESS
     target_location:
       - "apps/kajovo-hotel-api/app/security/rbac.py"
       - "apps/kajovo-hotel-web/src/rbac.ts"
-    links:
-      - "this-pr"
-      - "this-pr-05-admin-users"
-      - "this-pr-fix-commit-pr"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
@@ -144,11 +140,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/pyproject.toml"
     links:
-      - "this-pr"
-      - "this-pr-fix-signage-tests"
-      - "this-pr-fix2"
-      - "this-pr-fix3"
-      - "this-pr-followup"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_e2e_browser_bootstrap
     required_behavior: "Web test job vždy zajistí dostupný Playwright Chromium před spuštěním testů"
@@ -161,7 +153,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/package.json:scripts.pretest"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_visual_snapshot_project_scope
     required_behavior: "Visual snapshot testy nepárují viewport varianty napříč phone/tablet/desktop projekty"
@@ -174,7 +166,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_visual_suite_gating
     required_behavior: "Default playwright test běh nepadá na visual snapshot baseline mismatch; visual suite je explicitně opt-in"
@@ -187,7 +179,7 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/tests/visual.spec.ts"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_test_command_split
     required_behavior: "Default web test command je stabilní (core gates), visual suite běží separátně"
@@ -201,7 +193,7 @@ modules:
       - "apps/kajovo-hotel-web/package.json:scripts.test"
       - "apps/kajovo-hotel-web/package.json:scripts.test:visual"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
   - module: web_playwright_browser_parity
     required_behavior: "Playwright projekty používají browser engine dostupný v CI install kroku"
@@ -215,156 +207,105 @@ modules:
     target_location:
       - "apps/kajovo-hotel-web/playwright.config.ts:projects.tablet"
     links:
-      - "this-pr"
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
 
-  - module: api_test_csrf_session_setup
-    required_behavior: "API test setup používá validní session + CSRF token pro write requesty a stabilní uvicorn bootstrap"
+  - module: repo_guardrails_sentinel
+    required_behavior: "CI sentinely brání /device/*, textu Entity ID (mimo legacy), sdílení page/view mezi admin a portal; brand/** má whitelist hardcoded barev"
+    evidence:
+      legacy:
+        - "legacy/hotel-backend/app/api/device.py"
+      docs:
+        - "docs/regen/01-guardrails/verification.md"
+        - "docs/regen/02-guardrails-self-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel/ci/guardrails-sentinel.mjs"
+      - "apps/kajovo-hotel/ci/check-regen-verification.mjs"
+      - ".github/workflows/ci-gates.yml"
+    links:
+      - "docs/regen/02-guardrails-self-fix/verification.md"
+
+
+  - module: unit_tests_ci_runtime_bootstrap
+    required_behavior: "CI unit-tests job běží bez závislosti na pnpm binárce; testy se spouští přímo přes Python"
     evidence:
       legacy:
         - "N/A"
       docs:
-        - "docs/regen/07-api-test-csrf-fix/verification.md"
+        - ".github/workflows/ci-gates.yml"
+        - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
     status: DONE
     target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-      - "apps/kajovo-hotel-api/tests/test_breakfast.py"
-      - "apps/kajovo-hotel-api/tests/test_health.py"
-      - "apps/kajovo-hotel-api/tests/test_inventory.py"
-      - "apps/kajovo-hotel-api/tests/test_issues.py"
-      - "apps/kajovo-hotel-api/tests/test_lost_found.py"
-      - "apps/kajovo-hotel-api/tests/test_reports.py"
-
-  - module: api_python_lint_ci_stability
-    required_behavior: "Python API lint gate je zelená (Ruff E/F/I), včetně CSRF middleware formátování"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/08-api-lint-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/app/security/auth.py"
-      - "apps/kajovo-hotel-api/app/api/routes/auth.py"
-      - "apps/kajovo-hotel-api/app/api/routes/users.py"
-      - "apps/kajovo-hotel-api/alembic/versions/0009_create_portal_users_table.py"
-
-  - module: api_test_sqlite_db_path_stability
-    required_behavior: "API test SQLite DB běží na existující zapisovatelné cestě v lokálu i CI"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/09-sqlite-db-path-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-      - "apps/kajovo-hotel-api/tests/test_health.py"
-      - "apps/kajovo-hotel-api/tests/test_rbac.py"
-      - "apps/kajovo-hotel-api/tests/test_users.py"
-      - ".github/workflows/ci-full.yml"
-
-  - module: api_test_sqlite_ci_data_dir_alignment
-    required_behavior: "CI i pytest fixture používají shodný SQLite data adresář apps/kajovo-hotel-api/data"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/10-sqlite-ci-data-dir-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-      - ".github/workflows/ci-full.yml"
-
-  - module: api_test_workspace_path_portability
-    required_behavior: "API test DB path není hardcoded na /workspace a funguje v GitHub Actions i lokálně"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/11-workspace-path-portability-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-
-  - module: api_test_db_tmpdir_isolation
-    required_behavior: "API test SQLite DB běží v pytest tmpdir (write-safe, bez host-specific /workspace závislosti)"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/12-api-test-tmpdir-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-
-  - module: api_test_uvicorn_cwd_stability
-    required_behavior: "API test fixture spouští uvicorn s cwd nezávislým na aktuálním pracovním adresáři"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/13-uvicorn-cwd-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/tests/conftest.py"
-
-  - module: contract_generated_client_sync
-    required_behavior: "OpenAPI export a generated shared client jsou synchronní po API změnách (včetně user password endpointů)"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/14-contract-sync-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-api/openapi.json"
-      - "packages/shared/src/generated/client.ts"
-
-  - module: delivery_tracker
-    required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/progress.md"
-        - "docs/regen/00-orf-normalization/verification.md"
-    status: DONE
-    target_location:
-      - "docs/regen/progress.md"
-      - "docs/regen/parity/parity-map.yaml"
+      - ".github/workflows/ci-gates.yml:jobs.unit-tests.steps"
+    links:
+      - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
 
 
-  - module: repo_guardrails_and_ci_policy
-    required_behavior: "CI failne při porušení zákazů /device/*, Entity ID, sdílení Admin/Portal page-view a při chybějícím docs/regen/<NN>-<slug>/verification.md v PR"
+  - module: merge_conflict_resolution_guardrails
+    required_behavior: "Konfliktní soubory CI/policy mají konzistentní finální podobu bez conflict markerů"
     evidence:
       legacy:
         - "N/A"
       docs:
         - "docs/regen/01-guardrails/verification.md"
-        - ".github/workflows/ci-gates.yml"
+        - "docs/regen/03-unit-ci-pnpm-fix/verification.md"
+        - "docs/regen/04-conflict-resolution/verification.md"
+      - "docs/regen/05-conflict-resolution-2/verification.md"
     status: DONE
     target_location:
-      - "apps/kajovo-hotel/ci/policy-sentinel.mjs"
-      - "apps/kajovo-hotel/ci/check-pr-verification-doc.mjs"
       - ".github/workflows/ci-gates.yml"
+      - "docs/regen/01-guardrails/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+      - "package.json"
     links:
-      - "this-pr"
+      - "docs/regen/04-conflict-resolution/verification.md"
 
 
-  - module: design_foundation_tokens_signage_panel
-    required_behavior: "Jednotné tokeny (Portal/Admin), signace dle manifestu a panel layout mechanismus"
+  - module: merge_conflict_resolution_guardrails_v2
+    required_behavior: "Konfliktní sada souborů je stabilizována do merge-friendly tvaru pro CI guardrails PR"
     evidence:
       legacy:
         - "N/A"
       docs:
-        - "docs/regen/02-design-foundation/token-map.md"
-        - "docs/regen/02-design-foundation/verification.md"
+        - "docs/regen/05-conflict-resolution-2/verification.md"
     status: DONE
     target_location:
-      - "packages/ui/src/tokens.css"
-      - "packages/ui/src/shell/KajovoSign.tsx"
-      - "packages/ui/src/shell/AppShell.tsx"
-      - "apps/kajovo-hotel-web/tests/signage-routes.spec.ts"
+      - ".github/workflows/ci-gates.yml"
+      - "docs/regen/01-guardrails/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+      - "package.json"
     links:
-      - "this-pr"
+      - "docs/regen/05-conflict-resolution-2/verification.md"
+
+
+  - module: repeated_conflict_autoresolve_guard
+    required_behavior: "Opakované konflikty ve 4 cílových souborech jsou řešeny auto-merge pravidlem"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/06-conflict-autoresolve/verification.md"
+    status: DONE
+    target_location:
+      - ".gitattributes"
+      - ".github/workflows/ci-gates.yml"
+      - "package.json"
+      - "docs/regen/01-guardrails/verification.md"
+      - "docs/regen/parity/parity-map.yaml"
+    links:
+      - "docs/regen/06-conflict-autoresolve/verification.md"
+
+
+  - module: github_publish_instructions
+    required_behavior: "Proces publikace lokálních commitů na GitHub je zdokumentovaný pro případy bez nastaveného remote"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/07-apply-commits/verification.md"
+    status: DONE
+    target_location:
+      - "docs/regen/07-apply-commits/verification.md"
+    links:
+      - "docs/regen/07-apply-commits/verification.md"
