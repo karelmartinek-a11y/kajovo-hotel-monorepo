@@ -8,6 +8,7 @@ import type { NavModule, NavigationRules, NavigationSection } from '../types/nav
 type AppShellProps = {
   children: React.ReactNode;
   isPopup?: boolean;
+  panelLayout?: 'admin' | 'portal';
   modules: NavModule[];
   navigationRules: NavigationRules;
   navigationSections?: NavigationSection[];
@@ -18,6 +19,7 @@ type AppShellProps = {
 export function AppShell({
   children,
   isPopup,
+  panelLayout = 'portal',
   modules,
   navigationRules,
   navigationSections,
