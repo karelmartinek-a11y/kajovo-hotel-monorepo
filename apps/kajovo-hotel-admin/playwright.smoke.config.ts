@@ -16,7 +16,15 @@ export default defineConfig({
   webServer: {
     command: [
       `PYTHONPATH=../kajovo-hotel-api python ../kajovo-hotel-api/scripts/init_smoke_db.py ${smokeDbPath}`,
-      `PYTHONPATH=../kajovo-hotel-api KAJOVO_API_DATABASE_URL=sqlite:///${smokeDbPath} KAJOVO_API_SMTP_ENABLED=false KAJOVO_API_ENVIRONMENT=test uvicorn app.main:app --host 127.0.0.1 --port 18000`,
+      [
+        'PYTHONPATH=../kajovo-hotel-api',
+        `KAJOVO_API_DATABASE_URL=sqlite:///${smokeDbPath}`,
+        'KAJOVO_API_SMTP_ENABLED=false',
+        'KAJOVO_API_ENVIRONMENT=test',
+        'KAJOVO_API_ADMIN_EMAIL=admin@kajovohotel.local',
+        'KAJOVO_API_ADMIN_PASSWORD=admin123',
+        'uvicorn app.main:app --host 127.0.0.1 --port 18000',
+      ].join(' '),
     ].join(' && '),
     cwd: '.',
     url: `${apiBaseUrl}/health`,

@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "sqlite:///./kajovo_hotel.db"
     admin_email: str = "admin@kajovohotel.local"
-    admin_password: str = ""
-    admin_password_hint: str = ""
+    admin_password: str = "admin123"
+    admin_password_hint: str = "default admin password for CI"
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
