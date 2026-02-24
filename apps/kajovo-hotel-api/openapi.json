@@ -356,19 +356,19 @@
             "title": "Entity",
             "type": "string"
           },
-          "id": {
-            "title": "Id",
+          "entity_id": {
+            "title": "Entity Id",
             "type": "integer"
           },
-          "resource_id": {
-            "title": "Resource Id",
+          "id": {
+            "title": "Id",
             "type": "integer"
           }
         },
         "required": [
           "id",
           "entity",
-          "resource_id",
+          "entity_id",
           "action",
           "detail",
           "created_at"
@@ -1812,116 +1812,6 @@
         "title": "ReportUpdate",
         "type": "object"
       },
-      "SmtpSettingsRead": {
-        "properties": {
-          "host": {
-            "title": "Host",
-            "type": "string"
-          },
-          "password_masked": {
-            "title": "Password Masked",
-            "type": "string"
-          },
-          "port": {
-            "title": "Port",
-            "type": "integer"
-          },
-          "use_ssl": {
-            "title": "Use Ssl",
-            "type": "boolean"
-          },
-          "use_tls": {
-            "title": "Use Tls",
-            "type": "boolean"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "host",
-          "port",
-          "username",
-          "use_tls",
-          "use_ssl",
-          "password_masked"
-        ],
-        "title": "SmtpSettingsRead",
-        "type": "object"
-      },
-      "SmtpSettingsUpsert": {
-        "properties": {
-          "host": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Host",
-            "type": "string"
-          },
-          "password": {
-            "maxLength": 1024,
-            "minLength": 1,
-            "title": "Password",
-            "type": "string"
-          },
-          "port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
-            "title": "Port",
-            "type": "integer"
-          },
-          "use_ssl": {
-            "default": false,
-            "title": "Use Ssl",
-            "type": "boolean"
-          },
-          "use_tls": {
-            "default": true,
-            "title": "Use Tls",
-            "type": "boolean"
-          },
-          "username": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "host",
-          "port",
-          "username",
-          "password"
-        ],
-        "title": "SmtpSettingsUpsert",
-        "type": "object"
-      },
-      "SmtpTestEmailRequest": {
-        "properties": {
-          "recipient": {
-            "maxLength": 255,
-            "minLength": 3,
-            "title": "Recipient",
-            "type": "string"
-          }
-        },
-        "required": [
-          "recipient"
-        ],
-        "title": "SmtpTestEmailRequest",
-        "type": "object"
-      },
-      "SmtpTestEmailResponse": {
-        "properties": {
-          "ok": {
-            "default": true,
-            "title": "Ok",
-            "type": "boolean"
-          }
-        },
-        "title": "SmtpTestEmailResponse",
-        "type": "object"
-      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -2153,107 +2043,6 @@
         "summary": "Auth Me",
         "tags": [
           "auth"
-        ]
-      }
-    },
-    "/api/v1/admin/settings/smtp": {
-      "get": {
-        "operationId": "get_smtp_settings_api_v1_admin_settings_smtp_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SmtpSettingsRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Smtp Settings",
-        "tags": [
-          "settings"
-        ]
-      },
-      "put": {
-        "operationId": "put_smtp_settings_api_v1_admin_settings_smtp_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SmtpSettingsUpsert"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SmtpSettingsRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Smtp Settings",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/v1/admin/settings/smtp/test-email": {
-      "post": {
-        "operationId": "test_smtp_email_api_v1_admin_settings_smtp_test_email_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SmtpTestEmailRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SmtpTestEmailResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Test Smtp Email",
-        "tags": [
-          "settings"
         ]
       }
     },
@@ -3799,14 +3588,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   },
                   "title": "Response Health Health Get",
                   "type": "object"
@@ -3831,14 +3613,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   },
                   "title": "Response Ready Ready Get",
                   "type": "object"

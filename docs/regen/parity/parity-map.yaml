@@ -309,6 +309,18 @@ modules:
     target_location:
       - "apps/kajovo-hotel-api/tests/conftest.py"
 
+  - module: contract_generated_client_sync
+    required_behavior: "OpenAPI export a generated shared client jsou synchronní po API změnách (včetně user password endpointů)"
+    evidence:
+      legacy:
+        - "N/A"
+      docs:
+        - "docs/regen/14-contract-sync-fix/verification.md"
+    status: DONE
+    target_location:
+      - "apps/kajovo-hotel-api/openapi.json"
+      - "packages/shared/src/generated/client.ts"
+
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:
