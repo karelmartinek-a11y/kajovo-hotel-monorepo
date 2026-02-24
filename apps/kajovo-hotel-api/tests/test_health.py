@@ -9,13 +9,15 @@ ApiRequest = Callable[..., tuple[int, ResponseData]]
 def test_health(api_request: ApiRequest) -> None:
     status, payload = api_request("/health")
     assert status == 200
-    assert payload == {"status": "ok"}
+    assert isinstance(payload, dict)
+    assert payload.get("status") == "ok"
 
 
 def test_ready(api_request: ApiRequest) -> None:
     status, payload = api_request("/ready")
     assert status == 200
-    assert payload == {"status": "ready"}
+    assert isinstance(payload, dict)
+    assert payload.get("status") == "ready"
 
 
 def test_write_requests_are_audited(

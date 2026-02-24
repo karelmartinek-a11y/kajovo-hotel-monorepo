@@ -37,7 +37,7 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
-import { resolveAuthProfile } from './rbac';
+import { resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
 import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
@@ -1376,7 +1376,34 @@ function ReportsDetail(): JSX.Element {
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const auth = React.useMemo(() => resolveAuthProfile(location.search), [location.search]);
+  const [auth, setAuth] = React.useState<AuthProfile | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    resolveAuthProfile()
+      .then((profile) => {
+        if (!cancelled) setAuth(profile);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAuth({
+            userId: 'anonymous',
+            role: 'recepce',
+            roles: ['recepce'],
+            activeRole: null,
+            permissions: rolePermissions('recepce'),
+            actorType: 'portal',
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search]);
+
+  if (!auth) {
+    return <SkeletonPage />;
+  }
   const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])

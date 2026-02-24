@@ -47,22 +47,52 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     Base.metadata.create_all(bind=engine)
 
     with sqlite3.connect(api_db_path) as connection:
+        # Admin account for auth/login tests.
         connection.execute(
-            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
+            """
+            INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
+            VALUES (?, ?, ?, ?, 1)
+            """,
             (
-                "warehouse@example.com",
-                "warehouse",
-                _scrypt_hash("warehouse-pass", b"warehouse-salt"),
+                "Admin",
+                "User",
+                "admin@kajovohotel.local",
+                _scrypt_hash("admin123", b"admin-salt"),
             ),
         )
         connection.execute(
-            "INSERT INTO portal_users (email, role, password_hash, is_active) VALUES (?, ?, ?, 1)",
-            (
-                "maintenance@example.com",
-                "maintenance",
-                _scrypt_hash("maintenance-pass", b"maintenance-salt"),
-            ),
+            """
+            INSERT INTO portal_user_roles (user_id, role)
+            VALUES ((SELECT id FROM portal_users WHERE email = ?), ?)
+            """,
+            ("admin@kajovohotel.local", "admin"),
         )
+
+        # Portal users for other flows.
+        for email, role, salt in [
+            ("warehouse@example.com", "warehouse", b"warehouse-salt"),
+            ("maintenance@example.com", "maintenance", b"maintenance-salt"),
+        ]:
+            connection.execute(
+                """
+                INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
+                VALUES (?, ?, ?, ?, 1)
+                """,
+                (
+                    role.capitalize(),
+                    "User",
+                    email,
+                    _scrypt_hash(f"{role}-pass", salt),
+                ),
+            )
+            connection.execute(
+                """
+                INSERT INTO portal_user_roles (user_id, role)
+                VALUES ((SELECT id FROM portal_users WHERE email = ?), ?)
+                """,
+                (email, role),
+            )
+
         connection.commit()
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -71,6 +101,8 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
 
     env = os.environ.copy()
     env["KAJOVO_API_DATABASE_URL"] = database_url
+    env["KAJOVO_API_ADMIN_EMAIL"] = "admin@kajovohotel.local"
+    env["KAJOVO_API_ADMIN_PASSWORD"] = "admin123"
 
     api_app_dir = Path(__file__).resolve().parents[1]
 
