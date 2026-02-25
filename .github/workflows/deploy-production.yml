@@ -37,8 +37,10 @@ jobs:
           port: ${{ secrets.HOTEL_DEPLOY_PORT }}
           script: |
             set -euo pipefail
+            SSH_CMD="ssh -i /root/.ssh/deploy_kajovo_hotel_monorepo -o IdentitiesOnly=yes"
             if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
-              git clone https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
+              GIT_SSH_COMMAND="$SSH_CMD" git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
             fi
             git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
+            git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
