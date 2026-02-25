@@ -33,6 +33,6 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" build --pull
 
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --no-deps --force-recreate api web admin
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate postgres api web admin
 
 printf '%s HOTEL web: deploy z monorepa (%s)\n' "$(date '+%F %T')" "$(git rev-parse --short HEAD)" >> "$LOG_FILE"
