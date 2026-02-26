@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.db.models import AuditTrail
 from app.db.session import SessionLocal
-from app.security.rbac import parse_identity
+from app.security.rbac import parse_identity, role_for_audit
 
 logger = logging.getLogger("kajovo.api")
 
@@ -69,6 +69,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         module = _module_from_path(request.url.path)
         actor_id, actor_name, actor_role = parse_identity(request)
+        actor_role_audit = role_for_audit(actor_role)
         request.state.request_id = request_id
         request.state.actor = actor_name
         request.state.actor_id = actor_id
@@ -95,7 +96,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             "request_id": request_id,
             "user": actor_name,
             "user_id": actor_id,
-            "role": actor_role,
+            "role": actor_role_audit,
             "module": module,
             "method": request.method,
             "path": request.url.path,
@@ -112,7 +113,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                         request_id=request_id,
                         actor=actor_name,
                         actor_id=actor_id,
-                        actor_role=actor_role,
+                        actor_role=actor_role_audit,
                         module=module,
                         action=request.method,
                         resource=request.url.path,

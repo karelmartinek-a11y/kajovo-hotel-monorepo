@@ -198,7 +198,7 @@ def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link
     service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel admin unlock",
+            subject="KájovoHotel admin password hint",
             body=f"Pro odblokování admin účtu použijte odkaz: {unlock_link}",
         )
     )

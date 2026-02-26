@@ -47,6 +47,36 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "breakfast:write",
         "inventory:read",
     },
+    "warehouse": {
+        "dashboard:read",
+        "inventory:read",
+        "inventory:write",
+    },
+}
+
+ROLE_ALIASES: dict[str, str] = {
+    "admin": "admin",
+    "pokojská": "pokojská",
+    "housekeeping": "pokojská",
+    "údržba": "údržba",
+    "udrzba": "údržba",
+    "maintenance": "údržba",
+    "recepce": "recepce",
+    "reception": "recepce",
+    "snídaně": "snídaně",
+    "snidane": "snídaně",
+    "breakfast": "snídaně",
+    "warehouse": "warehouse",
+    "sklad": "warehouse",
+}
+
+ROLE_AUDIT_EXPORT: dict[str, str] = {
+    "admin": "admin",
+    "pokojská": "housekeeping",
+    "údržba": "maintenance",
+    "recepce": "reception",
+    "snídaně": "breakfast",
+    "warehouse": "warehouse",
 }
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
@@ -54,7 +84,11 @@ WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 def normalize_role(raw_role: str | None) -> str:
     role = (raw_role or "recepce").strip().lower()
-    return role if role in ROLE_PERMISSIONS else "recepce"
+    return ROLE_ALIASES.get(role, "recepce")
+
+
+def role_for_audit(raw_role: str | None) -> str:
+    return ROLE_AUDIT_EXPORT.get(normalize_role(raw_role), "reception")
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:

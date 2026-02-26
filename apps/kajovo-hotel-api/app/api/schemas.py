@@ -264,7 +264,7 @@ class InventoryItemWithAuditRead(InventoryItemDetailRead):
 
 
 
-ALLOWED_PORTAL_ROLES = {"pokojská", "údržba", "recepce", "snídaně"}
+ALLOWED_PORTAL_ROLES = {"pokojská", "údržba", "recepce", "snídaně", "housekeeping", "maintenance", "reception", "breakfast", "warehouse", "sklad"}
 
 
 class PortalUserBasePayload(BaseModel):
@@ -315,6 +315,9 @@ class PortalUserBasePayload(BaseModel):
 
 
 class PortalUserCreate(PortalUserBasePayload):
+    first_name: str = Field(default="New", min_length=1, max_length=120)
+    last_name: str = Field(default="User", min_length=1, max_length=120)
+    roles: list[str] = Field(default_factory=lambda: ["recepce"], min_length=1)
     password: str = Field(min_length=8, max_length=255)
 
 
