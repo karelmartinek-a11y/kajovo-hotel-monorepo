@@ -26,7 +26,7 @@ export default defineConfig({
     },
     {
       command:
-        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-admin\"; corepack pnpm exec vite preview --host 127.0.0.1 --port 4173 --strictPort'",
+        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-admin\"; corepack pnpm build && corepack pnpm exec vite preview --host 127.0.0.1 --port 4173 --strictPort'",
       cwd: '.',
       url: `http://127.0.0.1:${adminPort}/`,
       timeout: 300_000,
@@ -34,7 +34,7 @@ export default defineConfig({
     },
     {
       command:
-        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-web\"; corepack pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort'",
+        "bash -lc 'set -euo pipefail; ROOT=$(git rev-parse --show-toplevel); cd \"$ROOT/apps/kajovo-hotel-web\"; corepack pnpm build && corepack pnpm exec vite preview --host 127.0.0.1 --port 4174 --strictPort'",
       cwd: '.',
       url: `http://127.0.0.1:${portalPort}/`,
       timeout: 300_000,
