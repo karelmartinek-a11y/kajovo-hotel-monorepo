@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     db_pool_recycle_seconds: int = 1800
 
     # --- Admin auth (single password) ---
+    admin_username: str = Field(..., min_length=1)
     # Store password hash (argon2/bcrypt) here. Never store plaintext.
     admin_password_hash: str = Field(..., min_length=20)
     admin_list_default_limit: int = 50

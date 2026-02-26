@@ -31,7 +31,6 @@ from ..db.models import (
 from ..db.session import get_db
 from ..media.storage import MediaStorage, get_media_paths_for_photo
 from ..security.admin_auth import (
-    ADMIN_USERNAME,
     AdminAuthError,
     admin_change_password,
     admin_login_check,
@@ -862,6 +861,7 @@ def admin_users_create(
     email: str = Form(""),
     role: str = Form(""),
     db: Session = Depends(get_db),
+    settings: Settings = Depends(Settings.from_env),
 ):
     try:
         admin_require(request)
@@ -874,7 +874,7 @@ def admin_users_create(
     if not name or not email_norm:
         request.session["flash"] = {"type": "error", "message": "Jméno a e-mail jsou povinné."}
         return _redirect("/admin/users")
-    if email_norm == ADMIN_USERNAME:
+    if email_norm == settings.admin_username.strip().lower():
         request.session["flash"] = {"type": "error", "message": "Tento e-mail je vyhrazen pro admin účet."}
         return _redirect("/admin/users")
 

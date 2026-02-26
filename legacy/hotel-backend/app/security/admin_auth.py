@@ -14,8 +14,6 @@ from sqlalchemy.orm import Session
 from ..config import Settings, get_settings
 from ..db.models import AdminSingleton
 
-ADMIN_USERNAME = "provoz@hotelchodovasc.cz"
-
 # HOTEL constraint: single admin password (no accounts)
 # We store only a password hash (argon2/bcrypt) and use server-side session cookie.
 
@@ -168,7 +166,7 @@ def _get_or_seed_admin_singleton(db: Session, settings: Settings) -> AdminSingle
 
 def admin_login_check(*, username: str, password: str, db: Session | None, settings: Settings) -> bool:
     try:
-        if (username or "").strip().lower() != ADMIN_USERNAME:
+        if (username or "").strip().lower() != settings.admin_username.strip().lower():
             return False
         authenticate_admin_password(password, db=db, settings=settings)
         return True
