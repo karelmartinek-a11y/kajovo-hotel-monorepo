@@ -75,7 +75,7 @@ def api_server(api_db_path: Path) -> Generator[tuple[str, deque[str]], None, Non
                 INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
                 VALUES (?, ?, ?, ?, 1)
                 """,
-                (first_name, last_name, email, _scrypt_hash(password, email.encode('utf-8')[:16])),
+                (first_name, last_name, email, _scrypt_hash(password, email.encode("utf-8")[:16])),
             )
             user_id = int(cursor.lastrowid)
             connection.execute(

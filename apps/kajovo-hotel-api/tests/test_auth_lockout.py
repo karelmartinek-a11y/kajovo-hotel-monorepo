@@ -43,9 +43,23 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
         connection.execute(
             """
             INSERT OR REPLACE INTO auth_lockout_states
-            (id, actor_type, principal, failed_attempts, first_failed_at, last_failed_at, locked_until)
+            (
+              id,
+              actor_type,
+              principal,
+              failed_attempts,
+              first_failed_at,
+              last_failed_at,
+              locked_until
+            )
             VALUES (
-              COALESCE((SELECT id FROM auth_lockout_states WHERE actor_type = 'admin' AND principal = ?), NULL),
+              COALESCE(
+                (
+                  SELECT id FROM auth_lockout_states
+                  WHERE actor_type = 'admin' AND principal = ?
+                ),
+                NULL
+              ),
               'admin', ?, 3, ?, ?, ?
             )
             """,

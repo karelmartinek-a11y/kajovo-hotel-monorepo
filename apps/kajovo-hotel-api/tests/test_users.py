@@ -234,9 +234,7 @@ def test_user_validation_rules(api_base_url: str) -> None:
         assert status == 422
 
 
-def test_password_not_logged_in_audit_detail(
-    api_base_url: str, api_db_path: Path
-) -> None:
+def test_password_not_logged_in_audit_detail(api_base_url: str, api_db_path: Path) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(

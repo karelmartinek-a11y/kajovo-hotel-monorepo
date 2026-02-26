@@ -262,9 +262,18 @@ class InventoryItemWithAuditRead(InventoryItemDetailRead):
     audit_logs: list[InventoryAuditLogRead]
 
 
-
-
-ALLOWED_PORTAL_ROLES = {"pokojská", "údržba", "recepce", "snídaně", "housekeeping", "maintenance", "reception", "breakfast", "warehouse", "sklad"}
+ALLOWED_PORTAL_ROLES = {
+    "pokojská",
+    "údržba",
+    "recepce",
+    "snídaně",
+    "housekeeping",
+    "maintenance",
+    "reception",
+    "breakfast",
+    "warehouse",
+    "sklad",
+}
 
 
 class PortalUserBasePayload(BaseModel):
@@ -347,6 +356,7 @@ class PortalUserRead(BaseModel):
     created_at: datetime | None
     updated_at: datetime | None
 
+
 class AdminLoginRequest(BaseModel):
     email: str
     password: str
@@ -359,7 +369,6 @@ class PortalLoginRequest(BaseModel):
 
 class LogoutResponse(BaseModel):
     ok: bool = True
-
 
 
 class ForgotPasswordRequest(BaseModel):

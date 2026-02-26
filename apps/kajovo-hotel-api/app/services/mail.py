@@ -192,8 +192,6 @@ def send_portal_onboarding(*, service: EmailService, recipient: str) -> None:
     )
 
 
-
-
 def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> None:
     service.send(
         MailMessage(
@@ -214,7 +212,9 @@ def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link:
     )
 
 
-def send_user_password_reset_link(*, service: EmailService, recipient: str, reset_link: str) -> None:
+def send_user_password_reset_link(
+    *, service: EmailService, recipient: str, reset_link: str
+) -> None:
     service.send(
         MailMessage(
             recipient=recipient,
@@ -222,6 +222,7 @@ def send_user_password_reset_link(*, service: EmailService, recipient: str, rese
             body=f"Pro reset hesla použijte odkaz: {reset_link}",
         )
     )
+
 
 def build_email_service(
     settings: Settings,

@@ -271,7 +271,9 @@ class PortalUser(Base):
 class PortalUserRole(Base):
     __tablename__ = "portal_user_roles"
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("portal_users.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("portal_users.id", ondelete="CASCADE"), primary_key=True
+    )
     role: Mapped[str] = mapped_column(String(32), primary_key=True, index=True)
     user: Mapped[PortalUser] = relationship("PortalUser", back_populates="roles")
 
@@ -303,7 +305,9 @@ class AuthLockoutState(Base):
     first_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_forgot_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_forgot_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[str] = mapped_column(
         DateTime(timezone=True),
@@ -319,6 +323,8 @@ class AuthUnlockToken(Base):
     actor_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     principal: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())

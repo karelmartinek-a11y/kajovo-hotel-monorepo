@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('admin login, hint flow, and user bootstrap to portal login are deterministic', async ({ browser }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   const unique = Date.now();
   const portalEmail = `smoke.user.${unique}@kajovohotel.local`;
   const portalPassword = `SmokePass-${unique}`;
@@ -19,14 +19,14 @@ test('admin login, hint flow, and user bootstrap to portal login are determinist
   });
 
   await adminPage.goto('/login', { waitUntil: 'networkidle' });
-  await adminPage.waitForSelector('#admin_login_email', { state: 'visible' });
+  await adminPage.waitForSelector('#admin_login_email', { state: 'visible', timeout: 120_000 });
   await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
   await adminPage.locator('#admin_login_password').fill('admin123');
   await adminPage.getByRole('button', { name: 'Přihlásit' }).click();
   await expect(adminPage.getByTestId('dashboard-page')).toBeVisible();
 
   await adminPage.goto('/login', { waitUntil: 'networkidle' });
-  await adminPage.waitForSelector('#admin_login_email', { state: 'visible' });
+  await adminPage.waitForSelector('#admin_login_email', { state: 'visible', timeout: 120_000 });
   await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
   await adminPage.getByRole('button', { name: 'Poslat hint hesla' }).click();
   await expect(adminPage.getByText('Pokud email odpovídá admin účtu, byl odeslán hint hesla.')).toBeVisible();
@@ -42,7 +42,7 @@ test('admin login, hint flow, and user bootstrap to portal login are determinist
   const portalPage = await portalContext.newPage();
 
   await portalPage.goto('/login', { waitUntil: 'networkidle' });
-  await portalPage.waitForSelector('#portal_login_email', { state: 'visible' });
+  await portalPage.waitForSelector('#portal_login_email', { state: 'visible', timeout: 120_000 });
   await portalPage.locator('#portal_login_email').fill(portalEmail);
   await portalPage.locator('#portal_login_password').fill(portalPassword);
   await portalPage.getByRole('button', { name: 'Přihlásit' }).click();

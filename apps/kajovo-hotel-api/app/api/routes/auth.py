@@ -169,7 +169,9 @@ def _generic_auth_error() -> HTTPException:
 
 
 @router.post("/admin/login", response_model=AuthIdentityResponse)
-def admin_login(payload: AdminLoginRequest, response: Response, db: Session = Depends(get_db)) -> AuthIdentityResponse:
+def admin_login(
+    payload: AdminLoginRequest, response: Response, db: Session = Depends(get_db)
+) -> AuthIdentityResponse:
     settings = get_settings()
     email = _normalize_email(payload.email)
     admin_email = _normalize_email(settings.admin_email)
@@ -183,7 +185,9 @@ def admin_login(payload: AdminLoginRequest, response: Response, db: Session = De
     )
 
     if _is_locked(state, now) or not valid_credentials:
-        state, newly_locked = _mark_failure_and_lock_if_needed(db=db, actor_type="admin", principal=admin_email)
+        state, newly_locked = _mark_failure_and_lock_if_needed(
+            db=db, actor_type="admin", principal=admin_email
+        )
         if newly_locked:
             raw_token = _issue_unlock_token(db=db, actor_type="admin", principal=admin_email)
             service = build_email_service(settings, _smtp_config(db))
@@ -198,7 +202,9 @@ def admin_login(payload: AdminLoginRequest, response: Response, db: Session = De
     csrf_token = secrets.token_urlsafe(32)
     response.set_cookie(
         SESSION_COOKIE_NAME,
-        create_session_cookie(settings.admin_email, "admin", "admin", roles=["admin"], active_role="admin"),
+        create_session_cookie(
+            settings.admin_email, "admin", "admin", roles=["admin"], active_role="admin"
+        ),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
@@ -240,7 +246,10 @@ def admin_hint(payload: HintRequest, db: Session = Depends(get_db)) -> LogoutRes
 
     state = _get_or_create_state(db, "admin", admin_email)
     now = _now()
-    if state.last_forgot_sent_at is not None and now - state.last_forgot_sent_at < _FORGOT_RATE_LIMIT:
+    if (
+        state.last_forgot_sent_at is not None
+        and now - state.last_forgot_sent_at < _FORGOT_RATE_LIMIT
+    ):
         db.commit()
         return LogoutResponse()
 
@@ -249,7 +258,9 @@ def admin_hint(payload: HintRequest, db: Session = Depends(get_db)) -> LogoutRes
     db.add(state)
 
     service = build_email_service(settings, _smtp_config(db))
-    unlock_link = f"https://portal.kajovohotel.local/api/auth/unlock?actor_type=admin&token={raw_token}"
+    unlock_link = (
+        f"https://portal.kajovohotel.local/api/auth/unlock?actor_type=admin&token={raw_token}"
+    )
     send_admin_unlock_link(service=service, recipient=admin_email, unlock_link=unlock_link)
 
     db.commit()
@@ -264,9 +275,7 @@ def portal_login(
 ) -> AuthIdentityResponse:
     email = _normalize_email(payload.email)
     user = db.execute(
-        select(PortalUser)
-        .options(selectinload(PortalUser.roles))
-        .where(PortalUser.email == email)
+        select(PortalUser).options(selectinload(PortalUser.roles)).where(PortalUser.email == email)
     ).scalar_one_or_none()
 
     state = _get_or_create_state(db, "portal", email)
@@ -280,7 +289,9 @@ def portal_login(
     )
 
     if _is_locked(state, now) or not valid_credentials:
-        state, newly_locked = _mark_failure_and_lock_if_needed(db=db, actor_type="portal", principal=email)
+        state, newly_locked = _mark_failure_and_lock_if_needed(
+            db=db, actor_type="portal", principal=email
+        )
         if newly_locked and user is not None:
             raw_token = _issue_unlock_token(db=db, actor_type="portal", principal=email)
             settings = get_settings()
@@ -324,7 +335,9 @@ def portal_login(
 
 
 @router.post("/forgot", response_model=LogoutResponse)
-def portal_forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)) -> LogoutResponse:
+def portal_forgot_password(
+    payload: ForgotPasswordRequest, db: Session = Depends(get_db)
+) -> LogoutResponse:
     email = _normalize_email(payload.email)
     user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
     if user is None:
@@ -336,7 +349,10 @@ def portal_forgot_password(payload: ForgotPasswordRequest, db: Session = Depends
         db.commit()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request unavailable")
 
-    if state.last_forgot_sent_at is not None and now - state.last_forgot_sent_at < _FORGOT_RATE_LIMIT:
+    if (
+        state.last_forgot_sent_at is not None
+        and now - state.last_forgot_sent_at < _FORGOT_RATE_LIMIT
+    ):
         db.commit()
         return LogoutResponse()
 
@@ -346,7 +362,9 @@ def portal_forgot_password(payload: ForgotPasswordRequest, db: Session = Depends
 
     settings = get_settings()
     service = build_email_service(settings, _smtp_config(db))
-    reset_link = f"https://portal.kajovohotel.local/api/auth/unlock?actor_type=portal&token={raw_token}"
+    reset_link = (
+        f"https://portal.kajovohotel.local/api/auth/unlock?actor_type=portal&token={raw_token}"
+    )
     send_user_password_reset_link(service=service, recipient=email, reset_link=reset_link)
 
     db.commit()
@@ -396,7 +414,9 @@ def portal_change_password(
 ) -> LogoutResponse:
     session = require_session(request)
     if session.get("actor_type") != "portal":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing actor type: portal")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Missing actor type: portal"
+        )
 
     email = _normalize_email(session["email"])
     user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
@@ -410,8 +430,6 @@ def portal_change_password(
     return LogoutResponse()
 
 
-
-
 @router.post("/select-role", response_model=AuthIdentityResponse)
 def select_portal_role(
     payload: SelectRoleRequest,
@@ -420,10 +438,15 @@ def select_portal_role(
 ) -> AuthIdentityResponse:
     session = require_session(request)
     if session.get("actor_type") != "portal":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing actor type: portal")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Missing actor type: portal"
+        )
 
     selected = payload.role.strip().lower()
-    roles = [str(item) for item in (session.get("roles") if isinstance(session.get("roles"), list) else [])]
+    roles = [
+        str(item)
+        for item in (session.get("roles") if isinstance(session.get("roles"), list) else [])
+    ]
     if selected not in roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role not assigned")
 

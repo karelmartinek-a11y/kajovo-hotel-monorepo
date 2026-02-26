@@ -126,7 +126,9 @@ def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     normalized_email = _normalize_email(str(payload.email))
-    email_owner = db.execute(select(PortalUser).where(PortalUser.email == normalized_email)).scalar_one_or_none()
+    email_owner = db.execute(
+        select(PortalUser).where(PortalUser.email == normalized_email)
+    ).scalar_one_or_none()
     if email_owner is not None and email_owner.id != user_id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
 
