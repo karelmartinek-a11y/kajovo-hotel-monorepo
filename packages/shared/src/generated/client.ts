@@ -423,6 +423,9 @@ export const apiClient = {
   async resetUserPasswordApiV1UsersUserIdPasswordResetPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
     return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password/reset`, undefined, body);
   },
+  async sendUserPasswordResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);
+  },
   async healthHealthGet(): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('GET', `/health`, undefined, undefined);
   },
