@@ -20,9 +20,7 @@ def test_ready(api_request: ApiRequest) -> None:
     assert payload.get("status") == "ready"
 
 
-def test_write_requests_are_audited(
-    api_request: ApiRequest, api_db_path: Path
-) -> None:
+def test_write_requests_are_audited(api_request: ApiRequest, api_db_path: Path) -> None:
     status, created = api_request(
         "/api/v1/reports",
         method="POST",

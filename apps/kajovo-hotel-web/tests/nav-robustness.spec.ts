@@ -7,6 +7,24 @@ const extraModules = [
 ];
 
 test.beforeEach(async ({ page }) => {
+
+  await page.route('**/api/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        email: 'qa@example.com',
+        role: 'manager',
+        permissions: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read'],
+        actor_type: 'portal',
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/lost-found**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+  await page.route('**/api/v1/issues**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+  await page.route('**/api/v1/reports**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+
   await page.addInitScript((modules) => {
     (window as Window & { __KAJOVO_TEST_NAV__?: { modules: unknown[] } }).__KAJOVO_TEST_NAV__ = { modules };
   }, extraModules);

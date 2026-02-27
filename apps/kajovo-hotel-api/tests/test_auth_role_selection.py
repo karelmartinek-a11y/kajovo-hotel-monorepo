@@ -4,7 +4,14 @@ import urllib.request
 from http.cookiejar import CookieJar
 
 
-def raw_request(opener, base_url: str, path: str, method: str = "GET", payload: dict[str, object] | None = None, headers: dict[str, str] | None = None):
+def raw_request(
+    opener,
+    base_url: str,
+    path: str,
+    method: str = "GET",
+    payload: dict[str, object] | None = None,
+    headers: dict[str, str] | None = None,
+):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     req_headers = headers.copy() if headers else {}
     if payload is not None:

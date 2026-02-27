@@ -31,6 +31,13 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "Chybi prikaz: $1"
 }
 
+require_env() {
+  local name="$1"
+  if [ -z "${!name:-}" ]; then
+    die "Chybi povinna proměnná prostředí: $name"
+  fi
+}
+
 require_cmd docker
 require_cmd curl
 
@@ -59,16 +66,21 @@ else
   die "Chybi $PROD_ENV"
 fi
 
-ADMIN_USERNAME="${ADMIN_USERNAME:-provoz@hotelchodovasc.cz}"
-ADMIN_HASH_ESCAPED='$$argon2id$$v=19$$m=65536,t=3,p=4$$t9+7cfDBMNoQTVysEYitDw$$dAOWeqYXSp5yI6zI4o7CFDAjIkr509rfrH+BmyoIJnk'
+require_env HOTEL_ADMIN_USERNAME
+require_env HOTEL_ADMIN_PASSWORD
+require_env HOTEL_ADMIN_PASSWORD_HASH
+require_env HOTEL_SESSION_SECRET
+require_env HOTEL_CSRF_SECRET
+require_env HOTEL_CRYPTO_SECRET
+require_env HOTEL_SANDBOX_POSTGRES_PASSWORD
 
 # vygeneruj sandbox .env (použije centralni sandbox DB)
 cat > "$ENV_FILE" <<EOF
 POSTGRES_USER=hotelapp_sandbox
-POSTGRES_PASSWORD=hotelapp_sandbox_pw
+POSTGRES_PASSWORD=${HOTEL_SANDBOX_POSTGRES_PASSWORD}
 POSTGRES_DB=hotelapp_sandbox
-DATABASE_URL=postgresql+psycopg://hotelapp_sandbox:hotelapp_sandbox_pw@${CENTRAL_PG_HOST}:${CENTRAL_PG_PORT}/hotelapp_sandbox
-HOTEL_DATABASE_URL=postgresql+psycopg://hotelapp_sandbox:hotelapp_sandbox_pw@${CENTRAL_PG_HOST}:${CENTRAL_PG_PORT}/hotelapp_sandbox
+DATABASE_URL=postgresql+psycopg://hotelapp_sandbox:${HOTEL_SANDBOX_POSTGRES_PASSWORD}@${CENTRAL_PG_HOST}:${CENTRAL_PG_PORT}/hotelapp_sandbox
+HOTEL_DATABASE_URL=postgresql+psycopg://hotelapp_sandbox:${HOTEL_SANDBOX_POSTGRES_PASSWORD}@${CENTRAL_PG_HOST}:${CENTRAL_PG_PORT}/hotelapp_sandbox
 DB_HOST=${CENTRAL_PG_HOST}
 DB_PORT=${CENTRAL_PG_PORT}
 RUN_MIGRATIONS=0
@@ -83,14 +95,16 @@ HOTEL_SESSION_COOKIE_SAMESITE=lax
 SESSION_COOKIE_SECURE=false
 HOTEL_SESSION_COOKIE_SECURE=false
 SESSION_COOKIE_MAX_AGE_SECONDS=43200
-SESSION_SECRET=${SESSION_SECRET:-sandbox-session-secret-0123456789abcdef}
-HOTEL_SESSION_SECRET=${HOTEL_SESSION_SECRET:-sandbox-session-secret-0123456789abcdef}
-CSRF_SECRET=${CSRF_SECRET:-sandbox-csrf-secret-0123456789abcdef}
-HOTEL_CSRF_SECRET=${HOTEL_CSRF_SECRET:-sandbox-csrf-secret-0123456789abcdef}
-CRYPTO_SECRET=${CRYPTO_SECRET:-sandbox-crypto-secret}
-HOTEL_CRYPTO_SECRET=${HOTEL_CRYPTO_SECRET:-sandbox-crypto-secret}
-ADMIN_PASSWORD_HASH=${ADMIN_HASH_ESCAPED}
-HOTEL_ADMIN_PASSWORD_HASH=${ADMIN_HASH_ESCAPED}
+SESSION_SECRET=${HOTEL_SESSION_SECRET}
+HOTEL_SESSION_SECRET=${HOTEL_SESSION_SECRET}
+CSRF_SECRET=${HOTEL_CSRF_SECRET}
+HOTEL_CSRF_SECRET=${HOTEL_CSRF_SECRET}
+CRYPTO_SECRET=${HOTEL_CRYPTO_SECRET}
+HOTEL_CRYPTO_SECRET=${HOTEL_CRYPTO_SECRET}
+ADMIN_USERNAME=${HOTEL_ADMIN_USERNAME}
+HOTEL_ADMIN_USERNAME=${HOTEL_ADMIN_USERNAME}
+ADMIN_PASSWORD_HASH=${HOTEL_ADMIN_PASSWORD_HASH}
+HOTEL_ADMIN_PASSWORD_HASH=${HOTEL_ADMIN_PASSWORD_HASH}
 ADMIN_PASSWORD_SEED=
 LOG_LEVEL=INFO
 HOTEL_LOG_LEVEL=INFO
@@ -183,8 +197,8 @@ fi
 curl -fsS -b "$COOKIE_FILE" -c "$COOKIE_FILE" \
   -X POST \
   --data-urlencode "csrf_token=$CSRF" \
-  --data-urlencode "username=$ADMIN_USERNAME" \
-  --data-urlencode "password=+Sin8glov8" \
+  --data-urlencode "username=$HOTEL_ADMIN_USERNAME" \
+  --data-urlencode "password=$HOTEL_ADMIN_PASSWORD" \
   http://127.0.0.1:18201/admin/login -o /dev/null
 
 log "Sandbox testy HOTEL OK"

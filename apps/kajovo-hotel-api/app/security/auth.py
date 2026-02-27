@@ -27,7 +27,13 @@ def _sign(raw: bytes) -> str:
     return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
 
 
-def create_session_cookie(email: str, role: str, actor_type: str, roles: list[str] | None = None, active_role: str | None = None) -> str:
+def create_session_cookie(
+    email: str,
+    role: str,
+    actor_type: str,
+    roles: list[str] | None = None,
+    active_role: str | None = None,
+) -> str:
     normalized_roles = [normalize_role(r) for r in (roles or [role])]
     payload = {
         "email": email,
@@ -63,12 +69,20 @@ def read_session_cookie(cookie_value: str | None) -> dict[str, str | list[str] |
     role = normalize_role(str(data.get("role", "")))
     actor_type = str(data.get("actor_type", "portal"))
     raw_roles = data.get("roles", [role])
-    roles = [normalize_role(str(item)) for item in raw_roles] if isinstance(raw_roles, list) else [role]
+    roles = (
+        [normalize_role(str(item)) for item in raw_roles] if isinstance(raw_roles, list) else [role]
+    )
     active_role_raw = data.get("active_role")
     active_role = normalize_role(str(active_role_raw)) if active_role_raw else None
     if not email:
         return None
-    return {"email": email, "role": role, "roles": roles, "active_role": active_role, "actor_type": actor_type}
+    return {
+        "email": email,
+        "role": role,
+        "roles": roles,
+        "active_role": active_role,
+        "actor_type": actor_type,
+    }
 
 
 def require_session(request: Request) -> dict[str, str | list[str] | None]:
