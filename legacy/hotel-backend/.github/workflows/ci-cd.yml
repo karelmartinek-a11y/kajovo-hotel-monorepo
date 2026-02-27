@@ -113,6 +113,7 @@ jobs:
               echo "HOTEL_DEPLOY_TAG=${DEPLOY_TAG}" > /opt/hotelapp/deploy/.env
             fi
             cd /opt/hotelapp/deploy/sandbox
+            set +x; set -a; source /opt/hotelapp/deploy/.env; set +a; set -x
             if ! ./run-tests.sh; then
               echo "Sandbox run-tests.sh selhal, pokračuji v deploy (logy viz /opt/hotelapp/deploy/sandbox)." >&2
             fi

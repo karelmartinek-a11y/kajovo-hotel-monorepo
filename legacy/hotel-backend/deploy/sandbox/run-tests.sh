@@ -39,7 +39,7 @@ require_env() {
 
 require_admin_auth_env() {
   if [ -z "${HOTEL_ADMIN_USERNAME:-}" ] || [ -z "${HOTEL_ADMIN_PASSWORD:-}" ]; then
-    die "Admin login test vyzaduje HOTEL_ADMIN_USERNAME a HOTEL_ADMIN_PASSWORD (nastavte je jako env proměnné; hodnoty se nezalogují)"
+    die "Admin login test vyzaduje HOTEL_ADMIN_USERNAME a HOTEL_ADMIN_PASSWORD"
   fi
 }
 
