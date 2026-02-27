@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
@@ -11,9 +12,10 @@ from app.api.schemas import (
     AuthIdentityResponse,
     LogoutResponse,
     PortalLoginRequest,
+    SelectRoleRequest,
 )
 from app.config import get_settings
-from app.db.models import PortalUser
+from app.db.models import AuthLockoutState, PortalSmtpSettings, PortalUser
 from app.db.session import get_db
 from app.security.auth import (
     CSRF_COOKIE_NAME,
@@ -23,6 +25,8 @@ from app.security.auth import (
     get_permissions,
     require_session,
 )
+from app.security.rbac import normalize_role
+from app.services.mail import StoredSmtpConfig, build_email_service, send_admin_password_hint
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -51,11 +55,54 @@ def hash_password(password: str) -> str:
     return f"scrypt${salt.hex()}${digest.hex()}"
 
 
+def _stored_smtp_from_record(record: PortalSmtpSettings) -> StoredSmtpConfig:
+    return StoredSmtpConfig(
+        host=record.host,
+        port=record.port,
+        username=record.username,
+        use_tls=record.use_tls,
+        use_ssl=record.use_ssl,
+        password_encrypted=record.password_encrypted,
+    )
+
+
+def _user_roles(user: PortalUser) -> list[str]:
+    return [role.role for role in user.roles]
+
+
+def _is_locked(state: AuthLockoutState | None) -> bool:
+    if state is None or state.locked_until is None:
+        return False
+    locked_until = state.locked_until
+    if isinstance(locked_until, str):
+        try:
+            locked_until = datetime.fromisoformat(locked_until)
+        except ValueError:
+            return False
+    if isinstance(locked_until, datetime):
+        if locked_until.tzinfo is not None:
+            return locked_until > datetime.now(timezone.utc)
+        return locked_until > datetime.utcnow()
+    return False
+
+
 @router.post("/admin/login", response_model=AuthIdentityResponse)
-def admin_login(payload: AdminLoginRequest, response: Response) -> AuthIdentityResponse:
+def admin_login(
+    payload: AdminLoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> AuthIdentityResponse:
     settings = get_settings()
+    email = payload.email.strip().lower()
+    lockout = db.execute(
+        select(AuthLockoutState).where(
+            AuthLockoutState.actor_type == "admin",
+            AuthLockoutState.principal == email,
+        )
+    ).scalar_one_or_none()
     if (
-        payload.email.strip().lower() != settings.admin_email.strip().lower()
+        _is_locked(lockout)
+        or email != settings.admin_email.strip().lower()
         or payload.password != settings.admin_password
     ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -93,11 +140,21 @@ def admin_logout(response: Response) -> LogoutResponse:
 
 
 @router.post("/admin/hint", response_model=LogoutResponse)
-def admin_hint(payload: HintRequest) -> LogoutResponse:
+def admin_hint(payload: HintRequest, db: Session = Depends(get_db)) -> LogoutResponse:
     settings = get_settings()
-    if payload.email.strip().lower() != settings.admin_email.strip().lower():
+    email = payload.email.strip().lower()
+    if email != settings.admin_email.strip().lower():
         return LogoutResponse()
-    # SMTP is intentionally disabled until P06; keep endpoint deterministic.
+    smtp_record = db.get(PortalSmtpSettings, 1)
+    service = build_email_service(
+        settings,
+        _stored_smtp_from_record(smtp_record) if smtp_record else None,
+    )
+    send_admin_password_hint(
+        service=service,
+        recipient=email,
+        hint="Pokud účet existuje, byl odeslán odkaz pro odblokování.",
+    )
     return LogoutResponse()
 
 
@@ -116,11 +173,13 @@ def portal_login(
     ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    role = user.role
+    roles = [normalize_role(role) for role in _user_roles(user)]
+    role = roles[0] if roles else "recepce"
+    active_role = role if len(roles) <= 1 else None
     csrf_token = secrets.token_urlsafe(32)
     response.set_cookie(
         SESSION_COOKIE_NAME,
-        create_session_cookie(email, role, "portal"),
+        create_session_cookie(email, role, "portal", roles=roles, active_role=active_role),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
@@ -137,7 +196,9 @@ def portal_login(
     return AuthIdentityResponse(
         email=email,
         role=role,
-        permissions=get_permissions(role),
+        roles=roles,
+        active_role=active_role,
+        permissions=get_permissions(active_role) if active_role else [],
         actor_type="portal",
     )
 
@@ -152,10 +213,45 @@ def portal_logout(response: Response) -> LogoutResponse:
 @router.get("/me", response_model=AuthIdentityResponse)
 def auth_me(request: Request) -> AuthIdentityResponse:
     session = require_session(request)
-    role = session["role"]
+    role = str(session["role"])
+    roles = [str(item) for item in (session.get("roles") or [role])]
+    active_role = str(session["active_role"]) if session.get("active_role") else None
     return AuthIdentityResponse(
-        email=session["email"],
+        email=str(session["email"]),
         role=role,
-        permissions=get_permissions(role),
-        actor_type=session["actor_type"],
+        roles=roles,
+        active_role=active_role,
+        permissions=get_permissions(active_role) if active_role else [],
+        actor_type=str(session["actor_type"]),
+    )
+
+
+@router.post("/select-role", response_model=AuthIdentityResponse)
+def select_role(payload: SelectRoleRequest, request: Request, response: Response) -> AuthIdentityResponse:
+    session = require_session(request)
+    available_roles = [normalize_role(str(role)) for role in (session.get("roles") or [session["role"]])]
+    selected_role = normalize_role(payload.role)
+    if selected_role not in available_roles:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role not assigned")
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        create_session_cookie(
+            str(session["email"]),
+            str(session["role"]),
+            str(session["actor_type"]),
+            roles=available_roles,
+            active_role=selected_role,
+        ),
+        httponly=True,
+        samesite="lax",
+        secure=cookie_secure(),
+        path="/",
+    )
+    return AuthIdentityResponse(
+        email=str(session["email"]),
+        role=str(session["role"]),
+        roles=available_roles,
+        active_role=selected_role,
+        permissions=get_permissions(selected_role),
+        actor_type=str(session["actor_type"]),
     )

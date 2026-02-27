@@ -72,6 +72,8 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
         for email, role, salt in [
             ("warehouse@example.com", "warehouse", b"warehouse-salt"),
             ("maintenance@example.com", "maintenance", b"maintenance-salt"),
+            ("snidane@example.com", "snidane", b"snidane-salt"),
+            ("reception@example.com", "reception", b"reception-salt"),
         ]:
             connection.execute(
                 """
