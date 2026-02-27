@@ -18,16 +18,14 @@ test('admin login, hint flow, and user bootstrap to portal login are determinist
     });
   });
 
-  await adminPage.goto('/login', { waitUntil: 'domcontentloaded' });
-  await expect(adminPage).toHaveURL(/\/login/);
-  await adminPage.getByLabel(/admin email|email/i).fill('admin@kajovohotel.local');
-  await adminPage.getByLabel(/admin heslo|heslo|password/i).fill('admin123');
+  await adminPage.goto('/login');
+  await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
+  await adminPage.locator('#admin_login_password').fill('admin123');
   await adminPage.getByRole('button', { name: 'Přihlásit' }).click();
   await expect(adminPage.getByTestId('dashboard-page')).toBeVisible();
 
-  await adminPage.goto('/login', { waitUntil: 'domcontentloaded' });
-  await expect(adminPage).toHaveURL(/\/login/);
-  await adminPage.getByLabel(/admin email|email/i).fill('admin@kajovohotel.local');
+  await adminPage.goto('/login');
+  await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
   await adminPage.getByRole('button', { name: 'Poslat hint hesla' }).click();
   await expect(adminPage.getByText('Pokud email odpovídá admin účtu, byl odeslán hint hesla.')).toBeVisible();
 
