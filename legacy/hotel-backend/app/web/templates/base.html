@@ -21,7 +21,6 @@
 
     <link rel="stylesheet" href="/static/tailwind.css" />
     <link rel="stylesheet" href="/static/app.css" />
-    <link rel="stylesheet" href="/static/dagmar.css" />
     <link rel="stylesheet" href="/static/hotel-brand.css" />
     <link rel="stylesheet" href="/static/kajovo-ui.css" />
 
@@ -74,10 +73,10 @@
 
     {% if with_shell and use_sidebar %}
       <div class="kajovo-container">
-        <div class="kajovo-shell">
-          <aside class="kajovo-sidebar">
+        <div class="kajovo-shell kajovo-shell--topnav">
+          <div class="kajovo-topnav-slot">
             {% block sidebar %}{% endblock %}
-          </aside>
+          </div>
 
           <main>
             {% if flash_error %}
