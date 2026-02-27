@@ -9,7 +9,6 @@ CENTRAL_COMPOSE="/opt/sandbox/docker-compose.yml"
 CENTRAL_PG_SERVICE="hotel-postgres-sandbox"
 CENTRAL_PG_HOST="127.0.0.1"
 CENTRAL_PG_PORT=15433
-PROD_ENV="/opt/hotelapp/deploy/.env"
 LOG_FILE="/var/log/hotelapp/sandbox-tests.log"
 if ! touch "$LOG_FILE" 2>/dev/null; then
   LOG_FILE="/tmp/hotelapp-sandbox-tests.log"
@@ -38,6 +37,12 @@ require_env() {
   fi
 }
 
+require_admin_auth_env() {
+  if [ -z "${HOTEL_ADMIN_USERNAME:-}" ] || [ -z "${HOTEL_ADMIN_PASSWORD:-}" ]; then
+    die "Admin login test vyžaduje HOTEL_ADMIN_USERNAME a HOTEL_ADMIN_PASSWORD"
+  fi
+}
+
 require_cmd docker
 require_cmd curl
 
@@ -58,16 +63,9 @@ if ! flock -w 600 9; then
   die "Sandbox je zamceny jinym behom testu"
 fi
 
-# načti produkční .env (obsahuje tajemství pro testy)
-if [ -f "$PROD_ENV" ]; then
-  # shellcheck disable=SC2046
-  export $(grep -v '^#' "$PROD_ENV" | xargs -d '\n') || true
-else
-  die "Chybi $PROD_ENV"
-fi
-
-require_env HOTEL_ADMIN_USERNAME
-require_env HOTEL_ADMIN_PASSWORD
+# Bezpečnost: žádné default credentialy ani automatické načítání tajemství ze souborů.
+# Všechny citlivé hodnoty musí být předány explicitně přes env proměnné.
+require_admin_auth_env
 require_env HOTEL_ADMIN_PASSWORD_HASH
 require_env HOTEL_SESSION_SECRET
 require_env HOTEL_CSRF_SECRET
