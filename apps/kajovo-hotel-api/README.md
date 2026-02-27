@@ -1,3 +1,3 @@
 # KájovoHotel API
 
-Backend application skeleton. Will be migrated from legacy/hotel-backend.
+Backend application with migrated core modules from legacy/hotel-backend and ongoing hardening.

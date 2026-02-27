@@ -1,0 +1,58 @@
+.k-login-page {
+  min-height: calc(100vh - var(--k-sign-min-thickness));
+  display: grid;
+  gap: var(--k-spacing-5);
+  grid-template-columns: minmax(300px, 520px) minmax(320px, 1fr);
+  align-items: center;
+  max-width: var(--k-shell-max-width);
+  margin: 0 auto;
+  padding: var(--k-spacing-6) var(--k-spacing-4);
+}
+
+.k-login-card {
+  background: var(--k-color-surface-raised);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-3);
+  padding: var(--k-spacing-6);
+}
+
+.k-login-eyebrow {
+  margin: 0 0 var(--k-spacing-2);
+  font-size: var(--k-font-size-sm);
+  color: var(--k-color-metal);
+}
+
+.k-login-copy {
+  margin: 0 0 var(--k-spacing-4);
+  color: var(--k-color-ink-secondary);
+}
+
+.k-login-form {
+  display: grid;
+  gap: var(--k-spacing-3);
+}
+
+.k-login-label {
+  font-size: var(--k-font-size-sm);
+  font-weight: var(--k-weight-bold);
+}
+
+.k-login-preview {
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-2);
+  background: var(--k-color-surface);
+  padding: var(--k-spacing-3);
+}
+
+.k-login-preview img {
+  width: 100%;
+  height: auto;
+  border-radius: var(--k-radius-1);
+  display: block;
+}
+
+@media (max-width: 960px) {
+  .k-login-page {
+    grid-template-columns: 1fr;
+  }
+}

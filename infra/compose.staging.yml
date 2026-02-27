@@ -69,6 +69,8 @@ services:
       context: ..
       dockerfile: apps/kajovo-hotel-admin/Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env.staging
     depends_on:
       api:
         condition: service_healthy

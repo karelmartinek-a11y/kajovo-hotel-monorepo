@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -52,6 +53,8 @@ templates = Jinja2Templates(directory="app/web/templates")
 
 TZ_LOCAL = ZoneInfo("Europe/Prague")
 RESET_TOKEN_TTL_HOURS = 24
+
+logger = logging.getLogger(__name__)
 
 ROOMS_ALLOWED = (
     [*range(101, 110)] +
@@ -813,7 +816,7 @@ def admin_report_delete(
     try:
         MediaStorage(settings.media_root).delete_report(report_id)
     except Exception:
-        pass
+        logger.exception("Failed to delete report media", extra={"report_id": report_id})
 
     return _redirect("/admin/reports")
 

@@ -150,7 +150,15 @@ _warn_if_inprocess_limiter_used_in_prod()
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """No-op middleware placeholder (per-route limits use @limiter)."""
+    """Global safety net limiter for admin/browser paths.
+
+    Route-specific limits should still be applied with @rate_limit(...).
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        if request.url.path.startswith('/admin') and request.method.upper() not in {'GET', 'HEAD', 'OPTIONS'}:
+            bucket = f"admin_write:{_client_key(request)}"
+            ok = limiter.hit(bucket=bucket, window_seconds=60, max_requests=120)
+            if not ok:
+                raise HTTPException(status_code=429, detail='Too Many Requests')
         return await call_next(request)

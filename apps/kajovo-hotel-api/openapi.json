@@ -390,19 +390,19 @@
             "title": "Entity",
             "type": "string"
           },
-          "id": {
-            "title": "Id",
+          "entity_id": {
+            "title": "Entity Id",
             "type": "integer"
           },
-          "resource_id": {
-            "title": "Resource Id",
+          "id": {
+            "title": "Id",
             "type": "integer"
           }
         },
         "required": [
           "id",
           "entity",
-          "resource_id",
+          "entity_id",
           "action",
           "detail",
           "created_at"
@@ -4233,14 +4233,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   },
                   "title": "Response Health Health Get",
                   "type": "object"
@@ -4265,14 +4258,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   },
                   "title": "Response Ready Ready Get",
                   "type": "object"

@@ -19,10 +19,6 @@ dev = [
   "ruff>=0.6.0",
 ]
 
-[tool.setuptools.packages.find]
-include = ["app*"]
-exclude = ["alembic*"]
-
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
@@ -33,3 +29,13 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+ignore = ["E501"]
+
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["alembic*", "tests*", "test*"]

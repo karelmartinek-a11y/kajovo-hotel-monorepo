@@ -18,11 +18,11 @@ type AppShellProps = {
 export function AppShell({
   children,
   isPopup,
+  panelLayout = 'admin',
   modules,
   navigationRules,
   navigationSections,
   currentPath,
-  panelLayout = 'admin',
 }: AppShellProps): JSX.Element {
   return (
     <div className="k-app-shell" data-panel-layout={panelLayout}>
