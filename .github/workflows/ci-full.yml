@@ -50,6 +50,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API dependencies (dev)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Ensure SQLite database directory exists
+        run: mkdir -p apps/kajovo-hotel-api/data
+
+      - name: Start API (background)
+        run: |
+          cd apps/kajovo-hotel-api
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          echo $! > /tmp/uvicorn.pid
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8000/health && exit 0
+            sleep 1
+          done
+          echo "API did not start in time" && exit 1
+
       - name: Install Playwright browser
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 

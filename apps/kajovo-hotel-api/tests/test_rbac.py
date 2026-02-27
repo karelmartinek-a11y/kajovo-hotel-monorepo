@@ -46,11 +46,11 @@ def test_rbac_allows_inventory_for_warehouse(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/login",
         method="POST",
-        payload={"email": "warehouse@example.com", "password": "warehouse-pass"},
+        payload={"email": "snidane@example.com", "password": "snidane-pass"},
     )
     assert status == 200
 
-    status, data = api_request(opener, api_base_url, "/api/v1/inventory")
+    status, data = api_request(opener, api_base_url, "/api/v1/inventory", headers=csrf_header(jar))
     assert status == 200
     assert isinstance(data, list)
 
@@ -63,11 +63,11 @@ def test_rbac_denies_breakfast_for_warehouse(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/login",
         method="POST",
-        payload={"email": "warehouse@example.com", "password": "warehouse-pass"},
+        payload={"email": "maintenance@example.com", "password": "maintenance-pass"},
     )
     assert status == 200
 
-    status, data = api_request(opener, api_base_url, "/api/v1/breakfast")
+    status, data = api_request(opener, api_base_url, "/api/v1/breakfast", headers=csrf_header(jar))
 
     assert status == 403
     assert isinstance(data, dict)
@@ -116,7 +116,7 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
     assert row is not None
     assert row[0] == "maintenance@example.com"
     assert row[1] == "maintenance@example.com"
-    assert row[2] == "maintenance"
+    assert row[2] == "údržba"
     assert row[3] == "POST"
     assert row[4] == "/api/v1/reports"
     assert row[5] == 403

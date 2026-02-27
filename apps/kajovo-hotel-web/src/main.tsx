@@ -1379,27 +1379,19 @@ function AppRoutes(): JSX.Element {
   const [auth, setAuth] = React.useState<AuthProfile | null>(null);
 
   React.useEffect(() => {
-    let cancelled = false;
-    resolveAuthProfile()
-      .then((profile) => {
-        if (!cancelled) setAuth(profile);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAuth({
-            userId: 'anonymous',
-            role: 'recepce',
-            roles: ['recepce'],
-            activeRole: null,
-            permissions: rolePermissions('recepce'),
-            actorType: 'portal',
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [location.search]);
+    void resolveAuthProfile()
+      .then(setAuth)
+      .catch(() =>
+        setAuth({
+          userId: 'anonymous',
+          role: 'recepce',
+          roles: ['recepce'],
+          activeRole: 'recepce',
+          permissions: rolePermissions('recepce'),
+          actorType: 'portal',
+        })
+      );
+  }, []);
 
   if (!auth) {
     return <SkeletonPage />;
