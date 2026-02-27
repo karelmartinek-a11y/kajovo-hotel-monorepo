@@ -266,7 +266,19 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
 # Legacy helpers expected by routes
 def csrf_protect(request: Request) -> None:
-    # Middleware handles CSRF; this placeholder keeps sync routes readable.
+    """Ensure CSRF middleware prepared token/cookie state for unsafe methods."""
+
+    if request.method.upper() in {'GET', 'HEAD', 'OPTIONS'}:
+        return None
+
+    token_val = getattr(request.state, 'csrf_token', None)
+    if not isinstance(token_val, str) or not token_val:
+        raise CsrfError('Missing CSRF token')
+
+    cookie_token = request.cookies.get(CsrfConfig().cookie_name)
+    if not cookie_token:
+        raise CsrfError('Missing CSRF cookie')
+
     return None
 
 

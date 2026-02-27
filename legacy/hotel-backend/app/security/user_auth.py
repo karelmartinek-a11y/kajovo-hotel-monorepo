@@ -8,6 +8,8 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 from ..config import Settings, get_settings
 
+USER_COOKIE_PATH = "/portal"
+
 
 @dataclass(frozen=True)
 class PortalUserSession:
@@ -25,7 +27,7 @@ def _cookie_settings(settings: Settings) -> dict:
         "httponly": True,
         "secure": settings.session_cookie_secure,
         "samesite": settings.session_cookie_samesite,
-        "path": "/",
+        "path": USER_COOKIE_PATH,
     }
 
 
@@ -43,7 +45,7 @@ def set_user_session(response: Response, settings: Settings, *, user_id: int, tt
 
 
 def clear_user_session(response: Response, settings: Settings) -> None:
-    response.delete_cookie(settings.user_session_cookie_name, path="/")
+    response.delete_cookie(settings.user_session_cookie_name, path=USER_COOKIE_PATH)
 
 
 def get_user_session(request: Request, settings: Settings | None = None) -> PortalUserSession:

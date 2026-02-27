@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TypeVar
 
 from fastapi import HTTPException, Request
+
+from ..config import get_settings
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 
@@ -132,8 +135,30 @@ def x_device_id_key(request: Request) -> str:
     return request.headers.get("x-device-id", "")[:64]
 
 
+logger = logging.getLogger(__name__)
+
+
+def _warn_if_inprocess_limiter_used_in_prod() -> None:
+    settings = get_settings()
+    if settings.environment == "prod":
+        logger.warning(
+            "Using in-process rate limiter (NOT distributed). In multi-worker deployments, limits are per worker."
+        )
+
+
+_warn_if_inprocess_limiter_used_in_prod()
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """No-op middleware placeholder (per-route limits use @limiter)."""
+    """Global safety net limiter for admin/browser paths.
+
+    Route-specific limits should still be applied with @rate_limit(...).
+    """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        if request.url.path.startswith('/admin') and request.method.upper() not in {'GET', 'HEAD', 'OPTIONS'}:
+            bucket = f"admin_write:{_client_key(request)}"
+            ok = limiter.hit(bucket=bucket, window_seconds=60, max_requests=120)
+            if not ok:
+                raise HTTPException(status_code=429, detail='Too Many Requests')
         return await call_next(request)

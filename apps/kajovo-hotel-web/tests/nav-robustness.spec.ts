@@ -41,10 +41,9 @@ test('desktop keeps overflow accessible with +3 injected items', async ({ page }
   await expect(moreButton).toBeVisible();
   await moreButton.click();
 
-  await expect(nav.getByRole('menu', { name: 'Další' })).toBeVisible();
-  await expect(nav.getByRole('menuitem', { name: 'Recepce+' })).toBeVisible();
-  await expect(nav.getByRole('menuitem', { name: 'Spa+' })).toBeVisible();
-  await expect(nav.getByRole('menuitem', { name: 'Transfer+' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Recepce+' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Spa+' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Transfer+' })).toBeVisible();
 });
 
 test('tablet collapses earlier and keeps overflow available', async ({ page }) => {
@@ -57,7 +56,7 @@ test('tablet collapses earlier and keeps overflow available', async ({ page }) =
   await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).not.toBeVisible();
   const moreButton = nav.getByRole('button', { name: 'Další' });
   await moreButton.click();
-  await expect(nav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
 });
 
 test('phone uses drawer navigation with search', async ({ page }) => {

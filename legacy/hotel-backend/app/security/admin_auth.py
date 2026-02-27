@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import cast
@@ -13,6 +14,9 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings, get_settings
 from ..db.models import AdminSingleton
+
+ADMIN_COOKIE_PATH = "/admin"
+DUMMY_PASSWORD_HASH = "$argon2id$v=19$m=65536,t=3,p=4$M8aYs9Z6jzGf9l+BtS66Gw$zQxQ3l70E8QfYg88X0eC9WjYun5N09Q7xGqS5fUN7WQ"
 
 # HOTEL constraint: single admin password (no accounts)
 # We store only a password hash (argon2/bcrypt) and use server-side session cookie.
@@ -65,7 +69,7 @@ def _cookie_settings(settings: Settings) -> dict:
         "httponly": True,
         "secure": settings.session_cookie_secure,
         "samesite": settings.session_cookie_samesite,
-        "path": "/",
+        "path": ADMIN_COOKIE_PATH,
         # no explicit domain: binds to host (hotel.hcasc.cz)
     }
 
@@ -89,8 +93,8 @@ def set_admin_session(response: Response, settings: Settings, *, ttl_minutes: in
 
 
 def clear_admin_session(response: Response, settings: Settings) -> None:
-    response.delete_cookie(settings.admin_session_cookie_name, path="/")
-    response.delete_cookie(settings.admin_session_issued_cookie_name, path="/")
+    response.delete_cookie(settings.admin_session_cookie_name, path=ADMIN_COOKIE_PATH)
+    response.delete_cookie(settings.admin_session_issued_cookie_name, path=ADMIN_COOKIE_PATH)
 
 
 def get_admin_session(request: Request, settings: Settings) -> AdminSession:
@@ -164,14 +168,34 @@ def _get_or_seed_admin_singleton(db: Session, settings: Settings) -> AdminSingle
     return row
 
 
-def admin_login_check(*, username: str, password: str, db: Session | None, settings: Settings) -> bool:
+def _get_admin_username(settings: Settings) -> str:
+    admin_username = (os.getenv("HOTEL_ADMIN_USERNAME") or "").strip().lower()
+    if settings.environment == "prod" and not admin_username:
+        raise RuntimeError("HOTEL_ADMIN_USERNAME must be set in production")
+    return admin_username
+
+
+def _resolve_admin_password_hash(*, db: Session | None, settings: Settings) -> str:
+    # Prefer hash stored in DB (umoznuje rotaci z UI). Pro login ale DB nemusi byt dostupna
+    # (napr. pri vypadku DB chceme aspon umoznit pristup do admin UI).
+    if db is None:
+        return settings.admin_password_hash
     try:
-        if (username or "").strip().lower() != settings.admin_username.strip().lower():
-            return False
-        authenticate_admin_password(password, db=db, settings=settings)
-        return True
-    except AdminAuthError:
-        return False
+        row = _get_or_seed_admin_singleton(db, settings)
+        return row.password_hash
+    except SQLAlchemyError:
+        return settings.admin_password_hash
+
+
+def admin_login_check(*, username: str, password: str, db: Session | None, settings: Settings) -> bool:
+    configured_username = _get_admin_username(settings)
+    normalized_username = (username or "").strip().lower()
+    username_ok = bool(configured_username) and constant_time_eq(normalized_username, configured_username)
+
+    stored_hash = _resolve_admin_password_hash(db=db, settings=settings)
+    hash_to_verify = stored_hash if username_ok else DUMMY_PASSWORD_HASH
+    password_ok = verify_password(password, hash_to_verify)
+    return username_ok and password_ok
 
 
 def admin_change_password(*, current_password: str, new_password: str, db: Session, settings: Settings) -> str:
@@ -208,16 +232,7 @@ def authenticate_admin_password(plain_password: str, *, db: Session | None, sett
     if not plain_password:
         raise AdminAuthError(status_code=400, detail="Password is required")
 
-    # Prefer hash stored in DB (umoznuje rotaci z UI). Pro login ale DB nemusi byt dostupna
-    # (napr. pri vypadku DB chceme aspon umoznit pristup do admin UI).
-    if db is None:
-        stored_hash = settings.admin_password_hash
-    else:
-        try:
-            row = _get_or_seed_admin_singleton(db, settings)
-            stored_hash = row.password_hash
-        except SQLAlchemyError:
-            stored_hash = settings.admin_password_hash
+    stored_hash = _resolve_admin_password_hash(db=db, settings=settings)
 
     if not verify_password(plain_password, stored_hash):
         raise AdminAuthError(status_code=401, detail="Invalid password")
@@ -239,6 +254,10 @@ def change_admin_password(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+
+
+def _validate_admin_auth_configuration(settings: Settings) -> None:
+    _get_admin_username(settings)
 
 def is_htmx(request: Request) -> bool:
     # HTMX sends HX-Request: true
@@ -265,3 +284,6 @@ def ensure_admin_or_redirect(
     from fastapi.responses import RedirectResponse
 
     return RedirectResponse(url="/admin/login", status_code=303)
+
+
+_validate_admin_auth_configuration(get_settings())

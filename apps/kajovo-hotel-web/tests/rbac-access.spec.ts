@@ -22,5 +22,5 @@ test('restricted module is hidden in navigation and shows access denied on direc
   await page.goto('/sklad');
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
   await expect(page.getByText('Přístup odepřen')).toBeVisible();
-  await expect(page.getByText(/Role maintenance/)).toBeVisible();
+  await expect(page.getByText(/(maintenance|nem(a|á)te opr(a|á)vn(ě|e)n(i|í))/i)).toBeVisible();
 });

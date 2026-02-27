@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   type BreakfastDailySummary,
@@ -36,7 +36,12 @@ import {
   type ReportRead,
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
-import { canReadModule, resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
+import './login.css';
+import { resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
+import { AdminLoginPage } from './admin/AdminLoginPage';
+import { AdminRoutes } from './admin/AdminRoutes';
+import { PortalLoginPage } from './portal/PortalLoginPage';
+import { PortalRoutes } from './portal/PortalRoutes';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
@@ -73,19 +78,6 @@ type Report = ReportRead;
 
 type ReportPayload = ReportCreate;
 
-type PortalUser = {
-  id: number;
-  email: string;
-  role: string;
-  is_active: boolean;
-  created_at: string | null;
-  updated_at: string | null;
-};
-
-type PortalUserCreatePayload = {
-  email: string;
-  password: string;
-};
 
 type ErrorBoundaryProps = { children: React.ReactNode };
 type ErrorBoundaryState = { hasError: boolean; message?: string };
@@ -121,7 +113,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 
   render(): React.ReactNode {
     if (this.state.hasError) {
-  return (
+      return (
         <main className="k-page">
           <StateView
             title="Chyba"
@@ -379,46 +371,6 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
   if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
 
-
-
-  if (path === '/api/v1/users' && method === 'GET') {
-    const response = await fetch(path, { credentials: 'include' });
-    if (!response.ok) throw new Error('Nepodařilo se načíst uživatele.');
-    return (await response.json()) as T;
-  }
-  if (path === '/api/v1/users' && method === 'POST') {
-    const response = await fetch(path, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    return (await response.json()) as T;
-  }
-  const userActiveId = path.match(/^\/api\/v1\/users\/(\d+)\/active$/);
-  if (userActiveId && method === 'PATCH') {
-    const response = await fetch(path, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    return (await response.json()) as T;
-  }
-  const userPasswordId = path.match(/^\/api\/v1\/users\/(\d+)\/password(\/reset)?$/);
-  if (userPasswordId && method === 'POST') {
-    const response = await fetch(path, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    return (await response.json()) as T;
-  }
-
   throw new Error(`Unsupported API call: ${method} ${path}`);
 }
 
@@ -467,7 +419,6 @@ function BreakfastList(): JSX.Element {
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
 
   React.useEffect(() => {
@@ -579,7 +530,6 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     note: '',
   });
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) {
@@ -723,7 +673,6 @@ function BreakfastDetail(): JSX.Element {
   const [item, setItem] = React.useState<BreakfastOrder | null>(null);
   const [notFound, setNotFound] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -787,7 +736,6 @@ function LostFoundList(): JSX.Element {
   const [statusFilter, setStatusFilter] = React.useState<'all' | LostFoundStatus>('all');
   const [typeFilter, setTypeFilter] = React.useState<'all' | LostFoundType>('all');
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') {
@@ -902,7 +850,6 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     returned_at: null,
   });
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) {
@@ -1065,7 +1012,6 @@ function LostFoundDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<LostFoundItem | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -1130,7 +1076,6 @@ function IssuesList(): JSX.Element {
   const [statusFilter, setStatusFilter] = React.useState<'all' | IssueStatus>('all');
   const [locationFilter, setLocationFilter] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') return;
@@ -1183,7 +1128,6 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     title: '', description: '', location: '', room_number: '', priority: 'medium', status: 'new', assignee: '',
   });
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -1221,7 +1165,6 @@ function IssuesDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<Issue | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) return;
@@ -1251,7 +1194,6 @@ function InventoryList(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') return;
@@ -1274,7 +1216,6 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const navigate = useNavigate();
   const [payload, setPayload] = React.useState<InventoryItemPayload>({ name: '', unit: 'ks', min_stock: 0, current_stock: 0, supplier: '' });
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -1310,7 +1251,6 @@ function InventoryDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [movementType, setMovementType] = React.useState<InventoryMovementType>('in');
   const [quantity, setQuantity] = React.useState<number>(0);
   const [note, setNote] = React.useState<string>('');
@@ -1367,7 +1307,6 @@ function ReportsList(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<Report[]>([]);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') {
@@ -1388,7 +1327,6 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const { id } = useParams();
   const navigate = useNavigate();
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
   const [payload, setPayload] = React.useState<ReportPayload>({ title: '', description: '', status: 'open' });
 
   React.useEffect(() => {
@@ -1423,7 +1361,6 @@ function ReportsDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<Report | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -1435,197 +1372,6 @@ function ReportsDetail(): JSX.Element {
   }, [id, state]);
 
   return <main className="k-page" data-testid="reports-detail-page">{stateMarker}<h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
-}
-
-function UsersAdmin(): JSX.Element {
-  const [users, setUsers] = React.useState<PortalUser[] | null>(null);
-  const [selected, setSelected] = React.useState<PortalUser | null>(null);
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
-
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
-  const load = React.useCallback(() => {
-    setError(null);
-    void fetchJson<PortalUser[]>('/api/v1/users')
-      .then((items) => {
-        setUsers(items);
-        if (items.length > 0 && !selected) setSelected(items[0]);
-      })
-      .catch(() => setError('Nepodařilo se načíst uživatele.'));
-  }, [selected]);
-
-  React.useEffect(() => {
-    load();
-  }, [load]);
-
-  async function createUser(): Promise<void> {
-    if (!emailValid || password.length < 8 || users?.some((u) => u.email === email.trim().toLowerCase())) return;
-    setSaving(true);
-    setError(null);
-    setForgotStatus(null);
-    try {
-      const created = await fetchJson<PortalUser>('/api/v1/users', { method: 'POST', body: JSON.stringify({ email, password } satisfies PortalUserCreatePayload) });
-      setUsers((prev) => (prev ? [...prev, created] : [created]));
-      setSelected(created);
-      setEmail('');
-      setPassword('');
-    } catch (e) {
-      setError('Uživatele se nepodařilo vytvořit.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function toggleActive(user: PortalUser): Promise<void> {
-    const updated = await fetchJson<PortalUser>(`/api/v1/users/${user.id}/active`, { method: 'PATCH', body: JSON.stringify({ is_active: !user.is_active }) });
-    setUsers((prev) => prev?.map((u) => (u.id === user.id ? updated : u)) ?? null);
-    setSelected(updated);
-  }
-
-  async function resetPassword(user: PortalUser): Promise<void> {
-    if (newPassword.length < 8) return;
-    await fetchJson<PortalUser>(`/api/v1/users/${user.id}/password/reset`, { method: 'POST', body: JSON.stringify({ password: newPassword }) });
-    setNewPassword('');
-  }
-
-  return <main className="k-page" data-testid="users-admin-page"><h1>Uživatelé</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : users === null ? <SkeletonPage /> : users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : <div className="k-grid cards-2"><Card title="Seznam"><DataTable headers={['Email', 'Role', 'Stav']} rows={users.map((u) => [<button key={u.id} className="k-nav-link" type="button" onClick={() => setSelected(u)}>{u.email}</button>, u.role, u.is_active ? 'Aktivní' : 'Neaktivní'])} /></Card><Card title="Detail">{selected ? <div className="k-stack"><p><strong>{selected.email}</strong></p><p>Role: {selected.role}</p><p>Stav: {selected.is_active ? 'Aktivní' : 'Neaktivní'}</p><div className="k-toolbar"><button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>{selected.is_active ? 'Zakázat' : 'Povolit'}</button></div><FormField id="reset_pwd" label="Nové heslo"><input id="reset_pwd" className="k-input" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></FormField><button className="k-button" type="button" onClick={() => void resetPassword(selected)} disabled={newPassword.length < 8}>Resetovat heslo</button></div> : <p>Vyberte uživatele.</p>}</Card></div>}<Card title="Přidat uživatele"><div className="k-form-grid"><FormField id="user_email" label="Email"><input id="user_email" className="k-input" value={email} onChange={(e) => setEmail(e.target.value)} /></FormField><FormField id="user_password" label="Dočasné heslo"><input id="user_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} /></FormField><button className="k-button" type="button" onClick={() => void createUser()} disabled={!emailValid || password.length < 8 || saving || Boolean(users?.some((u) => u.email === email.trim().toLowerCase()))}>Vytvořit uživatele</button></div></Card></main>;
-}
-
-type AccessDeniedProps = {
-  moduleLabel: string;
-  role: string;
-  userId: string;
-};
-
-function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX.Element {
-  return (
-    <main className="k-page" data-testid="access-denied-page">
-      <StateView
-        title="Přístup odepřen"
-        description={`Role ${role} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`}
-        stateKey="error"
-        action={<Link className="k-button secondary" to="/">Zpět na přehled</Link>}
-      />
-    </main>
-  );
-}
-
-function PortalLoginPage(): JSX.Element {
-  const navigate = useNavigate();
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const [forgotStatus, setForgotStatus] = React.useState<string | null>(null);
-
-  async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setError(null);
-    setForgotStatus(null);
-    try {
-      await apiClient.portalLoginApiAuthLoginPost({ email, password });
-      navigate('/', { replace: true });
-    } catch {
-      setError('Neplatné přihlašovací údaje.');
-    }
-  }
-
-  async function forgotPassword(): Promise<void> {
-    setForgotStatus(null);
-    try {
-      await fetchJson('/api/auth/forgot', {
-        method: 'POST',
-        body: JSON.stringify({ email }),
-      });
-      setForgotStatus('Pokud účet existuje, byl odeslán odkaz pro reset/odblokování.');
-    } catch {
-      setForgotStatus('Obnova hesla není nyní dostupná.');
-    }
-  }
-
-  return (
-    <main className="k-page" data-testid="portal-login-page">
-      <Card title="KájovoHotel Portal login">
-        <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
-          <FormField id="portal_login_email" label="Email">
-            <input id="portal_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
-          </FormField>
-          <FormField id="portal_login_password" label="Heslo">
-            <input id="portal_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </FormField>
-          {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
-          {forgotStatus ? <StateView title="Info" description={forgotStatus} stateKey="empty" /> : null}
-          <div className="k-toolbar">
-            <button className="k-button" type="submit">Přihlásit</button>
-            <button className="k-button secondary" type="button" onClick={() => void forgotPassword()} disabled={!email.trim()}>Zapomenuté heslo</button>
-          </div>
-        </form>
-      </Card>
-    </main>
-  );
-}
-
-
-
-function PortalPasswordPage(): JSX.Element {
-  const [oldPassword, setOldPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [status, setStatus] = React.useState<string | null>(null);
-
-  async function changePassword(): Promise<void> {
-    setStatus(null);
-    try {
-      await fetchJson('/api/auth/password', {
-        method: 'POST',
-        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
-      });
-      setStatus('Heslo bylo změněno.');
-      setOldPassword('');
-      setNewPassword('');
-    } catch {
-      setStatus('Změnu hesla se nepodařilo dokončit.');
-    }
-  }
-
-  return (
-    <main className="k-page" data-testid="portal-password-page">
-      <Card title="Profil – změna hesla">
-        <div className="k-form-grid">
-          <FormField id="profile_old_password" label="Aktuální heslo">
-            <input id="profile_old_password" className="k-input" type="password" value={oldPassword} onChange={(event) => setOldPassword(event.target.value)} />
-          </FormField>
-          <FormField id="profile_new_password" label="Nové heslo">
-            <input id="profile_new_password" className="k-input" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-          </FormField>
-          {status ? <StateView title="Info" description={status} stateKey="empty" /> : null}
-          <button className="k-button" type="button" onClick={() => void changePassword()} disabled={oldPassword.length < 8 || newPassword.length < 8}>Změnit heslo</button>
-        </div>
-      </Card>
-    </main>
-  );
-}
-
-
-
-function RolePickerPage({ roles, onSelected }: { roles: string[]; onSelected: (role: string) => Promise<void> }): JSX.Element {
-  const [error, setError] = React.useState<string | null>(null);
-
-  return (
-    <main className="k-page" data-testid="role-picker-page">
-      <Card title="Za jakou roli chcete vystupovat?">
-        {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
-        <div className="k-toolbar">
-          {roles.map((role) => (
-            <button key={role} className="k-button" type="button" onClick={() => void onSelected(role)}>{role}</button>
-          ))}
-        </div>
-      </Card>
-    </main>
-  );
 }
 
 function AppRoutes(): JSX.Element {
@@ -1640,7 +1386,7 @@ function AppRoutes(): JSX.Element {
           userId: 'anonymous',
           role: 'recepce',
           roles: ['recepce'],
-          activeRole: null,
+          activeRole: 'recepce',
           permissions: rolePermissions('recepce'),
           actorType: 'portal',
         })
@@ -1650,27 +1396,6 @@ function AppRoutes(): JSX.Element {
   if (!auth) {
     return <SkeletonPage />;
   }
-
-  if (location.pathname === '/login') {
-    return <PortalLoginPage />;
-  }
-
-  if (auth.actorType !== 'portal') {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (auth.roles.length > 1 && !auth.activeRole) {
-    return (
-      <RolePickerPage
-        roles={auth.roles}
-        onSelected={async (role) => {
-          await fetchJson('/api/auth/select-role', { method: 'POST', body: JSON.stringify({ role }) });
-          window.location.href = '/';
-        }}
-      />
-    );
-  }
-
   const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
@@ -1680,74 +1405,49 @@ function AppRoutes(): JSX.Element {
     const required =
       Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
     if (!required) {
-      // Testovací / injektované moduly bez explicitních oprávnění ukazujeme vždy.
       return true;
     }
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
   });
-  const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
-  const panelLayout = 'portal';
 
   return (
-    <AppShell
-      modules={allowedModules}
-      navigationRules={ia.navigation.rules}
-      navigationSections={ia.navigation.sections}
-      currentPath={location.pathname}
-      panelLayout={panelLayout}
-    >
-      <Routes>
-        <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad" element={isAllowed('inventory') ? <InventoryList /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/nova" element={isAllowed('inventory') ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/login" element={<PortalLoginPage />} />
-        <Route path="/profil" element={<PortalPasswordPage />} />
-        <Route
-          path="/intro"
-          element={
-            <React.Suspense fallback={<SkeletonPage />}><IntroRoute /></React.Suspense>
-          }
-        />
-        <Route
-          path="/offline"
-          element={
-            <React.Suspense fallback={<SkeletonPage />}><OfflineRoute /></React.Suspense>
-          }
-        />
-        <Route
-          path="/maintenance"
-          element={
-            <React.Suspense fallback={<SkeletonPage />}><MaintenanceRoute /></React.Suspense>
-          }
-        />
-        <Route
-          path="/404"
-          element={
-            <React.Suspense fallback={<SkeletonPage />}><NotFoundRoute /></React.Suspense>
-          }
-        />
-        <Route path="/dalsi" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/404" replace />} />
-      </Routes>
-    </AppShell>
+    <Routes>
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
+      <Route path="/login" element={<PortalLoginPage />} />
+      <Route
+        path="*"
+        element={
+          <PortalRoutes
+            currentPath={location.pathname}
+            auth={auth}
+            modules={allowedModules}
+            deps={{
+              Dashboard,
+              BreakfastList,
+              BreakfastForm,
+              BreakfastDetail,
+              LostFoundList,
+              LostFoundForm,
+              LostFoundDetail,
+              IssuesList,
+              IssuesForm,
+              IssuesDetail,
+              InventoryList,
+              InventoryForm,
+              InventoryDetail,
+              ReportsList,
+              ReportsForm,
+              ReportsDetail,
+              IntroRoute,
+              OfflineRoute,
+              MaintenanceRoute,
+              NotFoundRoute,
+            }}
+          />
+        }
+      />
+    </Routes>
   );
 }
 

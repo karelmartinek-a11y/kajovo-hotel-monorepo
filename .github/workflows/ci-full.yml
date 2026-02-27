@@ -50,11 +50,82 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API dependencies (dev)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Ensure SQLite database directory exists
+        run: mkdir -p apps/kajovo-hotel-api/data
+
+      - name: Start API (background)
+        run: |
+          cd apps/kajovo-hotel-api
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          echo $! > /tmp/uvicorn.pid
+
+      - name: Wait for API to be ready
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8000/health && exit 0
+            sleep 1
+          done
+          echo "API did not start in time" && exit 1
+
       - name: Install Playwright browser
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 
       - name: Web tests (Playwright)
         run: pnpm --filter @kajovo/kajovo-hotel-web test
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API Python dependencies (minimal)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "fastapi==0.128.1" "pydantic==2.9.2" "pydantic-settings==2.6.1" "sqlalchemy==2.0.36" "uvicorn[standard]==0.32.0"
+
+      - name: Install Playwright browser for smoke
+        run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
+
+      - name: E2E smoke (3 deterministic runs)
+        env:
+          API_BASE_URL: http://127.0.0.1:18000
+          SMOKE_DB_PATH: /tmp/kajovo-smoke-e2e.db
+        run: |
+          for i in 1 2 3; do
+            echo "Smoke run #${i}"
+            rm -f "$SMOKE_DB_PATH"
+            pnpm ci:e2e-smoke
+          done
 
   lint-and-contract:
     runs-on: ubuntu-latest
@@ -93,3 +164,46 @@ jobs:
 
       - name: Contract freshness check
         run: pnpm contract:check
+
+
+  e2e-auth-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install API dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Install Playwright browser
+        run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
+
+      - name: Auth smoke (3 deterministic runs)
+        env:
+          KAJOVO_API_DATABASE_URL: sqlite:///./apps/kajovo-hotel-api/data/e2e-smoke.db
+          KAJOVO_API_SMTP_ENABLED: 'false'
+        run: |
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth

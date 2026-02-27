@@ -390,19 +390,19 @@
             "title": "Entity",
             "type": "string"
           },
-          "id": {
-            "title": "Id",
+          "entity_id": {
+            "title": "Entity Id",
             "type": "integer"
           },
-          "resource_id": {
-            "title": "Resource Id",
+          "id": {
+            "title": "Id",
             "type": "integer"
           }
         },
         "required": [
           "id",
           "entity",
-          "resource_id",
+          "entity_id",
           "action",
           "detail",
           "created_at"
@@ -1636,14 +1636,12 @@
             "type": "string"
           },
           "first_name": {
-            "default": "New",
             "maxLength": 120,
             "minLength": 1,
             "title": "First Name",
             "type": "string"
           },
           "last_name": {
-            "default": "User",
             "maxLength": 120,
             "minLength": 1,
             "title": "Last Name",
@@ -1689,7 +1687,10 @@
           }
         },
         "required": [
+          "first_name",
+          "last_name",
           "email",
+          "roles",
           "password"
         ],
         "title": "PortalUserCreate",
@@ -4232,14 +4233,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   },
                   "title": "Response Health Health Get",
                   "type": "object"
@@ -4264,14 +4258,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "type": "string"
                   },
                   "title": "Response Ready Ready Get",
                   "type": "object"

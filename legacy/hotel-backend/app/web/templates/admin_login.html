@@ -3,40 +3,43 @@
 {% block title %}KájovoHotel — Admin přihlášení{% endblock %}
 
 {% block body_content %}
-<div class="min-h-[75vh] bg-slate-50/60">
-  <div class="mx-auto flex max-w-4xl items-center justify-center px-4 py-14">
-    <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white/95 p-10 shadow-xl shadow-slate-200/50 backdrop-blur">
-      <div class="flex items-center gap-4">
-        <img src="{{ url_for('static', path='brand/icon.png') }}" alt="KájovoHotel" class="h-12 w-12 rounded-xl border border-slate-200 bg-white p-2 shadow-sm" />
-        <div class="min-w-0">
-          <div class="text-sm font-semibold uppercase tracking-[0.08em] text-slate-500">Administrace</div>
-          <h1 class="text-2xl font-semibold leading-tight text-slate-900">Přihlášení administrátora</h1>
-          <p class="text-sm text-slate-600">Tento vstup je jen pro admin účet. Uživatelé mají vlastní přihlášení.</p>
-        </div>
-      </div>
-
-      {% if error %}
-        <div class="mt-6 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">{{ error }}</div>
-      {% endif %}
-
-      <form method="post" action="/admin/login" class="mt-6 space-y-4" autocomplete="on">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <div class="space-y-1">
-          <label for="username" class="text-sm font-medium text-slate-700">Admin e-mail</label>
-          <input id="username" name="username" type="email" required autocomplete="username" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-sky-500 focus:ring-1 focus:ring-sky-500" placeholder="provoz@hotel.hcasc.cz" />
-        </div>
-        <div class="space-y-1">
-          <label for="password" class="text-sm font-medium text-slate-700">Admin heslo</label>
-          <input id="password" name="password" type="password" required minlength="10" autocomplete="current-password" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-900 outline-none transition focus:border-sky-500 focus:ring-1 focus:ring-sky-500" placeholder="••••••••••" />
-        </div>
-        <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 focus:ring-offset-white">Přihlásit se</button>
-      </form>
-
-      <div class="mt-6 flex items-center justify-between text-xs text-slate-500">
-        <span>Doména: <span class="font-semibold text-slate-700">hotel.hcasc.cz</span></span>
-        <a class="text-slate-500 hover:text-slate-700 hover:underline" href="/login">Uživatelský login</a>
+<section class="kajovo-login kajovo-login--admin">
+  <div class="kajovo-login__panel kajovo-surface">
+    <div class="kajovo-login__hero">
+      <img src="{{ url_for('static', path='brand/KajovoStaff.png') }}" alt="Kája pro administraci" class="kajovo-login__hero-img" />
+      <div class="kajovo-login__hero-meta">
+        <p class="kajovo-login__kicker">Administrace</p>
+        <h1>Přihlášení administrátora</h1>
+        <p>Tento vstup je určený jen pro správu hotelu. Uživatelé používají vlastní login.</p>
       </div>
     </div>
+
+    <div class="kajovo-login__form-wrap">
+      {% if error %}
+        <div class="kajovo-login__state kajovo-login__state--error" role="alert">
+          <strong>Neplatné přihlašovací údaje</strong>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <form method="post" action="/admin/login" class="kajovo-form" autocomplete="on">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <div class="kajovo-field">
+          <label for="username">Admin e-mail</label>
+          <input id="username" name="username" type="email" required autocomplete="username" placeholder="provoz@hotel.hcasc.cz" />
+        </div>
+        <div class="kajovo-field">
+          <label for="password">Admin heslo</label>
+          <input id="password" name="password" type="password" required minlength="10" autocomplete="current-password" placeholder="••••••••••" />
+        </div>
+        <button type="submit" class="kajovo-btn kajovo-btn--primary kajovo-btn--block">Přihlásit se</button>
+      </form>
+    </div>
+
+    <div class="kajovo-login__footer">
+      <span>Doména: <strong>hotel.hcasc.cz</strong></span>
+      <a href="/login">Uživatelský login</a>
+    </div>
   </div>
-</div>
+</section>
 {% endblock %}
