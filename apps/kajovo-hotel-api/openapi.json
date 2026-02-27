@@ -21,6 +21,17 @@
       },
       "AuthIdentityResponse": {
         "properties": {
+          "active_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Role"
+          },
           "actor_type": {
             "title": "Actor Type",
             "type": "string"
@@ -39,6 +50,14 @@
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "roles": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
           }
         },
         "required": [
@@ -60,6 +79,9 @@
           "status_counts": {
             "additionalProperties": {
               "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/BreakfastStatus"
             },
             "title": "Status Counts",
             "type": "object"
@@ -356,19 +378,19 @@
             "title": "Entity",
             "type": "string"
           },
-          "entity_id": {
-            "title": "Entity Id",
-            "type": "integer"
-          },
           "id": {
             "title": "Id",
+            "type": "integer"
+          },
+          "resource_id": {
+            "title": "Resource Id",
             "type": "integer"
           }
         },
         "required": [
           "id",
           "entity",
-          "entity_id",
+          "resource_id",
           "action",
           "detail",
           "created_at"
@@ -1579,11 +1601,57 @@
             "title": "Email",
             "type": "string"
           },
+          "first_name": {
+            "default": "New",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "User",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "password": {
             "maxLength": 255,
             "minLength": 8,
             "title": "Password",
             "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Roles",
+            "type": "array"
           }
         },
         "required": [
@@ -1626,6 +1694,10 @@
             "title": "Email",
             "type": "string"
           },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -1634,9 +1706,38 @@
             "title": "Is Active",
             "type": "boolean"
           },
-          "role": {
-            "title": "Role",
+          "last_name": {
+            "title": "Last Name",
             "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
           },
           "updated_at": {
             "anyOf": [
@@ -1653,8 +1754,12 @@
         },
         "required": [
           "id",
+          "first_name",
+          "last_name",
           "email",
-          "role",
+          "roles",
+          "phone",
+          "note",
           "is_active",
           "created_at",
           "updated_at"
@@ -1812,114 +1917,19 @@
         "title": "ReportUpdate",
         "type": "object"
       },
-      "SmtpSettingsRead": {
+      "SelectRoleRequest": {
         "properties": {
-          "host": {
-            "title": "Host",
-            "type": "string"
-          },
-          "password_masked": {
-            "title": "Password Masked",
-            "type": "string"
-          },
-          "port": {
-            "title": "Port",
-            "type": "integer"
-          },
-          "use_ssl": {
-            "title": "Use Ssl",
-            "type": "boolean"
-          },
-          "use_tls": {
-            "title": "Use Tls",
-            "type": "boolean"
-          },
-          "username": {
-            "title": "Username",
+          "role": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Role",
             "type": "string"
           }
         },
         "required": [
-          "host",
-          "port",
-          "username",
-          "use_tls",
-          "use_ssl",
-          "password_masked"
+          "role"
         ],
-        "title": "SmtpSettingsRead",
-        "type": "object"
-      },
-      "SmtpSettingsUpsert": {
-        "properties": {
-          "host": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Host",
-            "type": "string"
-          },
-          "password": {
-            "maxLength": 1024,
-            "minLength": 1,
-            "title": "Password",
-            "type": "string"
-          },
-          "port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
-            "title": "Port",
-            "type": "integer"
-          },
-          "use_ssl": {
-            "default": false,
-            "title": "Use Ssl",
-            "type": "boolean"
-          },
-          "use_tls": {
-            "default": true,
-            "title": "Use Tls",
-            "type": "boolean"
-          },
-          "username": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "host",
-          "port",
-          "username",
-          "password"
-        ],
-        "title": "SmtpSettingsUpsert",
-        "type": "object"
-      },
-      "SmtpTestEmailRequest": {
-        "properties": {
-          "recipient": {
-            "maxLength": 255,
-            "minLength": 3,
-            "title": "Recipient",
-            "type": "string"
-          }
-        },
-        "required": [
-          "recipient"
-        ],
-        "title": "SmtpTestEmailRequest",
-        "type": "object"
-      },
-      "SmtpTestEmailResponse": {
-        "properties": {
-          "ok": {
-            "default": true,
-            "title": "Ok",
-            "type": "boolean"
-          }
-        },
-        "title": "SmtpTestEmailResponse",
+        "title": "SelectRoleRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -2156,74 +2166,14 @@
         ]
       }
     },
-    "/api/v1/admin/settings/smtp": {
-      "get": {
-        "operationId": "get_smtp_settings_api_v1_admin_settings_smtp_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SmtpSettingsRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Smtp Settings",
-        "tags": [
-          "settings"
-        ]
-      },
-      "put": {
-        "operationId": "put_smtp_settings_api_v1_admin_settings_smtp_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SmtpSettingsUpsert"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SmtpSettingsRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Smtp Settings",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/v1/admin/settings/smtp/test-email": {
+    "/api/auth/select-role": {
       "post": {
-        "operationId": "test_smtp_email_api_v1_admin_settings_smtp_test_email_post",
+        "operationId": "select_role_api_auth_select_role_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SmtpTestEmailRequest"
+                "$ref": "#/components/schemas/SelectRoleRequest"
               }
             }
           },
@@ -2234,7 +2184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SmtpTestEmailResponse"
+                  "$ref": "#/components/schemas/AuthIdentityResponse"
                 }
               }
             },
@@ -2251,9 +2201,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Test Smtp Email",
+        "summary": "Select Role",
         "tags": [
-          "settings"
+          "auth"
         ]
       }
     },
@@ -3799,7 +3749,14 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "title": "Response Health Health Get",
                   "type": "object"
@@ -3824,7 +3781,14 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "title": "Response Ready Ready Get",
                   "type": "object"
