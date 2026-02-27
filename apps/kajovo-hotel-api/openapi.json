@@ -21,6 +21,17 @@
       },
       "AuthIdentityResponse": {
         "properties": {
+          "active_role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Role"
+          },
           "actor_type": {
             "title": "Actor Type",
             "type": "string"
@@ -39,6 +50,14 @@
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "roles": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
           }
         },
         "required": [
@@ -60,6 +79,9 @@
           "status_counts": {
             "additionalProperties": {
               "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/BreakfastStatus"
             },
             "title": "Status Counts",
             "type": "object"
@@ -356,19 +378,19 @@
             "title": "Entity",
             "type": "string"
           },
-          "entity_id": {
-            "title": "Entity Id",
-            "type": "integer"
-          },
           "id": {
             "title": "Id",
+            "type": "integer"
+          },
+          "resource_id": {
+            "title": "Resource Id",
             "type": "integer"
           }
         },
         "required": [
           "id",
           "entity",
-          "entity_id",
+          "resource_id",
           "action",
           "detail",
           "created_at"
@@ -1579,11 +1601,57 @@
             "title": "Email",
             "type": "string"
           },
+          "first_name": {
+            "default": "New",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "User",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "password": {
             "maxLength": 255,
             "minLength": 8,
             "title": "Password",
             "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Roles",
+            "type": "array"
           }
         },
         "required": [
@@ -1626,6 +1694,10 @@
             "title": "Email",
             "type": "string"
           },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -1634,9 +1706,38 @@
             "title": "Is Active",
             "type": "boolean"
           },
-          "role": {
-            "title": "Role",
+          "last_name": {
+            "title": "Last Name",
             "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
           },
           "updated_at": {
             "anyOf": [
@@ -1653,8 +1754,12 @@
         },
         "required": [
           "id",
+          "first_name",
+          "last_name",
           "email",
-          "role",
+          "roles",
+          "phone",
+          "note",
           "is_active",
           "created_at",
           "updated_at"
@@ -1810,6 +1915,21 @@
           }
         },
         "title": "ReportUpdate",
+        "type": "object"
+      },
+      "SelectRoleRequest": {
+        "properties": {
+          "role": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "SelectRoleRequest",
         "type": "object"
       },
       "SmtpSettingsRead": {
@@ -2151,6 +2271,47 @@
           }
         },
         "summary": "Auth Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/select-role": {
+      "post": {
+        "operationId": "select_role_api_auth_select_role_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Role",
         "tags": [
           "auth"
         ]
@@ -3799,7 +3960,14 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "title": "Response Health Health Get",
                   "type": "object"
@@ -3824,7 +3992,14 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": {
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "title": "Response Ready Ready Get",
                   "type": "object"
