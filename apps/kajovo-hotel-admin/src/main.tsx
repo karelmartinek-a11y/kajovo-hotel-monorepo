@@ -1798,6 +1798,8 @@ function AppRoutes(): JSX.Element {
         setAuth({
           userId: 'anonymous',
           role: 'recepce',
+          roles: ['recepce'],
+          activeRole: null,
           permissions: rolePermissions('recepce'),
           actorType: 'portal',
         })
