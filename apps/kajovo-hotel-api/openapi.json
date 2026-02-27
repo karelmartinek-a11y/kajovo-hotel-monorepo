@@ -80,6 +80,9 @@
             "additionalProperties": {
               "type": "integer"
             },
+            "propertyNames": {
+              "$ref": "#/components/schemas/BreakfastStatus"
+            },
             "title": "Status Counts",
             "type": "object"
           },
