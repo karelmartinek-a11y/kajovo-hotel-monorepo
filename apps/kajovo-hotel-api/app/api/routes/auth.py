@@ -136,7 +136,7 @@ def admin_hint(payload: HintRequest, db: Session = Depends(get_db)) -> LogoutRes
     send_admin_password_hint(
         service=service,
         recipient=payload.email.strip().lower(),
-        hint=settings.admin_password,
+        hint="Použijte reset hesla nebo kontaktujte administrátora.",
     )
     return LogoutResponse()
 
@@ -157,7 +157,9 @@ def portal_login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     roles = [normalize_role(role.role) for role in user.roles]
-    role = roles[0] if roles else "recepce"
+    if not roles:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    role = roles[0]
     active_role = role if len(roles) == 1 else None
     permissions = get_permissions(active_role) if active_role else []
     csrf_token = secrets.token_urlsafe(32)
