@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from PIL import Image
@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 from ..db.models import (
     HistoryActorType,
+    Device,
+    DeviceStatus,
     PortalSmtpSettings,
     PortalUser,
     PortalUserResetToken,
@@ -127,11 +129,88 @@ def _query_url(request: Request, base_path: str, **updates: Any) -> str:
     return f"{base_path}?{q}" if q else base_path
 
 
+def _duration_hours(created_at: datetime | None, done_at: datetime | None) -> float | None:
+    if not created_at or not done_at:
+        return None
+    delta = done_at - created_at
+    return round(delta.total_seconds() / 3600, 1)
+
+
+def _duration_human(created_at: datetime | None, done_at: datetime | None) -> str:
+    if not created_at or not done_at:
+        return "Nevyřešeno"
+    total_minutes = max(0, int(round((done_at - created_at).total_seconds() / 60)))
+    hours, minutes = divmod(total_minutes, 60)
+    if hours and minutes:
+        return f"{hours} h {minutes} min"
+    if hours:
+        return f"{hours} h"
+    return f"{minutes} min"
+
+
+def _history_actor_display_name(row: ReportHistory, db: Session) -> str:
+    if row.actor_type == HistoryActorType.ADMIN:
+        return "Admin"
+
+    actor_device_id = (row.actor_device_id or "").strip()
+    if actor_device_id.startswith("portal_user:"):
+        try:
+            user_id = int(actor_device_id.split(":", 1)[1])
+        except Exception:
+            user_id = None
+        if user_id:
+            user = db.get(PortalUser, user_id)
+            if user:
+                if user.name and user.email:
+                    return f"{user.name} ({user.email})"
+                return user.name or user.email
+        if row.note:
+            return row.note
+
+    if actor_device_id:
+        return actor_device_id
+    return "User"
+
+
+def _portal_device_for_user(user: PortalUser, db: Session) -> Device:
+    device_id = f"portal_user:{user.id}"
+    device = db.scalar(select(Device).where(Device.device_id == device_id))
+    if device:
+        if device.status != DeviceStatus.ACTIVE:
+            device.status = DeviceStatus.ACTIVE
+            db.add(device)
+            db.flush()
+        return device
+
+    device = Device(
+        device_id=device_id,
+        status=DeviceStatus.ACTIVE,
+        display_name=f"Portal user {user.name}",
+        roles_raw=user.role.value,
+    )
+    db.add(device)
+    db.flush()
+    return device
+
+
 def _parse_date_filter(raw: str) -> date:
     try:
         return date.fromisoformat(raw)
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid date") from e
+
+
+def _sanitize_portal_description(description: str | None) -> str | None:
+    if description is None:
+        return None
+    text = description.strip()
+    if not text:
+        return None
+    if len(text) > 50:
+        raise HTTPException(status_code=400, detail="Description too long")
+    if any(ord(c) < 32 for c in text):
+        raise HTTPException(status_code=400, detail="Invalid description")
+    return text
 
 
 def _portal_session_user(request: Request, db: Session, settings: Settings) -> PortalUser | None:
@@ -471,6 +550,221 @@ def portal_home(
     )
 
 
+@router.get("/portal/profile", response_class=HTMLResponse)
+def portal_profile_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(Settings.from_env),
+):
+    user = _portal_session_user(request, db, settings)
+    if not user:
+        return _redirect("/login")
+    flash = request.session.pop("flash", None) if hasattr(request, "session") else None
+    return templates.TemplateResponse(
+        "portal_profile.html",
+        {
+            **_base_ctx(request, settings=settings, active_nav="portal", hide_shell=True, flash=flash),
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "role": PORTAL_ROLE_LABELS.get(user.role, user.role.value),
+            },
+        },
+    )
+
+
+@router.post("/portal/profile/password")
+@rate_limit("user_change_password")
+def portal_profile_change_password(
+    request: Request,
+    current_password: str = Form(""),
+    new_password: str = Form(""),
+    new_password_confirm: str = Form(""),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(Settings.from_env),
+):
+    csrf_protect(request)
+    user = _portal_session_user(request, db, settings)
+    if not user:
+        return _redirect("/login")
+
+    if new_password != new_password_confirm:
+        request.session["flash"] = {"type": "error", "message": "Potvrzení hesla nesouhlasí."}
+        return _redirect("/portal/profile")
+
+    if not user.password_hash or not verify_password(current_password, user.password_hash):
+        request.session["flash"] = {"type": "error", "message": "Neplatné přihlašovací údaje."}
+        return _redirect("/portal/profile")
+
+    try:
+        user.password_hash = hash_password(new_password)
+    except Exception:
+        request.session["flash"] = {"type": "error", "message": "Neplatné nové heslo."}
+        return _redirect("/portal/profile")
+
+    db.add(user)
+    db.commit()
+
+    request.session["flash"] = {"type": "success", "message": "Heslo bylo změněno."}
+    return _redirect("/portal/profile")
+
+
+@router.get("/portal/reports/{report_id}", response_class=HTMLResponse)
+def portal_report_detail(
+    request: Request,
+    report_id: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(Settings.from_env),
+):
+    user = _portal_session_user(request, db, settings)
+    if not user:
+        return _redirect("/login")
+
+    report = db.get(Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    photos = db.scalars(
+        select(ReportPhoto).where(ReportPhoto.report_id == report_id).order_by(ReportPhoto.sort_order.asc())
+    ).all()
+    history = db.scalars(
+        select(ReportHistory).where(ReportHistory.report_id == report_id).order_by(ReportHistory.created_at.desc())
+    ).all()
+
+    report_vm = {
+        "id": report.id,
+        "type": report.report_type.value,
+        "status": report.status.value,
+        "room": int(report.room),
+        "description": report.description,
+        "created_at_human": _fmt_dt(report.created_at) or "",
+        "done_at_human": _fmt_dt(report.done_at),
+        "duration_hours": _duration_hours(report.created_at, report.done_at),
+        "duration_human": _duration_human(report.created_at, report.done_at),
+    }
+
+    action_labels = {
+        ReportHistoryAction.CREATED: "Vytvořeno",
+        ReportHistoryAction.MARK_DONE: "Vyřízeno",
+        ReportHistoryAction.REOPEN: "Reopen",
+        ReportHistoryAction.DELETE: "Smazáno",
+    }
+    history_vms = []
+    for h in history:
+        history_vms.append(
+            {
+                "action_label": action_labels.get(h.action, str(h.action)),
+                "at_human": _fmt_dt(h.created_at) or "",
+                "actor_display_name": _history_actor_display_name(h, db),
+                "note": h.note,
+            }
+        )
+
+    return templates.TemplateResponse(
+        "portal_report_detail.html",
+        {
+            **_base_ctx(request, settings=settings, active_nav="portal", hide_shell=True),
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "role": PORTAL_ROLE_LABELS.get(user.role, user.role.value),
+            },
+            "report": report_vm,
+            "photos": [{"id": p.id, "size_kb": int((p.size_bytes or 0) // 1024)} for p in photos],
+            "history": history_vms,
+        },
+    )
+
+
+@router.post("/portal/reports")
+def portal_report_create(
+    request: Request,
+    type: str = Form("ISSUE"),
+    room: int = Form(...),
+    description: str | None = Form(None),
+    photos: list[UploadFile] | None = File(None),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(Settings.from_env),
+):
+    csrf_protect(request)
+    user = _portal_session_user(request, db, settings)
+    if not user:
+        return _redirect("/login")
+
+    try:
+        report_type = ReportType(type.strip().upper())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid type") from e
+
+    if room not in ROOMS_ALLOWED:
+        raise HTTPException(status_code=400, detail="Invalid room")
+    desc = _sanitize_portal_description(description)
+
+    files = photos or []
+    if len(files) > 5:
+        raise HTTPException(status_code=400, detail="Photos must be 0-5")
+    for file in files:
+        if file.content_type not in {"image/jpeg", "image/jpg", "image/png"}:
+            raise HTTPException(status_code=400, detail="Unsupported image type")
+
+    device = _portal_device_for_user(user, db)
+    report = Report(
+        report_type=report_type,
+        status=ReportStatus.OPEN,
+        room=str(room),
+        description=desc,
+        created_by_device_id=device.id,
+    )
+    db.add(report)
+    db.flush()
+
+    storage = MediaStorage(settings.media_root)
+
+    try:
+        for idx, up in enumerate(files, start=1):
+            stored = storage.store_photo(
+                report_id=report.id,
+                photo_id=idx,
+                src_file=up.file,
+                src_filename=up.filename or f"photo_{idx}",
+            )
+            db.add(
+                ReportPhoto(
+                    report_id=report.id,
+                    sort_order=idx - 1,
+                    file_path=stored.original_relpath,
+                    thumb_path=stored.thumb_relpath,
+                    mime_type="image/jpeg",
+                    size_bytes=stored.bytes,
+                )
+            )
+
+        db.add(
+            ReportHistory(
+                report_id=report.id,
+                action=ReportHistoryAction.CREATED,
+                actor_type=HistoryActorType.DEVICE,
+                actor_device_id=f"portal_user:{user.id}",
+                actor_admin_session=None,
+                from_status=None,
+                to_status=ReportStatus.OPEN,
+                note=user.email,
+            )
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        try:
+            storage.delete_report(report.id)
+        except Exception:
+            pass
+        raise
+
+    return _redirect(f"/portal/reports/{report.id}")
+
+
 @router.post("/admin/login")
 @rate_limit("admin_login")
 def admin_login_action(
@@ -607,10 +901,7 @@ def admin_reports_list(
     for r in rows:
         photos = photos_by_report.get(r.id, [])
         resolved_at_local = _fmt_dt(r.done_at) or ""
-        duration_hours = None
-        if r.done_at and r.created_at:
-            delta = r.done_at - r.created_at
-            duration_hours = round(delta.total_seconds() / 3600, 1)
+        duration_hours = _duration_hours(r.created_at, r.done_at)
         reports.append(
             {
                 "id": r.id,
@@ -621,6 +912,7 @@ def admin_reports_list(
                 "created_at_local": _fmt_dt(r.created_at) or "",
                 "done_at_local": resolved_at_local,
                 "duration_hours": duration_hours,
+                "duration_human": _duration_human(r.created_at, r.done_at),
                 "photos": [{"id": p.id, "thumb_url": f"/admin/media/{p.id}/thumb"} for p in photos],
             }
         )
@@ -688,9 +980,8 @@ def admin_report_detail(
         "photo_count": len(photos),
         "done_at_human": _fmt_dt(report.done_at),
         "done_by_device_id": report.done_by_device_id,
-        "duration_hours": round(((report.done_at - report.created_at).total_seconds() / 3600), 1)
-        if report.done_at and report.created_at
-        else None,
+        "duration_hours": _duration_hours(report.created_at, report.done_at),
+        "duration_human": _duration_human(report.created_at, report.done_at),
     }
 
     photo_vms = [{"id": p.id, "size_kb": int((p.size_bytes or 0) // 1024)} for p in photos]
@@ -710,6 +1001,7 @@ def admin_report_detail(
                 "at_human": _fmt_dt(h.created_at) or "",
                 "by_admin": h.actor_type == HistoryActorType.ADMIN,
                 "by_device_id": h.actor_device_id,
+                "actor_display_name": _history_actor_display_name(h, db),
                 "note": h.note,
             }
         )
