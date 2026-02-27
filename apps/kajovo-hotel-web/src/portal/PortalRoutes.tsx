@@ -13,6 +13,7 @@ type AccessDeniedProps = {
 function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX.Element {
   return (
     <main className="k-page" data-testid="access-denied-page">
+      <h1>Přístup odepřen</h1>
       <p>Role {role} (uživatel {userId}) nemá oprávnění pro modul {moduleLabel}.</p>
       <Link className="k-button secondary" to="/">Zpět na přehled</Link>
     </main>
