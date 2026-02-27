@@ -9,7 +9,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'env -u FORCE_COLOR pnpm build && env -u FORCE_COLOR pnpm preview --host 127.0.0.1 --port 4173',
+    command: 'env -u FORCE_COLOR corepack pnpm build && env -u FORCE_COLOR corepack pnpm preview --host 127.0.0.1 --port 4173',
     cwd: '.',
     port: 4173,
     reuseExistingServer: true,
