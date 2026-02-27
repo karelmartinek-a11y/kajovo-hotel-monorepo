@@ -1,0 +1,59 @@
+﻿git status -sb:
+## main...origin/main
+ M audit_07_status_post.txt
+
+git log --oneline --decorate -n 50:
+c7c17f5 (HEAD -> main, tag: baseline-20260227, origin/main, origin/HEAD) docs: add forensic audit artifacts
+78ba60e fix: align portal UI with tests
+72571dd chore: reborne audit cleanup (gitignore + untrack generated artifacts)
+c37297f (tag: pre-reborne-20260227) Merge origin/pr-merge
+6b0ceed Merge origin/codex/remove-hardcoded-admin-credentials
+91e5c85 Merge remote-tracking branch 'origin/codex/fix-audit-discrepancies-in-infra'
+f6dbd33 Merge remote-tracking branch 'origin/copilot/sub-pr-71'
+70f1ec3 Merge origin/copilot/cleanup-kajovo-hotel-monorepo
+28fa1c7 Merge remote-tracking branch 'origin/copilot/merge-all-commits-into-main'
+2eb7b8d Merge remote-tracking branch 'origin/codex/complete-todays-commits'
+9bff5f1 chore: merge ci guardrail fixes and sync contract
+d14488f Merge branch 'pr76' into codex/complete-todays-commits
+692d0a0 Initial plan
+3f8fd69 Regenerate API contract and shared client to satisfy CI guardrails freshness check
+2f9f0f9 Fix remaining CI mismatches in lint, smoke expectation, and WCAG contrast
+d7cb4a7 Harden auth hint content and finalize CI fixes
+2130281 Remove generated egg-info artifacts from PR
+cb9de9e Fix auth/users API regressions and verification doc gate
+a795ece Initial plan
+c7c24ff Harden production deploy workflow permissions and gating
+c49e94c Refine deploy trigger filters for main CI success
+c74d531 Gate production deploy on successful CI full run
+c4f7313 Initial plan
+37117a3 fix(contract): remove non-deterministic propertyNames from generated OpenAPI
+8db10c8 fix(ci): sync generated API contract and client after auth changes
+04d5551 fix(api): resolve auth/users regression and satisfy CI verification gate
+613b492 fix(web): complete access-denied UX and WCAG timeline contrast
+e75ae21 test(web): align tablet Playwright project with chromium-only CI setup
+8c6ca2c Initial plan
+bfd0809 Merge pull request #73 from karelmartinek-a11y/copilot/cleanup-and-merge-repo
+cb1acff fix: align fallback auth profile with AuthProfile type
+3152de5 Initial plan
+0d22c1b Merge pull request #72 from karelmartinek-a11y/copilot/sub-pr-71
+6cecd19 Apply review comments: safe dotenv parser, fix diacritics, rename README section
+7c77213 Apply suggestion from @Copilot
+40c8e4e Address review comments: simplify error msg, add staging host docs, fix CI env export
+9f10b15 Initial plan
+1e345ec Add reverse proxy operations guardrails documentation
+a39ad29 Merge pull request #70 from karelmartinek-a11y/codex/add-backend-functionality-from-audit
+563aaf3 portal: include human-readable duration in report list context
+f944f8d Merge pull request #69 from karelmartinek-a11y/revert-67-codex/make-security-adjustments-as-per-audit
+9bd5bde Revert "security: admin auth env & timing hardening, cookie path scoping, rate-limit prod warning"
+7d19657 security: remove hardcoded admin credentials and enforce env-based configuration (#66)
+27dc183 Merge branch 'main' into codex/remove-hardcoded-admin-credentials
+c65595d Pr merge (#64)
+630933c Merge branch 'main' into pr-merge
+75694b0 Merge pull request #68 from karelmartinek-a11y/codex/update-ui-to-match-panel-designs
+2118cba ui: reduce inline styles
+3257a99 Merge pull request #67 from karelmartinek-a11y/codex/make-security-adjustments-as-per-audit
+c1768f0 test(e2e): use root readiness URLs for vite preview servers
+
+git tag --list | tail -n 50:
+baseline-20260227
+pre-reborne-20260227

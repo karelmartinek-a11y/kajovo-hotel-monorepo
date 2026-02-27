@@ -30,3 +30,8 @@ Pro `legacy/hotel-backend/deploy/sandbox/run-tests.sh` jsou navíc povinné:
 - `HOTEL_SANDBOX_POSTGRES_PASSWORD`
 
 Pozn.: Do dokumentace ani do kódu nepatří konkrétní hodnoty těchto proměnných.
+
+## Forensic Reborne baseline
+
+- 27. února 2026 provedl Forensic Reborne Audit konsolidaci změn do `main` a znovu ověřil čistý stav (`pnpm test` zelený), viz `docs/kajovoFRA.md`.
+- `main` navazuje na `origin/main`, je novou baseline a ukazuje, že veškeré dřívější vzdálené větve již nebyly potřeba.

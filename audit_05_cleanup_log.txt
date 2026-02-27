@@ -1,0 +1,14 @@
+﻿.gitignore diff:
+diff --git a/.gitignore b/.gitignore
+index c47acee..ec2681d 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -17,3 +17,4 @@
+ coverage
+ out
+ .parcel-cache
++*.egg-info/
++kajovo_hotel.db
+
+git rm commands:
+- git rm -r --cached apps/kajovo-hotel-web/test-results

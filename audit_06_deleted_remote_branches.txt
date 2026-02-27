@@ -1,0 +1,1 @@
+﻿No remote branches existed beyond origin/main (origin/HEAD and origin/main only); nothing to delete.
