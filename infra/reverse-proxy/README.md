@@ -1,8 +1,9 @@
 # Reverse proxy operations notes
 
-## Canonical production domain
+## Canonical domains
 
 - Production canonical host is `hotel.hcasc.cz`.
+- Staging canonical host is `hotel-staging.hcasc.cz`.
 - Keep `server_name` in both `production-legacy.conf` and `production-new.conf` set to `hotel.hcasc.cz`.
 - Backend runtime validation (`HOTEL_PUBLIC_BASE_URL`) must use host `hotel.hcasc.cz`.
 
