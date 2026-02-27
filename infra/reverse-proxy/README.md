@@ -1,6 +1,6 @@
 # Reverse proxy operations notes
 
-## Canonical production domain
+## Canonical domains
 
 - Production canonical host is `hotel.hcasc.cz`.
 - Staging canonical host is `hotel-staging.hcasc.cz`.
