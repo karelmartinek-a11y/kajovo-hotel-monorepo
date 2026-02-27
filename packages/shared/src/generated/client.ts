@@ -6,10 +6,12 @@ export type AdminLoginRequest = {
   "password": string;
 };
 export type AuthIdentityResponse = {
+  "active_role"?: string | null;
   "actor_type": string;
   "email": string;
   "permissions": Array<string>;
   "role": string;
+  "roles"?: Array<string>;
 };
 export type BreakfastDailySummary = {
   "service_date": string;
@@ -56,8 +58,8 @@ export type InventoryAuditLogRead = {
   "created_at": string | null;
   "detail": string;
   "entity": string;
-  "entity_id": number;
   "id": number;
+  "resource_id": number;
 };
 export type InventoryItemCreate = {
   "current_stock": number;
@@ -208,7 +210,12 @@ export type PortalLoginRequest = {
 };
 export type PortalUserCreate = {
   "email": string;
+  "first_name"?: string;
+  "last_name"?: string;
+  "note"?: string | null;
   "password": string;
+  "phone"?: string | null;
+  "roles"?: Array<string>;
 };
 export type PortalUserPasswordSet = {
   "password": string;
@@ -216,9 +223,13 @@ export type PortalUserPasswordSet = {
 export type PortalUserRead = {
   "created_at": string | null;
   "email": string;
+  "first_name": string;
   "id": number;
   "is_active": boolean;
-  "role": string;
+  "last_name": string;
+  "note": string | null;
+  "phone": string | null;
+  "roles": Array<string>;
   "updated_at": string | null;
 };
 export type PortalUserStatusUpdate = {
@@ -242,27 +253,8 @@ export type ReportUpdate = {
   "status"?: string | null;
   "title"?: string | null;
 };
-export type SmtpSettingsRead = {
-  "host": string;
-  "password_masked": string;
-  "port": number;
-  "use_ssl": boolean;
-  "use_tls": boolean;
-  "username": string;
-};
-export type SmtpSettingsUpsert = {
-  "host": string;
-  "password": string;
-  "port": number;
-  "use_ssl"?: boolean;
-  "use_tls"?: boolean;
-  "username": string;
-};
-export type SmtpTestEmailRequest = {
-  "recipient": string;
-};
-export type SmtpTestEmailResponse = {
-  "ok"?: boolean;
+export type SelectRoleRequest = {
+  "role": string;
 };
 export type ValidationError = {
   "ctx"?: Record<string, unknown>;
@@ -315,14 +307,8 @@ export const apiClient = {
   async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
   },
-  async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
-    return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);
-  },
-  async putSmtpSettingsApiV1AdminSettingsSmtpPut(body: SmtpSettingsUpsert): Promise<SmtpSettingsRead> {
-    return request<SmtpSettingsRead>('PUT', `/api/v1/admin/settings/smtp`, undefined, body);
-  },
-  async testSmtpEmailApiV1AdminSettingsSmtpTestEmailPost(body: SmtpTestEmailRequest): Promise<SmtpTestEmailResponse> {
-    return request<SmtpTestEmailResponse>('POST', `/api/v1/admin/settings/smtp/test-email`, undefined, body);
+  async selectRoleApiAuthSelectRolePost(body: SelectRoleRequest): Promise<AuthIdentityResponse> {
+    return request<AuthIdentityResponse>('POST', `/api/auth/select-role`, undefined, body);
   },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);
