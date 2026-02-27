@@ -433,7 +433,7 @@ body {
 
 .k-timeline-label {
   font-size: var(--k-font-size-xs);
-  color: var(--k-color-metal);
+  color: var(--k-color-ink);
 }
 
 .k-timeline-value {

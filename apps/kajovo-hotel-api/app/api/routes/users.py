@@ -13,8 +13,7 @@ from app.api.schemas import (
     PortalUserStatusUpdate,
 )
 from app.config import get_settings
-from app.db.models import PortalUser
-from app.db.models import PortalSmtpSettings, PortalUserRole
+from app.db.models import PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
 from app.services.mail import StoredSmtpConfig, build_email_service, send_portal_onboarding
