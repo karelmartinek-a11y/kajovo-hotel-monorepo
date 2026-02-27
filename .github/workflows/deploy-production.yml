@@ -6,10 +6,12 @@ on:
     workflows: ["CI Full - Kájovo Hotel"]
     types:
       - completed
+    branches:
+      - main
 
 jobs:
   deploy-production:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
