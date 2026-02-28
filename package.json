@@ -14,7 +14,7 @@
     "ci:view-states": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"view states\" tests/ci-gates.spec.ts",
     "ci:wcag": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"WCAG\" tests/ci-gates.spec.ts",
     "ci:gates": "pnpm ci:tokens && pnpm ci:brand-assets && pnpm ci:signage && pnpm ci:view-states && pnpm ci:wcag",
-    "api:generate-contract": "PYTHONPATH=apps/kajovo-hotel-api python apps/kajovo-hotel-api/scripts/export_openapi.py",
+    "api:generate-contract": "PYTHONPATH=apps/kajovo-hotel-api python3 apps/kajovo-hotel-api/scripts/export_openapi.py",
     "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
     "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
     "contract:check": "pnpm contract:generate && git diff --exit-code -- apps/kajovo-hotel-api/openapi.json packages/shared/src/generated/client.ts",

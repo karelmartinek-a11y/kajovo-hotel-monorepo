@@ -80,9 +80,6 @@
             "additionalProperties": {
               "type": "integer"
             },
-            "propertyNames": {
-              "$ref": "#/components/schemas/BreakfastStatus"
-            },
             "title": "Status Counts",
             "type": "object"
           },
@@ -1769,6 +1766,10 @@
             ],
             "title": "Phone"
           },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
           "roles": {
             "items": {
               "type": "string"
@@ -1794,6 +1795,7 @@
           "first_name",
           "last_name",
           "email",
+          "role",
           "roles",
           "phone",
           "note",
