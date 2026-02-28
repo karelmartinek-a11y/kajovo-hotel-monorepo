@@ -33,6 +33,8 @@ fi
 
 cd "$ROOT_DIR"
 
+git reset --hard HEAD
+git clean -fd
 git fetch origin
 # Ensure main is checked out for production deploys
 if git show-ref --quiet "refs/heads/$EXPECTED_BRANCH"; then
