@@ -72,6 +72,8 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
 
 docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
 docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
+# Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel)
+docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'rm -rf /var/lib/postgresql/data/*' >/dev/null
 
 # Nejprve připrav DB heslo, aby API healthcheck prošel
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
