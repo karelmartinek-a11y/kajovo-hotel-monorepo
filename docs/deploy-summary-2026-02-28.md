@@ -1,12 +1,25 @@
 # Deploy summary (2026-02-28)
 
+## Baseline (audit environment)
+
 - **Environment:** `/tmp/kajovo-env` (copy of `infra/.env.example`).
-- **Builds:** `pnpm --filter @kajovo/kajovo-hotel-web build` and `pnpm --filter @kajovo/kajovo-hotel-admin build` both succeeded, producing `apps/.../dist` bundles.
-- **Tests:**
-  - `pnpm --filter @kajovo/kajovo-hotel-web test` (Playwright suites).
-  - `python -m pytest apps/kajovo-hotel-api/tests/test_health.py` in `.venv` with `sqlite:///apps/kajovo-hotel-api/data/sandbox.sqlite3`.
-  Tablet WCAG check now runs only on the desktop project due to Axe timeouts; the other flows (prefers-reduced-motion, navigation, RBAC) pass.
-- **Deploy:** `infra/ops/deploy-production.sh` was run with `COMPOSE_FILE_HOST=/tmp/empty-host-compose.yml` (isolated stack) so it rebuilt `kajovo-prod-{api,web,admin}` and started `postgres` + app containers. The local Postgres role `kajovo` + database were created manually before deploy and the stack now reports all health checks as passing.
-- **Next steps:**
-  1. Restore `infra/compose.prod.hotel-hcasc.yml` in production to connect to `deploy_hotelapp_net`/`hotelapp-postgres` and ensure post-deploy migrations share the real DB user.
-  2. Investigate real tablet WCAG scan or raise Axe timeout config when the production environment supports it.
+- **Builds:** `pnpm --filter @kajovo/kajovo-hotel-web build` and `pnpm --filter @kajovo/kajovo-hotel-admin build` succeeded.
+- **Known limitations:** v auditním prostředí nebyl dostupný Docker daemon ani Playwright browser binárky.
+
+## Current validation update (2026-02-28)
+
+- **Source commit:** `158e9e4`.
+- **API critical-path tests (P0/P1):** zelené:
+  - `tests/test_auth_role_selection.py`
+  - `tests/test_rbac.py`
+  - `tests/test_users.py`
+  - `tests/test_reports.py`
+  - `tests/test_smtp_email_service.py`
+  - `tests/test_auth_lockout.py`
+- **`pnpm ci:gates`:** aktuálně FAIL v tomto prostředí kvůli chybějícím Playwright browser binárkám (`pnpm exec playwright install --with-deps` required).
+
+## Next steps
+
+1. Spustit `pnpm exec playwright install --with-deps` na CI runneru/hostu a znovu ověřit `pnpm ci:gates`.
+2. Spustit `infra/verify/verify-deploy.sh` na hostu s dostupným Docker daemonem a externí sítí `deploy_hotelapp_net`.
+3. Do release evidence přidat finální deploy commit SHA + timestamp z produkčního hostu.

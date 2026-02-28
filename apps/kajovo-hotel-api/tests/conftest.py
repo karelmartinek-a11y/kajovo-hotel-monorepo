@@ -69,12 +69,14 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
         )
 
         # Portal users for other flows.
-        for email, role, salt, password in [
-            ("warehouse@example.com", "warehouse", b"warehouse-salt", "warehouse-pass"),
-            ("maintenance@example.com", "maintenance", b"maintenance-salt", "maintenance-pass"),
-            ("snidane@example.com", "snídaně", b"snidane-salt", "snidane-pass"),
-            ("reception@example.com", "recepce", b"reception-salt", "reception-pass"),
-        ]:
+        users = [
+            ("warehouse@example.com", "warehouse", "warehouse-pass", b"warehouse-salt"),
+            ("maintenance@example.com", "maintenance", "maintenance-pass", b"maintenance-salt"),
+            ("reception@example.com", "recepce", "reception-pass", b"reception-salt"),
+            ("snidane@example.com", "snídaně", "snidane-pass", b"snidane-salt"),
+        ]
+
+        for email, role, password, salt in users:
             connection.execute(
                 """
                 INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)

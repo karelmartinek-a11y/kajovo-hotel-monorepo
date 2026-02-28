@@ -1,14 +1,50 @@
 # How to deploy (production containers)
 
-## hotel.hcasc.cz (monorepo source of truth)
+## Cíl
+Produkční deploy pro `hotel.hcasc.cz` přes compose soubory:
+- `infra/compose.prod.yml`
+- `infra/compose.prod.hotel-hcasc.yml`
 
-Použijte override `infra/compose.prod.hotel-hcasc.yml` a externí DB (stávající `hotelapp-postgres`).
+Aplikace musí být připojena do externí docker sítě `deploy_hotelapp_net` a na externí DB endpoint `hotelapp-postgres:5432`.
+
+## 0) Preflight (hard fail)
+
+```bash
+command -v docker
+docker info
+docker compose version
+docker network inspect deploy_hotelapp_net
+```
+
+Pokud některý příkaz selže, deploy **zastavte**.
+
+## 1) Připravit env
 
 ```bash
 cd /opt/kajovo-hotel-monorepo/infra
 cp .env.example .env
-# upravte .env (KAJOVO_API_DATABASE_URL, API_PORT, WEB_PORT)
+# upravte .env (KAJOVO_API_DATABASE_URL, API_PORT, WEB_PORT, secrets)
 ```
+
+Doporučený DB endpoint v produkci:
+
+```env
+KAJOVO_API_DATABASE_URL=postgresql+psycopg://<user>:<pass>@hotelapp-postgres:5432/<db>
+```
+
+## 2) Ověřit branch/tag + commit SHA
+
+```bash
+cd /opt/kajovo-hotel-monorepo
+git fetch origin
+git checkout main
+git pull --ff-only
+git rev-parse --short HEAD
+```
+
+Zapište SHA do deploy ticketu/runbooku.
+
+## 3) Build + up
 
 ```bash
 cd /opt/kajovo-hotel-monorepo
@@ -16,57 +52,32 @@ COMPOSE_PROJECT_NAME=kajovo-prod \
   docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env build --pull
 
 COMPOSE_PROJECT_NAME=kajovo-prod \
-  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env up -d
+  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env up -d --force-recreate postgres api web admin
 ```
 
-Alternativa: použijte skript `infra/ops/deploy-production.sh`.
+Alternativa: `infra/ops/deploy-production.sh` (obsahuje hard-fail kontroly).
 
-## 1) Prepare environment
+## 4) Post-deploy smoke + verify
 
 ```bash
-cd infra
-cp .env.example .env
-# edit .env with real secrets
+curl -fsS https://hotel.hcasc.cz/health
+curl -fsS https://hotel.hcasc.cz/ready
+curl -fsS https://hotel.hcasc.cz/healthz
 ```
-
-## 2) Build images
 
 ```bash
-docker compose -f compose.prod.yml --env-file .env build --pull
+WEB_BASE_URL="https://hotel.hcasc.cz" API_BASE_URL="https://hotel.hcasc.cz" ./infra/smoke/smoke.sh
+./infra/verify/verify-deploy.sh
 ```
 
-## 3) Run the stack
+## 5) Rollback sekvence
+
+1. Přepnout reverse proxy na legacy konfiguraci:
 
 ```bash
-docker compose -f compose.prod.yml --env-file .env up -d
+cd /opt/kajovo-hotel-monorepo
+NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf ./infra/reverse-proxy/rollback-to-legacy.sh
 ```
 
-## 4) Update deployment (rolling-ish restart)
-
-```bash
-cd infra
-git pull
-
-docker compose -f compose.prod.yml --env-file .env build --pull api web
-docker compose -f compose.prod.yml --env-file .env up -d --no-deps api
-docker compose -f compose.prod.yml --env-file .env up -d --no-deps web
-docker compose -f compose.prod.yml --env-file .env up -d postgres
-```
-
-## 5) DB backup / restore
-
-### Backup
-
-```bash
-cd infra
-docker compose -f compose.prod.yml --env-file .env exec -T postgres \
-  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > backup.sql
-```
-
-### Restore
-
-```bash
-cd infra
-cat backup.sql | docker compose -f compose.prod.yml --env-file .env exec -T postgres \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
-```
+2. Ověřit legacy health endpoint.
+3. Teprve potom řešit rollback kontejnerů/DB migrace.

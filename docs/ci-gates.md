@@ -67,7 +67,7 @@ pnpm ci:wcag
 Doporučené před prvním během Playwright gate:
 
 ```bash
-pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+pnpm exec playwright install --with-deps
 ```
 
 Pozn.: `@kajovo/kajovo-hotel-web` i `@kajovo/kajovo-hotel-admin` mají v `pretest` kroku `playwright install chromium`, takže při spuštění `pnpm test` se browser binárky automaticky doinstalují, pokud v prostředí chybí.
