@@ -158,6 +158,26 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" build --pull
 
+# Inicializace DB schema bez Alembic migraci (v produkci je migration chain nekompatibilni
+# s defaultnim typem sloupce alembic_version.version_num); vytvorime vsechny tabulky z modelu.
+set +e
+schema_ok=0
+for i in {1..10}; do
+  echo "Inicializuji DB schema z ORM modelu (pokus $i/10)..."
+  if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" run --rm api \
+     python -c "from app.db.models import Base; from app.db.session import engine; Base.metadata.create_all(bind=engine)"; then
+    schema_ok=1
+    break
+  fi
+  sleep 2
+done
+set -e
+if [[ "$schema_ok" -ne 1 ]]; then
+  echo "Inicializace DB schema selhala." >&2
+  exit 1
+fi
+
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate postgres
 

@@ -1,5 +1,7 @@
 services:
   api:
+    environment:
+      KAJOVO_API_SKIP_MIGRATIONS: "1"
     ports:
       - "${API_PORT:-8202}:8000"
     networks:
