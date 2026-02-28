@@ -67,7 +67,7 @@ pnpm ci:wcag
 Doporučené před prvním během Playwright gate:
 
 ```bash
-pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+pnpm exec playwright install --with-deps
 ```
 
 ## CI workflow

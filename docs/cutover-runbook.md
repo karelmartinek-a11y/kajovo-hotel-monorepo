@@ -1,18 +1,23 @@
 # Cutover runbook (staging -> produkce)
 
-Tento runbook navazuje na `docs/cutover-plan.md` a definuje přesné kroky pro přepnutí provozu a rollback.
+Tento runbook navazuje na `docs/cutover-plan.md` a definuje kroky cutover pro `hotel.hcasc.cz`.
 
 ## 0) Předpoklady
 
 - Staging běží paralelně na `kajovohotel-staging.hcasc.cz`.
-- Reverse proxy je připraveno podle `infra/reverse-proxy/nginx-staging.conf`.
-- UAT scénáře a účty jsou připravené: `docs/uat.md` a `docs/test-accounts.md`.
+- Produkční docker host má dostupné:
+  - `docker`, `docker compose`
+  - externí síť `deploy_hotelapp_net`
+  - DB endpoint `hotelapp-postgres:5432`
 
 ## 1) Preflight
 
 ```bash
 cd /opt/kajovo-hotel-monorepo
-git pull
+git fetch origin
+git checkout main
+git pull --ff-only
+git rev-parse --short HEAD
 ```
 
 ```bash
@@ -32,75 +37,59 @@ cp .env.example .env
 ```
 
 ```bash
-cd /opt/kajovo-hotel-monorepo/infra
+cd /opt/kajovo-hotel-monorepo
 COMPOSE_PROJECT_NAME=kajovo-prod \
-  docker compose -f compose.prod.yml --env-file .env exec -T postgres \
-  pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /tmp/kajovo-prod-backup.sql
+  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env \
+  exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /tmp/kajovo-prod-backup.sql
 ```
 
-## 3) Migrate
+## 3) Deploy
 
 ```bash
 cd /opt/kajovo-hotel-monorepo
-export LEGACY_DB_URL="postgresql+psycopg://<legacy_user>:<legacy_pass>@<legacy_host>:5432/<legacy_db>"
-export DATABASE_URL="postgresql+psycopg://<new_user>:<new_pass>@<new_host>:5432/<new_db>"
-python apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py \
-  --report-json apps/kajovo-hotel-api/tools/migrate_legacy/report.json \
-  --report-csv apps/kajovo-hotel-api/tools/migrate_legacy/report.csv
+DEPLOY_NETWORK=deploy_hotelapp_net EXPECTED_BRANCH=main ./infra/ops/deploy-production.sh
 ```
 
-## 4) Switch (produkční hostname -> nový stack)
+## 4) Post-deploy smoke
+
+```bash
+curl -fsS https://hotel.hcasc.cz/health
+curl -fsS https://hotel.hcasc.cz/ready
+curl -fsS https://hotel.hcasc.cz/healthz
+```
+
+```bash
+WEB_BASE_URL="https://hotel.hcasc.cz" API_BASE_URL="https://hotel.hcasc.cz" ./infra/smoke/smoke.sh
+```
+
+## 5) Monitor
+
+```bash
+COMPOSE_PROJECT_NAME=kajovo-prod docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env logs -f --tail=200
+```
+
+## 6) Rollback sekvence
+
+1. Přepnout hostname na legacy stack:
 
 ```bash
 cd /opt/kajovo-hotel-monorepo
-NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf \
-  ./infra/reverse-proxy/switch-to-new.sh
+NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf ./infra/reverse-proxy/rollback-to-legacy.sh
 ```
 
-## 5) Verify
+2. Ověřit legacy health:
 
 ```bash
-curl -fsS https://kajovohotel.hcasc.cz/health
-curl -fsS https://kajovohotel.hcasc.cz/ready
-curl -fsS https://kajovohotel.hcasc.cz/healthz
+curl -fsS https://hotel.hcasc.cz/health
 ```
 
-```bash
-cd /opt/kajovo-hotel-monorepo
-WEB_BASE_URL="https://kajovohotel.hcasc.cz" \
-API_BASE_URL="https://kajovohotel.hcasc.cz" \
-./infra/smoke/smoke.sh
-```
+3. Pokud je potřeba DB rollback, použít poslední validní dump `/tmp/kajovo-prod-backup.sql`.
 
-```bash
-cd /opt/kajovo-hotel-monorepo
-./infra/verify/verify-deploy.sh
-```
+## 7) Audit záznam
 
-## 6) Monitor
-
-```bash
-COMPOSE_PROJECT_NAME=kajovo-prod docker compose -f infra/compose.prod.yml --env-file infra/.env logs -f --tail=200
-```
-
-```bash
-tail -f /var/log/nginx/access.log
-```
-
-## 7) Rollback (produkční hostname -> legacy)
-
-```bash
-cd /opt/kajovo-hotel-monorepo
-NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf \
-  ./infra/reverse-proxy/rollback-to-legacy.sh
-```
-
-```bash
-curl -fsS https://kajovohotel.hcasc.cz/health
-```
-
-## Poznámky
-
-- UAT postupy: `docs/uat.md`.
-- UAT účty a role: `docs/test-accounts.md`.
-- Detailní plán a kritéria GO/NO-GO: `docs/cutover-plan.md`.
+Po každém cutoveru zapište:
+- datum/čas,
+- commit SHA,
+- použité compose soubory,
+- výsledek verify + smoke,
+- rozhodnutí GO/NO-GO.
