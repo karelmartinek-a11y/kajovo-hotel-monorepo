@@ -22,6 +22,7 @@ jobs:
     environment: production
     steps:
       - name: Připrav SSH klíč
+        if: ${{ secrets.HOTEL_DEPLOY_KEY != '' }}
         shell: bash
         env:
           DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
@@ -38,7 +39,8 @@ jobs:
           chmod 600 deploy_key.pem
           ssh-keygen -lf deploy_key.pem || true
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH (key)
+        if: ${{ secrets.HOTEL_DEPLOY_KEY != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOTEL_DEPLOY_HOST }}
@@ -57,6 +59,38 @@ jobs:
             git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
             git -C /opt/kajovo-hotel-monorepo clean -fd
             GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
+            git -C /opt/kajovo-hotel-monorepo checkout main
+            git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
+            set +e
+            /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
+            DEPLOY_STATUS=$?
+            cd /opt/kajovo-hotel-monorepo
+            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=50 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=50 || true
+            exit "$DEPLOY_STATUS"
+
+      - name: Deploy via SSH (password)
+        if: ${{ secrets.HOTEL_DEPLOY_KEY == '' }}
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOTEL_DEPLOY_HOST }}
+          username: ${{ secrets.HOTEL_DEPLOY_USER }}
+          password: ${{ secrets.HOTEL_DEPLOY_PASS }}
+          port: ${{ secrets.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            set -x
+            if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
+              git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
+            fi
+            git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
+            git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
+            git -C /opt/kajovo-hotel-monorepo clean -fd
+            git -C /opt/kajovo-hotel-monorepo fetch --prune origin
             git -C /opt/kajovo-hotel-monorepo checkout main
             git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
             set +e
