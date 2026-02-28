@@ -65,12 +65,12 @@ fi
 commit_sha="$(git rev-parse --short HEAD)"
 echo "Deploy branch=$current_branch sha=$commit_sha"
 
-# Zastavíme případně běžící kontejnery a smažeme starý volume s databází.
-# Pokud existoval s jiným heslem, vznikala chyba autentizace API -> PostgreSQL.
+# Zastavíme případně běžící kontejnery a smažeme VŠECHNY lokální volume z compose (i postgres_data).
+# Pokud existoval starý cluster s jiným heslem, vznikala chyba autentizace API -> PostgreSQL.
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down -v --remove-orphans || true
 
-# Smažeme pouze naše postgres volume, abychom měli čistý start.
+# Smažeme (a hned vytvoříme) naše postgres volume, abychom měli čistý start.
 docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
 docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
 # Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel) a ověříme prázdnotu
