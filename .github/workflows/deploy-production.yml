@@ -12,8 +12,34 @@ on:
 permissions: {}
 
 jobs:
+  deploy-decision:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.decide.outputs.should_deploy }}
+      reason: ${{ steps.decide.outputs.reason }}
+    steps:
+      - id: decide
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Manual workflow_dispatch trigger." >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.workflow_run.conclusion }}" = "success" ] && [ "${{ github.event.workflow_run.head_branch }}" = "main" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "reason=CI Full finished successfully on main." >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "reason=CI Full conclusion='${{ github.event.workflow_run.conclusion }}' on branch='${{ github.event.workflow_run.head_branch }}'; deploy requires success on main." >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deployment decision summary
+        shell: bash
+        run: |
+          echo "### Deploy decision" >> "$GITHUB_STEP_SUMMARY"
+          echo "- should_deploy: \`${{ steps.decide.outputs.should_deploy }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- reason: ${{ steps.decide.outputs.reason }}" >> "$GITHUB_STEP_SUMMARY"
   deploy-production:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    needs: deploy-decision
+    if: needs.deploy-decision.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
