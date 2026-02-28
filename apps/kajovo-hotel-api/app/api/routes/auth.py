@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
@@ -37,6 +37,18 @@ LOCKOUT_WINDOW = timedelta(hours=1)
 LOCKOUT_DURATION = timedelta(hours=1)
 FORGOT_THROTTLE = timedelta(hours=1)
 UNLOCK_TOKEN_TTL = timedelta(hours=24)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 class HintRequest(BaseModel):
@@ -77,15 +89,17 @@ def _lockout_state(db: Session, actor_type: str, principal: str) -> AuthLockoutS
 
 
 def _is_locked(state: AuthLockoutState | None) -> bool:
-    return bool(state and state.locked_until and state.locked_until > datetime.utcnow())
+    locked_until = _as_utc(state.locked_until) if state else None
+    return bool(locked_until and locked_until > _utcnow())
 
 
 def _record_failed_login(db: Session, actor_type: str, principal: str) -> None:
-    now = datetime.utcnow()
+    now = _utcnow()
     state = _lockout_state(db, actor_type, principal)
     if state is None:
         state = AuthLockoutState(actor_type=actor_type, principal=principal, failed_attempts=0)
-    if state.first_failed_at is not None and (now - state.first_failed_at) > LOCKOUT_WINDOW:
+    first_failed_at = _as_utc(state.first_failed_at)
+    if first_failed_at is not None and (now - first_failed_at) > LOCKOUT_WINDOW:
         state.failed_attempts = 0
         state.first_failed_at = None
         state.last_failed_at = None
@@ -131,7 +145,7 @@ def _create_unlock_token(db: Session, actor_type: str, principal: str) -> str:
             actor_type=actor_type,
             principal=principal,
             token_hash=_token_hash(token),
-            expires_at=datetime.utcnow() + UNLOCK_TOKEN_TTL,
+            expires_at=_utcnow() + UNLOCK_TOKEN_TTL,
         )
     )
     db.commit()
@@ -197,10 +211,11 @@ def admin_hint(payload: HintRequest, request: Request, db: Session = Depends(get
         return LogoutResponse()
 
     state = _lockout_state(db, "admin", recipient)
-    now = datetime.utcnow()
+    now = _utcnow()
     if state is None:
         state = AuthLockoutState(actor_type="admin", principal=recipient, failed_attempts=0)
-    should_send = state.last_forgot_sent_at is None or (now - state.last_forgot_sent_at) >= FORGOT_THROTTLE
+    last_forgot_sent_at = _as_utc(state.last_forgot_sent_at)
+    should_send = last_forgot_sent_at is None or (now - last_forgot_sent_at) >= FORGOT_THROTTLE
     if should_send:
         service = build_email_service(settings, _smtp_settings(db))
         token = _create_unlock_token(db, "admin", recipient)
@@ -322,12 +337,13 @@ def portal_forgot(payload: ForgotPasswordRequest, request: Request, db: Session 
         return LogoutResponse()
 
     state = _lockout_state(db, "portal", email)
-    now = datetime.utcnow()
+    now = _utcnow()
     if state is None:
         state = AuthLockoutState(actor_type="portal", principal=email, failed_attempts=0)
     if _is_locked(state):
         return LogoutResponse()
-    should_send = state.last_forgot_sent_at is None or (now - state.last_forgot_sent_at) >= FORGOT_THROTTLE
+    last_forgot_sent_at = _as_utc(state.last_forgot_sent_at)
+    should_send = last_forgot_sent_at is None or (now - last_forgot_sent_at) >= FORGOT_THROTTLE
     if should_send:
         service = build_email_service(get_settings(), _smtp_settings(db))
         token = _create_unlock_token(db, "portal", email)
@@ -346,9 +362,11 @@ def portal_forgot(payload: ForgotPasswordRequest, request: Request, db: Session 
 def unlock_account(token: str, db: Session = Depends(get_db)) -> LogoutResponse:
     token_hash = _token_hash(token)
     unlock = db.execute(select(AuthUnlockToken).where(AuthUnlockToken.token_hash == token_hash)).scalar_one_or_none()
-    if unlock is None or unlock.used_at is not None or unlock.expires_at <= datetime.utcnow():
+    unlock_used_at = _as_utc(unlock.used_at) if unlock else None
+    unlock_expires_at = _as_utc(unlock.expires_at) if unlock else None
+    if unlock is None or unlock_used_at is not None or unlock_expires_at is None or unlock_expires_at <= _utcnow():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
-    unlock.used_at = datetime.utcnow()
+    unlock.used_at = _utcnow()
     db.add(unlock)
     _clear_lockout(db, unlock.actor_type, unlock.principal)
     db.commit()
