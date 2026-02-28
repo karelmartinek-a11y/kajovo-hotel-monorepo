@@ -76,10 +76,30 @@ docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d postgres
 
-# Po startu upravit heslo uživatele kajovo
+# Po startu počkáme na dostupnost Postgresu a pak nastavíme heslo.
+echo "Čekám na start Postgresu..."
+ready=0
+for i in {1..15}; do
+  if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+    ready=1
+    break
+  fi
+  sleep 2
+done
+
+if [[ "$ready" -ne 1 ]]; then
+  echo "Postgres není připraven ani po 30 s" >&2
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" logs postgres --tail=50 || true
+  exit 1
+fi
+
+# Nastav heslo pomocí superusera postgres pro jistotu
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';"
+  psql -U postgres -d postgres -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '$POSTGRES_PASSWORD';"
 
 # Pro jistotu zrusime stare kontejnery, aby nedoslo ke kolizi jmen
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
