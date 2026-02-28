@@ -31,6 +31,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
+# Default/override DB creds for jednotné nasazení
+export POSTGRES_USER="${POSTGRES_USER:-kajovo}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-Slunicko1}"
+export POSTGRES_DB="${POSTGRES_DB:-kajovo_hotel}"
+export KAJOVO_API_DATABASE_URL="${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}}"
+
 cd "$ROOT_DIR"
 
 git reset --hard HEAD
@@ -58,6 +64,15 @@ fi
 
 commit_sha="$(git rev-parse --short HEAD)"
 echo "Deploy branch=$current_branch sha=$commit_sha"
+
+# Nejprve připrav DB heslo, aby API healthcheck prošel
+COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d postgres
+
+# Po startu upravit heslo uživatele kajovo
+COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';"
 
 # Pro jistotu zrusime stare kontejnery, aby nedoslo ke kolizi jmen
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
