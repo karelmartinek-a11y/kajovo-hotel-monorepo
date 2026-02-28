@@ -367,6 +367,22 @@ body {
   align-items: center;
 }
 
+.kajovo-mascot {
+  position: fixed;
+  right: var(--k-spacing-5);
+  bottom: var(--k-spacing-5);
+  z-index: calc(var(--k-z-sign) - 1);
+  pointer-events: none;
+}
+
+.kajovo-mascot img {
+  display: block;
+  width: 200px;
+  height: auto;
+  opacity: 0.94;
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.15));
+}
+
 @media (max-width: 1024px) {
   .k-nav-group-label {
     font-size: var(--k-font-size-xs);
@@ -404,6 +420,15 @@ body {
   .kajovo-sign {
     left: var(--k-spacing-4);
     bottom: var(--k-spacing-4);
+  }
+
+  .kajovo-mascot {
+    right: var(--k-spacing-4);
+    bottom: calc(var(--k-spacing-8) + var(--k-spacing-5));
+  }
+
+  .kajovo-mascot img {
+    width: 140px;
   }
 }
 

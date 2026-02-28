@@ -1,6 +1,7 @@
 import React from 'react';
 import '../tokens.css';
 import { KajovoSign } from './KajovoSign';
+import { KajovoMascot } from './KajovoMascot';
 import type { PanelLayout } from './panelLayout';
 import { ModuleNavigation } from '../navigation/ModuleNavigation';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
@@ -37,6 +38,7 @@ export function AppShell({
         </div>
       </header>
       {children}
+      {!isPopup ? <KajovoMascot /> : null}
       {!isPopup ? <KajovoSign /> : null}
     </div>
   );
