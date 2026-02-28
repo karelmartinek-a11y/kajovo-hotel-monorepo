@@ -529,6 +529,7 @@ body {
 
   .k-skeleton-block {
     animation: none;
+    animation-name: none;
     background: var(--k-color-surface);
   }
 }

@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const previewCommand = 'pnpm --filter @kajovo/kajovo-hotel-web preview --host 0.0.0.0 --port 4173 --strictPort';
-const webServerCommand = `pnpm --filter @kajovo/kajovo-hotel-web build && ${previewCommand}`;
+const previewCommand = 'VITE_DISABLE_API_PROXY=1 pnpm --filter @kajovo/kajovo-hotel-web preview --host 0.0.0.0 --port 4173 --strictPort';
+const webServerCommand = `VITE_DISABLE_API_PROXY=1 pnpm --filter @kajovo/kajovo-hotel-web build && ${previewCommand}`;
 
 export default defineConfig({
   testDir: './tests',
