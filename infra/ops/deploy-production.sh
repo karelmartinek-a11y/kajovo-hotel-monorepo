@@ -49,9 +49,16 @@ if [[ "$current_branch" != "$EXPECTED_BRANCH" ]]; then
   exit 1
 fi
 
-if [[ -n "$EXPECTED_TAG" ]] && ! git describe --tags --exact-match >/dev/null 2>&1; then
-  echo "Repo není checkoutnuté na release tagu: $EXPECTED_TAG" >&2
-  exit 1
+if [[ -n "$EXPECTED_TAG" ]]; then
+  current_tag="$(git describe --tags --exact-match 2>/dev/null || true)"
+  if [[ "$current_tag" != "$EXPECTED_TAG" ]]; then
+    if [[ -z "$current_tag" ]]; then
+      echo "Repo není checkoutnuté na očekávaném release tagu: $EXPECTED_TAG (HEAD není na žádném tagu)" >&2
+    else
+      echo "Repo není checkoutnuté na očekávaném release tagu: $EXPECTED_TAG (aktuální tag: $current_tag)" >&2
+    fi
+    exit 1
+  fi
 fi
 
 commit_sha="$(git rev-parse --short HEAD)"

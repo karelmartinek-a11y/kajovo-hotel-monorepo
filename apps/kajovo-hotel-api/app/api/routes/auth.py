@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
@@ -68,12 +68,19 @@ def _lockout_state(db: Session, actor_type: str, principal: str) -> AuthLockoutS
     ).scalar_one_or_none()
 
 
+def _as_utc(dt: datetime) -> datetime:
+    """Return a timezone-aware UTC datetime, treating naive datetimes as UTC."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _is_locked(state: AuthLockoutState | None) -> bool:
-    return bool(state and state.locked_until and state.locked_until > datetime.utcnow())
+    return bool(state and state.locked_until and _as_utc(state.locked_until) > datetime.now(timezone.utc))
 
 
 def _record_failed_login(db: Session, actor_type: str, principal: str) -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     state = _lockout_state(db, actor_type, principal)
     if state is None:
         state = AuthLockoutState(actor_type=actor_type, principal=principal, failed_attempts=0)
@@ -158,10 +165,10 @@ def admin_hint(payload: HintRequest, db: Session = Depends(get_db)) -> LogoutRes
         return LogoutResponse()
 
     state = _lockout_state(db, "admin", recipient)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if state is None:
         state = AuthLockoutState(actor_type="admin", principal=recipient, failed_attempts=0)
-    should_send = state.last_forgot_sent_at is None or (now - state.last_forgot_sent_at) >= timedelta(
+    should_send = state.last_forgot_sent_at is None or (now - _as_utc(state.last_forgot_sent_at)) >= timedelta(
         hours=1
     )
     if should_send:

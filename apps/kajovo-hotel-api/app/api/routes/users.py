@@ -1,4 +1,6 @@
 import json
+import logging
+import smtplib
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -89,7 +91,10 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     db.refresh(user)
 
     service = build_email_service(get_settings(), _smtp_settings(db))
-    send_portal_onboarding(service=service, recipient=email)
+    try:
+        send_portal_onboarding(service=service, recipient=email)
+    except (OSError, smtplib.SMTPException, ValueError):
+        logging.getLogger(__name__).warning("Onboarding email failed for %s", email, exc_info=True)
     return _serialize_user(user)
 
 
