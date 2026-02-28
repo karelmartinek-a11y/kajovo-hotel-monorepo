@@ -9,6 +9,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-hotel-hcasc-production
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
