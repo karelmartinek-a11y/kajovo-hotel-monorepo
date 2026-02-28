@@ -34,12 +34,14 @@ def _smtp_settings(db: Session) -> PortalSmtpSettings | None:
 
 
 def _serialize_user(user: PortalUser) -> PortalUserRead:
+    roles = [normalize_role(role.role) for role in user.roles] or ["recepce"]
     return PortalUserRead(
         id=user.id,
         first_name=user.first_name,
         last_name=user.last_name,
         email=user.email,
-        roles=[normalize_role(role.role) for role in user.roles],
+        role=roles[0],
+        roles=roles,
         phone=user.phone,
         note=user.note,
         is_active=user.is_active,

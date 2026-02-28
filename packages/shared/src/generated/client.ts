@@ -229,6 +229,7 @@ export type PortalUserRead = {
   "last_name": string;
   "note": string | null;
   "phone": string | null;
+  "role": string;
   "roles": Array<string>;
   "updated_at": string | null;
 };
