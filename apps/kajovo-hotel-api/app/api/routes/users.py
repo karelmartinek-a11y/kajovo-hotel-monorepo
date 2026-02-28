@@ -1,4 +1,5 @@
 import json
+import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -7,16 +8,18 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import hash_password
 from app.api.schemas import (
+    LogoutResponse,
     PortalUserCreate,
     PortalUserPasswordSet,
     PortalUserRead,
     PortalUserStatusUpdate,
+    PortalUserUpdate,
 )
 from app.config import get_settings
 from app.db.models import PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, normalize_role
-from app.services.mail import build_email_service, send_portal_onboarding
+from app.services.mail import build_email_service, send_portal_onboarding, send_user_password_reset_link
 
 router = APIRouter(
     prefix="/api/v1/users",
@@ -158,3 +161,51 @@ def reset_user_password(
         {"password_action": "reset", "user_id": user_id}
     )
     return _serialize_user(user)
+
+
+@router.patch("/{user_id}", response_model=PortalUserRead)
+def update_user(
+    user_id: int,
+    payload: PortalUserUpdate,
+    db: Session = Depends(get_db),
+) -> PortalUserRead:
+    user = db.execute(
+        select(PortalUser).options(selectinload(PortalUser.roles)).where(PortalUser.id == user_id)
+    ).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    email = _normalize_email(payload.email)
+    existing = db.execute(
+        select(PortalUser).where(PortalUser.email == email, PortalUser.id != user_id)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+
+    user.first_name = payload.first_name
+    user.last_name = payload.last_name
+    user.email = email
+    user.phone = payload.phone
+    user.note = payload.note
+    user.roles = [PortalUserRole(role=normalize_role(role)) for role in payload.roles]
+    user.updated_at = datetime.utcnow()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _serialize_user(user)
+
+
+@router.post("/{user_id}/password/reset-link", response_model=LogoutResponse)
+def send_password_reset_link(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    user = db.execute(select(PortalUser).where(PortalUser.id == user_id)).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    token = secrets.token_urlsafe(32)
+    reset_link = f"{request.base_url}login?reset_token={token}"
+    service = build_email_service(get_settings(), _smtp_settings(db))
+    send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+    return LogoutResponse()

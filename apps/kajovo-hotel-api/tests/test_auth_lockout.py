@@ -137,6 +137,42 @@ def test_admin_hint_rate_limited_to_once_per_hour(api_base_url: str) -> None:
     assert status == 200
     assert body == {"ok": True}
 
+
+def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_path: Path) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    token = next((cookie.value for cookie in jar if cookie.name == "kajovo_csrf"), "")
+    headers = {"x-csrf-token": token} if token else {}
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/hint",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local"},
+        headers=headers,
+    )
+    assert status == 200
+
+    with sqlite3.connect(api_db_path) as connection:
+        row = connection.execute(
+            "SELECT token_hash FROM auth_unlock_tokens WHERE actor_type = 'admin' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        assert row is not None
+
+    # Token hash exists only in DB; endpoint rejects unknown token.
+    bad_status, _ = api_request(opener, api_base_url, "/api/auth/unlock?token=bad-token")
+    assert bad_status == 400
+
     status, body = api_request(
         opener,
         api_base_url,

@@ -75,6 +75,36 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     assert isinstance(detail, dict)
     assert detail["email"] == "new.user@example.com"
 
+    status, updated = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+        method="PATCH",
+        payload={
+            "first_name": "Novy",
+            "last_name": "Uzivatel",
+            "email": "new.user@example.com",
+            "roles": ["recepce", "snídaně"],
+            "phone": "+420123456789",
+            "note": "Poznamka",
+        },
+        headers=csrf_header(jar),
+    )
+    assert status == 200
+    assert isinstance(updated, dict)
+    assert updated["phone"] == "+420123456789"
+    assert "recepce" in updated["roles"]
+
+    status, reset_link = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}/password/reset-link",
+        method="POST",
+        headers=csrf_header(jar),
+    )
+    assert status == 200
+    assert reset_link == {"ok": True}
+
     status, disabled = api_request(
         opener,
         api_base_url,
