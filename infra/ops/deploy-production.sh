@@ -39,9 +39,9 @@ export POSTGRES_DB="kajovo_hotel"
 if [[ -z "$POSTGRES_PASSWORD" ]]; then
   echo "POSTGRES_PASSWORD je prázdné -> použiji POSTGRES_HOST_AUTH_METHOD=trust a přihlášení bez hesla."
   export POSTGRES_HOST_AUTH_METHOD="trust"
-  export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}"
+  export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}@kajovo_postgres:5432/${POSTGRES_DB}"
 else
-  export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+  export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@kajovo_postgres:5432/${POSTGRES_DB}"
 fi
 
 cd "$ROOT_DIR"

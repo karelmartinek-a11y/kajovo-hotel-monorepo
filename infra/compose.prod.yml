@@ -16,7 +16,9 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - kajovo_net
+      kajovo_net:
+        aliases:
+          - kajovo_postgres
 
   api:
     build:
