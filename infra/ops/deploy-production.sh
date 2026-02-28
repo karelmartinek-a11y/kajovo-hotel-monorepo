@@ -31,10 +31,16 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Default/override DB creds pro jednotné nasazení – vynuceně
-export POSTGRES_USER="kajovo"
-export POSTGRES_PASSWORD="Slunicko1"
-export POSTGRES_DB="kajovo_hotel"
+# Default/override DB creds pro jednotné nasazení – heslo musí přijít z prostředí/secretu
+export POSTGRES_USER="${POSTGRES_USER:-kajovo}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
+export POSTGRES_DB="${POSTGRES_DB:-kajovo_hotel}"
+
+if [[ -z "$POSTGRES_PASSWORD" ]]; then
+  echo "Chybí POSTGRES_PASSWORD (musí přijít z .env / GitHub secretu), ukončuji." >&2
+  exit 1
+fi
+
 export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
 
 cd "$ROOT_DIR"
