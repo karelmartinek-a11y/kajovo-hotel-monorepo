@@ -31,17 +31,18 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Default/override DB creds pro jednotné nasazení – heslo musí přijít z prostředí/secretu
+# Default/override DB creds pro jednotné nasazení – heslo může být prázdné, pokud používáme trust
 export POSTGRES_USER="${POSTGRES_USER:-kajovo}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
 export POSTGRES_DB="${POSTGRES_DB:-kajovo_hotel}"
 
 if [[ -z "$POSTGRES_PASSWORD" ]]; then
-  echo "Chybí POSTGRES_PASSWORD (musí přijít z .env / GitHub secretu), ukončuji." >&2
-  exit 1
+  echo "POSTGRES_PASSWORD je prázdné -> použiji POSTGRES_HOST_AUTH_METHOD=trust a přihlášení bez hesla."
+  export POSTGRES_HOST_AUTH_METHOD="trust"
+  export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}@postgres:5432/${POSTGRES_DB}"
+else
+  export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
 fi
-
-export KAJOVO_API_DATABASE_URL="postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
 
 cd "$ROOT_DIR"
 
@@ -115,9 +116,9 @@ fi
 set +e
 sql_do="DO $$BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$POSTGRES_USER') THEN
-    CREATE ROLE \\\"$POSTGRES_USER\\\" LOGIN SUPERUSER PASSWORD '$POSTGRES_PASSWORD';
+    CREATE ROLE \\\"$POSTGRES_USER\\\" LOGIN SUPERUSER ${POSTGRES_PASSWORD:+PASSWORD '$POSTGRES_PASSWORD'};
   ELSE
-    ALTER ROLE \\\"$POSTGRES_USER\\\" WITH LOGIN PASSWORD '$POSTGRES_PASSWORD';
+    ALTER ROLE \\\"$POSTGRES_USER\\\" WITH LOGIN ${POSTGRES_PASSWORD:+PASSWORD '$POSTGRES_PASSWORD'};
   END IF;
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$POSTGRES_DB') THEN
     CREATE DATABASE \\\"$POSTGRES_DB\\\" OWNER \\\"$POSTGRES_USER\\\";
