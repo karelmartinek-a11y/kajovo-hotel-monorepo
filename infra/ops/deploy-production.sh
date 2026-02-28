@@ -70,7 +70,10 @@ echo "Deploy branch=$current_branch sha=$commit_sha"
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
 
-docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
+# Smažeme všechny postgres_data volume, co tu zůstaly, abychom měli čistý start.
+for vol in $(docker volume ls --format '{{.Name}}' | grep 'postgres_data$'); do
+  docker volume rm -f "$vol" || true
+done
 docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
 # Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel)
 docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'rm -rf /var/lib/postgresql/data/*' >/dev/null
