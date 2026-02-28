@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -121,7 +121,7 @@ def update_user(
     user.email = _normalize_email(payload.email)
     user.phone = payload.phone
     user.note = payload.note
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     for role in list(user.roles):
         db.delete(role)
     for role in payload.roles:
