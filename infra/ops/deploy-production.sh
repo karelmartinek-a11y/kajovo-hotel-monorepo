@@ -71,6 +71,7 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
 
 docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
+docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
 
 # Nejprve připrav DB heslo, aby API healthcheck prošel
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
