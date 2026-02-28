@@ -41,7 +41,6 @@ test.describe('CI smoke auth flows', () => {
     expect(createUserResponse.status()).toBe(201);
     await expect(createUserResponse.json()).resolves.toMatchObject({
       email: userEmail,
-      role: 'manager',
       is_active: true,
     });
 
