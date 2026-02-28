@@ -31,10 +31,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# Default/override DB creds pro jednotné nasazení – heslo může být prázdné, pokud používáme trust
-export POSTGRES_USER="${POSTGRES_USER:-kajovo}"
+# DB user a DB name držíme fixní; heslo může být prázdné při trust auth.
+export POSTGRES_USER="kajovo"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
-export POSTGRES_DB="${POSTGRES_DB:-kajovo_hotel}"
+export POSTGRES_DB="kajovo_hotel"
 
 if [[ -z "$POSTGRES_PASSWORD" ]]; then
   echo "POSTGRES_PASSWORD je prázdné -> použiji POSTGRES_HOST_AUTH_METHOD=trust a přihlášení bez hesla."
