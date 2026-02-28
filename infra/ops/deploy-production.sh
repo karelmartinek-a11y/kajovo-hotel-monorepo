@@ -65,6 +65,13 @@ fi
 commit_sha="$(git rev-parse --short HEAD)"
 echo "Deploy branch=$current_branch sha=$commit_sha"
 
+# Zastavíme případně běžící kontejnery a smažeme starý volume s databází.
+# Pokud existoval s jiným heslem, vznikala chyba autentizace API -> PostgreSQL.
+COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
+
+docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
+
 # Nejprve připrav DB heslo, aby API healthcheck prošel
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d postgres
