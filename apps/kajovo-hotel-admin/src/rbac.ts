@@ -40,7 +40,7 @@ function normalizeRole(input: string | undefined): Role {
 export async function resolveAuthProfile(): Promise<AuthProfile> {
   const response = await fetch('/api/auth/me', { credentials: 'include' });
   if (!response.ok) {
-    return { userId: 'anonymous', role: 'admin', roles: ['admin'], activeRole: 'admin', permissions: rolePermissions('admin'), actorType: 'admin' };
+    return { userId: 'anonymous', role: 'recepce', roles: ['recepce'], activeRole: null, permissions: rolePermissions('recepce'), actorType: 'portal' };
   }
   const payload = (await response.json()) as AuthMeResponse;
   const role = normalizeRole(payload.role);
