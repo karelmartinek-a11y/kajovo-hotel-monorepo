@@ -47,6 +47,9 @@ export type BreakfastOrderUpdate = {
   "status"?: BreakfastStatus | null;
 };
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
+export type ForgotPasswordRequest = {
+  "email": string;
+};
 export type HTTPValidationError = {
   "detail"?: Array<ValidationError>;
 };
@@ -208,6 +211,10 @@ export type PortalLoginRequest = {
   "email": string;
   "password": string;
 };
+export type PortalPasswordChangeRequest = {
+  "new_password": string;
+  "old_password": string;
+};
 export type PortalUserCreate = {
   "email": string;
   "first_name"?: string;
@@ -235,6 +242,14 @@ export type PortalUserRead = {
 };
 export type PortalUserStatusUpdate = {
   "is_active": boolean;
+};
+export type PortalUserUpdate = {
+  "email": string;
+  "first_name": string;
+  "last_name": string;
+  "note"?: string | null;
+  "phone"?: string | null;
+  "roles": Array<string>;
 };
 export type ReportCreate = {
   "description"?: string | null;
@@ -321,6 +336,9 @@ export const apiClient = {
   async adminLogoutApiAuthAdminLogoutPost(): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/admin/logout`, undefined, undefined);
   },
+  async portalForgotApiAuthForgotPost(body: ForgotPasswordRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/forgot`, undefined, body);
+  },
   async portalLoginApiAuthLoginPost(body: PortalLoginRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/login`, undefined, body);
   },
@@ -330,8 +348,14 @@ export const apiClient = {
   async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
   },
+  async portalChangePasswordApiAuthPasswordPost(body: PortalPasswordChangeRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/password`, undefined, body);
+  },
   async selectPortalRoleApiAuthSelectRolePost(body: SelectRoleRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/select-role`, undefined, body);
+  },
+  async unlockAccountApiAuthUnlockGet(query: { "token": string; }): Promise<LogoutResponse> {
+    return request<LogoutResponse>('GET', `/api/auth/unlock`, query, undefined);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);
@@ -432,6 +456,9 @@ export const apiClient = {
   async getUserApiV1UsersUserIdGet(user_id: number): Promise<PortalUserRead> {
     return request<PortalUserRead>('GET', `/api/v1/users/${user_id}`, undefined, undefined);
   },
+  async updateUserApiV1UsersUserIdPatch(user_id: number, body: PortalUserUpdate): Promise<PortalUserRead> {
+    return request<PortalUserRead>('PATCH', `/api/v1/users/${user_id}`, undefined, body);
+  },
   async setUserActiveApiV1UsersUserIdActivePatch(user_id: number, body: PortalUserStatusUpdate): Promise<PortalUserRead> {
     return request<PortalUserRead>('PATCH', `/api/v1/users/${user_id}/active`, undefined, body);
   },
@@ -440,6 +467,9 @@ export const apiClient = {
   },
   async resetUserPasswordApiV1UsersUserIdPasswordResetPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
     return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password/reset`, undefined, body);
+  },
+  async sendPasswordResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);
   },
   async healthHealthGet(): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('GET', `/health`, undefined, undefined);

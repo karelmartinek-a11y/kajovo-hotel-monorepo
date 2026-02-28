@@ -12,8 +12,8 @@ from app.api.schemas import (
     AuthIdentityResponse,
     ForgotPasswordRequest,
     LogoutResponse,
-    PortalPasswordChangeRequest,
     PortalLoginRequest,
+    PortalPasswordChangeRequest,
     SelectRoleRequest,
 )
 from app.config import get_settings

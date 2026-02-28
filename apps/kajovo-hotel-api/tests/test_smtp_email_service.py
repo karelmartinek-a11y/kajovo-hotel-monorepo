@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -55,7 +57,7 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         monkeypatch.setattr("app.api.routes.users.build_email_service", _service_factory)
         monkeypatch.setattr("app.api.routes.settings.build_email_service", _service_factory)
 
-        admin_hint(HintRequest(email="admin@kajovohotel.local"), db=db)
+        admin_hint(HintRequest(email="admin@kajovohotel.local"), request=SimpleNamespace(base_url="https://hotel.test/"), db=db)
         send_test_email(SmtpTestEmailRequest(recipient="admin@kajovohotel.local"), db=db)
         create_user(PortalUserCreate(email="new.user@example.com", password="new-user-pass"), db=db)
 

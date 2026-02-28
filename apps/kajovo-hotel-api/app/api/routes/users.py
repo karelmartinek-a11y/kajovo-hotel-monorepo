@@ -19,7 +19,11 @@ from app.config import get_settings
 from app.db.models import PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, normalize_role
-from app.services.mail import build_email_service, send_portal_onboarding, send_user_password_reset_link
+from app.services.mail import (
+    build_email_service,
+    send_portal_onboarding,
+    send_user_password_reset_link,
+)
 
 router = APIRouter(
     prefix="/api/v1/users",
