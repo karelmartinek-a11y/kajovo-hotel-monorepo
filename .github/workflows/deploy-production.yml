@@ -20,12 +20,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     environment: production
+    env:
+      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
+      HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS }}
     steps:
       - name: Připrav SSH klíč
-        if: ${{ secrets.HOTEL_DEPLOY_KEY != '' }}
+        if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
         shell: bash
         env:
-          DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
+          DEPLOY_KEY: ${{ env.HOTEL_DEPLOY_KEY }}
         run: |
           if [ -z "$DEPLOY_KEY" ]; then
             echo "Chybí secret HOTEL_DEPLOY_KEY" >&2
@@ -40,7 +43,7 @@ jobs:
           ssh-keygen -lf deploy_key.pem || true
 
       - name: Deploy via SSH (key)
-        if: ${{ secrets.HOTEL_DEPLOY_KEY != '' }}
+        if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOTEL_DEPLOY_HOST }}
@@ -74,7 +77,7 @@ jobs:
             exit "$DEPLOY_STATUS"
 
       - name: Deploy via SSH (password)
-        if: ${{ secrets.HOTEL_DEPLOY_KEY == '' }}
+        if: ${{ env.HOTEL_DEPLOY_KEY == '' && env.HOTEL_DEPLOY_PASS != '' }}
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOTEL_DEPLOY_HOST }}
