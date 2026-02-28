@@ -159,6 +159,53 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" build --pull
 
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate postgres api web admin
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate postgres
+
+# Po recreate postgres ještě jednou ověříme připojení a roli/databázi,
+# aby API nestartovalo proti neinitializovanému clusteru.
+echo "Ověřuji DB po recreate postgres..."
+ready=0
+streak=0
+for i in {1..60}; do
+  if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     pg_isready -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; then
+    streak=$((streak + 1))
+    if [[ "$streak" -ge 3 ]]; then
+      ready=1
+      break
+    fi
+  else
+    streak=0
+  fi
+  sleep 2
+done
+if [[ "$ready" -ne 1 ]]; then
+  echo "Postgres po recreate není stabilně dostupný ani po 120 s" >&2
+  exit 1
+fi
+
+set +e
+sql_ok=0
+for i in {1..10}; do
+  echo "Final DB sync (pokus $i/10)..."
+  if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "$sql_do"; then
+    sql_ok=1
+    break
+  fi
+  sleep 2
+done
+set -e
+if [[ "$sql_ok" -ne 1 ]]; then
+  echo "Final DB sync selhal." >&2
+  exit 1
+fi
+
+COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate api web admin
 
 printf '%s HOTEL web: deploy z monorepa (%s, branch=%s)\n' "$(date '+%F %T')" "$commit_sha" "$current_branch" >> "$LOG_FILE"
