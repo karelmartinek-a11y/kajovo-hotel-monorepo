@@ -56,6 +56,7 @@ jobs:
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?
             cd /opt/kajovo-hotel-monorepo
+            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
