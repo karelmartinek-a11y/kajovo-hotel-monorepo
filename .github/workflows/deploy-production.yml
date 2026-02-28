@@ -51,4 +51,10 @@ jobs:
             git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
             git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
             git -C /opt/kajovo-hotel-monorepo clean -fd
+            set +e
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
+            DEPLOY_STATUS=$?
+            cd /opt/kajovo-hotel-monorepo
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail 200 || true
+            exit "$DEPLOY_STATUS"
