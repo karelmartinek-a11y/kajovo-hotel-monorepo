@@ -1,5 +1,25 @@
 # Jak nasadit staging (paralelně k legacy)
 
+## Rychlá orientace: co je hotovo vs. co je nasazeno
+
+- **Hotovo v PR větvi** = změna je v commitu na feature větvi.
+- **Hotovo v main** = změna je mergnutá do `origin/main`.
+- **Nasazeno** = změna běží na serveru (až po deploy kroku + ověření health/smoke).
+
+Rychlá kontrola konkrétního commitu:
+
+```bash
+# 1) commit existuje lokálně / v PR větvi
+git branch --contains <SHA>
+
+# 2) commit je už v main (po fetchi)
+git fetch origin
+git branch -r --contains <SHA> | grep origin/main
+```
+
+Pokud krok 2 nic nevrátí, změna ještě **není v main**.  
+I když je commit v `main`, bez kroků 3–6 v tomto runbooku ještě není považován za **nasazený**.
+
 ## 1) Připravte .env.staging
 
 ```bash

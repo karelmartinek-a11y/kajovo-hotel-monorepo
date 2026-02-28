@@ -61,8 +61,8 @@ export type InventoryAuditLogRead = {
   "created_at": string | null;
   "detail": string;
   "entity": string;
-  "entity_id": number;
   "id": number;
+  "resource_id": number;
 };
 export type InventoryItemCreate = {
   "current_stock": number;
@@ -217,12 +217,12 @@ export type PortalPasswordChangeRequest = {
 };
 export type PortalUserCreate = {
   "email": string;
-  "first_name": string;
-  "last_name": string;
+  "first_name"?: string;
+  "last_name"?: string;
   "note"?: string | null;
   "password": string;
   "phone"?: string | null;
-  "roles": Array<string>;
+  "roles"?: Array<string>;
 };
 export type PortalUserPasswordSet = {
   "password": string;
@@ -236,6 +236,7 @@ export type PortalUserRead = {
   "last_name": string;
   "note": string | null;
   "phone": string | null;
+  "role": string;
   "roles": Array<string>;
   "updated_at": string | null;
 };
@@ -353,8 +354,8 @@ export const apiClient = {
   async selectPortalRoleApiAuthSelectRolePost(body: SelectRoleRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/select-role`, undefined, body);
   },
-  async unlockAccountApiAuthUnlockGet(query: { "token": string; "actor_type": string; }): Promise<unknown> {
-    return request<unknown>('GET', `/api/auth/unlock`, query, undefined);
+  async unlockAccountApiAuthUnlockGet(): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>('GET', `/api/auth/unlock`, undefined, undefined);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);
@@ -463,6 +464,9 @@ export const apiClient = {
   },
   async setUserPasswordApiV1UsersUserIdPasswordPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
     return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password`, undefined, body);
+  },
+  async resetUserPasswordApiV1UsersUserIdPasswordResetPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
+    return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password/reset`, undefined, body);
   },
   async sendUserPasswordResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);

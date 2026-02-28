@@ -70,6 +70,8 @@ Doporučené před prvním během Playwright gate:
 pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 ```
 
+Pozn.: `@kajovo/kajovo-hotel-web` i `@kajovo/kajovo-hotel-admin` mají v `pretest` kroku `playwright install chromium`, takže při spuštění `pnpm test` se browser binárky automaticky doinstalují, pokud v prostředí chybí.
+
 ## CI workflow
 
 Workflow je v `.github/workflows/ci-gates.yml`.

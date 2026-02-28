@@ -192,7 +192,7 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
 
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }, testInfo) => {
   if (testInfo.project.name !== 'desktop') {
-    test.skip('WCAG baseline currently runs only on desktop to avoid Axe timeouts on tablet/phone');
+    test.skip(true, 'WCAG baseline currently runs only on desktop to avoid Axe timeouts on tablet/phone');
   }
   const allowedColorContrastTargets = new Set(['.kajovo-sign', '.k-nav-group-label']);
 
