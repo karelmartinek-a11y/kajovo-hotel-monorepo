@@ -82,7 +82,7 @@ ready=0
 for i in {1..15}; do
   if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
      docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-     pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+     pg_isready -U "$POSTGRES_USER" -d postgres; then
     ready=1
     break
   fi
@@ -97,12 +97,13 @@ if [[ "$ready" -ne 1 ]]; then
 fi
 
 # Nastav heslo pro hlavního uživatele DB (POSTGRES_USER) s retriem,
-# protože initdb krátce restartuje server.
+# protože initdb krátce restartuje server a zakládá DB.
 set +e
+alter_sql="ALTER USER \\\"$POSTGRES_USER\\\" WITH PASSWORD '$POSTGRES_PASSWORD'; DO $$BEGIN IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$POSTGRES_DB') THEN CREATE DATABASE \\\"$POSTGRES_DB\\\" OWNER \\\"$POSTGRES_USER\\\"; END IF; END$$;"
 for i in {1..5}; do
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '$POSTGRES_PASSWORD';" && break
+    psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "$alter_sql" && break
   echo "ALTER USER neprošel, čekám a zkusím znovu ($i/5)..."
   sleep 2
 done
