@@ -52,6 +52,9 @@ jobs:
             git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
             git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
             git -C /opt/kajovo-hotel-monorepo clean -fd
+            GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
+            git -C /opt/kajovo-hotel-monorepo checkout main
+            git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
             set +e
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?
