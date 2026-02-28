@@ -21,6 +21,7 @@ require_cmd() {
 
 require_cmd docker
 require_cmd git
+require_cmd jq
 
 docker info >/dev/null
 docker compose version >/dev/null
@@ -91,27 +92,20 @@ fi
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d postgres
 
-# Po startu počkáme na dostupnost Postgresu a pak nastavíme heslo.
-echo "Čekám na start Postgresu..."
+# Po startu počkáme na HEALTHY status Postgresu, ať se netrefíme do init restartu.
+echo "Čekám na HEALTHY stav Postgresu..."
 ready=0
-for i in {1..20}; do
-  if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-     pg_isready -U "$POSTGRES_USER" -d postgres; then
+for i in {1..40}; do
+  health="$(COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" ps --format json postgres | jq -r '.[0].Health // ""' 2>/dev/null || true)"
+  if [[ "$health" == "healthy" ]]; then
     ready=1
     break
   fi
-  if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-     pg_isready -U postgres -d postgres; then
-    ready=1
-    break
-  fi
-  sleep 3
+  sleep 2
 done
 
 if [[ "$ready" -ne 1 ]]; then
-  echo "Postgres není připraven ani po 60 s" >&2
+  echo "Postgres není healthy ani po 80 s" >&2
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" logs postgres --tail=50 || true
   exit 1
@@ -131,8 +125,8 @@ sql_do="DO $$BEGIN
   END IF;
 END$$;"
 sql_ok=0
-for i in {1..5}; do
-  echo "Nastavuji roli a DB (pokus $i/5)..."
+for i in {1..10}; do
+  echo "Nastavuji roli a DB (pokus $i/10)..."
   if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
      COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
      docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
@@ -140,19 +134,12 @@ for i in {1..5}; do
     sql_ok=1
     break
   fi
-  if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
-     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-     psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "$sql_do"; then
-    sql_ok=1
-    break
-  fi
-  echo "SQL neprošlo, čekám a zkusím znovu ($i/5)..."
+  echo "SQL neprošlo, čekám a zkusím znovu ($i/10)..."
   sleep 3
 done
 set -e
 if [[ "$sql_ok" -ne 1 ]]; then
-  echo "Nepodařilo se vytvořit roli/databázi po 5 pokusech." >&2
+  echo "Nepodařilo se vytvořit roli/databázi po 10 pokusech." >&2
   exit 1
 fi
 
