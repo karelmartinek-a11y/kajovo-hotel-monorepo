@@ -122,7 +122,7 @@ fi
 # Nastav heslo pro hlavního uživatele DB (POSTGRES_USER) s retriem,
 # protože initdb krátce restartuje server a zakládá DB.
 set +e
-sql_do="DO $$BEGIN
+sql_do="DO \$\$BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$POSTGRES_USER') THEN
     CREATE ROLE \\\"$POSTGRES_USER\\\" LOGIN SUPERUSER ${POSTGRES_PASSWORD:+PASSWORD '$POSTGRES_PASSWORD'};
   ELSE
@@ -131,7 +131,7 @@ sql_do="DO $$BEGIN
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = '$POSTGRES_DB') THEN
     CREATE DATABASE \\\"$POSTGRES_DB\\\" OWNER \\\"$POSTGRES_USER\\\";
   END IF;
-END$$;"
+END\$\$;"
 sql_ok=0
 for i in {1..10}; do
   echo "Nastavuji roli a DB (pokus $i/10)..."
