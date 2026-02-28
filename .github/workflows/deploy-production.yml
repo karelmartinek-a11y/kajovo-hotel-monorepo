@@ -43,6 +43,7 @@ jobs:
           port: ${{ secrets.HOTEL_DEPLOY_PORT }}
           script: |
             set -euo pipefail
+            set -x
             SSH_CMD="ssh -i /root/.ssh/deploy_kajovo_hotel_monorepo -o IdentitiesOnly=yes"
             if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
               GIT_SSH_COMMAND="$SSH_CMD" git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
@@ -55,6 +56,9 @@ jobs:
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?
             cd /opt/kajovo-hotel-monorepo
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail 200 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=50 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=50 || true
             exit "$DEPLOY_STATUS"
