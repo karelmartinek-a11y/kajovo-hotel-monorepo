@@ -49,4 +49,6 @@ jobs:
             fi
             git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
             git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
+            git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
+            git -C /opt/kajovo-hotel-monorepo clean -fd
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
