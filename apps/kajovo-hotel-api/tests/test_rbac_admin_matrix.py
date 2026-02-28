@@ -89,7 +89,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             password="reception-pass",
             method="GET",
             path="/api/v1/users",
-            expected_permission="Missing actor type: admin",
+            expected_permission="Missing permission: users:read",
         ),
         DenyCase(
             role="recepce",
@@ -97,7 +97,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             password="reception-pass",
             method="POST",
             path="/api/v1/users",
-            expected_permission="Missing actor type: admin",
+            expected_permission="Missing permission: users:write",
         ),
     ]
 
