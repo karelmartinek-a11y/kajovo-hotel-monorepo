@@ -27,3 +27,14 @@ nginx -t
 rg -n "server_name" infra/reverse-proxy/*.conf
 rg -n "HOTEL_ADMIN_(USERNAME|PASSWORD)" legacy/hotel-backend/deploy/sandbox/run-tests.sh
 ```
+
+## Produkcni host-level Nginx
+
+- Pro `hotel.hcasc.cz` musi byt `location ^~ /admin/` smerovana na `http://127.0.0.1:8083/`.
+- Port `8081` je mimo produkcni mapovani a vraci `502 Bad Gateway`.
+- Po kazde uprave host-level konfigurace proved:
+
+```bash
+nginx -t && systemctl reload nginx
+curl -k -I -H 'Host: hotel.hcasc.cz' https://127.0.0.1/admin/
+```
