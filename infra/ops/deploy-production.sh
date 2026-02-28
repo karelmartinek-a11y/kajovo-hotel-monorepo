@@ -97,6 +97,12 @@ ready=0
 for i in {1..20}; do
   if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
      docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     pg_isready -U "$POSTGRES_USER" -d postgres; then
+    ready=1
+    break
+  fi
+  if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
      pg_isready -U postgres -d postgres; then
     ready=1
     break
@@ -105,7 +111,7 @@ for i in {1..20}; do
 done
 
 if [[ "$ready" -ne 1 ]]; then
-  echo "Postgres není připraven ani po 30 s" >&2
+  echo "Postgres není připraven ani po 60 s" >&2
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" logs postgres --tail=50 || true
   exit 1
@@ -124,16 +130,31 @@ sql_do="DO $$BEGIN
     CREATE DATABASE \\\"$POSTGRES_DB\\\" OWNER \\\"$POSTGRES_USER\\\";
   END IF;
 END$$;"
+sql_ok=0
 for i in {1..5}; do
   echo "Nastavuji roli a DB (pokus $i/5)..."
-  PGPASSWORD="${POSTGRES_PASSWORD:-}" \
-  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-    psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "$sql_do" && break
+  if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "$sql_do"; then
+    sql_ok=1
+    break
+  fi
+  if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "$sql_do"; then
+    sql_ok=1
+    break
+  fi
   echo "SQL neprošlo, čekám a zkusím znovu ($i/5)..."
   sleep 3
 done
 set -e
+if [[ "$sql_ok" -ne 1 ]]; then
+  echo "Nepodařilo se vytvořit roli/databázi po 5 pokusech." >&2
+  exit 1
+fi
 
 # Pro jistotu zrusime stare kontejnery, aby nedoslo ke kolizi jmen
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
