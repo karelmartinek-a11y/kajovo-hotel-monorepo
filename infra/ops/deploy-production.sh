@@ -73,8 +73,12 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
 # Smažeme pouze naše postgres volume, abychom měli čistý start.
 docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
 docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
-# Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel)
-docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'rm -rf /var/lib/postgresql/data/*' >/dev/null
+# Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel) a ověříme prázdnotu
+docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'rm -rf /var/lib/postgresql/data/* /var/lib/postgresql/data/.* 2>/dev/null || true' >/dev/null
+if docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'find /var/lib/postgresql/data -mindepth 1 -maxdepth 1 | read'; then
+  echo "Volume ${COMPOSE_PROJECT_NAME}_postgres_data není prázdný, ruším deploy." >&2
+  exit 1
+fi
 
 # Nejprve připrav DB heslo, aby API healthcheck prošel
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
