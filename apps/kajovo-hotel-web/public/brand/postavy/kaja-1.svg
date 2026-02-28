@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 420" role="img" aria-labelledby="title desc">
+  <title id="title">Postava Kaja 1</title>
+  <desc id="desc">Alternativni ilustracni postava Kaja.</desc>
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff7ed" />
+      <stop offset="100%" stop-color="#dbeafe" />
+    </linearGradient>
+  </defs>
+  <rect width="320" height="420" rx="28" fill="url(#bg2)" />
+  <circle cx="160" cy="118" r="58" fill="#ffd6b0" />
+  <path d="M112 103c9-36 39-58 48-58s39 22 48 58c-7-8-18-12-24-12-8 0-16 3-24 9-8-6-16-9-24-9-6 0-17 4-24 12z" fill="#155e75" />
+  <circle cx="139" cy="116" r="6" fill="#111827" />
+  <circle cx="181" cy="116" r="6" fill="#111827" />
+  <path d="M136 143c9 10 17 14 24 14s15-4 24-14" fill="none" stroke="#7c2d12" stroke-width="6" stroke-linecap="round" />
+  <path d="M112 190h96v126h-96z" fill="#16a34a" rx="24" />
+  <rect x="74" y="214" width="34" height="92" rx="17" fill="#16a34a" />
+  <rect x="212" y="214" width="34" height="92" rx="17" fill="#16a34a" />
+  <rect x="122" y="316" width="28" height="64" rx="12" fill="#111827" />
+  <rect x="170" y="316" width="28" height="64" rx="12" fill="#111827" />
+  <text x="160" y="396" text-anchor="middle" font-size="28" font-family="Arial, sans-serif" fill="#0f172a">KAJA</text>
+</svg>
