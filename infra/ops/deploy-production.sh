@@ -70,10 +70,8 @@ echo "Deploy branch=$current_branch sha=$commit_sha"
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
 
-# Smažeme všechny postgres_data volume, co tu zůstaly, abychom měli čistý start.
-for vol in $(docker volume ls --format '{{.Name}}' | grep 'postgres_data$'); do
-  docker volume rm -f "$vol" || true
-done
+# Smažeme pouze naše postgres volume, abychom měli čistý start.
+docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
 docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
 # Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel)
 docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'rm -rf /var/lib/postgresql/data/*' >/dev/null
@@ -85,14 +83,14 @@ COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
 # Po startu počkáme na dostupnost Postgresu a pak nastavíme heslo.
 echo "Čekám na start Postgresu..."
 ready=0
-for i in {1..15}; do
+for i in {1..20}; do
   if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
      docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-     pg_isready -U postgres -d postgres; then
+     pg_isready -U "$POSTGRES_USER" -d postgres; then
     ready=1
     break
   fi
-  sleep 2
+  sleep 3
 done
 
 if [[ "$ready" -ne 1 ]]; then
@@ -119,9 +117,9 @@ for i in {1..5}; do
   echo "Nastavuji roli a DB (pokus $i/5)..."
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-    psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "$sql_do" && break
+    psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "$sql_do" && break
   echo "SQL neprošlo, čekám a zkusím znovu ($i/5)..."
-  sleep 2
+  sleep 3
 done
 set -e
 
