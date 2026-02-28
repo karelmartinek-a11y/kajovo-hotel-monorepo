@@ -96,10 +96,10 @@ if [[ "$ready" -ne 1 ]]; then
   exit 1
 fi
 
-# Nastav heslo pomocí superusera postgres pro jistotu
+# Nastav heslo pro hlavního uživatele DB (POSTGRES_USER)
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
-  psql -U postgres -d postgres -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '$POSTGRES_PASSWORD';"
+  psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '$POSTGRES_PASSWORD';"
 
 # Pro jistotu zrusime stare kontejnery, aby nedoslo ke kolizi jmen
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
