@@ -61,6 +61,10 @@ export function PortalRoutes({
   modules: typeof ia.modules;
   deps: PortalRouteDeps;
 }): JSX.Element {
+  if (auth.userId === 'anonymous' || auth.actorType !== 'portal') {
+    return <Navigate to="/login" replace />;
+  }
+
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
 
   return (
