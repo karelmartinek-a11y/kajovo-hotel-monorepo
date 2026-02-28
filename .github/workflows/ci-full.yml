@@ -51,8 +51,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps
 
       - name: Web tests (Playwright)
         run: pnpm --filter @kajovo/kajovo-hotel-web test
