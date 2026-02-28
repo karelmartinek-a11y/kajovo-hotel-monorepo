@@ -21,7 +21,6 @@ require_cmd() {
 
 require_cmd docker
 require_cmd git
-require_cmd jq
 
 docker info >/dev/null
 docker compose version >/dev/null
@@ -92,20 +91,29 @@ fi
 COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
   docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d postgres
 
-# Po startu počkáme na HEALTHY status Postgresu, ať se netrefíme do init restartu.
-echo "Čekám na HEALTHY stav Postgresu..."
+# Po startu počkáme na stabilní dostupnost Postgresu (3x po sobě),
+# aby nás nepřerušil init restart.
+echo "Čekám na stabilní start Postgresu..."
 ready=0
-for i in {1..40}; do
-  health="$(COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" ps --format json postgres | jq -r '.[0].Health // ""' 2>/dev/null || true)"
-  if [[ "$health" == "healthy" ]]; then
-    ready=1
-    break
+streak=0
+for i in {1..60}; do
+  if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     pg_isready -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; then
+    streak=$((streak + 1))
+    if [[ "$streak" -ge 3 ]]; then
+      ready=1
+      break
+    fi
+  else
+    streak=0
   fi
   sleep 2
 done
 
 if [[ "$ready" -ne 1 ]]; then
-  echo "Postgres není healthy ani po 80 s" >&2
+  echo "Postgres není stabilně dostupný ani po 120 s" >&2
   COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" logs postgres --tail=50 || true
   exit 1
