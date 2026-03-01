@@ -1,8 +1,7 @@
 import hashlib
 import json
 import secrets
-from datetime import datetime
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,12 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.auth import hash_password
 from app.api.schemas import (
+    LogoutResponse,
     PortalUserCreate,
     PortalUserPasswordSet,
     PortalUserRead,
     PortalUserStatusUpdate,
     PortalUserUpdate,
-    LogoutResponse,
 )
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
