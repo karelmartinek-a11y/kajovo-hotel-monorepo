@@ -69,6 +69,73 @@
         "title": "AuthIdentityResponse",
         "type": "object"
       },
+      "Body_import_breakfast_pdf_api_v1_breakfast_import_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "save": {
+            "default": false,
+            "title": "Save",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_breakfast_pdf_api_v1_breakfast_import_post",
+        "type": "object"
+      },
+      "Body_upload_issue_photos_api_v1_issues__issue_id__photos_post": {
+        "properties": {
+          "photos": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "photos"
+        ],
+        "title": "Body_upload_issue_photos_api_v1_issues__issue_id__photos_post",
+        "type": "object"
+      },
+      "Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post",
+        "type": "object"
+      },
+      "Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post": {
+        "properties": {
+          "photos": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "photos"
+        ],
+        "title": "Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post",
+        "type": "object"
+      },
       "BreakfastDailySummary": {
         "properties": {
           "service_date": {
@@ -102,6 +169,72 @@
           "status_counts"
         ],
         "title": "BreakfastDailySummary",
+        "type": "object"
+      },
+      "BreakfastImportItem": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "guest_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guest Name"
+          },
+          "room": {
+            "title": "Room",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "room",
+          "count"
+        ],
+        "title": "BreakfastImportItem",
+        "type": "object"
+      },
+      "BreakfastImportResponse": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BreakfastImportItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "saved": {
+            "default": false,
+            "title": "Saved",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "status",
+          "items"
+        ],
+        "title": "BreakfastImportResponse",
         "type": "object"
       },
       "BreakfastOrderCreate": {
@@ -415,6 +548,12 @@
       },
       "InventoryItemCreate": {
         "properties": {
+          "amount_per_piece_base": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Amount Per Piece Base",
+            "type": "integer"
+          },
           "current_stock": {
             "minimum": 0.0,
             "title": "Current Stock",
@@ -430,6 +569,28 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "pictogram_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Path"
+          },
+          "pictogram_thumb_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Thumb Path"
           },
           "supplier": {
             "anyOf": [
@@ -461,6 +622,12 @@
       },
       "InventoryItemDetailRead": {
         "properties": {
+          "amount_per_piece_base": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Amount Per Piece Base",
+            "type": "integer"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -499,6 +666,28 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "pictogram_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Path"
+          },
+          "pictogram_thumb_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Thumb Path"
           },
           "supplier": {
             "anyOf": [
@@ -546,6 +735,12 @@
       },
       "InventoryItemRead": {
         "properties": {
+          "amount_per_piece_base": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Amount Per Piece Base",
+            "type": "integer"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -577,6 +772,28 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "pictogram_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Path"
+          },
+          "pictogram_thumb_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Thumb Path"
           },
           "supplier": {
             "anyOf": [
@@ -623,6 +840,18 @@
       },
       "InventoryItemUpdate": {
         "properties": {
+          "amount_per_piece_base": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Per Piece Base"
+          },
           "current_stock": {
             "anyOf": [
               {
@@ -660,6 +889,28 @@
             ],
             "title": "Name"
           },
+          "pictogram_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Path"
+          },
+          "pictogram_thumb_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Thumb Path"
+          },
           "supplier": {
             "anyOf": [
               {
@@ -691,6 +942,12 @@
       },
       "InventoryItemWithAuditRead": {
         "properties": {
+          "amount_per_piece_base": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Amount Per Piece Base",
+            "type": "integer"
+          },
           "audit_logs": {
             "items": {
               "$ref": "#/components/schemas/InventoryAuditLogRead"
@@ -736,6 +993,28 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "pictogram_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Path"
+          },
+          "pictogram_thumb_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pictogram Thumb Path"
           },
           "supplier": {
             "anyOf": [
@@ -1022,6 +1301,13 @@
             "minLength": 1,
             "title": "Location",
             "type": "string"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/MediaPhotoRead"
+            },
+            "title": "Photos",
+            "type": "array"
           },
           "priority": {
             "$ref": "#/components/schemas/IssuePriority",
@@ -1394,6 +1680,13 @@
             "title": "Location",
             "type": "string"
           },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/MediaPhotoRead"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
           "returned_at": {
             "anyOf": [
               {
@@ -1589,6 +1882,57 @@
         ],
         "title": "LostFoundStatus",
         "type": "string"
+      },
+      "MediaPhotoRead": {
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "file_path": {
+            "title": "File Path",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          },
+          "thumb_path": {
+            "title": "Thumb Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sort_order",
+          "mime_type",
+          "size_bytes",
+          "file_path",
+          "thumb_path",
+          "created_at"
+        ],
+        "title": "MediaPhotoRead",
+        "type": "object"
       },
       "PortalLoginRequest": {
         "properties": {
@@ -2791,6 +3135,47 @@
         ]
       }
     },
+    "/api/v1/breakfast/import": {
+      "post": {
+        "operationId": "import_breakfast_pdf_api_v1_breakfast_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_breakfast_pdf_api_v1_breakfast_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Breakfast Pdf",
+        "tags": [
+          "breakfast"
+        ]
+      }
+    },
     "/api/v1/breakfast/{order_id}": {
       "delete": {
         "operationId": "delete_breakfast_order_api_v1_breakfast__order_id__delete",
@@ -3002,6 +3387,31 @@
         ]
       }
     },
+    "/api/v1/inventory/seed-defaults": {
+      "post": {
+        "operationId": "seed_default_items_api_v1_inventory_seed_defaults_post",
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryItemRead"
+                  },
+                  "title": "Response Seed Default Items Api V1 Inventory Seed Defaults Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Seed Default Items",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
     "/api/v1/inventory/{item_id}": {
       "delete": {
         "operationId": "delete_item_api_v1_inventory__item_id__delete",
@@ -3174,6 +3584,107 @@
           }
         },
         "summary": "Add Movement",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/{item_id}/pictogram": {
+      "post": {
+        "operationId": "upload_item_pictogram_api_v1_inventory__item_id__pictogram_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryItemRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Item Pictogram",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/{item_id}/pictogram/{kind}": {
+      "get": {
+        "operationId": "get_item_pictogram_api_v1_inventory__item_id__pictogram__kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Item Pictogram",
         "tags": [
           "inventory"
         ]
@@ -3444,6 +3955,164 @@
         ]
       }
     },
+    "/api/v1/issues/{issue_id}/photos": {
+      "get": {
+        "operationId": "list_issue_photos_api_v1_issues__issue_id__photos_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "issue_id",
+            "required": true,
+            "schema": {
+              "title": "Issue Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaPhotoRead"
+                  },
+                  "title": "Response List Issue Photos Api V1 Issues  Issue Id  Photos Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Issue Photos",
+        "tags": [
+          "issues"
+        ]
+      },
+      "post": {
+        "operationId": "upload_issue_photos_api_v1_issues__issue_id__photos_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "issue_id",
+            "required": true,
+            "schema": {
+              "title": "Issue Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_issue_photos_api_v1_issues__issue_id__photos_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaPhotoRead"
+                  },
+                  "title": "Response Upload Issue Photos Api V1 Issues  Issue Id  Photos Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Issue Photos",
+        "tags": [
+          "issues"
+        ]
+      }
+    },
+    "/api/v1/issues/{issue_id}/photos/{photo_id}/{kind}": {
+      "get": {
+        "operationId": "get_issue_photo_api_v1_issues__issue_id__photos__photo_id___kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "issue_id",
+            "required": true,
+            "schema": {
+              "title": "Issue Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "photo_id",
+            "required": true,
+            "schema": {
+              "title": "Photo Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Issue Photo",
+        "tags": [
+          "issues"
+        ]
+      }
+    },
     "/api/v1/lost-found": {
       "get": {
         "operationId": "list_lost_found_items_api_v1_lost_found_get",
@@ -3688,6 +4357,164 @@
           }
         },
         "summary": "Update Lost Found Item",
+        "tags": [
+          "lost-found"
+        ]
+      }
+    },
+    "/api/v1/lost-found/{item_id}/photos": {
+      "get": {
+        "operationId": "list_lost_found_photos_api_v1_lost_found__item_id__photos_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaPhotoRead"
+                  },
+                  "title": "Response List Lost Found Photos Api V1 Lost Found  Item Id  Photos Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Lost Found Photos",
+        "tags": [
+          "lost-found"
+        ]
+      },
+      "post": {
+        "operationId": "upload_lost_found_photos_api_v1_lost_found__item_id__photos_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaPhotoRead"
+                  },
+                  "title": "Response Upload Lost Found Photos Api V1 Lost Found  Item Id  Photos Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Lost Found Photos",
+        "tags": [
+          "lost-found"
+        ]
+      }
+    },
+    "/api/v1/lost-found/{item_id}/photos/{photo_id}/{kind}": {
+      "get": {
+        "operationId": "get_lost_found_photo_api_v1_lost_found__item_id__photos__photo_id___kind__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "photo_id",
+            "required": true,
+            "schema": {
+              "title": "Photo Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Lost Found Photo",
         "tags": [
           "lost-found"
         ]

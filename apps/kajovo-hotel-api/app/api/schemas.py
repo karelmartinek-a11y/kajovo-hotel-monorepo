@@ -90,6 +90,20 @@ class BreakfastDailySummary(BaseModel):
     status_counts: dict[BreakfastStatus, int]
 
 
+class BreakfastImportItem(BaseModel):
+    room: int
+    count: int
+    guest_name: str | None = None
+
+
+class BreakfastImportResponse(BaseModel):
+    ok: bool = True
+    date: date
+    status: str
+    saved: bool = False
+    items: list[BreakfastImportItem]
+
+
 class LostFoundItemType(StrEnum):
     LOST = "lost"
     FOUND = "found"
@@ -140,6 +154,7 @@ class LostFoundItemRead(LostFoundItemBase):
     id: int
     created_at: datetime | None
     updated_at: datetime | None
+    photos: list["MediaPhotoRead"] = Field(default_factory=list)
 
 
 class IssuePriority(StrEnum):
@@ -189,6 +204,7 @@ class IssueRead(IssueBase):
     closed_at: datetime | None
     created_at: datetime | None
     updated_at: datetime | None
+    photos: list["MediaPhotoRead"] = Field(default_factory=list)
 
 
 class InventoryMovementType(StrEnum):
@@ -203,6 +219,9 @@ class InventoryItemBase(BaseModel):
     min_stock: int = Field(ge=0)
     current_stock: int = Field(ge=0)
     supplier: str | None = Field(default=None, max_length=255)
+    amount_per_piece_base: int = Field(default=0, ge=0)
+    pictogram_path: str | None = None
+    pictogram_thumb_path: str | None = None
 
 
 class InventoryItemCreate(InventoryItemBase):
@@ -215,6 +234,21 @@ class InventoryItemUpdate(BaseModel):
     min_stock: int | None = Field(default=None, ge=0)
     current_stock: int | None = Field(default=None, ge=0)
     supplier: str | None = Field(default=None, max_length=255)
+    amount_per_piece_base: int | None = Field(default=None, ge=0)
+    pictogram_path: str | None = None
+    pictogram_thumb_path: str | None = None
+
+
+class MediaPhotoRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sort_order: int
+    mime_type: str
+    size_bytes: int
+    file_path: str
+    thumb_path: str
+    created_at: datetime | None
 
 
 class InventoryMovementBase(BaseModel):

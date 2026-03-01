@@ -340,7 +340,14 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? 'GET';
   const url = new URL(input, window.location.origin);
   const path = url.pathname;
-  const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+  let body: Record<string, unknown> | undefined;
+  if (typeof init?.body === 'string') {
+    try {
+      body = JSON.parse(init.body) as Record<string, unknown>;
+    } catch {
+      body = undefined;
+    }
+  }
 
   if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
   if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
@@ -375,7 +382,17 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
   if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
 
-  throw new Error(`Unsupported API call: ${method} ${path}`);
+  const fallbackResponse = await fetch(path + url.search, {
+    ...init,
+    credentials: 'include',
+  });
+  if (!fallbackResponse.ok) {
+    throw new Error(await fallbackResponse.text());
+  }
+  if (fallbackResponse.status === 204) {
+    return undefined as T;
+  }
+  return (await fallbackResponse.json()) as T;
 }
 
 

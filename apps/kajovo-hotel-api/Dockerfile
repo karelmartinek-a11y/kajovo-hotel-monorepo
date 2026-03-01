@@ -15,7 +15,10 @@ RUN pip install --no-cache-dir \
     sqlalchemy==2.0.44 \
     alembic==1.17.1 \
     pydantic-settings==2.11.0 \
-    "psycopg[binary]==3.2.13"
+    python-multipart==0.0.20 \
+    "psycopg[binary]==3.2.13" \
+    pypdf==5.9.0 \
+    pillow==11.3.0
 
 COPY app /app/app
 COPY alembic /app/alembic

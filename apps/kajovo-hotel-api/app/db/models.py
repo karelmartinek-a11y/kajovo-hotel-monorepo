@@ -100,6 +100,12 @@ class LostFoundItem(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    photos: Mapped[list["LostFoundPhoto"]] = relationship(
+        "LostFoundPhoto",
+        back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="LostFoundPhoto.sort_order.asc()",
+    )
 
 
 class IssuePriority(StrEnum):
@@ -146,6 +152,12 @@ class Issue(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    photos: Mapped[list["IssuePhoto"]] = relationship(
+        "IssuePhoto",
+        back_populates="issue",
+        cascade="all, delete-orphan",
+        order_by="IssuePhoto.sort_order.asc()",
+    )
 
 
 class InventoryMovementType(StrEnum):
@@ -163,6 +175,9 @@ class InventoryItem(Base):
     min_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     current_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     supplier: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    amount_per_piece_base: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pictogram_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    pictogram_thumb_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -195,6 +210,44 @@ class InventoryMovement(Base):
     )
 
     item: Mapped[InventoryItem] = relationship(back_populates="movements")
+
+
+class IssuePhoto(Base):
+    __tablename__ = "issue_photos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    issue_id: Mapped[int] = mapped_column(
+        ForeignKey("issues.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    thumb_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(80), nullable=False, default="image/jpeg")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    issue: Mapped[Issue] = relationship(back_populates="photos")
+
+
+class LostFoundPhoto(Base):
+    __tablename__ = "lost_found_photos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    item_id: Mapped[int] = mapped_column(
+        ForeignKey("lost_found_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    thumb_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(80), nullable=False, default="image/jpeg")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    item: Mapped[LostFoundItem] = relationship(back_populates="photos")
 
 
 class InventoryAuditLog(Base):

@@ -74,6 +74,16 @@ type Report = ReportRead;
 
 type ReportPayload = ReportCreate;
 
+type MediaPhoto = {
+  id: number;
+  sort_order: number;
+  mime_type: string;
+  size_bytes: number;
+  file_path: string;
+  thumb_path: string;
+  created_at: string | null;
+};
+
 type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně';
 
 const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně'];
@@ -378,7 +388,14 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? 'GET';
   const url = new URL(input, window.location.origin);
   const path = url.pathname;
-  const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+  let body: Record<string, unknown> | undefined;
+  if (typeof init?.body === 'string') {
+    try {
+      body = JSON.parse(init.body) as Record<string, unknown>;
+    } catch {
+      body = undefined;
+    }
+  }
 
   if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
   if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
@@ -464,7 +481,17 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   }
 
-  throw new Error(`Unsupported API call: ${method} ${path}`);
+  const fallbackResponse = await fetch(path + url.search, {
+    ...init,
+    credentials: 'include',
+  });
+  if (!fallbackResponse.ok) {
+    throw new Error(await fallbackResponse.text());
+  }
+  if (fallbackResponse.status === 204) {
+    return undefined as T;
+  }
+  return (await fallbackResponse.json()) as T;
 }
 
 
@@ -513,6 +540,8 @@ function BreakfastList(): JSX.Element {
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
+  const [importFile, setImportFile] = React.useState<File | null>(null);
+  const [importInfo, setImportInfo] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default') {
@@ -552,6 +581,31 @@ function BreakfastList(): JSX.Element {
     return item.room_number.toLowerCase().includes(term) || item.guest_name.toLowerCase().includes(term);
   });
 
+  const importPdf = async (): Promise<void> => {
+    if (!importFile) {
+      setImportInfo('Vyberte PDF soubor.');
+      return;
+    }
+    const data = new FormData();
+    data.append('save', 'true');
+    data.append('file', importFile);
+    try {
+      const result = await fetchJson<{ date: string; items: Array<{ room: number; count: number }> }>(
+        '/api/v1/breakfast/import',
+        { method: 'POST', body: data }
+      );
+      setImportInfo(`Import OK: ${result.items.length} pokojů (${result.date}).`);
+      const orders = await fetchJson<BreakfastOrder[]>('/api/v1/breakfast');
+      setItems(orders);
+      const daily = await fetchJson<BreakfastSummary>(
+        `/api/v1/breakfast/daily-summary?service_date=${defaultServiceDate}`
+      );
+      setSummary(daily);
+    } catch {
+      setImportInfo('Import PDF selhal.');
+    }
+  };
+
   return (
     <main className="k-page" data-testid="breakfast-list-page">
       {stateMarker}
@@ -584,10 +638,20 @@ function BreakfastList(): JSX.Element {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
+            <input
+              className="k-input"
+              type="file"
+              accept="application/pdf"
+              onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+            />
+            <button className="k-button secondary" type="button" onClick={() => void importPdf()}>
+              Import PDF
+            </button>
             <Link className="k-button" to="/snidane/nova">
               Nová objednávka
             </Link>
           </div>
+          {importInfo ? <p>{importInfo}</p> : null}
           <DataTable
             headers={['Datum', 'Pokoj', 'Host', 'Počet', 'Stav', 'Poznámka', 'Akce']}
             rows={filteredItems.map((item) => [
@@ -943,6 +1007,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     returned_at: null,
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [photos, setPhotos] = React.useState<File[]>([]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) {
@@ -978,6 +1043,14 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (photos.length > 0) {
+        const formData = new FormData();
+        photos.forEach((photo) => formData.append('photos', photo));
+        await fetchJson<MediaPhoto[]>(`/api/v1/lost-found/${saved.id}/photos`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
       navigate(`/ztraty-a-nalezy/${saved.id}`);
     } catch {
       setError('Položku se nepodařilo uložit.');
@@ -1091,6 +1164,16 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, handover_note: event.target.value }))}
               />
             </FormField>
+            <FormField id="lost_found_photos" label="Fotodokumentace (volitelné)">
+              <input
+                id="lost_found_photos"
+                type="file"
+                className="k-input"
+                multiple
+                accept="image/*"
+                onChange={(event) => setPhotos(Array.from(event.target.files ?? []))}
+              />
+            </FormField>
           </div>
         </div>
       )}
@@ -1104,6 +1187,7 @@ function LostFoundDetail(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<LostFoundItem | null>(null);
+  const [photos, setPhotos] = React.useState<MediaPhoto[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -1114,7 +1198,9 @@ function LostFoundDetail(): JSX.Element {
       .then((response) => {
         setItem(response);
         setError(null);
+        return fetchJson<MediaPhoto[]>(`/api/v1/lost-found/${id}/photos`);
       })
+      .then((media) => setPhotos(media ?? []))
       .catch(() => setError('Položka nebyla nalezena.'));
   }, [id, state]);
 
@@ -1151,6 +1237,18 @@ function LostFoundDetail(): JSX.Element {
               ['Předávací záznam', item.handover_note ?? '-'],
             ]}
           />
+          {photos.length > 0 ? (
+            <div className="k-grid cards-3">
+              {photos.map((photo) => (
+                <img
+                  key={photo.id}
+                  src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`}
+                  alt={`Fotografie položky ${photo.id}`}
+                  style={{ width: '100%', borderRadius: '12px' }}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : (
         <SkeletonPage />
@@ -1221,6 +1319,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     title: '', description: '', location: '', room_number: '', priority: 'medium', status: 'new', assignee: '',
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [photos, setPhotos] = React.useState<File[]>([]);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -1236,6 +1335,14 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, description: payload.description || null, room_number: payload.room_number || null, assignee: payload.assignee || null }),
       });
+      if (photos.length > 0) {
+        const formData = new FormData();
+        photos.forEach((photo) => formData.append('photos', photo));
+        await fetchJson<MediaPhoto[]>(`/api/v1/issues/${saved.id}/photos`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
       navigate(`/zavady/${saved.id}`);
     } catch { setError('Závadu se nepodařilo uložit.'); }
   };
@@ -1248,6 +1355,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 <FormField id="issue_status" label="Stav"><select id="issue_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as IssueStatus }))}><option value="new">Nová</option><option value="in_progress">V řešení</option><option value="resolved">Vyřešena</option><option value="closed">Uzavřena</option></select></FormField>
 <FormField id="issue_assignee" label="Přiřazeno (volitelné)"><input id="issue_assignee" className="k-input" value={payload.assignee ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, assignee: e.target.value }))} /></FormField>
 <FormField id="issue_description" label="Popis"><textarea id="issue_description" className="k-textarea" rows={3} value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField>
+<FormField id="issue_photos" label="Fotodokumentace (volitelné)"><input id="issue_photos" type="file" className="k-input" multiple accept="image/*" onChange={(e) => setPhotos(Array.from(e.target.files ?? []))} /></FormField>
 </div></div>}</main>;
 }
 
@@ -1257,11 +1365,19 @@ function IssuesDetail(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<Issue | null>(null);
+  const [photos, setPhotos] = React.useState<MediaPhoto[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) return;
-    fetchJson<Issue>(`/api/v1/issues/${id}`).then((response) => { setItem(response); setError(null); }).catch(() => setError('Závada nebyla nalezena.'));
+    fetchJson<Issue>(`/api/v1/issues/${id}`)
+      .then((response) => {
+        setItem(response);
+        setError(null);
+        return fetchJson<MediaPhoto[]>(`/api/v1/issues/${id}/photos`);
+      })
+      .then((media) => setPhotos(media ?? []))
+      .catch(() => setError('Závada nebyla nalezena.'));
   }, [id, state]);
 
   const timeline = item ? [
@@ -1275,7 +1391,7 @@ function IssuesDetail(): JSX.Element {
     <main className="k-page" data-testid="issues-detail-page">
       {stateMarker}
       <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <SkeletonPage />}
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} style={{ width: '100%', borderRadius: '12px' }} />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -1287,18 +1403,98 @@ function InventoryList(): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [seedInfo, setSeedInfo] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (state !== 'default') return;
+  const loadItems = React.useCallback(() => {
     fetchJson<InventoryItem[]>('/api/v1/inventory')
       .then((response) => {
         setItems(response);
         setError(null);
       })
       .catch(() => setError('Položky skladu se nepodařilo načíst.'));
-  }, [state]);
+  }, []);
 
-  return <main className="k-page" data-testid="inventory-list-page">{stateMarker}<h1>Skladové hospodářství</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Ve skladu zatím nejsou položky." stateKey="empty" action={<Link className="k-button" to="/sklad/nova">Nová položka</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/sklad/nova">Nová položka</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']} rows={items.map((item) => [item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-', item.current_stock <= item.min_stock ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge> : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>, <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>])} /></>}</main>;
+  React.useEffect(() => {
+    if (state !== 'default') {
+      return;
+    }
+    loadItems();
+  }, [loadItems, state]);
+
+  const seedDefaults = async (): Promise<void> => {
+    try {
+      const seeded = await fetchJson<InventoryItem[]>('/api/v1/inventory/seed-defaults', {
+        method: 'POST',
+      });
+      setSeedInfo(`Doplněno ${seeded.length} výchozích položek.`);
+      loadItems();
+    } catch {
+      setSeedInfo('Doplnění výchozích položek se nepodařilo.');
+    }
+  };
+
+  return (
+    <main className="k-page" data-testid="inventory-list-page">
+      {stateMarker}
+      <h1>Skladové hospodářství</h1>
+      <StateSwitcher />
+      {stateUI ? (
+        stateUI
+      ) : error ? (
+        <StateView
+          title="Chyba"
+          description={error}
+          stateKey="error"
+          action={
+            <button className="k-button" type="button" onClick={() => window.location.reload()}>
+              Obnovit
+            </button>
+          }
+        />
+      ) : items.length === 0 ? (
+        <StateView
+          title="Prázdný stav"
+          description="Ve skladu zatím nejsou položky."
+          stateKey="empty"
+          action={<Link className="k-button" to="/sklad/nova">Nová položka</Link>}
+        />
+      ) : (
+        <>
+          <div className="k-toolbar">
+            <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
+              Doplnit výchozí položky
+            </button>
+            <Link className="k-button" to="/sklad/nova">Nová položka</Link>
+          </div>
+          {seedInfo ? <p>{seedInfo}</p> : null}
+          <DataTable
+            headers={['Ikona', 'Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']}
+            rows={items.map((item) => [
+              item.pictogram_thumb_path ? (
+                <img
+                  key={`pic-${item.id}`}
+                  src={`/api/v1/inventory/${item.id}/pictogram/thumb`}
+                  alt={`Piktogram ${item.name}`}
+                  style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px' }}
+                />
+              ) : (
+                '-'
+              ),
+              item.name,
+              item.current_stock,
+              item.min_stock,
+              item.unit,
+              item.supplier ?? '-',
+              item.current_stock <= item.min_stock
+                ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge>
+                : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>,
+              <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>,
+            ])}
+          />
+        </>
+      )}
+    </main>
+  );
 }
 
 function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -1307,7 +1503,14 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const navigate = useNavigate();
-  const [payload, setPayload] = React.useState<InventoryItemPayload>({ name: '', unit: 'ks', min_stock: 0, current_stock: 0, supplier: '' });
+  const [payload, setPayload] = React.useState<InventoryItemPayload>({
+    name: '',
+    unit: 'ks',
+    min_stock: 0,
+    current_stock: 0,
+    supplier: '',
+    amount_per_piece_base: 0,
+  });
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -1318,6 +1521,9 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       min_stock: item.min_stock,
       current_stock: item.current_stock,
       supplier: item.supplier ?? '',
+      amount_per_piece_base: item.amount_per_piece_base,
+      pictogram_path: item.pictogram_path,
+      pictogram_thumb_path: item.pictogram_thumb_path,
     })).catch(() => setError('Položku se nepodařilo načíst.'));
   }, [id, mode, state]);
 
@@ -1334,7 +1540,89 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="inventory_name" label="Název"><input id="inventory_name" className="k-input" value={payload.name} onChange={(e) => setPayload((prev) => ({ ...prev, name: e.target.value }))} /></FormField><FormField id="inventory_unit" label="Jednotka"><input id="inventory_unit" className="k-input" value={payload.unit} onChange={(e) => setPayload((prev) => ({ ...prev, unit: e.target.value }))} /></FormField><FormField id="inventory_min_stock" label="Minimální stav"><input id="inventory_min_stock" type="number" className="k-input" value={payload.min_stock} onChange={(e) => setPayload((prev) => ({ ...prev, min_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_current_stock" label="Aktuální stav"><input id="inventory_current_stock" type="number" className="k-input" value={payload.current_stock} onChange={(e) => setPayload((prev) => ({ ...prev, current_stock: Number(e.target.value) }))} /></FormField><FormField id="inventory_supplier" label="Dodavatel (volitelné)"><input id="inventory_supplier" className="k-input" value={payload.supplier ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, supplier: e.target.value }))} /></FormField></div></div>}</main>;
+  return (
+    <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}>
+      {stateMarker}
+      <h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1>
+      <StateSwitcher />
+      {stateUI ? stateUI : error ? (
+        <StateView
+          title="Chyba"
+          description={error}
+          stateKey="error"
+          action={
+            <button className="k-button" type="button" onClick={() => window.location.reload()}>
+              Obnovit
+            </button>
+          }
+        />
+      ) : (
+        <div className="k-card">
+          <div className="k-toolbar">
+            <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
+            <button className="k-button" type="button" onClick={() => void save()}>Uložit</button>
+          </div>
+          <div className="k-form-grid">
+            <FormField id="inventory_name" label="Název">
+              <input
+                id="inventory_name"
+                className="k-input"
+                value={payload.name}
+                onChange={(event) => setPayload((prev) => ({ ...prev, name: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="inventory_unit" label="Jednotka">
+              <input
+                id="inventory_unit"
+                className="k-input"
+                value={payload.unit}
+                onChange={(event) => setPayload((prev) => ({ ...prev, unit: event.target.value }))}
+              />
+            </FormField>
+            <FormField id="inventory_amount_per_piece_base" label="Množství na kus (základní jednotka)">
+              <input
+                id="inventory_amount_per_piece_base"
+                type="number"
+                className="k-input"
+                value={payload.amount_per_piece_base ?? 0}
+                onChange={(event) =>
+                  setPayload((prev) => ({ ...prev, amount_per_piece_base: Number(event.target.value) }))
+                }
+              />
+            </FormField>
+            <FormField id="inventory_min_stock" label="Minimální stav">
+              <input
+                id="inventory_min_stock"
+                type="number"
+                className="k-input"
+                value={payload.min_stock}
+                onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))}
+              />
+            </FormField>
+            <FormField id="inventory_current_stock" label="Aktuální stav">
+              <input
+                id="inventory_current_stock"
+                type="number"
+                className="k-input"
+                value={payload.current_stock}
+                onChange={(event) =>
+                  setPayload((prev) => ({ ...prev, current_stock: Number(event.target.value) }))
+                }
+              />
+            </FormField>
+            <FormField id="inventory_supplier" label="Dodavatel (volitelné)">
+              <input
+                id="inventory_supplier"
+                className="k-input"
+                value={payload.supplier ?? ''}
+                onChange={(event) => setPayload((prev) => ({ ...prev, supplier: event.target.value }))}
+              />
+            </FormField>
+          </div>
+        </div>
+      )}
+    </main>
+  );
 }
 
 function InventoryDetail(): JSX.Element {
@@ -1347,6 +1635,8 @@ function InventoryDetail(): JSX.Element {
   const [movementType, setMovementType] = React.useState<InventoryMovementType>('in');
   const [quantity, setQuantity] = React.useState<number>(0);
   const [note, setNote] = React.useState<string>('');
+  const [pictogram, setPictogram] = React.useState<File | null>(null);
+  const [mediaInfo, setMediaInfo] = React.useState<string | null>(null);
 
   const loadDetail = React.useCallback(() => {
     if (!id) return;
@@ -1377,7 +1667,137 @@ function InventoryDetail(): JSX.Element {
     }
   };
 
-  return <main className="k-page" data-testid="inventory-detail-page">{stateMarker}<h1>Detail skladové položky</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>} /> : item ? <><div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/sklad">Zpět na seznam</Link><Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel']} rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-']]} /></div><div className="k-card"><h2>Nový pohyb</h2><div className="k-form-grid"><FormField id="movement_type" label="Typ"><select id="movement_type" className="k-select" value={movementType} onChange={(e) => setMovementType(e.target.value as InventoryMovementType)}><option value="in">Naskladnění</option><option value="out">Výdej</option><option value="adjust">Úprava</option></select></FormField><FormField id="movement_quantity" label="Množství"><input id="movement_quantity" type="number" className="k-input" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} /></FormField><FormField id="movement_note" label="Poznámka (volitelné)"><input id="movement_note" className="k-input" value={note} onChange={(e) => setNote(e.target.value)} /></FormField></div><button className="k-button" type="button" onClick={() => void addMovement()}>Přidat pohyb</button></div><div className="k-card"><h2>Pohyby</h2><DataTable headers={['Datum', 'Typ', 'Množství', 'Poznámka']} rows={item.movements.map((movement) => [formatDateTime(movement.created_at), inventoryMovementLabel(movement.movement_type), movement.quantity, movement.note ?? '-'])} /></div></> : <SkeletonPage />}</main>;
+  const uploadPictogram = async (): Promise<void> => {
+    if (!id || !pictogram) {
+      setMediaInfo('Vyberte soubor piktogramu.');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', pictogram);
+    try {
+      await fetchJson<InventoryItem>(`/api/v1/inventory/${id}/pictogram`, { method: 'POST', body: formData });
+      setMediaInfo('Piktogram uložen.');
+      setPictogram(null);
+      loadDetail();
+    } catch {
+      setMediaInfo('Piktogram se nepodařilo uložit.');
+    }
+  };
+
+  return (
+    <main className="k-page" data-testid="inventory-detail-page">
+      {stateMarker}
+      <h1>Detail skladové položky</h1>
+      <StateSwitcher />
+      {stateUI ? (
+        stateUI
+      ) : error ? (
+        <StateView
+          title="404"
+          description={error}
+          stateKey="404"
+          action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>}
+        />
+      ) : item ? (
+        <>
+          <div className="k-card">
+            <div className="k-toolbar">
+              <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
+              <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
+            </div>
+            <DataTable
+              headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Množství na kus']}
+              rows={[
+                [
+                  item.name,
+                  item.current_stock,
+                  item.min_stock,
+                  item.unit,
+                  item.supplier ?? '-',
+                  item.amount_per_piece_base ?? 0,
+                ],
+              ]}
+            />
+            <div className="k-form-grid">
+              <FormField id="inventory_pictogram_upload" label="Piktogram">
+                <input
+                  id="inventory_pictogram_upload"
+                  type="file"
+                  className="k-input"
+                  accept="image/*"
+                  onChange={(event) => setPictogram(event.target.files?.[0] ?? null)}
+                />
+              </FormField>
+              <div style={{ display: 'flex', alignItems: 'end' }}>
+                <button className="k-button secondary" type="button" onClick={() => void uploadPictogram()}>
+                  Uložit piktogram
+                </button>
+              </div>
+            </div>
+            {mediaInfo ? <p>{mediaInfo}</p> : null}
+            {item.pictogram_thumb_path ? (
+              <img
+                src={`/api/v1/inventory/${item.id}/pictogram/thumb`}
+                alt={`Piktogram ${item.name}`}
+                style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover' }}
+              />
+            ) : null}
+          </div>
+          <div className="k-card">
+            <h2>Nový pohyb</h2>
+            <div className="k-form-grid">
+              <FormField id="movement_type" label="Typ">
+                <select
+                  id="movement_type"
+                  className="k-select"
+                  value={movementType}
+                  onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}
+                >
+                  <option value="in">Naskladnění</option>
+                  <option value="out">Výdej</option>
+                  <option value="adjust">Úprava</option>
+                </select>
+              </FormField>
+              <FormField id="movement_quantity" label="Množství">
+                <input
+                  id="movement_quantity"
+                  type="number"
+                  className="k-input"
+                  value={quantity}
+                  onChange={(event) => setQuantity(Number(event.target.value))}
+                />
+              </FormField>
+              <FormField id="movement_note" label="Poznámka (volitelné)">
+                <input
+                  id="movement_note"
+                  className="k-input"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </FormField>
+            </div>
+            <button className="k-button" type="button" onClick={() => void addMovement()}>
+              Přidat pohyb
+            </button>
+          </div>
+          <div className="k-card">
+            <h2>Pohyby</h2>
+            <DataTable
+              headers={['Datum', 'Typ', 'Množství', 'Poznámka']}
+              rows={item.movements.map((movement) => [
+                formatDateTime(movement.created_at),
+                inventoryMovementLabel(movement.movement_type),
+                movement.quantity,
+                movement.note ?? '-',
+              ])}
+            />
+          </div>
+        </>
+      ) : (
+        <SkeletonPage />
+      )}
+    </main>
+  );
 }
 
 function GenericModule({ title }: { title: string }): JSX.Element {

@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import mimetypes
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -12,8 +15,10 @@ from app.api.schemas import (
     InventoryMovementCreate,
     InventoryMovementType,
 )
+from app.config import get_settings
 from app.db.models import InventoryAuditLog, InventoryItem, InventoryMovement
 from app.db.session import get_db
+from app.media.storage import InventoryMediaStorage
 from app.security.rbac import module_access_dependency
 
 router = APIRouter(
@@ -21,6 +26,42 @@ router = APIRouter(
     tags=["inventory"],
     dependencies=[Depends(module_access_dependency("inventory"))],
 )
+
+
+DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
+    InventoryItemCreate(
+        name="Mouka",
+        unit="kg",
+        min_stock=5,
+        current_stock=12,
+        supplier="Default supplier",
+        amount_per_piece_base=0,
+    ),
+    InventoryItemCreate(
+        name="Cukr",
+        unit="kg",
+        min_stock=3,
+        current_stock=8,
+        supplier="Default supplier",
+        amount_per_piece_base=0,
+    ),
+    InventoryItemCreate(
+        name="Káva",
+        unit="kg",
+        min_stock=2,
+        current_stock=4,
+        supplier="Default supplier",
+        amount_per_piece_base=0,
+    ),
+    InventoryItemCreate(
+        name="Čaj",
+        unit="ks",
+        min_stock=20,
+        current_stock=80,
+        supplier="Default supplier",
+        amount_per_piece_base=1,
+    ),
+]
 
 
 def _log_audit(db: Session, entity: str, resource_id: int, action: str, detail: str) -> None:
@@ -42,6 +83,24 @@ def list_items(
     if low_stock:
         query = query.where(InventoryItem.current_stock <= InventoryItem.min_stock)
     return list(db.scalars(query))
+
+
+@router.post("/seed-defaults", response_model=list[InventoryItemRead], status_code=status.HTTP_201_CREATED)
+def seed_default_items(db: Session = Depends(get_db)) -> list[InventoryItem]:
+    existing_names = {name for (name,) in db.execute(select(InventoryItem.name)).all()}
+    created: list[InventoryItem] = []
+    for payload in DEFAULT_INVENTORY_ITEMS:
+        if payload.name in existing_names:
+            continue
+        item = InventoryItem(**payload.model_dump())
+        db.add(item)
+        db.flush()
+        _log_audit(db, "item", item.id, "seed", f"Seeded default inventory item '{item.name}'.")
+        created.append(item)
+    db.commit()
+    for item in created:
+        db.refresh(item)
+    return created
 
 
 @router.post("", response_model=InventoryItemRead, status_code=status.HTTP_201_CREATED)
@@ -169,3 +228,45 @@ def delete_item(item_id: int, db: Session = Depends(get_db)) -> None:
     _log_audit(db, "item", item.id, "delete", f"Deleted inventory item '{item.name}'.")
     db.delete(item)
     db.commit()
+
+
+@router.post("/{item_id}/pictogram", response_model=InventoryItemRead)
+def upload_item_pictogram(
+    item_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> InventoryItem:
+    item = db.get(InventoryItem, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+
+    storage = InventoryMediaStorage(get_settings().media_root)
+    stored = storage.store_pictogram(
+        ingredient_id=item.id,
+        src_file=file.file,
+        src_filename=file.filename or "pictogram.jpg",
+    )
+    item.pictogram_path = stored.original_relpath
+    item.pictogram_thumb_path = stored.thumb_relpath
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.get("/{item_id}/pictogram/{kind}")
+def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
+    item = db.get(InventoryItem, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+    if kind not in {"thumb", "original"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported kind")
+    rel = item.pictogram_thumb_path if kind == "thumb" else item.pictogram_path
+    if not rel:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pictogram not found")
+    storage = InventoryMediaStorage(get_settings().media_root)
+    path = storage.resolve(rel)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
+    media_type = "image/jpeg" if kind == "thumb" else (mimetypes.guess_type(path.name)[0] or "image/jpeg")
+    return FileResponse(path, media_type=media_type)

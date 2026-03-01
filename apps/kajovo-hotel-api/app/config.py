@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
+    media_root: str = "/var/lib/kajovo/media"
 
     model_config = SettingsConfigDict(env_prefix="KAJOVO_API_")
 

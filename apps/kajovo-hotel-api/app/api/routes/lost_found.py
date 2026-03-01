@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.schemas import (
     LostFoundItemCreate,
@@ -10,9 +11,12 @@ from app.api.schemas import (
     LostFoundItemType,
     LostFoundItemUpdate,
     LostFoundStatus,
+    MediaPhotoRead,
 )
-from app.db.models import LostFoundItem
+from app.config import get_settings
+from app.db.models import LostFoundItem, LostFoundPhoto
 from app.db.session import get_db
+from app.media.storage import MediaStorage
 from app.security.rbac import module_access_dependency
 
 router = APIRouter(
@@ -43,7 +47,9 @@ def list_lost_found_items(
 
 @router.get("/{item_id}", response_model=LostFoundItemRead)
 def get_lost_found_item(item_id: int, db: Session = Depends(get_db)) -> LostFoundItem:
-    item = db.get(LostFoundItem, item_id)
+    item = db.scalar(
+        select(LostFoundItem).where(LostFoundItem.id == item_id).options(selectinload(LostFoundItem.photos))
+    )
     if not item:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -109,3 +115,76 @@ def delete_lost_found_item(item_id: int, db: Session = Depends(get_db)) -> None:
 
     db.delete(item)
     db.commit()
+
+
+@router.get("/{item_id}/photos", response_model=list[MediaPhotoRead])
+def list_lost_found_photos(item_id: int, db: Session = Depends(get_db)) -> list[LostFoundPhoto]:
+    item = db.scalar(
+        select(LostFoundItem).where(LostFoundItem.id == item_id).options(selectinload(LostFoundItem.photos))
+    )
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lost & found item not found")
+    return list(item.photos)
+
+
+@router.post("/{item_id}/photos", response_model=list[MediaPhotoRead])
+def upload_lost_found_photos(
+    item_id: int,
+    photos: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+) -> list[LostFoundPhoto]:
+    item = db.get(LostFoundItem, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lost & found item not found")
+    if len(photos) > 5:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 5 photos")
+
+    storage = MediaStorage(get_settings().media_root)
+    start_idx = len(item.photos)
+    for offset, upload in enumerate(photos):
+        stored = storage.store_image(
+            category="lost-found",
+            resource_id=item.id,
+            src_file=upload.file,
+            src_filename=upload.filename or f"photo-{offset + 1}.jpg",
+        )
+        db.add(
+            LostFoundPhoto(
+                item_id=item.id,
+                sort_order=start_idx + offset,
+                file_path=stored.original_relpath,
+                thumb_path=stored.thumb_relpath,
+                mime_type=upload.content_type or "image/jpeg",
+                size_bytes=stored.bytes,
+            )
+        )
+    db.commit()
+    return list(
+        db.scalars(
+            select(LostFoundPhoto)
+            .where(LostFoundPhoto.item_id == item.id)
+            .order_by(LostFoundPhoto.sort_order.asc())
+        )
+    )
+
+
+@router.get("/{item_id}/photos/{photo_id}/{kind}")
+def get_lost_found_photo(
+    item_id: int,
+    photo_id: int,
+    kind: str,
+    db: Session = Depends(get_db),
+):
+    photo = db.scalar(
+        select(LostFoundPhoto).where(LostFoundPhoto.id == photo_id, LostFoundPhoto.item_id == item_id)
+    )
+    if not photo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
+    if kind not in {"thumb", "original"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported kind")
+    rel = photo.thumb_path if kind == "thumb" else photo.file_path
+    storage = MediaStorage(get_settings().media_root)
+    path = storage.resolve(rel)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
+    return FileResponse(path, media_type=photo.mime_type)

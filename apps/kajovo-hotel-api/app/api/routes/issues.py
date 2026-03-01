@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.schemas import (
     IssueCreate,
@@ -10,9 +11,12 @@ from app.api.schemas import (
     IssueRead,
     IssueStatus,
     IssueUpdate,
+    MediaPhotoRead,
 )
-from app.db.models import Issue
+from app.config import get_settings
+from app.db.models import Issue, IssuePhoto
 from app.db.session import get_db
+from app.media.storage import MediaStorage
 from app.security.rbac import module_access_dependency
 
 router = APIRouter(
@@ -56,7 +60,9 @@ def list_issues(
 
 @router.get("/{issue_id}", response_model=IssueRead)
 def get_issue(issue_id: int, db: Session = Depends(get_db)) -> Issue:
-    issue = db.get(Issue, issue_id)
+    issue = db.scalar(
+        select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos))
+    )
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
     return issue
@@ -108,3 +114,72 @@ def delete_issue(issue_id: int, db: Session = Depends(get_db)) -> None:
 
     db.delete(issue)
     db.commit()
+
+
+@router.get("/{issue_id}/photos", response_model=list[MediaPhotoRead])
+def list_issue_photos(issue_id: int, db: Session = Depends(get_db)) -> list[IssuePhoto]:
+    issue = db.scalar(select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos)))
+    if not issue:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
+    return list(issue.photos)
+
+
+@router.post("/{issue_id}/photos", response_model=list[MediaPhotoRead])
+def upload_issue_photos(
+    issue_id: int,
+    photos: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+) -> list[IssuePhoto]:
+    issue = db.get(Issue, issue_id)
+    if not issue:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
+    if len(photos) > 5:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 5 photos")
+
+    storage = MediaStorage(get_settings().media_root)
+    start_idx = len(issue.photos)
+    for offset, upload in enumerate(photos):
+        stored = storage.store_image(
+            category="issues",
+            resource_id=issue.id,
+            src_file=upload.file,
+            src_filename=upload.filename or f"photo-{offset + 1}.jpg",
+        )
+        db.add(
+            IssuePhoto(
+                issue_id=issue.id,
+                sort_order=start_idx + offset,
+                file_path=stored.original_relpath,
+                thumb_path=stored.thumb_relpath,
+                mime_type=upload.content_type or "image/jpeg",
+                size_bytes=stored.bytes,
+            )
+        )
+    db.commit()
+    return list(
+        db.scalars(
+            select(IssuePhoto).where(IssuePhoto.issue_id == issue.id).order_by(IssuePhoto.sort_order.asc())
+        )
+    )
+
+
+@router.get("/{issue_id}/photos/{photo_id}/{kind}")
+def get_issue_photo(
+    issue_id: int,
+    photo_id: int,
+    kind: str,
+    db: Session = Depends(get_db),
+):
+    photo = db.scalar(
+        select(IssuePhoto).where(IssuePhoto.id == photo_id, IssuePhoto.issue_id == issue_id)
+    )
+    if not photo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
+    if kind not in {"thumb", "original"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported kind")
+    rel = photo.thumb_path if kind == "thumb" else photo.file_path
+    storage = MediaStorage(get_settings().media_root)
+    path = storage.resolve(rel)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
+    return FileResponse(path, media_type=photo.mime_type)

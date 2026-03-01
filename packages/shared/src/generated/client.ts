@@ -13,11 +13,36 @@ export type AuthIdentityResponse = {
   "role": string;
   "roles"?: Array<string>;
 };
+export type Body_import_breakfast_pdf_api_v1_breakfast_import_post = {
+  "file": string;
+  "save"?: boolean;
+};
+export type Body_upload_issue_photos_api_v1_issues__issue_id__photos_post = {
+  "photos": Array<string>;
+};
+export type Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post = {
+  "file": string;
+};
+export type Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post = {
+  "photos": Array<string>;
+};
 export type BreakfastDailySummary = {
   "service_date": string;
   "status_counts": Record<string, unknown>;
   "total_guests": number;
   "total_orders": number;
+};
+export type BreakfastImportItem = {
+  "count": number;
+  "guest_name"?: string | null;
+  "room": number;
+};
+export type BreakfastImportResponse = {
+  "date": string;
+  "items": Array<BreakfastImportItem>;
+  "ok"?: boolean;
+  "saved"?: boolean;
+  "status": string;
 };
 export type BreakfastOrderCreate = {
   "guest_count": number;
@@ -65,41 +90,54 @@ export type InventoryAuditLogRead = {
   "resource_id": number;
 };
 export type InventoryItemCreate = {
+  "amount_per_piece_base"?: number;
   "current_stock": number;
   "min_stock": number;
   "name": string;
+  "pictogram_path"?: string | null;
+  "pictogram_thumb_path"?: string | null;
   "supplier"?: string | null;
   "unit": string;
 };
 export type InventoryItemDetailRead = {
+  "amount_per_piece_base"?: number;
   "created_at": string | null;
   "current_stock": number;
   "id": number;
   "min_stock": number;
   "movements": Array<InventoryMovementRead>;
   "name": string;
+  "pictogram_path"?: string | null;
+  "pictogram_thumb_path"?: string | null;
   "supplier"?: string | null;
   "unit": string;
   "updated_at": string | null;
 };
 export type InventoryItemRead = {
+  "amount_per_piece_base"?: number;
   "created_at": string | null;
   "current_stock": number;
   "id": number;
   "min_stock": number;
   "name": string;
+  "pictogram_path"?: string | null;
+  "pictogram_thumb_path"?: string | null;
   "supplier"?: string | null;
   "unit": string;
   "updated_at": string | null;
 };
 export type InventoryItemUpdate = {
+  "amount_per_piece_base"?: number | null;
   "current_stock"?: number | null;
   "min_stock"?: number | null;
   "name"?: string | null;
+  "pictogram_path"?: string | null;
+  "pictogram_thumb_path"?: string | null;
   "supplier"?: string | null;
   "unit"?: string | null;
 };
 export type InventoryItemWithAuditRead = {
+  "amount_per_piece_base"?: number;
   "audit_logs": Array<InventoryAuditLogRead>;
   "created_at": string | null;
   "current_stock": number;
@@ -107,6 +145,8 @@ export type InventoryItemWithAuditRead = {
   "min_stock": number;
   "movements": Array<InventoryMovementRead>;
   "name": string;
+  "pictogram_path"?: string | null;
+  "pictogram_thumb_path"?: string | null;
   "supplier"?: string | null;
   "unit": string;
   "updated_at": string | null;
@@ -143,6 +183,7 @@ export type IssueRead = {
   "id": number;
   "in_progress_at": string | null;
   "location": string;
+  "photos"?: Array<MediaPhotoRead>;
   "priority"?: IssuePriority;
   "resolved_at": string | null;
   "room_number"?: string | null;
@@ -188,6 +229,7 @@ export type LostFoundItemRead = {
   "id": number;
   "item_type"?: LostFoundItemType;
   "location": string;
+  "photos"?: Array<MediaPhotoRead>;
   "returned_at"?: string | null;
   "status"?: LostFoundStatus;
   "updated_at": string | null;
@@ -207,6 +249,15 @@ export type LostFoundItemUpdate = {
   "status"?: LostFoundStatus | null;
 };
 export type LostFoundStatus = "stored" | "claimed" | "returned" | "disposed";
+export type MediaPhotoRead = {
+  "created_at": string | null;
+  "file_path": string;
+  "id": number;
+  "mime_type": string;
+  "size_bytes": number;
+  "sort_order": number;
+  "thumb_path": string;
+};
 export type PortalLoginRequest = {
   "email": string;
   "password": string;
@@ -373,6 +424,9 @@ export const apiClient = {
   async getDailySummaryApiV1BreakfastDailySummaryGet(query: { "service_date": string; }): Promise<BreakfastDailySummary> {
     return request<BreakfastDailySummary>('GET', `/api/v1/breakfast/daily-summary`, query, undefined);
   },
+  async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
+    return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
+  },
   async deleteBreakfastOrderApiV1BreakfastOrderIdDelete(order_id: number): Promise<void> {
     return request<void>('DELETE', `/api/v1/breakfast/${order_id}`, undefined, undefined);
   },
@@ -388,6 +442,9 @@ export const apiClient = {
   async createItemApiV1InventoryPost(body: InventoryItemCreate): Promise<InventoryItemRead> {
     return request<InventoryItemRead>('POST', `/api/v1/inventory`, undefined, body);
   },
+  async seedDefaultItemsApiV1InventorySeedDefaultsPost(): Promise<Array<InventoryItemRead>> {
+    return request<Array<InventoryItemRead>>('POST', `/api/v1/inventory/seed-defaults`, undefined, undefined);
+  },
   async deleteItemApiV1InventoryItemIdDelete(item_id: number): Promise<void> {
     return request<void>('DELETE', `/api/v1/inventory/${item_id}`, undefined, undefined);
   },
@@ -399,6 +456,12 @@ export const apiClient = {
   },
   async addMovementApiV1InventoryItemIdMovementsPost(item_id: number, body: InventoryMovementCreate): Promise<InventoryItemDetailRead> {
     return request<InventoryItemDetailRead>('POST', `/api/v1/inventory/${item_id}/movements`, undefined, body);
+  },
+  async uploadItemPictogramApiV1InventoryItemIdPictogramPost(item_id: number): Promise<InventoryItemRead> {
+    return request<InventoryItemRead>('POST', `/api/v1/inventory/${item_id}/pictogram`, undefined, undefined);
+  },
+  async getItemPictogramApiV1InventoryItemIdPictogramKindGet(item_id: number, kind: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/inventory/${item_id}/pictogram/${kind}`, undefined, undefined);
   },
   async listIssuesApiV1IssuesGet(query: { "priority"?: IssuePriority | null; "status"?: IssueStatus | null; "location"?: string | null; "room_number"?: string | null; }): Promise<Array<IssueRead>> {
     return request<Array<IssueRead>>('GET', `/api/v1/issues`, query, undefined);
@@ -415,6 +478,15 @@ export const apiClient = {
   async updateIssueApiV1IssuesIssueIdPut(issue_id: number, body: IssueUpdate): Promise<IssueRead> {
     return request<IssueRead>('PUT', `/api/v1/issues/${issue_id}`, undefined, body);
   },
+  async listIssuePhotosApiV1IssuesIssueIdPhotosGet(issue_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('GET', `/api/v1/issues/${issue_id}/photos`, undefined, undefined);
+  },
+  async uploadIssuePhotosApiV1IssuesIssueIdPhotosPost(issue_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('POST', `/api/v1/issues/${issue_id}/photos`, undefined, undefined);
+  },
+  async getIssuePhotoApiV1IssuesIssueIdPhotosPhotoIdKindGet(issue_id: number, photo_id: number, kind: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/issues/${issue_id}/photos/${photo_id}/${kind}`, undefined, undefined);
+  },
   async listLostFoundItemsApiV1LostFoundGet(query: { "type"?: LostFoundItemType | null; "status"?: LostFoundStatus | null; "category"?: string | null; }): Promise<Array<LostFoundItemRead>> {
     return request<Array<LostFoundItemRead>>('GET', `/api/v1/lost-found`, query, undefined);
   },
@@ -429,6 +501,15 @@ export const apiClient = {
   },
   async updateLostFoundItemApiV1LostFoundItemIdPut(item_id: number, body: LostFoundItemUpdate): Promise<LostFoundItemRead> {
     return request<LostFoundItemRead>('PUT', `/api/v1/lost-found/${item_id}`, undefined, body);
+  },
+  async listLostFoundPhotosApiV1LostFoundItemIdPhotosGet(item_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('GET', `/api/v1/lost-found/${item_id}/photos`, undefined, undefined);
+  },
+  async uploadLostFoundPhotosApiV1LostFoundItemIdPhotosPost(item_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('POST', `/api/v1/lost-found/${item_id}/photos`, undefined, undefined);
+  },
+  async getLostFoundPhotoApiV1LostFoundItemIdPhotosPhotoIdKindGet(item_id: number, photo_id: number, kind: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/lost-found/${item_id}/photos/${photo_id}/${kind}`, undefined, undefined);
   },
   async listReportsApiV1ReportsGet(query: { "status"?: string | null; }): Promise<Array<ReportRead>> {
     return request<Array<ReportRead>>('GET', `/api/v1/reports`, query, undefined);

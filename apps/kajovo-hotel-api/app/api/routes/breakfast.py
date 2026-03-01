@@ -1,19 +1,23 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     BreakfastDailySummary,
+    BreakfastImportItem,
+    BreakfastImportResponse,
     BreakfastOrderCreate,
     BreakfastOrderRead,
     BreakfastOrderUpdate,
     BreakfastStatus,
 )
+from app.config import get_settings
 from app.db.models import BreakfastOrder
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency
+from app.services.breakfast.parser import parse_breakfast_pdf
 
 router = APIRouter(
     prefix="/api/v1/breakfast",
@@ -132,3 +136,65 @@ def delete_breakfast_order(order_id: int, db: Session = Depends(get_db)) -> None
 
     db.delete(order)
     db.commit()
+
+
+@router.post("/import", response_model=BreakfastImportResponse)
+def import_breakfast_pdf(
+    save: bool = Form(False),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> BreakfastImportResponse:
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".pdf"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected PDF file")
+
+    pdf_bytes = file.file.read()
+    if not pdf_bytes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PDF is empty")
+
+    try:
+        parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    items = [
+        BreakfastImportItem(
+            room=int(row.room),
+            count=int(row.breakfast_count),
+            guest_name=row.guest_name,
+        )
+        for row in rows
+    ]
+
+    if save:
+        db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
+            synchronize_session=False
+        )
+        for row in rows:
+            db.add(
+                BreakfastOrder(
+                    service_date=parsed_day,
+                    room_number=row.room,
+                    guest_name=row.guest_name or f"Pokoj {row.room}",
+                    guest_count=max(1, int(row.breakfast_count)),
+                    status=BreakfastStatus.PENDING.value,
+                    note="Import PDF",
+                )
+            )
+        db.commit()
+
+        # Ulozit zdrojovy PDF artefakt pro audit/import forenzni dohledatelnost.
+        settings = get_settings()
+        archive_dir = f"{settings.media_root}/breakfast/imports"
+        import os
+
+        os.makedirs(archive_dir, exist_ok=True)
+        with open(f"{archive_dir}/{parsed_day.isoformat()}.pdf", "wb") as fh:
+            fh.write(pdf_bytes)
+
+    return BreakfastImportResponse(
+        date=parsed_day,
+        status="FOUND" if items else "MISSING",
+        saved=save,
+        items=items,
+    )
