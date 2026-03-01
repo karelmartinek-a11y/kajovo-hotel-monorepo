@@ -1863,6 +1863,10 @@ function AppRoutes(): JSX.Element {
   const adminModules = auth.role === 'admin' ? [{ key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] }] : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
   const allowedModules = modules.filter((module) => {
+    // View-state odkazy jsou interní QA trasa a v produkční navigaci nemají být vidět.
+    if (module.route.includes('?state=')) {
+      return false;
+    }
     const required =
       Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
     if (!required) {
