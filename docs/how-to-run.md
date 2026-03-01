@@ -1,21 +1,53 @@
 # How to run (developer)
 
-## API
-From repo root:
+## Požadavky
 
-- Docker:
-  - `docker compose -f infra/dev-compose.yml up --build`
-  - API health: `GET http://localhost:8000/health`
+- Node.js 20+
+- pnpm 9+
+- Python 3.11+
 
-- Python:
-  - `cd apps/kajovo-hotel-api`
-  - `python -m pip install -e .` (or install dependencies manually)
-  - `uvicorn app.main:app --reload`
+## 1) Instalace závislostí
 
-## Web
-From repo root:
-- `cd apps/kajovo-hotel-web`
-- `npm install`
-- `npm run dev`
+```bash
+cd <repo-root>
+pnpm install
+```
 
-Note: The UI/branding compliance gates and full refactor are intended to be implemented via Codex.
+## 2) API
+
+```bash
+cd apps/kajovo-hotel-api
+python -m pip install -e .[dev]
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Health check:
+
+```bash
+curl -fsS http://127.0.0.1:8000/health
+```
+
+## 3) Admin frontend
+
+```bash
+cd apps/kajovo-hotel-admin
+pnpm dev
+```
+
+## 4) Portal frontend
+
+```bash
+cd apps/kajovo-hotel-web
+pnpm dev
+```
+
+## 5) Testy a gate kontroly
+
+Z rootu repozitáře:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm unit
+pnpm ci:gates
+```

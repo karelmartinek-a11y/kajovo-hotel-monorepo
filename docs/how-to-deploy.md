@@ -1,83 +1,47 @@
-# How to deploy (production containers)
+# How to deploy (production)
 
-## Cíl
-Produkční deploy pro `hotel.hcasc.cz` přes compose soubory:
-- `infra/compose.prod.yml`
-- `infra/compose.prod.hotel-hcasc.yml`
+## Primární cesta: GitHub Actions
 
-Aplikace musí být připojena do externí docker sítě `deploy_hotelapp_net` a na externí DB endpoint `hotelapp-postgres:5432`.
+Produkce `hotel.hcasc.cz` se nasazuje z `main` automaticky.
 
-## 0) Preflight (hard fail)
+1. Push commit do `main`.
+2. Ověř, že proběhlo:
+   - `CI Gates - KájovoHotel`
+   - `CI Full - Kájovo Hotel`
+3. Po úspěšném CI Full se spustí:
+   - `Deploy - hotel.hcasc.cz`
 
-```bash
-command -v docker
-docker info
-docker compose version
-docker network inspect deploy_hotelapp_net
-```
+Deploy workflow: `.github/workflows/deploy-production.yml`.
 
-Pokud některý příkaz selže, deploy **zastavte**.
+## Nutná GitHub konfigurace
 
-## 1) Připravit env
+V repo settings musí být vyplněné `secrets` (nebo `variables` fallback):
 
-```bash
-cd /opt/kajovo-hotel-monorepo/infra
-cp .env.example .env
-# upravte .env (KAJOVO_API_DATABASE_URL, API_PORT, WEB_PORT, secrets)
-```
+- `HOTEL_DEPLOY_HOST`
+- `HOTEL_DEPLOY_PORT`
+- `HOTEL_DEPLOY_USER`
+- `HOTEL_DEPLOY_KEY` (preferováno) nebo `HOTEL_DEPLOY_PASS`
+- `HOTEL_ADMIN_EMAIL`
+- `HOTEL_ADMIN_PASSWORD`
 
-Doporučený DB endpoint v produkci:
+## Co dělá deploy script na serveru
 
-```env
-KAJOVO_API_DATABASE_URL=postgresql+psycopg://<user>:<pass>@hotelapp-postgres:5432/<db>
-```
+- synchronizuje `/opt/kajovo-hotel-monorepo` na `origin/main`
+- spouští `infra/ops/deploy-production.sh`
+- vypíše diagnostické logy kontejnerů (`api`, `postgres`, `admin`, `web`)
 
-## 2) Ověřit branch/tag + commit SHA
+## Post-deploy ověření
 
-```bash
-cd /opt/kajovo-hotel-monorepo
-git fetch origin
-git checkout main
-git pull --ff-only
-git rev-parse --short HEAD
-```
+- `https://hotel.hcasc.cz/`
+- `https://hotel.hcasc.cz/login`
+- `https://hotel.hcasc.cz/admin/login`
+- `https://hotel.hcasc.cz/api/health`
 
-Zapište SHA do deploy ticketu/runbooku.
+## Fallback (jen při incidentu)
 
-## 3) Build + up
+Manuální server deploy je popsán v:
 
-```bash
-cd /opt/kajovo-hotel-monorepo
-COMPOSE_PROJECT_NAME=kajovo-prod \
-  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env build --pull
+- `docs/cutover-runbook.md`
+- `infra/ops/deploy-production.sh`
 
-COMPOSE_PROJECT_NAME=kajovo-prod \
-  docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml --env-file infra/.env up -d --force-recreate postgres api web admin
-```
-
-Alternativa: `infra/ops/deploy-production.sh` (obsahuje hard-fail kontroly).
-
-## 4) Post-deploy smoke + verify
-
-```bash
-curl -fsS https://hotel.hcasc.cz/health
-curl -fsS https://hotel.hcasc.cz/ready
-curl -fsS https://hotel.hcasc.cz/healthz
-```
-
-```bash
-WEB_BASE_URL="https://hotel.hcasc.cz" API_BASE_URL="https://hotel.hcasc.cz" ./infra/smoke/smoke.sh
-./infra/verify/verify-deploy.sh
-```
-
-## 5) Rollback sekvence
-
-1. Přepnout reverse proxy na legacy konfiguraci:
-
-```bash
-cd /opt/kajovo-hotel-monorepo
-NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf ./infra/reverse-proxy/rollback-to-legacy.sh
-```
-
-2. Ověřit legacy health endpoint.
-3. Teprve potom řešit rollback kontejnerů/DB migrace.
+Standardní stav je ale CI/CD přes GitHub.
