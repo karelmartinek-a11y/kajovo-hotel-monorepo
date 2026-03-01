@@ -7,11 +7,10 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.api.routes.auth import hash_password
 from app.api.schemas import (
-    LogoutResponse,
     PortalUserCreate,
     PortalUserPasswordSet,
     PortalUserRead,
@@ -22,7 +21,7 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
-from app.security.rbac import module_access_dependency, require_actor_type
+from app.security.rbac import module_access_dependency
 from app.services.mail import (
     StoredSmtpConfig,
     build_email_service,
@@ -33,7 +32,7 @@ from app.services.mail import (
 router = APIRouter(
     prefix="/api/v1/users",
     tags=["users"],
-    dependencies=[Depends(require_actor_type("admin")), Depends(module_access_dependency("users"))],
+    dependencies=[Depends(module_access_dependency("users"))],
 )
 
 
@@ -55,12 +54,15 @@ def _stored_smtp_config(record: PortalSmtpSettings | None) -> StoredSmtpConfig |
 
 
 def _to_read_model(user: PortalUser) -> PortalUserRead:
+    roles = [role.role for role in user.roles]
+    primary_role = roles[0] if roles else "recepce"
     return PortalUserRead(
         id=user.id,
         first_name=user.first_name,
         last_name=user.last_name,
         email=user.email,
-        roles=[role.role for role in user.roles],
+        role=primary_role,
+        roles=roles,
         phone=user.phone,
         note=user.note,
         is_active=user.is_active,
@@ -92,9 +94,7 @@ def list_users(db: Session = Depends(get_db)) -> list[PortalUserRead]:
 
 @router.get("/{user_id}", response_model=PortalUserRead)
 def get_user(user_id: int, db: Session = Depends(get_db)) -> PortalUserRead:
-    user = db.execute(
-        select(PortalUser).options(selectinload(PortalUser.roles)).where(PortalUser.id == user_id)
-    ).scalar_one_or_none()
+    user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return _to_read_model(user)
@@ -113,12 +113,9 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
         phone=payload.phone,
         note=payload.note,
         password_hash=hash_password(payload.password),
-        phone=payload.phone,
-        note=payload.note,
         is_active=True,
         roles=[PortalUserRole(role=role) for role in payload.roles],
     )
-    user.roles = [PortalUserRole(role=normalize_role(role)) for role in payload.roles]
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -128,7 +125,7 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     return _to_read_model(user)
 
 
-@router.put("/{user_id}", response_model=PortalUserRead)
+@router.patch("/{user_id}", response_model=PortalUserRead)
 def update_user(
     user_id: int,
     payload: PortalUserUpdate,
@@ -162,9 +159,7 @@ def set_user_active(
     payload: PortalUserStatusUpdate,
     db: Session = Depends(get_db),
 ) -> PortalUserRead:
-    user = db.execute(
-        select(PortalUser).options(selectinload(PortalUser.roles)).where(PortalUser.id == user_id)
-    ).scalar_one_or_none()
+    user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.is_active = payload.is_active
@@ -182,9 +177,7 @@ def set_user_password(
     request: Request,
     db: Session = Depends(get_db),
 ) -> PortalUserRead:
-    user = db.execute(
-        select(PortalUser).options(selectinload(PortalUser.roles)).where(PortalUser.id == user_id)
-    ).scalar_one_or_none()
+    user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.password_hash = hash_password(payload.password)
@@ -205,9 +198,7 @@ def reset_user_password(
     request: Request,
     db: Session = Depends(get_db),
 ) -> PortalUserRead:
-    user = db.execute(
-        select(PortalUser).options(selectinload(PortalUser.roles)).where(PortalUser.id == user_id)
-    ).scalar_one_or_none()
+    user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.password_hash = hash_password(payload.password)

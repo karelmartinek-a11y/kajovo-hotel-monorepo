@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     AdminLoginRequest,
@@ -42,24 +42,6 @@ PORTAL_LOCKOUT_DURATION = timedelta(hours=1)
 ADMIN_LOCKOUT_DURATION = timedelta(days=36500)
 UNLOCK_TOKEN_TTL = timedelta(hours=24)
 FORGOT_THROTTLE = timedelta(hours=1)
-
-LOCKOUT_THRESHOLD = 3
-LOCKOUT_WINDOW = timedelta(hours=1)
-LOCKOUT_DURATION = timedelta(hours=1)
-FORGOT_THROTTLE = timedelta(hours=1)
-UNLOCK_TOKEN_TTL = timedelta(hours=24)
-
-
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _as_utc(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
 
 
 class HintRequest(BaseModel):
@@ -266,8 +248,6 @@ def admin_login(
     return AuthIdentityResponse(
         email=settings.admin_email,
         role="admin",
-        roles=["admin"],
-        active_role="admin",
         permissions=get_permissions("admin"),
         actor_type="admin",
     )
@@ -329,21 +309,6 @@ def portal_login(
         db.add(state)
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    user = db.execute(
-        select(PortalUser)
-        .options(selectinload(PortalUser.roles))
-        .where(PortalUser.email == email)
-    ).scalar_one_or_none()
-    if user is None or not user.is_active or not _verify_password(payload.password, user.password_hash):
-        _record_failed_login(db, "portal", email)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    _clear_lockout(db, "portal", email)
-
-    roles = list(dict.fromkeys(normalize_role(item.role) for item in user.roles))
-    if not roles:
-        roles = ["recepce"]
-    active_role = roles[0] if len(roles) == 1 else None
-    role = active_role or roles[0]
 
     _reset_lock_state(state)
     db.add(state)
@@ -415,11 +380,13 @@ def portal_logout(response: Response) -> LogoutResponse:
 @router.get("/unlock", response_model=LogoutResponse)
 def unlock_account(
     token: str,
-    actor_type: str,
+    actor_type: str | None = None,
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
     if len(token.strip()) < 16:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+    if not actor_type:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid actor type")
     if actor_type not in {"admin", "portal"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid actor type")
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -451,7 +418,7 @@ def auth_me(request: Request) -> AuthIdentityResponse:
     active_role = str(session["active_role"]) if session.get("active_role") else None
     permissions = get_permissions(active_role) if active_role else []
     return AuthIdentityResponse(
-        email=str(session["email"]),
+        email=session["email"],
         role=role,
         roles=roles,
         active_role=active_role,

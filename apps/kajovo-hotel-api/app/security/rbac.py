@@ -59,7 +59,6 @@ ROLE_ALIASES: dict[str, str] = {
     "maintenance": "údržba",
     "recepce": "recepce",
     "reception": "recepce",
-    "manager": "recepce",
     "snídaně": "snídaně",
     "snidane": "snídaně",
     "breakfast": "snídaně",
