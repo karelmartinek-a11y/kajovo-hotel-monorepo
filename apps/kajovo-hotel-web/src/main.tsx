@@ -311,6 +311,9 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
 }
 
 function StateSwitcher(): JSX.Element {
+  if (import.meta.env.PROD) {
+    return <></>;
+  }
   return (
     <div className="k-toolbar">
       <span>Stavy view:</span>
