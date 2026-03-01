@@ -311,7 +311,8 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
 }
 
 function StateSwitcher(): JSX.Element {
-  if (import.meta.env.PROD) {
+  const isProd = (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD === true;
+  if (isProd) {
     return <></>;
   }
   return (
