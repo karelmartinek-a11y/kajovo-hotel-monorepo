@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, KajovoSign, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   type BreakfastDailySummary,
@@ -2235,6 +2235,7 @@ function AdminLoginPage(): JSX.Element {
           <img src={adminLoginFigure} alt="Kája pro administraci" loading="lazy" />
         </aside>
       </section>
+      <KajovoSign />
     </main>
   );
 }

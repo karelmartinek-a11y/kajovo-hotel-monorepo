@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { KajovoSign } from '@kajovo/ui';
 
 const portalMascot = '/brand/postavy/kaja-user.png';
 
@@ -79,6 +80,7 @@ export function PortalLoginPage(): JSX.Element {
       <aside className="k-login-preview" aria-label="Ilustrace Kája">
         <img src={portalMascot} alt="Ilustrace Kája pro uživatelský login" loading="lazy" />
       </aside>
+      <KajovoSign />
     </main>
   );
 }

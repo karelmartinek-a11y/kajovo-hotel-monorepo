@@ -1,4 +1,5 @@
 import React from 'react';
+import { KajovoSign } from '@kajovo/ui';
 
 const adminMascot = '/brand/postavy/kaja-admin.png';
 
@@ -65,6 +66,7 @@ export function AdminLoginPage(): JSX.Element {
       <aside className="k-login-preview" aria-label="Ilustrace Kája">
         <img src={adminMascot} alt="Ilustrace Kája pro admin login" loading="lazy" />
       </aside>
+      <KajovoSign />
     </main>
   );
 }
