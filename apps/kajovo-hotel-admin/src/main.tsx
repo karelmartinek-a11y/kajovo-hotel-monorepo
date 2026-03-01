@@ -1244,7 +1244,7 @@ function LostFoundDetail(): JSX.Element {
                   key={photo.id}
                   src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`}
                   alt={`Fotografie položky ${photo.id}`}
-                  style={{ width: '100%', borderRadius: '12px' }}
+                  className="k-photo-thumb"
                 />
               ))}
             </div>
@@ -1391,7 +1391,7 @@ function IssuesDetail(): JSX.Element {
     <main className="k-page" data-testid="issues-detail-page">
       {stateMarker}
       <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} style={{ width: '100%', borderRadius: '12px' }} />)}</div> : null}</div> : <SkeletonPage />}
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -1475,7 +1475,7 @@ function InventoryList(): JSX.Element {
                   key={`pic-${item.id}`}
                   src={`/api/v1/inventory/${item.id}/pictogram/thumb`}
                   alt={`Piktogram ${item.name}`}
-                  style={{ width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px' }}
+                  className="k-pictogram-thumb k-pictogram-thumb-small"
                 />
               ) : (
                 '-'
@@ -1728,7 +1728,7 @@ function InventoryDetail(): JSX.Element {
                   onChange={(event) => setPictogram(event.target.files?.[0] ?? null)}
                 />
               </FormField>
-              <div style={{ display: 'flex', alignItems: 'end' }}>
+              <div className="k-align-end">
                 <button className="k-button secondary" type="button" onClick={() => void uploadPictogram()}>
                   Uložit piktogram
                 </button>
@@ -1739,7 +1739,7 @@ function InventoryDetail(): JSX.Element {
               <img
                 src={`/api/v1/inventory/${item.id}/pictogram/thumb`}
                 alt={`Piktogram ${item.name}`}
-                style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover' }}
+                className="k-pictogram-thumb k-pictogram-thumb-large"
               />
             ) : null}
           </div>
@@ -2093,7 +2093,7 @@ function UsersAdmin(): JSX.Element {
                 </FormField>
                 <fieldset className="k-card"><legend>Role</legend>
                   {portalRoleOptions.map((role) => (
-                    <label key={`edit-role-${role}`} style={{ display: 'block' }}>
+                    <label key={`edit-role-${role}`} className="k-role-label">
                       <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {role}
                     </label>
                   ))}
@@ -2135,7 +2135,7 @@ function UsersAdmin(): JSX.Element {
               </FormField>
               <fieldset className="k-card"><legend>Role</legend>
                 {portalRoleOptions.map((role) => (
-                  <label key={`create-role-${role}`} style={{ display: 'block' }}>
+                  <label key={`create-role-${role}`} className="k-role-label">
                     <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {role}
                   </label>
                 ))}

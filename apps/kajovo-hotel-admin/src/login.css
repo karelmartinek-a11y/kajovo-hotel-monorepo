@@ -56,3 +56,35 @@
     grid-template-columns: 1fr;
   }
 }
+
+.k-photo-thumb {
+  width: 100%;
+  border-radius: var(--k-radius-3);
+  object-fit: cover;
+  display: block;
+}
+
+.k-pictogram-thumb {
+  border-radius: var(--k-radius-2);
+  object-fit: cover;
+  display: block;
+}
+
+.k-pictogram-thumb-small {
+  width: 48px;
+  height: 48px;
+}
+
+.k-pictogram-thumb-large {
+  width: 80px;
+  height: 80px;
+}
+
+.k-align-end {
+  display: flex;
+  align-items: end;
+}
+
+.k-role-label {
+  display: block;
+}

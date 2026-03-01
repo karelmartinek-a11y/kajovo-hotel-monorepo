@@ -85,7 +85,7 @@ jobs:
       - name: Install API Python dependencies (minimal)
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6"
+          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20"
 
       - name: Install Playwright browser for smoke
         run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
@@ -128,7 +128,7 @@ jobs:
       - name: Install API Python dependencies (minimal)
         run: |
           python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "alembic==1.17.1" "uvicorn[standard]==0.30.6"
+          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "alembic==1.17.1" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20"
 
       - name: Lint TypeScript
         run: pnpm lint
