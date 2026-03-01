@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const portalLoginPreview = new URL('../../../../brand/panel/login_user_fail.png', import.meta.url).href;
+const portalMascot = '/brand/postavy/kaja.svg';
 
 export function PortalLoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -76,8 +76,8 @@ export function PortalLoginPage(): JSX.Element {
           ) : null}
         </form>
       </section>
-      <aside className="k-login-preview" aria-label="Náhled uživatelského přihlášení">
-        <img src={portalLoginPreview} alt="Návrh uživatelského přihlášení v chybovém stavu" loading="lazy" />
+      <aside className="k-login-preview" aria-label="Ilustrace Kája">
+        <img src={portalMascot} alt="Ilustrace Kája pro uživatelský login" loading="lazy" />
       </aside>
     </main>
   );

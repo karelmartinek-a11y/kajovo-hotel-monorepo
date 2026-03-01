@@ -41,7 +41,7 @@
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);
   background: var(--k-color-surface);
-  padding: var(--k-spacing-3);
+  padding: var(--k-spacing-4);
 }
 
 .k-login-preview img {

@@ -1,24 +1,66 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const adminLoginPreview = new URL('../../../../brand/panel/login_admin.png', import.meta.url).href;
+const adminMascot = '/brand/postavy/kaja.svg';
 
 export function AdminLoginPage(): JSX.Element {
+  const navigate = useNavigate();
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+  const [hintStatus, setHintStatus] = React.useState<string | null>(null);
+
+  async function login(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setError(null);
+    setHintStatus(null);
+    const response = await fetch('/api/auth/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    });
+    if (!response.ok) {
+      setError('Neplatné přihlašovací údaje.');
+      return;
+    }
+    navigate('/admin');
+  }
+
+  async function sendPasswordHint(): Promise<void> {
+    setHintStatus(null);
+    const response = await fetch('/api/auth/admin/hint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      setHintStatus('Pokud účet existuje, byl odeslán odkaz pro odblokování.');
+      return;
+    }
+    setHintStatus('Pokud účet existuje, byl odeslán odkaz pro odblokování.');
+  }
+
   return (
     <main className="k-login-page" data-testid="admin-login-page">
       <section className="k-login-card" aria-labelledby="admin-login-title">
         <p className="k-login-eyebrow">KájovoHotel · Admin</p>
         <h1 id="admin-login-title">Přihlášení administrace</h1>
         <p className="k-login-copy">Použijte pevný admin účet pro správu uživatelů a nastavení provozu.</p>
-        <form className="k-login-form" onSubmit={(event) => event.preventDefault()}>
+        <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="admin-email">Email</label>
-          <input id="admin-email" className="k-input" type="email" placeholder="admin@kajovohotel.cz" defaultValue="admin@kajovohotel.cz" />
+          <input id="admin-email" className="k-input" type="email" placeholder="provoz@hotelchodovasc.cz" value={email} onChange={(event) => setEmail(event.target.value)} />
           <label className="k-login-label" htmlFor="admin-password">Heslo</label>
-          <input id="admin-password" className="k-input" type="password" placeholder="••••••••" defaultValue="admin-fixed-password" />
+          <input id="admin-password" className="k-input" type="password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} />
           <button className="k-button" type="submit">Přihlásit se</button>
+          <button className="k-button secondary" type="button" onClick={() => void sendPasswordHint()} disabled={!email.trim()}>Zapomenuté heslo</button>
+          {error ? <p className="k-login-copy" role="alert">{error}</p> : null}
+          {hintStatus ? <p className="k-login-copy">{hintStatus}</p> : null}
         </form>
       </section>
-      <aside className="k-login-preview" aria-label="Náhled admin panelu">
-        <img src={adminLoginPreview} alt="Návrh přihlášení administrace" loading="lazy" />
+      <aside className="k-login-preview" aria-label="Ilustrace Kája">
+        <img src={adminMascot} alt="Ilustrace Kája pro admin login" loading="lazy" />
       </aside>
     </main>
   );
