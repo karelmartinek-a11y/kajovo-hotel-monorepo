@@ -1742,8 +1742,13 @@ function AdminLoginPage(): JSX.Element {
     event.preventDefault();
     setError(null);
     setHintStatus(null);
+    const principal = email.trim();
+    if (!principal || !password) {
+      setError('Vyplňte email i heslo.');
+      return;
+    }
     try {
-      await apiClient.adminLoginApiAuthAdminLoginPost({ email, password });
+      await apiClient.adminLoginApiAuthAdminLoginPost({ email: principal, password });
       navigate('/', { replace: true });
     } catch {
       setError('Neplatné přihlašovací údaje.');
@@ -1770,7 +1775,9 @@ function AdminLoginPage(): JSX.Element {
           <input
             id="admin_login_email"
             className="k-input"
-            type="email"
+            type="text"
+            inputMode="email"
+            autoComplete="username"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="provoz@hotelchodovasc.cz"
@@ -1780,6 +1787,7 @@ function AdminLoginPage(): JSX.Element {
             id="admin_login_password"
             className="k-input"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
