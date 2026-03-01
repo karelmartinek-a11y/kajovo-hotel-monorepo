@@ -130,6 +130,15 @@ type PortalUserCreatePayload = PortalUserUpsertPayload & {
   password: string;
 };
 
+type SmtpSettingsReadModel = {
+  host: string;
+  port: number;
+  username: string;
+  use_tls: boolean;
+  use_ssl: boolean;
+  password_masked: string;
+};
+
 type ErrorBoundaryProps = { children: React.ReactNode };
 type ErrorBoundaryState = { hasError: boolean; message?: string };
 
@@ -474,6 +483,32 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   }
 
   if (path === '/api/auth/admin/hint' && method === 'POST') {
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+
+  if (path === '/api/v1/admin/settings/smtp' && method === 'GET') {
+    const response = await fetch(path, { credentials: 'include' });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/smtp' && method === 'PUT') {
+    const response = await fetch(path, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/smtp/test-email' && method === 'POST') {
     const response = await fetch(path, {
       method: 'POST',
       credentials: 'include',
@@ -2152,6 +2187,136 @@ function UsersAdmin(): JSX.Element {
   );
 }
 
+function SettingsAdmin(): JSX.Element {
+  const [host, setHost] = React.useState('');
+  const [port, setPort] = React.useState(587);
+  const [username, setUsername] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [useTls, setUseTls] = React.useState(true);
+  const [useSsl, setUseSsl] = React.useState(false);
+  const [testRecipient, setTestRecipient] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+
+  const load = React.useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    void fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp')
+      .then((data) => {
+        setHost(data.host);
+        setPort(data.port);
+        setUsername(data.username);
+        setUseTls(data.use_tls);
+        setUseSsl(data.use_ssl);
+        setTestRecipient(data.username);
+      })
+      .catch((err: Error) => {
+        if (err.message.includes('SMTP settings not configured')) {
+          return;
+        }
+        setError('Nepodařilo se načíst SMTP nastavení.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  async function save(): Promise<void> {
+    if (!host.trim() || !username.trim() || !password.trim()) {
+      setError('Host, uživatel a heslo jsou povinné.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp', {
+        method: 'PUT',
+        body: JSON.stringify({
+          host: host.trim(),
+          port: Number(port),
+          username: username.trim(),
+          password,
+          use_tls: useTls,
+          use_ssl: useSsl,
+        }),
+      });
+      setMessage('SMTP nastavení bylo uloženo.');
+      setPassword('');
+    } catch {
+      setError('SMTP nastavení se nepodařilo uložit.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function sendTestEmail(): Promise<void> {
+    const recipient = testRecipient.trim();
+    if (!recipient) {
+      setError('Vyplňte příjemce testovacího e-mailu.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await fetchJson<{ ok: boolean }>('/api/v1/admin/settings/smtp/test-email', {
+        method: 'POST',
+        body: JSON.stringify({ recipient }),
+      });
+      setMessage('Testovací e-mail byl odeslán.');
+    } catch {
+      setError('Testovací e-mail se nepodařilo odeslat.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <main className="k-page" data-testid="settings-admin-page">
+      <h1>Nastavení SMTP</h1>
+      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
+      {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
+      {loading ? <SkeletonPage /> : (
+        <Card title="E-mailová konfigurace">
+          <div className="k-form-grid">
+            <FormField id="smtp_host" label="SMTP host">
+              <input id="smtp_host" className="k-input" value={host} onChange={(e) => setHost(e.target.value)} />
+            </FormField>
+            <FormField id="smtp_port" label="SMTP port">
+              <input id="smtp_port" className="k-input" type="number" value={port} onChange={(e) => setPort(Number(e.target.value) || 0)} />
+            </FormField>
+            <FormField id="smtp_username" label="SMTP uživatel">
+              <input id="smtp_username" className="k-input" value={username} onChange={(e) => setUsername(e.target.value)} />
+            </FormField>
+            <FormField id="smtp_password" label="SMTP heslo">
+              <input id="smtp_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </FormField>
+            <label className="k-role-label">
+              <input type="checkbox" checked={useTls} onChange={(e) => setUseTls(e.target.checked)} /> Použít TLS
+            </label>
+            <label className="k-role-label">
+              <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} /> Použít SSL
+            </label>
+            <FormField id="smtp_test_recipient" label="Testovací příjemce">
+              <input id="smtp_test_recipient" className="k-input" type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} />
+            </FormField>
+            <div className="k-toolbar">
+              <button className="k-button" type="button" onClick={() => void save()} disabled={saving}>Uložit SMTP</button>
+              <button className="k-button secondary" type="button" onClick={() => void sendTestEmail()} disabled={saving}>Odeslat testovací e-mail</button>
+            </div>
+          </div>
+        </Card>
+      )}
+    </main>
+  );
+}
+
 type AccessDeniedProps = {
   moduleLabel: string;
   role: string;
@@ -2278,7 +2443,12 @@ function AppRoutes(): JSX.Element {
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
     : [];
-  const adminModules = auth.role === 'admin' ? [{ key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] }] : [];
+  const adminModules = auth.role === 'admin'
+    ? [
+      { key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
+      { key: 'settings', label: 'Nastavení', route: '/nastaveni', icon: 'settings', active: true, section: 'records', permissions: ['read'] },
+    ]
+    : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
   const allowedModules = modules.filter((module) => {
     // View-state odkazy jsou interní QA trasa a v produkční navigaci nemají být vidět.
@@ -2332,6 +2502,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
         <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={auth.role} userId={auth.userId} />} />
+        <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="Nastavení" role={auth.role} userId={auth.userId} />} />
         <Route path="/login" element={<AdminLoginPage />} />
         <Route
           path="/intro"

@@ -68,5 +68,6 @@
 ## 5) Závěr
 
 - Kritické auth + users regressions jsou opravené.
-- Login separace a bezpečnostní chování je proti auditu výrazně dorovnáno.
-- Pro plnou parity akceptaci ještě chybí: PDF/IMAP snídaně import, foto upload workflow (ztráty/závady), a skladové piktogramy.
+- Login separace, lockout chování a admin/user UI jsou výrazně dorovnané.
+- SMTP settings modul v admin UI je implementovaný včetně test e-mailu.
+- Pro plnou parity akceptaci ještě chybí hlavně plánovaný IMAP/scheduler ingest snídaňových PDF a admin profil (změna hesla).

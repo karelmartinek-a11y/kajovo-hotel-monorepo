@@ -20,6 +20,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "reports:write",
         "users:read",
         "users:write",
+        "settings:read",
+        "settings:write",
     },
     "pokojská": {
         "dashboard:read",
