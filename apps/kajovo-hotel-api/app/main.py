@@ -1,3 +1,6 @@
+import asyncio
+import contextlib
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
@@ -13,6 +16,7 @@ from app.api.routes.users import router as users_router
 from app.config import get_settings
 from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
+from app.services.breakfast.scheduler import breakfast_scheduler_loop
 
 settings = get_settings()
 
@@ -39,6 +43,20 @@ def create_app() -> FastAPI:
     app.include_router(inventory_router)
     app.include_router(users_router)
     app.include_router(settings_router)
+
+    @app.on_event("startup")
+    async def startup_scheduler() -> None:
+        if settings.breakfast_scheduler_enabled:
+            app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
+
+    @app.on_event("shutdown")
+    async def shutdown_scheduler() -> None:
+        task = getattr(app.state, "breakfast_scheduler_task", None)
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(Exception):
+                await task
+
     return app
 
 

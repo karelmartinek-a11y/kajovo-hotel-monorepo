@@ -70,4 +70,5 @@
 - Kritické auth + users regressions jsou opravené.
 - Login separace, lockout chování a admin/user UI jsou výrazně dorovnané.
 - SMTP settings modul v admin UI je implementovaný včetně test e-mailu.
-- Pro plnou parity akceptaci ještě chybí hlavně plánovaný IMAP/scheduler ingest snídaňových PDF a admin profil (změna hesla).
+- IMAP/scheduler ingest snídaňových PDF je nyní implementovaný v API službě, ale je podmíněný produkčním IMAP nastavením přes env.
+- Pro plnou parity akceptaci zbývá hlavně admin profil (změna hesla) a forenzní ověření IMAP ingestu na produkčních datech.
