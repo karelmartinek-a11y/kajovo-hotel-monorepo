@@ -172,16 +172,6 @@ class MockEmailService:
         _ = message
 
 
-def send_admin_password_hint(*, service: EmailService, recipient: str, hint: str) -> None:
-    service.send(
-        MailMessage(
-            recipient=recipient,
-            subject="KájovoHotel admin password hint",
-            body=hint,
-        )
-    )
-
-
 def send_portal_onboarding(*, service: EmailService, recipient: str) -> None:
     service.send(
         MailMessage(
@@ -196,7 +186,7 @@ def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link
     service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel admin password hint",
+            subject="KájovoHotel odblokování admin účtu",
             body=f"Pro odblokování admin účtu použijte odkaz: {unlock_link}",
         )
     )

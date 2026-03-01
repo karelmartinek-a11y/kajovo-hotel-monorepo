@@ -25,7 +25,6 @@ jobs:
       HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS }}
       HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL }}
       HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
-      HOTEL_ADMIN_PASSWORD_HINT: ${{ secrets.HOTEL_ADMIN_PASSWORD_HINT }}
     steps:
       - name: Připrav SSH klíč
         if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
@@ -53,7 +52,7 @@ jobs:
           username: ${{ secrets.HOTEL_DEPLOY_USER }}
           key_path: deploy_key.pem
           port: ${{ secrets.HOTEL_DEPLOY_PORT }}
-          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,HOTEL_ADMIN_PASSWORD_HINT
+          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD
           script: |
             set -euo pipefail
             set -x
@@ -70,7 +69,6 @@ jobs:
             git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
             if [ -n "${HOTEL_ADMIN_EMAIL:-}" ]; then export KAJOVO_API_ADMIN_EMAIL="$HOTEL_ADMIN_EMAIL"; fi
             if [ -n "${HOTEL_ADMIN_PASSWORD:-}" ]; then export KAJOVO_API_ADMIN_PASSWORD="$HOTEL_ADMIN_PASSWORD"; fi
-            if [ -n "${HOTEL_ADMIN_PASSWORD_HINT:-}" ]; then export KAJOVO_API_ADMIN_PASSWORD_HINT="$HOTEL_ADMIN_PASSWORD_HINT"; fi
             set +e
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?
@@ -91,7 +89,7 @@ jobs:
           username: ${{ secrets.HOTEL_DEPLOY_USER }}
           password: ${{ secrets.HOTEL_DEPLOY_PASS }}
           port: ${{ secrets.HOTEL_DEPLOY_PORT }}
-          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,HOTEL_ADMIN_PASSWORD_HINT
+          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD
           script: |
             set -euo pipefail
             set -x
@@ -106,7 +104,6 @@ jobs:
             git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
             if [ -n "${HOTEL_ADMIN_EMAIL:-}" ]; then export KAJOVO_API_ADMIN_EMAIL="$HOTEL_ADMIN_EMAIL"; fi
             if [ -n "${HOTEL_ADMIN_PASSWORD:-}" ]; then export KAJOVO_API_ADMIN_PASSWORD="$HOTEL_ADMIN_PASSWORD"; fi
-            if [ -n "${HOTEL_ADMIN_PASSWORD_HINT:-}" ]; then export KAJOVO_API_ADMIN_PASSWORD_HINT="$HOTEL_ADMIN_PASSWORD_HINT"; fi
             set +e
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?

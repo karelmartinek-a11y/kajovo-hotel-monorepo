@@ -32,7 +32,6 @@ services:
       KAJOVO_API_DATABASE_URL: ${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://kajovo:kajovo_dev_password@postgres:5432/kajovo_hotel}
       KAJOVO_API_ADMIN_EMAIL: ${KAJOVO_API_ADMIN_EMAIL:-admin@kajovohotel.local}
       KAJOVO_API_ADMIN_PASSWORD: ${KAJOVO_API_ADMIN_PASSWORD:-admin123}
-      KAJOVO_API_ADMIN_PASSWORD_HINT: ${KAJOVO_API_ADMIN_PASSWORD_HINT:-default admin password for CI}
       KAJOVO_API_SMTP_ENABLED: ${KAJOVO_API_SMTP_ENABLED:-false}
       KAJOVO_API_SMTP_FROM_EMAIL: ${KAJOVO_API_SMTP_FROM_EMAIL:-noreply@kajovohotel.local}
       KAJOVO_API_SMTP_ENCRYPTION_KEY: ${KAJOVO_API_SMTP_ENCRYPTION_KEY:-dev-only-smtp-key-change-in-production}
