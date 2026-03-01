@@ -352,6 +352,17 @@ export type ValidationError = {
 };
 
 type QueryValue = string | number | boolean | null | undefined;
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function csrfTokenFromCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const token = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('kajovo_csrf='));
+  if (!token) return null;
+  return decodeURIComponent(token.slice('kajovo_csrf='.length));
+}
 
 function buildQuery(query: Record<string, QueryValue> | undefined): string {
   if (!query) return '';
@@ -365,9 +376,16 @@ function buildQuery(query: Record<string, QueryValue> | undefined): string {
 }
 
 async function request<T>(method: string, path: string, query?: Record<string, QueryValue>, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (WRITE_METHODS.has(method)) {
+    const csrf = csrfTokenFromCookie();
+    if (csrf) headers['x-csrf-token'] = csrf;
+  }
   const response = await fetch(`${path}${buildQuery(query)}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
+    credentials: 'include',
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!response.ok) throw new Error('API request failed');
@@ -385,8 +403,8 @@ export const apiClient = {
   async adminLogoutApiAuthAdminLogoutPost(): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/admin/logout`, undefined, undefined);
   },
-  async portalForgotApiAuthForgotPost(body: ForgotPasswordRequest): Promise<LogoutResponse> {
-    return request<LogoutResponse>('POST', `/api/auth/forgot`, undefined, body);
+  async portalForgotPasswordApiAuthForgotPost(body: ForgotPasswordRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/forgot-password`, undefined, body);
   },
   async portalLoginApiAuthLoginPost(body: PortalLoginRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/login`, undefined, body);

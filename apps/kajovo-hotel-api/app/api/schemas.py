@@ -11,6 +11,8 @@ except ImportError:  # pragma: no cover
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.security.rbac import normalize_role
+
 
 class ApiErrorDetail(BaseModel):
     code: str
@@ -302,12 +304,8 @@ ALLOWED_PORTAL_ROLES = {
     "údržba",
     "recepce",
     "snídaně",
-    "housekeeping",
-    "maintenance",
-    "reception",
-    "breakfast",
-    "warehouse",
-    "sklad",
+    "udrzba",
+    "snidane",
 }
 
 
@@ -327,8 +325,9 @@ class PortalUserBasePayload(BaseModel):
             normalized = role.strip().lower()
             if normalized not in ALLOWED_PORTAL_ROLES:
                 raise ValueError(f"Role must be one of: {', '.join(sorted(ALLOWED_PORTAL_ROLES))}")
-            if normalized not in cleaned:
-                cleaned.append(normalized)
+            canonical = normalize_role(normalized)
+            if canonical not in cleaned:
+                cleaned.append(canonical)
         if not cleaned:
             raise ValueError("At least one role is required")
         return cleaned

@@ -26,6 +26,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "lost_found:read",
         "lost_found:write",
         "issues:read",
+        "inventory:read",
+        "inventory:write",
     },
     "údržba": {
         "dashboard:read",
@@ -45,12 +47,6 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "dashboard:read",
         "breakfast:read",
         "breakfast:write",
-        "inventory:read",
-    },
-    "warehouse": {
-        "dashboard:read",
-        "inventory:read",
-        "inventory:write",
     },
 }
 
@@ -67,8 +63,8 @@ ROLE_ALIASES: dict[str, str] = {
     "snídaně": "snídaně",
     "snidane": "snídaně",
     "breakfast": "snídaně",
-    "warehouse": "warehouse",
-    "sklad": "warehouse",
+    "warehouse": "pokojská",
+    "sklad": "pokojská",
 }
 
 ROLE_AUDIT_EXPORT: dict[str, str] = {
@@ -77,7 +73,6 @@ ROLE_AUDIT_EXPORT: dict[str, str] = {
     "údržba": "maintenance",
     "recepce": "reception",
     "snídaně": "breakfast",
-    "warehouse": "warehouse",
 }
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

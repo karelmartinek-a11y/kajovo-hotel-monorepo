@@ -89,7 +89,7 @@ body {
 
 .k-app-shell {
   min-height: 100vh;
-  padding-bottom: calc(var(--k-spacing-8) + var(--k-sign-min-thickness));
+  padding-bottom: calc(var(--k-spacing-8) + var(--k-sign-min-thickness) + 220px);
 }
 
 .k-app-header {
@@ -221,10 +221,70 @@ body {
   padding: var(--k-spacing-4);
 }
 
+.k-shell-figure {
+  position: fixed;
+  right: var(--k-spacing-5);
+  bottom: calc(var(--k-spacing-6) + var(--k-sign-min-thickness));
+  width: 210px;
+  height: 250px;
+  overflow: hidden;
+  border-radius: var(--k-radius-2);
+  border: 1px solid var(--k-color-border);
+  background: var(--k-color-surface);
+  box-shadow: var(--k-shadow-elevated);
+  pointer-events: none;
+  z-index: calc(var(--k-z-sign) - 1);
+}
+
+.k-shell-figure img {
+  width: 520px;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  display: block;
+}
+
 .k-page h1 {
   margin: 0 0 var(--k-spacing-4);
   font-size: var(--k-font-size-2xl);
   line-height: var(--k-line-height-h1);
+}
+
+.k-admin-login-page {
+  min-height: calc(100vh - 120px);
+  display: grid;
+  align-items: center;
+}
+
+.k-admin-login-layout {
+  display: grid;
+  gap: var(--k-spacing-5);
+  grid-template-columns: minmax(320px, 560px) minmax(200px, 280px);
+  align-items: stretch;
+}
+
+.k-admin-login-logo {
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: var(--k-spacing-4);
+}
+
+.k-admin-login-figure {
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-2);
+  background: var(--k-color-surface);
+  box-shadow: var(--k-shadow-elevated);
+  overflow: hidden;
+  min-height: 360px;
+}
+
+.k-admin-login-figure img {
+  width: 760px;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  display: block;
 }
 
 .k-grid {
@@ -393,6 +453,23 @@ body {
   .k-grid.cards-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .k-admin-login-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .k-admin-login-figure {
+    min-height: 240px;
+  }
+
+  .k-admin-login-figure img {
+    width: 540px;
+  }
+
+  .k-shell-figure {
+    width: 170px;
+    height: 210px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -422,13 +499,12 @@ body {
     bottom: var(--k-spacing-4);
   }
 
-  .kajovo-mascot {
-    right: var(--k-spacing-4);
-    bottom: calc(var(--k-spacing-8) + var(--k-spacing-5));
+  .k-app-shell {
+    padding-bottom: calc(var(--k-spacing-8) + var(--k-sign-min-thickness) + 130px);
   }
 
-  .kajovo-mascot img {
-    width: 140px;
+  .k-shell-figure {
+    display: none;
   }
 }
 

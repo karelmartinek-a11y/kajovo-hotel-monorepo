@@ -39,6 +39,9 @@ import '@kajovo/ui/src/tokens.css';
 import './login.css';
 import { canReadModule, resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
 
+const brandWordmark = '/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg';
+const adminLoginFigure = '/brand/panel/login_admin.png';
+
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
 
@@ -2202,49 +2205,36 @@ function AdminLoginPage(): JSX.Element {
   }
 
   return (
-    <main className="k-login-page" data-testid="admin-login-page">
-      <section className="k-login-card" aria-labelledby="admin-login-title">
-        <p className="k-login-eyebrow">KájovoHotel · Admin</p>
-        <h1 id="admin-login-title">Přihlášení administrace</h1>
-        <p className="k-login-copy">Použijte pevný admin účet pro správu uživatelů a nastavení provozu.</p>
-        <form className="k-login-form" onSubmit={(event) => void submit(event)}>
-          <label className="k-login-label" htmlFor="admin_login_email">Email</label>
-          <input
-            id="admin_login_email"
-            className="k-input"
-            type="text"
-            inputMode="email"
-            autoComplete="username"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="provoz@hotelchodovasc.cz"
-          />
-          <label className="k-login-label" htmlFor="admin_login_password">Heslo</label>
-          <input
-            id="admin_login_password"
-            className="k-input"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="••••••••"
-          />
-          <button className="k-button" type="submit">Přihlásit se</button>
-          <button
-            className="k-button secondary"
-            type="button"
-            onClick={() => void sendPasswordHint()}
-            disabled={!email.trim()}
-          >
-            Zapomenuté heslo
-          </button>
-          {error ? <p className="k-login-copy" role="alert">{error}</p> : null}
-          {hintStatus ? <p className="k-login-copy">{hintStatus}</p> : null}
-        </form>
+    <main className="k-page k-admin-login-page" data-testid="admin-login-page">
+      <section className="k-admin-login-layout">
+        <Card title="KájovoHotel Admin login">
+          <img className="k-admin-login-logo" src={brandWordmark} alt="KájovoHotel" />
+          <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
+            <FormField id="admin_login_email" label="Admin email">
+              <input id="admin_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </FormField>
+            <FormField id="admin_login_password" label="Admin heslo">
+              <input id="admin_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            </FormField>
+            {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+            {hintStatus ? <StateView title="Info" description={hintStatus} stateKey="empty" /> : null}
+            <div className="k-toolbar">
+              <button className="k-button" type="submit">Přihlásit</button>
+              <button
+                className="k-button secondary"
+                type="button"
+                onClick={() => void sendPasswordHint()}
+                disabled={!email.trim()}
+              >
+                Zapomenuté heslo
+              </button>
+            </div>
+          </form>
+        </Card>
+        <aside className="k-admin-login-figure" aria-label="Kája pro admin login" data-brand-element="true">
+          <img src={adminLoginFigure} alt="Kája pro administraci" loading="lazy" />
+        </aside>
       </section>
-      <aside className="k-login-preview" aria-label="Ilustrace Kája">
-        <img src="/brand/postavy/kaja-admin.png" alt="Ilustrace Kája pro admin login" loading="lazy" />
-      </aside>
     </main>
   );
 }
