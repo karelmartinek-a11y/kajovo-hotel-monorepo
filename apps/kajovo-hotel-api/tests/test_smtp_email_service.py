@@ -62,7 +62,7 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         create_user(PortalUserCreate(email="new.user@example.com", password="new-user-pass"), db=db)
 
     assert [message.subject for message in transport.sent_messages] == [
-        "KájovoHotel admin password hint",
+        "KájovoHotel odblokování admin účtu",
         "KájovoHotel SMTP test",
         "KájovoHotel onboarding",
     ]

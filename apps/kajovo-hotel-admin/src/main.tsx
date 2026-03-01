@@ -1798,7 +1798,7 @@ function AdminLoginPage(): JSX.Element {
         </form>
       </section>
       <aside className="k-login-preview" aria-label="Ilustrace Kája">
-        <img src="/brand/postavy/kaja.svg" alt="Ilustrace Kája pro admin login" loading="lazy" />
+        <img src="/brand/postavy/kaja-admin.png" alt="Ilustrace Kája pro admin login" loading="lazy" />
       </aside>
     </main>
   );

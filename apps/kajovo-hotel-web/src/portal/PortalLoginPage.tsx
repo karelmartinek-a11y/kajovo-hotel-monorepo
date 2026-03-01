@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const portalMascot = '/brand/postavy/kaja.svg';
+const portalMascot = '/brand/postavy/kaja-user.png';
 
 export function PortalLoginPage(): JSX.Element {
   const navigate = useNavigate();

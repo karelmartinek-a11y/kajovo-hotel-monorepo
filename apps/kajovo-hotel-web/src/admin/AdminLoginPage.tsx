@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const adminMascot = '/brand/postavy/kaja.svg';
+const adminMascot = '/brand/postavy/kaja-admin.png';
 
 export function AdminLoginPage(): JSX.Element {
   const navigate = useNavigate();
