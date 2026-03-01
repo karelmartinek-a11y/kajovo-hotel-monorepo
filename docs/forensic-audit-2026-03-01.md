@@ -47,6 +47,8 @@
 - V aplikačním shellu je doplněná personifikace Kája po modulech jako samostatný brand prvek.
 - Signace zůstává v shellu a je zachována i po změnách.
 - Brand assety pro admin i web jsou sjednocené v public cestách (wordmark + postavy), takže login i interní obrazovky renderují logo/Káju bez závislosti na panel PNG.
+- Na login obrazovkách (user i admin) je renderovaná i signace jako samostatný brand element.
+- User login má doplněný flow „zapomenuté heslo“ volající `/api/auth/forgot-password` s generickou odpovědí.
 
 ### Evidence
 

@@ -9,11 +9,13 @@ export function PortalLoginPage(): JSX.Element {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [info, setInfo] = React.useState<string | null>(null);
   const [roleOptions, setRoleOptions] = React.useState<string[] | null>(null);
 
   async function login(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError(null);
+    setInfo(null);
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -30,6 +32,27 @@ export function PortalLoginPage(): JSX.Element {
       return;
     }
     navigate('/');
+  }
+
+  async function sendForgotPassword(): Promise<void> {
+    setError(null);
+    setInfo(null);
+    const principal = email.trim();
+    if (!principal) {
+      setError('Vyplňte email.');
+      return;
+    }
+    const response = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email: principal }),
+    });
+    if (response.status === 403) {
+      setInfo('Pokud je účet odemčený, byl odeslán odkaz pro obnovu.');
+      return;
+    }
+    setInfo('Pokud účet existuje, byl odeslán odkaz pro obnovu.');
   }
 
   async function selectRole(role: string): Promise<void> {
@@ -65,7 +88,9 @@ export function PortalLoginPage(): JSX.Element {
           <label className="k-login-label" htmlFor="portal-password">Heslo</label>
           <input id="portal-password" className="k-input" type="password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} />
           <button className="k-button" type="submit">Přihlásit se</button>
+          <button className="k-button secondary" type="button" onClick={() => void sendForgotPassword()} disabled={!email.trim()}>Zapomenuté heslo</button>
           {error ? <p className="k-login-copy" role="alert">{error}</p> : null}
+          {info ? <p className="k-login-copy">{info}</p> : null}
           {roleOptions ? (
             <div className="k-toolbar">
               {roleOptions.map((role) => (
