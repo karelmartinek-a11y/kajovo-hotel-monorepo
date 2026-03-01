@@ -644,6 +644,30 @@ function BreakfastList(): JSX.Element {
     }
   };
 
+  const breakfastToolbar = (
+    <div className="k-toolbar">
+      <input
+        className="k-input"
+        placeholder="Hledat dle pokoje nebo hosta"
+        aria-label="Hledat"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+      <input
+        className="k-input"
+        type="file"
+        accept="application/pdf"
+        onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+      />
+      <button className="k-button secondary" type="button" onClick={() => void importPdf()}>
+        Import PDF
+      </button>
+      <Link className="k-button" to="/snidane/nova">
+        Nová objednávka
+      </Link>
+    </div>
+  );
+
   return (
     <main className="k-page" data-testid="breakfast-list-page">
       {stateMarker}
@@ -654,7 +678,11 @@ function BreakfastList(): JSX.Element {
       ) : error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : filteredItems.length === 0 ? (
-        <StateView title="Prázdný stav" description="Nebyly nalezeny žádné objednávky." stateKey="empty" action={<Link className="k-button" to="/snidane/nova">Nová objednávka</Link>} />
+        <>
+          {breakfastToolbar}
+          {importInfo ? <p>{importInfo}</p> : null}
+          <StateView title="Prázdný stav" description="Nebyly nalezeny žádné objednávky." stateKey="empty" action={<Link className="k-button" to="/snidane/nova">Nová objednávka</Link>} />
+        </>
       ) : (
         <>
           <div className="k-grid cards-3">
@@ -668,27 +696,7 @@ function BreakfastList(): JSX.Element {
               <strong>{getSummaryCount(summary, 'pending')}</strong>
             </Card>
           </div>
-          <div className="k-toolbar">
-            <input
-              className="k-input"
-              placeholder="Hledat dle pokoje nebo hosta"
-              aria-label="Hledat"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <input
-              className="k-input"
-              type="file"
-              accept="application/pdf"
-              onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
-            />
-            <button className="k-button secondary" type="button" onClick={() => void importPdf()}>
-              Import PDF
-            </button>
-            <Link className="k-button" to="/snidane/nova">
-              Nová objednávka
-            </Link>
-          </div>
+          {breakfastToolbar}
           {importInfo ? <p>{importInfo}</p> : null}
           <DataTable
             headers={['Datum', 'Pokoj', 'Host', 'Počet', 'Stav', 'Poznámka', 'Akce']}
@@ -1471,6 +1479,10 @@ function InventoryList(): JSX.Element {
     }
   };
 
+  const printInventoryList = (): void => {
+    window.print();
+  };
+
   return (
     <main className="k-page" data-testid="inventory-list-page">
       {stateMarker}
@@ -1490,17 +1502,32 @@ function InventoryList(): JSX.Element {
           }
         />
       ) : items.length === 0 ? (
-        <StateView
-          title="Prázdný stav"
-          description="Ve skladu zatím nejsou položky."
-          stateKey="empty"
-          action={<Link className="k-button" to="/sklad/nova">Nová položka</Link>}
-        />
+        <>
+          <div className="k-toolbar">
+            <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
+              Doplnit výchozí položky
+            </button>
+            <button className="k-button secondary" type="button" onClick={printInventoryList}>
+              Tisk inventurního seznamu
+            </button>
+            <Link className="k-button" to="/sklad/nova">Nová položka</Link>
+          </div>
+          {seedInfo ? <p>{seedInfo}</p> : null}
+          <StateView
+            title="Prázdný stav"
+            description="Ve skladu zatím nejsou položky."
+            stateKey="empty"
+            action={<Link className="k-button" to="/sklad/nova">Nová položka</Link>}
+          />
+        </>
       ) : (
         <>
           <div className="k-toolbar">
             <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
               Doplnit výchozí položky
+            </button>
+            <button className="k-button secondary" type="button" onClick={printInventoryList}>
+              Tisk inventurního seznamu
             </button>
             <Link className="k-button" to="/sklad/nova">Nová položka</Link>
           </div>
