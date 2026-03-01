@@ -46,6 +46,8 @@ jobs:
 
       - name: Deploy via SSH (key)
         if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
+        id: deploy-key
+        continue-on-error: true
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOTEL_DEPLOY_HOST }}
@@ -82,7 +84,8 @@ jobs:
             exit "$DEPLOY_STATUS"
 
       - name: Deploy via SSH (password)
-        if: ${{ env.HOTEL_DEPLOY_KEY == '' && env.HOTEL_DEPLOY_PASS != '' }}
+        if: ${{ env.HOTEL_DEPLOY_PASS != '' && (env.HOTEL_DEPLOY_KEY == '' || steps.deploy-key.outcome == 'failure') }}
+        id: deploy-password
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.HOTEL_DEPLOY_HOST }}
@@ -115,3 +118,16 @@ jobs:
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=50 || true
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=50 || true
             exit "$DEPLOY_STATUS"
+
+      - name: Vyhodnocení deploye
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          key_outcome="${{ steps.deploy-key.outcome }}"
+          pass_outcome="${{ steps.deploy-password.outcome }}"
+          if [ "$key_outcome" = "success" ] || [ "$pass_outcome" = "success" ]; then
+            echo "Deploy proběhl úspěšně (key=$key_outcome, password=$pass_outcome)."
+            exit 0
+          fi
+          echo "Deploy selhal (key=$key_outcome, password=$pass_outcome)." >&2
+          exit 1
