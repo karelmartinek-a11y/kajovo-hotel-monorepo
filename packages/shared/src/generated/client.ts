@@ -262,10 +262,6 @@ export type PortalLoginRequest = {
   "email": string;
   "password": string;
 };
-export type PortalPasswordChangeRequest = {
-  "new_password": string;
-  "old_password": string;
-};
 export type PortalUserCreate = {
   "email": string;
   "first_name"?: string;
@@ -403,7 +399,7 @@ export const apiClient = {
   async adminLogoutApiAuthAdminLogoutPost(): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/admin/logout`, undefined, undefined);
   },
-  async portalForgotPasswordApiAuthForgotPost(body: ForgotPasswordRequest): Promise<LogoutResponse> {
+  async forgotPasswordApiAuthForgotPasswordPost(body: ForgotPasswordRequest): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/forgot-password`, undefined, body);
   },
   async portalLoginApiAuthLoginPost(body: PortalLoginRequest): Promise<AuthIdentityResponse> {
@@ -415,13 +411,10 @@ export const apiClient = {
   async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
   },
-  async portalChangePasswordApiAuthPasswordPost(body: PortalPasswordChangeRequest): Promise<LogoutResponse> {
-    return request<LogoutResponse>('POST', `/api/auth/password`, undefined, body);
-  },
   async selectPortalRoleApiAuthSelectRolePost(body: SelectRoleRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/select-role`, undefined, body);
   },
-  async unlockAccountApiAuthUnlockGet(query: { "token": string; }): Promise<LogoutResponse> {
+  async unlockAccountApiAuthUnlockGet(query: { "token": string; "actor_type"?: string | null; }): Promise<LogoutResponse> {
     return request<LogoutResponse>('GET', `/api/auth/unlock`, query, undefined);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
@@ -565,7 +558,7 @@ export const apiClient = {
   async resetUserPasswordApiV1UsersUserIdPasswordResetPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
     return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password/reset`, undefined, body);
   },
-  async sendPasswordResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<LogoutResponse> {
+  async sendUserResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);
   },
   async healthHealthGet(): Promise<Record<string, unknown>> {
