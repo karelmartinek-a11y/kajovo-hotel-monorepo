@@ -21,10 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
-      HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS }}
-      HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL }}
-      HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
+      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY != '' && secrets.HOTEL_DEPLOY_KEY || vars.HOTEL_DEPLOY_KEY }}
+      HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
+      HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+      HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
     steps:
       - name: Připrav SSH klíč
         if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
@@ -50,10 +50,10 @@ jobs:
         continue-on-error: true
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HOTEL_DEPLOY_HOST }}
-          username: ${{ secrets.HOTEL_DEPLOY_USER }}
+          host: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
+          username: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
           key_path: deploy_key.pem
-          port: ${{ secrets.HOTEL_DEPLOY_PORT }}
+          port: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
           envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD
           script: |
             set -euo pipefail
@@ -88,10 +88,10 @@ jobs:
         id: deploy-password
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HOTEL_DEPLOY_HOST }}
-          username: ${{ secrets.HOTEL_DEPLOY_USER }}
-          password: ${{ secrets.HOTEL_DEPLOY_PASS }}
-          port: ${{ secrets.HOTEL_DEPLOY_PORT }}
+          host: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
+          username: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          port: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
           envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD
           script: |
             set -euo pipefail
