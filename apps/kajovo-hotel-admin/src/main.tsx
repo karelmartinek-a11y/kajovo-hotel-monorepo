@@ -1762,7 +1762,7 @@ function AdminLoginPage(): JSX.Element {
     }
     try {
       await apiClient.adminLoginApiAuthAdminLoginPost({ email: principal, password });
-      navigate('/', { replace: true });
+      window.location.assign('/admin/');
     } catch {
       setError('Neplatné přihlašovací údaje.');
     }

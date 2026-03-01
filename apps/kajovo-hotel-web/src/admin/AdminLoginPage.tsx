@@ -1,10 +1,8 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const adminMascot = '/brand/postavy/kaja-admin.png';
 
 export function AdminLoginPage(): JSX.Element {
-  const navigate = useNavigate();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -29,7 +27,7 @@ export function AdminLoginPage(): JSX.Element {
       setError('Neplatné přihlašovací údaje.');
       return;
     }
-    navigate('/admin');
+    window.location.assign('/admin/');
   }
 
   async function sendPasswordHint(): Promise<void> {
