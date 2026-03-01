@@ -160,11 +160,12 @@ def admin_login(
 ) -> AuthIdentityResponse:
     settings = get_settings()
     principal = payload.email.strip().lower()
+    submitted_password = payload.password.strip()
     state = _lockout_state(db, "admin", principal)
     if _is_locked(state):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    if principal != settings.admin_email.strip().lower() or payload.password != settings.admin_password:
+    if principal != settings.admin_email.strip().lower() or submitted_password != settings.admin_password:
         _record_failed_login(db, "admin", principal)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
