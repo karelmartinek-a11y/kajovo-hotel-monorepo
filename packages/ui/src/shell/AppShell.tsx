@@ -26,15 +26,15 @@ export function AppShell({
   currentPath,
 }: AppShellProps): JSX.Element {
   const figureByRoute: Array<{ match: RegExp; src: string; alt: string }> = [
-    { match: /^\/sklad(?:\/|$)/, src: '/brand/panel/menu_pokojská_sklad.png', alt: 'Kája pro skladové hospodářství' },
-    { match: /^\/zavady(?:\/|$)/, src: '/brand/panel/menu_údržba.png', alt: 'Kája pro závady a údržbu' },
-    { match: /^\/ztraty-a-nalezy(?:\/|$)/, src: '/brand/panel/menu_recepce_nálezy.png', alt: 'Kája pro ztráty a nálezy' },
-    { match: /^\/snidane(?:\/|$)/, src: '/brand/panel/menu_recepce_snídaně.png', alt: 'Kája pro snídaňový servis' },
-    { match: /^\/uzivatele(?:\/|$)/, src: '/brand/panel/menu_admin.png', alt: 'Kája pro správu uživatelů' },
+    { match: /^\/sklad(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro skladové hospodářství' },
+    { match: /^\/zavady(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro závady a údržbu' },
+    { match: /^\/ztraty-a-nalezy(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro ztráty a nálezy' },
+    { match: /^\/snidane(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro snídaňový servis' },
+    { match: /^\/uzivatele(?:\/|$)/, src: '/brand/postavy/kaja-admin.png', alt: 'Kája pro správu uživatelů' },
   ];
   const fallbackFigure = panelLayout === 'admin'
-    ? { src: '/brand/panel/menu_admin.png', alt: 'Kája pro administraci' }
-    : { src: '/brand/panel/menu_recepční.png', alt: 'Kája pro uživatelský portál' };
+    ? { src: '/brand/postavy/kaja-admin.png', alt: 'Kája pro administraci' }
+    : { src: '/brand/postavy/kaja-user.png', alt: 'Kája pro uživatelský portál' };
   const matched = figureByRoute.find((item) => item.match.test(currentPath));
   const figure = matched ?? fallbackFigure;
 

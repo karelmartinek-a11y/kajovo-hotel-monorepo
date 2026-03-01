@@ -40,7 +40,7 @@ import './login.css';
 import { canReadModule, resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
 
 const brandWordmark = '/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg';
-const adminLoginFigure = '/brand/panel/login_admin.png';
+const adminLoginFigure = '/brand/postavy/kaja-admin.png';
 
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;

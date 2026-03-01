@@ -46,6 +46,7 @@
 - Login admin už nepoužívá full-page background; brand prvky jsou samostatné (`logo` + samostatný vizuální panel s Kájou).
 - V aplikačním shellu je doplněná personifikace Kája po modulech jako samostatný brand prvek.
 - Signace zůstává v shellu a je zachována i po změnách.
+- Brand assety pro admin i web jsou sjednocené v public cestách (wordmark + postavy), takže login i interní obrazovky renderují logo/Káju bez závislosti na panel PNG.
 
 ### Evidence
 
@@ -55,7 +56,7 @@
 
 ### Otevřené design GAPy
 
-- Personifikace je nyní mapovaná na modul přes panel assety, ale zatím není plně diferencovaná po všech sub-flow stavech (create/edit/detail/fail) podle všech panel podkladů.
+- Personifikace je nyní řešená samostatnými assety postavy Káji (ne přes full panel obraz), ale není ještě plně diferencovaná po všech sub-flow stavech (create/edit/detail/fail) podle všech panel podkladů.
 
 ## 4) Důkazní běhy (aktuální)
 
