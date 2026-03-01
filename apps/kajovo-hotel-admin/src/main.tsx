@@ -1853,6 +1853,9 @@ function AppRoutes(): JSX.Element {
   }
 
   if (location.pathname === '/login') {
+    if (auth.actorType === 'admin') {
+      return <Navigate to="/" replace />;
+    }
     return <AdminLoginPage />;
   }
 
