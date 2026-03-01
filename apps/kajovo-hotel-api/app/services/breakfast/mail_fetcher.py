@@ -4,7 +4,7 @@ import email
 import imaplib
 import logging
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from email.message import Message
 from pathlib import Path
 
