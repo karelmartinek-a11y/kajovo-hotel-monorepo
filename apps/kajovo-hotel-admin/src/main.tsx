@@ -78,6 +78,19 @@ type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně';
 
 const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně'];
 
+function toAdminNavRoute(route: string): string {
+  if (!route.startsWith('/')) {
+    return route;
+  }
+  if (route === '/admin' || route.startsWith('/admin/')) {
+    return route;
+  }
+  if (route === '/') {
+    return '/admin/';
+  }
+  return `/admin${route}`;
+}
+
 type PortalUser = {
   id: number;
   first_name: string;
@@ -1858,15 +1871,20 @@ function AppRoutes(): JSX.Element {
     }
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
   });
+  const adminNavModules = allowedModules.map((module) => ({
+    ...module,
+    route: toAdminNavRoute(module.route),
+  }));
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
   const panelLayout = auth.role === 'admin' ? 'admin' : 'portal';
+  const adminCurrentPath = location.pathname === '/' ? '/admin/' : `/admin${location.pathname}`;
 
   return (
     <AppShell
-      modules={allowedModules}
+      modules={adminNavModules}
       navigationRules={ia.navigation.rules}
       navigationSections={ia.navigation.sections}
-      currentPath={location.pathname}
+      currentPath={adminCurrentPath}
       panelLayout={panelLayout}
     >
       <Routes>
