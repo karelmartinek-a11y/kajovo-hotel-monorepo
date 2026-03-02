@@ -2119,7 +2119,7 @@ function UsersAdmin(): JSX.Element {
     const trimmed = value.trim();
     if (trimmed === '') return '';
     if (trimmed.startsWith('+')) return trimmed;
-    if (/^420\d*/.test(trimmed)) return `+${trimmed}`;
+    if (/^420\d+$/.test(trimmed)) return `+${trimmed}`;
     return trimmed;
   };
 
