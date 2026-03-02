@@ -2123,19 +2123,29 @@ function UsersAdmin(): JSX.Element {
     return trimmed;
   };
 
+  function getCsrfTokenFromCookie(): string {
+    const cookieString = typeof document !== 'undefined' ? document.cookie : '';
+    if (!cookieString) return '';
+
+    const cookiePair = cookieString
+      .split('; ')
+      .find((row) => row.startsWith('kajovo_csrf='));
+
+    if (!cookiePair) return '';
+
+    const [, value] = cookiePair.split('=');
+    return decodeURIComponent(value ?? '');
+  }
+
   async function deleteUser(user: PortalUser): Promise<void> {
     if (!window.confirm(`Opravdu smazat uživatele ${user.email}?`)) return;
     setSaving(true);
     setError(null);
     try {
-      const csrfToken =
-        (document.querySelector('meta[name="x-csrf-token"]') as HTMLMetaElement | null)?.content ??
-        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ??
-        '';
       await fetchJson<void>(`/api/v1/users/${user.id}`, {
         method: 'DELETE',
         headers: {
-          'x-csrf-token': csrfToken,
+          'x-csrf-token': getCsrfTokenFromCookie(),
         },
       });
       setMessage('Uživatel byl smazán.');
