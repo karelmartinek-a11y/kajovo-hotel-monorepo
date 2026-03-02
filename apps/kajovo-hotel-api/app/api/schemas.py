@@ -207,7 +207,6 @@ class IssueRead(IssueBase):
     closed_at: datetime | None
     created_at: datetime | None
     updated_at: datetime | None
-    last_login_at: datetime | None
     photos: list["MediaPhotoRead"] = Field(default_factory=list)
 
 
