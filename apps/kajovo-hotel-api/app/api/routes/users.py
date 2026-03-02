@@ -20,7 +20,7 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
-from app.security.rbac import module_access_dependency
+from app.security.rbac import module_access_dependency, require_actor_type
 from app.services.mail import (
     StoredSmtpConfig,
     build_email_service,
@@ -234,7 +234,7 @@ def send_user_reset_link(
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db)) -> None:
+def delete_user(user_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
