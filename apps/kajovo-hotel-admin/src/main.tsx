@@ -2128,7 +2128,16 @@ function UsersAdmin(): JSX.Element {
     setSaving(true);
     setError(null);
     try {
-      await fetchJson<void>(`/api/v1/users/${user.id}`, { method: 'DELETE' });
+      const csrfToken =
+        (document.querySelector('meta[name="x-csrf-token"]') as HTMLMetaElement | null)?.content ??
+        (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ??
+        '';
+      await fetchJson<void>(`/api/v1/users/${user.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
+      });
       setMessage('Uživatel byl smazán.');
       setSelected(null);
       load();
