@@ -311,6 +311,8 @@ def portal_login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     _reset_lock_state(state)
+    user.last_login_at = now
+    db.add(user)
     db.add(state)
     db.commit()
     user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()

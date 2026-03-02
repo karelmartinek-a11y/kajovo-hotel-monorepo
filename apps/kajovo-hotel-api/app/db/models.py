@@ -299,6 +299,7 @@ class PortalUser(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     roles: Mapped[list["PortalUserRole"]] = relationship(
         "PortalUserRole",
         back_populates="user",

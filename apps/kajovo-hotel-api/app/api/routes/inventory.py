@@ -19,7 +19,7 @@ from app.config import get_settings
 from app.db.models import InventoryAuditLog, InventoryItem, InventoryMovement
 from app.db.session import get_db
 from app.media.storage import InventoryMediaStorage
-from app.security.rbac import module_access_dependency
+from app.security.rbac import module_access_dependency, require_actor_type
 
 router = APIRouter(
     prefix="/api/v1/inventory",
@@ -218,7 +218,7 @@ def add_movement(
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_item(item_id: int, db: Session = Depends(get_db)) -> None:
+def delete_item(item_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
     item = db.get(InventoryItem, item_id)
     if not item:
         raise HTTPException(

@@ -87,9 +87,9 @@ type MediaPhoto = {
   created_at: string | null;
 };
 
-type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně';
+type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně' | 'sklad';
 
-const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně'];
+const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně', 'sklad'];
 
 function toAdminNavRoute(route: string): string {
   if (!route.startsWith('/')) {
@@ -115,6 +115,7 @@ type PortalUser = {
   is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
+  last_login_at: string | null;
 };
 
 type PortalUserUpsertPayload = {
@@ -2114,6 +2115,30 @@ function UsersAdmin(): JSX.Element {
     setter(selectedRoles.includes(role) ? selectedRoles.filter((item) => item !== role) : [...selectedRoles, role]);
   };
 
+  const normalizePhoneInput = (value: string): string => {
+    const trimmed = value.trim();
+    if (trimmed === '') return '';
+    if (trimmed.startsWith('+')) return trimmed;
+    if (/^420\d*/.test(trimmed)) return `+${trimmed}`;
+    return trimmed;
+  };
+
+  async function deleteUser(user: PortalUser): Promise<void> {
+    if (!window.confirm(`Opravdu smazat uživatele ${user.email}?`)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await fetchJson<void>(`/api/v1/users/${user.id}`, { method: 'DELETE' });
+      setMessage('Uživatel byl smazán.');
+      setSelected(null);
+      load();
+    } catch {
+      setError('Smazání uživatele se nepodařilo.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <main className="k-page" data-testid="users-admin-page">
       <h1>Uživatelé</h1>
@@ -2124,12 +2149,13 @@ function UsersAdmin(): JSX.Element {
           <Card title="Seznam uživatelů">
             {users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : (
               <DataTable
-                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Stav']}
+                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Poslední přihlášení', 'Stav']}
                 rows={users.map((u) => [
                   <button key={u.id} className="k-nav-link" type="button" onClick={() => { setSelected(u); syncEdit(u); }}>{u.first_name}</button>,
                   u.last_name,
                   u.email,
                   u.roles.join(', '),
+                  formatDateTime(u.last_login_at),
                   u.is_active ? 'Aktivní' : 'Neaktivní',
                 ])}
               />
@@ -2150,7 +2176,7 @@ function UsersAdmin(): JSX.Element {
                 </FormField>
                 {!editEmailValid ? <small>Neplatný email.</small> : null}
                 <FormField id="edit_phone" label="Telefon (E.164, volitelné)">
-                  <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+420123456789" />
+                  <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
                 </FormField>
                 {!editPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
                 <FormField id="edit_note" label="Poznámka (volitelné)">
@@ -2170,6 +2196,9 @@ function UsersAdmin(): JSX.Element {
                   </button>
                   <button className="k-button secondary" type="button" onClick={() => void sendPasswordResetLink(selected)}>
                     Poslat link na změnu hesla
+                  </button>
+                  <button className="k-button secondary" type="button" onClick={() => void deleteUser(selected)}>
+                    Smazat
                   </button>
                 </div>
               </div>
@@ -2192,7 +2221,7 @@ function UsersAdmin(): JSX.Element {
                 <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
               </FormField>
               <FormField id="create_phone" label="Telefon (E.164, volitelné)">
-                <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="+420123456789" />
+                <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
               </FormField>
               {!createPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
               <FormField id="create_note" label="Poznámka (volitelné)">

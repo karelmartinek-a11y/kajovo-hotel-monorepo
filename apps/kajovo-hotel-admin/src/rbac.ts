@@ -1,4 +1,4 @@
-export type Role = 'pokojská' | 'údržba' | 'recepce' | 'snídaně' | 'admin';
+export type Role = 'pokojská' | 'údržba' | 'recepce' | 'snídaně' | 'sklad' | 'admin';
 
 export type AuthProfile = {
   userId: string;
@@ -15,6 +15,7 @@ const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
   'údržba': ['dashboard:read', 'issues:read', 'reports:read'],
   'snídaně': ['dashboard:read', 'breakfast:read', 'inventory:read'],
   pokojská: ['dashboard:read', 'lost_found:read', 'issues:read'],
+  sklad: ['dashboard:read', 'inventory:read'],
 };
 
 export function rolePermissions(role: Role): Set<string> {
@@ -31,7 +32,7 @@ type AuthMeResponse = {
 };
 
 function normalizeRole(input: string | undefined): Role {
-  if (input === 'admin' || input === 'pokojská' || input === 'údržba' || input === 'recepce' || input === 'snídaně') {
+  if (input === 'admin' || input === 'pokojská' || input === 'údržba' || input === 'recepce' || input === 'snídaně' || input === 'sklad') {
     return input;
   }
   return 'admin';

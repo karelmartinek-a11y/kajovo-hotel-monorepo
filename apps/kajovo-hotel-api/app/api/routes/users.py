@@ -67,6 +67,7 @@ def _to_read_model(user: PortalUser) -> PortalUserRead:
         is_active=user.is_active,
         created_at=user.created_at,
         updated_at=user.updated_at,
+        last_login_at=user.last_login_at,
     )
 
 
@@ -230,3 +231,12 @@ def send_user_reset_link(
     send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
     db.commit()
     return LogoutResponse()
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Session = Depends(get_db)) -> None:
+    user = db.get(PortalUser, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    db.delete(user)
+    db.commit()

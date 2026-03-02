@@ -17,7 +17,7 @@ from app.config import get_settings
 from app.db.models import Issue, IssuePhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
-from app.security.rbac import module_access_dependency
+from app.security.rbac import module_access_dependency, require_actor_type
 
 router = APIRouter(
     prefix="/api/v1/issues",
@@ -107,7 +107,7 @@ def update_issue(issue_id: int, payload: IssueUpdate, db: Session = Depends(get_
 
 
 @router.delete("/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_issue(issue_id: int, db: Session = Depends(get_db)) -> None:
+def delete_issue(issue_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
     issue = db.get(Issue, issue_id)
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")

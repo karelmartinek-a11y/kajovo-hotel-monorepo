@@ -46,6 +46,7 @@ class ReportRead(BaseModel):
     status: str
     created_at: datetime | None
     updated_at: datetime | None
+    last_login_at: datetime | None
 
 
 class BreakfastStatus(StrEnum):
@@ -83,6 +84,7 @@ class BreakfastOrderRead(BreakfastOrderBase):
     id: int
     created_at: datetime | None
     updated_at: datetime | None
+    last_login_at: datetime | None
 
 
 class BreakfastDailySummary(BaseModel):
@@ -156,6 +158,7 @@ class LostFoundItemRead(LostFoundItemBase):
     id: int
     created_at: datetime | None
     updated_at: datetime | None
+    last_login_at: datetime | None
     photos: list["MediaPhotoRead"] = Field(default_factory=list)
 
 
@@ -206,6 +209,7 @@ class IssueRead(IssueBase):
     closed_at: datetime | None
     created_at: datetime | None
     updated_at: datetime | None
+    last_login_at: datetime | None
     photos: list["MediaPhotoRead"] = Field(default_factory=list)
 
 
@@ -288,6 +292,7 @@ class InventoryItemRead(InventoryItemBase):
     id: int
     created_at: datetime | None
     updated_at: datetime | None
+    last_login_at: datetime | None
 
 
 class InventoryItemDetailRead(InventoryItemRead):
@@ -303,6 +308,7 @@ ALLOWED_PORTAL_ROLES = {
     "údržba",
     "recepce",
     "snídaně",
+    "sklad",
     "udrzba",
     "snidane",
 }
@@ -389,6 +395,7 @@ class PortalUserRead(BaseModel):
     is_active: bool
     created_at: datetime | None
     updated_at: datetime | None
+    last_login_at: datetime | None
 
 
 class AdminLoginRequest(BaseModel):

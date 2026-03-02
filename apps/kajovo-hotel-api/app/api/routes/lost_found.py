@@ -17,7 +17,7 @@ from app.config import get_settings
 from app.db.models import LostFoundItem, LostFoundPhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
-from app.security.rbac import module_access_dependency
+from app.security.rbac import module_access_dependency, require_actor_type
 
 router = APIRouter(
     prefix="/api/v1/lost-found",
@@ -105,7 +105,7 @@ def update_lost_found_item(
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_lost_found_item(item_id: int, db: Session = Depends(get_db)) -> None:
+def delete_lost_found_item(item_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
     item = db.get(LostFoundItem, item_id)
     if not item:
         raise HTTPException(
