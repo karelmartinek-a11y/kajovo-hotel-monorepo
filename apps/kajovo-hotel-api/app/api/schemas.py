@@ -46,7 +46,6 @@ class ReportRead(BaseModel):
     status: str
     created_at: datetime | None
     updated_at: datetime | None
-    last_login_at: datetime | None
 
 
 class BreakfastStatus(StrEnum):
