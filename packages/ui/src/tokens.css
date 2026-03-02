@@ -427,6 +427,12 @@ body {
   align-items: center;
 }
 
+.kajovo-sign img {
+  display: block;
+  width: 120px;
+  height: auto;
+}
+
 .kajovo-mascot {
   position: fixed;
   right: var(--k-spacing-5);

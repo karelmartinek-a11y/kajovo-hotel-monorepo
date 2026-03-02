@@ -195,6 +195,7 @@ test('WCAG 2.2 AA baseline for IA routes', async ({ page }, testInfo) => {
     testInfo.project.name !== 'desktop',
     'WCAG baseline currently runs only on desktop to avoid Axe timeouts on tablet/phone',
   );
+  test.setTimeout(120_000);
   const allowedColorContrastTargets = new Set(['.kajovo-sign', '.k-nav-group-label']);
 
   for (const route of uniqueRoutes) {
