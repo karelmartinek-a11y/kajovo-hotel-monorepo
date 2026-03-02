@@ -2065,6 +2065,18 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
           "last_name": {
             "title": "Last Name",
             "type": "string"
@@ -2126,7 +2138,8 @@
           "note",
           "is_active",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "last_login_at"
         ],
         "title": "PortalUserRead",
         "type": "object"
@@ -2470,6 +2483,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -4755,6 +4775,39 @@
       }
     },
     "/api/v1/users/{user_id}": {
+      "delete": {
+        "operationId": "delete_user_api_v1_users__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete User",
+        "tags": [
+          "users"
+        ]
+      },
       "get": {
         "operationId": "get_user_api_v1_users__user_id__get",
         "parameters": [

@@ -280,6 +280,7 @@ export type PortalUserRead = {
   "first_name": string;
   "id": number;
   "is_active": boolean;
+  "last_login_at": string | null;
   "last_name": string;
   "note": string | null;
   "phone": string | null;
@@ -342,6 +343,8 @@ export type SmtpTestEmailResponse = {
   "ok"?: boolean;
 };
 export type ValidationError = {
+  "ctx"?: Record<string, unknown>;
+  "input"?: unknown;
   "loc": Array<string | number>;
   "msg": string;
   "type": string;
@@ -542,6 +545,9 @@ export const apiClient = {
   },
   async createUserApiV1UsersPost(body: PortalUserCreate): Promise<PortalUserRead> {
     return request<PortalUserRead>('POST', `/api/v1/users`, undefined, body);
+  },
+  async deleteUserApiV1UsersUserIdDelete(user_id: number): Promise<void> {
+    return request<void>('DELETE', `/api/v1/users/${user_id}`, undefined, undefined);
   },
   async getUserApiV1UsersUserIdGet(user_id: number): Promise<PortalUserRead> {
     return request<PortalUserRead>('GET', `/api/v1/users/${user_id}`, undefined, undefined);
