@@ -63,11 +63,15 @@ type IssuePayload = IssueCreate;
 
 type InventoryItem = InventoryItemRead;
 
-type InventoryMovement = InventoryMovementRead;
+type InventoryMovement = InventoryMovementRead & {
+  document_number?: string | null;
+  document_reference?: string | null;
+  document_date?: string | null;
+};
 
 
 
-type InventoryDetail = InventoryItemWithAuditRead;
+type InventoryDetail = Omit<InventoryItemWithAuditRead, 'movements'> & { movements: InventoryMovement[] };
 
 type InventoryItemPayload = InventoryItemCreate;
 
@@ -262,9 +266,9 @@ const reportStatusLabels: Record<ReportStatus, string> = {
 
 
 const inventoryMovementLabels: Record<InventoryMovementType, string> = {
-  in: 'NaskladnÄ›nĂ­',
+  in: 'PĹ™Ă­jem',
   out: 'VĂ˝dej',
-  adjust: 'Ăšprava',
+  adjust: 'Odpis',
 };
 
 
@@ -442,7 +446,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (inventoryId && method === 'PUT') return (await apiClient.updateItemApiV1InventoryItemIdPut(Number(inventoryId[1]), body as InventoryItemCreate)) as T;
   if (path === '/api/v1/inventory' && method === 'POST') return (await apiClient.createItemApiV1InventoryPost(body as InventoryItemCreate)) as T;
   const inventoryMoveId = path.match(/^\/api\/v1\/inventory\/(\d+)\/movements$/);
-  if (inventoryMoveId && method === 'POST') return (await apiClient.addMovementApiV1InventoryItemIdMovementsPost(Number(inventoryMoveId[1]), body as { movement_type: InventoryMovementType; quantity: number; note?: string | null })) as T;
+  if (inventoryMoveId && method === 'POST') return (await apiClient.addMovementApiV1InventoryItemIdMovementsPost(Number(inventoryMoveId[1]), body as { movement_type: InventoryMovementType; quantity: number; document_date: string; document_reference?: string | null; note?: string | null })) as T;
 
   if (path === '/api/v1/reports' && method === 'GET') return (await apiClient.listReportsApiV1ReportsGet({ status: url.searchParams.get('status') })) as T;
   const reportId = path.match(/^\/api\/v1\/reports\/(\d+)$/);
@@ -1488,8 +1492,8 @@ function InventoryList(): JSX.Element {
     }
   };
 
-  const printInventoryList = (): void => {
-    window.print();
+  const downloadStocktakePdf = (): void => {
+    window.open('/api/v1/inventory/stocktake/pdf', '_blank', 'noopener');
   };
 
   return (
@@ -1516,8 +1520,8 @@ function InventoryList(): JSX.Element {
             <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
               Doplnit vĂ˝chozĂ­ poloĹľky
             </button>
-            <button className="k-button secondary" type="button" onClick={printInventoryList}>
-              Tisk inventurnĂ­ho seznamu
+            <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>
+              InventurnĂ­ protokol (PDF)
             </button>
             <Link className="k-button" to="/sklad/nova">NovĂˇ poloĹľka</Link>
           </div>
@@ -1535,8 +1539,8 @@ function InventoryList(): JSX.Element {
             <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
               Doplnit vĂ˝chozĂ­ poloĹľky
             </button>
-            <button className="k-button secondary" type="button" onClick={printInventoryList}>
-              Tisk inventurnĂ­ho seznamu
+            <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>
+              InventurnĂ­ protokol (PDF)
             </button>
             <Link className="k-button" to="/sklad/nova">NovĂˇ poloĹľka</Link>
           </div>
@@ -1583,7 +1587,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     min_stock: 0,
     current_stock: 0,
     supplier: '',
-    amount_per_piece_base: 0,
+    amount_per_piece_base: 1,
   });
   const [error, setError] = React.useState<string | null>(null);
 
@@ -1645,15 +1649,19 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, name: event.target.value }))}
               />
             </FormField>
-            <FormField id="inventory_unit" label="Jednotka">
-              <input
+            <FormField id="inventory_unit" label="VeliÄŤina v 1 ks">
+              <select
                 id="inventory_unit"
-                className="k-input"
+                className="k-select"
                 value={payload.unit}
                 onChange={(event) => setPayload((prev) => ({ ...prev, unit: event.target.value }))}
-              />
+              >
+                <option value="g">g</option>
+                <option value="l">l</option>
+                <option value="ks">ks</option>
+              </select>
             </FormField>
-            <FormField id="inventory_amount_per_piece_base" label="MnoĹľstvĂ­ na kus (zĂˇkladnĂ­ jednotka)">
+            <FormField id="inventory_amount_per_piece_base" label="Hodnota veliÄŤiny v 1 ks">
               <input
                 id="inventory_amount_per_piece_base"
                 type="number"
@@ -1671,17 +1679,6 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 className="k-input"
                 value={payload.min_stock}
                 onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))}
-              />
-            </FormField>
-            <FormField id="inventory_current_stock" label="AktuĂˇlnĂ­ stav">
-              <input
-                id="inventory_current_stock"
-                type="number"
-                className="k-input"
-                value={payload.current_stock}
-                onChange={(event) =>
-                  setPayload((prev) => ({ ...prev, current_stock: Number(event.target.value) }))
-                }
               />
             </FormField>
             <FormField id="inventory_supplier" label="Dodavatel (volitelnĂ©)">
@@ -1706,9 +1703,14 @@ function InventoryDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [movementType, setMovementType] = React.useState<InventoryMovementType>('in');
-  const [quantity, setQuantity] = React.useState<number>(0);
-  const [note, setNote] = React.useState<string>('');
+  const [receiptQuantity, setReceiptQuantity] = React.useState<number>(0);
+  const [receiptDate, setReceiptDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [receiptReference, setReceiptReference] = React.useState<string>('');
+  const [receiptNote, setReceiptNote] = React.useState<string>('');
+  const [issueType, setIssueType] = React.useState<InventoryMovementType>('out');
+  const [issueQuantity, setIssueQuantity] = React.useState<number>(0);
+  const [issueDate, setIssueDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [issueNote, setIssueNote] = React.useState<string>('');
   const [pictogram, setPictogram] = React.useState<File | null>(null);
   const [mediaInfo, setMediaInfo] = React.useState<string | null>(null);
 
@@ -1725,19 +1727,47 @@ function InventoryDetail(): JSX.Element {
     loadDetail();
   }, [loadDetail, state]);
 
-  const addMovement = async (): Promise<void> => {
+  const addReceipt = async (): Promise<void> => {
     if (!id) return;
     try {
       const response = await fetchJson<InventoryDetail>(`/api/v1/inventory/${id}/movements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ movement_type: movementType, quantity, note: note || null }),
+        body: JSON.stringify({
+          movement_type: 'in',
+          quantity: receiptQuantity,
+          document_date: receiptDate,
+          document_reference: receiptReference || null,
+          note: receiptNote || null,
+        }),
       });
       setItem((prev) => (prev ? { ...prev, current_stock: response.current_stock, movements: response.movements } : response));
-      setQuantity(0);
-      setNote('');
+      setReceiptQuantity(0);
+      setReceiptReference('');
+      setReceiptNote('');
     } catch {
-      setError('Pohyb se nepodaĹ™ilo uloĹľit.');
+      setError('PĹ™Ă­jem se nepodaĹ™ilo uloĹľit.');
+    }
+  };
+
+  const addIssue = async (): Promise<void> => {
+    if (!id) return;
+    try {
+      const response = await fetchJson<InventoryDetail>(`/api/v1/inventory/${id}/movements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          movement_type: issueType,
+          quantity: issueQuantity,
+          document_date: issueDate,
+          note: issueNote || null,
+        }),
+      });
+      setItem((prev) => (prev ? { ...prev, current_stock: response.current_stock, movements: response.movements } : response));
+      setIssueQuantity(0);
+      setIssueNote('');
+    } catch {
+      setError('VĂ˝dej se nepodaĹ™ilo uloĹľit.');
     }
   };
 
@@ -1780,7 +1810,7 @@ function InventoryDetail(): JSX.Element {
               <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
             </div>
             <DataTable
-              headers={['PoloĹľka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'MnoĹľstvĂ­ na kus']}
+              headers={['PoloĹľka', 'Skladem', 'Minimum', 'VeliÄŤina v 1 ks', 'Dodavatel', 'Hodnota veliÄŤiny v 1 ks']}
               rows={[
                 [
                   item.name,
@@ -1818,50 +1848,102 @@ function InventoryDetail(): JSX.Element {
             ) : null}
           </div>
           <div className="k-card">
-            <h2>NovĂ˝ pohyb</h2>
+            <h2>PĹ™Ă­jem</h2>
             <div className="k-form-grid">
-              <FormField id="movement_type" label="Typ">
-                <select
-                  id="movement_type"
-                  className="k-select"
-                  value={movementType}
-                  onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}
-                >
-                  <option value="in">NaskladnÄ›nĂ­</option>
-                  <option value="out">VĂ˝dej</option>
-                  <option value="adjust">Ăšprava</option>
-                </select>
-              </FormField>
-              <FormField id="movement_quantity" label="MnoĹľstvĂ­">
+              <FormField id="receipt_quantity" label="PoÄŤet kusĹŻ">
                 <input
-                  id="movement_quantity"
+                  id="receipt_quantity"
                   type="number"
                   className="k-input"
-                  value={quantity}
-                  onChange={(event) => setQuantity(Number(event.target.value))}
+                  value={receiptQuantity}
+                  onChange={(event) => setReceiptQuantity(Number(event.target.value))}
                 />
               </FormField>
-              <FormField id="movement_note" label="PoznĂˇmka (volitelnĂ©)">
+              <FormField id="receipt_date" label="Datum pĹ™Ă­jmu">
                 <input
-                  id="movement_note"
+                  id="receipt_date"
+                  type="date"
                   className="k-input"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
+                  value={receiptDate}
+                  onChange={(event) => setReceiptDate(event.target.value)}
+                />
+              </FormField>
+              <FormField id="receipt_reference" label="ÄŚĂ­slo dodacĂ­ho listu / faktury">
+                <input
+                  id="receipt_reference"
+                  className="k-input"
+                  value={receiptReference}
+                  onChange={(event) => setReceiptReference(event.target.value)}
+                />
+              </FormField>
+              <FormField id="receipt_note" label="PoznĂˇmka (volitelnĂ©)">
+                <input
+                  id="receipt_note"
+                  className="k-input"
+                  value={receiptNote}
+                  onChange={(event) => setReceiptNote(event.target.value)}
                 />
               </FormField>
             </div>
-            <button className="k-button" type="button" onClick={() => void addMovement()}>
-              PĹ™idat pohyb
+            <button className="k-button" type="button" onClick={() => void addReceipt()}>
+              UloĹľit pĹ™Ă­jem
+            </button>
+          </div>
+          <div className="k-card">
+            <h2>{issueType === 'adjust' ? 'Odpis' : 'VĂ˝dej'}</h2>
+            <div className="k-form-grid">
+              <FormField id="issue_kind" label="Druh vĂ˝dejky">
+                <select
+                  id="issue_kind"
+                  className="k-select"
+                  value={issueType}
+                  onChange={(event) => setIssueType(event.target.value as InventoryMovementType)}
+                >
+                  <option value="out">VĂ˝dej</option>
+                  <option value="adjust">Odpis</option>
+                </select>
+              </FormField>
+              <FormField id="issue_quantity" label="PoÄŤet kusĹŻ">
+                <input
+                  id="issue_quantity"
+                  type="number"
+                  className="k-input"
+                  value={issueQuantity}
+                  onChange={(event) => setIssueQuantity(Number(event.target.value))}
+                />
+              </FormField>
+              <FormField id="issue_date" label="Datum vĂ˝dejky">
+                <input
+                  id="issue_date"
+                  type="date"
+                  className="k-input"
+                  value={issueDate}
+                  onChange={(event) => setIssueDate(event.target.value)}
+                />
+              </FormField>
+              <FormField id="issue_note" label="PoznĂˇmka (volitelnĂ©)">
+                <input
+                  id="issue_note"
+                  className="k-input"
+                  value={issueNote}
+                  onChange={(event) => setIssueNote(event.target.value)}
+                />
+              </FormField>
+            </div>
+            <button className="k-button" type="button" onClick={() => void addIssue()}>
+              UloĹľit vĂ˝dej
             </button>
           </div>
           <div className="k-card">
             <h2>Pohyby</h2>
             <DataTable
-              headers={['Datum', 'Typ', 'MnoĹľstvĂ­', 'PoznĂˇmka']}
+              headers={['Doklad', 'Datum', 'Druh', 'PoÄŤet kusĹŻ', 'Reference', 'PoznĂˇmka']}
               rows={item.movements.map((movement) => [
-                formatDateTime(movement.created_at),
+                movement.document_number ?? '-',
+                formatDateTime(movement.document_date ?? movement.created_at),
                 inventoryMovementLabel(movement.movement_type),
                 movement.quantity,
+                movement.document_reference ?? '-',
                 movement.note ?? '-',
               ])}
             />

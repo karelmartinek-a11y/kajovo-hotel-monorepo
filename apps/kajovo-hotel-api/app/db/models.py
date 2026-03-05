@@ -188,7 +188,7 @@ class InventoryItem(Base):
     movements: Mapped[list["InventoryMovement"]] = relationship(
         back_populates="item",
         cascade="all, delete-orphan",
-        order_by="desc(InventoryMovement.created_at)",
+        order_by="InventoryMovement.document_date.asc(), InventoryMovement.created_at.asc()",
     )
 
 
@@ -200,6 +200,9 @@ class InventoryMovement(Base):
         ForeignKey("inventory_items.id", ondelete="CASCADE"), index=True
     )
     movement_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    document_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    document_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    document_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

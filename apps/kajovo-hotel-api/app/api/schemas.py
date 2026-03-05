@@ -221,9 +221,17 @@ class InventoryItemBase(BaseModel):
     min_stock: int = Field(ge=0)
     current_stock: int = Field(ge=0)
     supplier: str | None = Field(default=None, max_length=255)
-    amount_per_piece_base: int = Field(default=0, ge=0)
+    amount_per_piece_base: int = Field(default=1, ge=1)
     pictogram_path: str | None = None
     pictogram_thumb_path: str | None = None
+
+    @field_validator("unit")
+    @classmethod
+    def validate_unit(cls, value: str) -> str:
+        unit = value.strip().lower()
+        if unit not in {"g", "l", "ks"}:
+            raise ValueError("Unit must be one of: g, l, ks")
+        return unit
 
 
 class InventoryItemCreate(InventoryItemBase):
@@ -236,9 +244,19 @@ class InventoryItemUpdate(BaseModel):
     min_stock: int | None = Field(default=None, ge=0)
     current_stock: int | None = Field(default=None, ge=0)
     supplier: str | None = Field(default=None, max_length=255)
-    amount_per_piece_base: int | None = Field(default=None, ge=0)
+    amount_per_piece_base: int | None = Field(default=None, ge=1)
     pictogram_path: str | None = None
     pictogram_thumb_path: str | None = None
+
+    @field_validator("unit")
+    @classmethod
+    def validate_unit(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        unit = value.strip().lower()
+        if unit not in {"g", "l", "ks"}:
+            raise ValueError("Unit must be one of: g, l, ks")
+        return unit
 
 
 class MediaPhotoRead(BaseModel):
@@ -255,12 +273,14 @@ class MediaPhotoRead(BaseModel):
 
 class InventoryMovementBase(BaseModel):
     movement_type: InventoryMovementType
-    quantity: int = Field(ge=0)
+    quantity: int = Field(ge=1)
+    document_date: date | None = None
+    document_reference: str | None = Field(default=None, max_length=64)
     note: str | None = Field(default=None, max_length=2000)
 
 
 class InventoryMovementCreate(InventoryMovementBase):
-    pass
+    document_date: date
 
 
 class InventoryMovementRead(InventoryMovementBase):
@@ -268,6 +288,7 @@ class InventoryMovementRead(InventoryMovementBase):
 
     id: int
     item_id: int
+    document_number: str | None
     created_at: datetime | None
 
 

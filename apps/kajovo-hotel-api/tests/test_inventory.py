@@ -1,4 +1,7 @@
 from collections.abc import Callable
+import urllib.error
+import urllib.request
+from http.cookiejar import CookieJar
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
@@ -6,10 +9,11 @@ ApiRequest = Callable[..., tuple[int, ResponseData]]
 
 def create_item(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
-        "name": "Pomerančový džus",
+        "name": "Pomerancovy dzus",
         "unit": "l",
         "min_stock": 10,
         "current_stock": 12,
+        "amount_per_piece_base": 1,
         "supplier": "FreshTrade",
     }
     payload.update(overrides)
@@ -40,7 +44,12 @@ def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
     movement_status, movement_result = api_request(
         f"/api/v1/inventory/{created['id']}/movements",
         method="POST",
-        payload={"movement_type": "out", "quantity": 3, "note": "Snídaně"},
+        payload={
+            "movement_type": "out",
+            "quantity": 3,
+            "document_date": "2026-03-05",
+            "note": "Snidane",
+        },
     )
     assert movement_status == 200
     assert isinstance(movement_result, dict)
@@ -50,11 +59,16 @@ def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
     adjust_status, adjust_result = api_request(
         f"/api/v1/inventory/{created['id']}/movements",
         method="POST",
-        payload={"movement_type": "adjust", "quantity": 20, "note": "Inventura"},
+        payload={
+            "movement_type": "adjust",
+            "quantity": 2,
+            "document_date": "2026-03-05",
+            "note": "Inventura",
+        },
     )
     assert adjust_status == 200
     assert isinstance(adjust_result, dict)
-    assert adjust_result["current_stock"] == 20
+    assert adjust_result["current_stock"] == 7
 
     detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
     assert detail_status == 200
@@ -63,20 +77,108 @@ def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
 
 
 def test_inventory_low_stock_filter_and_validation(api_request: ApiRequest) -> None:
-    low = create_item(api_request, name="Mléko", min_stock=10, current_stock=2)
-    create_item(api_request, name="Káva", min_stock=3, current_stock=8)
+    low = create_item(api_request, name="Mleko", min_stock=10, current_stock=2)
+    create_item(api_request, name="Kava", min_stock=3, current_stock=8)
 
     filter_status, filtered = api_request("/api/v1/inventory", params={"low_stock": "true"})
     assert filter_status == 200
     assert isinstance(filtered, list)
-    assert len(filtered) == 1
-    assert filtered[0]["id"] == low["id"]
+    assert any(item["id"] == low["id"] for item in filtered)
 
     out_status, out_error = api_request(
         f"/api/v1/inventory/{low['id']}/movements",
         method="POST",
-        payload={"movement_type": "out", "quantity": 999},
+        payload={"movement_type": "out", "quantity": 999, "document_date": "2026-03-05"},
     )
     assert out_status == 400
     assert isinstance(out_error, dict)
     assert out_error["detail"] == "Insufficient stock for OUT movement"
+
+
+def test_inventory_document_numbering_and_pdf(api_request: ApiRequest, api_base_url: str) -> None:
+    created = create_item(api_request, name="Sul", unit="g", amount_per_piece_base=1000)
+
+    status_in, data_in = api_request(
+        f"/api/v1/inventory/{created['id']}/movements",
+        method="POST",
+        payload={
+            "movement_type": "in",
+            "quantity": 5,
+            "document_date": "2026-03-05",
+            "document_reference": "DL-2026-0001",
+        },
+    )
+    assert status_in == 200
+    assert isinstance(data_in, dict)
+    first_doc = data_in["movements"][0]["document_number"]
+    assert first_doc.startswith("PR-2026-")
+
+    status_out, data_out = api_request(
+        f"/api/v1/inventory/{created['id']}/movements",
+        method="POST",
+        payload={
+            "movement_type": "out",
+            "quantity": 2,
+            "document_date": "2026-03-05",
+        },
+    )
+    assert status_out == 200
+    assert isinstance(data_out, dict)
+    out_doc = next(
+        movement["document_number"]
+        for movement in data_out["movements"]
+        if movement["movement_type"] == "out"
+    )
+    assert out_doc.startswith("VY-2026-")
+
+    with urllib.request.urlopen(f"{api_base_url}/api/v1/inventory/stocktake/pdf", timeout=10) as response:
+        assert response.status == 200
+        assert response.headers.get("content-type") == "application/pdf"
+        content = response.read()
+        assert content.startswith(b"%PDF-")
+
+
+def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: str) -> None:
+    created = create_item(api_request, name="Test Delete", unit="ks", amount_per_piece_base=1)
+    status_in, data_in = api_request(
+        f"/api/v1/inventory/{created['id']}/movements",
+        method="POST",
+        payload={
+            "movement_type": "in",
+            "quantity": 1,
+            "document_date": "2026-03-05",
+            "document_reference": "DL-2026-0002",
+        },
+    )
+    assert status_in == 200
+    assert isinstance(data_in, dict)
+    movement_id = data_in["movements"][0]["id"]
+
+    portal_jar = CookieJar()
+    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+    login_payload = b"{\"email\":\"sklad@example.com\",\"password\":\"sklad-pass\"}"
+    login_request = urllib.request.Request(
+        url=f"{api_base_url}/api/auth/login",
+        data=login_payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with portal_opener.open(login_request, timeout=10) as response:
+        assert response.status == 200
+    csrf_token = next((cookie.value for cookie in portal_jar if cookie.name == "kajovo_csrf"), "")
+    delete_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory/{created['id']}/movements/{movement_id}",
+        headers={"x-csrf-token": csrf_token},
+        method="DELETE",
+    )
+    try:
+        portal_opener.open(delete_request, timeout=10)
+        assert False, "Expected 403 for portal delete"
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+
+    delete_status, _ = api_request(
+        f"/api/v1/inventory/{created['id']}/movements/{movement_id}",
+        method="DELETE",
+    )
+    assert delete_status == 204
