@@ -43,7 +43,12 @@ def api_db_path(tmp_path_factory: pytest.TempPathFactory) -> Generator[Path, Non
     yield db_path
 
     if db_path.exists():
-        db_path.unlink()
+        for _ in range(10):
+            try:
+                db_path.unlink()
+                break
+            except PermissionError:
+                time.sleep(0.2)
 
 
 @pytest.fixture(scope="session")
@@ -115,12 +120,21 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     api_app_dir = Path(__file__).resolve().parents[1]
 
     proc = subprocess.Popen(
-        ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
+        [
+            "uvicorn",
+            "app.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--log-level",
+            "warning",
+            "--no-access-log",
+        ],
         cwd=str(api_app_dir),
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
-        text=True,
     )
 
     base_url = f"http://127.0.0.1:{port}"
@@ -132,9 +146,8 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
         except Exception:
             time.sleep(0.1)
     else:
-        output = proc.stdout.read() if proc.stdout else ""
         proc.terminate()
-        raise RuntimeError(f"API did not start in time. Uvicorn output:\n{output}")
+        raise RuntimeError("API did not start in time.")
 
     try:
         yield base_url

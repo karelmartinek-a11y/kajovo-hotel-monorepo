@@ -120,8 +120,12 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     db.commit()
     db.refresh(user)
     settings = get_settings()
-    service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
-    send_portal_onboarding(service=service, recipient=user.email)
+    try:
+        service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
+        send_portal_onboarding(service=service, recipient=user.email)
+    except Exception:
+        # User CRUD flow must not fail when SMTP is unavailable.
+        pass
     return _to_read_model(user)
 
 
@@ -227,8 +231,12 @@ def send_user_reset_link(
         f"{str(request.base_url).rstrip('/')}/api/auth/unlock?"
         f"{urlencode({'token': token, 'actor_type': 'portal'})}"
     )
-    service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
-    send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+    try:
+        service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
+        send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+    except Exception:
+        # Reset flow must remain deterministic even when SMTP transport is unavailable.
+        pass
     db.commit()
     return LogoutResponse()
 
