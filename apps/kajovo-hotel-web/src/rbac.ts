@@ -1,14 +1,9 @@
 export type Role =
-  | 'pokojskÃ¡'
-  | 'housekeeping'
-  | 'ÃºdrÅ¾ba'
-  | 'maintenance'
+  | 'pokojská'
+  | 'údrba'
   | 'recepce'
-  | 'reception'
-  | 'snÃ­danÄ›'
-  | 'breakfast'
-  | 'warehouse'
-  | 'manager'
+  | 'snídanì'
+  | 'sklad'
   | 'admin';
 
 export type AuthProfile = {
@@ -21,34 +16,28 @@ export type AuthProfile = {
 };
 
 const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
-  admin: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
-  manager: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
-  recepce: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'reports:read'],
-  reception: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'reports:read'],
-  'ÃºdrÅ¾ba': ['dashboard:read', 'issues:read', 'reports:read'],
-  maintenance: ['dashboard:read', 'issues:read', 'reports:read'],
-  'snÃ­danÄ›': ['dashboard:read', 'breakfast:read', 'inventory:read'],
-  breakfast: ['dashboard:read', 'breakfast:read', 'inventory:read'],
-  pokojskÃ¡: ['dashboard:read', 'lost_found:read', 'issues:read'],
-  housekeeping: ['dashboard:read', 'lost_found:read', 'issues:read'],
-  warehouse: ['dashboard:read', 'inventory:read'],
+  admin: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+  recepce: ['breakfast:read', 'lost_found:read'],
+  'údrba': ['issues:read'],
+  'snídanì': ['breakfast:read', 'issues:read', 'inventory:read'],
+  pokojská: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
+  sklad: ['breakfast:read', 'issues:read', 'inventory:read'],
 };
 
 const ROLE_ALIASES: Record<string, Role> = {
   admin: 'admin',
-  manager: 'manager',
-  pokojskÃ¡: 'pokojskÃ¡',
-  housekeeping: 'housekeeping',
-  'ÃºdrÅ¾ba': 'ÃºdrÅ¾ba',
-  udrzba: 'ÃºdrÅ¾ba',
-  maintenance: 'maintenance',
+  pokojská: 'pokojská',
+  housekeeping: 'pokojská',
+  'údrba': 'údrba',
+  udrzba: 'údrba',
+  maintenance: 'údrba',
   recepce: 'recepce',
-  reception: 'reception',
-  'snÃ­danÄ›': 'snÃ­danÄ›',
-  snidane: 'snÃ­danÄ›',
-  breakfast: 'breakfast',
-  warehouse: 'warehouse',
-  sklad: 'warehouse',
+  reception: 'recepce',
+  'snídanì': 'snídanì',
+  snidane: 'snídanì',
+  breakfast: 'snídanì',
+  warehouse: 'sklad',
+  sklad: 'sklad',
 };
 
 export function rolePermissions(role: Role): Set<string> {

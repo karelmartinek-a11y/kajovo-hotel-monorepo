@@ -3,6 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { KajovoSign } from '@kajovo/ui';
 
 const portalMascot = '/brand/postavy/kaja-user.png';
+const ROLE_LABELS: Record<string, string> = {
+  recepce: 'Recepce',
+  pokojsk·: 'Pokojsk·',
+  ˙drûba: '⁄drûba',
+  snÌdanÏ: 'SnÌdanÏ',
+  sklad: 'Sklad',
+};
+
+function roleLabel(role: string): string {
+  return ROLE_LABELS[role] ?? role;
+}
 
 export function PortalLoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -95,7 +106,7 @@ export function PortalLoginPage(): JSX.Element {
             <div className="k-toolbar">
               {roleOptions.map((role) => (
                 <button key={role} className="k-button secondary" type="button" onClick={() => void selectRole(role)}>
-                  Pokraƒçovat jako {role}
+                  PokraËovat jako {roleLabel(role)}
                 </button>
               ))}
             </div>
@@ -109,3 +120,5 @@ export function PortalLoginPage(): JSX.Element {
     </main>
   );
 }
+
+

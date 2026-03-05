@@ -2480,6 +2480,27 @@ function AdminLoginPage(): JSX.Element {
   );
 }
 
+const ADMIN_ROLE_VIEW_LABELS: Record<string, string> = {
+  admin: 'Administr·tor',
+  recepce: 'Recepce',
+  pokojsk·: 'Pokojsk·',
+  ˙drûba: '⁄drûba',
+  snÌdanÏ: 'SnÌdanÏ',
+  sklad: 'Sklad',
+};
+
+const ADMIN_ROLE_VIEW_MODULES: Record<string, string[]> = {
+  recepce: ['lost_found', 'breakfast'],
+  pokojsk·: ['lost_found', 'issues', 'breakfast', 'inventory'],
+  ˙drûba: ['issues'],
+  snÌdanÏ: ['breakfast', 'issues', 'inventory'],
+  sklad: ['breakfast', 'issues', 'inventory'],
+};
+
+const ADMIN_ROLE_VIEW_OPTIONS = ['admin', 'recepce', 'pokojsk·', '˙drûba', 'snÌdanÏ', 'sklad'] as const;
+
+type AdminRoleView = typeof ADMIN_ROLE_VIEW_OPTIONS[number];
+
 function AppRoutes(): JSX.Element {
   const location = useLocation();
   const [auth, setAuth] = React.useState<AuthProfile | null>(null);
@@ -2520,25 +2541,56 @@ function AppRoutes(): JSX.Element {
     : [];
   const adminModules = auth.role === 'admin'
     ? [
-      { key: 'users', label: 'U≈æivatel√©', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
-      { key: 'settings', label: 'Nastaven√≠', route: '/nastaveni', icon: 'settings', active: true, section: 'records', permissions: ['read'] },
+      { key: 'users', label: 'UûivatelÈ', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
+      { key: 'settings', label: 'NastavenÌ', route: '/nastaveni', icon: 'settings', active: true, section: 'records', permissions: ['read'] },
     ]
     : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
-  const allowedModules = modules.filter((module) => {
-    // View-state odkazy jsou intern√≠ QA trasa a v produkƒçn√≠ navigaci nemaj√≠ b√Ωt vidƒõt.
+
+  const [roleView, setRoleView] = React.useState<AdminRoleView>(() => {
+    if (typeof window === 'undefined') {
+      return 'admin';
+    }
+    const stored = window.sessionStorage.getItem('kajovo_admin_role_view') as AdminRoleView | null;
+    return stored ?? 'admin';
+  });
+
+  React.useEffect(() => {
+    if (auth.role === 'admin' && typeof window !== 'undefined') {
+      window.sessionStorage.setItem('kajovo_admin_role_view', roleView);
+    }
+  }, [auth.role, roleView]);
+
+  const roleViewKeys = auth.role === 'admin' && roleView !== 'admin'
+    ? (ADMIN_ROLE_VIEW_MODULES[roleView] ?? [])
+    : null;
+  const moduleByKey = new Map(modules.map((module) => [module.key, module]));
+  const orderedRoleModules = roleViewKeys
+    ? roleViewKeys.map((key) => moduleByKey.get(key)).filter((module): module is typeof modules[number] => Boolean(module))
+    : modules;
+  const allowedModules = orderedRoleModules.filter((module) => {
+    // View-state odkazy jsou internÌ QA trasa a v produkËnÌ navigaci nemajÌ b˝t vidÏt.
     if (module.route.includes('?state=')) {
       return false;
     }
     const required =
       Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
     if (!required) {
-      // Testovac√≠ / injektovan√© moduly bez explicitn√≠ch opr√°vnƒõn√≠ ukazujeme v≈ædy.
+      // TestovacÌ / injektovanÈ moduly bez explicitnÌch opr·vnÏnÌ ukazujeme vûdy.
       return true;
     }
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
   });
-  const adminNavModules = allowedModules.map((module) => ({
+  const extraModules = roleViewKeys
+    ? modules.filter((module) => {
+      const hasPermissions = Array.isArray(module.permissions) && module.permissions.length > 0;
+      if (hasPermissions) {
+        return false;
+      }
+      return !roleViewKeys.includes(module.key);
+    })
+    : [];
+  const adminNavModules = [...allowedModules, ...extraModules].map((module) => ({
     ...module,
     route: toAdminNavRoute(module.route),
   }));
@@ -2553,7 +2605,22 @@ function AppRoutes(): JSX.Element {
       navigationSections={ia.navigation.sections}
       currentPath={adminCurrentPath}
       panelLayout={panelLayout}
-    >
+>
+      {auth.role === 'admin' ? (
+        <div className="k-toolbar" data-testid="admin-role-switcher">
+          <span>Role pohledu:</span>
+          {ADMIN_ROLE_VIEW_OPTIONS.map((role) => (
+            <button
+              key={role}
+              className={roleView === role ? 'k-button' : 'k-button secondary'}
+              type="button"
+              onClick={() => setRoleView(role)}
+            >
+              {ADMIN_ROLE_VIEW_LABELS[role] ?? role}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <Routes>
         <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="P≈ôehled" role={auth.role} userId={auth.userId} />} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Sn√≠danƒõ" role={auth.role} userId={auth.userId} />} />
@@ -2619,3 +2686,9 @@ createRoot(document.getElementById('root')!).render(
     </ClientErrorBoundary>
   </React.StrictMode>,
 );
+
+
+
+
+
+

@@ -99,7 +99,7 @@ test.describe('Auth smoke scenarios', () => {
     expect(createResponse.status()).toBe(201);
     await expect(createResponse.json()).resolves.toMatchObject({
       email: portalUser.email,
-      role: 'manager',
+      role: 'recepce',
       is_active: true,
     });
 
@@ -121,3 +121,4 @@ test.describe('Auth smoke scenarios', () => {
     await adminApi.dispose();
   });
 });
+

@@ -1422,14 +1422,6 @@ function AppRoutes(): JSX.Element {
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
     : [];
   const modules = [...ia.modules, ...injectedModules];
-  const allowedModules = modules.filter((module) => {
-    const required =
-      Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
-    if (!required) {
-      return true;
-    }
-    return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
-  });
 
   return (
     <Routes>
@@ -1442,7 +1434,7 @@ function AppRoutes(): JSX.Element {
           <PortalRoutes
             currentPath={location.pathname}
             auth={auth}
-            modules={allowedModules}
+            modules={modules}
             deps={{
               Dashboard,
               BreakfastList,

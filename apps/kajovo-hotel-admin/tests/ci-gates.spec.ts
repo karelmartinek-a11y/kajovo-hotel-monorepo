@@ -49,8 +49,8 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/me', async (route) =>
     route.fulfill({
       json: {
-        email: 'manager@example.com',
-        role: 'manager',
+        email: 'admin@example.com',
+        role: 'admin',
         permissions: [
           'dashboard:read',
           'breakfast:read',
@@ -59,7 +59,7 @@ test.beforeEach(async ({ page }) => {
           'inventory:read',
           'reports:read',
         ],
-        actor_type: 'portal',
+        actor_type: 'admin',
       },
     })
   );
@@ -197,3 +197,4 @@ test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
     ).toEqual([]);
   }
 });
+

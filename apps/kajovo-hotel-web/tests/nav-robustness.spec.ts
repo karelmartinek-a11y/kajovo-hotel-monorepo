@@ -14,8 +14,8 @@ test.beforeEach(async ({ page }) => {
       contentType: 'application/json',
       body: JSON.stringify({
         email: 'qa@example.com',
-        role: 'manager',
-        permissions: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read'],
+        role: 'pokojská',
+        permissions: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read'],
         actor_type: 'portal',
       }),
     });
@@ -95,3 +95,4 @@ test('page has no horizontal overflow outside table containers', async ({ page }
 
   expect(hasHorizontalOverflow).toBeFalsy();
 });
+

@@ -70,10 +70,10 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
 
         # Portal users for other flows.
         for email, role, password_seed, salt in [
-            ("warehouse@example.com", "warehouse", "warehouse", b"warehouse-salt"),
-            ("maintenance@example.com", "maintenance", "maintenance", b"maintenance-salt"),
-            ("snidane@example.com", "snÃ­danÄ›", "snidane", b"snidane-salt"),
-            ("reception@example.com", "recepce", "reception", b"reception-salt"),
+            ("sklad@example.com", "sklad", "sklad", b"sklad-salt"),
+            ("udrzba@example.com", "údržba", "udrzba", b"udrzba-salt"),
+            ("snidane@example.com", "snídanì", "snidane", b"snidane-salt"),
+            ("recepce@example.com", "recepce", "recepce", b"recepce-salt"),
         ]:
             connection.execute(
                 """
@@ -186,3 +186,6 @@ def api_request(api_base_url: str) -> ApiRequest:
             return exc.code, parsed
 
     return _request
+
+
+
