@@ -47,7 +47,7 @@ def list_issues(
 ) -> list[Issue]:
     query = select(Issue).order_by(Issue.created_at.desc(), Issue.id.desc())
     actor_role = getattr(request.state, "actor_role", "")
-    if actor_role == "údržba" and status_filter is None:
+    if actor_role == "ĂşdrĹľba" and status_filter is None:
         query = query.where(
             Issue.status.in_(
                 [IssueStatus.NEW.value, IssueStatus.IN_PROGRESS.value]

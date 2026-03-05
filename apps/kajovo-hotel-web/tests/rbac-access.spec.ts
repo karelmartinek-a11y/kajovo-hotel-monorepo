@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 type AuthPayload = {
   email: string;
@@ -7,8 +7,8 @@ type AuthPayload = {
   actor_type: 'admin' | 'portal';
 };
 
-async function mockAuth(page, payload: AuthPayload): Promise<void> {
-  await page.route('**/api/auth/me', async (route) => {
+async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
+  await page.route('**/api/auth/me', async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -20,7 +20,7 @@ async function mockAuth(page, payload: AuthPayload): Promise<void> {
 test('restricted module is hidden in navigation and shows access denied on direct URL', async ({ page }) => {
   await mockAuth(page, {
     email: 'udrzba@example.com',
-    role: 'údržba',
+    role: 'ÃºdrÅ¾ba',
     permissions: ['issues:read', 'issues:write'],
     actor_type: 'portal',
   });
@@ -29,15 +29,15 @@ test('restricted module is hidden in navigation and shows access denied on direc
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Skladové hospodáøství' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'SkladovÃ© hospodÃ¡Å™stvÃ­' })).toHaveCount(0);
 
   await page.goto('/sklad');
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
-  await expect(page.getByText('Pøístup odepøen')).toBeVisible();
-  await expect(page.getByText(/Role údržba/)).toBeVisible();
+  await expect(page.getByText('PÅ™Ã­stup odepÅ™en')).toBeVisible();
+  await expect(page.getByText(/Role ÃºdrÅ¾ba/)).toBeVisible();
 });
 
-test('recepce navigace obsahuje jen snídanì a nálezy', async ({ page }) => {
+test('recepce navigace obsahuje jen snÃ­danÄ› a nÃ¡lezy', async ({ page }) => {
   await mockAuth(page, {
     email: 'recepce@example.com',
     role: 'recepce',
@@ -49,8 +49,20 @@ test('recepce navigace obsahuje jen snídanì a nálezy', async ({ page }) => {
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Snídanì' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Ztráty a nálezy' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Závady' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Skladové hospodáøství' })).toHaveCount(0);
+  const viewport = page.viewportSize();
+  const isPhone = (viewport?.width ?? 0) <= 767;
+
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await expect(phoneNav.getByRole('menuitem', { name: 'SnÃ­danÄ›' })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: 'ZtrÃ¡ty a nÃ¡lezy' })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: 'ZÃ¡vady' })).toHaveCount(0);
+    await expect(phoneNav.getByRole('menuitem', { name: 'SkladovÃ© hospodÃ¡Å™stvÃ­' })).toHaveCount(0);
+  } else {
+    await expect(page.getByRole('link', { name: 'SnÃ­danÄ›' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'ZtrÃ¡ty a nÃ¡lezy' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'ZÃ¡vady' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'SkladovÃ© hospodÃ¡Å™stvÃ­' })).toHaveCount(0);
+  }
 });

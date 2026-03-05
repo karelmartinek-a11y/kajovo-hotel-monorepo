@@ -5,9 +5,9 @@ import { KajovoSign } from '@kajovo/ui';
 const portalMascot = '/brand/postavy/kaja-user.png';
 const ROLE_LABELS: Record<string, string> = {
   recepce: 'Recepce',
-  pokojsk�: 'Pokojsk�',
-  �dr�ba: '�dr�ba',
-  sn�dan�: 'Sn�dan�',
+  pokojská: 'Pokojská',
+  údržba: 'Údržba',
+  snídaně: 'Snídaně',
   sklad: 'Sklad',
 };
 
@@ -34,7 +34,7 @@ export function PortalLoginPage(): JSX.Element {
       body: JSON.stringify({ email, password }),
     });
     if (!response.ok) {
-      setError('Neplatné přihlašovací údaje.');
+      setError('NeplatnĂ© pĹ™ihlaĹˇovacĂ­ Ăşdaje.');
       return;
     }
     const payload = (await response.json()) as { active_role?: string | null; roles?: string[] };
@@ -50,7 +50,7 @@ export function PortalLoginPage(): JSX.Element {
     setInfo(null);
     const principal = email.trim();
     if (!principal) {
-      setError('Vyplňte email.');
+      setError('VyplĹte email.');
       return;
     }
     const response = await fetch('/api/auth/forgot-password', {
@@ -60,10 +60,10 @@ export function PortalLoginPage(): JSX.Element {
       body: JSON.stringify({ email: principal }),
     });
     if (response.status === 403) {
-      setInfo('Pokud je účet odemčený, byl odeslán odkaz pro obnovu.');
+      setInfo('Pokud je ĂşÄŤet odemÄŤenĂ˝, byl odeslĂˇn odkaz pro obnovu.');
       return;
     }
-    setInfo('Pokud účet existuje, byl odeslán odkaz pro obnovu.');
+    setInfo('Pokud ĂşÄŤet existuje, byl odeslĂˇn odkaz pro obnovu.');
   }
 
   async function selectRole(role: string): Promise<void> {
@@ -81,7 +81,7 @@ export function PortalLoginPage(): JSX.Element {
       body: JSON.stringify({ role }),
     });
     if (!response.ok) {
-      setError('Výběr role selhal.');
+      setError('VĂ˝bÄ›r role selhal.');
       return;
     }
     navigate('/');
@@ -90,31 +90,31 @@ export function PortalLoginPage(): JSX.Element {
   return (
     <main className="k-login-page" data-testid="portal-login-page">
       <section className="k-login-card" aria-labelledby="portal-login-title">
-        <p className="k-login-eyebrow">KájovoHotel · Portál</p>
-        <h1 id="portal-login-title">Přihlášení uživatele</h1>
-        <p className="k-login-copy">Přihlaste se pracovním účtem. Uživatelské jméno je vždy emailová adresa.</p>
+        <p className="k-login-eyebrow">KĂˇjovoHotel Â· PortĂˇl</p>
+        <h1 id="portal-login-title">PĹ™ihlĂˇĹˇenĂ­ uĹľivatele</h1>
+        <p className="k-login-copy">PĹ™ihlaste se pracovnĂ­m ĂşÄŤtem. UĹľivatelskĂ© jmĂ©no je vĹľdy emailovĂˇ adresa.</p>
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">Email</label>
           <input id="portal-email" className="k-input" type="email" placeholder="uzivatel@kajovohotel.cz" value={email} onChange={(event) => setEmail(event.target.value)} />
           <label className="k-login-label" htmlFor="portal-password">Heslo</label>
-          <input id="portal-password" className="k-input" type="password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} />
-          <button className="k-button" type="submit">Přihlásit se</button>
-          <button className="k-button secondary" type="button" onClick={() => void sendForgotPassword()} disabled={!email.trim()}>Zapomenuté heslo</button>
+          <input id="portal-password" className="k-input" type="password" placeholder="â€˘â€˘â€˘â€˘â€˘â€˘â€˘â€˘" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <button className="k-button" type="submit">PĹ™ihlĂˇsit se</button>
+          <button className="k-button secondary" type="button" onClick={() => void sendForgotPassword()} disabled={!email.trim()}>ZapomenutĂ© heslo</button>
           {error ? <p className="k-login-copy" role="alert">{error}</p> : null}
           {info ? <p className="k-login-copy">{info}</p> : null}
           {roleOptions ? (
             <div className="k-toolbar">
               {roleOptions.map((role) => (
                 <button key={role} className="k-button secondary" type="button" onClick={() => void selectRole(role)}>
-                  Pokra�ovat jako {roleLabel(role)}
+                  Pokračovat jako {roleLabel(role)}
                 </button>
               ))}
             </div>
           ) : null}
         </form>
       </section>
-      <aside className="k-login-preview" aria-label="Ilustrace Kája">
-        <img src={portalMascot} alt="Ilustrace Kája pro uživatelský login" loading="lazy" />
+      <aside className="k-login-preview" aria-label="Ilustrace KĂˇja">
+        <img src={portalMascot} alt="Ilustrace KĂˇja pro uĹľivatelskĂ˝ login" loading="lazy" />
       </aside>
       <KajovoSign />
     </main>

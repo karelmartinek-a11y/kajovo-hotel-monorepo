@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test, type Page, type Route } from '@playwright/test';
 
 const extraModules = [
   { key: 'fake-1', label: 'Recepce+', route: '/fake/recepce', active: true, section: 'operations' },
@@ -6,7 +6,30 @@ const extraModules = [
   { key: 'fake-3', label: 'Transfer+', route: '/fake/transfer', active: true, section: 'records' },
 ];
 
+type AuthPayload = {
+  email: string;
+  role: string;
+  permissions: string[];
+  actor_type: 'admin' | 'portal';
+};
+
+async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
+  await page.route('**/api/auth/me', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+}
+
 test.beforeEach(async ({ page }) => {
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+    actor_type: 'admin',
+  });
   await page.addInitScript((modules) => {
     (window as Window & { __KAJOVO_TEST_NAV__?: { modules: unknown[] } }).__KAJOVO_TEST_NAV__ = { modules };
   }, extraModules);

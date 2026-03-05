@@ -1,8 +1,8 @@
-export type Role =
-  | 'pokojská'
-  | 'údrba'
+ï»¿export type Role =
+  | 'pokojskÃ¡'
+  | 'ÃºdrÅ¾ba'
   | 'recepce'
-  | 'snídanì'
+  | 'snÃ­danÄ›'
   | 'sklad'
   | 'admin';
 
@@ -18,24 +18,24 @@ export type AuthProfile = {
 const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
   admin: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
   recepce: ['breakfast:read', 'lost_found:read'],
-  'údrba': ['issues:read'],
-  'snídanì': ['breakfast:read', 'issues:read', 'inventory:read'],
-  pokojská: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
+  ÃºdrÅ¾ba: ['issues:read'],
+  snÃ­danÄ›: ['breakfast:read', 'issues:read', 'inventory:read'],
+  pokojskÃ¡: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
   sklad: ['breakfast:read', 'issues:read', 'inventory:read'],
 };
 
 const ROLE_ALIASES: Record<string, Role> = {
   admin: 'admin',
-  pokojská: 'pokojská',
-  housekeeping: 'pokojská',
-  'údrba': 'údrba',
-  udrzba: 'údrba',
-  maintenance: 'údrba',
+  pokojskÃ¡: 'pokojskÃ¡',
+  housekeeping: 'pokojskÃ¡',
+  ÃºdrÅ¾ba: 'ÃºdrÅ¾ba',
+  udrzba: 'ÃºdrÅ¾ba',
+  maintenance: 'ÃºdrÅ¾ba',
   recepce: 'recepce',
   reception: 'recepce',
-  'snídanì': 'snídanì',
-  snidane: 'snídanì',
-  breakfast: 'snídanì',
+  snÃ­danÄ›: 'snÃ­danÄ›',
+  snidane: 'snÃ­danÄ›',
+  breakfast: 'snÃ­danÄ›',
   warehouse: 'sklad',
   sklad: 'sklad',
 };
