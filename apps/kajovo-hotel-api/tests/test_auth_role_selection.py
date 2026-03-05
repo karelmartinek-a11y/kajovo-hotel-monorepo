@@ -40,7 +40,7 @@ def test_multi_role_user_must_select_active_role(api_base_url: str, api_request)
             "last_name": "Picker",
             "email": "multi.role@example.com",
             "password": "multi-role-pass",
-            "roles": ["recepce", "snÃ­danÄ›"],
+            "roles": ["recepce", "snídanì"],
         },
     )
     assert status == 201
@@ -85,3 +85,4 @@ def test_multi_role_user_must_select_active_role(api_base_url: str, api_request)
     assert status == 200
     assert isinstance(me_after, dict)
     assert me_after.get("active_role") == "recepce"
+

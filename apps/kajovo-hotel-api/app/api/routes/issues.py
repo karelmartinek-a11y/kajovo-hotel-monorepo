@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -42,9 +42,17 @@ def list_issues(
     status_filter: IssueStatus | None = Query(default=None, alias="status"),
     location: str | None = Query(default=None),
     room_number: str | None = Query(default=None),
+    request: Request,
     db: Session = Depends(get_db),
 ) -> list[Issue]:
     query = select(Issue).order_by(Issue.created_at.desc(), Issue.id.desc())
+    actor_role = getattr(request.state, "actor_role", "")
+    if actor_role == "údržba" and status_filter is None:
+        query = query.where(
+            Issue.status.in_(
+                [IssueStatus.NEW.value, IssueStatus.IN_PROGRESS.value]
+            )
+        )
 
     if priority:
         query = query.where(Issue.priority == priority.value)

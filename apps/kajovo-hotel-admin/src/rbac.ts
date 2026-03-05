@@ -1,4 +1,4 @@
-export type Role = 'pokojskÃ¡' | 'ÃºdrÅ¾ba' | 'recepce' | 'snÃ­danÄ›' | 'sklad' | 'admin';
+export type Role = 'pokojská' | 'údrba' | 'recepce' | 'snídanì' | 'sklad' | 'admin';
 
 export type AuthProfile = {
   userId: string;
@@ -10,12 +10,12 @@ export type AuthProfile = {
 };
 
 const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
-  admin: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
-  recepce: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'reports:read'],
-  'ÃºdrÅ¾ba': ['dashboard:read', 'issues:read', 'reports:read'],
-  'snÃ­danÄ›': ['dashboard:read', 'breakfast:read', 'inventory:read'],
-  pokojskÃ¡: ['dashboard:read', 'lost_found:read', 'issues:read'],
-  sklad: ['dashboard:read', 'inventory:read'],
+  admin: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+  recepce: ['breakfast:read', 'lost_found:read'],
+  'údrba': ['issues:read'],
+  'snídanì': ['breakfast:read', 'issues:read', 'inventory:read'],
+  pokojská: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
+  sklad: ['breakfast:read', 'issues:read', 'inventory:read'],
 };
 
 export function rolePermissions(role: Role): Set<string> {
@@ -32,7 +32,7 @@ type AuthMeResponse = {
 };
 
 function normalizeRole(input: string | undefined): Role {
-  if (input === 'admin' || input === 'pokojskÃ¡' || input === 'ÃºdrÅ¾ba' || input === 'recepce' || input === 'snÃ­danÄ›' || input === 'sklad') {
+  if (input === 'admin' || input === 'pokojská' || input === 'údrba' || input === 'recepce' || input === 'snídanì' || input === 'sklad') {
     return input;
   }
   return 'admin';
