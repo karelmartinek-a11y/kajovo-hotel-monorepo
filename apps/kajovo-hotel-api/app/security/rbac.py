@@ -7,6 +7,7 @@ Permission = str
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     "admin": {
+        "housekeeping:read",
         "breakfast:read",
         "breakfast:write",
         "lost_found:read",
@@ -23,6 +24,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "settings:write",
     },
     "pokojská": {
+        "housekeeping:read",
         "breakfast:read",
         "breakfast:write",
         "issues:read",

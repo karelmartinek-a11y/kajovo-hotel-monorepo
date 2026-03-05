@@ -16,11 +16,11 @@ export type AuthProfile = {
 };
 
 const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
-  admin: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+  admin: ['housekeeping:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
   recepce: ['breakfast:read', 'lost_found:read'],
   údržba: ['issues:read'],
   snídaně: ['breakfast:read', 'issues:read', 'inventory:read'],
-  pokojská: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
+  pokojská: ['housekeeping:read', 'lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
   sklad: ['breakfast:read', 'issues:read', 'inventory:read'],
 };
 

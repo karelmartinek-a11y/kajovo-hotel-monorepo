@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({
         email: 'qa@example.com',
         role: 'pokojská',
-        permissions: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read'],
+        permissions: ['housekeeping:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read'],
         actor_type: 'portal',
       }),
     });

@@ -112,10 +112,14 @@ class LostFoundItemType(StrEnum):
 
 
 class LostFoundStatus(StrEnum):
+    NEW = "new"
     STORED = "stored"
+    DISPOSED = "disposed"
     CLAIMED = "claimed"
     RETURNED = "returned"
-    DISPOSED = "disposed"
+
+
+ALLOWED_LOST_FOUND_TAGS = {"kontaktova", "nezastizen", "vyzvedne", "odesleme"}
 
 
 class LostFoundItemBase(BaseModel):
@@ -123,13 +127,31 @@ class LostFoundItemBase(BaseModel):
     description: str = Field(min_length=3, max_length=4000)
     category: str = Field(min_length=1, max_length=64)
     location: str = Field(min_length=1, max_length=255)
+    room_number: str | None = Field(default=None, min_length=1, max_length=32)
     event_at: datetime
-    status: LostFoundStatus = LostFoundStatus.STORED
+    status: LostFoundStatus = LostFoundStatus.NEW
+    tags: list[str] = Field(default_factory=list)
     claimant_name: str | None = Field(default=None, max_length=255)
     claimant_contact: str | None = Field(default=None, max_length=255)
     handover_note: str | None = Field(default=None, max_length=2000)
     claimed_at: datetime | None = None
     returned_at: datetime | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for tag in value:
+            normalized = str(tag).strip().lower()
+            if not normalized:
+                continue
+            if normalized not in ALLOWED_LOST_FOUND_TAGS:
+                raise ValueError(
+                    f"Tag must be one of: {', '.join(sorted(ALLOWED_LOST_FOUND_TAGS))}"
+                )
+            if normalized not in cleaned:
+                cleaned.append(normalized)
+        return cleaned
 
 
 class LostFoundItemCreate(LostFoundItemBase):
@@ -141,13 +163,33 @@ class LostFoundItemUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=3, max_length=4000)
     category: str | None = Field(default=None, min_length=1, max_length=64)
     location: str | None = Field(default=None, min_length=1, max_length=255)
+    room_number: str | None = Field(default=None, min_length=1, max_length=32)
     event_at: datetime | None = None
     status: LostFoundStatus | None = None
+    tags: list[str] | None = None
     claimant_name: str | None = Field(default=None, max_length=255)
     claimant_contact: str | None = Field(default=None, max_length=255)
     handover_note: str | None = Field(default=None, max_length=2000)
     claimed_at: datetime | None = None
     returned_at: datetime | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        cleaned: list[str] = []
+        for tag in value:
+            normalized = str(tag).strip().lower()
+            if not normalized:
+                continue
+            if normalized not in ALLOWED_LOST_FOUND_TAGS:
+                raise ValueError(
+                    f"Tag must be one of: {', '.join(sorted(ALLOWED_LOST_FOUND_TAGS))}"
+                )
+            if normalized not in cleaned:
+                cleaned.append(normalized)
+        return cleaned
 
 
 class LostFoundItemRead(LostFoundItemBase):

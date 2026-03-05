@@ -83,6 +83,44 @@ type Report = ReportRead;
 type ReportPayload = ReportCreate;
 
 
+const HOUSEKEEPING_ROOMS = [
+  '101',
+  '102',
+  '103',
+  '104',
+  '105',
+  '106',
+  '107',
+  '108',
+  '109',
+  '201',
+  '202',
+  '203',
+  '204',
+  '205',
+  '206',
+  '207',
+  '208',
+  '209',
+  '210',
+  '301',
+  '302',
+  '303',
+  '304',
+  '305',
+  '306',
+  '307',
+  '308',
+  '309',
+  '310',
+];
+
+const AuthContext = React.createContext<AuthProfile | null>(null);
+
+function useAuth(): AuthProfile | null {
+  return React.useContext(AuthContext);
+}
+
 type ErrorBoundaryProps = { children: React.ReactNode };
 type ErrorBoundaryState = { hasError: boolean; message?: string };
 
@@ -165,10 +203,11 @@ const statusLabels: Record<BreakfastStatus, string> = {
 };
 
 const lostFoundStatusLabels: Record<LostFoundStatus, string> = {
-  stored: 'UloĹľeno',
+  new: 'NovĂ˝',
+  stored: 'UskladnÄ›no',
+  disposed: 'Zlikvidovat',
   claimed: 'NĂˇrokovĂˇno',
   returned: 'VrĂˇceno',
-  disposed: 'ZlikvidovĂˇno',
 };
 
 const lostFoundTypeLabels: Record<LostFoundType, string> = {
@@ -186,7 +225,7 @@ const issuePriorityLabels: Record<IssuePriority, string> = {
 const issueStatusLabels: Record<IssueStatus, string> = {
   new: 'NovĂˇ',
   in_progress: 'V Ĺ™eĹˇenĂ­',
-  resolved: 'VyĹ™eĹˇena',
+  resolved: 'OdstranÄ›no',
   closed: 'UzavĹ™ena',
 };
 
@@ -211,6 +250,17 @@ function breakfastStatusLabel(status: BreakfastStatus | null | undefined): strin
 
 function lostFoundStatusLabel(status: LostFoundStatus | null | undefined): string {
   return status ? lostFoundStatusLabels[status] : '-';
+}
+
+const lostFoundTagLabels: Record<string, string> = {
+  kontaktova: 'KontaktovĂˇ',
+  nezastizen: 'NezastiĹľen',
+  vyzvedne: 'Vyzvedne',
+  odesleme: 'OdeĹˇleme',
+};
+
+function lostFoundTagLabel(tag: string): string {
+  return lostFoundTagLabels[tag] ?? tag;
 }
 
 function lostFoundTypeLabel(itemType: LostFoundType | null | undefined): string {
@@ -338,6 +388,13 @@ function StateMarker({ state }: { state: ViewState }): JSX.Element | null {
     return null;
   }
   return <span className="k-state-marker" data-testid={`state-view-${state}`} aria-hidden="true" />;
+}
+
+function readCsrfToken(): string {
+  return document.cookie
+    .split('; ')
+    .find((item) => item.startsWith('kajovo_csrf='))
+    ?.split('=')[1] ?? '';
 }
 
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
@@ -753,10 +810,239 @@ function BreakfastDetail(): JSX.Element {
   );
 }
 
+function HousekeepingForm(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Pokojská', '/pokojska');
+  const stateMarker = <StateMarker state={state} />;
+  const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
+  const [selectedRoom, setSelectedRoom] = React.useState<string | null>(null);
+  const [location, setLocation] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [photos, setPhotos] = React.useState<File[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const resetForm = React.useCallback(() => {
+    setSelectedRoom(null);
+    setLocation('');
+    setDescription('');
+    setPhotos([]);
+    setError(null);
+    setSuccess(null);
+  }, []);
+
+  const onFileChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length > 3) {
+      setError('Lze připojit nejvýše 3 fotografie.');
+      setPhotos(files.slice(0, 3));
+      return;
+    }
+    setPhotos(files);
+  };
+
+  const submit = async (): Promise<void> => {
+    if (state !== 'default') return;
+    const shortDescription = description.trim();
+    if (!shortDescription) {
+      setError('Vyplňte krátký popis.');
+      return;
+    }
+    const roomValue = selectedRoom?.trim() || '';
+    const locationValue = roomValue ? `Pokoj ${roomValue}` : location.trim();
+    if (!locationValue) {
+      setError('Bez pokoje je nutné vyplnit umístění.');
+      return;
+    }
+    const normalizedDescription = roomValue
+      ? shortDescription
+      : `${locationValue} - ${shortDescription}`;
+    setSaving(true);
+    setError(null);
+    try {
+      if (mode === 'issue') {
+        const created = await fetchJson<Issue>('/api/v1/issues', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: shortDescription,
+            description: normalizedDescription,
+            location: locationValue,
+            room_number: roomValue || null,
+            status: 'new',
+            priority: 'medium',
+          }),
+        });
+        if (photos.length > 0) {
+          const formData = new FormData();
+          photos.forEach((file) => formData.append('photos', file));
+          const csrfToken = readCsrfToken();
+          const response = await fetch(`/api/v1/issues/${created.id}/photos`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : undefined,
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error('Fotografie závady se nepodařilo nahrát.');
+          }
+        }
+      } else {
+        const created = await fetchJson<LostFoundItem>('/api/v1/lost-found', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_type: 'found',
+            category: 'Nález',
+            description: normalizedDescription,
+            location: locationValue,
+            room_number: roomValue || null,
+            event_at: new Date().toISOString(),
+            status: 'new',
+            tags: [],
+          }),
+        });
+        if (photos.length > 0) {
+          const formData = new FormData();
+          photos.forEach((file) => formData.append('photos', file));
+          const csrfToken = readCsrfToken();
+          const response = await fetch(`/api/v1/lost-found/${created.id}/photos`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : undefined,
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error('Fotografie nálezu se nepodařilo nahrát.');
+          }
+        }
+      }
+      setSuccess('Záznam byl uložen.');
+      setSelectedRoom(null);
+      setLocation('');
+      setDescription('');
+      setPhotos([]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Uložení záznamu selhalo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <main className="k-page" data-testid="housekeeping-form-page">
+        {stateMarker}
+        <h1>Pokojská</h1>
+        {stateUI ? stateUI : (
+          <StateView
+            title="Hotovo"
+            description={success}
+            stateKey="empty"
+            action={<button className="k-button" type="button" onClick={resetForm}>Nový záznam</button>}
+          />
+        )}
+      </main>
+    );
+  }
+
+  return (
+    <main className="k-page" data-testid="housekeeping-form-page">
+      {stateMarker}
+      <h1>Pokojská</h1>
+      <StateSwitcher />
+      {stateUI ? stateUI : (
+        <div className="k-card">
+          <div className="k-toolbar">
+            <button
+              className={mode === 'issue' ? 'k-button' : 'k-button secondary'}
+              type="button"
+              onClick={() => setMode('issue')}
+            >
+              Závada
+            </button>
+            <button
+              className={mode === 'lost_found' ? 'k-button' : 'k-button secondary'}
+              type="button"
+              onClick={() => setMode('lost_found')}
+            >
+              Nález
+            </button>
+          </div>
+          <div className="k-form-grid">
+            <FormField id="housekeeping_room" label="Pokoj (volitelně)">
+              <div className="k-toolbar">
+                <button
+                  className={!selectedRoom ? 'k-button' : 'k-button secondary'}
+                  type="button"
+                  onClick={() => setSelectedRoom(null)}
+                >
+                  Bez pokoje
+                </button>
+                {HOUSEKEEPING_ROOMS.map((room) => (
+                  <button
+                    key={room}
+                    className={selectedRoom === room ? 'k-button' : 'k-button secondary'}
+                    type="button"
+                    onClick={() => setSelectedRoom(room)}
+                  >
+                    {room}
+                  </button>
+                ))}
+              </div>
+            </FormField>
+            {!selectedRoom ? (
+              <FormField id="housekeeping_location" label="Umístění (povinné bez pokoje)">
+                <input
+                  id="housekeeping_location"
+                  className="k-input"
+                  value={location}
+                  onChange={(event) => setLocation(event.target.value)}
+                />
+              </FormField>
+            ) : null}
+            <FormField id="housekeeping_description" label="Krátký popis">
+              <input
+                id="housekeeping_description"
+                className="k-input"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </FormField>
+            <FormField id="housekeeping_photos" label="Fotografie (volitelné)">
+              <input
+                id="housekeeping_photos"
+                className="k-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                onChange={onFileChange}
+              />
+            </FormField>
+            {photos.length > 0 ? (
+              <p>Vybráno fotografií: {photos.length} / 3</p>
+            ) : null}
+          </div>
+          {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+          <div className="k-toolbar">
+            <button className="k-button" type="button" onClick={() => void submit()} disabled={saving}>
+              Odeslat
+            </button>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
 function LostFoundList(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'ZtrĂˇty a nĂˇlezy', '/ztraty-a-nalezy');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const activeRole = auth?.activeRole ?? auth?.role ?? 'recepce';
   const [items, setItems] = React.useState<LostFoundItem[]>([]);
   const [statusFilter, setStatusFilter] = React.useState<'all' | LostFoundStatus>('all');
   const [typeFilter, setTypeFilter] = React.useState<'all' | LostFoundType>('all');
@@ -802,11 +1088,11 @@ function LostFoundList(): JSX.Element {
             <Card title="Celkem poloĹľek">
               <strong>{items.length}</strong>
             </Card>
-            <Card title="UloĹľenĂ©">
-              <strong>{items.filter((item) => item.status === 'stored').length}</strong>
+            <Card title="NovĂ©">
+              <strong>{items.filter((item) => item.status === 'new').length}</strong>
             </Card>
-            <Card title="VrĂˇcenĂ©">
-              <strong>{items.filter((item) => item.status === 'returned').length}</strong>
+            <Card title="UskladnÄ›no">
+              <strong>{items.filter((item) => item.status === 'stored').length}</strong>
             </Card>
           </div>
           <div className="k-toolbar">
@@ -827,23 +1113,41 @@ function LostFoundList(): JSX.Element {
               onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}
             >
               <option value="all">VĹˇechny stavy</option>
-              <option value="stored">UloĹľeno</option>
-              <option value="claimed">NĂˇrokovĂˇno</option>
-              <option value="returned">VrĂˇceno</option>
-              <option value="disposed">ZlikvidovĂˇno</option>
+              <option value="new">NovĂ˝</option>
+              <option value="stored">UskladnÄ›no</option>
+              <option value="disposed">Zlikvidovat</option>
             </select>
             <Link className="k-button" to="/ztraty-a-nalezy/novy">
               NovĂˇ poloĹľka
             </Link>
           </div>
           <DataTable
-            headers={['Typ', 'Kategorie', 'MĂ­sto', 'ÄŚas', 'Stav', 'Akce']}
+            headers={['Pokoj', 'Popis', 'Tagy', 'Stav', 'Miniatura', 'Akce']}
             rows={items.map((item) => [
-              lostFoundTypeLabel(item.item_type),
-              item.category,
-              item.location,
-              new Date(item.event_at).toLocaleString('cs-CZ'),
+              item.room_number ?? '-',
+              item.description,
+              item.tags && item.tags.length > 0 ? (
+                <div className="k-inline-links" key={`tags-${item.id}`}>
+                  {item.tags.map((tag) => (
+                    <Badge key={`${item.id}-${tag}`} tone={activeRole === 'recepce' ? 'warning' : 'neutral'}>
+                      {lostFoundTagLabel(tag)}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                '-'
+              ),
               lostFoundStatusLabel(item.status),
+              item.photos && item.photos.length > 0 ? (
+                <img
+                  key={`thumb-${item.id}`}
+                  src={`/api/v1/lost-found/${item.id}/photos/${item.photos[0].id}/thumb`}
+                  alt="Miniatura nĂˇlezu"
+                  className="k-photo-thumb"
+                />
+              ) : (
+                '-'
+              ),
               <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>
                 Detail
               </Link>,
@@ -866,8 +1170,10 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     description: '',
     category: '',
     location: '',
+    room_number: '',
     event_at: '2026-02-18T10:00:00Z',
-    status: 'stored',
+    status: 'new',
+    tags: [],
     claimant_name: '',
     claimant_contact: '',
     handover_note: '',
@@ -885,6 +1191,8 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       .then((item) => {
         setPayload({
           ...item,
+          room_number: item.room_number ?? '',
+          tags: item.tags ?? [],
           claimant_name: item.claimant_name ?? '',
           claimant_contact: item.claimant_contact ?? '',
           handover_note: item.handover_note ?? '',
@@ -896,6 +1204,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const save = async (): Promise<void> => {
     const body: LostFoundPayload = {
       ...payload,
+      room_number: payload.room_number || null,
       claimant_name: payload.claimant_name || null,
       claimant_contact: payload.claimant_contact || null,
       handover_note: payload.handover_note || null,
@@ -963,6 +1272,14 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, location: event.target.value }))}
               />
             </FormField>
+            <FormField id="room_number" label="ÄŚĂ­slo pokoje (volitelnĂ©)">
+              <input
+                id="room_number"
+                className="k-input"
+                value={payload.room_number ?? ''}
+                onChange={(event) => setPayload((prev) => ({ ...prev, room_number: event.target.value }))}
+              />
+            </FormField>
             <FormField id="event_at" label="Datum a ÄŤas">
               <input
                 id="event_at"
@@ -983,11 +1300,36 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                   setPayload((prev) => ({ ...prev, status: event.target.value as LostFoundStatus }))
                 }
               >
-                <option value="stored">UloĹľeno</option>
+                <option value="new">NovĂ˝</option>
+                <option value="stored">UskladnÄ›no</option>
+                <option value="disposed">Zlikvidovat</option>
                 <option value="claimed">NĂˇrokovĂˇno</option>
                 <option value="returned">VrĂˇceno</option>
-                <option value="disposed">ZlikvidovĂˇno</option>
               </select>
+            </FormField>
+            <FormField id="tags" label="Tagy">
+              <div className="k-toolbar">
+                {Object.keys(lostFoundTagLabels).map((tag) => (
+                  <label className="k-role-label" key={tag}>
+                    <input
+                      type="checkbox"
+                      checked={(payload.tags ?? []).includes(tag)}
+                      onChange={(event) => {
+                        setPayload((prev) => {
+                          const current = new Set(prev.tags ?? []);
+                          if (event.target.checked) {
+                            current.add(tag);
+                          } else {
+                            current.delete(tag);
+                          }
+                          return { ...prev, tags: Array.from(current) };
+                        });
+                      }}
+                    />
+                    {lostFoundTagLabel(tag)}
+                  </label>
+                ))}
+              </div>
             </FormField>
             <FormField id="description" label="Popis poloĹľky">
               <textarea
@@ -1037,6 +1379,12 @@ function LostFoundDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<LostFoundItem | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [status, setStatus] = React.useState<LostFoundStatus>('new');
+  const [tags, setTags] = React.useState<string[]>([]);
+  const auth = useAuth();
+  const activeRole = auth?.activeRole ?? auth?.role ?? 'recepce';
+  const canEdit = activeRole === 'recepce' || activeRole === 'admin';
+  const canDelete = activeRole === 'admin';
 
   React.useEffect(() => {
     if (state !== 'default' || !id) {
@@ -1045,10 +1393,51 @@ function LostFoundDetail(): JSX.Element {
     fetchJson<LostFoundItem>(`/api/v1/lost-found/${id}`)
       .then((response) => {
         setItem(response);
+        setStatus(response.status ?? 'new');
+        setTags(response.tags ?? []);
         setError(null);
       })
       .catch(() => setError('PoloĹľka nebyla nalezena.'));
   }, [id, state]);
+
+  const toggleTag = (tag: string, enabled: boolean): void => {
+    setTags((prev) => {
+      const next = new Set(prev);
+      if (enabled) {
+        next.add(tag);
+      } else {
+        next.delete(tag);
+      }
+      return Array.from(next);
+    });
+  };
+
+  const saveMeta = async (): Promise<void> => {
+    if (!id) return;
+    try {
+      const updated = await fetchJson<LostFoundItem>(`/api/v1/lost-found/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, tags }),
+      });
+      setItem(updated);
+      setStatus(updated.status ?? status);
+      setTags(updated.tags ?? tags);
+      setError(null);
+    } catch {
+      setError('Aktualizace stavu nebo tagů selhala.');
+    }
+  };
+
+  const deleteItem = async (): Promise<void> => {
+    if (!id) return;
+    try {
+      await fetchJson(`/api/v1/lost-found/${id}`, { method: 'DELETE' });
+      window.location.assign('/ztraty-a-nalezy');
+    } catch {
+      setError('Smazání položky selhalo.');
+    }
+  };
 
   return (
     <main className="k-page" data-testid="lost-found-detail-page">
@@ -1060,30 +1449,90 @@ function LostFoundDetail(): JSX.Element {
       ) : error ? (
         <StateView title="404" description={error} />
       ) : item ? (
-        <div className="k-card">
-          <div className="k-toolbar">
-            <Link className="k-nav-link" to="/ztraty-a-nalezy">
-              ZpÄ›t na seznam
-            </Link>
-            <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>
-              Upravit
-            </Link>
+        <>
+          <div className="k-card">
+            <div className="k-toolbar">
+              <Link className="k-nav-link" to="/ztraty-a-nalezy">
+                ZpÄ›t na seznam
+              </Link>
+              <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>
+                Upravit
+              </Link>
+              {canDelete ? (
+                <button className="k-button secondary" type="button" onClick={() => void deleteItem()}>
+                  Smazat
+                </button>
+              ) : null}
+            </div>
+            <DataTable
+              headers={['PoloĹľka', 'Hodnota']}
+              rows={[
+                ['Typ', lostFoundTypeLabel(item.item_type)],
+                ['Kategorie', item.category],
+                ['MĂ­sto', item.location],
+                ['Pokoj', item.room_number ?? '-'],
+                ['Datum a ÄŤas', new Date(item.event_at).toLocaleString('cs-CZ')],
+                ['Stav', lostFoundStatusLabel(item.status)],
+                ['Popis', item.description],
+                ['Tagy', (item.tags ?? []).map((tag) => lostFoundTagLabel(tag)).join(', ') || '-'],
+                ['JmĂ©no Ĺľadatele', item.claimant_name ?? '-'],
+                ['Kontakt', item.claimant_contact ?? '-'],
+                ['PĹ™edĂˇvacĂ­ zĂˇznam', item.handover_note ?? '-'],
+              ]}
+            />
           </div>
-          <DataTable
-            headers={['PoloĹľka', 'Hodnota']}
-            rows={[
-              ['Typ', lostFoundTypeLabel(item.item_type)],
-              ['Kategorie', item.category],
-              ['MĂ­sto', item.location],
-              ['Datum a ÄŤas', new Date(item.event_at).toLocaleString('cs-CZ')],
-              ['Stav', lostFoundStatusLabel(item.status)],
-              ['Popis', item.description],
-              ['JmĂ©no Ĺľadatele', item.claimant_name ?? '-'],
-              ['Kontakt', item.claimant_contact ?? '-'],
-              ['PĹ™edĂˇvacĂ­ zĂˇznam', item.handover_note ?? '-'],
-            ]}
-          />
-        </div>
+          {canEdit ? (
+            <div className="k-card">
+              <h2>Tagy a stav</h2>
+              <div className="k-form-grid">
+                <FormField id="lost_found_status" label="Stav">
+                  <select
+                    id="lost_found_status"
+                    className="k-select"
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value as LostFoundStatus)}
+                  >
+                    <option value="new">NovĂ˝</option>
+                    <option value="stored">UskladnÄ›no</option>
+                    <option value="disposed">Zlikvidovat</option>
+                  </select>
+                </FormField>
+                <FormField id="lost_found_tags" label="Tagy">
+                  <div className="k-toolbar">
+                    {Object.keys(lostFoundTagLabels).map((tag) => (
+                      <label className="k-role-label" key={`lf-tag-${tag}`}>
+                        <input
+                          type="checkbox"
+                          checked={tags.includes(tag)}
+                          onChange={(event) => toggleTag(tag, event.target.checked)}
+                        />
+                        {lostFoundTagLabel(tag)}
+                      </label>
+                    ))}
+                  </div>
+                </FormField>
+              </div>
+              <button className="k-button" type="button" onClick={() => void saveMeta()}>
+                UloĹľit zmÄ›ny
+              </button>
+            </div>
+          ) : null}
+          {item.photos && item.photos.length > 0 ? (
+            <div className="k-card">
+              <h2>Fotodokumentace</h2>
+              <div className="k-grid cards-3">
+                {item.photos.map((photo) => (
+                  <img
+                    key={photo.id}
+                    src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`}
+                    alt={`Fotografie nĂˇlezu ${photo.id}`}
+                    className="k-photo-thumb"
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : (
         <SkeletonPage />
       )}
@@ -1096,6 +1545,9 @@ function IssuesList(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'ZĂˇvady', '/zavady');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const activeRole = auth?.activeRole ?? auth?.role ?? 'recepce';
+  const isMaintenance = activeRole === 'údržba';
   const [items, setItems] = React.useState<Issue[]>([]);
   const [priorityFilter, setPriorityFilter] = React.useState<'all' | IssuePriority>('all');
   const [statusFilter, setStatusFilter] = React.useState<'all' | IssueStatus>('all');
@@ -1105,14 +1557,29 @@ function IssuesList(): JSX.Element {
   React.useEffect(() => {
     if (state !== 'default') return;
     const params = new URLSearchParams();
-    if (priorityFilter !== 'all') params.set('priority', priorityFilter);
-    if (statusFilter !== 'all') params.set('status', statusFilter);
-    if (locationFilter.trim()) params.set('location', locationFilter.trim());
+    if (!isMaintenance) {
+      if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (locationFilter.trim()) params.set('location', locationFilter.trim());
+    }
     const query = params.toString();
     fetchJson<Issue[]>(query ? `/api/v1/issues?${query}` : '/api/v1/issues')
       .then((response) => { setItems(response); setError(null); })
       .catch(() => setError('NepodaĹ™ilo se naÄŤĂ­st seznam zĂˇvad.'));
-  }, [locationFilter, priorityFilter, state, statusFilter]);
+  }, [isMaintenance, locationFilter, priorityFilter, state, statusFilter]);
+
+  const markResolved = async (issueId: number): Promise<void> => {
+    try {
+      await fetchJson<Issue>(`/api/v1/issues/${issueId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved' }),
+      });
+      setItems((prev) => prev.filter((item) => item.id !== issueId));
+    } catch {
+      setError('OznaÄŤenĂ­ zĂˇvady jako odstranÄ›nĂ© selhalo.');
+    }
+  };
 
   return (
     <main className="k-page" data-testid="issues-list-page">
@@ -1120,7 +1587,28 @@ function IssuesList(): JSX.Element {
       <h1>ZĂˇvady</h1>
       <StateSwitcher />
       {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? (
-        <StateView title="PrĂˇzdnĂ˝ stav" description="ZatĂ­m nejsou evidovanĂ© ĹľĂˇdnĂ© zĂˇvady." stateKey="empty" action={<Link className="k-button" to="/zavady/nova">NahlĂˇsit zĂˇvadu</Link>} />
+        <StateView title="PrĂˇzdnĂ˝ stav" description={isMaintenance ? 'ZatĂ­m nejsou otevĹ™enĂ© zĂˇvady.' : 'ZatĂ­m nejsou evidovanĂ© ĹľĂˇdnĂ© zĂˇvady.'} stateKey="empty" action={isMaintenance ? undefined : <Link className="k-button" to="/zavady/nova">NahlĂˇsit zĂˇvadu</Link>} />
+      ) : isMaintenance ? (
+        <DataTable
+          headers={['Miniatura', 'Popis', 'ZadĂˇno', 'Akce']}
+          rows={items.map((item) => [
+            item.photos && item.photos.length > 0 ? (
+              <img
+                key={`issue-thumb-${item.id}`}
+                src={`/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb`}
+                alt="Miniatura zĂˇvady"
+                className="k-photo-thumb"
+              />
+            ) : (
+              '-'
+            ),
+            `${item.title}${item.room_number ? ` (Pokoj ${item.room_number})` : ''}`,
+            formatDateTime(item.created_at),
+            <button className="k-button" type="button" key={`resolve-${item.id}`} onClick={() => void markResolved(item.id)}>
+              OdstranÄ›no
+            </button>,
+          ])}
+        />
       ) : (
         <>
           <div className="k-toolbar">
@@ -1128,7 +1616,7 @@ function IssuesList(): JSX.Element {
               <option value="all">VĹˇechny priority</option><option value="low">NĂ­zkĂˇ</option><option value="medium">StĹ™ednĂ­</option><option value="high">VysokĂˇ</option><option value="critical">KritickĂˇ</option>
             </select>
             <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | IssueStatus)}>
-              <option value="all">VĹˇechny stavy</option><option value="new">NovĂˇ</option><option value="in_progress">V Ĺ™eĹˇenĂ­</option><option value="resolved">VyĹ™eĹˇena</option><option value="closed">UzavĹ™ena</option>
+              <option value="all">VĹˇechny stavy</option><option value="new">NovĂˇ</option><option value="in_progress">V Ĺ™eĹˇenĂ­</option><option value="resolved">OdstranÄ›no</option><option value="closed">UzavĹ™ena</option>
             </select>
             <input className="k-input" aria-label="Filtr lokace" placeholder="Lokalita" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} />
             <Link className="k-button" to="/zavady/nova">NovĂˇ zĂˇvada</Link>
@@ -1190,6 +1678,9 @@ function IssuesDetail(): JSX.Element {
   const { id } = useParams();
   const [item, setItem] = React.useState<Issue | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const auth = useAuth();
+  const activeRole = auth?.activeRole ?? auth?.role ?? 'recepce';
+  const canDelete = activeRole === 'admin';
 
   React.useEffect(() => {
     if (state !== 'default' || !id) return;
@@ -1199,15 +1690,25 @@ function IssuesDetail(): JSX.Element {
   const timeline = item ? [
     { label: 'VytvoĹ™eno', value: formatDateTime(item.created_at) },
     ...(item.in_progress_at ? [{ label: 'V Ĺ™eĹˇenĂ­', value: new Date(item.in_progress_at).toLocaleString('cs-CZ') }] : []),
-    ...(item.resolved_at ? [{ label: 'VyĹ™eĹˇeno', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
+    ...(item.resolved_at ? [{ label: 'OdstranÄ›no', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
     ...(item.closed_at ? [{ label: 'UzavĹ™eno', value: new Date(item.closed_at).toLocaleString('cs-CZ') }] : []),
   ] : [];
+
+  const deleteIssue = async (): Promise<void> => {
+    if (!id) return;
+    try {
+      await fetchJson(`/api/v1/issues/${id}`, { method: 'DELETE' });
+      window.location.assign('/zavady');
+    } catch {
+      setError('SmazĂˇnĂ­ zĂˇvady selhalo.');
+    }
+  };
 
   return (
     <main className="k-page" data-testid="issues-detail-page">
       {stateMarker}
       <h1>Detail zĂˇvady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">ZpÄ›t na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">ZpÄ›t na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['PoloĹľka', 'Hodnota']} rows={[[ 'NĂˇzev', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'PĹ™iĹ™azeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <SkeletonPage />}
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">ZpÄ›t na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">ZpÄ›t na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link>{canDelete ? <button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['PoloĹľka', 'Hodnota']} rows={[[ 'NĂˇzev', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'PĹ™iĹ™azeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} /></div> : <SkeletonPage />}
     </main>
   );
 }
@@ -1640,43 +2141,46 @@ function AppRoutes(): JSX.Element {
   const modules = [...ia.modules, ...injectedModules];
 
   return (
-    <Routes>
-      <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
-      <Route path="/login" element={<PortalLoginPage />} />
-      <Route
-        path="*"
-        element={
-          <PortalRoutes
-            currentPath={location.pathname}
-            auth={auth}
-            modules={modules}
-            deps={{
-              Dashboard,
-              BreakfastList,
-              BreakfastForm,
-              BreakfastDetail,
-              LostFoundList,
-              LostFoundForm,
-              LostFoundDetail,
-              IssuesList,
-              IssuesForm,
-              IssuesDetail,
-              InventoryList,
-              InventoryForm,
-              InventoryDetail,
-              ReportsList,
-              ReportsForm,
-              ReportsDetail,
-              IntroRoute,
-              OfflineRoute,
-              MaintenanceRoute,
-              NotFoundRoute,
-            }}
-          />
-        }
-      />
-    </Routes>
+    <AuthContext.Provider value={auth}>
+      <Routes>
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
+        <Route path="/login" element={<PortalLoginPage />} />
+        <Route
+          path="*"
+          element={
+            <PortalRoutes
+              currentPath={location.pathname}
+              auth={auth}
+              modules={modules}
+              deps={{
+                Dashboard,
+                HousekeepingForm,
+                BreakfastList,
+                BreakfastForm,
+                BreakfastDetail,
+                LostFoundList,
+                LostFoundForm,
+                LostFoundDetail,
+                IssuesList,
+                IssuesForm,
+                IssuesDetail,
+                InventoryList,
+                InventoryForm,
+                InventoryDetail,
+                ReportsList,
+                ReportsForm,
+                ReportsDetail,
+                IntroRoute,
+                OfflineRoute,
+                MaintenanceRoute,
+                NotFoundRoute,
+              }}
+            />
+          }
+        />
+      </Routes>
+    </AuthContext.Provider>
   );
 }
 

@@ -1,7 +1,7 @@
 """add inventory document metadata
 
-Revision ID: 0014_inventory_documents
-Revises: 0013_add_media_and_inventory_assets
+Revision ID: 0015_inventory_documents
+Revises: 0014_add_last_login_at_to_portal_users
 Create Date: 2026-03-05 23:45:00.000000
 """
 
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0014_inventory_documents"
-down_revision: str | None = "0013_add_media_and_inventory_assets"
+revision: str = "0015_inventory_documents"
+down_revision: str | None = "0014_add_last_login_at_to_portal_users"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

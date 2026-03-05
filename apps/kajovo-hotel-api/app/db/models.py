@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime
 
 try:
@@ -65,10 +66,11 @@ class LostFoundItemType(StrEnum):
 
 
 class LostFoundStatus(StrEnum):
+    NEW = "new"
     STORED = "stored"
+    DISPOSED = "disposed"
     CLAIMED = "claimed"
     RETURNED = "returned"
-    DISPOSED = "disposed"
 
 
 class LostFoundItem(Base):
@@ -83,12 +85,14 @@ class LostFoundItem(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     location: Mapped[str] = mapped_column(String(255), nullable=False)
+    room_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     event_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        default=LostFoundStatus.STORED.value,
+        default=LostFoundStatus.NEW.value,
     )
+    tags_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     claimant_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     claimant_contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
     handover_note: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -106,6 +110,21 @@ class LostFoundItem(Base):
         cascade="all, delete-orphan",
         order_by="LostFoundPhoto.sort_order.asc()",
     )
+
+    @property
+    def tags(self) -> list[str]:
+        try:
+            parsed = json.loads(self.tags_json or "[]")
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(parsed, list):
+            return []
+        return [str(item) for item in parsed]
+
+    @tags.setter
+    def tags(self, value: list[str] | None) -> None:
+        tags = [str(item) for item in (value or []) if str(item).strip()]
+        self.tags_json = json.dumps(tags, ensure_ascii=False)
 
 
 class IssuePriority(StrEnum):

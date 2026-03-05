@@ -214,8 +214,10 @@ export type LostFoundItemCreate = {
   "handover_note"?: string | null;
   "item_type"?: LostFoundItemType;
   "location": string;
+  "room_number"?: string | null;
   "returned_at"?: string | null;
   "status"?: LostFoundStatus;
+  "tags"?: Array<string>;
 };
 export type LostFoundItemRead = {
   "category": string;
@@ -230,8 +232,10 @@ export type LostFoundItemRead = {
   "item_type"?: LostFoundItemType;
   "location": string;
   "photos"?: Array<MediaPhotoRead>;
+  "room_number"?: string | null;
   "returned_at"?: string | null;
   "status"?: LostFoundStatus;
+  "tags"?: Array<string>;
   "updated_at": string | null;
 };
 export type LostFoundItemType = "lost" | "found";
@@ -245,10 +249,12 @@ export type LostFoundItemUpdate = {
   "handover_note"?: string | null;
   "item_type"?: LostFoundItemType | null;
   "location"?: string | null;
+  "room_number"?: string | null;
   "returned_at"?: string | null;
   "status"?: LostFoundStatus | null;
+  "tags"?: Array<string> | null;
 };
-export type LostFoundStatus = "stored" | "claimed" | "returned" | "disposed";
+export type LostFoundStatus = "new" | "stored" | "disposed" | "claimed" | "returned";
 export type MediaPhotoRead = {
   "created_at": string | null;
   "file_path": string;

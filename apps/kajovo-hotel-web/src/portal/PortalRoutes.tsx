@@ -19,9 +19,9 @@ const ROLE_LABELS: Record<string, string> = {
   sklad: 'Sklad',
 };
 const ROLE_MODULES: Record<string, string[]> = {
-  admin: ['breakfast', 'lost_found', 'issues', 'inventory', 'reports'],
+  admin: ['breakfast', 'housekeeping', 'lost_found', 'issues', 'inventory', 'reports'],
   recepce: ['lost_found', 'breakfast'],
-  pokojská: ['lost_found', 'issues', 'breakfast', 'inventory'],
+  pokojská: ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
   údržba: ['issues'],
   snídaně: ['breakfast', 'issues', 'inventory'],
   sklad: ['breakfast', 'issues', 'inventory'],
@@ -111,6 +111,7 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
 
 type PortalRouteDeps = {
   Dashboard: () => JSX.Element;
+  HousekeepingForm: () => JSX.Element;
   BreakfastList: () => JSX.Element;
   BreakfastForm: ({ mode }: { mode: 'create' | 'edit' }) => JSX.Element;
   BreakfastDetail: () => JSX.Element;
@@ -196,6 +197,7 @@ export function PortalRoutes({
           path="/"
           element={primaryRoute !== '/' ? <Navigate to={`${primaryRoute}${currentSearch}`} replace /> : <deps.Dashboard />}
         />
+        <Route path="/pokojska" element={isAllowed('housekeeping') ? <deps.HousekeepingForm /> : <AccessDeniedPage moduleLabel="Pokojská" role={activeRole} userId={auth.userId} />} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <deps.BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
         <Route path="/snidane/nova" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
         <Route path="/snidane/:id" element={isAllowed('breakfast') ? <deps.BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
