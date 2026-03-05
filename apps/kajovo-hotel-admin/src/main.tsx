@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   BrowserRouter,
@@ -87,9 +87,16 @@ type MediaPhoto = {
   created_at: string | null;
 };
 
-type PortalRole = 'pokojskĂˇ' | 'ĂşdrĹľba' | 'recepce' | 'snĂ­danÄ›' | 'sklad';
+type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně' | 'sklad';
 
-const portalRoleOptions: PortalRole[] = ['pokojskĂˇ', 'ĂşdrĹľba', 'recepce', 'snĂ­danÄ›', 'sklad'];
+const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně', 'sklad'];
+const portalRoleLabels: Record<PortalRole, string> = {
+  pokojská: 'Pokojská',
+  údržba: 'Údržba',
+  recepce: 'Recepce',
+  snídaně: 'Snídaně',
+  sklad: 'Sklad',
+};
 
 function toAdminNavRoute(route: string): string {
   if (!route.startsWith('/')) {
@@ -178,7 +185,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
         <main className="k-page">
           <StateView
             title="Chyba"
-            description={this.state.message ?? 'Aplikace narazila na neoÄŤekĂˇvanou chybu.'}
+            description={this.state.message ?? 'Aplikace narazila na neoÄ‚â€žÄąÂ¤ekĂ„â€šĂ‹â€ˇvanou chybu.'}
             stateKey="error"
             action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
           />
@@ -215,17 +222,17 @@ const NotFoundRoute = React.lazy(async () => {
 
 
 const statusLabels: Record<BreakfastStatus, string> = {
-  pending: 'ÄŚekĂˇ',
-  preparing: 'PĹ™ipravuje se',
-  served: 'VydĂˇno',
-  cancelled: 'ZruĹˇeno',
+  pending: 'Ä‚â€žÄąĹˇekĂ„â€šĂ‹â€ˇ',
+  preparing: 'PĂ„Ä…Ă˘â€žËipravuje se',
+  served: 'VydĂ„â€šĂ‹â€ˇno',
+  cancelled: 'ZruĂ„Ä…Ă‹â€ˇeno',
 };
 
 const lostFoundStatusLabels: Record<LostFoundStatus, string> = {
-  stored: 'UloĹľeno',
-  claimed: 'NĂˇrokovĂˇno',
-  returned: 'VrĂˇceno',
-  disposed: 'ZlikvidovĂˇno',
+  stored: 'UloĂ„Ä…Ă„Äľeno',
+  claimed: 'NĂ„â€šĂ‹â€ˇrokovĂ„â€šĂ‹â€ˇno',
+  returned: 'VrĂ„â€šĂ‹â€ˇceno',
+  disposed: 'ZlikvidovĂ„â€šĂ‹â€ˇno',
 };
 
 const lostFoundTypeLabels: Record<LostFoundType, string> = {
@@ -234,30 +241,30 @@ const lostFoundTypeLabels: Record<LostFoundType, string> = {
 };
 
 const issuePriorityLabels: Record<IssuePriority, string> = {
-  low: 'NĂ­zkĂˇ',
-  medium: 'StĹ™ednĂ­',
-  high: 'VysokĂˇ',
-  critical: 'KritickĂˇ',
+  low: 'NĂ„â€šĂ‚Â­zkĂ„â€šĂ‹â€ˇ',
+  medium: 'StĂ„Ä…Ă˘â€žËednĂ„â€šĂ‚Â­',
+  high: 'VysokĂ„â€šĂ‹â€ˇ',
+  critical: 'KritickĂ„â€šĂ‹â€ˇ',
 };
 
 const issueStatusLabels: Record<IssueStatus, string> = {
-  new: 'NovĂˇ',
-  in_progress: 'V Ĺ™eĹˇenĂ­',
-  resolved: 'VyĹ™eĹˇena',
-  closed: 'UzavĹ™ena',
+  new: 'NovĂ„â€šĂ‹â€ˇ',
+  in_progress: 'V Ă„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­',
+  resolved: 'VyĂ„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇena',
+  closed: 'UzavĂ„Ä…Ă˘â€žËena',
 };
 
 const reportStatusLabels: Record<ReportStatus, string> = {
-  open: 'OtevĹ™enĂ©',
-  in_progress: 'V Ĺ™eĹˇenĂ­',
-  closed: 'UzavĹ™enĂ©',
+  open: 'OtevĂ„Ä…Ă˘â€žËenĂ„â€šĂ‚Â©',
+  in_progress: 'V Ă„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­',
+  closed: 'UzavĂ„Ä…Ă˘â€žËenĂ„â€šĂ‚Â©',
 };
 
 
 const inventoryMovementLabels: Record<InventoryMovementType, string> = {
-  in: 'NaskladnÄ›nĂ­',
-  out: 'VĂ˝dej',
-  adjust: 'Ăšprava',
+  in: 'NaskladnÄ‚â€žĂ˘â‚¬ĹźnĂ„â€šĂ‚Â­',
+  out: 'VĂ„â€šĂ‹ĹĄdej',
+  adjust: 'Ă„â€šÄąË‡prava',
 };
 
 
@@ -298,12 +305,12 @@ function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStat
   return typeof value === 'number' ? value : 0;
 }
 const stateLabels: Record<ViewState, string> = {
-  default: 'VĂ˝chozĂ­',
-  loading: 'NaÄŤĂ­tĂˇnĂ­',
-  empty: 'PrĂˇzdno',
+  default: 'VĂ„â€šĂ‹ĹĄchozĂ„â€šĂ‚Â­',
+  loading: 'NaÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­tĂ„â€šĂ‹â€ˇnĂ„â€šĂ‚Â­',
+  empty: 'PrĂ„â€šĂ‹â€ˇzdno',
   error: 'Chyba',
   offline: 'Offline',
-  maintenance: 'ĂšdrĹľba',
+  maintenance: 'Ă„â€šÄąË‡drĂ„Ä…Ă„Äľba',
   '404': '404',
 };
 
@@ -320,8 +327,8 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
     case 'empty':
       return (
         <StateView
-          title="PrĂˇzdnĂ˝ stav"
-          description={`Pro modul ${title} zatĂ­m nejsou dostupnĂˇ data.`}
+          title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav"
+          description={`Pro modul ${title} zatĂ„â€šĂ‚Â­m nejsou dostupnĂ„â€šĂ‹â€ˇ data.`}
           stateKey="empty"
           action={<Link className="k-button secondary" to={fallbackRoute}>Obnovit data</Link>}
         />
@@ -330,7 +337,7 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
       return (
         <StateView
           title="Chyba"
-          description="NepodaĹ™ilo se naÄŤĂ­st data. Zkuste strĂˇnku obnovit."
+          description="NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st data. Zkuste strĂ„â€šĂ‹â€ˇnku obnovit."
           stateKey="error"
           action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
         />
@@ -339,16 +346,16 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
       return (
         <StateView
           title="Offline"
-          description="Aplikace je doÄŤasnÄ› bez pĹ™ipojenĂ­."
+          description="Aplikace je doÄ‚â€žÄąÂ¤asnÄ‚â€žĂ˘â‚¬Ĺź bez pĂ„Ä…Ă˘â€žËipojenĂ„â€šĂ‚Â­."
           stateKey="offline"
-          action={<Link className="k-button secondary" to="/offline">Diagnostika pĹ™ipojenĂ­</Link>}
+          action={<Link className="k-button secondary" to="/offline">Diagnostika pĂ„Ä…Ă˘â€žËipojenĂ„â€šĂ‚Â­</Link>}
         />
       );
     case 'maintenance':
       return (
         <StateView
-          title="ĂšdrĹľba"
-          description="Modul je doÄŤasnÄ› v reĹľimu ĂşdrĹľby."
+          title="Ă„â€šÄąË‡drĂ„Ä…Ă„Äľba"
+          description="Modul je doÄ‚â€žÄąÂ¤asnÄ‚â€žĂ˘â‚¬Ĺź v reĂ„Ä…Ă„Äľimu Ă„â€šÄąĹşdrĂ„Ä…Ă„Äľby."
           stateKey="maintenance"
           action={<Link className="k-button secondary" to="/maintenance">Zobrazit status</Link>}
         />
@@ -357,11 +364,11 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
       return (
         <StateView
           title="404"
-          description="PoĹľadovanĂ˝ obsah nebyl nalezen."
+          description="PoĂ„Ä…Ă„ÄľadovanĂ„â€šĂ‹ĹĄ obsah nebyl nalezen."
           stateKey="404"
           action={
             <Link className="k-nav-link" to={fallbackRoute}>
-              ZpÄ›t
+              ZpÄ‚â€žĂ˘â‚¬Ĺźt
             </Link>
           }
         />
@@ -447,7 +454,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
 
   if (path === '/api/v1/users' && method === 'GET') {
     const response = await fetch(path, { credentials: 'include' });
-    if (!response.ok) throw new Error('NepodaĹ™ilo se naÄŤĂ­st uĹľivatele.');
+    if (!response.ok) throw new Error('NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st uĂ„Ä…Ă„Äľivatele.');
     return (await response.json()) as T;
   }
   if (path === '/api/v1/users' && method === 'POST') {
@@ -543,27 +550,27 @@ function formatDateTime(value: string | null): string {
 
 function Dashboard(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'PĹ™ehled', '/');
+  const stateUI = stateViewForRoute(state, 'PĂ„Ä…Ă˘â€žËehled', '/');
   const stateMarker = <StateMarker state={state} />;
 
   return (
     <main className="k-page" data-testid="dashboard-page">
       {stateMarker}
-      <h1>PĹ™ehled</h1>
+      <h1>PĂ„Ä…Ă˘â€žËehled</h1>
       <StateSwitcher />
       {stateUI ?? (
         <div className="k-grid cards-3">
-          <Card title="SnĂ­danÄ› dnes">
+          <Card title="SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź dnes">
             <strong>18</strong>
-            <p>3 ÄŤekajĂ­cĂ­ objednĂˇvky</p>
+            <p>3 Ä‚â€žÄąÂ¤ekajĂ„â€šĂ‚Â­cĂ„â€šĂ‚Â­ objednĂ„â€šĂ‹â€ˇvky</p>
           </Card>
-          <Card title="ZĂˇvady">
+          <Card title="ZĂ„â€šĂ‹â€ˇvady">
             <strong>4</strong>
-            <p>1 kritickĂˇ zĂˇvada</p>
+            <p>1 kritickĂ„â€šĂ‹â€ˇ zĂ„â€šĂ‹â€ˇvada</p>
           </Card>
           <Card title="Sklad">
             <strong>12</strong>
-            <p>2 poloĹľky pod minimem</p>
+            <p>2 poloĂ„Ä…Ă„Äľky pod minimem</p>
           </Card>
         </div>
       )}
@@ -573,7 +580,7 @@ function Dashboard(): JSX.Element {
 
 function BreakfastList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'SnĂ­danÄ›', '/snidane');
+  const stateUI = stateViewForRoute(state, 'SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź', '/snidane');
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
@@ -604,7 +611,7 @@ function BreakfastList(): JSX.Element {
         if (!active) {
           return;
         }
-        setError('NepodaĹ™ilo se naÄŤĂ­st seznam snĂ­danĂ­.');
+        setError('NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st seznam snĂ„â€šĂ‚Â­danĂ„â€šĂ‚Â­.');
       });
 
     return () => {
@@ -633,7 +640,7 @@ function BreakfastList(): JSX.Element {
         '/api/v1/breakfast/import',
         { method: 'POST', body: data }
       );
-      setImportInfo(`Import OK: ${result.items.length} pokojĹŻ (${result.date}).`);
+      setImportInfo(`Import OK: ${result.items.length} pokojĂ„Ä…ÄąÂ» (${result.date}).`);
       const orders = await fetchJson<BreakfastOrder[]>('/api/v1/breakfast');
       setItems(orders);
       const daily = await fetchJson<BreakfastSummary>(
@@ -664,7 +671,7 @@ function BreakfastList(): JSX.Element {
         Import PDF
       </button>
       <Link className="k-button" to="/snidane/nova">
-        NovĂˇ objednĂˇvka
+        NovĂ„â€šĂ‹â€ˇ objednĂ„â€šĂ‹â€ˇvka
       </Link>
     </div>
   );
@@ -672,7 +679,7 @@ function BreakfastList(): JSX.Element {
   return (
     <main className="k-page" data-testid="breakfast-list-page">
       {stateMarker}
-      <h1>SnĂ­danÄ›</h1>
+      <h1>SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -682,25 +689,25 @@ function BreakfastList(): JSX.Element {
         <>
           {breakfastToolbar}
           {importInfo ? <p>{importInfo}</p> : null}
-          <StateView title="PrĂˇzdnĂ˝ stav" description="Nebyly nalezeny ĹľĂˇdnĂ© objednĂˇvky." stateKey="empty" action={<Link className="k-button" to="/snidane/nova">NovĂˇ objednĂˇvka</Link>} />
+          <StateView title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav" description="Nebyly nalezeny Ă„Ä…Ă„ÄľĂ„â€šĂ‹â€ˇdnĂ„â€šĂ‚Â© objednĂ„â€šĂ‹â€ˇvky." stateKey="empty" action={<Link className="k-button" to="/snidane/nova">NovĂ„â€šĂ‹â€ˇ objednĂ„â€šĂ‹â€ˇvka</Link>} />
         </>
       ) : (
         <>
           <div className="k-grid cards-3">
-            <Card title="ObjednĂˇvky dne">
+            <Card title="ObjednĂ„â€šĂ‹â€ˇvky dne">
               <strong>{summary?.total_orders ?? 0}</strong>
             </Card>
-            <Card title="HostĂ© dne">
+            <Card title="HostĂ„â€šĂ‚Â© dne">
               <strong>{summary?.total_guests ?? 0}</strong>
             </Card>
-            <Card title="ÄŚekajĂ­cĂ­">
+            <Card title="Ä‚â€žÄąĹˇekajĂ„â€šĂ‚Â­cĂ„â€šĂ‚Â­">
               <strong>{getSummaryCount(summary, 'pending')}</strong>
             </Card>
           </div>
           {breakfastToolbar}
           {importInfo ? <p>{importInfo}</p> : null}
           <DataTable
-            headers={['Datum', 'Pokoj', 'Host', 'PoÄŤet', 'Stav', 'PoznĂˇmka', 'Akce']}
+            headers={['Datum', 'Pokoj', 'Host', 'PoÄ‚â€žÄąÂ¤et', 'Stav', 'PoznĂ„â€šĂ‹â€ˇmka', 'Akce']}
             rows={filteredItems.map((item) => [
               item.service_date,
               item.room_number,
@@ -721,7 +728,7 @@ function BreakfastList(): JSX.Element {
 
 function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'SnĂ­danÄ›', '/snidane');
+  const stateUI = stateViewForRoute(state, 'SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź', '/snidane');
   const stateMarker = <StateMarker state={state} />;
   const navigate = useNavigate();
   const { id } = useParams();
@@ -752,7 +759,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         });
       })
       .catch(() => {
-        setError('ObjednĂˇvku se nepodaĹ™ilo naÄŤĂ­st.');
+        setError('ObjednĂ„â€šĂ‹â€ˇvku se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.');
       });
   }, [id, mode, state]);
 
@@ -777,14 +784,14 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       const saved = await fetchJson<BreakfastOrder>(target, init);
       navigate(`/snidane/${saved.id}`);
     } catch {
-      setError('ObjednĂˇvku se nepodaĹ™ilo uloĹľit.');
+      setError('ObjednĂ„â€šĂ‹â€ˇvku se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     }
   };
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'breakfast-create-page' : 'breakfast-edit-page'}>
       {stateMarker}
-      <h1>{mode === 'create' ? 'NovĂˇ snĂ­danÄ›' : 'Upravit snĂ­dani'}</h1>
+      <h1>{mode === 'create' ? 'NovĂ„â€šĂ‹â€ˇ snĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź' : 'Upravit snĂ„â€šĂ‚Â­dani'}</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -794,14 +801,14 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         <div className="k-card">
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/snidane">
-              ZpÄ›t na seznam
+              ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam
             </Link>
             <button className="k-button" type="button" onClick={() => void save()}>
-              UloĹľit
+              UloĂ„Ä…Ă„Äľit
             </button>
           </div>
           <div className="k-form-grid">
-            <FormField id="service_date" label="Datum sluĹľby">
+            <FormField id="service_date" label="Datum sluĂ„Ä…Ă„Äľby">
               <input
                 id="service_date"
                 type="date"
@@ -826,7 +833,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, guest_name: event.target.value }))}
               />
             </FormField>
-            <FormField id="guest_count" label="PoÄŤet hostĹŻ">
+            <FormField id="guest_count" label="PoÄ‚â€žÄąÂ¤et hostĂ„Ä…ÄąÂ»">
               <input
                 id="guest_count"
                 type="number"
@@ -847,13 +854,13 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                   setPayload((prev) => ({ ...prev, status: event.target.value as BreakfastStatus }))
                 }
               >
-                <option value="pending">ÄŚekĂˇ</option>
-                <option value="preparing">PĹ™ipravuje se</option>
-                <option value="served">VydĂˇno</option>
-                <option value="cancelled">ZruĹˇeno</option>
+                <option value="pending">Ä‚â€žÄąĹˇekĂ„â€šĂ‹â€ˇ</option>
+                <option value="preparing">PĂ„Ä…Ă˘â€žËipravuje se</option>
+                <option value="served">VydĂ„â€šĂ‹â€ˇno</option>
+                <option value="cancelled">ZruĂ„Ä…Ă‹â€ˇeno</option>
               </select>
             </FormField>
-            <FormField id="note" label="PoznĂˇmka">
+            <FormField id="note" label="PoznĂ„â€šĂ‹â€ˇmka">
               <textarea
                 id="note"
                 className="k-textarea"
@@ -871,7 +878,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
 function BreakfastDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'SnĂ­danÄ›', '/snidane');
+  const stateUI = stateViewForRoute(state, 'SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź', '/snidane');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<BreakfastOrder | null>(null);
@@ -890,38 +897,38 @@ function BreakfastDetail(): JSX.Element {
       })
       .catch(() => {
         setNotFound(true);
-        setError('ObjednĂˇvka nebyla nalezena.');
+        setError('ObjednĂ„â€šĂ‹â€ˇvka nebyla nalezena.');
       });
   }, [id, state]);
 
   return (
     <main className="k-page" data-testid="breakfast-detail-page">
       {stateMarker}
-      <h1>Detail snĂ­danÄ›</h1>
+      <h1>Detail snĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
       ) : notFound ? (
-        <StateView title="404" description={error ?? 'ObjednĂˇvka neexistuje.'} stateKey="404" action={<Link className="k-button secondary" to="/snidane">ZpÄ›t na seznam</Link>} />
+        <StateView title="404" description={error ?? 'ObjednĂ„â€šĂ‹â€ˇvka neexistuje.'} stateKey="404" action={<Link className="k-button secondary" to="/snidane">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link>} />
       ) : item ? (
         <div className="k-card">
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/snidane">
-              ZpÄ›t na seznam
+              ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam
             </Link>
             <Link className="k-button" to={`/snidane/${item.id}/edit`}>
               Upravit
             </Link>
           </div>
           <DataTable
-            headers={['PoloĹľka', 'Hodnota']}
+            headers={['PoloĂ„Ä…Ă„Äľka', 'Hodnota']}
             rows={[
-              ['Datum sluĹľby', item.service_date],
+              ['Datum sluĂ„Ä…Ă„Äľby', item.service_date],
               ['Pokoj', item.room_number],
               ['Host', item.guest_name],
-              ['PoÄŤet hostĹŻ', item.guest_count],
+              ['PoÄ‚â€žÄąÂ¤et hostĂ„Ä…ÄąÂ»', item.guest_count],
               ['Stav', breakfastStatusLabel(item.status)],
-              ['PoznĂˇmka', item.note ?? '-'],
+              ['PoznĂ„â€šĂ‹â€ˇmka', item.note ?? '-'],
             ]}
           />
         </div>
@@ -934,7 +941,7 @@ function BreakfastDetail(): JSX.Element {
 
 function LostFoundList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'ZtrĂˇty a nĂˇlezy', '/ztraty-a-nalezy');
+  const stateUI = stateViewForRoute(state, 'ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy', '/ztraty-a-nalezy');
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<LostFoundItem[]>([]);
   const [statusFilter, setStatusFilter] = React.useState<'all' | LostFoundStatus>('all');
@@ -961,30 +968,30 @@ function LostFoundList(): JSX.Element {
         setItems(response);
         setError(null);
       })
-      .catch(() => setError('NepodaĹ™ilo se naÄŤĂ­st poloĹľky ztrĂˇt a nĂˇlezĹŻ.'));
+      .catch(() => setError('NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st poloĂ„Ä…Ă„Äľky ztrĂ„â€šĂ‹â€ˇt a nĂ„â€šĂ‹â€ˇlezĂ„Ä…ÄąÂ».'));
   }, [state, statusFilter, typeFilter]);
 
   return (
     <main className="k-page" data-testid="lost-found-list-page">
       {stateMarker}
-      <h1>ZtrĂˇty a nĂˇlezy</h1>
+      <h1>ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
       ) : error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : items.length === 0 ? (
-        <StateView title="PrĂˇzdnĂ˝ stav" description="ZatĂ­m nenĂ­ evidovĂˇna ĹľĂˇdnĂˇ poloĹľka." stateKey="empty" action={<Link className="k-button" to="/ztraty-a-nalezy/novy">PĹ™idat zĂˇznam</Link>} />
+        <StateView title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav" description="ZatĂ„â€šĂ‚Â­m nenĂ„â€šĂ‚Â­ evidovĂ„â€šĂ‹â€ˇna Ă„Ä…Ă„ÄľĂ„â€šĂ‹â€ˇdnĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka." stateKey="empty" action={<Link className="k-button" to="/ztraty-a-nalezy/novy">PĂ„Ä…Ă˘â€žËidat zĂ„â€šĂ‹â€ˇznam</Link>} />
       ) : (
         <>
           <div className="k-grid cards-3">
-            <Card title="Celkem poloĹľek">
+            <Card title="Celkem poloĂ„Ä…Ă„Äľek">
               <strong>{items.length}</strong>
             </Card>
-            <Card title="UloĹľenĂ©">
+            <Card title="UloĂ„Ä…Ă„ÄľenĂ„â€šĂ‚Â©">
               <strong>{items.filter((item) => item.status === 'stored').length}</strong>
             </Card>
-            <Card title="VrĂˇcenĂ©">
+            <Card title="VrĂ„â€šĂ‹â€ˇcenĂ„â€šĂ‚Â©">
               <strong>{items.filter((item) => item.status === 'returned').length}</strong>
             </Card>
           </div>
@@ -995,9 +1002,9 @@ function LostFoundList(): JSX.Element {
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value as 'all' | LostFoundType)}
             >
-              <option value="all">VĹˇechny typy</option>
-              <option value="lost">ZtracenĂ©</option>
-              <option value="found">NalezenĂ©</option>
+              <option value="all">VĂ„Ä…Ă‹â€ˇechny typy</option>
+              <option value="lost">ZtracenĂ„â€šĂ‚Â©</option>
+              <option value="found">NalezenĂ„â€šĂ‚Â©</option>
             </select>
             <select
               className="k-select"
@@ -1005,18 +1012,18 @@ function LostFoundList(): JSX.Element {
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}
             >
-              <option value="all">VĹˇechny stavy</option>
-              <option value="stored">UloĹľeno</option>
-              <option value="claimed">NĂˇrokovĂˇno</option>
-              <option value="returned">VrĂˇceno</option>
-              <option value="disposed">ZlikvidovĂˇno</option>
+              <option value="all">VĂ„Ä…Ă‹â€ˇechny stavy</option>
+              <option value="stored">UloĂ„Ä…Ă„Äľeno</option>
+              <option value="claimed">NĂ„â€šĂ‹â€ˇrokovĂ„â€šĂ‹â€ˇno</option>
+              <option value="returned">VrĂ„â€šĂ‹â€ˇceno</option>
+              <option value="disposed">ZlikvidovĂ„â€šĂ‹â€ˇno</option>
             </select>
             <Link className="k-button" to="/ztraty-a-nalezy/novy">
-              NovĂˇ poloĹľka
+              NovĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka
             </Link>
           </div>
           <DataTable
-            headers={['Typ', 'Kategorie', 'MĂ­sto', 'ÄŚas', 'Stav', 'Akce']}
+            headers={['Typ', 'Kategorie', 'MĂ„â€šĂ‚Â­sto', 'Ä‚â€žÄąĹˇas', 'Stav', 'Akce']}
             rows={items.map((item) => [
               lostFoundTypeLabel(item.item_type),
               item.category,
@@ -1036,7 +1043,7 @@ function LostFoundList(): JSX.Element {
 
 function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'ZtrĂˇty a nĂˇlezy', '/ztraty-a-nalezy');
+  const stateUI = stateViewForRoute(state, 'ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy', '/ztraty-a-nalezy');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1070,7 +1077,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
           handover_note: item.handover_note ?? '',
         });
       })
-      .catch(() => setError('PoloĹľku se nepodaĹ™ilo naÄŤĂ­st.'));
+      .catch(() => setError('PoloĂ„Ä…Ă„Äľku se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.'));
   }, [id, mode, state]);
 
   const save = async (): Promise<void> => {
@@ -1100,14 +1107,14 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       }
       navigate(`/ztraty-a-nalezy/${saved.id}`);
     } catch {
-      setError('PoloĹľku se nepodaĹ™ilo uloĹľit.');
+      setError('PoloĂ„Ä…Ă„Äľku se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     }
   };
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'lost-found-create-page' : 'lost-found-edit-page'}>
       {stateMarker}
-      <h1>{mode === 'create' ? 'NovĂˇ poloĹľka' : 'Upravit poloĹľku'}</h1>
+      <h1>{mode === 'create' ? 'NovĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka' : 'Upravit poloĂ„Ä…Ă„Äľku'}</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -1117,14 +1124,14 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         <div className="k-card">
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/ztraty-a-nalezy">
-              ZpÄ›t na seznam
+              ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam
             </Link>
             <button className="k-button" type="button" onClick={() => void save()}>
-              UloĹľit
+              UloĂ„Ä…Ă„Äľit
             </button>
           </div>
           <div className="k-form-grid">
-            <FormField id="item_type" label="Typ zĂˇznamu">
+            <FormField id="item_type" label="Typ zĂ„â€šĂ‹â€ˇznamu">
               <select
                 id="item_type"
                 className="k-select"
@@ -1143,7 +1150,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, category: event.target.value }))}
               />
             </FormField>
-            <FormField id="location" label="MĂ­sto nĂˇlezu/ztrĂˇty">
+            <FormField id="location" label="MĂ„â€šĂ‚Â­sto nĂ„â€šĂ‹â€ˇlezu/ztrĂ„â€šĂ‹â€ˇty">
               <input
                 id="location"
                 className="k-input"
@@ -1151,7 +1158,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, location: event.target.value }))}
               />
             </FormField>
-            <FormField id="event_at" label="Datum a ÄŤas">
+            <FormField id="event_at" label="Datum a Ä‚â€žÄąÂ¤as">
               <input
                 id="event_at"
                 type="datetime-local"
@@ -1171,13 +1178,13 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                   setPayload((prev) => ({ ...prev, status: event.target.value as LostFoundStatus }))
                 }
               >
-                <option value="stored">UloĹľeno</option>
-                <option value="claimed">NĂˇrokovĂˇno</option>
-                <option value="returned">VrĂˇceno</option>
-                <option value="disposed">ZlikvidovĂˇno</option>
+                <option value="stored">UloĂ„Ä…Ă„Äľeno</option>
+                <option value="claimed">NĂ„â€šĂ‹â€ˇrokovĂ„â€šĂ‹â€ˇno</option>
+                <option value="returned">VrĂ„â€šĂ‹â€ˇceno</option>
+                <option value="disposed">ZlikvidovĂ„â€šĂ‹â€ˇno</option>
               </select>
             </FormField>
-            <FormField id="description" label="Popis poloĹľky">
+            <FormField id="description" label="Popis poloĂ„Ä…Ă„Äľky">
               <textarea
                 id="description"
                 className="k-textarea"
@@ -1186,7 +1193,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, description: event.target.value }))}
               />
             </FormField>
-            <FormField id="claimant_name" label="JmĂ©no nĂˇlezce/Ĺľadatele (volitelnĂ©)">
+            <FormField id="claimant_name" label="JmĂ„â€šĂ‚Â©no nĂ„â€šĂ‹â€ˇlezce/Ă„Ä…Ă„Äľadatele (volitelnĂ„â€šĂ‚Â©)">
               <input
                 id="claimant_name"
                 className="k-input"
@@ -1194,7 +1201,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, claimant_name: event.target.value }))}
               />
             </FormField>
-            <FormField id="claimant_contact" label="Kontakt (volitelnĂ©)">
+            <FormField id="claimant_contact" label="Kontakt (volitelnĂ„â€šĂ‚Â©)">
               <input
                 id="claimant_contact"
                 className="k-input"
@@ -1202,7 +1209,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, claimant_contact: event.target.value }))}
               />
             </FormField>
-            <FormField id="handover_note" label="PĹ™edĂˇvacĂ­ zĂˇznam (volitelnĂ©)">
+            <FormField id="handover_note" label="PĂ„Ä…Ă˘â€žËedĂ„â€šĂ‹â€ˇvacĂ„â€šĂ‚Â­ zĂ„â€šĂ‹â€ˇznam (volitelnĂ„â€šĂ‚Â©)">
               <textarea
                 id="handover_note"
                 className="k-textarea"
@@ -1211,7 +1218,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, handover_note: event.target.value }))}
               />
             </FormField>
-            <FormField id="lost_found_photos" label="Fotodokumentace (volitelnĂ©)">
+            <FormField id="lost_found_photos" label="Fotodokumentace (volitelnĂ„â€šĂ‚Â©)">
               <input
                 id="lost_found_photos"
                 type="file"
@@ -1230,7 +1237,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
 function LostFoundDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'ZtrĂˇty a nĂˇlezy', '/ztraty-a-nalezy');
+  const stateUI = stateViewForRoute(state, 'ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy', '/ztraty-a-nalezy');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<LostFoundItem | null>(null);
@@ -1248,13 +1255,13 @@ function LostFoundDetail(): JSX.Element {
         return fetchJson<MediaPhoto[]>(`/api/v1/lost-found/${id}/photos`);
       })
       .then((media) => setPhotos(media ?? []))
-      .catch(() => setError('PoloĹľka nebyla nalezena.'));
+      .catch(() => setError('PoloĂ„Ä…Ă„Äľka nebyla nalezena.'));
   }, [id, state]);
 
   return (
     <main className="k-page" data-testid="lost-found-detail-page">
       {stateMarker}
-      <h1>Detail poloĹľky</h1>
+      <h1>Detail poloĂ„Ä…Ă„Äľky</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -1264,24 +1271,24 @@ function LostFoundDetail(): JSX.Element {
         <div className="k-card">
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/ztraty-a-nalezy">
-              ZpÄ›t na seznam
+              ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam
             </Link>
             <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>
               Upravit
             </Link>
           </div>
           <DataTable
-            headers={['PoloĹľka', 'Hodnota']}
+            headers={['PoloĂ„Ä…Ă„Äľka', 'Hodnota']}
             rows={[
               ['Typ', lostFoundTypeLabel(item.item_type)],
               ['Kategorie', item.category],
-              ['MĂ­sto', item.location],
-              ['Datum a ÄŤas', new Date(item.event_at).toLocaleString('cs-CZ')],
+              ['MĂ„â€šĂ‚Â­sto', item.location],
+              ['Datum a Ä‚â€žÄąÂ¤as', new Date(item.event_at).toLocaleString('cs-CZ')],
               ['Stav', lostFoundStatusLabel(item.status)],
               ['Popis', item.description],
-              ['JmĂ©no Ĺľadatele', item.claimant_name ?? '-'],
+              ['JmĂ„â€šĂ‚Â©no Ă„Ä…Ă„Äľadatele', item.claimant_name ?? '-'],
               ['Kontakt', item.claimant_contact ?? '-'],
-              ['PĹ™edĂˇvacĂ­ zĂˇznam', item.handover_note ?? '-'],
+              ['PĂ„Ä…Ă˘â€žËedĂ„â€šĂ‹â€ˇvacĂ„â€šĂ‚Â­ zĂ„â€šĂ‹â€ˇznam', item.handover_note ?? '-'],
             ]}
           />
           {photos.length > 0 ? (
@@ -1290,7 +1297,7 @@ function LostFoundDetail(): JSX.Element {
                 <img
                   key={photo.id}
                   src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`}
-                  alt={`Fotografie poloĹľky ${photo.id}`}
+                  alt={`Fotografie poloĂ„Ä…Ă„Äľky ${photo.id}`}
                   className="k-photo-thumb"
                 />
               ))}
@@ -1307,7 +1314,7 @@ function LostFoundDetail(): JSX.Element {
 
 function IssuesList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'ZĂˇvady', '/zavady');
+  const stateUI = stateViewForRoute(state, 'ZĂ„â€šĂ‹â€ˇvady', '/zavady');
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<Issue[]>([]);
   const [priorityFilter, setPriorityFilter] = React.useState<'all' | IssuePriority>('all');
@@ -1324,29 +1331,29 @@ function IssuesList(): JSX.Element {
     const query = params.toString();
     fetchJson<Issue[]>(query ? `/api/v1/issues?${query}` : '/api/v1/issues')
       .then((response) => { setItems(response); setError(null); })
-      .catch(() => setError('NepodaĹ™ilo se naÄŤĂ­st seznam zĂˇvad.'));
+      .catch(() => setError('NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st seznam zĂ„â€šĂ‹â€ˇvad.'));
   }, [locationFilter, priorityFilter, state, statusFilter]);
 
   return (
     <main className="k-page" data-testid="issues-list-page">
       {stateMarker}
-      <h1>ZĂˇvady</h1>
+      <h1>ZĂ„â€šĂ‹â€ˇvady</h1>
       <StateSwitcher />
       {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? (
-        <StateView title="PrĂˇzdnĂ˝ stav" description="ZatĂ­m nejsou evidovanĂ© ĹľĂˇdnĂ© zĂˇvady." stateKey="empty" action={<Link className="k-button" to="/zavady/nova">NahlĂˇsit zĂˇvadu</Link>} />
+        <StateView title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav" description="ZatĂ„â€šĂ‚Â­m nejsou evidovanĂ„â€šĂ‚Â© Ă„Ä…Ă„ÄľĂ„â€šĂ‹â€ˇdnĂ„â€šĂ‚Â© zĂ„â€šĂ‹â€ˇvady." stateKey="empty" action={<Link className="k-button" to="/zavady/nova">NahlĂ„â€šĂ‹â€ˇsit zĂ„â€šĂ‹â€ˇvadu</Link>} />
       ) : (
         <>
           <div className="k-toolbar">
             <select className="k-select" aria-label="Filtr priority" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as 'all' | IssuePriority)}>
-              <option value="all">VĹˇechny priority</option><option value="low">NĂ­zkĂˇ</option><option value="medium">StĹ™ednĂ­</option><option value="high">VysokĂˇ</option><option value="critical">KritickĂˇ</option>
+              <option value="all">VĂ„Ä…Ă‹â€ˇechny priority</option><option value="low">NĂ„â€šĂ‚Â­zkĂ„â€šĂ‹â€ˇ</option><option value="medium">StĂ„Ä…Ă˘â€žËednĂ„â€šĂ‚Â­</option><option value="high">VysokĂ„â€šĂ‹â€ˇ</option><option value="critical">KritickĂ„â€šĂ‹â€ˇ</option>
             </select>
             <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | IssueStatus)}>
-              <option value="all">VĹˇechny stavy</option><option value="new">NovĂˇ</option><option value="in_progress">V Ĺ™eĹˇenĂ­</option><option value="resolved">VyĹ™eĹˇena</option><option value="closed">UzavĹ™ena</option>
+              <option value="all">VĂ„Ä…Ă‹â€ˇechny stavy</option><option value="new">NovĂ„â€šĂ‹â€ˇ</option><option value="in_progress">V Ă„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</option><option value="resolved">VyĂ„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇena</option><option value="closed">UzavĂ„Ä…Ă˘â€žËena</option>
             </select>
             <input className="k-input" aria-label="Filtr lokace" placeholder="Lokalita" value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} />
-            <Link className="k-button" to="/zavady/nova">NovĂˇ zĂˇvada</Link>
+            <Link className="k-button" to="/zavady/nova">NovĂ„â€šĂ‹â€ˇ zĂ„â€šĂ‹â€ˇvada</Link>
           </div>
-          <DataTable headers={['NĂˇzev', 'Lokace', 'Pokoj', 'Priorita', 'Stav', 'PĹ™iĹ™azeno', 'Akce']} rows={items.map((item) => [
+          <DataTable headers={['NĂ„â€šĂ‹â€ˇzev', 'Lokace', 'Pokoj', 'Priorita', 'Stav', 'PĂ„Ä…Ă˘â€žËiĂ„Ä…Ă˘â€žËazeno', 'Akce']} rows={items.map((item) => [
             item.title, item.location, item.room_number ?? '-', issuePriorityLabel(item.priority), issueStatusLabel(item.status), item.assignee ?? '-',
             <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>Detail</Link>,
           ])} />
@@ -1358,7 +1365,7 @@ function IssuesList(): JSX.Element {
 
 function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'ZĂˇvady', '/zavady');
+  const stateUI = stateViewForRoute(state, 'ZĂ„â€šĂ‹â€ˇvady', '/zavady');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1372,7 +1379,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     if (mode !== 'edit' || state !== 'default' || !id) return;
     fetchJson<Issue>(`/api/v1/issues/${id}`).then((item) => setPayload({
       title: item.title, description: item.description ?? '', location: item.location, room_number: item.room_number ?? '', priority: item.priority, status: item.status, assignee: item.assignee ?? '',
-    })).catch(() => setError('ZĂˇvadu se nepodaĹ™ilo naÄŤĂ­st.'));
+    })).catch(() => setError('ZĂ„â€šĂ‹â€ˇvadu se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.'));
   }, [id, mode, state]);
 
   const save = async (): Promise<void> => {
@@ -1391,24 +1398,24 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         });
       }
       navigate(`/zavady/${saved.id}`);
-    } catch { setError('ZĂˇvadu se nepodaĹ™ilo uloĹľit.'); }
+    } catch { setError('ZĂ„â€šĂ‹â€ˇvadu se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.'); }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'NovĂˇ zĂˇvada' : 'Upravit zĂˇvadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">ZpÄ›t na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>UloĹľit</button></div><div className="k-form-grid">
-<FormField id="issue_title" label="NĂˇzev"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
+  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'NovĂ„â€šĂ‹â€ˇ zĂ„â€šĂ‹â€ˇvada' : 'Upravit zĂ„â€šĂ‹â€ˇvadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>UloĂ„Ä…Ă„Äľit</button></div><div className="k-form-grid">
+<FormField id="issue_title" label="NĂ„â€šĂ‹â€ˇzev"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
 <FormField id="issue_location" label="Lokalita"><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
-<FormField id="issue_room_number" label="Pokoj (volitelnĂ©)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
-<FormField id="issue_priority" label="Priorita"><select id="issue_priority" className="k-select" value={payload.priority} onChange={(e) => setPayload((prev) => ({ ...prev, priority: e.target.value as IssuePriority }))}><option value="low">NĂ­zkĂˇ</option><option value="medium">StĹ™ednĂ­</option><option value="high">VysokĂˇ</option><option value="critical">KritickĂˇ</option></select></FormField>
-<FormField id="issue_status" label="Stav"><select id="issue_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as IssueStatus }))}><option value="new">NovĂˇ</option><option value="in_progress">V Ĺ™eĹˇenĂ­</option><option value="resolved">VyĹ™eĹˇena</option><option value="closed">UzavĹ™ena</option></select></FormField>
-<FormField id="issue_assignee" label="PĹ™iĹ™azeno (volitelnĂ©)"><input id="issue_assignee" className="k-input" value={payload.assignee ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, assignee: e.target.value }))} /></FormField>
+<FormField id="issue_room_number" label="Pokoj (volitelnĂ„â€šĂ‚Â©)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
+<FormField id="issue_priority" label="Priorita"><select id="issue_priority" className="k-select" value={payload.priority} onChange={(e) => setPayload((prev) => ({ ...prev, priority: e.target.value as IssuePriority }))}><option value="low">NĂ„â€šĂ‚Â­zkĂ„â€šĂ‹â€ˇ</option><option value="medium">StĂ„Ä…Ă˘â€žËednĂ„â€šĂ‚Â­</option><option value="high">VysokĂ„â€šĂ‹â€ˇ</option><option value="critical">KritickĂ„â€šĂ‹â€ˇ</option></select></FormField>
+<FormField id="issue_status" label="Stav"><select id="issue_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as IssueStatus }))}><option value="new">NovĂ„â€šĂ‹â€ˇ</option><option value="in_progress">V Ă„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</option><option value="resolved">VyĂ„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇena</option><option value="closed">UzavĂ„Ä…Ă˘â€žËena</option></select></FormField>
+<FormField id="issue_assignee" label="PĂ„Ä…Ă˘â€žËiĂ„Ä…Ă˘â€žËazeno (volitelnĂ„â€šĂ‚Â©)"><input id="issue_assignee" className="k-input" value={payload.assignee ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, assignee: e.target.value }))} /></FormField>
 <FormField id="issue_description" label="Popis"><textarea id="issue_description" className="k-textarea" rows={3} value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField>
-<FormField id="issue_photos" label="Fotodokumentace (volitelnĂ©)"><input id="issue_photos" type="file" className="k-input" multiple accept="image/*" onChange={(e) => setPhotos(Array.from(e.target.files ?? []))} /></FormField>
+<FormField id="issue_photos" label="Fotodokumentace (volitelnĂ„â€šĂ‚Â©)"><input id="issue_photos" type="file" className="k-input" multiple accept="image/*" onChange={(e) => setPhotos(Array.from(e.target.files ?? []))} /></FormField>
 </div></div>}</main>;
 }
 
 function IssuesDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'ZĂˇvady', '/zavady');
+  const stateUI = stateViewForRoute(state, 'ZĂ„â€šĂ‹â€ˇvady', '/zavady');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<Issue | null>(null);
@@ -1424,21 +1431,21 @@ function IssuesDetail(): JSX.Element {
         return fetchJson<MediaPhoto[]>(`/api/v1/issues/${id}/photos`);
       })
       .then((media) => setPhotos(media ?? []))
-      .catch(() => setError('ZĂˇvada nebyla nalezena.'));
+      .catch(() => setError('ZĂ„â€šĂ‹â€ˇvada nebyla nalezena.'));
   }, [id, state]);
 
   const timeline = item ? [
-    { label: 'VytvoĹ™eno', value: formatDateTime(item.created_at) },
-    ...(item.in_progress_at ? [{ label: 'V Ĺ™eĹˇenĂ­', value: new Date(item.in_progress_at).toLocaleString('cs-CZ') }] : []),
-    ...(item.resolved_at ? [{ label: 'VyĹ™eĹˇeno', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
-    ...(item.closed_at ? [{ label: 'UzavĹ™eno', value: new Date(item.closed_at).toLocaleString('cs-CZ') }] : []),
+    { label: 'VytvoĂ„Ä…Ă˘â€žËeno', value: formatDateTime(item.created_at) },
+    ...(item.in_progress_at ? [{ label: 'V Ă„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­', value: new Date(item.in_progress_at).toLocaleString('cs-CZ') }] : []),
+    ...(item.resolved_at ? [{ label: 'VyĂ„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇeno', value: new Date(item.resolved_at).toLocaleString('cs-CZ') }] : []),
+    ...(item.closed_at ? [{ label: 'UzavĂ„Ä…Ă˘â€žËeno', value: new Date(item.closed_at).toLocaleString('cs-CZ') }] : []),
   ] : [];
 
   return (
     <main className="k-page" data-testid="issues-detail-page">
       {stateMarker}
-      <h1>Detail zĂˇvady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">ZpÄ›t na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">ZpÄ›t na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['PoloĹľka', 'Hodnota']} rows={[[ 'NĂˇzev', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'PĹ™iĹ™azeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie zĂˇvady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+      <h1>Detail zĂ„â€šĂ‹â€ˇvady</h1><StateSwitcher />
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link><Link className="k-button" to={`/zavady/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['PoloĂ„Ä…Ă„Äľka', 'Hodnota']} rows={[[ 'NĂ„â€šĂ‹â€ˇzev', item.title],[ 'Lokace', item.location],[ 'Pokoj', item.room_number ?? '-'],[ 'Priorita', issuePriorityLabel(item.priority)],[ 'Stav', issueStatusLabel(item.status)],[ 'PĂ„Ä…Ă˘â€žËiĂ„Ä…Ă˘â€žËazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? '-' ]]} /><h2>Timeline</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie zĂ„â€šĂ‹â€ˇvady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -1446,7 +1453,7 @@ function IssuesDetail(): JSX.Element {
 
 function InventoryList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'SkladovĂ© hospodĂˇĹ™stvĂ­', '/sklad');
+  const stateUI = stateViewForRoute(state, 'SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­', '/sklad');
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -1458,7 +1465,7 @@ function InventoryList(): JSX.Element {
         setItems(response);
         setError(null);
       })
-      .catch(() => setError('PoloĹľky skladu se nepodaĹ™ilo naÄŤĂ­st.'));
+      .catch(() => setError('PoloĂ„Ä…Ă„Äľky skladu se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.'));
   }, []);
 
   React.useEffect(() => {
@@ -1473,10 +1480,10 @@ function InventoryList(): JSX.Element {
       const seeded = await fetchJson<InventoryItem[]>('/api/v1/inventory/seed-defaults', {
         method: 'POST',
       });
-      setSeedInfo(`DoplnÄ›no ${seeded.length} vĂ˝chozĂ­ch poloĹľek.`);
+      setSeedInfo(`DoplnÄ‚â€žĂ˘â‚¬Ĺźno ${seeded.length} vĂ„â€šĂ‹ĹĄchozĂ„â€šĂ‚Â­ch poloĂ„Ä…Ă„Äľek.`);
       loadItems();
     } catch {
-      setSeedInfo('DoplnÄ›nĂ­ vĂ˝chozĂ­ch poloĹľek se nepodaĹ™ilo.');
+      setSeedInfo('DoplnÄ‚â€žĂ˘â‚¬ĹźnĂ„â€šĂ‚Â­ vĂ„â€šĂ‹ĹĄchozĂ„â€šĂ‚Â­ch poloĂ„Ä…Ă„Äľek se nepodaĂ„Ä…Ă˘â€žËilo.');
     }
   };
 
@@ -1487,7 +1494,7 @@ function InventoryList(): JSX.Element {
   return (
     <main className="k-page" data-testid="inventory-list-page">
       {stateMarker}
-      <h1>SkladovĂ© hospodĂˇĹ™stvĂ­</h1>
+      <h1>SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -1506,35 +1513,35 @@ function InventoryList(): JSX.Element {
         <>
           <div className="k-toolbar">
             <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
-              Doplnit vĂ˝chozĂ­ poloĹľky
+              Doplnit vĂ„â€šĂ‹ĹĄchozĂ„â€šĂ‚Â­ poloĂ„Ä…Ă„Äľky
             </button>
             <button className="k-button secondary" type="button" onClick={printInventoryList}>
-              Tisk inventurnĂ­ho seznamu
+              Tisk inventurnĂ„â€šĂ‚Â­ho seznamu
             </button>
-            <Link className="k-button" to="/sklad/nova">NovĂˇ poloĹľka</Link>
+            <Link className="k-button" to="/sklad/nova">NovĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka</Link>
           </div>
           {seedInfo ? <p>{seedInfo}</p> : null}
           <StateView
-            title="PrĂˇzdnĂ˝ stav"
-            description="Ve skladu zatĂ­m nejsou poloĹľky."
+            title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav"
+            description="Ve skladu zatĂ„â€šĂ‚Â­m nejsou poloĂ„Ä…Ă„Äľky."
             stateKey="empty"
-            action={<Link className="k-button" to="/sklad/nova">NovĂˇ poloĹľka</Link>}
+            action={<Link className="k-button" to="/sklad/nova">NovĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka</Link>}
           />
         </>
       ) : (
         <>
           <div className="k-toolbar">
             <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
-              Doplnit vĂ˝chozĂ­ poloĹľky
+              Doplnit vĂ„â€šĂ‹ĹĄchozĂ„â€šĂ‚Â­ poloĂ„Ä…Ă„Äľky
             </button>
             <button className="k-button secondary" type="button" onClick={printInventoryList}>
-              Tisk inventurnĂ­ho seznamu
+              Tisk inventurnĂ„â€šĂ‚Â­ho seznamu
             </button>
-            <Link className="k-button" to="/sklad/nova">NovĂˇ poloĹľka</Link>
+            <Link className="k-button" to="/sklad/nova">NovĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka</Link>
           </div>
           {seedInfo ? <p>{seedInfo}</p> : null}
           <DataTable
-            headers={['Ikona', 'PoloĹľka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']}
+            headers={['Ikona', 'PoloĂ„Ä…Ă„Äľka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']}
             rows={items.map((item) => [
               item.pictogram_thumb_path ? (
                 <img
@@ -1565,7 +1572,7 @@ function InventoryList(): JSX.Element {
 
 function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'SkladovĂ© hospodĂˇĹ™stvĂ­', '/sklad');
+  const stateUI = stateViewForRoute(state, 'SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­', '/sklad');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1590,7 +1597,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       amount_per_piece_base: item.amount_per_piece_base,
       pictogram_path: item.pictogram_path,
       pictogram_thumb_path: item.pictogram_thumb_path,
-    })).catch(() => setError('PoloĹľku se nepodaĹ™ilo naÄŤĂ­st.'));
+    })).catch(() => setError('PoloĂ„Ä…Ă„Äľku se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.'));
   }, [id, mode, state]);
 
   const save = async (): Promise<void> => {
@@ -1602,14 +1609,14 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       });
       navigate(`/sklad/${saved.id}`);
     } catch {
-      setError('PoloĹľku se nepodaĹ™ilo uloĹľit.');
+      setError('PoloĂ„Ä…Ă„Äľku se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     }
   };
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}>
       {stateMarker}
-      <h1>{mode === 'create' ? 'NovĂˇ skladovĂˇ poloĹľka' : 'Upravit skladovou poloĹľku'}</h1>
+      <h1>{mode === 'create' ? 'NovĂ„â€šĂ‹â€ˇ skladovĂ„â€šĂ‹â€ˇ poloĂ„Ä…Ă„Äľka' : 'Upravit skladovou poloĂ„Ä…Ă„Äľku'}</h1>
       <StateSwitcher />
       {stateUI ? stateUI : error ? (
         <StateView
@@ -1625,11 +1632,11 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       ) : (
         <div className="k-card">
           <div className="k-toolbar">
-            <Link className="k-nav-link" to="/sklad">ZpÄ›t na seznam</Link>
-            <button className="k-button" type="button" onClick={() => void save()}>UloĹľit</button>
+            <Link className="k-nav-link" to="/sklad">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link>
+            <button className="k-button" type="button" onClick={() => void save()}>UloĂ„Ä…Ă„Äľit</button>
           </div>
           <div className="k-form-grid">
-            <FormField id="inventory_name" label="NĂˇzev">
+            <FormField id="inventory_name" label="NĂ„â€šĂ‹â€ˇzev">
               <input
                 id="inventory_name"
                 className="k-input"
@@ -1645,7 +1652,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, unit: event.target.value }))}
               />
             </FormField>
-            <FormField id="inventory_amount_per_piece_base" label="MnoĹľstvĂ­ na kus (zĂˇkladnĂ­ jednotka)">
+            <FormField id="inventory_amount_per_piece_base" label="MnoĂ„Ä…Ă„ÄľstvĂ„â€šĂ‚Â­ na kus (zĂ„â€šĂ‹â€ˇkladnĂ„â€šĂ‚Â­ jednotka)">
               <input
                 id="inventory_amount_per_piece_base"
                 type="number"
@@ -1656,7 +1663,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 }
               />
             </FormField>
-            <FormField id="inventory_min_stock" label="MinimĂˇlnĂ­ stav">
+            <FormField id="inventory_min_stock" label="MinimĂ„â€šĂ‹â€ˇlnĂ„â€šĂ‚Â­ stav">
               <input
                 id="inventory_min_stock"
                 type="number"
@@ -1665,7 +1672,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))}
               />
             </FormField>
-            <FormField id="inventory_current_stock" label="AktuĂˇlnĂ­ stav">
+            <FormField id="inventory_current_stock" label="AktuĂ„â€šĂ‹â€ˇlnĂ„â€šĂ‚Â­ stav">
               <input
                 id="inventory_current_stock"
                 type="number"
@@ -1676,7 +1683,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 }
               />
             </FormField>
-            <FormField id="inventory_supplier" label="Dodavatel (volitelnĂ©)">
+            <FormField id="inventory_supplier" label="Dodavatel (volitelnĂ„â€šĂ‚Â©)">
               <input
                 id="inventory_supplier"
                 className="k-input"
@@ -1693,7 +1700,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
 function InventoryDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'SkladovĂ© hospodĂˇĹ™stvĂ­', '/sklad');
+  const stateUI = stateViewForRoute(state, 'SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­', '/sklad');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
@@ -1709,7 +1716,7 @@ function InventoryDetail(): JSX.Element {
     fetchJson<InventoryDetail>(`/api/v1/inventory/${id}`).then((response) => {
       setItem(response);
       setError(null);
-    }).catch(() => setError('PoloĹľka nebyla nalezena.'));
+    }).catch(() => setError('PoloĂ„Ä…Ă„Äľka nebyla nalezena.'));
   }, [id]);
 
   React.useEffect(() => {
@@ -1729,7 +1736,7 @@ function InventoryDetail(): JSX.Element {
       setQuantity(0);
       setNote('');
     } catch {
-      setError('Pohyb se nepodaĹ™ilo uloĹľit.');
+      setError('Pohyb se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     }
   };
 
@@ -1742,18 +1749,18 @@ function InventoryDetail(): JSX.Element {
     formData.append('file', pictogram);
     try {
       await fetchJson<InventoryItem>(`/api/v1/inventory/${id}/pictogram`, { method: 'POST', body: formData });
-      setMediaInfo('Piktogram uloĹľen.');
+      setMediaInfo('Piktogram uloĂ„Ä…Ă„Äľen.');
       setPictogram(null);
       loadDetail();
     } catch {
-      setMediaInfo('Piktogram se nepodaĹ™ilo uloĹľit.');
+      setMediaInfo('Piktogram se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     }
   };
 
   return (
     <main className="k-page" data-testid="inventory-detail-page">
       {stateMarker}
-      <h1>Detail skladovĂ© poloĹľky</h1>
+      <h1>Detail skladovĂ„â€šĂ‚Â© poloĂ„Ä…Ă„Äľky</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -1762,17 +1769,17 @@ function InventoryDetail(): JSX.Element {
           title="404"
           description={error}
           stateKey="404"
-          action={<Link className="k-button secondary" to="/sklad">ZpÄ›t na seznam</Link>}
+          action={<Link className="k-button secondary" to="/sklad">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link>}
         />
       ) : item ? (
         <>
           <div className="k-card">
             <div className="k-toolbar">
-              <Link className="k-nav-link" to="/sklad">ZpÄ›t na seznam</Link>
+              <Link className="k-nav-link" to="/sklad">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link>
               <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
             </div>
             <DataTable
-              headers={['PoloĹľka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'MnoĹľstvĂ­ na kus']}
+              headers={['PoloĂ„Ä…Ă„Äľka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'MnoĂ„Ä…Ă„ÄľstvĂ„â€šĂ‚Â­ na kus']}
               rows={[
                 [
                   item.name,
@@ -1796,7 +1803,7 @@ function InventoryDetail(): JSX.Element {
               </FormField>
               <div className="k-align-end">
                 <button className="k-button secondary" type="button" onClick={() => void uploadPictogram()}>
-                  UloĹľit piktogram
+                  UloĂ„Ä…Ă„Äľit piktogram
                 </button>
               </div>
             </div>
@@ -1810,7 +1817,7 @@ function InventoryDetail(): JSX.Element {
             ) : null}
           </div>
           <div className="k-card">
-            <h2>NovĂ˝ pohyb</h2>
+            <h2>NovĂ„â€šĂ‹ĹĄ pohyb</h2>
             <div className="k-form-grid">
               <FormField id="movement_type" label="Typ">
                 <select
@@ -1819,12 +1826,12 @@ function InventoryDetail(): JSX.Element {
                   value={movementType}
                   onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}
                 >
-                  <option value="in">NaskladnÄ›nĂ­</option>
-                  <option value="out">VĂ˝dej</option>
-                  <option value="adjust">Ăšprava</option>
+                  <option value="in">NaskladnÄ‚â€žĂ˘â‚¬ĹźnĂ„â€šĂ‚Â­</option>
+                  <option value="out">VĂ„â€šĂ‹ĹĄdej</option>
+                  <option value="adjust">Ă„â€šÄąË‡prava</option>
                 </select>
               </FormField>
-              <FormField id="movement_quantity" label="MnoĹľstvĂ­">
+              <FormField id="movement_quantity" label="MnoĂ„Ä…Ă„ÄľstvĂ„â€šĂ‚Â­">
                 <input
                   id="movement_quantity"
                   type="number"
@@ -1833,7 +1840,7 @@ function InventoryDetail(): JSX.Element {
                   onChange={(event) => setQuantity(Number(event.target.value))}
                 />
               </FormField>
-              <FormField id="movement_note" label="PoznĂˇmka (volitelnĂ©)">
+              <FormField id="movement_note" label="PoznĂ„â€šĂ‹â€ˇmka (volitelnĂ„â€šĂ‚Â©)">
                 <input
                   id="movement_note"
                   className="k-input"
@@ -1843,13 +1850,13 @@ function InventoryDetail(): JSX.Element {
               </FormField>
             </div>
             <button className="k-button" type="button" onClick={() => void addMovement()}>
-              PĹ™idat pohyb
+              PĂ„Ä…Ă˘â€žËidat pohyb
             </button>
           </div>
           <div className="k-card">
             <h2>Pohyby</h2>
             <DataTable
-              headers={['Datum', 'Typ', 'MnoĹľstvĂ­', 'PoznĂˇmka']}
+              headers={['Datum', 'Typ', 'MnoĂ„Ä…Ă„ÄľstvĂ„â€šĂ‚Â­', 'PoznĂ„â€šĂ‹â€ˇmka']}
               rows={item.movements.map((movement) => [
                 formatDateTime(movement.created_at),
                 inventoryMovementLabel(movement.movement_type),
@@ -1874,7 +1881,7 @@ function GenericModule({ title }: { title: string }): JSX.Element {
     <main className="k-page">
       <h1>{title}</h1>
       <StateSwitcher />
-      {stateUI ?? <StateView title={`${title} pĹ™ipraveno`} description="Modul je pĹ™ipraven na workflow." />}
+      {stateUI ?? <StateView title={`${title} pĂ„Ä…Ă˘â€žËipraveno`} description="Modul je pĂ„Ä…Ă˘â€žËipraven na workflow." />}
     </main>
   );
 }
@@ -1882,7 +1889,7 @@ function GenericModule({ title }: { title: string }): JSX.Element {
 
 function ReportsList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'HlĂˇĹˇenĂ­', '/hlaseni');
+  const stateUI = stateViewForRoute(state, 'HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­', '/hlaseni');
   const stateMarker = <StateMarker state={state} />;
   const [items, setItems] = React.useState<Report[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -1893,15 +1900,15 @@ function ReportsList(): JSX.Element {
     }
     fetchJson<Report[]>('/api/v1/reports')
       .then(setItems)
-      .catch(() => setError('HlĂˇĹˇenĂ­ se nepodaĹ™ilo naÄŤĂ­st.'));
+      .catch(() => setError('HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­ se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.'));
   }, [state]);
 
-  return <main className="k-page" data-testid="reports-list-page">{stateMarker}<h1>HlĂˇĹˇenĂ­</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="PrĂˇzdnĂ˝ stav" description="ZatĂ­m nenĂ­ evidovĂˇno ĹľĂˇdnĂ© hlĂˇĹˇenĂ­." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">NovĂ© hlĂˇĹˇenĂ­</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">NovĂ© hlĂˇĹˇenĂ­</Link></div><DataTable headers={['NĂˇzev', 'Stav', 'VytvoĹ™eno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page">{stateMarker}<h1>HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav" description="ZatĂ„â€šĂ‚Â­m nenĂ„â€šĂ‚Â­ evidovĂ„â€šĂ‹â€ˇno Ă„Ä…Ă„ÄľĂ„â€šĂ‹â€ˇdnĂ„â€šĂ‚Â© hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">NovĂ„â€šĂ‚Â© hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">NovĂ„â€šĂ‚Â© hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</Link></div><DataTable headers={['NĂ„â€šĂ‹â€ˇzev', 'Stav', 'VytvoĂ„Ä…Ă˘â€žËeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'HlĂˇĹˇenĂ­', '/hlaseni');
+  const stateUI = stateViewForRoute(state, 'HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­', '/hlaseni');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1914,7 +1921,7 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     }
     fetchJson<Report>(`/api/v1/reports/${id}`)
       .then((item) => setPayload({ title: item.title, description: item.description, status: item.status }))
-      .catch(() => setError('Detail hlĂˇĹˇenĂ­ se nepodaĹ™ilo naÄŤĂ­st.'));
+      .catch(() => setError('Detail hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­ se nepodaĂ„Ä…Ă˘â€žËilo naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st.'));
   }, [id, mode, state]);
 
   async function save(): Promise<void> {
@@ -1926,16 +1933,16 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       });
       navigate(`/hlaseni/${saved.id}`);
     } catch {
-      setError('HlĂˇĹˇenĂ­ se nepodaĹ™ilo uloĹľit.');
+      setError('HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­ se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     }
   }
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'NovĂ© hlĂˇĹˇenĂ­' : 'Upravit hlĂˇĹˇenĂ­'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">ZpÄ›t na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>UloĹľit</button></div><div className="k-form-grid"><FormField id="report_title" label="NĂˇzev"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">OtevĹ™enĂ©</option><option value="in_progress">V Ĺ™eĹˇenĂ­</option><option value="closed">UzavĹ™enĂ©</option></select></FormField><FormField id="report_description" label="Popis (volitelnĂ©)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
+  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'NovĂ„â€šĂ‚Â© hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­' : 'Upravit hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>UloĂ„Ä…Ă„Äľit</button></div><div className="k-form-grid"><FormField id="report_title" label="NĂ„â€šĂ‹â€ˇzev"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">OtevĂ„Ä…Ă˘â€žËenĂ„â€šĂ‚Â©</option><option value="in_progress">V Ă„Ä…Ă˘â€žËeĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</option><option value="closed">UzavĂ„Ä…Ă˘â€žËenĂ„â€šĂ‚Â©</option></select></FormField><FormField id="report_description" label="Popis (volitelnĂ„â€šĂ‚Â©)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
 }
 
 function ReportsDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'HlĂˇĹˇenĂ­', '/hlaseni');
+  const stateUI = stateViewForRoute(state, 'HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­', '/hlaseni');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<Report | null>(null);
@@ -1947,10 +1954,10 @@ function ReportsDetail(): JSX.Element {
     }
     fetchJson<Report>(`/api/v1/reports/${id}`)
       .then(setItem)
-      .catch(() => setError('HlĂˇĹˇenĂ­ nebylo nalezeno.'));
+      .catch(() => setError('HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­ nebylo nalezeno.'));
   }, [id, state]);
 
-  return <main className="k-page" data-testid="reports-detail-page">{stateMarker}<h1>Detail hlĂˇĹˇenĂ­</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">ZpÄ›t na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">ZpÄ›t na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['PoloĹľka', 'Hodnota']} rows={[[ 'NĂˇzev', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'VytvoĹ™eno', formatDateTime(item.created_at) ],[ 'AktualizovĂˇno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page">{stateMarker}<h1>Detail hlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">ZpÄ‚â€žĂ˘â‚¬Ĺźt na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['PoloĂ„Ä…Ă„Äľka', 'Hodnota']} rows={[[ 'NĂ„â€šĂ‹â€ˇzev', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'VytvoĂ„Ä…Ă˘â€žËeno', formatDateTime(item.created_at) ],[ 'AktualizovĂ„â€šĂ‹â€ˇno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
 function UsersAdmin(): JSX.Element {
@@ -2025,7 +2032,7 @@ function UsersAdmin(): JSX.Element {
         setSelected(nextSelected);
         syncEdit(nextSelected);
       })
-      .catch(() => setError('NepodaĹ™ilo se naÄŤĂ­st uĹľivatele.'));
+      .catch(() => setError('NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st uĂ„Ä…Ă„Äľivatele.'));
   }, [selected]);
 
   React.useEffect(() => {
@@ -2058,9 +2065,9 @@ function UsersAdmin(): JSX.Element {
       setCreateRoles([]);
       setCreatePhone('');
       setCreateNote('');
-      setMessage('UĹľivatel byl vytvoĹ™en.');
+      setMessage('UĂ„Ä…Ă„Äľivatel byl vytvoĂ„Ä…Ă˘â€žËen.');
     } catch {
-      setError('UĹľivatele se nepodaĹ™ilo vytvoĹ™it.');
+      setError('UĂ„Ä…Ă„Äľivatele se nepodaĂ„Ä…Ă˘â€žËilo vytvoĂ„Ä…Ă˘â€žËit.');
     } finally {
       setSaving(false);
     }
@@ -2084,9 +2091,9 @@ function UsersAdmin(): JSX.Element {
       setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? null);
       setSelected(updated);
       syncEdit(updated);
-      setMessage('UĹľivatel byl upraven.');
+      setMessage('UĂ„Ä…Ă„Äľivatel byl upraven.');
     } catch {
-      setError('UĹľivatele se nepodaĹ™ilo upravit.');
+      setError('UĂ„Ä…Ă„Äľivatele se nepodaĂ„Ä…Ă˘â€žËilo upravit.');
     } finally {
       setSaving(false);
     }
@@ -2099,7 +2106,7 @@ function UsersAdmin(): JSX.Element {
       setSelected(updated);
       syncEdit(updated);
     } catch {
-      setError('NepodaĹ™ilo se zmÄ›nit stav uĹľivatele.');
+      setError('NepodaĂ„Ä…Ă˘â€žËilo se zmÄ‚â€žĂ˘â‚¬Ĺźnit stav uĂ„Ä…Ă„Äľivatele.');
     }
   }
 
@@ -2107,7 +2114,7 @@ function UsersAdmin(): JSX.Element {
     try {
       await fetchJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, { method: 'POST' });
     } finally {
-      setMessage('Pokud ĂşÄŤet existuje a je dostupnĂ˝ e-mail, byl odeslĂˇn odkaz na zmÄ›nu hesla.');
+      setMessage('Pokud Ă„â€šÄąĹşÄ‚â€žÄąÂ¤et existuje a je dostupnĂ„â€šĂ‹ĹĄ e-mail, byl odeslĂ„â€šĂ‹â€ˇn odkaz na zmÄ‚â€žĂ˘â‚¬Ĺźnu hesla.');
     }
   }
 
@@ -2115,11 +2122,14 @@ function UsersAdmin(): JSX.Element {
     setter(selectedRoles.includes(role) ? selectedRoles.filter((item) => item !== role) : [...selectedRoles, role]);
   };
 
+  // Auto-prefix Czech numbers without country code to +420 (admin UX convention).
   const normalizePhoneInput = (value: string): string => {
     const trimmed = value.trim();
     if (trimmed === '') return '';
     if (trimmed.startsWith('+')) return trimmed;
+    if (/^00\d+$/.test(trimmed)) return `+${trimmed.slice(2)}`;
     if (/^420\d+$/.test(trimmed)) return `+${trimmed}`;
+    if (/^\d+$/.test(trimmed)) return `+420${trimmed}`;
     return trimmed;
   };
 
@@ -2138,7 +2148,7 @@ function UsersAdmin(): JSX.Element {
   }
 
   async function deleteUser(user: PortalUser): Promise<void> {
-    if (!window.confirm(`Opravdu smazat uĹľivatele ${user.email}?`)) return;
+    if (!window.confirm(`Opravdu smazat uĂ„Ä…Ă„Äľivatele ${user.email}?`)) return;
     setSaving(true);
     setError(null);
     try {
@@ -2148,11 +2158,11 @@ function UsersAdmin(): JSX.Element {
           'x-csrf-token': getCsrfTokenFromCookie(),
         },
       });
-      setMessage('UĹľivatel byl smazĂˇn.');
+      setMessage('UĂ„Ä…Ă„Äľivatel byl smazĂ„â€šĂ‹â€ˇn.');
       setSelected(null);
       load();
     } catch {
-      setError('SmazĂˇnĂ­ uĹľivatele se nepodaĹ™ilo.');
+      setError('SmazĂ„â€šĂ‹â€ˇnĂ„â€šĂ‚Â­ uĂ„Ä…Ă„Äľivatele se nepodaĂ„Ä…Ă˘â€žËilo.');
     } finally {
       setSaving(false);
     }
@@ -2160,45 +2170,45 @@ function UsersAdmin(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="users-admin-page">
-      <h1>UĹľivatelĂ©</h1>
+      <h1>UĂ„Ä…Ă„ÄľivatelĂ„â€šĂ‚Â©</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
       {users === null ? <SkeletonPage /> : (
         <div className="k-grid cards-2">
-          <Card title="Seznam uĹľivatelĹŻ">
-            {users.length === 0 ? <StateView title="PrĂˇzdnĂ˝ stav" description="ZatĂ­m neexistujĂ­ ĹľĂˇdnĂ­ uĹľivatelĂ© portĂˇlu." stateKey="empty" /> : (
+          <Card title="Seznam uĂ„Ä…Ă„ÄľivatelĂ„Ä…ÄąÂ»">
+            {users.length === 0 ? <StateView title="PrĂ„â€šĂ‹â€ˇzdnĂ„â€šĂ‹ĹĄ stav" description="ZatĂ„â€šĂ‚Â­m neexistujĂ„â€šĂ‚Â­ Ă„Ä…Ă„ÄľĂ„â€šĂ‹â€ˇdnĂ„â€šĂ‚Â­ uĂ„Ä…Ă„ÄľivatelĂ„â€šĂ‚Â© portĂ„â€šĂ‹â€ˇlu." stateKey="empty" /> : (
               <DataTable
-                headers={['JmĂ©no', 'PĹ™Ă­jmenĂ­', 'Email', 'Role', 'PoslednĂ­ pĹ™ihlĂˇĹˇenĂ­', 'Stav']}
+                headers={['JmĂ„â€šĂ‚Â©no', 'PĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­jmenĂ„â€šĂ‚Â­', 'Email', 'Role', 'PoslednĂ„â€šĂ‚Â­ pĂ„Ä…Ă˘â€žËihlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­', 'Stav']}
                 rows={users.map((u) => [
                   <button key={u.id} className="k-nav-link" type="button" onClick={() => { setSelected(u); syncEdit(u); }}>{u.first_name}</button>,
                   u.last_name,
                   u.email,
                   u.roles.join(', '),
                   formatDateTime(u.last_login_at),
-                  u.is_active ? 'AktivnĂ­' : 'NeaktivnĂ­',
+                  u.is_active ? 'AktivnĂ„â€šĂ‚Â­' : 'NeaktivnĂ„â€šĂ‚Â­',
                 ])}
               />
             )}
           </Card>
 
-          <Card title="Detail / Ăşprava">
-            {!selected ? <p>Vyberte uĹľivatele.</p> : (
+          <Card title="Detail / Ă„â€šÄąĹşprava">
+            {!selected ? <p>Vyberte uĂ„Ä…Ă„Äľivatele.</p> : (
               <div className="k-form-grid">
-                <FormField id="edit_first_name" label="JmĂ©no">
+                <FormField id="edit_first_name" label="JmĂ„â€šĂ‚Â©no">
                   <input id="edit_first_name" className="k-input" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
                 </FormField>
-                <FormField id="edit_last_name" label="PĹ™Ă­jmenĂ­">
+                <FormField id="edit_last_name" label="PĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­jmenĂ„â€šĂ‚Â­">
                   <input id="edit_last_name" className="k-input" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
                 </FormField>
                 <FormField id="edit_email" label="Email">
                   <input id="edit_email" className="k-input" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
                 </FormField>
-                {!editEmailValid ? <small>NeplatnĂ˝ email.</small> : null}
-                <FormField id="edit_phone" label="Telefon (E.164, volitelnĂ©)">
+                {!editEmailValid ? <small>NeplatnĂ„â€šĂ‹ĹĄ email.</small> : null}
+                <FormField id="edit_phone" label="Telefon (E.164, volitelnĂ„â€šĂ‚Â©)">
                   <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
                 </FormField>
-                {!editPhoneValid ? <small>Telefon musĂ­ bĂ˝t ve formĂˇtu E.164.</small> : null}
-                <FormField id="edit_note" label="PoznĂˇmka (volitelnĂ©)">
+                {!editPhoneValid ? <small>Telefon musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt ve formĂ„â€šĂ‹â€ˇtu E.164.</small> : null}
+                <FormField id="edit_note" label="PoznĂ„â€šĂ‹â€ˇmka (volitelnĂ„â€šĂ‚Â©)">
                   <textarea id="edit_note" className="k-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
                 </FormField>
                 <fieldset className="k-card"><legend>Role</legend>
@@ -2209,12 +2219,12 @@ function UsersAdmin(): JSX.Element {
                   ))}
                 </fieldset>
                 <div className="k-toolbar">
-                  <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={!editValid || saving}>UloĹľit zmÄ›ny</button>
+                  <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={!editValid || saving}>UloĂ„Ä…Ă„Äľit zmÄ‚â€žĂ˘â‚¬Ĺźny</button>
                   <button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>
-                    {selected.is_active ? 'ZakĂˇzat' : 'Povolit'}
+                    {selected.is_active ? 'ZakĂ„â€šĂ‹â€ˇzat' : 'Povolit'}
                   </button>
                   <button className="k-button secondary" type="button" onClick={() => void sendPasswordResetLink(selected)}>
-                    Poslat link na zmÄ›nu hesla
+                    Poslat link na zmÄ‚â€žĂ˘â‚¬Ĺźnu hesla
                   </button>
                   <button className="k-button secondary" type="button" onClick={() => void deleteUser(selected)}>
                     Smazat
@@ -2224,26 +2234,26 @@ function UsersAdmin(): JSX.Element {
             )}
           </Card>
 
-          <Card title="VytvoĹ™it uĹľivatele">
+          <Card title="VytvoĂ„Ä…Ă˘â€žËit uĂ„Ä…Ă„Äľivatele">
             <div className="k-form-grid">
-              <FormField id="create_first_name" label="JmĂ©no">
+              <FormField id="create_first_name" label="JmĂ„â€šĂ‚Â©no">
                 <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
               </FormField>
-              <FormField id="create_last_name" label="PĹ™Ă­jmenĂ­">
+              <FormField id="create_last_name" label="PĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­jmenĂ„â€šĂ‚Â­">
                 <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
               </FormField>
               <FormField id="create_email" label="Email">
                 <input id="create_email" className="k-input" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
               </FormField>
-              {!createEmailValid && createEmail.trim() ? <small>NeplatnĂ˝ email.</small> : null}
-              <FormField id="create_password" label="DoÄŤasnĂ© heslo">
+              {!createEmailValid && createEmail.trim() ? <small>NeplatnĂ„â€šĂ‹ĹĄ email.</small> : null}
+              <FormField id="create_password" label="DoÄ‚â€žÄąÂ¤asnĂ„â€šĂ‚Â© heslo">
                 <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
               </FormField>
-              <FormField id="create_phone" label="Telefon (E.164, volitelnĂ©)">
+              <FormField id="create_phone" label="Telefon (E.164, volitelnĂ„â€šĂ‚Â©)">
                 <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
               </FormField>
-              {!createPhoneValid ? <small>Telefon musĂ­ bĂ˝t ve formĂˇtu E.164.</small> : null}
-              <FormField id="create_note" label="PoznĂˇmka (volitelnĂ©)">
+              {!createPhoneValid ? <small>Telefon musĂ„â€šĂ‚Â­ bĂ„â€šĂ‹ĹĄt ve formĂ„â€šĂ‹â€ˇtu E.164.</small> : null}
+              <FormField id="create_note" label="PoznĂ„â€šĂ‹â€ˇmka (volitelnĂ„â€šĂ‚Â©)">
                 <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
               </FormField>
               <fieldset className="k-card"><legend>Role</legend>
@@ -2253,7 +2263,7 @@ function UsersAdmin(): JSX.Element {
                   </label>
                 ))}
               </fieldset>
-              <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>VytvoĹ™it uĹľivatele</button>
+              <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>VytvoĂ„Ä…Ă˘â€žËit uĂ„Ä…Ă„Äľivatele</button>
             </div>
           </Card>
         </div>
@@ -2292,7 +2302,7 @@ function SettingsAdmin(): JSX.Element {
         if (err.message.includes('SMTP settings not configured')) {
           return;
         }
-        setError('NepodaĹ™ilo se naÄŤĂ­st SMTP nastavenĂ­.');
+        setError('NepodaĂ„Ä…Ă˘â€žËilo se naÄ‚â€žÄąÂ¤Ă„â€šĂ‚Â­st SMTP nastavenĂ„â€šĂ‚Â­.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -2303,7 +2313,7 @@ function SettingsAdmin(): JSX.Element {
 
   async function save(): Promise<void> {
     if (!host.trim() || !username.trim() || !password.trim()) {
-      setError('Host, uĹľivatel a heslo jsou povinnĂ©.');
+      setError('Host, uĂ„Ä…Ă„Äľivatel a heslo jsou povinnĂ„â€šĂ‚Â©.');
       return;
     }
     setSaving(true);
@@ -2321,10 +2331,10 @@ function SettingsAdmin(): JSX.Element {
           use_ssl: useSsl,
         }),
       });
-      setMessage('SMTP nastavenĂ­ bylo uloĹľeno.');
+      setMessage('SMTP nastavenĂ„â€šĂ‚Â­ bylo uloĂ„Ä…Ă„Äľeno.');
       setPassword('');
     } catch {
-      setError('SMTP nastavenĂ­ se nepodaĹ™ilo uloĹľit.');
+      setError('SMTP nastavenĂ„â€šĂ‚Â­ se nepodaĂ„Ä…Ă˘â€žËilo uloĂ„Ä…Ă„Äľit.');
     } finally {
       setSaving(false);
     }
@@ -2333,7 +2343,7 @@ function SettingsAdmin(): JSX.Element {
   async function sendTestEmail(): Promise<void> {
     const recipient = testRecipient.trim();
     if (!recipient) {
-      setError('VyplĹte pĹ™Ă­jemce testovacĂ­ho e-mailu.');
+      setError('VyplĂ„Ä…Ă‚Âte pĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­jemce testovacĂ„â€šĂ‚Â­ho e-mailu.');
       return;
     }
     setSaving(true);
@@ -2344,9 +2354,9 @@ function SettingsAdmin(): JSX.Element {
         method: 'POST',
         body: JSON.stringify({ recipient }),
       });
-      setMessage('TestovacĂ­ e-mail byl odeslĂˇn.');
+      setMessage('TestovacĂ„â€šĂ‚Â­ e-mail byl odeslĂ„â€šĂ‹â€ˇn.');
     } catch {
-      setError('TestovacĂ­ e-mail se nepodaĹ™ilo odeslat.');
+      setError('TestovacĂ„â€šĂ‚Â­ e-mail se nepodaĂ„Ä…Ă˘â€žËilo odeslat.');
     } finally {
       setSaving(false);
     }
@@ -2354,11 +2364,11 @@ function SettingsAdmin(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="settings-admin-page">
-      <h1>NastavenĂ­ SMTP</h1>
+      <h1>NastavenĂ„â€šĂ‚Â­ SMTP</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
       {loading ? <SkeletonPage /> : (
-        <Card title="E-mailovĂˇ konfigurace">
+        <Card title="E-mailovĂ„â€šĂ‹â€ˇ konfigurace">
           <div className="k-form-grid">
             <FormField id="smtp_host" label="SMTP host">
               <input id="smtp_host" className="k-input" value={host} onChange={(e) => setHost(e.target.value)} />
@@ -2366,24 +2376,24 @@ function SettingsAdmin(): JSX.Element {
             <FormField id="smtp_port" label="SMTP port">
               <input id="smtp_port" className="k-input" type="number" value={port} onChange={(e) => setPort(Number(e.target.value) || 0)} />
             </FormField>
-            <FormField id="smtp_username" label="SMTP uĹľivatel">
+            <FormField id="smtp_username" label="SMTP uĂ„Ä…Ă„Äľivatel">
               <input id="smtp_username" className="k-input" value={username} onChange={(e) => setUsername(e.target.value)} />
             </FormField>
             <FormField id="smtp_password" label="SMTP heslo">
               <input id="smtp_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormField>
             <label className="k-role-label">
-              <input type="checkbox" checked={useTls} onChange={(e) => setUseTls(e.target.checked)} /> PouĹľĂ­t TLS
+              <input type="checkbox" checked={useTls} onChange={(e) => setUseTls(e.target.checked)} /> PouĂ„Ä…Ă„ÄľĂ„â€šĂ‚Â­t TLS
             </label>
             <label className="k-role-label">
-              <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} /> PouĹľĂ­t SSL
+              <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} /> PouĂ„Ä…Ă„ÄľĂ„â€šĂ‚Â­t SSL
             </label>
-            <FormField id="smtp_test_recipient" label="TestovacĂ­ pĹ™Ă­jemce">
+            <FormField id="smtp_test_recipient" label="TestovacĂ„â€šĂ‚Â­ pĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­jemce">
               <input id="smtp_test_recipient" className="k-input" type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} />
             </FormField>
             <div className="k-toolbar">
-              <button className="k-button" type="button" onClick={() => void save()} disabled={saving}>UloĹľit SMTP</button>
-              <button className="k-button secondary" type="button" onClick={() => void sendTestEmail()} disabled={saving}>Odeslat testovacĂ­ e-mail</button>
+              <button className="k-button" type="button" onClick={() => void save()} disabled={saving}>UloĂ„Ä…Ă„Äľit SMTP</button>
+              <button className="k-button secondary" type="button" onClick={() => void sendTestEmail()} disabled={saving}>Odeslat testovacĂ„â€šĂ‚Â­ e-mail</button>
             </div>
           </div>
         </Card>
@@ -2402,10 +2412,10 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
   return (
     <main className="k-page" data-testid="access-denied-page">
       <StateView
-        title="PĹ™Ă­stup odepĹ™en"
-        description={`Role ${role} (uĹľivatel ${userId}) nemĂˇ oprĂˇvnÄ›nĂ­ pro modul ${moduleLabel}.`}
+        title="PĂ„Ä…Ă˘â€žËĂ„â€šĂ‚Â­stup odepĂ„Ä…Ă˘â€žËen"
+        description={`Role ${role} (uĂ„Ä…Ă„Äľivatel ${userId}) nemĂ„â€šĂ‹â€ˇ oprĂ„â€šĂ‹â€ˇvnÄ‚â€žĂ˘â‚¬ĹźnĂ„â€šĂ‚Â­ pro modul ${moduleLabel}.`}
         stateKey="error"
-        action={<Link className="k-button secondary" to="/">ZpÄ›t na pĹ™ehled</Link>}
+        action={<Link className="k-button secondary" to="/">ZpÄ‚â€žĂ˘â‚¬Ĺźt na pĂ„Ä…Ă˘â€žËehled</Link>}
       />
     </main>
   );
@@ -2424,14 +2434,14 @@ function AdminLoginPage(): JSX.Element {
     setHintStatus(null);
     const principal = email.trim();
     if (!principal || !password) {
-      setError('VyplĹte email i heslo.');
+      setError('VyplĂ„Ä…Ă‚Âte email i heslo.');
       return;
     }
     try {
       await apiClient.adminLoginApiAuthAdminLoginPost({ email: principal, password });
       window.location.assign('/admin/');
     } catch {
-      setError('NeplatnĂ© pĹ™ihlaĹˇovacĂ­ Ăşdaje.');
+      setError('NeplatnĂ„â€šĂ‚Â© pĂ„Ä…Ă˘â€žËihlaĂ„Ä…Ă‹â€ˇovacĂ„â€šĂ‚Â­ Ă„â€šÄąĹşdaje.');
     }
   }
 
@@ -2441,14 +2451,14 @@ function AdminLoginPage(): JSX.Element {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
-    setHintStatus('Pokud ĂşÄŤet existuje, byl odeslĂˇn odkaz pro odblokovĂˇnĂ­.');
+    setHintStatus('Pokud Ă„â€šÄąĹşÄ‚â€žÄąÂ¤et existuje, byl odeslĂ„â€šĂ‹â€ˇn odkaz pro odblokovĂ„â€šĂ‹â€ˇnĂ„â€šĂ‚Â­.');
   }
 
   return (
     <main className="k-page k-admin-login-page" data-testid="admin-login-page">
       <section className="k-admin-login-layout">
-        <Card title="KĂˇjovoHotel Admin login">
-          <img className="k-admin-login-logo" src={brandWordmark} alt="KĂˇjovoHotel" />
+        <Card title="KĂ„â€šĂ‹â€ˇjovoHotel Admin login">
+          <img className="k-admin-login-logo" src={brandWordmark} alt="KĂ„â€šĂ‹â€ˇjovoHotel" />
           <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
             <FormField id="admin_login_email" label="Admin email">
               <input id="admin_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -2459,20 +2469,20 @@ function AdminLoginPage(): JSX.Element {
             {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
             {hintStatus ? <StateView title="Info" description={hintStatus} stateKey="empty" /> : null}
             <div className="k-toolbar">
-              <button className="k-button" type="submit">PĹ™ihlĂˇsit</button>
+              <button className="k-button" type="submit">PĂ„Ä…Ă˘â€žËihlĂ„â€šĂ‹â€ˇsit</button>
               <button
                 className="k-button secondary"
                 type="button"
                 onClick={() => void sendPasswordHint()}
                 disabled={!email.trim()}
               >
-                ZapomenutĂ© heslo
+                ZapomenutĂ„â€šĂ‚Â© heslo
               </button>
             </div>
           </form>
         </Card>
-        <aside className="k-admin-login-figure" aria-label="KĂˇja pro admin login" data-brand-element="true">
-          <img src={adminLoginFigure} alt="KĂˇja pro administraci" loading="lazy" />
+        <aside className="k-admin-login-figure" aria-label="KĂ„â€šĂ‹â€ˇja pro admin login" data-brand-element="true">
+          <img src={adminLoginFigure} alt="KĂ„â€šĂ‹â€ˇja pro administraci" loading="lazy" />
         </aside>
       </section>
       <KajovoSign />
@@ -2481,23 +2491,23 @@ function AdminLoginPage(): JSX.Element {
 }
 
 const ADMIN_ROLE_VIEW_LABELS: Record<string, string> = {
-  admin: 'Administrátor',
+  admin: 'AdministrÄ‚Ë‡tor',
   recepce: 'Recepce',
-  pokojská: 'Pokojská',
-  údržba: 'Údržba',
-  snídaně: 'Snídaně',
+  pokojskÄ‚Ë‡: 'PokojskÄ‚Ë‡',
+  Ä‚ĹźdrÄąÄľba: 'Ä‚ĹˇdrÄąÄľba',
+  snÄ‚Â­danĂ„â€ş: 'SnÄ‚Â­danĂ„â€ş',
   sklad: 'Sklad',
 };
 
 const ADMIN_ROLE_VIEW_MODULES: Record<string, string[]> = {
   recepce: ['lost_found', 'breakfast'],
-  pokojská: ['lost_found', 'issues', 'breakfast', 'inventory'],
-  údržba: ['issues'],
-  snídaně: ['breakfast', 'issues', 'inventory'],
+  pokojskÄ‚Ë‡: ['lost_found', 'issues', 'breakfast', 'inventory'],
+  Ä‚ĹźdrÄąÄľba: ['issues'],
+  snÄ‚Â­danĂ„â€ş: ['breakfast', 'issues', 'inventory'],
   sklad: ['breakfast', 'issues', 'inventory'],
 };
 
-const ADMIN_ROLE_VIEW_OPTIONS = ['admin', 'recepce', 'pokojská', 'údržba', 'snídaně', 'sklad'] as const;
+const ADMIN_ROLE_VIEW_OPTIONS = ['admin', 'recepce', 'pokojskÄ‚Ë‡', 'Ä‚ĹźdrÄąÄľba', 'snÄ‚Â­danĂ„â€ş', 'sklad'] as const;
 
 type AdminRoleView = typeof ADMIN_ROLE_VIEW_OPTIONS[number];
 
@@ -2541,8 +2551,8 @@ function AppRoutes(): JSX.Element {
     : [];
   const adminModules = auth.role === 'admin'
     ? [
-      { key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
-      { key: 'settings', label: 'Nastavení', route: '/nastaveni', icon: 'settings', active: true, section: 'records', permissions: ['read'] },
+      { key: 'users', label: 'UÄąÄľivatelÄ‚Â©', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
+      { key: 'settings', label: 'NastavenÄ‚Â­', route: '/nastaveni', icon: 'settings', active: true, section: 'records', permissions: ['read'] },
     ]
     : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
@@ -2569,14 +2579,14 @@ function AppRoutes(): JSX.Element {
     ? roleViewKeys.map((key) => moduleByKey.get(key)).filter((module): module is typeof modules[number] => Boolean(module))
     : modules;
   const allowedModules = orderedRoleModules.filter((module) => {
-    // View-state odkazy jsou interní QA trasa a v produkční navigaci nemají být vidět.
+    // View-state odkazy jsou internÄ‚Â­ QA trasa a v produkĂ„Ĺ¤nÄ‚Â­ navigaci nemajÄ‚Â­ bÄ‚Ëťt vidĂ„â€şt.
     if (module.route.includes('?state=')) {
       return false;
     }
     const required =
       Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
     if (!required) {
-      // Testovací / injektované moduly bez explicitních oprávnění ukazujeme vždy.
+      // TestovacÄ‚Â­ / injektovanÄ‚Â© moduly bez explicitnÄ‚Â­ch oprÄ‚Ë‡vnĂ„â€şnÄ‚Â­ ukazujeme vÄąÄľdy.
       return true;
     }
     return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
@@ -2622,29 +2632,29 @@ function AppRoutes(): JSX.Element {
         </div>
       ) : null}
       <Routes>
-        <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="PĹ™ehled" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="SnĂ­danÄ›" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="SnĂ­danÄ›" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="SnĂ­danÄ›" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="SnĂ­danÄ›" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="ZtrĂˇty a nĂˇlezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="ZtrĂˇty a nĂˇlezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="ZtrĂˇty a nĂˇlezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="ZtrĂˇty a nĂˇlezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="ZĂˇvady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="ZĂˇvady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="ZĂˇvady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="ZĂˇvady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad" element={isAllowed('inventory') ? <InventoryList /> : <AccessDeniedPage moduleLabel="SkladovĂ© hospodĂˇĹ™stvĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/nova" element={isAllowed('inventory') ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="SkladovĂ© hospodĂˇĹ™stvĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="SkladovĂ© hospodĂˇĹ™stvĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="SkladovĂ© hospodĂˇĹ™stvĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="HlĂˇĹˇenĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="HlĂˇĹˇenĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="HlĂˇĹˇenĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="HlĂˇĹˇenĂ­" role={auth.role} userId={auth.userId} />} />
-        <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="UĹľivatelĂ©" role={auth.role} userId={auth.userId} />} />
-        <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="NastavenĂ­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="PĂ„Ä…Ă˘â€žËehled" role={auth.role} userId={auth.userId} />} />
+        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź" role={auth.role} userId={auth.userId} />} />
+        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź" role={auth.role} userId={auth.userId} />} />
+        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź" role={auth.role} userId={auth.userId} />} />
+        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="SnĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź" role={auth.role} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy" role={auth.role} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy" role={auth.role} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy" role={auth.role} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="ZtrĂ„â€šĂ‹â€ˇty a nĂ„â€šĂ‹â€ˇlezy" role={auth.role} userId={auth.userId} />} />
+        <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="ZĂ„â€šĂ‹â€ˇvady" role={auth.role} userId={auth.userId} />} />
+        <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="ZĂ„â€šĂ‹â€ˇvady" role={auth.role} userId={auth.userId} />} />
+        <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="ZĂ„â€šĂ‹â€ˇvady" role={auth.role} userId={auth.userId} />} />
+        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="ZĂ„â€šĂ‹â€ˇvady" role={auth.role} userId={auth.userId} />} />
+        <Route path="/sklad" element={isAllowed('inventory') ? <InventoryList /> : <AccessDeniedPage moduleLabel="SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/sklad/nova" element={isAllowed('inventory') ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/sklad/:id" element={isAllowed('inventory') ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="SkladovĂ„â€šĂ‚Â© hospodĂ„â€šĂ‹â€ˇĂ„Ä…Ă˘â€žËstvĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="HlĂ„â€šĂ‹â€ˇĂ„Ä…Ă‹â€ˇenĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
+        <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="UĂ„Ä…Ă„ÄľivatelĂ„â€šĂ‚Â©" role={auth.role} userId={auth.userId} />} />
+        <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="NastavenĂ„â€šĂ‚Â­" role={auth.role} userId={auth.userId} />} />
         <Route path="/login" element={<AdminLoginPage />} />
         <Route
           path="/intro"
@@ -2686,6 +2696,8 @@ createRoot(document.getElementById('root')!).render(
     </ClientErrorBoundary>
   </React.StrictMode>,
 );
+
+
 
 
 

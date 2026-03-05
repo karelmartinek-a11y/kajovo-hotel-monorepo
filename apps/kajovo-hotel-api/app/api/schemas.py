@@ -299,10 +299,10 @@ class InventoryItemWithAuditRead(InventoryItemDetailRead):
 
 
 ALLOWED_PORTAL_ROLES = {
-    "pokojská",
-    "údržba",
+    "pokojskĂˇ",
+    "ĂşdrĹľba",
     "recepce",
-    "snídaně",
+    "snĂ­danÄ›",
     "sklad",
     "udrzba",
     "snidane",
