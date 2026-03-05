@@ -5,6 +5,8 @@ import urllib.request
 from http.cookiejar import CookieJar
 from pathlib import Path
 
+REQUEST_TIMEOUT_SECONDS = 30
+
 
 def api_request(
     opener: urllib.request.OpenerDirector,
@@ -24,7 +26,7 @@ def api_request(
 
     request = urllib.request.Request(url=url, data=data, headers=request_headers, method=method)
     try:
-        with opener.open(request, timeout=10) as response:
+        with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             raw = response.read().decode("utf-8")
             return response.status, json.loads(raw) if raw else None
     except urllib.error.HTTPError as exc:

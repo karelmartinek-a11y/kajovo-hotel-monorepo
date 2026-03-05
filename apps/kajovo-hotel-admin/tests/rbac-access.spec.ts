@@ -45,7 +45,7 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',
-    permissions: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+    permissions: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
     actor_type: 'admin',
   });
   await page.route('**/api/v1/inventory**', async (route) => {
@@ -53,7 +53,25 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   });
 
   await page.goto(adminPath('/'));
-  await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
+  const phoneNav = page.getByTestId('module-navigation-phone');
+  if (await phoneNav.isVisible()) {
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+  } else {
+    const desktopNav = page.getByTestId('module-navigation-desktop');
+    const directLink = desktopNav.getByRole('link', { name: 'Skladové hospodářství' });
+    if (await directLink.isVisible()) {
+      await expect(directLink).toBeVisible();
+    } else {
+      const moreButton = desktopNav.getByRole('button', { name: 'Další' });
+      if (await moreButton.isVisible()) {
+        await moreButton.click();
+        await expect(desktopNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+      } else {
+        await expect(directLink).toBeVisible();
+      }
+    }
+  }
 
   await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();

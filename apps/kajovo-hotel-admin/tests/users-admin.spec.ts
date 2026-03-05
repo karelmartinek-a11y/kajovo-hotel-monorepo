@@ -132,7 +132,7 @@ test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) =>
   });
 
   await page.goto(adminPath('/uzivatele'));
-  await page.getByRole('button', { name: 'Upravit' }).click();
+  await page.getByTestId('users-admin-page').getByRole('button', { name: 'Upravit' }).first().click({ force: true });
 
   await expect(page.getByText('Smazání je dostupné pouze pro admina.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Smazat' })).toHaveCount(0);

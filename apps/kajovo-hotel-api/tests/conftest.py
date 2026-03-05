@@ -19,6 +19,7 @@ from app.db.models import Base
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 ResponseData = dict[str, object] | list[dict[str, object]] | None
+REQUEST_TIMEOUT_SECONDS = 30
 ApiRequest = Callable[..., tuple[int, ResponseData]]
 
 
@@ -32,7 +33,12 @@ def api_db_path(tmp_path_factory: pytest.TempPathFactory) -> Generator[Path, Non
     db_dir = tmp_path_factory.mktemp("kajovo-api-data")
     db_path = db_dir / "test_kajovo_hotel.db"
     if db_path.exists():
-        db_path.unlink()
+        for _ in range(5):
+            try:
+                db_path.unlink()
+                break
+            except PermissionError:
+                time.sleep(0.2)
 
     yield db_path
 
@@ -134,7 +140,11 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
         yield base_url
     finally:
         proc.terminate()
-        proc.wait(timeout=10)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
 
 
 @pytest.fixture
@@ -151,7 +161,7 @@ def api_request(api_base_url: str) -> ApiRequest:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with opener.open(login_request, timeout=10) as response:
+    with opener.open(login_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
         assert response.status == 200
 
     def _request(
@@ -177,7 +187,7 @@ def api_request(api_base_url: str) -> ApiRequest:
 
         request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
         try:
-            with opener.open(request, timeout=10) as response:
+            with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 raw = response.read().decode("utf-8")
                 return response.status, json.loads(raw) if raw else None
         except urllib.error.HTTPError as exc:

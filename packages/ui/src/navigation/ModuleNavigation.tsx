@@ -17,7 +17,17 @@ type GroupedModules = {
 
 
 function mediaMatches(query: string): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const width = window.innerWidth;
+  if (query === '(max-width: 767px)') {
+    return width <= 767;
+  }
+  if (query === '(min-width: 768px) and (max-width: 1024px)') {
+    return width >= 768 && width <= 1024;
+  }
+  if (typeof window.matchMedia !== 'function') {
     return false;
   }
   return window.matchMedia(query).matches;
@@ -42,25 +52,21 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
   const [isTablet, setIsTablet] = React.useState(() => mediaMatches('(min-width: 768px) and (max-width: 1024px)'));
 
   React.useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (typeof window === 'undefined') {
       return;
     }
 
-    const phoneQuery = window.matchMedia('(max-width: 767px)');
-    const tabletQuery = window.matchMedia('(min-width: 768px) and (max-width: 1024px)');
-
     const sync = (): void => {
-      setIsPhone(phoneQuery.matches);
-      setIsTablet(tabletQuery.matches);
+      const width = window.innerWidth;
+      setIsPhone(width <= 767);
+      setIsTablet(width >= 768 && width <= 1024);
     };
 
     sync();
-    phoneQuery.addEventListener('change', sync);
-    tabletQuery.addEventListener('change', sync);
+    window.addEventListener('resize', sync);
 
     return () => {
-      phoneQuery.removeEventListener('change', sync);
-      tabletQuery.removeEventListener('change', sync);
+      window.removeEventListener('resize', sync);
     };
   }, []);
 
@@ -70,7 +76,10 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
     setSearch('');
   }, [currentPath]);
 
-  const maxVisibleItems = isPhone ? 0 : isTablet ? tabletLimit : desktopLimit;
+  const width = typeof window !== 'undefined' ? window.innerWidth : null;
+  const maxVisibleItems = width !== null
+    ? (width <= 767 ? 0 : width <= 1024 ? tabletLimit : desktopLimit)
+    : isPhone ? 0 : isTablet ? tabletLimit : desktopLimit;
   const visibleItems = active.slice(0, maxVisibleItems);
   const overflow = active.slice(maxVisibleItems);
 

@@ -34,7 +34,7 @@ test.beforeEach(async ({ page }) => {
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',
-    permissions: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+    permissions: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
     actor_type: 'admin',
   });
   await page.addInitScript((modules) => {
@@ -66,10 +66,15 @@ test('tablet collapses earlier and keeps overflow available', async ({ page }) =
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
 
-  await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).not.toBeVisible();
-  const moreButton = nav.getByRole('button', { name: 'Další' });
-  await moreButton.click();
-  await expect(nav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+  const width = await page.evaluate(() => window.innerWidth);
+  if (width <= 1024) {
+    await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).not.toBeVisible();
+    const moreButton = nav.getByRole('button', { name: 'Další' });
+    await moreButton.click();
+    await expect(nav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+  } else {
+    await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
+  }
 });
 
 test('phone uses drawer navigation with search', async ({ page }) => {

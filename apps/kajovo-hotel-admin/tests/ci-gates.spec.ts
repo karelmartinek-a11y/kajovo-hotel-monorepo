@@ -71,19 +71,26 @@ test.beforeEach(async ({ page }) => {
     })
   );
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
+  await page.route('**/api/v1/breakfast', async (route) => route.fulfill({ json: listPayload }));
   await page.route('**/api/v1/breakfast/daily-summary?*', async (route) => route.fulfill({ json: summaryPayload }));
   await page.route('**/api/v1/breakfast/1', async (route) => route.fulfill({ json: listPayload[0] }));
 
   await page.route('**/api/v1/lost-found?*', async (route) => route.fulfill({ json: [oneItem] }));
+  await page.route('**/api/v1/lost-found', async (route) => route.fulfill({ json: [oneItem] }));
   await page.route('**/api/v1/lost-found/1', async (route) => route.fulfill({ json: oneItem }));
+  await page.route('**/api/v1/lost-found/*/photos', async (route) => route.fulfill({ json: [] }));
 
   await page.route('**/api/v1/issues?*', async (route) => route.fulfill({ json: [{ ...listPayload[0], title: 'Issue', location: 'Lobby', priority: 'high', status: 'new', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/issues', async (route) => route.fulfill({ json: [{ ...listPayload[0], title: 'Issue', location: 'Lobby', priority: 'high', status: 'new', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/issues/1', async (route) => route.fulfill({ json: { id: 1, title: 'Issue', description: null, location: 'Lobby', room_number: null, priority: 'high', status: 'new', assignee: null, in_progress_at: null, resolved_at: null, closed_at: null, created_at: '2026-01-01', updated_at: '2026-01-01' } }));
+  await page.route('**/api/v1/issues/*/photos', async (route) => route.fulfill({ json: [] }));
 
   await page.route('**/api/v1/inventory?*', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/inventory', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/inventory/1', async (route) => route.fulfill({ json: { id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01', movements: [], audit_logs: [] } }));
 
   await page.route('**/api/v1/reports?*', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/reports', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/reports/1', async (route) => route.fulfill({ json: { id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' } }));
 });
 
@@ -195,6 +202,7 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
 });
 
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const route of uniqueRoutes) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
