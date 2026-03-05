@@ -38,7 +38,14 @@ const oneItem = {
   returned_at: null,
 };
 
-const toConcreteRoute = (route: string): string => route.replace(/:id/g, '1');
+const adminPath = (path: string): string => {
+  if (path.startsWith('/admin')) {
+    return path;
+  }
+  return `/admin${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
+const toConcreteRoute = (route: string): string => adminPath(route.replace(/:id/g, '1'));
 
 const smokeRoutes = ia.views.map((view) => toConcreteRoute(view.route));
 const uniqueRoutes = Array.from(new Set(smokeRoutes));
@@ -143,7 +150,7 @@ test('IA routes expose required view states via state test IDs', async ({ page }
     const route = toConcreteRoute(view.route);
 
     for (const state of requiredStates) {
-      await page.goto(`${route}?state=${state}`);
+    await page.goto(`${route}?state=${state}`);
       await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
       await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
     }
@@ -159,7 +166,7 @@ test('SIGNACE offset respects minimum per device class', async ({ page }) => {
 
   for (const scenario of scenarios) {
     await page.setViewportSize({ width: scenario.width, height: scenario.height });
-    await page.goto('/');
+    await page.goto(adminPath('/'));
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign).toBeVisible();
 

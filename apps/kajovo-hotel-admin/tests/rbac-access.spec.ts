@@ -1,5 +1,12 @@
 ﻿import { expect, test, type Page, type Route } from '@playwright/test';
 
+const adminPath = (path: string): string => {
+  if (path.startsWith('/admin')) {
+    return path;
+  }
+  return `/admin${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 type AuthPayload = {
   email: string;
   role: string;
@@ -25,10 +32,10 @@ test('restricted module is hidden in navigation and shows access denied on direc
     actor_type: 'admin',
   });
 
-  await page.goto('/');
+  await page.goto(adminPath('/'));
   await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
 
-  await page.goto('/sklad');
+  await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
   await expect(page.getByText('Přístup odepřen')).toBeVisible();
   await expect(page.getByText(/Role údržba/)).toBeVisible();
@@ -45,9 +52,9 @@ test('admin override keeps all modules visible and accessible', async ({ page })
     await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
   });
 
-  await page.goto('/');
+  await page.goto(adminPath('/'));
   await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
 
-  await page.goto('/sklad');
+  await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();
 });

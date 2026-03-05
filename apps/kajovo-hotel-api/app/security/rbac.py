@@ -22,7 +22,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "settings:read",
         "settings:write",
     },
-    "pokojskĂˇ": {
+    "pokojská": {
         "breakfast:read",
         "breakfast:write",
         "issues:read",
@@ -32,7 +32,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "lost_found:read",
         "lost_found:write",
     },
-    "ĂşdrĹľba": {
+    "údržba": {
         "issues:read",
         "issues:write",
     },
@@ -42,7 +42,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "lost_found:read",
         "lost_found:write",
     },
-    "snĂ­danÄ›": {
+    "snídaně": {
         "breakfast:read",
         "breakfast:write",
         "inventory:read",
@@ -61,25 +61,26 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
 }
 ROLE_ALIASES: dict[str, str] = {
     "admin": "admin",
-    "pokojskĂˇ": "pokojskĂˇ",
-    "housekeeping": "pokojskĂˇ",
-    "ĂşdrĹľba": "ĂşdrĹľba",
-    "udrzba": "ĂşdrĹľba",
-    "maintenance": "ĂşdrĹľba",
+    "pokojská": "pokojská",
+    "pokojska": "pokojská",
+    "housekeeping": "pokojská",
+    "údržba": "údržba",
+    "udrzba": "údržba",
+    "maintenance": "údržba",
     "recepce": "recepce",
     "reception": "recepce",
-    "snĂ­danÄ›": "snĂ­danÄ›",
-    "snidane": "snĂ­danÄ›",
-    "breakfast": "snĂ­danÄ›",
+    "snídaně": "snídaně",
+    "snidane": "snídaně",
+    "breakfast": "snídaně",
     "warehouse": "sklad",
     "sklad": "sklad",
 }
 ROLE_AUDIT_EXPORT: dict[str, str] = {
     "admin": "admin",
-    "pokojskĂˇ": "housekeeping",
-    "ĂşdrĹľba": "maintenance",
+    "pokojská": "housekeeping",
+    "údržba": "maintenance",
     "recepce": "reception",
-    "snĂ­danÄ›": "breakfast",
+    "snídaně": "breakfast",
     "sklad": "warehouse",
 }
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}

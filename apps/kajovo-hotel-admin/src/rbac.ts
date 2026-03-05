@@ -32,9 +32,13 @@ type AuthMeResponse = {
 };
 
 function normalizeRole(input: string | undefined): Role {
-  if (input === 'admin' || input === 'pokojská' || input === 'údržba' || input === 'recepce' || input === 'snídaně' || input === 'sklad') {
-    return input;
-  }
+  const value = (input ?? '').toLowerCase();
+  if (value === 'admin') return 'admin';
+  if (value === 'pokojská' || value === 'pokojska' || value === 'housekeeping') return 'pokojská';
+  if (value === 'údržba' || value === 'udrzba' || value === 'maintenance') return 'údržba';
+  if (value === 'recepce' || value === 'reception') return 'recepce';
+  if (value === 'snídaně' || value === 'snidane' || value === 'breakfast') return 'snídaně';
+  if (value === 'sklad' || value === 'warehouse') return 'sklad';
   return 'admin';
 }
 

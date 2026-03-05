@@ -1,5 +1,12 @@
 ﻿import { expect, test, type Page, type Route } from '@playwright/test';
 
+const adminPath = (path: string): string => {
+  if (path.startsWith('/admin')) {
+    return path;
+  }
+  return `/admin${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const extraModules = [
   { key: 'fake-1', label: 'Recepce+', route: '/fake/recepce', active: true, section: 'operations' },
   { key: 'fake-2', label: 'Spa+', route: '/fake/spa', active: true, section: 'operations' },
@@ -37,7 +44,7 @@ test.beforeEach(async ({ page }) => {
 
 test('desktop keeps overflow accessible with +3 injected items', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
-  await page.goto('/');
+  await page.goto(adminPath('/'));
 
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
@@ -54,7 +61,7 @@ test('desktop keeps overflow accessible with +3 injected items', async ({ page }
 
 test('tablet collapses earlier and keeps overflow available', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 1180 });
-  await page.goto('/');
+  await page.goto(adminPath('/'));
 
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
@@ -67,7 +74,7 @@ test('tablet collapses earlier and keeps overflow available', async ({ page }) =
 
 test('phone uses drawer navigation with search', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto(adminPath('/'));
 
   const phoneNav = page.getByTestId('module-navigation-phone');
   await expect(phoneNav).toBeVisible();
