@@ -20,7 +20,18 @@ from app.db.models import Base
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_CONNECT_RETRIES = 3
+API_STARTUP_ATTEMPTS = 100
+API_STARTUP_SLEEP_SECONDS = 0.2
 ApiRequest = Callable[..., tuple[int, ResponseData]]
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    if config.option.basetemp:
+        return
+    base_temp = Path(__file__).resolve().parents[1] / ".tmp" / "pytest"
+    base_temp.mkdir(parents=True, exist_ok=True)
+    config.option.basetemp = str(base_temp)
 
 
 def _scrypt_hash(password: str, salt: bytes) -> str:
@@ -138,13 +149,13 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     )
 
     base_url = f"http://127.0.0.1:{port}"
-    for _ in range(50):
+    for _ in range(API_STARTUP_ATTEMPTS):
         try:
             with urllib.request.urlopen(f"{base_url}/health", timeout=1) as response:
                 if response.status == 200:
                     break
         except Exception:
-            time.sleep(0.1)
+            time.sleep(API_STARTUP_SLEEP_SECONDS)
     else:
         proc.terminate()
         raise RuntimeError("API did not start in time.")
@@ -174,8 +185,15 @@ def api_request(api_base_url: str) -> ApiRequest:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with opener.open(login_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-        assert response.status == 200
+    for attempt in range(REQUEST_CONNECT_RETRIES):
+        try:
+            with opener.open(login_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                assert response.status == 200
+                break
+        except (urllib.error.URLError, socket.timeout):
+            if attempt >= REQUEST_CONNECT_RETRIES - 1:
+                raise
+            time.sleep(0.2 * (attempt + 1))
 
     def _request(
         path: str,
@@ -199,15 +217,23 @@ def api_request(api_base_url: str) -> ApiRequest:
                 headers["x-csrf-token"] = csrf_token
 
         request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
-        try:
-            with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-                raw = response.read().decode("utf-8")
-                return response.status, json.loads(raw) if raw else None
-        except urllib.error.HTTPError as exc:
-            raw = exc.read().decode("utf-8")
-            parsed = json.loads(raw) if raw else None
-            return exc.code, parsed
+        for attempt in range(REQUEST_CONNECT_RETRIES):
+            try:
+                with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                    raw = response.read().decode("utf-8")
+                    return response.status, json.loads(raw) if raw else None
+            except urllib.error.HTTPError as exc:
+                raw = exc.read().decode("utf-8")
+                parsed = json.loads(raw) if raw else None
+                return exc.code, parsed
+            except (urllib.error.URLError, socket.timeout):
+                if attempt >= REQUEST_CONNECT_RETRIES - 1:
+                    raise
+                time.sleep(0.2 * (attempt + 1))
 
+    setattr(_request, "opener", opener)
+    setattr(_request, "jar", jar)
+    setattr(_request, "base_url", api_base_url)
     return _request
 
 
