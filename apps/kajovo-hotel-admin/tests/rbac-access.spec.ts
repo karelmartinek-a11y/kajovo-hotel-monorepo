@@ -53,7 +53,13 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   });
 
   await page.goto(adminPath('/'));
-  await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
+  const phoneNav = page.getByTestId('module-navigation-phone');
+  if (await phoneNav.isVisible()) {
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+  } else {
+    await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
+  }
 
   await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();

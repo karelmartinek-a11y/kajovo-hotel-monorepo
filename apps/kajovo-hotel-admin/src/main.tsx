@@ -665,6 +665,7 @@ function BreakfastList(): JSX.Element {
         className="k-input"
         type="file"
         accept="application/pdf"
+        aria-label="Import PDF"
         onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
       />
       <button className="k-button secondary" type="button" onClick={() => void importPdf()}>
@@ -2450,10 +2451,10 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
   return (
     <main className="k-page" data-testid="access-denied-page">
       <StateView
-        title="PĹ™Ă­stup odepĹ™en"
-        description={`Role ${role} (uĹľivatel ${userId}) nemĂˇ oprĂˇvnÄ›nĂ­ pro modul ${moduleLabel}.`}
+        title="Přístup odepřen"
+        description={`Role ${role} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`}
         stateKey="error"
-        action={<Link className="k-button secondary" to="/">ZpÄ›t na pĹ™ehled</Link>}
+        action={<Link className="k-button secondary" to="/">Zpět na přehled</Link>}
       />
     </main>
   );
@@ -2552,6 +2553,13 @@ type AdminRoleView = typeof ADMIN_ROLE_VIEW_OPTIONS[number];
 function AppRoutes(): JSX.Element {
   const location = useLocation();
   const [auth, setAuth] = React.useState<AuthProfile | null>(null);
+  const [roleView, setRoleView] = React.useState<AdminRoleView>(() => {
+    if (typeof window === 'undefined') {
+      return 'admin';
+    }
+    const stored = window.sessionStorage.getItem('kajovo_admin_role_view') as AdminRoleView | null;
+    return stored ?? 'admin';
+  });
 
   React.useEffect(() => {
     void resolveAuthProfile()
@@ -2567,6 +2575,12 @@ function AppRoutes(): JSX.Element {
         })
       );
   }, []);
+
+  React.useEffect(() => {
+    if (auth?.role === 'admin' && typeof window !== 'undefined') {
+      window.sessionStorage.setItem('kajovo_admin_role_view', roleView);
+    }
+  }, [auth?.role, roleView]);
 
   if (!auth) {
     return <SkeletonPage />;
@@ -2594,20 +2608,6 @@ function AppRoutes(): JSX.Element {
     ]
     : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
-
-  const [roleView, setRoleView] = React.useState<AdminRoleView>(() => {
-    if (typeof window === 'undefined') {
-      return 'admin';
-    }
-    const stored = window.sessionStorage.getItem('kajovo_admin_role_view') as AdminRoleView | null;
-    return stored ?? 'admin';
-  });
-
-  React.useEffect(() => {
-    if (auth.role === 'admin' && typeof window !== 'undefined') {
-      window.sessionStorage.setItem('kajovo_admin_role_view', roleView);
-    }
-  }, [auth.role, roleView]);
 
   const roleViewKeys = auth.role === 'admin' && roleView !== 'admin'
     ? (ADMIN_ROLE_VIEW_MODULES[roleView] ?? [])
