@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+ï»¿import { expect, test, type Page, type Route } from '@playwright/test';
 
 type AuthPayload = {
   email: string;
@@ -7,8 +7,8 @@ type AuthPayload = {
   actor_type: 'admin' | 'portal';
 };
 
-async function mockAuth(page, payload: AuthPayload): Promise<void> {
-  await page.route('**/api/auth/me', async (route) => {
+async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
+  await page.route('**/api/auth/me', async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -20,18 +20,18 @@ async function mockAuth(page, payload: AuthPayload): Promise<void> {
 test('restricted module is hidden in navigation and shows access denied on direct URL', async ({ page }) => {
   await mockAuth(page, {
     email: 'udrzba@example.com',
-    role: 'údržba',
+    role: 'ÃºdrÅ¾ba',
     permissions: ['issues:read', 'issues:write'],
     actor_type: 'admin',
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Skladové hospodáøství' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'SkladovÃ© hospodÃ¡Å™stvÃ­' })).toHaveCount(0);
 
   await page.goto('/sklad');
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
-  await expect(page.getByText('Pøístup odepøen')).toBeVisible();
-  await expect(page.getByText(/Role údržba/)).toBeVisible();
+  await expect(page.getByText('PÅ™Ã­stup odepÅ™en')).toBeVisible();
+  await expect(page.getByText(/Role ÃºdrÅ¾ba/)).toBeVisible();
 });
 
 test('admin override keeps all modules visible and accessible', async ({ page }) => {
@@ -46,7 +46,7 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Skladové hospodáøství' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'SkladovÃ© hospodÃ¡Å™stvÃ­' })).toBeVisible();
 
   await page.goto('/sklad');
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();

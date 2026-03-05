@@ -1,0 +1,14 @@
+# Codex CLI global default config (Windows)
+# Place this file at:
+#   %USERPROFILE%\.codex\config.toml
+# Example: C:\Users\<YOU>\.codex\config.toml
+#
+# This sets sane defaults globally. Repo-scoped .codex/config.toml can override these.
+
+model = "gpt-5-codex"
+approval_policy = "on-request"      # safer global default
+sandbox_mode = "workspace-write"    # safer global default
+web_search = "live"
+
+[sandbox_workspace_write]
+network_access = true

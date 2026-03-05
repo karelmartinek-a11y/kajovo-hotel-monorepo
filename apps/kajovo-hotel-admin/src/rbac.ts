@@ -1,4 +1,4 @@
-export type Role = 'pokojská' | 'údrba' | 'recepce' | 'snídanì' | 'sklad' | 'admin';
+export type Role = 'pokojskÃ¡' | 'ÃºdrÅ¾ba' | 'recepce' | 'snÃ­danÄ›' | 'sklad' | 'admin';
 
 export type AuthProfile = {
   userId: string;
@@ -12,9 +12,9 @@ export type AuthProfile = {
 const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
   admin: ['breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
   recepce: ['breakfast:read', 'lost_found:read'],
-  'údrba': ['issues:read'],
-  'snídanì': ['breakfast:read', 'issues:read', 'inventory:read'],
-  pokojská: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
+  'ÃºdrÅ¾ba': ['issues:read'],
+  'snÃ­danÄ›': ['breakfast:read', 'issues:read', 'inventory:read'],
+  pokojskÃ¡: ['lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
   sklad: ['breakfast:read', 'issues:read', 'inventory:read'],
 };
 
@@ -32,7 +32,7 @@ type AuthMeResponse = {
 };
 
 function normalizeRole(input: string | undefined): Role {
-  if (input === 'admin' || input === 'pokojská' || input === 'údrba' || input === 'recepce' || input === 'snídanì' || input === 'sklad') {
+  if (input === 'admin' || input === 'pokojskÃ¡' || input === 'ÃºdrÅ¾ba' || input === 'recepce' || input === 'snÃ­danÄ›' || input === 'sklad') {
     return input;
   }
   return 'admin';

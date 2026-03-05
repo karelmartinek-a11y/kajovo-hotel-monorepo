@@ -116,7 +116,7 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
     assert row is not None
     assert row[0] == "udrzba@example.com"
     assert row[1] == "udrzba@example.com"
-    assert row[2] == "údržba"
+    assert row[2] == "ÃºdrÅ¾ba"
     assert row[3] == "POST"
     assert row[4] == "/api/v1/reports"
     assert row[5] == 403

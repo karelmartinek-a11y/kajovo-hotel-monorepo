@@ -52,7 +52,7 @@ def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
 def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -> None:
     deny_cases = [
         DenyCase(
-            role="údrba",
+            role="ÃºdrÅ¾ba",
             email="udrzba@example.com",
             password="udrzba-pass",
             method="GET",
@@ -60,7 +60,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             expected_permission="Missing permission: inventory:read",
         ),
         DenyCase(
-            role="údrba",
+            role="ÃºdrÅ¾ba",
             email="udrzba@example.com",
             password="udrzba-pass",
             method="POST",
@@ -68,7 +68,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             expected_permission="Missing permission: inventory:write",
         ),
         DenyCase(
-            role="snídanì",
+            role="snÃ­danÄ›",
             email="snidane@example.com",
             password="snidane-pass",
             method="POST",
@@ -105,7 +105,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         )
         assert status == 200
 
-        payload = {"name": "MÃ½dlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
+        payload = {"name": "MÄ‚Ëdlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
         if case.path == "/api/v1/reports":
             payload = {"title": "No access", "status": "open"}
         if case.path == "/api/v1/users":
