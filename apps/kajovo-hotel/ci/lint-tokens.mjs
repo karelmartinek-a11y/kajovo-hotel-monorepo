@@ -72,8 +72,13 @@ if (tokens.signage?.position !== requiredSignage.position) {
 if (tokens.signage?.alwaysVisibleOnScroll !== true) {
   errors.push('signage.alwaysVisibleOnScroll must be true');
 }
-if (typeof tokens.signage?.minThicknessPx !== 'number' || tokens.signage.minThicknessPx < 24) {
-  errors.push('signage.minThicknessPx must be at least 24');
+const minThicknessDesktop = 12;
+const minThicknessMobile = 4.8;
+if (typeof tokens.signage?.minThicknessPx !== 'number' || tokens.signage.minThicknessPx !== minThicknessDesktop) {
+  errors.push(`signage.minThicknessPx must be ${minThicknessDesktop}`);
+}
+if (typeof tokens.signage?.minThicknessPxMobile !== 'number' || tokens.signage.minThicknessPxMobile !== minThicknessMobile) {
+  errors.push(`signage.minThicknessPxMobile must be ${minThicknessMobile}`);
 }
 
 expectHex(palette.brand?.red, requiredSignage.bg, 'palette.brand.red');
