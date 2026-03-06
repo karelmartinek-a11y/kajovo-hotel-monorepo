@@ -1,4 +1,4 @@
-# ManifestDesignDNAKájovo — Závazný a vymahatelný manifest značky (SSOT)
+﻿# ManifestDesignDNAKájovo — Závazný a vymahatelný manifest značky (SSOT)
 
 Tento dokument je **jediný** závazný a řídící dokument pro repozitář značek rodiny Kájovo a pro používání značky v UI, na webu, v aplikacích (včetně Android), portálech, dokumentaci i marketingu.
 
@@ -180,7 +180,7 @@ Zakázané je zejména:
 ### B.7 Minimální velikost a interakce (aby bylo pravidlo splnitelné)
 Aby signace nebránila běžnému použití:
 - Signace musí být viditelná, ale nesmí překrývat primární ovládací prvky.
-- Minimální čitelná velikost: kratší strana signace (tloušťka červeného bloku po otočení) musí být **min. 24 px**.
+- Minimální čitelná velikost: kratší strana signace (tloušťka červeného bloku po otočení) musí být **desktop min. 12 px (50 % původní velikosti)**, **tablet + telefon min. 4,8 px (20 % původní velikosti)**. Velikost pro web na telefonu je shodná s budoucí Android aplikací.
 - Doporučené (a povinné, pokud by jinak docházelo ke kolizím): signace může být **klikací** a otevřít „About/Brand“ nebo domovskou stránku; klikatelnost však nesmí být vyžadována pro základní funkce.
 
 ---
@@ -631,3 +631,4 @@ Tyto soubory slouží k řízení generování a kontroly kvality; nesmí měnit
 
 - Pro web je vhodné implementovat signaci jako samostatnou komponentu s pevnými barvami a s testy (viz I.2).
 - Pro exporty je vhodné mít skript, který ověří A.4 (žádný `<text>`, žádné opacity, žádné zakázané elementy) a zkontroluje HEX barvy.
+

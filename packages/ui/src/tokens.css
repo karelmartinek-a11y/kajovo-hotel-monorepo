@@ -54,7 +54,10 @@
   --k-focus-ring-width: 2px;
   --k-focus-ring-offset: 2px;
 
-  --k-sign-min-thickness: 24px;
+  --k-sign-min-thickness: 12px;
+  --k-sign-padding-y: 4px;
+  --k-sign-padding-x: 8px;
+  --k-sign-img-width: 60px;
   --k-shell-max-width: 1320px;
 
   --k-z-base: 0;
@@ -356,7 +359,7 @@ body {
   background: var(--k-color-ink);
   color: var(--k-color-brand-white);
   border-radius: var(--k-radius-1);
-  padding: var(--k-spacing-2) var(--k-spacing-4);
+  padding: var(--k-sign-padding-y) var(--k-sign-padding-x);
   font: inherit;
   cursor: pointer;
 }
@@ -429,7 +432,7 @@ body {
 
 .kajovo-sign img {
   display: block;
-  width: 120px;
+  width: var(--k-sign-img-width);
   height: auto;
 }
 
@@ -450,6 +453,13 @@ body {
 }
 
 @media (max-width: 1024px) {
+  :root {
+    --k-sign-min-thickness: 4.8px;
+    --k-sign-padding-y: 1.6px;
+    --k-sign-padding-x: 3.2px;
+    --k-sign-img-width: 24px;
+  }
+
   .k-nav-group-label {
     font-size: var(--k-font-size-xs);
     width: 100%;
