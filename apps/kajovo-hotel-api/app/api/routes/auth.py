@@ -206,14 +206,21 @@ def admin_login(
     settings = get_settings()
     now = _utc_now()
     principal = settings.admin_email.strip().lower()
+    expected_password = settings.admin_password.strip()
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     provided_email = payload.email.strip().lower()
-    valid = provided_email == principal and payload.password == settings.admin_password
-    if _is_locked(state, now):
-        valid = False
-    if (
-        not valid
-    ):
+    provided_password = payload.password
+    valid_credentials = provided_email == principal and provided_password == expected_password
+
+    # Correct admin credentials always clear lockout. This prevents permanent lockout
+    # in deployments where unlock email transport is unavailable.
+    if valid_credentials:
+        _reset_lock_state(state)
+        db.add(state)
+        db.commit()
+    elif _is_locked(state, now):
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Account locked")
+    else:
         became_locked = _record_failed_login(
             state,
             now=now,
@@ -225,9 +232,6 @@ def admin_login(
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    _reset_lock_state(state)
-    db.add(state)
-    db.commit()
     csrf_token = secrets.token_urlsafe(32)
     session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
     response.set_cookie(

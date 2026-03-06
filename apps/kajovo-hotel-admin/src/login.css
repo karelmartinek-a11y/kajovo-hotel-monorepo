@@ -88,3 +88,27 @@
 .k-role-label {
   display: block;
 }
+
+.k-admin-login-feedback {
+  margin: 0;
+  border: 1px solid var(--k-color-error);
+  border-radius: var(--k-radius-2);
+  background: color-mix(in srgb, var(--k-color-error) 8%, var(--k-color-surface-raised));
+  padding: var(--k-spacing-3);
+}
+
+.k-admin-login-feedback-title {
+  margin: 0 0 var(--k-spacing-1);
+  font-size: var(--k-font-size-base);
+  color: var(--k-color-ink);
+}
+
+.k-admin-login-feedback-description {
+  margin: 0;
+  color: var(--k-color-ink-secondary);
+}
+
+.k-admin-login-hint {
+  margin: 0;
+  color: var(--k-color-ink-secondary);
+}
