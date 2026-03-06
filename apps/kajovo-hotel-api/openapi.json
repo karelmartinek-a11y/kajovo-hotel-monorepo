@@ -3312,6 +3312,47 @@
         ]
       }
     },
+    "/api/v1/breakfast/export/daily": {
+      "get": {
+        "operationId": "export_breakfast_daily_pdf_api_v1_breakfast_export_daily_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "service_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Service Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Breakfast Daily Pdf",
+        "tags": [
+          "breakfast"
+        ]
+      }
+    },
     "/api/v1/breakfast/import": {
       "post": {
         "operationId": "import_breakfast_pdf_api_v1_breakfast_import_post",
