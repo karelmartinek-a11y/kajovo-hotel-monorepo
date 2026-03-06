@@ -1,8 +1,8 @@
 import json
-import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from collections.abc import Callable
 from datetime import date
 from http.cookiejar import CookieJar

@@ -76,6 +76,17 @@
             "title": "File",
             "type": "string"
           },
+          "overrides": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overrides"
+          },
           "save": {
             "default": false,
             "title": "Save",
@@ -177,6 +188,21 @@
             "title": "Count",
             "type": "integer"
           },
+          "diet_no_gluten": {
+            "default": false,
+            "title": "Diet No Gluten",
+            "type": "boolean"
+          },
+          "diet_no_milk": {
+            "default": false,
+            "title": "Diet No Milk",
+            "type": "boolean"
+          },
+          "diet_no_pork": {
+            "default": false,
+            "title": "Diet No Pork",
+            "type": "boolean"
+          },
           "guest_name": {
             "anyOf": [
               {
@@ -239,6 +265,21 @@
       },
       "BreakfastOrderCreate": {
         "properties": {
+          "diet_no_gluten": {
+            "default": false,
+            "title": "Diet No Gluten",
+            "type": "boolean"
+          },
+          "diet_no_milk": {
+            "default": false,
+            "title": "Diet No Milk",
+            "type": "boolean"
+          },
+          "diet_no_pork": {
+            "default": false,
+            "title": "Diet No Pork",
+            "type": "boolean"
+          },
           "guest_count": {
             "maximum": 20.0,
             "minimum": 1.0,
@@ -301,6 +342,21 @@
               }
             ],
             "title": "Created At"
+          },
+          "diet_no_gluten": {
+            "default": false,
+            "title": "Diet No Gluten",
+            "type": "boolean"
+          },
+          "diet_no_milk": {
+            "default": false,
+            "title": "Diet No Milk",
+            "type": "boolean"
+          },
+          "diet_no_pork": {
+            "default": false,
+            "title": "Diet No Pork",
+            "type": "boolean"
           },
           "guest_count": {
             "maximum": 20.0,
@@ -372,6 +428,39 @@
       },
       "BreakfastOrderUpdate": {
         "properties": {
+          "diet_no_gluten": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diet No Gluten"
+          },
+          "diet_no_milk": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diet No Milk"
+          },
+          "diet_no_pork": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diet No Pork"
+          },
           "guest_count": {
             "anyOf": [
               {
@@ -549,8 +638,8 @@
       "InventoryItemCreate": {
         "properties": {
           "amount_per_piece_base": {
-            "default": 0,
-            "minimum": 0.0,
+            "default": 1,
+            "minimum": 1.0,
             "title": "Amount Per Piece Base",
             "type": "integer"
           },
@@ -623,8 +712,8 @@
       "InventoryItemDetailRead": {
         "properties": {
           "amount_per_piece_base": {
-            "default": 0,
-            "minimum": 0.0,
+            "default": 1,
+            "minimum": 1.0,
             "title": "Amount Per Piece Base",
             "type": "integer"
           },
@@ -736,8 +825,8 @@
       "InventoryItemRead": {
         "properties": {
           "amount_per_piece_base": {
-            "default": 0,
-            "minimum": 0.0,
+            "default": 1,
+            "minimum": 1.0,
             "title": "Amount Per Piece Base",
             "type": "integer"
           },
@@ -843,7 +932,7 @@
           "amount_per_piece_base": {
             "anyOf": [
               {
-                "minimum": 0.0,
+                "minimum": 1.0,
                 "type": "integer"
               },
               {
@@ -943,8 +1032,8 @@
       "InventoryItemWithAuditRead": {
         "properties": {
           "amount_per_piece_base": {
-            "default": 0,
-            "minimum": 0.0,
+            "default": 1,
+            "minimum": 1.0,
             "title": "Amount Per Piece Base",
             "type": "integer"
           },
@@ -1063,6 +1152,23 @@
       },
       "InventoryMovementCreate": {
         "properties": {
+          "document_date": {
+            "format": "date",
+            "title": "Document Date",
+            "type": "string"
+          },
+          "document_reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Reference"
+          },
           "movement_type": {
             "$ref": "#/components/schemas/InventoryMovementType"
           },
@@ -1079,14 +1185,15 @@
             "title": "Note"
           },
           "quantity": {
-            "minimum": 0.0,
+            "minimum": 1.0,
             "title": "Quantity",
             "type": "integer"
           }
         },
         "required": [
           "movement_type",
-          "quantity"
+          "quantity",
+          "document_date"
         ],
         "title": "InventoryMovementCreate",
         "type": "object"
@@ -1104,6 +1211,41 @@
               }
             ],
             "title": "Created At"
+          },
+          "document_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Date"
+          },
+          "document_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Number"
+          },
+          "document_reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Reference"
           },
           "id": {
             "title": "Id",
@@ -1129,7 +1271,7 @@
             "title": "Note"
           },
           "quantity": {
-            "minimum": 0.0,
+            "minimum": 1.0,
             "title": "Quantity",
             "type": "integer"
           }
@@ -1139,6 +1281,7 @@
           "quantity",
           "id",
           "item_id",
+          "document_number",
           "created_at"
         ],
         "title": "InventoryMovementRead",
@@ -1573,9 +1716,29 @@
             ],
             "title": "Returned At"
           },
+          "room_number": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Number"
+          },
           "status": {
             "$ref": "#/components/schemas/LostFoundStatus",
-            "default": "stored"
+            "default": "new"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -1699,9 +1862,29 @@
             ],
             "title": "Returned At"
           },
+          "room_number": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Number"
+          },
           "status": {
             "$ref": "#/components/schemas/LostFoundStatus",
-            "default": "stored"
+            "default": "new"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
           },
           "updated_at": {
             "anyOf": [
@@ -1859,6 +2042,19 @@
             ],
             "title": "Returned At"
           },
+          "room_number": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Number"
+          },
           "status": {
             "anyOf": [
               {
@@ -1868,6 +2064,20 @@
                 "type": "null"
               }
             ]
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
           }
         },
         "title": "LostFoundItemUpdate",
@@ -1875,10 +2085,11 @@
       },
       "LostFoundStatus": {
         "enum": [
+          "new",
           "stored",
+          "disposed",
           "claimed",
-          "returned",
-          "disposed"
+          "returned"
         ],
         "title": "LostFoundStatus",
         "type": "string"
@@ -3142,6 +3353,42 @@
         ]
       }
     },
+    "/api/v1/breakfast/reactivate-all": {
+      "post": {
+        "operationId": "reactivate_all_breakfast_orders_api_v1_breakfast_reactivate_all_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "service_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Service Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reactivate All Breakfast Orders",
+        "tags": [
+          "breakfast"
+        ]
+      }
+    },
     "/api/v1/breakfast/{order_id}": {
       "delete": {
         "operationId": "delete_breakfast_order_api_v1_breakfast__order_id__delete",
@@ -3378,6 +3625,25 @@
         ]
       }
     },
+    "/api/v1/inventory/stocktake/pdf": {
+      "get": {
+        "operationId": "export_stocktake_pdf_api_v1_inventory_stocktake_pdf_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Stocktake Pdf",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
     "/api/v1/inventory/{item_id}": {
       "delete": {
         "operationId": "delete_item_api_v1_inventory__item_id__delete",
@@ -3550,6 +3816,50 @@
           }
         },
         "summary": "Add Movement",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/{item_id}/movements/{movement_id}": {
+      "delete": {
+        "operationId": "delete_movement_api_v1_inventory__item_id__movements__movement_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "movement_id",
+            "required": true,
+            "schema": {
+              "title": "Movement Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Movement",
         "tags": [
           "inventory"
         ]

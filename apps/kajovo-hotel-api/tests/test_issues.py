@@ -1,7 +1,7 @@
 import json
-import uuid
 import urllib.error
 import urllib.request
+import uuid
 from collections.abc import Callable
 from http.cookiejar import CookieJar
 

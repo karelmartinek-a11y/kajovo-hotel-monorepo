@@ -1,6 +1,6 @@
-from collections.abc import Callable
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from http.cookiejar import CookieJar
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None

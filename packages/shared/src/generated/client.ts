@@ -15,6 +15,7 @@ export type AuthIdentityResponse = {
 };
 export type Body_import_breakfast_pdf_api_v1_breakfast_import_post = {
   "file": string;
+  "overrides"?: string | null;
   "save"?: boolean;
 };
 export type Body_upload_issue_photos_api_v1_issues__issue_id__photos_post = {
@@ -34,6 +35,9 @@ export type BreakfastDailySummary = {
 };
 export type BreakfastImportItem = {
   "count": number;
+  "diet_no_gluten"?: boolean;
+  "diet_no_milk"?: boolean;
+  "diet_no_pork"?: boolean;
   "guest_name"?: string | null;
   "room": number;
 };
@@ -45,6 +49,9 @@ export type BreakfastImportResponse = {
   "status": string;
 };
 export type BreakfastOrderCreate = {
+  "diet_no_gluten"?: boolean;
+  "diet_no_milk"?: boolean;
+  "diet_no_pork"?: boolean;
   "guest_count": number;
   "guest_name": string;
   "note"?: string | null;
@@ -54,6 +61,9 @@ export type BreakfastOrderCreate = {
 };
 export type BreakfastOrderRead = {
   "created_at": string | null;
+  "diet_no_gluten"?: boolean;
+  "diet_no_milk"?: boolean;
+  "diet_no_pork"?: boolean;
   "guest_count": number;
   "guest_name": string;
   "id": number;
@@ -64,6 +74,9 @@ export type BreakfastOrderRead = {
   "updated_at": string | null;
 };
 export type BreakfastOrderUpdate = {
+  "diet_no_gluten"?: boolean | null;
+  "diet_no_milk"?: boolean | null;
+  "diet_no_pork"?: boolean | null;
   "guest_count"?: number | null;
   "guest_name"?: string | null;
   "note"?: string | null;
@@ -152,12 +165,17 @@ export type InventoryItemWithAuditRead = {
   "updated_at": string | null;
 };
 export type InventoryMovementCreate = {
+  "document_date": string;
+  "document_reference"?: string | null;
   "movement_type": InventoryMovementType;
   "note"?: string | null;
   "quantity": number;
 };
 export type InventoryMovementRead = {
   "created_at": string | null;
+  "document_date"?: string | null;
+  "document_number": string | null;
+  "document_reference"?: string | null;
   "id": number;
   "item_id": number;
   "movement_type": InventoryMovementType;
@@ -214,8 +232,8 @@ export type LostFoundItemCreate = {
   "handover_note"?: string | null;
   "item_type"?: LostFoundItemType;
   "location": string;
-  "room_number"?: string | null;
   "returned_at"?: string | null;
+  "room_number"?: string | null;
   "status"?: LostFoundStatus;
   "tags"?: Array<string>;
 };
@@ -232,8 +250,8 @@ export type LostFoundItemRead = {
   "item_type"?: LostFoundItemType;
   "location": string;
   "photos"?: Array<MediaPhotoRead>;
-  "room_number"?: string | null;
   "returned_at"?: string | null;
+  "room_number"?: string | null;
   "status"?: LostFoundStatus;
   "tags"?: Array<string>;
   "updated_at": string | null;
@@ -249,8 +267,8 @@ export type LostFoundItemUpdate = {
   "handover_note"?: string | null;
   "item_type"?: LostFoundItemType | null;
   "location"?: string | null;
-  "room_number"?: string | null;
   "returned_at"?: string | null;
+  "room_number"?: string | null;
   "status"?: LostFoundStatus | null;
   "tags"?: Array<string> | null;
 };
@@ -445,6 +463,9 @@ export const apiClient = {
   async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
     return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
   },
+  async reactivateAllBreakfastOrdersApiV1BreakfastReactivateAllPost(query: { "service_date": string; }): Promise<void> {
+    return request<void>('POST', `/api/v1/breakfast/reactivate-all`, query, undefined);
+  },
   async deleteBreakfastOrderApiV1BreakfastOrderIdDelete(order_id: number): Promise<void> {
     return request<void>('DELETE', `/api/v1/breakfast/${order_id}`, undefined, undefined);
   },
@@ -463,6 +484,9 @@ export const apiClient = {
   async seedDefaultItemsApiV1InventorySeedDefaultsPost(): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('POST', `/api/v1/inventory/seed-defaults`, undefined, undefined);
   },
+  async exportStocktakePdfApiV1InventoryStocktakePdfGet(): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/inventory/stocktake/pdf`, undefined, undefined);
+  },
   async deleteItemApiV1InventoryItemIdDelete(item_id: number): Promise<void> {
     return request<void>('DELETE', `/api/v1/inventory/${item_id}`, undefined, undefined);
   },
@@ -474,6 +498,9 @@ export const apiClient = {
   },
   async addMovementApiV1InventoryItemIdMovementsPost(item_id: number, body: InventoryMovementCreate): Promise<InventoryItemDetailRead> {
     return request<InventoryItemDetailRead>('POST', `/api/v1/inventory/${item_id}/movements`, undefined, body);
+  },
+  async deleteMovementApiV1InventoryItemIdMovementsMovementIdDelete(item_id: number, movement_id: number): Promise<void> {
+    return request<void>('DELETE', `/api/v1/inventory/${item_id}/movements/${movement_id}`, undefined, undefined);
   },
   async uploadItemPictogramApiV1InventoryItemIdPictogramPost(item_id: number): Promise<InventoryItemRead> {
     return request<InventoryItemRead>('POST', `/api/v1/inventory/${item_id}/pictogram`, undefined, undefined);
