@@ -24,5 +24,11 @@
     "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs",
     "ci:parity-placeholders": "node apps/kajovo-hotel/ci/check-parity-map-placeholders.mjs",
     "ci:e2e-smoke": "pnpm --filter @kajovo/kajovo-hotel-admin test:smoke"
+  },
+  "pnpm": {
+    "overrides": {
+      "rollup": "4.59.0",
+      "esbuild": "0.25.0"
+    }
   }
 }

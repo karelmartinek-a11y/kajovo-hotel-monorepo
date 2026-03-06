@@ -23,7 +23,7 @@ from app.services.mail import (
 router = APIRouter(
     prefix="/api/v1/admin/settings",
     tags=["settings"],
-    dependencies=[Depends(require_actor_type("admin")), Depends(module_access_dependency("users"))],
+    dependencies=[Depends(require_actor_type("admin")), Depends(module_access_dependency("settings"))],
 )
 
 

@@ -4,7 +4,7 @@ import hmac
 import json
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException, Request, status
 
@@ -33,9 +33,10 @@ def create_session_cookie(
     actor_type: str,
     roles: list[str] | None = None,
     active_role: str | None = None,
+    max_age_seconds: int | None = None,
 ) -> str:
     normalized_roles = [normalize_role(r) for r in (roles or [role])]
-    payload = {
+    payload: dict[str, str | list[str] | int | None] = {
         "email": email,
         "role": normalize_role(role),
         "roles": normalized_roles,
@@ -43,6 +44,13 @@ def create_session_cookie(
         "actor_type": actor_type,
         "iat": int(datetime.now(timezone.utc).timestamp()),
     }
+    if max_age_seconds is not None:
+        payload["exp"] = int(
+            (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=max_age_seconds)
+            ).timestamp()
+        )
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     body = base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
     return f"{body}.{_sign(raw)}"
@@ -65,6 +73,14 @@ def read_session_cookie(cookie_value: str | None) -> dict[str, str | list[str] |
         return None
     if not isinstance(data, dict):
         return None
+    exp_value = data.get("exp")
+    if exp_value is not None:
+        try:
+            expires_at = datetime.fromtimestamp(float(exp_value), timezone.utc)
+        except (TypeError, ValueError, OSError, OverflowError):
+            return None
+        if datetime.now(timezone.utc) >= expires_at:
+            return None
     email = str(data.get("email", "")).strip().lower()
     role = normalize_role(str(data.get("role", "")))
     actor_type = str(data.get("actor_type", "portal"))

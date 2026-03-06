@@ -1,0 +1,73 @@
+name: CI Core - Kájovo Hotel
+
+on:
+  pull_request:
+    branches: ['**']
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Configure pnpm store
+        run: pnpm config set store-dir ~/.pnpm-store
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('apps/kajovo-hotel-api/pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./apps/kajovo-hotel-api[dev]
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile --store ~/.pnpm-store
+
+      - name: Run TypeScript lint
+        run: pnpm lint
+
+      - name: Run backend unit tests
+        run: pnpm unit
+
+      - name: Build portal client
+        run: pnpm --filter @kajovo/kajovo-hotel-web build
+
+      - name: Build admin client
+        run: pnpm --filter @kajovo/kajovo-hotel-admin build
+
+      - name: Run smoke e2e suite
+        run: pnpm --filter @kajovo/kajovo-hotel-web test:smoke

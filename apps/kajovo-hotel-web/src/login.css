@@ -16,6 +16,14 @@
   padding: var(--k-spacing-6);
 }
 
+.k-login-wordmark {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 0 var(--k-spacing-4);
+}
+
 .k-login-eyebrow {
   margin: 0 0 var(--k-spacing-2);
   font-size: var(--k-font-size-sm);

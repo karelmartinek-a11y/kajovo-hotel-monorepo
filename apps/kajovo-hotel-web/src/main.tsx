@@ -817,6 +817,14 @@ function BreakfastList(): JSX.Element {
     }
   };
 
+  const downloadBreakfastPdf = (): void => {
+    if (!serviceDate) {
+      return;
+    }
+    const url = `/api/v1/breakfast/export/daily?service_date=${encodeURIComponent(serviceDate)}`;
+    window.open(url, '_blank', 'noopener');
+  };
+
   const importPreviewTable = importPreview ? (
     <div className="k-card">
       <div className="k-toolbar">
@@ -881,6 +889,14 @@ function BreakfastList(): JSX.Element {
             aria-label="Import PDF"
             onChange={(event) => handleImportFile(event.target.files?.[0] ?? null)}
           />
+          <button
+            className="k-button secondary"
+            type="button"
+            onClick={downloadBreakfastPdf}
+            disabled={!serviceDate}
+          >
+            Export snídaní (PDF)
+          </button>
         </>
       ) : null}
     </div>

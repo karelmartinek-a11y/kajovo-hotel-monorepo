@@ -24,4 +24,6 @@ export type NavigationRules = {
   phoneSearchPlaceholder?: string;
   enableSearchInMenuOnPhone?: boolean;
   grouping: boolean;
+  ariaLabel?: string;
+  defaultGroupLabel?: string;
 };

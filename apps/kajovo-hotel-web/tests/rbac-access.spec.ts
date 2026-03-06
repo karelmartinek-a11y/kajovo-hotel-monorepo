@@ -34,7 +34,7 @@ test('restricted module is hidden in navigation and shows access denied on direc
   await page.goto('/sklad');
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
   await expect(page.getByText('Přístup odepřen')).toBeVisible();
-  await expect(page.getByText(/Role údržba/)).toBeVisible();
+  await expect(page.getByText(/Role\s+údržba/i)).toBeVisible();
 });
 
 test('recepce navigace obsahuje jen snídaně a nálezy', async ({ page }) => {
@@ -64,5 +64,49 @@ test('recepce navigace obsahuje jen snídaně a nálezy', async ({ page }) => {
     await expect(page.getByRole('link', { name: 'Ztráty a nálezy' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Závady' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
+  }
+});
+
+
+test('admin rozhraní nabízí přepínání klíčových modulů', async ({ page }) => {
+  await page.goto('/admin');
+  await page.waitForSelector('[data-testid="module-navigation-desktop"], [data-testid="module-navigation-phone"]', { state: 'attached' });
+  const expectedModules = [
+    'Snídaně',
+    'Skladové hospodářství',
+    'Závady',
+    'Pokojská',
+    'Ztráty a nálezy',
+  ];
+
+  const desktopNav = page.getByTestId('module-navigation-desktop');
+  const phoneNav = page.getByTestId('module-navigation-phone');
+  for (const label of expectedModules) {
+    const pattern = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const link = desktopNav.getByRole('link', { name: pattern });
+    if ((await link.count()) > 0) {
+      expect(await link.first().isVisible()).toBeTruthy();
+      continue;
+    }
+
+    const overflowButton = desktopNav.getByRole('button', { name: 'Další' });
+    if ((await overflowButton.count()) > 0) {
+      await overflowButton.first().click();
+      const menuItem = desktopNav.getByRole('menuitem', { name: pattern });
+      await expect(menuItem).toBeVisible();
+      continue;
+    }
+
+    const phoneToggle = phoneNav.getByRole('button', { name: /Menu/i });
+    if ((await phoneToggle.count()) > 0) {
+      const expanded = await phoneToggle.first().getAttribute('aria-expanded');
+      if (expanded !== 'true') {
+        await phoneToggle.first().click();
+      }
+      await expect(phoneNav.getByRole('menuitem', { name: pattern })).toBeVisible();
+      continue;
+    }
+
+    throw new Error(`Module ${label} not found in admin navigation`);
   }
 });

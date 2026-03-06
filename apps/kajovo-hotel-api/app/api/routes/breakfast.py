@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from io import BytesIO
 
 from fastapi import (
     APIRouter,
@@ -12,6 +13,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,6 +31,7 @@ from app.db.models import BreakfastOrder
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
 from app.services.breakfast.parser import parse_breakfast_pdf
+from app.services.pdf.breakfast import build_breakfast_schedule_pdf
 
 router = APIRouter(
     prefix="/api/v1/breakfast",
@@ -226,6 +229,40 @@ def reactivate_all_breakfast_orders(
         BreakfastOrder.status == BreakfastStatus.SERVED.value,
     ).update({BreakfastOrder.status: BreakfastStatus.PENDING.value})
     db.commit()
+
+
+@router.get("/export/daily")
+def export_breakfast_daily_pdf(
+    request: Request,
+    service_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    actor_role = _actor_role(request)
+    if actor_role not in {"admin", "recepce"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Breakfast export requires recepce/admin role",
+        )
+
+    orders = list(
+        db.scalars(
+            select(BreakfastOrder)
+            .where(BreakfastOrder.service_date == service_date)
+            .order_by(BreakfastOrder.room_number.asc())
+        )
+    )
+
+    pdf_bytes = build_breakfast_schedule_pdf(orders, service_date=service_date)
+    filename = f"breakfast-{service_date.isoformat()}.pdf"
+    return StreamingResponse(
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename={filename}"
+            )
+        },
+    )
 
 
 @router.post("/import", response_model=BreakfastImportResponse)

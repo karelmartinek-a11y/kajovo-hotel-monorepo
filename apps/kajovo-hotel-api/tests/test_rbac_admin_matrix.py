@@ -81,7 +81,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             password="recepce-pass",
             method="GET",
             path="/api/v1/users",
-            expected_permission="Missing permission: users:read",
+            expected_permission="Missing actor type: admin",
         ),
         DenyCase(
             role="recepce",
@@ -89,7 +89,23 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             password="recepce-pass",
             method="POST",
             path="/api/v1/users",
-            expected_permission="Missing permission: users:write",
+            expected_permission="Missing actor type: admin",
+        ),
+        DenyCase(
+            role="recepce",
+            email="recepce@example.com",
+            password="recepce-pass",
+            method="GET",
+            path="/api/v1/admin/settings/smtp",
+            expected_permission="Missing actor type: admin",
+        ),
+        DenyCase(
+            role="recepce",
+            email="recepce@example.com",
+            password="recepce-pass",
+            method="PUT",
+            path="/api/v1/admin/settings/smtp",
+            expected_permission="Missing actor type: admin",
         ),
     ]
 
@@ -111,13 +127,25 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         if case.path == "/api/v1/users":
             payload = {"email": "blocked.user@example.com", "password": "blocked-user-pass"}
 
+        if case.path == "/api/v1/admin/settings/smtp":
+            payload = {
+                "host": "smtp.test",
+                "port": 587,
+                "username": "mailer",
+                "password": "very-secret",
+                "use_tls": True,
+                "use_ssl": False,
+            }
+
+        write_method = case.method in {"POST", "PUT", "PATCH", "DELETE"}
+
         status, data = api_request(
             opener,
             api_base_url,
             case.path,
             method=case.method,
-            payload=payload if case.method == "POST" else None,
-            headers=csrf_header(jar) if case.method == "POST" else None,
+            payload=payload if write_method else None,
+            headers=csrf_header(jar) if write_method else None,
         )
 
         assert status == 403

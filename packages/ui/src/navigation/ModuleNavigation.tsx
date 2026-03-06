@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
 
 type Props = {
@@ -14,7 +15,6 @@ type GroupedModules = {
   items: NavModule[];
   order: number;
 };
-
 
 function mediaMatches(query: string): boolean {
   if (typeof window === 'undefined') {
@@ -40,6 +40,16 @@ function normalize(input: string): string {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function focusFirstInteractive(root: HTMLElement | null): void {
+  if (!root) {
+    return;
+  }
+  const candidate = root.querySelector<HTMLElement>(
+    'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+  );
+  candidate?.focus();
+}
+
 export function ModuleNavigation({ modules, rules, currentPath, sections = [] }: Props): JSX.Element {
   const active = React.useMemo(() => modules.filter((module) => module.active), [modules]);
   const desktopLimit = Math.max(1, rules.maxTopLevelItemsDesktop);
@@ -49,7 +59,13 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [isPhone, setIsPhone] = React.useState(() => mediaMatches('(max-width: 767px)'));
-  const [isTablet, setIsTablet] = React.useState(() => mediaMatches('(min-width: 768px) and (max-width: 1024px)'));
+  const [isTablet, setIsTablet] = React.useState(() =>
+    mediaMatches('(min-width: 768px) and (max-width: 1024px)'),
+  );
+
+  const drawerButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const drawerContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') {
@@ -76,10 +92,51 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
     setSearch('');
   }, [currentPath]);
 
+  React.useEffect(() => {
+    if (!drawerOpen) {
+      return;
+    }
+
+    const handler = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setDrawerOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handler);
+    const nextFrame = window.requestAnimationFrame(() => {
+      if (rules.enableSearchInMenuOnPhone && searchInputRef.current) {
+        searchInputRef.current.focus();
+      } else {
+        focusFirstInteractive(drawerContainerRef.current);
+      }
+    });
+
+    return () => {
+      document.removeEventListener('keydown', handler);
+      window.cancelAnimationFrame(nextFrame);
+    };
+  }, [drawerOpen, rules.enableSearchInMenuOnPhone]);
+
+  React.useEffect(() => {
+    if (!drawerOpen && drawerButtonRef.current) {
+      drawerButtonRef.current.focus();
+    }
+  }, [drawerOpen]);
+
   const width = typeof window !== 'undefined' ? window.innerWidth : null;
-  const maxVisibleItems = width !== null
-    ? (width <= 767 ? 0 : width <= 1024 ? tabletLimit : desktopLimit)
-    : isPhone ? 0 : isTablet ? tabletLimit : desktopLimit;
+  const maxVisibleItems =
+    width !== null
+      ? width <= 767
+        ? 0
+        : width <= 1024
+          ? tabletLimit
+          : desktopLimit
+      : isPhone
+        ? 0
+        : isTablet
+          ? tabletLimit
+          : desktopLimit;
   const visibleItems = active.slice(0, maxVisibleItems);
   const overflow = active.slice(maxVisibleItems);
 
@@ -92,11 +149,12 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
 
     const bySection = new Map<string, GroupedModules>();
     const fallbackSectionKey = 'default';
+    const fallbackLabel = rules.defaultGroupLabel ?? 'Ostatní';
 
     for (const module of visibleItems) {
       const sectionKey = module.section ?? fallbackSectionKey;
       const section = sectionMap.get(sectionKey);
-      const label = section?.label ?? (sectionKey === 'default' ? 'Ostatní' : sectionKey);
+      const label = section?.label ?? (sectionKey === fallbackSectionKey ? fallbackLabel : sectionKey);
       const order = section?.order ?? Number.MAX_SAFE_INTEGER;
       const existing = bySection.get(sectionKey);
 
@@ -129,22 +187,37 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
     return active.filter((module) => normalize(module.label).includes(needle));
   }, [active, rules.enableSearchInMenuOnPhone, search]);
 
+  const handleOverflowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setOverflowOpen(false);
+      const button = event.currentTarget.closest('.k-nav-overflow')?.querySelector<HTMLButtonElement>('button');
+      button?.focus();
+    }
+  };
+
   return (
-    <nav aria-label="Hlavní navigace" className="k-nav" data-testid="module-navigation">
+    <nav
+      role="navigation"
+      aria-label={rules.ariaLabel ?? 'Hlavní navigace'}
+      className="k-nav"
+      data-testid="module-navigation"
+    >
       <div className="k-nav-desktop" data-testid="module-navigation-desktop">
         <div className="k-nav-row">
           {grouped.map((group) => (
             <React.Fragment key={group.key}>
               {group.label ? <span className="k-nav-group-label">{group.label}</span> : null}
               {group.items.map((module) => (
-                <a
+                <Link
                   key={module.key}
                   className="k-nav-link"
-                  href={module.route}
+                  to={module.route}
                   aria-current={currentPath === module.route ? 'page' : undefined}
+                  onClick={() => setOverflowOpen(false)}
                 >
                   {module.label}
-                </a>
+                </Link>
               ))}
             </React.Fragment>
           ))}
@@ -155,16 +228,27 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={overflowOpen}
-                onClick={() => setOverflowOpen((v) => !v)}
+                onClick={() => setOverflowOpen((value) => !value)}
               >
                 {rules.overflowLabel}
               </button>
               {overflowOpen ? (
-                <div className="k-nav-overflow-menu" role="menu" aria-label={rules.overflowLabel}>
+                <div
+                  className="k-nav-overflow-menu"
+                  role="menu"
+                  aria-label={rules.overflowLabel}
+                  onKeyDown={handleOverflowKeyDown}
+                >
                   {overflow.map((module) => (
-                    <a className="k-nav-overflow-item" href={module.route} key={module.key} role="menuitem">
+                    <Link
+                      className="k-nav-overflow-item"
+                      to={module.route}
+                      key={module.key}
+                      role="menuitem"
+                      onClick={() => setOverflowOpen(false)}
+                    >
                       {module.label}
-                    </a>
+                    </Link>
                   ))}
                 </div>
               ) : null}
@@ -175,20 +259,29 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
 
       <div className="k-nav-phone" data-testid="module-navigation-phone">
         <button
+          ref={drawerButtonRef}
           className="k-button secondary"
           type="button"
           aria-expanded={drawerOpen}
           aria-controls="k-nav-drawer"
-          onClick={() => setDrawerOpen((v) => !v)}
+          onClick={() => setDrawerOpen((value) => !value)}
         >
           {rules.phoneDrawerLabel ?? 'Menu'}
         </button>
         {drawerOpen ? (
-          <div className="k-nav-drawer" id="k-nav-drawer" role="dialog" aria-label="Navigace">
+          <div
+            ref={drawerContainerRef}
+            className="k-nav-drawer"
+            id="k-nav-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={rules.ariaLabel ?? 'Navigace'}
+          >
             {rules.enableSearchInMenuOnPhone ? (
               <label className="k-nav-drawer-search">
                 <span className="k-nav-sr-only">Hledat modul</span>
                 <input
+                  ref={searchInputRef}
                   className="k-input"
                   type="search"
                   value={search}
@@ -199,9 +292,15 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
             ) : null}
             <div className="k-nav-drawer-list" role="menu" aria-label="Moduly">
               {searchableItems.map((module) => (
-                <a className="k-nav-overflow-item" href={module.route} key={module.key} role="menuitem">
+                <Link
+                  className="k-nav-overflow-item"
+                  to={module.route}
+                  key={module.key}
+                  role="menuitem"
+                  onClick={() => setDrawerOpen(false)}
+                >
                   {module.label}
-                </a>
+                </Link>
               ))}
               {searchableItems.length === 0 ? <p className="k-nav-empty">Žádné výsledky.</p> : null}
             </div>

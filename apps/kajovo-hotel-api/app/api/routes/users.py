@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import hash_password
@@ -20,7 +20,12 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
-from app.security.rbac import module_access_dependency, require_actor_type
+from app.security.rbac import (
+    module_access_dependency,
+    normalize_role,
+    parse_identity,
+    require_actor_type,
+)
 from app.services.mail import (
     StoredSmtpConfig,
     build_email_service,
@@ -31,7 +36,7 @@ from app.services.mail import (
 router = APIRouter(
     prefix="/api/v1/users",
     tags=["users"],
-    dependencies=[Depends(module_access_dependency("users"))],
+    dependencies=[Depends(require_actor_type("admin")), Depends(module_access_dependency("users"))],
 )
 
 
@@ -69,6 +74,10 @@ def _to_read_model(user: PortalUser) -> PortalUserRead:
         updated_at=user.updated_at,
         last_login_at=user.last_login_at,
     )
+
+
+def _is_admin_user(user: PortalUser) -> bool:
+    return any(normalize_role(role.role) == "admin" for role in user.roles)
 
 
 def _issue_portal_reset_token(db: Session, principal: str) -> str:
@@ -242,9 +251,50 @@ def send_user_reset_link(
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
+def delete_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> None:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    settings = get_settings()
+    admin_email = settings.admin_email.strip().lower()
+    actor_email, _, _ = parse_identity(request)
+    target_email = user.email.strip().lower()
+
+    if target_email == admin_email:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Admin account cannot be deleted",
+        )
+
+    if actor_email and actor_email.strip().lower() == target_email:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot delete your own account",
+        )
+
+    active_admin_count = db.scalar(
+        select(func.count())
+        .select_from(PortalUserRole)
+        .join(PortalUser)
+        .where(
+            PortalUserRole.role == "admin",
+            PortalUser.is_active.is_(True),
+        )
+    ) or 0
+
+    if _is_admin_user(user) and user.is_active and active_admin_count <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete the last admin user",
+        )
+
+    audit_payload = json.dumps({"user_id": user.id, "email": user.email})
     db.delete(user)
     db.commit()
+    request.state.audit_detail_override = audit_payload

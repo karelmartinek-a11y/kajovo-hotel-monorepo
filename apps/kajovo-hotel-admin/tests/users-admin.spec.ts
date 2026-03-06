@@ -27,6 +27,7 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
 test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
+    document.cookie = 'kajovo_csrf=test-token; path=/';
   });
   await mockAuth(page, {
     email: 'admin@example.com',
@@ -36,6 +37,8 @@ test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) =>
   });
 
   let createdPayload: Record<string, unknown> | null = null;
+  let csrfHeader: string | undefined;
+
   await page.route('**/api/v1/users', async (route) => {
     const method = route.request().method();
     if (method === 'GET') {
@@ -43,6 +46,7 @@ test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) =>
       return;
     }
     if (method === 'POST') {
+      csrfHeader = route.request().headers()['x-csrf-token'];
       createdPayload = route.request().postDataJSON() as Record<string, unknown>;
       await route.fulfill({
         status: 201,
@@ -92,11 +96,13 @@ test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) =>
     roles: ['recepce', 'sklad'],
     phone: '+420777888999',
   });
+  expect(csrfHeader).toBe('test-token');
 });
 
 test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('kajovo_admin_role_view', 'sklad');
+    document.cookie = 'kajovo_csrf=test-token; path=/';
   });
   await mockAuth(page, {
     email: 'admin@example.com',
@@ -104,6 +110,7 @@ test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) =>
     permissions: ['users:read', 'users:write'],
     actor_type: 'admin',
   });
+
   await page.route('**/api/v1/users', async (route) => {
     if (route.request().method() !== 'GET') {
       await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
@@ -136,4 +143,196 @@ test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) =>
 
   await expect(page.getByText('Smazání je dostupné pouze pro admina.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Smazat' })).toHaveCount(0);
+});
+
+test('seznam uživatelů lze filtrovat podle jména, emailu i role', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
+    document.cookie = 'kajovo_csrf=test-token; path=/';
+  });
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['users:read', 'users:write'],
+    actor_type: 'admin',
+  });
+
+  await page.route('**/api/v1/users', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 1,
+          first_name: 'Jana',
+          last_name: 'Recepční',
+          email: 'jana.recepcni@example.com',
+          role: 'recepce',
+          roles: ['recepce'],
+          phone: null,
+          note: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
+          last_login_at: null,
+        },
+        {
+          id: 2,
+          first_name: 'Karel',
+          last_name: 'Skladník',
+          email: 'karel.skladnik@example.com',
+          role: 'sklad',
+          roles: ['sklad'],
+          phone: null,
+          note: null,
+          is_active: false,
+          created_at: null,
+          updated_at: null,
+          last_login_at: null,
+        },
+      ]),
+    });
+  });
+
+  await page.goto(adminPath('/uzivatele'));
+
+  const usersPage = page.getByTestId('users-admin-page');
+  const listTable = usersPage.locator('table').first();
+  await expect(listTable).toContainText('jana.recepcni@example.com');
+  await expect(listTable).toContainText('karel.skladnik@example.com');
+
+  const filterInput = page.getByPlaceholder('Hledat jméno, email nebo roli');
+  await expect(filterInput).toBeVisible();
+
+  await filterInput.fill('sklad');
+  await expect(listTable).toContainText('karel.skladnik@example.com');
+  await expect(listTable).not.toContainText('jana.recepcni@example.com');
+
+  await filterInput.fill('recepční');
+  await expect(listTable).toContainText('jana.recepcni@example.com');
+  await expect(listTable).not.toContainText('karel.skladnik@example.com');
+
+  await filterInput.fill('');
+  await expect(listTable).toContainText('jana.recepcni@example.com');
+  await expect(listTable).toContainText('karel.skladnik@example.com');
+});
+
+test('admin smaže uživatele přes potvrzovací dialog', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
+    document.cookie = 'kajovo_csrf=test-token; path=/';
+  });
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['users:read', 'users:write'],
+    actor_type: 'admin',
+  });
+
+  type MockUser = {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+    role: string;
+    roles: string[];
+    phone: string | null;
+    note: string | null;
+    is_active: boolean;
+    created_at: string | null;
+    updated_at: string | null;
+    last_login_at: string | null;
+  };
+
+  let users: MockUser[] = [
+    {
+      id: 12,
+      first_name: 'Karel',
+      last_name: 'Novák',
+      email: 'karel.novak@example.com',
+      role: 'recepce',
+      roles: ['recepce'],
+      phone: null,
+      note: null,
+      is_active: true,
+      created_at: null,
+      updated_at: null,
+      last_login_at: null,
+    },
+    {
+      id: 13,
+      first_name: 'Jana',
+      last_name: 'Skladníková',
+      email: 'jana.skladnikova@example.com',
+      role: 'sklad',
+      roles: ['sklad'],
+      phone: null,
+      note: null,
+      is_active: true,
+      created_at: null,
+      updated_at: null,
+      last_login_at: null,
+    },
+  ];
+
+  let deleteCsrfHeader: string | undefined;
+
+  await page.route('**/api/v1/users', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(users),
+      });
+      return;
+    }
+    await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.route('**/api/v1/users/*', async (route) => {
+    const method = route.request().method();
+    if (method === 'DELETE') {
+      deleteCsrfHeader = route.request().headers()['x-csrf-token'];
+      const url = new URL(route.request().url());
+      const id = Number(url.pathname.split('/').pop());
+      users = users.filter((user) => user.id !== id);
+      await route.fulfill({ status: 204, contentType: 'application/json', body: '' });
+      return;
+    }
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(users),
+      });
+      return;
+    }
+    await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto(adminPath('/uzivatele'));
+
+  const deleteButton = page.getByTestId('users-admin-page').getByRole('button', { name: 'Smazat' });
+  await expect(deleteButton).toBeVisible();
+  await deleteButton.click({ force: true });
+
+  const confirmCard = page.getByTestId('confirm-delete-card');
+  await expect(confirmCard).toBeVisible();
+  await expect(confirmCard).toContainText('karel.novak@example.com');
+
+  await confirmCard.getByRole('button', { name: 'Smazat' }).click({ force: true });
+
+  await expect(confirmCard).toHaveCount(0);
+  await expect(page.getByText('Uživatel byl smazán.')).toBeVisible();
+
+  const table = page.getByTestId('users-admin-page').locator('table').first();
+  await expect(table).not.toContainText('karel.novak@example.com');
+  await expect(table).toContainText('jana.skladnikova@example.com');
+
+  expect(deleteCsrfHeader).toBe('test-token');
 });
