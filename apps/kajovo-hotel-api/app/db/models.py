@@ -52,6 +52,9 @@ class BreakfastOrder(Base):
         String(32), nullable=False, default=BreakfastStatus.PENDING.value
     )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    diet_no_gluten: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    diet_no_milk: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    diet_no_pork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
