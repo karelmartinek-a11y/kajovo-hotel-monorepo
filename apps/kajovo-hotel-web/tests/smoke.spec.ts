@@ -77,15 +77,20 @@ test.describe('admin smoke flows', () => {
   }
 
   async function gotoWithAbortRetry(page: Page, url: string) {
-    try {
-      await page.goto(url);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes('net::ERR_ABORTED')) {
-        throw error;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await page.goto(url);
+        return;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const isNavigationRace =
+          message.includes('net::ERR_ABORTED') ||
+          message.includes('interrupted by another navigation');
+        if (!isNavigationRace || attempt === 2) {
+          throw error;
+        }
+        await page.waitForTimeout(150);
       }
-      await page.waitForLoadState('domcontentloaded');
-      await page.goto(url);
     }
   }
 
