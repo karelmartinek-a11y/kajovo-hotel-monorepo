@@ -72,5 +72,8 @@ jobs:
       - name: Build admin client
         run: pnpm --filter @kajovo/kajovo-hotel-admin build
 
+      - name: Install Playwright browser
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+
       - name: Run smoke e2e suite
         run: pnpm --filter @kajovo/kajovo-hotel-web test:smoke

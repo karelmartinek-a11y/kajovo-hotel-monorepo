@@ -15,8 +15,8 @@
 - Spuštěno lokálně: `pnpm lint`, `pnpm contract:generate`, `python -m pytest apps/kajovo-hotel-api/tests/test_users.py`.
 - PR checky sledované přes `gh pr checks` a `gh run view --log-failed`.
 
-# E) Rizika / known limits
+# E) Rizika/known limits
 - Playwright CI běhy závisí na dostupnosti runner dependencies; hermetický backend bootstrap je součástí repa.
 
-# F) Handoff
+# F) Handoff pro další prompt
 - Po merge sledovat `release` workflow na `main` a navazující deploy joby.
