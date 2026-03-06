@@ -62,6 +62,9 @@ class BreakfastOrderBase(BaseModel):
     guest_count: int = Field(ge=1, le=20)
     status: BreakfastStatus = BreakfastStatus.PENDING
     note: str | None = Field(default=None, max_length=2000)
+    diet_no_gluten: bool = False
+    diet_no_milk: bool = False
+    diet_no_pork: bool = False
 
 
 class BreakfastOrderCreate(BreakfastOrderBase):
@@ -75,6 +78,9 @@ class BreakfastOrderUpdate(BaseModel):
     guest_count: int | None = Field(default=None, ge=1, le=20)
     status: BreakfastStatus | None = None
     note: str | None = Field(default=None, max_length=2000)
+    diet_no_gluten: bool | None = None
+    diet_no_milk: bool | None = None
+    diet_no_pork: bool | None = None
 
 
 class BreakfastOrderRead(BreakfastOrderBase):
@@ -96,6 +102,9 @@ class BreakfastImportItem(BaseModel):
     room: int
     count: int
     guest_name: str | None = None
+    diet_no_gluten: bool = False
+    diet_no_milk: bool = False
+    diet_no_pork: bool = False
 
 
 class BreakfastImportResponse(BaseModel):
