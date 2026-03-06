@@ -53,6 +53,7 @@ test.beforeEach(async ({ page }) => {
         role: 'admin',
         permissions: [
           'dashboard:read',
+          'housekeeping:read',
           'breakfast:read',
           'lost_found:read',
           'issues:read',

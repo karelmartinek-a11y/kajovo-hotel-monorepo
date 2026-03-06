@@ -45,7 +45,7 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',
-    permissions: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+    permissions: ['dashboard:read', 'housekeeping:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
     actor_type: 'admin',
   });
   await page.route('**/api/v1/inventory**', async (route) => {
@@ -53,8 +53,10 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   });
 
   await page.goto(adminPath('/'));
+  const viewport = page.viewportSize();
+  const isPhone = viewport ? viewport.width <= 767 : false;
   const phoneNav = page.getByTestId('module-navigation-phone');
-  if (await phoneNav.isVisible()) {
+  if (isPhone) {
     await phoneNav.getByRole('button', { name: 'Menu' }).click();
     await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
   } else {

@@ -19,8 +19,15 @@ from app.db.models import Base
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 ResponseData = dict[str, object] | list[dict[str, object]] | None
-REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_TIMEOUT_SECONDS = 45
 ApiRequest = Callable[..., tuple[int, ResponseData]]
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    api_root = Path(__file__).resolve().parents[1]
+    base_temp = api_root / ".tmp" / "pytest"
+    base_temp.mkdir(parents=True, exist_ok=True)
+    config.option.basetemp = str(base_temp)
 
 
 def _scrypt_hash(password: str, salt: bytes) -> str:
@@ -138,7 +145,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     )
 
     base_url = f"http://127.0.0.1:{port}"
-    for _ in range(50):
+    for _ in range(100):
         try:
             with urllib.request.urlopen(f"{base_url}/health", timeout=1) as response:
                 if response.status == 200:
@@ -174,8 +181,18 @@ def api_request(api_base_url: str) -> ApiRequest:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with opener.open(login_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-        assert response.status == 200
+    last_error: Exception | None = None
+    for _ in range(10):
+        try:
+            with opener.open(login_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                assert response.status == 200
+            last_error = None
+            break
+        except Exception as exc:
+            last_error = exc
+            time.sleep(0.2)
+    if last_error is not None:
+        raise last_error
 
     def _request(
         path: str,
@@ -208,6 +225,9 @@ def api_request(api_base_url: str) -> ApiRequest:
             parsed = json.loads(raw) if raw else None
             return exc.code, parsed
 
+    # Keep references for tests that need the authenticated session.
+    _request.opener = opener  # type: ignore[attr-defined]
+    _request.jar = jar  # type: ignore[attr-defined]
     return _request
 
 

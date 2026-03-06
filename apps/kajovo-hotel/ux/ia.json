@@ -319,6 +319,27 @@
       "maxBrandElements": 2
     },
     {
+      "key": "housekeeping_form",
+      "route": "/pokojska",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
       "key": "lost_found_list",
       "route": "/ztraty-a-nalezy",
       "type": "module",
@@ -673,24 +694,3 @@
     "note": "Each view must have finished UI for required states across phone/tablet/desktop."
   }
 }
-    {
-      "key": "housekeeping_form",
-      "route": "/pokojska",
-      "type": "module",
-      "states": [
-        "default",
-        "loading",
-        "empty",
-        "error",
-        "offline",
-        "maintenance",
-        "404"
-      ],
-      "responsive": [
-        "phone",
-        "tablet",
-        "desktop"
-      ],
-      "signageRequired": true,
-      "maxBrandElements": 2
-    },

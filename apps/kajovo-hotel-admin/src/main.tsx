@@ -91,14 +91,14 @@ type MediaPhoto = {
   created_at: string | null;
 };
 
-type PortalRole = 'pokojskĂˇ' | 'ĂşdrĹľba' | 'recepce' | 'snĂ­danÄ›' | 'sklad';
+type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně' | 'sklad';
 
-const portalRoleOptions: PortalRole[] = ['pokojskĂˇ', 'ĂşdrĹľba', 'recepce', 'snĂ­danÄ›', 'sklad'];
+const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně', 'sklad'];
 const portalRoleLabels: Record<PortalRole, string> = {
-  pokojskĂˇ: 'PokojskĂˇ',
-  ĂşdrĹľba: 'ĂšdrĹľba',
+  'pokojská': 'Pokojská',
+  'údržba': 'Údržba',
   recepce: 'Recepce',
-  snĂ­danÄ›: 'SnĂ­danÄ›',
+  'snídaně': 'Snídaně',
   sklad: 'Sklad',
 };
 
@@ -850,7 +850,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, guest_name: event.target.value }))}
               />
             </FormField>
-            <FormField id="guest_count" label="PoĂ„Ĺ¤et hostÄąĹ»">
+            <FormField id="guest_count" label="Počet hostů">
               <input
                 id="guest_count"
                 type="number"
@@ -867,36 +867,17 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 id="status"
                 className="k-select"
                 value={payload.status}
-                onChange={(event) =>                <option value="new">Nová</option>
-                <option value="stored">Uskladněno</option>
-                <option value="disposed">Zlikvidovat</option>
-                <option value="claimed">Nárokováno</option>
-                <option value="returned">Vráceno</option></select>
-            </FormField>            <FormField id="tags" label="Tagy">
-              <div className="k-toolbar">
-                {Object.keys(lostFoundTagLabels).map((tag) => (
-                  <label className="k-role-label" key={tag}>
-                    <input
-                      type="checkbox"
-                      checked={(payload.tags ?? []).includes(tag)}
-                      onChange={(event) => {
-                        setPayload((prev) => {
-                          const current = new Set(prev.tags ?? []);
-                          if (event.target.checked) {
-                            current.add(tag);
-                          } else {
-                            current.delete(tag);
-                          }
-                          return { ...prev, tags: Array.from(current) };
-                        });
-                      }}
-                    />
-                    {lostFoundTagLabel(tag)}
-                  </label>
-                ))}
-              </div>
+                onChange={(event) =>
+                  setPayload((prev) => ({ ...prev, status: event.target.value as BreakfastStatus }))
+                }
+              >
+                <option value="pending">Čeká</option>
+                <option value="preparing">Připravuje se</option>
+                <option value="served">Vydáno</option>
+                <option value="cancelled">Zrušeno</option>
+              </select>
             </FormField>
-            <FormField id="note" label="PoznÄ‚Ë‡mka">
+            <FormField id="note" label="Poznámka">
               <textarea
                 id="note"
                 className="k-textarea"
@@ -2272,9 +2253,9 @@ function UsersAdmin(): JSX.Element {
       setCreateRoles([]);
       setCreatePhone('');
       setCreateNote('');
-      setMessage('UĹľivatel byl vytvoĹ™en.');
+      setMessage('Uživatel byl vytvořen.');
     } catch {
-      setError('UĹľivatele se nepodaĹ™ilo vytvoĹ™it.');
+      setError('Uživatele se nepodařilo vytvořit.');
     } finally {
       setSaving(false);
     }
@@ -2298,9 +2279,9 @@ function UsersAdmin(): JSX.Element {
       setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? null);
       setSelected(updated);
       syncEdit(updated);
-      setMessage('UĹľivatel byl upraven.');
+      setMessage('Uživatel byl upraven.');
     } catch {
-      setError('UĹľivatele se nepodaĹ™ilo upravit.');
+      setError('Uživatele se nepodařilo upravit.');
     } finally {
       setSaving(false);
     }
@@ -2313,7 +2294,7 @@ function UsersAdmin(): JSX.Element {
       setSelected(updated);
       syncEdit(updated);
     } catch {
-      setError('NepodaĹ™ilo se zmÄ›nit stav uĹľivatele.');
+      setError('Nepodařilo se změnit stav uživatele.');
     }
   }
 
@@ -2321,7 +2302,7 @@ function UsersAdmin(): JSX.Element {
     try {
       await fetchJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, { method: 'POST' });
     } finally {
-      setMessage('Pokud ĂşÄŤet existuje a je dostupnĂ˝ e-mail, byl odeslĂˇn token pro reset hesla.');
+      setMessage('Pokud účet existuje a je dostupný e-mail, byl odeslán token pro reset hesla.');
     }
   }
 
@@ -2359,7 +2340,7 @@ function UsersAdmin(): JSX.Element {
   }
 
   async function deleteUser(user: PortalUser): Promise<void> {
-    if (!window.confirm(`Opravdu smazat uĹľivatele ${user.email}?`)) return;
+    if (!window.confirm(`Opravdu smazat uživatele ${user.email}?`)) return;
     setSaving(true);
     setError(null);
     try {
@@ -2369,11 +2350,11 @@ function UsersAdmin(): JSX.Element {
           'x-csrf-token': getCsrfTokenFromCookie(),
         },
       });
-      setMessage('UĹľivatel byl smazĂˇn.');
+      setMessage('Uživatel byl smazán.');
       setSelected(null);
       load();
     } catch {
-      setError('SmazĂˇnĂ­ uĹľivatele se nepodaĹ™ilo.');
+      setError('Smazání uživatele se nepodařilo.');
     } finally {
       setSaving(false);
     }
@@ -2392,25 +2373,25 @@ function UsersAdmin(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="users-admin-page">
-      <h1>UĹľivatelĂ©</h1>
+      <h1>Uživatelé</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
       {users === null ? <SkeletonPage /> : (
         <div className="k-grid cards-2">
-          <Card title="Seznam uĹľivatelĹŻ">
+          <Card title="Seznam uživatelů">
             <div className="k-toolbar">
-              <button className="k-button" type="button" onClick={() => scrollToSection('users-create')}>NovĂ˝</button>
+              <button className="k-button" type="button" onClick={() => scrollToSection('users-create')}>Nový</button>
             </div>
-            {users.length === 0 ? <StateView title="PrĂˇzdnĂ˝ stav" description="ZatĂ­m neexistujĂ­ ĹľĂˇdnĂ­ uĹľivatelĂ© portĂˇlu." stateKey="empty" /> : (
+            {users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : (
               <DataTable
-                headers={['JmĂ©no', 'PĹ™Ă­jmenĂ­', 'Email', 'Role', 'PoslednĂ­ pĹ™ihlĂˇĹˇenĂ­', 'Stav', 'Akce']}
+                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Poslední přihlášení', 'Stav', 'Akce']}
                 rows={users.map((u) => [
                   <button key={u.id} className="k-nav-link" type="button" onClick={() => selectUser(u)}>{u.first_name}</button>,
                   u.last_name,
                   u.email,
                   u.roles.map(roleLabel).join(', '),
                   formatDateTime(u.last_login_at),
-                  u.is_active ? 'AktivnĂ­' : 'NeaktivnĂ­',
+                  u.is_active ? 'Aktivní' : 'Neaktivní',
                   <button key={`edit-${u.id}`} className="k-button secondary" type="button" onClick={() => selectUser(u)}>Upravit</button>,
                 ])}
               />
@@ -2418,28 +2399,28 @@ function UsersAdmin(): JSX.Element {
           </Card>
 
           <div id="users-detail">
-            <Card title="Detail / Ăšprava">
-              {!selected ? <p>Vyberte uĹľivatele.</p> : (
+            <Card title="Detail / Úprava">
+              {!selected ? <p>Vyberte uživatele.</p> : (
                 <div className="k-form-grid">
-                  <FormField id="edit_first_name" label="JmĂ©no">
+                  <FormField id="edit_first_name" label="Jméno">
                     <input id="edit_first_name" className="k-input" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
                   </FormField>
-                  <FormField id="edit_last_name" label="PĹ™Ă­jmenĂ­">
+                  <FormField id="edit_last_name" label="Příjmení">
                     <input id="edit_last_name" className="k-input" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
                   </FormField>
                   <FormField id="edit_email" label="Email">
                     <input id="edit_email" className="k-input" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
                   </FormField>
-                  {!editEmailValid ? <small>NeplatnĂ˝ email.</small> : null}
-                  <FormField id="edit_phone" label="Telefon (E.164, volitelnĂ©)">
+                {!editEmailValid ? <small>Neplatný email.</small> : null}
+                  <FormField id="edit_phone" label="Telefon (E.164, volitelné)">
                     <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
                   </FormField>
-                  <small>NapĹ™. +420123456789. PĹ™i zadĂˇnĂ­ bez pĹ™edvolby doplnĂ­me +420.</small>
-                  {!editPhoneValid ? <small>Telefon musĂ­ bĂ˝t ve formĂˇtu E.164.</small> : null}
-                  <FormField id="edit_last_login" label="PoslednĂ­ pĹ™ihlĂˇĹˇenĂ­">
+                  <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
+                  {!editPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+                  <FormField id="edit_last_login" label="Poslední přihlášení">
                     <input id="edit_last_login" className="k-input" value={formatDateTime(selected.last_login_at)} readOnly />
                   </FormField>
-                  <FormField id="edit_note" label="PoznĂˇmka (volitelnĂ©)">
+                  <FormField id="edit_note" label="Poznámka (volitelné)">
                     <textarea id="edit_note" className="k-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
                   </FormField>
                   <fieldset className="k-card"><legend>Role</legend>
@@ -2449,11 +2430,11 @@ function UsersAdmin(): JSX.Element {
                       </label>
                     ))}
                   </fieldset>
-                  <small>Admin pĹ™Ă­stup se nastavuje mimo role portĂˇlu.</small>
+                  <small>Admin přístup se nastavuje mimo role portálu.</small>
                   <div className="k-toolbar">
                     <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={!editValid || saving}>Upravit</button>
                     <button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>
-                      {selected.is_active ? 'ZakĂˇzat' : 'Povolit'}
+                      {selected.is_active ? 'Zakázat' : 'Povolit'}
                     </button>
                     <button className="k-button secondary" type="button" onClick={() => void sendPasswordResetLink(selected)}>
                       Odeslat token pro reset hesla
@@ -2463,7 +2444,7 @@ function UsersAdmin(): JSX.Element {
                         Smazat
                       </button>
                     ) : (
-                      <small>SmazĂˇnĂ­ je dostupnĂ© pouze pro admina.</small>
+                      <small>Smazání je dostupné pouze pro admina.</small>
                     )}
                   </div>
                 </div>
@@ -2472,27 +2453,27 @@ function UsersAdmin(): JSX.Element {
           </div>
 
           <div id="users-create">
-            <Card title="VytvoĹ™it uĹľivatele">
+            <Card title="Vytvořit uživatele">
               <div className="k-form-grid">
-                <FormField id="create_first_name" label="JmĂ©no">
+                <FormField id="create_first_name" label="Jméno">
                   <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
                 </FormField>
-                <FormField id="create_last_name" label="PĹ™Ă­jmenĂ­">
+                <FormField id="create_last_name" label="Příjmení">
                   <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
                 </FormField>
                 <FormField id="create_email" label="Email">
                   <input id="create_email" className="k-input" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
                 </FormField>
-                {!createEmailValid && createEmail.trim() ? <small>NeplatnĂ˝ email.</small> : null}
-                <FormField id="create_password" label="DoÄŤasnĂ© heslo">
+                {!createEmailValid && createEmail.trim() ? <small>Neplatný email.</small> : null}
+                <FormField id="create_password" label="Dočasné heslo">
                   <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
                 </FormField>
-                <FormField id="create_phone" label="Telefon (E.164, volitelnĂ©)">
+                <FormField id="create_phone" label="Telefon (E.164, volitelné)">
                   <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
                 </FormField>
-                <small>NapĹ™. +420123456789. PĹ™i zadĂˇnĂ­ bez pĹ™edvolby doplnĂ­me +420.</small>
-                {!createPhoneValid ? <small>Telefon musĂ­ bĂ˝t ve formĂˇtu E.164.</small> : null}
-                <FormField id="create_note" label="PoznĂˇmka (volitelnĂ©)">
+                <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
+                {!createPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+                <FormField id="create_note" label="Poznámka (volitelné)">
                   <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
                 </FormField>
                 <fieldset className="k-card"><legend>Role</legend>
@@ -2502,8 +2483,8 @@ function UsersAdmin(): JSX.Element {
                     </label>
                   ))}
                 </fieldset>
-                <small>Admin pĹ™Ă­stup se nastavuje mimo role portĂˇlu.</small>
-                <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>VytvoĹ™it uĹľivatele</button>
+                <small>Admin přístup se nastavuje mimo role portálu.</small>
+                <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>Vytvořit uživatele</button>
               </div>
             </Card>
           </div>
@@ -2653,10 +2634,10 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
   return (
     <main className="k-page" data-testid="access-denied-page">
       <StateView
-        title="PĹ™Ă­stup odepĹ™en"
-        description={`Role ${role} (uĹľivatel ${userId}) nemĂˇ oprĂˇvnÄ›nĂ­ pro modul ${moduleLabel}.`}
+        title="Přístup odepřen"
+        description={`Role ${role} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`}
         stateKey="error"
-        action={<Link className="k-button secondary" to="/">ZpÄ›t na pĹ™ehled</Link>}
+        action={<Link className="k-button secondary" to="/">Zpět na přehled</Link>}
       />
     </main>
   );
@@ -2682,7 +2663,7 @@ function AdminLoginPage(): JSX.Element {
       await apiClient.adminLoginApiAuthAdminLoginPost({ email: principal, password });
       window.location.assign('/admin/');
     } catch {
-      setError('NeplatnÄ‚Â© pÄąâ„˘ihlaÄąË‡ovacÄ‚Â­ Ä‚Ĺźdaje.');
+      setError('Neplatné přihlašovací údaje.');
     }
   }
 
@@ -2732,23 +2713,23 @@ function AdminLoginPage(): JSX.Element {
 }
 
 const ADMIN_ROLE_VIEW_LABELS: Record<string, string> = {
-  admin: 'AdministrĂˇtor',
+  admin: 'Administrátor',
   recepce: 'Recepce',
-  pokojskĂˇ: 'PokojskĂˇ',
-  ĂşdrĹľba: 'ĂšdrĹľba',
-  snĂ­danÄ›: 'SnĂ­danÄ›',
+  'pokojská': 'Pokojská',
+  'údržba': 'Údržba',
+  'snídaně': 'Snídaně',
   sklad: 'Sklad',
 };
 
 const ADMIN_ROLE_VIEW_MODULES: Record<string, string[]> = {
   recepce: ['lost_found', 'breakfast'],
-  pokojskĂˇ: ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
-  ĂşdrĹľba: ['issues'],
-  snĂ­danÄ›: ['breakfast', 'issues', 'inventory'],
+  'pokojská': ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
+  'údržba': ['issues'],
+  'snídaně': ['breakfast', 'issues', 'inventory'],
   sklad: ['breakfast', 'issues', 'inventory'],
 };
 
-const ADMIN_ROLE_VIEW_OPTIONS = ['admin', 'recepce', 'pokojskĂˇ', 'ĂşdrĹľba', 'snĂ­danÄ›', 'sklad'] as const;
+const ADMIN_ROLE_VIEW_OPTIONS = ['admin', 'recepce', 'pokojská', 'údržba', 'snídaně', 'sklad'] as const;
 
 type AdminRoleView = typeof ADMIN_ROLE_VIEW_OPTIONS[number];
 

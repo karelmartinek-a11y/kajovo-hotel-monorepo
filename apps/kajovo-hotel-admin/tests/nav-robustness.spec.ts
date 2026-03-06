@@ -34,7 +34,7 @@ test.beforeEach(async ({ page }) => {
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',
-    permissions: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+    permissions: ['dashboard:read', 'housekeeping:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
     actor_type: 'admin',
   });
   await page.addInitScript((modules) => {

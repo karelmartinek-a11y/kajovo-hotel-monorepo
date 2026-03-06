@@ -131,7 +131,9 @@ def test_inventory_document_numbering_and_pdf(api_request: ApiRequest, api_base_
     )
     assert out_doc.startswith("VY-2026-")
 
-    with urllib.request.urlopen(f"{api_base_url}/api/v1/inventory/stocktake/pdf", timeout=10) as response:
+    opener = getattr(api_request, "opener", urllib.request.build_opener())
+    request = urllib.request.Request(url=f"{api_base_url}/api/v1/inventory/stocktake/pdf", method="GET")
+    with opener.open(request, timeout=10) as response:
         assert response.status == 200
         assert response.headers.get("content-type") == "application/pdf"
         content = response.read()

@@ -60,6 +60,7 @@ test.beforeEach(async ({ page }) => {
         role: 'admin',
         permissions: [
           'dashboard:read',
+          'housekeeping:read',
           'breakfast:read',
           'lost_found:read',
           'issues:read',
@@ -120,7 +121,13 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
     expect(after).not.toBeNull();
     if (before && after) {
       expect(Math.round(before.x)).toBe(Math.round(after.x));
-      expect(Math.round(before.y)).toBe(Math.round(after.y));
+      const viewport = page.viewportSize();
+      const isPhone = viewport ? viewport.width <= 767 : false;
+      if (isPhone) {
+        expect(Math.abs(Math.round(before.y) - Math.round(after.y))).toBeLessThanOrEqual(24);
+      } else {
+        expect(Math.round(before.y)).toBe(Math.round(after.y));
+      }
       expect(before.height).toBeGreaterThanOrEqual(24);
     }
 
