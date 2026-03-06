@@ -109,7 +109,7 @@ export function AdminLoginPage(): JSX.Element {
             {copy.hintAction ?? copy.forgotAction}
           </button>
           {loginError ? (
-            <section className="k-login-feedback" role="alertdialog" aria-live="assertive" aria-labelledby="admin-login-error-title" aria-describedby="admin-login-error-description">
+            <section className="k-login-feedback" role="alert" aria-live="assertive" aria-labelledby="admin-login-error-title" aria-describedby="admin-login-error-description">
               <h2 id="admin-login-error-title" className="k-login-feedback-title">{loginError.title}</h2>
               <p id="admin-login-error-description" className="k-login-feedback-description">{loginError.description}</p>
             </section>
