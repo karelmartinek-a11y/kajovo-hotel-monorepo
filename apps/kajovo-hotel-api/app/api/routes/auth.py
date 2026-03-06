@@ -209,7 +209,7 @@ def admin_login(
     expected_password = settings.admin_password.strip()
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     provided_email = payload.email.strip().lower()
-    provided_password = payload.password.strip()
+    provided_password = payload.password
     valid_credentials = provided_email == principal and provided_password == expected_password
 
     # Correct admin credentials always clear lockout. This prevents permanent lockout
