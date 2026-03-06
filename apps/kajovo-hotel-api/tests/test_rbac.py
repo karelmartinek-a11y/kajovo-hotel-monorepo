@@ -38,7 +38,7 @@ def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
     return {"x-csrf-token": token} if token else {}
 
 
-def test_rbac_allows_inventory_for_warehouse(api_base_url: str) -> None:
+def test_rbac_allows_inventory_for_sklad(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -46,7 +46,7 @@ def test_rbac_allows_inventory_for_warehouse(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/login",
         method="POST",
-        payload={"email": "warehouse@example.com", "password": "warehouse-pass"},
+        payload={"email": "sklad@example.com", "password": "sklad-pass"},
     )
     assert status == 200
 
@@ -55,7 +55,7 @@ def test_rbac_allows_inventory_for_warehouse(api_base_url: str) -> None:
     assert isinstance(data, list)
 
 
-def test_rbac_denies_breakfast_for_warehouse(api_base_url: str) -> None:
+def test_rbac_denies_lost_found_for_sklad(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -63,15 +63,15 @@ def test_rbac_denies_breakfast_for_warehouse(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/login",
         method="POST",
-        payload={"email": "warehouse@example.com", "password": "warehouse-pass"},
+        payload={"email": "sklad@example.com", "password": "sklad-pass"},
     )
     assert status == 200
 
-    status, data = api_request(opener, api_base_url, "/api/v1/breakfast")
+    status, data = api_request(opener, api_base_url, "/api/v1/lost-found")
 
     assert status == 403
     assert isinstance(data, dict)
-    assert data["detail"] == "Missing permission: breakfast:read"
+    assert data["detail"] == "Missing permission: lost_found:read"
 
 
 def test_rbac_write_denied_is_audited_with_actor_identity(
@@ -84,7 +84,7 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
         api_base_url,
         "/api/auth/login",
         method="POST",
-        payload={"email": "maintenance@example.com", "password": "maintenance-pass"},
+        payload={"email": "udrzba@example.com", "password": "udrzba-pass"},
     )
     assert status == 200
 
@@ -110,13 +110,14 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
             ORDER BY id DESC
             LIMIT 1
             """,
-            ("maintenance@example.com",),
+            ("udrzba@example.com",),
         ).fetchone()
 
     assert row is not None
-    assert row[0] == "maintenance@example.com"
-    assert row[1] == "maintenance@example.com"
+    assert row[0] == "udrzba@example.com"
+    assert row[1] == "udrzba@example.com"
     assert row[2] == "maintenance"
     assert row[3] == "POST"
     assert row[4] == "/api/v1/reports"
     assert row[5] == 403
+

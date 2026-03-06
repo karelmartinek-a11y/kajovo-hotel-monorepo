@@ -7,7 +7,7 @@ Permission = str
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     "admin": {
-        "dashboard:read",
+        "housekeeping:read",
         "breakfast:read",
         "breakfast:write",
         "lost_found:read",
@@ -24,42 +24,47 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "settings:write",
     },
     "pokojská": {
-        "dashboard:read",
-        "lost_found:read",
-        "lost_found:write",
-        "issues:read",
-        "inventory:read",
-        "inventory:write",
-    },
-    "údržba": {
-        "dashboard:read",
+        "housekeeping:read",
+        "breakfast:read",
+        "breakfast:write",
         "issues:read",
         "issues:write",
-        "reports:read",
+        "inventory:read",
+        "inventory:write",
+        "lost_found:read",
+        "lost_found:write",
+    },
+    "údržba": {
+        "issues:read",
+        "issues:write",
     },
     "recepce": {
-        "dashboard:read",
         "breakfast:read",
         "breakfast:write",
         "lost_found:read",
         "lost_found:write",
-        "reports:read",
     },
     "snídaně": {
-        "dashboard:read",
         "breakfast:read",
         "breakfast:write",
-    },
-    "sklad": {
-        "dashboard:read",
         "inventory:read",
         "inventory:write",
+        "issues:read",
+        "issues:write",
+    },
+    "sklad": {
+        "breakfast:read",
+        "breakfast:write",
+        "inventory:read",
+        "inventory:write",
+        "issues:read",
+        "issues:write",
     },
 }
-
 ROLE_ALIASES: dict[str, str] = {
     "admin": "admin",
     "pokojská": "pokojská",
+    "pokojska": "pokojská",
     "housekeeping": "pokojská",
     "údržba": "údržba",
     "udrzba": "údržba",
@@ -72,7 +77,6 @@ ROLE_ALIASES: dict[str, str] = {
     "warehouse": "sklad",
     "sklad": "sklad",
 }
-
 ROLE_AUDIT_EXPORT: dict[str, str] = {
     "admin": "admin",
     "pokojská": "housekeeping",
@@ -81,7 +85,6 @@ ROLE_AUDIT_EXPORT: dict[str, str] = {
     "snídaně": "breakfast",
     "sklad": "warehouse",
 }
-
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -178,3 +181,6 @@ def inject_identity(request: Request) -> None:
 
 
 IdentityDependency = Depends(inject_identity)
+
+
+

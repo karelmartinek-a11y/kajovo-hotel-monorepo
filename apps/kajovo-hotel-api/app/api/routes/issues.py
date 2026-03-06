@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+﻿from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -38,13 +38,25 @@ def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
 
 @router.get("", response_model=list[IssueRead])
 def list_issues(
+    request: Request,
     priority: IssuePriority | None = Query(default=None),
     status_filter: IssueStatus | None = Query(default=None, alias="status"),
     location: str | None = Query(default=None),
     room_number: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[Issue]:
-    query = select(Issue).order_by(Issue.created_at.desc(), Issue.id.desc())
+    query = (
+        select(Issue)
+        .options(selectinload(Issue.photos))
+        .order_by(Issue.created_at.desc(), Issue.id.desc())
+    )
+    actor_role = getattr(request.state, "actor_role", "")
+    if actor_role == "údržba" and status_filter is None:
+        query = query.where(
+            Issue.status.in_(
+                [IssueStatus.NEW.value, IssueStatus.IN_PROGRESS.value]
+            )
+        )
 
     if priority:
         query = query.where(Issue.priority == priority.value)
@@ -133,8 +145,8 @@ def upload_issue_photos(
     issue = db.get(Issue, issue_id)
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
-    if len(photos) > 5:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 5 photos")
+    if len(photos) > 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 3 photos")
 
     storage = MediaStorage(get_settings().media_root)
     start_idx = len(issue.photos)
@@ -183,3 +195,4 @@ def get_issue_photo(
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
     return FileResponse(path, media_type=photo.mime_type)
+

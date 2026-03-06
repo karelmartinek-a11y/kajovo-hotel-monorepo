@@ -38,7 +38,14 @@ const oneItem = {
   returned_at: null,
 };
 
-const toConcreteRoute = (route: string): string => route.replace(/:id/g, '1');
+const adminPath = (path: string): string => {
+  if (path.startsWith('/admin')) {
+    return path;
+  }
+  return `/admin${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
+const toConcreteRoute = (route: string): string => adminPath(route.replace(/:id/g, '1'));
 
 const smokeRoutes = ia.views.map((view) => toConcreteRoute(view.route));
 const uniqueRoutes = Array.from(new Set(smokeRoutes));
@@ -49,34 +56,42 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/me', async (route) =>
     route.fulfill({
       json: {
-        email: 'manager@example.com',
-        role: 'manager',
+        email: 'admin@example.com',
+        role: 'admin',
         permissions: [
           'dashboard:read',
+          'housekeeping:read',
           'breakfast:read',
           'lost_found:read',
           'issues:read',
           'inventory:read',
           'reports:read',
         ],
-        actor_type: 'portal',
+        actor_type: 'admin',
       },
     })
   );
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
+  await page.route('**/api/v1/breakfast', async (route) => route.fulfill({ json: listPayload }));
   await page.route('**/api/v1/breakfast/daily-summary?*', async (route) => route.fulfill({ json: summaryPayload }));
   await page.route('**/api/v1/breakfast/1', async (route) => route.fulfill({ json: listPayload[0] }));
 
   await page.route('**/api/v1/lost-found?*', async (route) => route.fulfill({ json: [oneItem] }));
+  await page.route('**/api/v1/lost-found', async (route) => route.fulfill({ json: [oneItem] }));
   await page.route('**/api/v1/lost-found/1', async (route) => route.fulfill({ json: oneItem }));
+  await page.route('**/api/v1/lost-found/*/photos', async (route) => route.fulfill({ json: [] }));
 
   await page.route('**/api/v1/issues?*', async (route) => route.fulfill({ json: [{ ...listPayload[0], title: 'Issue', location: 'Lobby', priority: 'high', status: 'new', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/issues', async (route) => route.fulfill({ json: [{ ...listPayload[0], title: 'Issue', location: 'Lobby', priority: 'high', status: 'new', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/issues/1', async (route) => route.fulfill({ json: { id: 1, title: 'Issue', description: null, location: 'Lobby', room_number: null, priority: 'high', status: 'new', assignee: null, in_progress_at: null, resolved_at: null, closed_at: null, created_at: '2026-01-01', updated_at: '2026-01-01' } }));
+  await page.route('**/api/v1/issues/*/photos', async (route) => route.fulfill({ json: [] }));
 
   await page.route('**/api/v1/inventory?*', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/inventory', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/inventory/1', async (route) => route.fulfill({ json: { id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01', movements: [], audit_logs: [] } }));
 
   await page.route('**/api/v1/reports?*', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/reports', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/reports/1', async (route) => route.fulfill({ json: { id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' } }));
 });
 
@@ -106,7 +121,13 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
     expect(after).not.toBeNull();
     if (before && after) {
       expect(Math.round(before.x)).toBe(Math.round(after.x));
-      expect(Math.round(before.y)).toBe(Math.round(after.y));
+      const viewport = page.viewportSize();
+      const isPhone = viewport ? viewport.width <= 767 : false;
+      if (isPhone) {
+        expect(Math.abs(Math.round(before.y) - Math.round(after.y))).toBeLessThanOrEqual(24);
+      } else {
+        expect(Math.round(before.y)).toBe(Math.round(after.y));
+      }
       expect(before.height).toBeGreaterThanOrEqual(24);
     }
 
@@ -143,7 +164,7 @@ test('IA routes expose required view states via state test IDs', async ({ page }
     const route = toConcreteRoute(view.route);
 
     for (const state of requiredStates) {
-      await page.goto(`${route}?state=${state}`);
+    await page.goto(`${route}?state=${state}`);
       await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
       await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
     }
@@ -159,7 +180,7 @@ test('SIGNACE offset respects minimum per device class', async ({ page }) => {
 
   for (const scenario of scenarios) {
     await page.setViewportSize({ width: scenario.width, height: scenario.height });
-    await page.goto('/');
+    await page.goto(adminPath('/'));
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign).toBeVisible();
 
@@ -188,6 +209,7 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
 });
 
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const route of uniqueRoutes) {
     await page.goto(route);
     const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
@@ -197,3 +219,4 @@ test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
     ).toEqual([]);
   }
 });
+

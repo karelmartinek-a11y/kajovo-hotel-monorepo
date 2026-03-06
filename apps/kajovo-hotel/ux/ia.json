@@ -70,6 +70,17 @@
       ]
     },
     {
+      "key": "housekeeping",
+      "label": "Pokojská",
+      "route": "/pokojska",
+      "icon": "tool",
+      "active": true,
+      "section": "operations",
+      "permissions": [
+        "read"
+      ]
+    },
+    {
       "key": "lost_found",
       "label": "Ztráty a nálezy",
       "route": "/ztraty-a-nalezy",
@@ -289,6 +300,27 @@
     {
       "key": "breakfast_edit",
       "route": "/snidane/:id/edit",
+      "type": "module",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error",
+        "offline",
+        "maintenance",
+        "404"
+      ],
+      "responsive": [
+        "phone",
+        "tablet",
+        "desktop"
+      ],
+      "signageRequired": true,
+      "maxBrandElements": 2
+    },
+    {
+      "key": "housekeeping_form",
+      "route": "/pokojska",
       "type": "module",
       "states": [
         "default",

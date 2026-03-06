@@ -1,7 +1,9 @@
 import mimetypes
+from datetime import date
+from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -20,6 +22,7 @@ from app.db.models import InventoryAuditLog, InventoryItem, InventoryMovement
 from app.db.session import get_db
 from app.media.storage import InventoryMediaStorage
 from app.security.rbac import module_access_dependency, require_actor_type
+from app.services.pdf.inventory import build_inventory_stocktake_pdf
 
 router = APIRouter(
     prefix="/api/v1/inventory",
@@ -31,27 +34,27 @@ router = APIRouter(
 DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
     InventoryItemCreate(
         name="Mouka",
-        unit="kg",
+        unit="g",
         min_stock=5,
         current_stock=12,
         supplier="Default supplier",
-        amount_per_piece_base=0,
+        amount_per_piece_base=1000,
     ),
     InventoryItemCreate(
         name="Cukr",
-        unit="kg",
+        unit="g",
         min_stock=3,
         current_stock=8,
         supplier="Default supplier",
-        amount_per_piece_base=0,
+        amount_per_piece_base=1000,
     ),
     InventoryItemCreate(
         name="Káva",
-        unit="kg",
+        unit="g",
         min_stock=2,
         current_stock=4,
         supplier="Default supplier",
-        amount_per_piece_base=0,
+        amount_per_piece_base=1000,
     ),
     InventoryItemCreate(
         name="Čaj",
@@ -73,6 +76,23 @@ def _log_audit(db: Session, entity: str, resource_id: int, action: str, detail: 
             detail=detail,
         )
     )
+
+
+def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
+    year = doc_date.year
+    like = f"{prefix}-{year}-%"
+    last = db.execute(
+        select(InventoryMovement.document_number)
+        .where(InventoryMovement.document_number.like(like))
+        .order_by(InventoryMovement.document_number.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    seq = 0
+    if last:
+        parts = last.split("-")
+        if len(parts) >= 3 and parts[-1].isdigit():
+            seq = int(parts[-1])
+    return f"{prefix}-{year}-{seq + 1:04d}"
 
 
 @router.get("", response_model=list[InventoryItemRead])
@@ -151,6 +171,7 @@ def update_item(
         )
 
     updates = payload.model_dump(exclude_unset=True)
+    updates.pop("current_stock", None)
     for key, value in updates.items():
         setattr(item, key, value)
 
@@ -173,21 +194,34 @@ def add_movement(
             status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
         )
 
+    doc_date = payload.document_date
+    prefix = "PR"
+    if payload.movement_type == InventoryMovementType.OUT:
+        prefix = "VY"
+    elif payload.movement_type == InventoryMovementType.ADJUST:
+        prefix = "OD"
+
     if payload.movement_type == InventoryMovementType.IN:
+        if not payload.document_reference:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Document reference is required for IN movement",
+            )
         item.current_stock += payload.quantity
-    elif payload.movement_type == InventoryMovementType.OUT:
+    else:
         if payload.quantity > item.current_stock:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Insufficient stock for OUT movement",
             )
         item.current_stock -= payload.quantity
-    else:
-        item.current_stock = payload.quantity
 
     movement = InventoryMovement(
         item_id=item.id,
         movement_type=payload.movement_type.value,
+        document_number=_next_document_number(db, prefix, doc_date),
+        document_reference=payload.document_reference,
+        document_date=doc_date,
         quantity=payload.quantity,
         note=payload.note,
     )
@@ -227,6 +261,40 @@ def delete_item(item_id: int, db: Session = Depends(get_db), _admin: None = Depe
 
     _log_audit(db, "item", item.id, "delete", f"Deleted inventory item '{item.name}'.")
     db.delete(item)
+    db.commit()
+
+
+@router.delete("/{item_id}/movements/{movement_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_movement(
+    item_id: int,
+    movement_id: int,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> None:
+    item = db.get(InventoryItem, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+    movement = db.get(InventoryMovement, movement_id)
+    if not movement or movement.item_id != item.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory movement not found")
+    if movement.movement_type == InventoryMovementType.IN.value:
+        if movement.quantity > item.current_stock:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Insufficient stock to revert IN movement",
+            )
+        item.current_stock -= movement.quantity
+    else:
+        item.current_stock += movement.quantity
+    db.add(item)
+    _log_audit(
+        db,
+        "item",
+        item.id,
+        "movement_delete",
+        f"Deleted movement {movement.id} ({movement.movement_type}).",
+    )
+    db.delete(movement)
     db.commit()
 
 
@@ -270,3 +338,16 @@ def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
     media_type = "image/jpeg" if kind == "thumb" else (mimetypes.guess_type(path.name)[0] or "image/jpeg")
     return FileResponse(path, media_type=media_type)
+
+
+@router.get("/stocktake/pdf")
+def export_stocktake_pdf(db: Session = Depends(get_db)):
+    items = list(
+        db.scalars(select(InventoryItem).order_by(InventoryItem.name.asc(), InventoryItem.id.asc()))
+    )
+    pdf_bytes = build_inventory_stocktake_pdf(items, stock_date=date.today())
+    return StreamingResponse(
+        BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=inventory-stocktake.pdf"},
+    )

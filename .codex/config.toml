@@ -1,0 +1,15 @@
+# Codex CLI repo-scoped config for kajovo-hotel-monorepo
+# Place this file at:
+#   C:\github\kajovo-hotel-monorepo\.codex\config.toml
+#
+# Notes:
+# - This enables full access ("yolo") for this trusted local repo.
+# - Keep your OPENAI_API_KEY (or other credential mechanism) OUT of git.
+
+model = "gpt-5-codex"
+approval_policy = "never"           # no confirmations
+sandbox_mode = "danger-full-access" # full filesystem + ability to run commands
+web_search = "live"                 # allow web tool usage from Codex when needed
+
+[projects."C:\\github\\kajovo-hotel-monorepo"]
+trust_level = "trusted"

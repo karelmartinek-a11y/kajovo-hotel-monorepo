@@ -62,6 +62,9 @@ class BreakfastOrderBase(BaseModel):
     guest_count: int = Field(ge=1, le=20)
     status: BreakfastStatus = BreakfastStatus.PENDING
     note: str | None = Field(default=None, max_length=2000)
+    diet_no_gluten: bool = False
+    diet_no_milk: bool = False
+    diet_no_pork: bool = False
 
 
 class BreakfastOrderCreate(BreakfastOrderBase):
@@ -75,6 +78,9 @@ class BreakfastOrderUpdate(BaseModel):
     guest_count: int | None = Field(default=None, ge=1, le=20)
     status: BreakfastStatus | None = None
     note: str | None = Field(default=None, max_length=2000)
+    diet_no_gluten: bool | None = None
+    diet_no_milk: bool | None = None
+    diet_no_pork: bool | None = None
 
 
 class BreakfastOrderRead(BreakfastOrderBase):
@@ -96,6 +102,9 @@ class BreakfastImportItem(BaseModel):
     room: int
     count: int
     guest_name: str | None = None
+    diet_no_gluten: bool = False
+    diet_no_milk: bool = False
+    diet_no_pork: bool = False
 
 
 class BreakfastImportResponse(BaseModel):
@@ -112,10 +121,14 @@ class LostFoundItemType(StrEnum):
 
 
 class LostFoundStatus(StrEnum):
+    NEW = "new"
     STORED = "stored"
+    DISPOSED = "disposed"
     CLAIMED = "claimed"
     RETURNED = "returned"
-    DISPOSED = "disposed"
+
+
+ALLOWED_LOST_FOUND_TAGS = {"kontaktova", "nezastizen", "vyzvedne", "odesleme"}
 
 
 class LostFoundItemBase(BaseModel):
@@ -123,13 +136,31 @@ class LostFoundItemBase(BaseModel):
     description: str = Field(min_length=3, max_length=4000)
     category: str = Field(min_length=1, max_length=64)
     location: str = Field(min_length=1, max_length=255)
+    room_number: str | None = Field(default=None, min_length=1, max_length=32)
     event_at: datetime
-    status: LostFoundStatus = LostFoundStatus.STORED
+    status: LostFoundStatus = LostFoundStatus.NEW
+    tags: list[str] = Field(default_factory=list)
     claimant_name: str | None = Field(default=None, max_length=255)
     claimant_contact: str | None = Field(default=None, max_length=255)
     handover_note: str | None = Field(default=None, max_length=2000)
     claimed_at: datetime | None = None
     returned_at: datetime | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for tag in value:
+            normalized = str(tag).strip().lower()
+            if not normalized:
+                continue
+            if normalized not in ALLOWED_LOST_FOUND_TAGS:
+                raise ValueError(
+                    f"Tag must be one of: {', '.join(sorted(ALLOWED_LOST_FOUND_TAGS))}"
+                )
+            if normalized not in cleaned:
+                cleaned.append(normalized)
+        return cleaned
 
 
 class LostFoundItemCreate(LostFoundItemBase):
@@ -141,13 +172,33 @@ class LostFoundItemUpdate(BaseModel):
     description: str | None = Field(default=None, min_length=3, max_length=4000)
     category: str | None = Field(default=None, min_length=1, max_length=64)
     location: str | None = Field(default=None, min_length=1, max_length=255)
+    room_number: str | None = Field(default=None, min_length=1, max_length=32)
     event_at: datetime | None = None
     status: LostFoundStatus | None = None
+    tags: list[str] | None = None
     claimant_name: str | None = Field(default=None, max_length=255)
     claimant_contact: str | None = Field(default=None, max_length=255)
     handover_note: str | None = Field(default=None, max_length=2000)
     claimed_at: datetime | None = None
     returned_at: datetime | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        cleaned: list[str] = []
+        for tag in value:
+            normalized = str(tag).strip().lower()
+            if not normalized:
+                continue
+            if normalized not in ALLOWED_LOST_FOUND_TAGS:
+                raise ValueError(
+                    f"Tag must be one of: {', '.join(sorted(ALLOWED_LOST_FOUND_TAGS))}"
+                )
+            if normalized not in cleaned:
+                cleaned.append(normalized)
+        return cleaned
 
 
 class LostFoundItemRead(LostFoundItemBase):
@@ -221,9 +272,17 @@ class InventoryItemBase(BaseModel):
     min_stock: int = Field(ge=0)
     current_stock: int = Field(ge=0)
     supplier: str | None = Field(default=None, max_length=255)
-    amount_per_piece_base: int = Field(default=0, ge=0)
+    amount_per_piece_base: int = Field(default=1, ge=1)
     pictogram_path: str | None = None
     pictogram_thumb_path: str | None = None
+
+    @field_validator("unit")
+    @classmethod
+    def validate_unit(cls, value: str) -> str:
+        unit = value.strip().lower()
+        if unit not in {"g", "l", "ks"}:
+            raise ValueError("Unit must be one of: g, l, ks")
+        return unit
 
 
 class InventoryItemCreate(InventoryItemBase):
@@ -236,9 +295,19 @@ class InventoryItemUpdate(BaseModel):
     min_stock: int | None = Field(default=None, ge=0)
     current_stock: int | None = Field(default=None, ge=0)
     supplier: str | None = Field(default=None, max_length=255)
-    amount_per_piece_base: int | None = Field(default=None, ge=0)
+    amount_per_piece_base: int | None = Field(default=None, ge=1)
     pictogram_path: str | None = None
     pictogram_thumb_path: str | None = None
+
+    @field_validator("unit")
+    @classmethod
+    def validate_unit(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        unit = value.strip().lower()
+        if unit not in {"g", "l", "ks"}:
+            raise ValueError("Unit must be one of: g, l, ks")
+        return unit
 
 
 class MediaPhotoRead(BaseModel):
@@ -255,12 +324,14 @@ class MediaPhotoRead(BaseModel):
 
 class InventoryMovementBase(BaseModel):
     movement_type: InventoryMovementType
-    quantity: int = Field(ge=0)
+    quantity: int = Field(ge=1)
+    document_date: date | None = None
+    document_reference: str | None = Field(default=None, max_length=64)
     note: str | None = Field(default=None, max_length=2000)
 
 
 class InventoryMovementCreate(InventoryMovementBase):
-    pass
+    document_date: date
 
 
 class InventoryMovementRead(InventoryMovementBase):
@@ -268,6 +339,7 @@ class InventoryMovementRead(InventoryMovementBase):
 
     id: int
     item_id: int
+    document_number: str | None
     created_at: datetime | None
 
 
@@ -306,6 +378,7 @@ ALLOWED_PORTAL_ROLES = {
     "sklad",
     "udrzba",
     "snidane",
+    "pokojska",
 }
 
 

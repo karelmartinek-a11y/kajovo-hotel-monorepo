@@ -1,14 +1,9 @@
-export type Role =
+﻿export type Role =
   | 'pokojská'
-  | 'housekeeping'
   | 'údržba'
-  | 'maintenance'
   | 'recepce'
-  | 'reception'
   | 'snídaně'
-  | 'breakfast'
-  | 'warehouse'
-  | 'manager'
+  | 'sklad'
   | 'admin';
 
 export type AuthProfile = {
@@ -21,34 +16,28 @@ export type AuthProfile = {
 };
 
 const ROLE_READ_PERMISSIONS: Record<Role, string[]> = {
-  admin: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
-  manager: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
-  recepce: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'reports:read'],
-  reception: ['dashboard:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'reports:read'],
-  'údržba': ['dashboard:read', 'issues:read', 'reports:read'],
-  maintenance: ['dashboard:read', 'issues:read', 'reports:read'],
-  'snídaně': ['dashboard:read', 'breakfast:read', 'inventory:read'],
-  breakfast: ['dashboard:read', 'breakfast:read', 'inventory:read'],
-  pokojská: ['dashboard:read', 'lost_found:read', 'issues:read'],
-  housekeeping: ['dashboard:read', 'lost_found:read', 'issues:read'],
-  warehouse: ['dashboard:read', 'inventory:read'],
+  admin: ['housekeeping:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
+  recepce: ['breakfast:read', 'lost_found:read'],
+  údržba: ['issues:read'],
+  snídaně: ['breakfast:read', 'issues:read', 'inventory:read'],
+  pokojská: ['housekeeping:read', 'lost_found:read', 'issues:read', 'breakfast:read', 'inventory:read'],
+  sklad: ['breakfast:read', 'issues:read', 'inventory:read'],
 };
 
 const ROLE_ALIASES: Record<string, Role> = {
   admin: 'admin',
-  manager: 'manager',
   pokojská: 'pokojská',
-  housekeeping: 'housekeeping',
-  'údržba': 'údržba',
+  housekeeping: 'pokojská',
+  údržba: 'údržba',
   udrzba: 'údržba',
-  maintenance: 'maintenance',
+  maintenance: 'údržba',
   recepce: 'recepce',
-  reception: 'reception',
-  'snídaně': 'snídaně',
+  reception: 'recepce',
+  snídaně: 'snídaně',
   snidane: 'snídaně',
-  breakfast: 'breakfast',
-  warehouse: 'warehouse',
-  sklad: 'warehouse',
+  breakfast: 'snídaně',
+  warehouse: 'sklad',
+  sklad: 'sklad',
 };
 
 export function rolePermissions(role: Role): Set<string> {

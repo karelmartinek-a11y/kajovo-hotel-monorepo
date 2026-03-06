@@ -5,6 +5,8 @@ import urllib.request
 from http.cookiejar import CookieJar
 from pathlib import Path
 
+REQUEST_TIMEOUT_SECONDS = 30
+
 
 def api_request(
     opener: urllib.request.OpenerDirector,
@@ -24,7 +26,7 @@ def api_request(
 
     request = urllib.request.Request(url=url, data=data, headers=request_headers, method=method)
     try:
-        with opener.open(request, timeout=10) as response:
+        with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             raw = response.read().decode("utf-8")
             return response.status, json.loads(raw) if raw else None
     except urllib.error.HTTPError as exc:
@@ -149,6 +151,90 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     assert status == 200
     assert isinstance(identity, dict)
     assert identity["email"] == "new.user@example.com"
+
+
+def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={"email": "neplatny-email", "password": "valid-pass-123"},
+        headers=csrf_header(jar),
+    )
+    assert status == 422
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "email": "valid@example.com",
+            "password": "valid-pass-123",
+            "phone": "12345",
+        },
+        headers=csrf_header(jar),
+    )
+    assert status == 422
+
+
+def test_portal_user_cannot_delete_users(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, created = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={"email": "portal.delete@example.com", "password": "portal-pass-123"},
+        headers=csrf_header(jar),
+    )
+    assert status == 201
+    assert isinstance(created, dict)
+    user_id = int(created["id"])
+
+    portal_jar = CookieJar()
+    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+    status, _ = api_request(
+        portal_opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "portal.delete@example.com", "password": "portal-pass-123"},
+    )
+    assert status == 200
+
+    status, _ = api_request(
+        portal_opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+        method="DELETE",
+        headers=csrf_header(portal_jar),
+    )
+    assert status == 403
 
 
 def test_password_not_logged_in_audit_detail(

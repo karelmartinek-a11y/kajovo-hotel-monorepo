@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
 import { AppShell, SkeletonPage, StateView } from '@kajovo/ui';
@@ -9,6 +9,88 @@ type AccessDeniedProps = {
   role: string;
   userId: string;
 };
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  recepce: 'Recepce',
+  pokojská: 'Pokojská',
+  údržba: 'Údržba',
+  snídaně: 'Snídaně',
+  sklad: 'Sklad',
+};
+const ROLE_MODULES: Record<string, string[]> = {
+  admin: ['breakfast', 'housekeeping', 'lost_found', 'issues', 'inventory', 'reports'],
+  recepce: ['lost_found', 'breakfast'],
+  pokojská: ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
+  údržba: ['issues'],
+  snídaně: ['breakfast', 'issues', 'inventory'],
+  sklad: ['breakfast', 'issues', 'inventory'],
+};
+function roleLabel(role: string): string {
+  return ROLE_LABELS[role] ?? role;
+}
+
+function roleModules(role: string | null | undefined): string[] {
+  if (!role) {
+    return [];
+  }
+  return ROLE_MODULES[role] ?? [];
+}
+
+function readCsrfToken(): string {
+  return document.cookie
+    .split('; ')
+    .find((item) => item.startsWith('kajovo_csrf='))
+    ?.split('=')[1] ?? '';
+}
+
+function RoleSelectPage({ roles }: { roles: string[] }): JSX.Element {
+  const [error, setError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const selectRole = React.useCallback(async (role: string) => {
+    setError(null);
+    setBusy(true);
+    const csrfToken = readCsrfToken();
+    const response = await fetch('/api/auth/select-role', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
+      },
+      credentials: 'include',
+      body: JSON.stringify({ role }),
+    });
+    if (!response.ok) {
+      setBusy(false);
+      setError('Výběr role selhal.');
+      return;
+    }
+    window.location.assign('/');
+  }, []);
+
+  React.useEffect(() => {
+    if (roles.length === 1) {
+      void selectRole(roles[0]);
+    }
+  }, [roles, selectRole]);
+
+  return (
+    <main className="k-page" data-testid="role-select-page">
+      <h1>Vyberte roli</h1>
+      <p className="k-login-copy">Pro pokračování zvolte roli, ve které budete pracovat.</p>
+      <div className="k-toolbar">
+        {roles.map((role) => (
+          <button key={role} className="k-button" type="button" onClick={() => void selectRole(role)} disabled={busy}>
+            {roleLabel(role)}
+          </button>
+        ))}
+      </div>
+      {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+      {busy ? <SkeletonPage /> : null}
+    </main>
+  );
+}
 
 function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX.Element {
   return (
@@ -29,6 +111,7 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
 
 type PortalRouteDeps = {
   Dashboard: () => JSX.Element;
+  HousekeepingForm: () => JSX.Element;
   BreakfastList: () => JSX.Element;
   BreakfastForm: ({ mode }: { mode: 'create' | 'edit' }) => JSX.Element;
   BreakfastDetail: () => JSX.Element;
@@ -65,38 +148,76 @@ export function PortalRoutes({
     return <Navigate to="/login" replace />;
   }
 
+  const activeRole = auth.activeRole ?? (auth.roles.length === 1 ? auth.roles[0] : null);
+  if (!activeRole) {
+    return <RoleSelectPage roles={auth.roles} />;
+  }
+
+  const roleModuleKeys = roleModules(activeRole);
+  const moduleByKey = new Map(modules.map((module) => [module.key, module]));
+  const orderedRoleModules = roleModuleKeys
+    .map((key) => moduleByKey.get(key))
+    .filter((module): module is typeof modules[number] => Boolean(module));
+  const allowedModules = orderedRoleModules.filter((module) => canReadModule(auth.permissions, module.key));
+  const extraModules = modules.filter((module) => {
+    const hasPermissions = Array.isArray(module.permissions) && module.permissions.length > 0;
+    if (hasPermissions) {
+      return false;
+    }
+    return !roleModuleKeys.includes(module.key);
+  });
+  const navigationModules = [...allowedModules, ...extraModules];
+  const primaryRoute = allowedModules[0]?.route ?? '/';
+  const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
+
+  if (allowedModules.length === 0) {
+    return (
+      <main className="k-page" data-testid="access-denied-page">
+        <StateView
+          title="Přístup odepřen"
+          description={`Role ${activeRole} (uživatel ${auth.userId}) nemá žádné dostupné moduly.`}
+          stateKey="error"
+        />
+      </main>
+    );
+  }
+
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
 
   return (
     <AppShell
       panelLayout="portal"
-      modules={modules}
+      modules={navigationModules}
       navigationRules={ia.navigation.rules}
       navigationSections={ia.navigation.sections}
       currentPath={currentPath}
     >
       <Routes>
-        <Route path="/" element={isAllowed('dashboard') ? <deps.Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane" element={isAllowed('breakfast') ? <deps.BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <deps.BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <deps.LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <deps.LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <deps.LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <deps.LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady" element={isAllowed('issues') ? <deps.IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/nova" element={isAllowed('issues') ? <deps.IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id" element={isAllowed('issues') ? <deps.IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <deps.IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad" element={isAllowed('inventory') ? <deps.InventoryList /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/nova" element={isAllowed('inventory') ? <deps.InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') ? <deps.InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <deps.InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <deps.ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <deps.ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <deps.ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <deps.ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
+        <Route
+          path="/"
+          element={primaryRoute !== '/' ? <Navigate to={`${primaryRoute}${currentSearch}`} replace /> : <deps.Dashboard />}
+        />
+        <Route path="/pokojska" element={isAllowed('housekeeping') ? <deps.HousekeepingForm /> : <AccessDeniedPage moduleLabel="Pokojská" role={activeRole} userId={auth.userId} />} />
+        <Route path="/snidane" element={isAllowed('breakfast') ? <deps.BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
+        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
+        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <deps.BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
+        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Snídaně" role={activeRole} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <deps.LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={activeRole} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <deps.LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={activeRole} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <deps.LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={activeRole} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <deps.LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={activeRole} userId={auth.userId} />} />
+        <Route path="/zavady" element={isAllowed('issues') ? <deps.IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={activeRole} userId={auth.userId} />} />
+        <Route path="/zavady/nova" element={isAllowed('issues') ? <deps.IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={activeRole} userId={auth.userId} />} />
+        <Route path="/zavady/:id" element={isAllowed('issues') ? <deps.IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={activeRole} userId={auth.userId} />} />
+        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <deps.IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="Závady" role={activeRole} userId={auth.userId} />} />
+        <Route path="/sklad" element={isAllowed('inventory') ? <deps.InventoryList /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={activeRole} userId={auth.userId} />} />
+        <Route path="/sklad/nova" element={isAllowed('inventory') ? <deps.InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={activeRole} userId={auth.userId} />} />
+        <Route path="/sklad/:id" element={isAllowed('inventory') ? <deps.InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={activeRole} userId={auth.userId} />} />
+        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <deps.InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={activeRole} userId={auth.userId} />} />
+        <Route path="/hlaseni" element={isAllowed('reports') ? <deps.ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={activeRole} userId={auth.userId} />} />
+        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <deps.ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={activeRole} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <deps.ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={activeRole} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <deps.ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={activeRole} userId={auth.userId} />} />
         <Route path="/intro" element={<React.Suspense fallback={<SkeletonPage />}><deps.IntroRoute /></React.Suspense>} />
         <Route path="/offline" element={<React.Suspense fallback={<SkeletonPage />}><deps.OfflineRoute /></React.Suspense>} />
         <Route path="/maintenance" element={<React.Suspense fallback={<SkeletonPage />}><deps.MaintenanceRoute /></React.Suspense>} />

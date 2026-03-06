@@ -53,24 +53,16 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
     deny_cases = [
         DenyCase(
             role="údržba",
-            email="maintenance@example.com",
-            password="maintenance-pass",
+            email="udrzba@example.com",
+            password="udrzba-pass",
             method="GET",
             path="/api/v1/inventory",
             expected_permission="Missing permission: inventory:read",
         ),
         DenyCase(
             role="údržba",
-            email="maintenance@example.com",
-            password="maintenance-pass",
-            method="POST",
-            path="/api/v1/inventory",
-            expected_permission="Missing permission: inventory:write",
-        ),
-        DenyCase(
-            role="snídaně",
-            email="snidane@example.com",
-            password="snidane-pass",
+            email="udrzba@example.com",
+            password="udrzba-pass",
             method="POST",
             path="/api/v1/inventory",
             expected_permission="Missing permission: inventory:write",
@@ -85,16 +77,16 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         ),
         DenyCase(
             role="recepce",
-            email="reception@example.com",
-            password="reception-pass",
+            email="recepce@example.com",
+            password="recepce-pass",
             method="GET",
             path="/api/v1/users",
             expected_permission="Missing permission: users:read",
         ),
         DenyCase(
             role="recepce",
-            email="reception@example.com",
-            password="reception-pass",
+            email="recepce@example.com",
+            password="recepce-pass",
             method="POST",
             path="/api/v1/users",
             expected_permission="Missing permission: users:write",
@@ -113,7 +105,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         )
         assert status == 200
 
-        payload = {"name": "Mýdlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
+        payload = {"name": "MĂ˝dlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
         if case.path == "/api/v1/reports":
             payload = {"title": "No access", "status": "open"}
         if case.path == "/api/v1/users":
@@ -131,3 +123,8 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         assert status == 403
         assert isinstance(data, dict)
         assert data["detail"] == case.expected_permission
+
+
+
+
+

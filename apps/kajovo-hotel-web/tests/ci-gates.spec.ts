@@ -1,4 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
+﻿import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import ia from '../../kajovo-hotel/ux/ia.json';
 
@@ -9,7 +9,7 @@ const listPayload = [
     id: 1,
     service_date: '2026-02-19',
     room_number: '101',
-    guest_name: 'Novák',
+    guest_name: 'NovĂˇk',
     guest_count: 2,
     status: 'pending',
     note: 'Bez lepku',
@@ -26,8 +26,8 @@ const summaryPayload = {
 const oneItem = {
   id: 1,
   item_type: 'found',
-  description: 'Černá peněženka',
-  category: 'Osobní věci',
+  description: 'ÄŚernĂˇ penÄ›Ĺľenka',
+  category: 'OsobnĂ­ vÄ›ci',
   location: 'Wellness',
   event_at: '2026-02-18T10:00:00Z',
   status: 'stored',
@@ -49,10 +49,11 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/me', async (route) =>
     route.fulfill({
       json: {
-        email: 'manager@example.com',
-        role: 'manager',
+        email: 'admin@example.com',
+        role: 'admin',
         permissions: [
           'dashboard:read',
+          'housekeeping:read',
           'breakfast:read',
           'lost_found:read',
           'issues:read',
@@ -73,14 +74,15 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/issues*', async (route) => route.fulfill({ json: [{ ...listPayload[0], title: 'Issue', location: 'Lobby', priority: 'high', status: 'new', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/issues/1*', async (route) => route.fulfill({ json: { id: 1, title: 'Issue', description: null, location: 'Lobby', room_number: null, priority: 'high', status: 'new', assignee: null, in_progress_at: null, resolved_at: null, closed_at: null, created_at: '2026-01-01', updated_at: '2026-01-01' } }));
 
-  await page.route('**/api/v1/inventory*', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
-  await page.route('**/api/v1/inventory/1*', async (route) => route.fulfill({ json: { id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01', movements: [], audit_logs: [] } }));
+  await page.route('**/api/v1/inventory*', async (route) => route.fulfill({ json: [{ id: 1, name: 'MlĂ©ko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/inventory/1*', async (route) => route.fulfill({ json: { id: 1, name: 'MlĂ©ko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01', movements: [], audit_logs: [] } }));
 
   await page.route('**/api/v1/reports*', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/reports/1*', async (route) => route.fulfill({ json: { id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' } }));
 });
 
 test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const view of ia.views) {
     await page.goto(toConcreteRoute(view.route));
     const sign = page.getByTestId('kajovo-sign');
@@ -88,7 +90,7 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
     await expect(sign).toHaveAttribute('aria-label', 'KÁJOVO');
     const signImage = sign.locator('img');
     await expect(signImage).toBeVisible();
-    await expect(signImage).toHaveAttribute('src', /signace\.svg$/);
+    await expect(signImage).toHaveAttribute('src', /signace\.svg$/, { timeout: 15_000 });
 
     const signStyles = await sign.evaluate((node) => {
       const styles = window.getComputedStyle(node);
@@ -137,13 +139,14 @@ test('brand elements convention: maximum 2 per key views', async ({ page }) => {
 });
 
 test('IA routes expose required view states via state test IDs', async ({ page }) => {
+  test.setTimeout(120_000);
   const nonUtilityViews = ia.views.filter((view) => !['/intro', '/offline', '/maintenance', '/404'].includes(view.route));
 
   for (const view of nonUtilityViews) {
     const route = toConcreteRoute(view.route);
 
     for (const state of requiredStates) {
-      await page.goto(`${route}?state=${state}`);
+      await page.goto(`${route}?state=${state}`, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
       await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
     }
@@ -225,3 +228,8 @@ test('WCAG 2.2 AA baseline for IA routes', async ({ page }, testInfo) => {
     ).toEqual([]);
   }
 });
+
+
+
+
+

@@ -1,8 +1,103 @@
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
 from collections.abc import Callable
 from datetime import date
+from http.cookiejar import CookieJar
+from pathlib import Path
+
+from app.services.breakfast.parser import parse_breakfast_pdf
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
+WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+SAMPLE_PDF_PATH = (
+    Path(__file__).resolve().parents[3] / "docs" / "breakfast" / "breakfast-sample.pdf"
+)
+
+
+def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
+    token = next((cookie.value for cookie in cookie_jar if cookie.name == "kajovo_csrf"), "")
+    return {"x-csrf-token": token} if token else {}
+
+
+def build_multipart(
+    fields: dict[str, str], files: list[tuple[str, str, bytes, str]]
+) -> tuple[bytes, str]:
+    boundary = f"----kajovo{uuid.uuid4().hex}"
+    body = bytearray()
+    for name, value in fields.items():
+        body.extend(f"--{boundary}\r\n".encode("utf-8"))
+        body.extend(f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode("utf-8"))
+        body.extend(value.encode("utf-8"))
+        body.extend(b"\r\n")
+    for field_name, filename, content, content_type in files:
+        body.extend(f"--{boundary}\r\n".encode("utf-8"))
+        body.extend(
+            f'Content-Disposition: form-data; name="{field_name}"; filename="{filename}"\r\n'.encode(
+                "utf-8"
+            )
+        )
+        body.extend(f"Content-Type: {content_type}\r\n\r\n".encode("utf-8"))
+        body.extend(content)
+        body.extend(b"\r\n")
+    body.extend(f"--{boundary}--\r\n".encode("utf-8"))
+    return bytes(body), f"multipart/form-data; boundary={boundary}"
+
+
+def portal_login(
+    api_base_url: str, email: str, password: str
+) -> tuple[urllib.request.OpenerDirector, CookieJar]:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    payload = json.dumps({"email": email, "password": password}).encode("utf-8")
+    request = urllib.request.Request(
+        url=f"{api_base_url}/api/auth/login",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with opener.open(request, timeout=10) as response:
+        assert response.status == 200
+    return opener, jar
+
+
+def portal_request(api_base_url: str, email: str, password: str) -> ApiRequest:
+    opener, jar = portal_login(api_base_url, email, password)
+
+    def _request(
+        path: str,
+        method: str = "GET",
+        payload: dict[str, object] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> tuple[int, ResponseData]:
+        url = f"{api_base_url}{path}"
+        if params:
+            url = f"{url}?{urllib.parse.urlencode(params)}"
+
+        data = None
+        headers: dict[str, str] = {}
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+
+        if method.upper() in WRITE_METHODS:
+            headers.update(csrf_header(jar))
+
+        request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
+        try:
+            with opener.open(request, timeout=10) as response:
+                raw = response.read().decode("utf-8")
+                return response.status, json.loads(raw) if raw else None
+        except urllib.error.HTTPError as exc:
+            raw = exc.read().decode("utf-8")
+            parsed = json.loads(raw) if raw else None
+            return exc.code, parsed
+
+    return _request
 
 
 def create_order(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
@@ -111,3 +206,98 @@ def test_breakfast_validation_errors(api_request: ApiRequest) -> None:
     )
 
     assert status == 422
+
+
+def test_parse_breakfast_sample_pdf() -> None:
+    pdf_bytes = SAMPLE_PDF_PATH.read_bytes()
+    parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
+
+    assert parsed_day == date(2026, 3, 5)
+    assert [row.room for row in rows] == ["101", "102", "103"]
+    assert [row.breakfast_count for row in rows] == [2, 1, 1]
+    assert rows[0].guest_name == "Jan Novak"
+
+
+def test_import_breakfast_pdf_overwrite_and_diets(
+    api_request: ApiRequest, api_base_url: str
+) -> None:
+    create_order(
+        api_request,
+        service_date="2026-03-05",
+        room_number="101",
+        guest_name="Stary Host",
+        guest_count=1,
+        status="served",
+    )
+
+    opener = api_request.opener  # type: ignore[attr-defined]
+    jar = api_request.jar  # type: ignore[attr-defined]
+    pdf_bytes = SAMPLE_PDF_PATH.read_bytes()
+    overrides = json.dumps(
+        [
+            {
+                "room": "101",
+                "diet_no_gluten": True,
+                "diet_no_milk": False,
+                "diet_no_pork": True,
+            }
+        ]
+    )
+    payload, content_type = build_multipart(
+        {"save": "true", "overrides": overrides},
+        [("file", "breakfast-sample.pdf", pdf_bytes, "application/pdf")],
+    )
+
+    request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/breakfast/import",
+        data=payload,
+        headers={"Content-Type": content_type, **csrf_header(jar)},
+        method="POST",
+    )
+    with opener.open(request, timeout=10) as response:
+        assert response.status == 200
+        data = json.loads(response.read().decode("utf-8"))
+        assert data["saved"] is True
+        assert data["date"] == "2026-03-05"
+        assert len(data["items"]) == 3
+
+    status, listed = api_request(
+        "/api/v1/breakfast",
+        params={"service_date": "2026-03-05"},
+    )
+    assert status == 200
+    assert isinstance(listed, list)
+    assert len(listed) == 3
+    assert all(item["status"] == "pending" for item in listed)
+    room_101 = next(item for item in listed if item["room_number"] == "101")
+    assert room_101["diet_no_gluten"] is True
+    assert room_101["diet_no_pork"] is True
+
+
+def test_breakfast_reactivation_rbac(api_base_url: str, api_request: ApiRequest) -> None:
+    created = create_order(
+        api_request,
+        service_date="2026-03-05",
+        room_number="102",
+        guest_name="Test Guest",
+        guest_count=1,
+        status="served",
+    )
+
+    snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
+    status, _ = snidane_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"status": "pending"},
+    )
+    assert status == 403
+
+    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
+    status, data = recepce_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"status": "pending"},
+    )
+    assert status == 200
+    assert isinstance(data, dict)
+    assert data["status"] == "pending"

@@ -19,7 +19,17 @@ from app.db.models import Base
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 ResponseData = dict[str, object] | list[dict[str, object]] | None
+REQUEST_TIMEOUT_SECONDS = 45
 ApiRequest = Callable[..., tuple[int, ResponseData]]
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    api_root = Path(__file__).resolve().parents[1]
+    base_root = api_root / ".tmp" / "pytest"
+    base_root.mkdir(parents=True, exist_ok=True)
+    run_dir = base_root / f"run-{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    config.option.basetemp = str(run_dir)
 
 
 def _scrypt_hash(password: str, salt: bytes) -> str:
@@ -32,12 +42,22 @@ def api_db_path(tmp_path_factory: pytest.TempPathFactory) -> Generator[Path, Non
     db_dir = tmp_path_factory.mktemp("kajovo-api-data")
     db_path = db_dir / "test_kajovo_hotel.db"
     if db_path.exists():
-        db_path.unlink()
+        for _ in range(5):
+            try:
+                db_path.unlink()
+                break
+            except PermissionError:
+                time.sleep(0.2)
 
     yield db_path
 
     if db_path.exists():
-        db_path.unlink()
+        for _ in range(10):
+            try:
+                db_path.unlink()
+                break
+            except PermissionError:
+                time.sleep(0.2)
 
 
 @pytest.fixture(scope="session")
@@ -70,10 +90,10 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
 
         # Portal users for other flows.
         for email, role, password_seed, salt in [
-            ("warehouse@example.com", "warehouse", "warehouse", b"warehouse-salt"),
-            ("maintenance@example.com", "maintenance", "maintenance", b"maintenance-salt"),
+            ("sklad@example.com", "sklad", "sklad", b"sklad-salt"),
+            ("udrzba@example.com", "údržba", "udrzba", b"udrzba-salt"),
             ("snidane@example.com", "snídaně", "snidane", b"snidane-salt"),
-            ("reception@example.com", "recepce", "reception", b"reception-salt"),
+            ("recepce@example.com", "recepce", "recepce", b"recepce-salt"),
         ]:
             connection.execute(
                 """
@@ -105,20 +125,32 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     env["KAJOVO_API_DATABASE_URL"] = database_url
     env["KAJOVO_API_ADMIN_EMAIL"] = "admin@kajovohotel.local"
     env["KAJOVO_API_ADMIN_PASSWORD"] = "admin123"
+    media_root = api_db_path.parent / "media"
+    media_root.mkdir(parents=True, exist_ok=True)
+    env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)
 
     api_app_dir = Path(__file__).resolve().parents[1]
 
     proc = subprocess.Popen(
-        ["uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(port)],
+        [
+            "uvicorn",
+            "app.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--log-level",
+            "warning",
+            "--no-access-log",
+        ],
         cwd=str(api_app_dir),
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
-        text=True,
     )
 
     base_url = f"http://127.0.0.1:{port}"
-    for _ in range(50):
+    for _ in range(100):
         try:
             with urllib.request.urlopen(f"{base_url}/health", timeout=1) as response:
                 if response.status == 200:
@@ -126,15 +158,18 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
         except Exception:
             time.sleep(0.1)
     else:
-        output = proc.stdout.read() if proc.stdout else ""
         proc.terminate()
-        raise RuntimeError(f"API did not start in time. Uvicorn output:\n{output}")
+        raise RuntimeError("API did not start in time.")
 
     try:
         yield base_url
     finally:
         proc.terminate()
-        proc.wait(timeout=10)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
 
 
 @pytest.fixture
@@ -151,8 +186,18 @@ def api_request(api_base_url: str) -> ApiRequest:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with opener.open(login_request, timeout=10) as response:
-        assert response.status == 200
+    last_error: Exception | None = None
+    for _ in range(10):
+        try:
+            with opener.open(login_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                assert response.status == 200
+            last_error = None
+            break
+        except Exception as exc:
+            last_error = exc
+            time.sleep(0.2)
+    if last_error is not None:
+        raise last_error
 
     def _request(
         path: str,
@@ -177,7 +222,7 @@ def api_request(api_base_url: str) -> ApiRequest:
 
         request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
         try:
-            with opener.open(request, timeout=10) as response:
+            with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
                 raw = response.read().decode("utf-8")
                 return response.status, json.loads(raw) if raw else None
         except urllib.error.HTTPError as exc:
@@ -185,4 +230,10 @@ def api_request(api_base_url: str) -> ApiRequest:
             parsed = json.loads(raw) if raw else None
             return exc.code, parsed
 
+    # Keep references for tests that need the authenticated session.
+    _request.opener = opener  # type: ignore[attr-defined]
+    _request.jar = jar  # type: ignore[attr-defined]
     return _request
+
+
+

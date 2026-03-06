@@ -33,7 +33,11 @@ def list_lost_found_items(
     category: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[LostFoundItem]:
-    query = select(LostFoundItem).order_by(LostFoundItem.event_at.desc(), LostFoundItem.id.desc())
+    query = (
+        select(LostFoundItem)
+        .options(selectinload(LostFoundItem.photos))
+        .order_by(LostFoundItem.event_at.desc(), LostFoundItem.id.desc())
+    )
 
     if item_type:
         query = query.where(LostFoundItem.item_type == item_type.value)
@@ -66,7 +70,9 @@ def create_lost_found_item(
     payload_data = payload.model_dump()
     payload_data["item_type"] = payload.item_type.value
     payload_data["status"] = payload.status.value
+    tags = payload_data.pop("tags", [])
     item = LostFoundItem(**payload_data)
+    item.tags = tags
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -91,12 +97,15 @@ def update_lost_found_item(
         updates["item_type"] = updates["item_type"].value
     if "status" in updates and updates["status"] is not None:
         updates["status"] = updates["status"].value
+    tags = updates.pop("tags", None)
 
     if updates.get("status") == LostFoundStatus.CLAIMED.value and "claimed_at" not in updates:
         updates["claimed_at"] = datetime.utcnow()
 
     for key, value in updates.items():
         setattr(item, key, value)
+    if tags is not None:
+        item.tags = tags
 
     db.add(item)
     db.commit()
@@ -136,8 +145,8 @@ def upload_lost_found_photos(
     item = db.get(LostFoundItem, item_id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lost & found item not found")
-    if len(photos) > 5:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 5 photos")
+    if len(photos) > 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 3 photos")
 
     storage = MediaStorage(get_settings().media_root)
     start_idx = len(item.photos)
