@@ -94,8 +94,9 @@ body {
 
 .k-skip-link {
   position: absolute;
-  top: -999px;
+  top: var(--k-spacing-0);
   left: var(--k-spacing-4);
+  transform: translateY(calc(-100% - var(--k-spacing-3)));
   padding: var(--k-spacing-2) var(--k-spacing-3);
   background: var(--k-color-surface);
   color: var(--k-color-ink);
@@ -107,7 +108,7 @@ body {
 }
 
 .k-skip-link:focus {
-  top: var(--k-spacing-3);
+  transform: translateY(var(--k-spacing-3));
 }
 
 :focus-visible {
