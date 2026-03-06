@@ -25,6 +25,8 @@
   --k-spacing-6: 32px;
   --k-spacing-7: 40px;
   --k-spacing-8: 48px;
+  --k-spacing-9: 64px;
+  --k-spacing-10: 80px;
 
   --k-radius-0: 0;
   --k-radius-1: 8px;
@@ -53,6 +55,7 @@
 
   --k-focus-ring-width: 2px;
   --k-focus-ring-offset: 2px;
+  --k-focus-ring-color: var(--k-color-info);
 
   --k-sign-min-thickness: 12px;
   --k-sign-padding-y: 4px;
@@ -61,9 +64,13 @@
   --k-shell-max-width: 1320px;
 
   --k-z-base: 0;
-  --k-z-header: 20;
-  --k-z-nav-drawer: 30;
+  --k-z-header: 10;
+  --k-z-drawer: 20;
+  --k-z-popover: 30;
+  --k-z-modal: 40;
+  --k-z-toast: 50;
   --k-z-sign: 60;
+  --k-z-nav-drawer: var(--k-z-drawer);
 
   --k-shadow-elevated: 0 8px 20px var(--k-shadow-color);
   --k-shadow-color: rgba(0, 0, 0, 0.18);
@@ -85,8 +92,27 @@ body {
   line-height: var(--k-line-height-body);
 }
 
+.k-skip-link {
+  position: absolute;
+  top: var(--k-spacing-0);
+  left: var(--k-spacing-4);
+  transform: translateY(calc(-100% - var(--k-spacing-3)));
+  padding: var(--k-spacing-2) var(--k-spacing-3);
+  background: var(--k-color-surface);
+  color: var(--k-color-ink);
+  border: 2px solid var(--k-color-info);
+  border-radius: var(--k-radius-1);
+  z-index: var(--k-z-header);
+  text-decoration: none;
+  box-shadow: var(--k-shadow-elevated);
+}
+
+.k-skip-link:focus {
+  transform: translateY(var(--k-spacing-3));
+}
+
 :focus-visible {
-  outline: var(--k-focus-ring-width) solid var(--k-color-info);
+  outline: var(--k-focus-ring-width) solid var(--k-focus-ring-color);
   outline-offset: var(--k-focus-ring-offset);
 }
 
@@ -109,8 +135,16 @@ body {
   padding: var(--k-spacing-4);
 }
 
+.k-shell-header {
+  display: flex;
+  align-items: center;
+  gap: var(--k-spacing-4);
+}
+
 .k-nav {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .k-nav-desktop {
@@ -147,6 +181,25 @@ body {
   line-height: var(--k-line-height-sm);
 }
 
+.k-nav-link:focus-visible,
+.k-nav-overflow-item:focus-visible,
+.k-button:focus-visible {
+  outline: var(--k-focus-ring-width) solid var(--k-focus-ring-color);
+  outline-offset: var(--k-focus-ring-offset);
+}
+
+.k-nav-link:focus-visible,
+.k-nav-link:hover {
+  background: var(--k-color-ink);
+  color: var(--k-color-brand-white);
+}
+
+.k-nav-overflow-item:focus-visible,
+.k-nav-overflow-item:hover {
+  background: var(--k-color-ink);
+  color: var(--k-color-brand-white);
+}
+
 .k-nav-link[aria-current='page'] {
   border-color: var(--k-color-ink);
   font-weight: var(--k-weight-bold);
@@ -160,7 +213,7 @@ body {
   position: absolute;
   top: calc(100% + var(--k-spacing-1));
   right: 0;
-  z-index: var(--k-z-nav-drawer);
+  z-index: var(--k-z-drawer);
   min-width: 220px;
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);
@@ -188,6 +241,7 @@ body {
   background: var(--k-color-surface-raised);
   padding: var(--k-spacing-3);
   box-shadow: var(--k-shadow-elevated);
+  z-index: var(--k-z-drawer);
 }
 
 .k-nav-drawer-search {
@@ -237,6 +291,7 @@ body {
   box-shadow: var(--k-shadow-elevated);
   pointer-events: none;
   z-index: calc(var(--k-z-sign) - 1);
+  min-width: 0;
 }
 
 .k-shell-figure img {
@@ -452,6 +507,31 @@ body {
   filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.15));
 }
 
+.k-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-spacing-2);
+  text-decoration: none;
+  color: var(--k-color-metal);
+  font-size: var(--k-font-size-sm);
+  letter-spacing: var(--k-letter-caps);
+  text-transform: uppercase;
+  min-width: 0;
+}
+
+.k-wordmark img {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.k-wordmark-tagline {
+  font-weight: var(--k-weight-bold);
+  line-height: var(--k-line-height-sm);
+  white-space: nowrap;
+  color: var(--k-color-ink);
+}
+
 @media (max-width: 1024px) {
   :root {
     --k-sign-min-thickness: 4.8px;
@@ -464,6 +544,16 @@ body {
     font-size: var(--k-font-size-xs);
     width: 100%;
     margin-top: var(--k-spacing-1);
+  }
+
+  .k-shell-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--k-spacing-3);
+  }
+
+  .k-wordmark img {
+    height: 28px;
   }
 
   .k-grid.cards-3 {
@@ -500,6 +590,10 @@ body {
   .k-shell-inner,
   .k-page {
     padding: var(--k-spacing-3);
+  }
+
+  .k-wordmark img {
+    height: 24px;
   }
 
   .k-form-grid {

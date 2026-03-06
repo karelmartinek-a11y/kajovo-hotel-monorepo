@@ -229,13 +229,23 @@ def admin_login(
     db.add(state)
     db.commit()
     csrf_token = secrets.token_urlsafe(32)
+    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
     response.set_cookie(
         SESSION_COOKIE_NAME,
-        create_session_cookie(settings.admin_email, "admin", "admin", roles=["admin"], active_role="admin"),
+        create_session_cookie(
+            settings.admin_email,
+            "admin",
+            "admin",
+            roles=["admin"],
+            active_role="admin",
+            max_age_seconds=settings.session_max_age_seconds,
+        ),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
         path="/",
+        max_age=settings.session_max_age_seconds,
+        expires=session_expiry,
     )
     response.set_cookie(
         CSRF_COOKIE_NAME,
@@ -244,6 +254,8 @@ def admin_login(
         samesite="lax",
         secure=cookie_secure(),
         path="/",
+        max_age=settings.session_max_age_seconds,
+        expires=session_expiry,
     )
     return AuthIdentityResponse(
         email=settings.admin_email,
@@ -288,6 +300,7 @@ def portal_login(
     response: Response,
     db: Session = Depends(get_db),
 ) -> AuthIdentityResponse:
+    settings = get_settings()
     email = payload.email.strip().lower()
     now = _utc_now()
     state = _get_lockout_state(db, actor_type="portal", principal=email)
@@ -323,13 +336,23 @@ def portal_login(
     active_role = role if len(roles) == 1 else None
     permissions = get_permissions(active_role) if active_role else []
     csrf_token = secrets.token_urlsafe(32)
+    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
     response.set_cookie(
         SESSION_COOKIE_NAME,
-        create_session_cookie(email, role, "portal", roles=roles, active_role=active_role),
+        create_session_cookie(
+            email,
+            role,
+            "portal",
+            roles=roles,
+            active_role=active_role,
+            max_age_seconds=settings.session_max_age_seconds,
+        ),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
         path="/",
+        max_age=settings.session_max_age_seconds,
+        expires=session_expiry,
     )
     response.set_cookie(
         CSRF_COOKIE_NAME,
@@ -338,6 +361,8 @@ def portal_login(
         samesite="lax",
         secure=cookie_secure(),
         path="/",
+        max_age=settings.session_max_age_seconds,
+        expires=session_expiry,
     )
     return AuthIdentityResponse(
         email=email,
@@ -441,6 +466,8 @@ def select_portal_role(
     selected_role = normalize_role(payload.role)
     if selected_role not in roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role not assigned")
+    settings = get_settings()
+    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         create_session_cookie(
@@ -449,11 +476,14 @@ def select_portal_role(
             str(session["actor_type"]),
             roles=roles,
             active_role=selected_role,
+            max_age_seconds=settings.session_max_age_seconds,
         ),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
         path="/",
+        max_age=settings.session_max_age_seconds,
+        expires=session_expiry,
     )
     return AuthIdentityResponse(
         email=str(session["email"]),

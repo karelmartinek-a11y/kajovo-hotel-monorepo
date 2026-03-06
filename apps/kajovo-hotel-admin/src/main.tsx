@@ -15,6 +15,7 @@ import ia from '../../kajovo-hotel/ux/ia.json';
 import { AppShell, Badge, Card, DataTable, FormField, KajovoSign, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
+  getAuthBundle,
   type BreakfastDailySummary,
   type BreakfastOrderCreate,
   type BreakfastOrderRead,
@@ -37,7 +38,15 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
-import { canReadModule, resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
+import {
+  ADMIN_SWITCHABLE_ROLES,
+  ROLE_MODULES,
+  canReadModule,
+  resolveAuthProfile,
+  rolePermissions,
+  type AuthProfile,
+  type Role,
+} from './rbac';
 
 const brandWordmark = '/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg';
 const adminLoginFigure = '/brand/postavy/kaja-admin.png';
@@ -457,6 +466,56 @@ function StateMarker({ state }: { state: ViewState }): JSX.Element | null {
   return <span className="k-state-marker" data-testid={`state-view-${state}`} aria-hidden="true" />;
 }
 
+class HttpError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(status: number, message: string, detail: unknown = null) {
+    super(message);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function buildHttpError(response: Response): Promise<HttpError> {
+  const status = response.status;
+  const raw = await response.text();
+  let detail: unknown = null;
+  let message = raw || `HTTP ${status}`;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { detail?: unknown };
+      detail = parsed;
+      if (parsed && typeof parsed.detail === 'string') {
+        message = parsed.detail;
+      }
+    } catch {
+      detail = raw;
+    }
+  }
+  return new HttpError(status, message, detail);
+}
+
+function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+  if (headers instanceof Headers) {
+    const entries: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      entries[key] = value;
+    });
+    return entries;
+  }
+  if (Array.isArray(headers)) {
+    return headers.reduce<Record<string, string>>((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {});
+  }
+  return { ...headers };
+}
+
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? 'GET';
   const url = new URL(input, window.location.origin);
@@ -507,39 +566,91 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
 
   if (path === '/api/v1/users' && method === 'GET') {
     const response = await fetch(path, { credentials: 'include' });
-    if (!response.ok) throw new Error('Nepodařilo se načíst uživatele.');
+    if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
   if (path === '/api/v1/users' && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
     const response = await fetch(path, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
-  const userActiveId = path.match(/^\/api\/v1\/users\/(\d+)\/active$/);
-  if (userActiveId && method === 'PATCH') {
+  const userId = path.match(/^\/api\/v1\/users\/(\d+)$/);
+  if (userId && method === 'PATCH') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
     const response = await fetch(path, {
       method: 'PATCH',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (userId && method === 'DELETE') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method,
+      credentials: 'include',
+      headers,
+    });
+    if (!response.ok) throw await buildHttpError(response);
+    return undefined as T;
+  }
+  const userActiveId = path.match(/^\/api\/v1\/users\/(\d+)\/active$/);
+  if (userActiveId && method === 'PATCH') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
   const userPasswordId = path.match(/^\/api\/v1\/users\/(\d+)\/password(\/reset)?$/);
   if (userPasswordId && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
     const response = await fetch(path, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) throw await buildHttpError(response);
+    if (response.status === 204) {
+      return undefined as T;
+    }
     return (await response.json()) as T;
   }
 
@@ -585,7 +696,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
   });
   if (!fallbackResponse.ok) {
-    throw new Error(await fallbackResponse.text());
+    throw await buildHttpError(fallbackResponse);
   }
   if (fallbackResponse.status === 204) {
     return undefined as T;
@@ -941,6 +1052,14 @@ function BreakfastList(): JSX.Element {
     }
   };
 
+  const downloadBreakfastPdf = (): void => {
+    if (!serviceDate) {
+      return;
+    }
+    const url = `/api/v1/breakfast/export/daily?service_date=${encodeURIComponent(serviceDate)}`;
+    window.open(url, '_blank', 'noopener');
+  };
+
   const importPreviewTable = importPreview ? (
     <div className="k-card">
       <div className="k-toolbar">
@@ -1005,6 +1124,14 @@ function BreakfastList(): JSX.Element {
             aria-label="Import PDF"
             onChange={(event) => handleImportFile(event.target.files?.[0] ?? null)}
           />
+          <button
+            className="k-button secondary"
+            type="button"
+            onClick={downloadBreakfastPdf}
+            disabled={!serviceDate}
+          >
+            Export snídaní (PDF)
+          </button>
         </>
       ) : null}
       {isAdmin ? (
@@ -2502,6 +2629,7 @@ function UsersAdmin(): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [filterQuery, setFilterQuery] = React.useState('');
   const roleView = typeof window !== 'undefined'
     ? window.sessionStorage.getItem('kajovo_admin_role_view')
     : null;
@@ -2514,6 +2642,10 @@ function UsersAdmin(): JSX.Element {
   const [createRoles, setCreateRoles] = React.useState<PortalRole[]>([]);
   const [createPhone, setCreatePhone] = React.useState('');
   const [createNote, setCreateNote] = React.useState('');
+
+  const [pendingDelete, setPendingDelete] = React.useState<PortalUser | null>(null);
+  const deleteTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const confirmDeleteRef = React.useRef<HTMLButtonElement | null>(null);
 
   const [editFirstName, setEditFirstName] = React.useState('');
   const [editLastName, setEditLastName] = React.useState('');
@@ -2606,8 +2738,20 @@ function UsersAdmin(): JSX.Element {
       setCreatePhone('');
       setCreateNote('');
       setMessage('Uživatel byl vytvořen.');
-    } catch {
-      setError('Uživatele se nepodařilo vytvořit.');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        if (err.status === 409) {
+          setError('Uživatel s tímto e‑mailem už existuje.');
+        } else if (err.status === 403) {
+          setError('Nemáte oprávnění vytvářet uživatele.');
+        } else if (err.status === 422) {
+          setError('Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+        } else {
+          setError('Uživatele se nepodařilo vytvořit.');
+        }
+      } else {
+        setError('Uživatele se nepodařilo vytvořit.');
+      }
     } finally {
       setSaving(false);
     }
@@ -2632,8 +2776,22 @@ function UsersAdmin(): JSX.Element {
       setSelected(updated);
       syncEdit(updated);
       setMessage('Uživatel byl upraven.');
-    } catch {
-      setError('Uživatele se nepodařilo upravit.');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        if (err.status === 409) {
+          setError('E‑mail už používá jiný uživatel.');
+        } else if (err.status === 404) {
+          setError('Uživatel nebyl nalezen – může být mezitím smazán.');
+        } else if (err.status === 403) {
+          setError('Nemáte oprávnění upravovat uživatele.');
+        } else if (err.status === 422) {
+          setError('Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+        } else {
+          setError('Uživatele se nepodařilo upravit.');
+        }
+      } else {
+        setError('Uživatele se nepodařilo upravit.');
+      }
     } finally {
       setSaving(false);
     }
@@ -2645,16 +2803,41 @@ function UsersAdmin(): JSX.Element {
       setUsers((prev) => prev?.map((u) => (u.id === user.id ? updated : u)) ?? null);
       setSelected(updated);
       syncEdit(updated);
-    } catch {
-      setError('Nepodařilo se změnit stav uživatele.');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        if (err.status === 403) {
+          setError('Nemáte oprávnění měnit stav uživatele.');
+        } else if (err.status === 404) {
+          setError('Uživatel nebyl nalezen.');
+        } else {
+          setError('Nepodařilo se změnit stav uživatele.');
+        }
+      } else {
+        setError('Nepodařilo se změnit stav uživatele.');
+      }
     }
   }
 
   async function sendPasswordResetLink(user: PortalUser): Promise<void> {
     try {
-      await fetchJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, { method: 'POST' });
-    } finally {
+      const csrf = readCsrfToken();
+      await fetchJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, {
+        method: 'POST',
+        headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+      });
       setMessage('Pokud účet existuje a je dostupný e-mail, byl odeslán token pro reset hesla.');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        if (err.status === 403) {
+          setError('Nemáte oprávnění odeslat resetovací token.');
+        } else if (err.status === 404) {
+          setError('Uživatel nebyl nalezen.');
+        } else {
+          setError('Odeslání resetovacího tokenu se nezdařilo.');
+        }
+      } else {
+        setError('Odeslání resetovacího tokenu se nezdařilo.');
+      }
     }
   }
 
@@ -2663,6 +2846,38 @@ function UsersAdmin(): JSX.Element {
   };
 
   const roleLabel = (role: string): string => portalRoleLabels[role as PortalRole] ?? role;
+
+  const normalizeSearchValue = (value: string): string =>
+    value
+      .toLocaleLowerCase('cs-CZ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+  const normalizedFilter = normalizeSearchValue(filterQuery);
+
+  const filteredUsers = React.useMemo(() => {
+    if (!users) {
+      return [];
+    }
+    if (!normalizedFilter) {
+      return users;
+    }
+    return users.filter((user) => {
+      const haystack = normalizeSearchValue(
+        [
+          user.first_name,
+          user.last_name,
+          `${user.first_name} ${user.last_name}`,
+          user.email,
+          user.roles.map((role) => roleLabel(role)).join(' '),
+        ].join(' ')
+      );
+      return haystack.includes(normalizedFilter);
+    });
+  }, [normalizedFilter, users]);
+
+  const hasFilter = Boolean(normalizedFilter);
 
   const normalizePhoneInput = (value: string): string => {
     const trimmed = value.trim();
@@ -2677,40 +2892,70 @@ function UsersAdmin(): JSX.Element {
     return trimmed;
   };
 
-  function getCsrfTokenFromCookie(): string {
-    const cookieString = typeof document !== 'undefined' ? document.cookie : '';
-    if (!cookieString) return '';
-
-    const cookiePair = cookieString
-      .split('; ')
-      .find((row) => row.startsWith('kajovo_csrf='));
-
-    if (!cookiePair) return '';
-
-    const [, value] = cookiePair.split('=');
-    return decodeURIComponent(value ?? '');
+  function requestDelete(event: React.MouseEvent<HTMLButtonElement>, user: PortalUser): void {
+    deleteTriggerRef.current = event.currentTarget;
+    setPendingDelete(user);
   }
 
-  async function deleteUser(user: PortalUser): Promise<void> {
-    if (!window.confirm(`Opravdu smazat uživatele ${user.email}?`)) return;
+  function cancelDelete(): void {
+    setPendingDelete(null);
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (!pendingDelete) return;
     setSaving(true);
     setError(null);
+    setMessage(null);
     try {
-      await fetchJson<void>(`/api/v1/users/${user.id}`, {
+      const targetId = pendingDelete.id;
+      await fetchJson<void>(`/api/v1/users/${targetId}`, {
         method: 'DELETE',
-        headers: {
-          'x-csrf-token': getCsrfTokenFromCookie(),
-        },
       });
       setMessage('Uživatel byl smazán.');
-      setSelected(null);
+      setPendingDelete(null);
+      setSelected((prev) => (prev && prev.id === targetId ? null : prev));
+      syncEdit(null);
       load();
-    } catch {
-      setError('Smazání uživatele se nepodařilo.');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        if (err.status === 403) {
+          setError('Nemáte oprávnění smazat tohoto uživatele.');
+        } else if (err.status === 404) {
+          setError('Uživatel nebyl nalezen – mohl být mezitím odstraněn.');
+        } else if (err.status === 409) {
+          setError('Primární administrátorský účet nelze smazat.');
+        } else {
+          setError('Smazání uživatele se nepodařilo.');
+        }
+      } else {
+        setError('Smazání uživatele se nepodařilo.');
+      }
     } finally {
       setSaving(false);
     }
   }
+
+  React.useEffect(() => {
+    if (pendingDelete) {
+      const frame = window.requestAnimationFrame(() => {
+        confirmDeleteRef.current?.focus();
+      });
+      return () => {
+        window.cancelAnimationFrame(frame);
+      };
+    }
+    if (deleteTriggerRef.current) {
+      deleteTriggerRef.current.focus();
+    }
+    return undefined;
+  }, [pendingDelete]);
+
+  const handleDeleteDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      cancelDelete();
+    }
+  };
 
   const scrollToSection = (id: string): void => {
     if (typeof document === 'undefined') return;
@@ -2727,17 +2972,34 @@ function UsersAdmin(): JSX.Element {
     <main className="k-page" data-testid="users-admin-page">
       <h1>Uživatelé</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
-      {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
+      {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
       {users === null ? <SkeletonPage /> : (
         <div className="k-grid cards-2">
           <Card title="Seznam uživatelů">
             <div className="k-toolbar">
               <button className="k-button" type="button" onClick={() => scrollToSection('users-create')}>Nový</button>
+              <input
+                className="k-input"
+                type="search"
+                value={filterQuery}
+                onChange={(event) => setFilterQuery(event.target.value)}
+                placeholder="Hledat jméno, email nebo roli"
+                aria-label="Filtrovat uživatele"
+              />
+              {hasFilter ? (
+                <button className="k-button secondary" type="button" onClick={() => setFilterQuery('')}>
+                  Zrušit filtr
+                </button>
+              ) : null}
             </div>
-            {users.length === 0 ? <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" /> : (
+            {users.length === 0 ? (
+              <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" />
+            ) : filteredUsers.length === 0 ? (
+              <StateView title="Nenalezeno" description="Filtru neodpovídá žádný uživatel." stateKey="empty" />
+            ) : (
               <DataTable
                 headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Poslední přihlášení', 'Stav', 'Akce']}
-                rows={users.map((u) => [
+                rows={filteredUsers.map((u) => [
                   <button key={u.id} className="k-nav-link" type="button" onClick={() => selectUser(u)}>{u.first_name}</button>,
                   u.last_name,
                   u.email,
@@ -2792,7 +3054,7 @@ function UsersAdmin(): JSX.Element {
                       Odeslat token pro reset hesla
                     </button>
                     {canDelete ? (
-                      <button className="k-button secondary" type="button" onClick={() => void deleteUser(selected)}>
+                      <button className="k-button secondary" type="button" onClick={(event) => requestDelete(event, selected)}>
                         Smazat
                       </button>
                     ) : (
@@ -2842,6 +3104,36 @@ function UsersAdmin(): JSX.Element {
           </div>
         </div>
       )}
+      {pendingDelete ? (
+        <div
+          className="k-card"
+          data-testid="confirm-delete-card"
+          aria-labelledby="confirm-delete-title"
+          aria-describedby="confirm-delete-description"
+          role="alertdialog"
+          aria-modal="true"
+          onKeyDown={handleDeleteDialogKeyDown}
+        >
+          <h2 id="confirm-delete-title">Potvrdit smazání</h2>
+          <p id="confirm-delete-description">
+            Opravdu chcete smazat uživatele <strong>{pendingDelete.email}</strong>? Operaci nelze vrátit, ale účet je možné vytvořit znovu.
+          </p>
+          <div className="k-toolbar">
+            <button
+              ref={confirmDeleteRef}
+              className="k-button"
+              type="button"
+              onClick={() => { void confirmDelete(); }}
+              disabled={saving}
+            >
+              Smazat
+            </button>
+            <button className="k-button secondary" type="button" onClick={cancelDelete} disabled={saving}>
+              Zrušit
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -2940,7 +3232,7 @@ function SettingsAdmin(): JSX.Element {
     <main className="k-page" data-testid="settings-admin-page">
       <h1>Nastavení SMTP</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
-      {message ? <StateView title="Info" description={message} stateKey="empty" /> : null}
+      {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
       {loading ? <SkeletonPage /> : (
         <Card title="E-mailová konfigurace">
           <div className="k-form-grid">
@@ -3041,7 +3333,7 @@ function AdminLoginPage(): JSX.Element {
               <input id="admin_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
             </FormField>
             {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
-            {hintStatus ? <StateView title="Info" description={hintStatus} stateKey="empty" /> : null}
+            {hintStatus ? <StateView title="Info" description={hintStatus} stateKey="info" /> : null}
             <div className="k-toolbar">
               <button className="k-button" type="submit">Přihlásit</button>
               <button
@@ -3064,26 +3356,9 @@ function AdminLoginPage(): JSX.Element {
   );
 }
 
-const ADMIN_ROLE_VIEW_LABELS: Record<string, string> = {
-  admin: 'Administrátor',
-  recepce: 'Recepce',
-  'pokojská': 'Pokojská',
-  'údržba': 'Údržba',
-  'snídaně': 'Snídaně',
-  sklad: 'Sklad',
-};
+const ADMIN_ROLE_VIEW_OPTIONS: Role[] = ['admin', ...ADMIN_SWITCHABLE_ROLES];
 
-const ADMIN_ROLE_VIEW_MODULES: Record<string, string[]> = {
-  recepce: ['lost_found', 'breakfast'],
-  'pokojská': ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
-  'údržba': ['issues'],
-  'snídaně': ['breakfast', 'issues', 'inventory'],
-  sklad: ['breakfast', 'issues', 'inventory'],
-};
-
-const ADMIN_ROLE_VIEW_OPTIONS = ['admin', 'recepce', 'pokojská', 'údržba', 'snídaně', 'sklad'] as const;
-
-type AdminRoleView = typeof ADMIN_ROLE_VIEW_OPTIONS[number];
+type AdminRoleView = Role;
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
@@ -3095,6 +3370,19 @@ function AppRoutes(): JSX.Element {
     const stored = window.sessionStorage.getItem('kajovo_admin_role_view') as AdminRoleView | null;
     return stored ?? 'admin';
   });
+  const adminLocale = typeof document !== 'undefined' ? document.documentElement.lang : 'cs';
+  const roleSwitcherLabels = React.useMemo(() => {
+    const bundle = getAuthBundle('admin', adminLocale);
+    const base: Record<Role, string> = {
+      admin: bundle.roleLabels.admin ?? (adminLocale.startsWith('en') ? 'Administrator' : 'Administrátor'),
+      recepce: bundle.roleLabels.recepce ?? 'Recepce',
+      pokojská: bundle.roleLabels['pokojská'] ?? 'Pokojská',
+      údržba: bundle.roleLabels['údržba'] ?? 'Údržba',
+      snídaně: bundle.roleLabels['snídaně'] ?? 'Snídaně',
+      sklad: bundle.roleLabels.sklad ?? 'Sklad',
+    };
+    return base;
+  }, [adminLocale]);
 
   React.useEffect(() => {
     void resolveAuthProfile()
@@ -3144,8 +3432,8 @@ function AppRoutes(): JSX.Element {
     : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
 
-  const roleViewKeys = auth.role === 'admin' && roleView !== 'admin'
-    ? (ADMIN_ROLE_VIEW_MODULES[roleView] ?? [])
+  const roleViewKeys: string[] | null = auth.role === 'admin' && roleView !== 'admin'
+    ? (ROLE_MODULES[roleView] ?? [])
     : null;
   const moduleByKey = new Map(modules.map((module) => [module.key, module]));
   const orderedRoleModules = roleViewKeys
@@ -3191,7 +3479,7 @@ function AppRoutes(): JSX.Element {
         panelLayout={panelLayout}
       >
         {auth.role === 'admin' ? (
-          <div className="k-toolbar" data-testid="admin-role-switcher">
+          <div className="k-toolbar" data-testid="admin-module-switcher">
             <span>Role pohledu:</span>
             {ADMIN_ROLE_VIEW_OPTIONS.map((role) => (
               <button
@@ -3200,7 +3488,7 @@ function AppRoutes(): JSX.Element {
                 type="button"
                 onClick={() => setRoleView(role)}
               >
-                {ADMIN_ROLE_VIEW_LABELS[role] ?? role}
+                {roleSwitcherLabels[role] ?? role}
               </button>
             ))}
           </div>

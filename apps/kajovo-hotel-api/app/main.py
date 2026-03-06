@@ -3,6 +3,8 @@ import contextlib
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
@@ -26,13 +28,37 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(RequestContextMiddleware)
 
+    if settings.trusted_hosts:
+        app.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=settings.trusted_hosts,
+        )
+
+    if settings.cors_allow_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_allow_origins,
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["*"],
+        )
+
     @app.middleware("http")
-    async def csrf_middleware(request: Request, call_next):
+    async def security_middleware(request: Request, call_next):
         try:
             ensure_csrf(request)
         except HTTPException as exc:
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-        return await call_next(request)
+
+        response = await call_next(request)
+        response.headers.setdefault("Content-Security-Policy", settings.content_security_policy)
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Permissions-Policy", "geolocation=()")
+        if settings.environment.lower() == "production":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+        return response
 
     app.include_router(auth_router)
     app.include_router(health_router)

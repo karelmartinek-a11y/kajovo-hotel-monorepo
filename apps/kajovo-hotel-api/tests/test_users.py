@@ -5,6 +5,8 @@ import urllib.request
 from http.cookiejar import CookieJar
 from pathlib import Path
 
+from app.api.routes.auth import hash_password
+
 REQUEST_TIMEOUT_SECONDS = 30
 
 
@@ -236,6 +238,181 @@ def test_portal_user_cannot_delete_users(api_base_url: str) -> None:
     )
     assert status == 403
 
+
+def test_admin_can_delete_user(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, created = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={"email": "delete.me@example.com", "password": "delete-user-pass"},
+        headers=csrf_header(jar),
+    )
+    assert status == 201
+    assert isinstance(created, dict)
+    user_id = int(created["id"])
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+        method="DELETE",
+        headers=csrf_header(jar),
+    )
+    assert status == 204
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+    )
+    assert status == 404
+
+
+def test_admin_cannot_delete_primary_admin_account(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    admin_user_id_status, admin_user_detail = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+    )
+    assert admin_user_id_status == 200
+    assert isinstance(admin_user_detail, list)
+    admin_user = next(
+        (
+            user
+            for user in admin_user_detail
+            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+        ),
+        None,
+    )
+    assert isinstance(admin_user, dict)
+    admin_id = int(admin_user["id"])
+
+    status, detail = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{admin_id}",
+        method="DELETE",
+        headers=csrf_header(jar),
+    )
+    assert status == 409
+    assert isinstance(detail, dict)
+    assert detail.get("detail") == "Admin account cannot be deleted"
+
+
+def test_admin_cannot_delete_last_active_admin(
+    api_base_url: str,
+    api_db_path: Path,
+) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+    csrf = csrf_header(jar)
+
+    status, users = api_request(opener, api_base_url, "/api/v1/users")
+    assert status == 200
+    assert isinstance(users, list)
+    admin_user = next(
+        (
+            user
+            for user in users
+            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+        ),
+        None,
+    )
+    assert isinstance(admin_user, dict)
+    admin_id = int(admin_user["id"])
+
+    last_admin_email = "solo.admin@example.com"
+    hashed = hash_password("solo-admin-pass")
+    new_user_id = None
+    try:
+        with sqlite3.connect(api_db_path) as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
+                VALUES (?, ?, ?, ?, 1)
+                """,
+                ("Solo", "Admin", last_admin_email, hashed),
+            )
+            connection.commit()
+            new_user_id = cursor.lastrowid
+            cursor.execute(
+                """
+                INSERT INTO portal_user_roles (user_id, role)
+                VALUES (?, 'admin')
+                """,
+                (new_user_id,),
+            )
+            connection.commit()
+
+        status, _ = api_request(
+            opener,
+            api_base_url,
+            f"/api/v1/users/{admin_id}/active",
+            method="PATCH",
+            payload={"is_active": False},
+            headers=csrf,
+        )
+        assert status == 200
+
+        status, detail = api_request(
+            opener,
+            api_base_url,
+            f"/api/v1/users/{new_user_id}",
+            method="DELETE",
+            headers=csrf,
+        )
+        assert status == 409
+        assert isinstance(detail, dict)
+        assert detail.get("detail") == "Cannot delete the last admin user"
+    finally:
+        if new_user_id is not None:
+            with sqlite3.connect(api_db_path) as connection:
+                connection.execute("DELETE FROM portal_user_roles WHERE user_id = ?", (new_user_id,))
+                connection.execute("DELETE FROM portal_users WHERE id = ?", (new_user_id,))
+                connection.commit()
+        api_request(
+            opener,
+            api_base_url,
+            f"/api/v1/users/{admin_id}/active",
+            method="PATCH",
+            payload={"is_active": True},
+            headers=csrf,
+        )
 
 def test_password_not_logged_in_audit_detail(
     api_base_url: str, api_db_path: Path

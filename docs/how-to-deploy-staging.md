@@ -67,3 +67,7 @@ API_BASE_URL="https://kajovohotel-staging.hcasc.cz" \
 cd /opt/kajovo-hotel-monorepo
 ./infra/verify/verify-deploy.sh
 ```
+
+## Preview artifacts
+
+Dokumentované preview artefakty jsou k dispozici z workflow `Preview Build - Kájovo Hotel` (`.github/workflows/preview.yml`). Po spuštění si stáhnete web/admin buildy (`web-preview.tar.gz`, `admin-preview.tar.gz`) pro ruční nasazení na externí prostředí.

@@ -10,6 +10,7 @@ Všechny klíčové informace jsou v adresáři `docs/`:
 - `docs/developer-handbook.md` — onboarding vývojáře bez přístupu na server
 - `docs/how-to-run.md` — lokální spuštění
 - `docs/how-to-deploy.md` — deploy přes GitHub Actions
+- `docs/testing.md` — přehled lokálních testovacích příkazů a smoke scenářů
 
 ## SSOT design
 

@@ -78,3 +78,79 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();
 });
+
+test('admin module switcher filtruje navigaci podle role', async ({ page }) => {
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: [
+      'dashboard:read',
+      'housekeeping:read',
+      'breakfast:read',
+      'breakfast:write',
+      'lost_found:read',
+      'lost_found:write',
+      'issues:read',
+      'issues:write',
+      'inventory:read',
+      'inventory:write',
+      'reports:read',
+      'reports:write',
+      'users:read',
+      'settings:read',
+    ],
+    actor_type: 'admin',
+  });
+  await page.route('**/api/v1/**', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    } else {
+      await route.fulfill({ status: 204 });
+    }
+  });
+
+  await page.goto(adminPath('/'));
+  const switcher = page.getByTestId('admin-module-switcher');
+  await expect(switcher).toBeVisible();
+
+  await switcher.getByRole('button', { name: 'Údržba' }).click();
+
+  const viewport = page.viewportSize();
+  const isPhone = (viewport?.width ?? 0) <= 767;
+
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Závady' })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toHaveCount(0);
+  } else {
+    const desktopNav = page.getByTestId('module-navigation-desktop');
+    await expect(desktopNav.getByRole('link', { name: 'Závady' })).toBeVisible();
+    await expect(desktopNav.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
+    const moreButton = desktopNav.getByRole('button', { name: 'Další' });
+    if ((await moreButton.count()) > 0) {
+      await moreButton.first().click();
+      await expect(desktopNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toHaveCount(0);
+    }
+  }
+
+  await switcher.getByRole('button', { name: 'Sklad' }).click();
+
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+  } else {
+    const desktopNav = page.getByTestId('module-navigation-desktop');
+    const directLink = desktopNav.getByRole('link', { name: 'Skladové hospodářství' });
+    if (await directLink.count()) {
+      await expect(directLink).toBeVisible();
+    } else {
+      const moreButton = desktopNav.getByRole('button', { name: 'Další' });
+      if ((await moreButton.count()) > 0) {
+        await moreButton.first().click();
+        await expect(desktopNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+      }
+    }
+  }
+});

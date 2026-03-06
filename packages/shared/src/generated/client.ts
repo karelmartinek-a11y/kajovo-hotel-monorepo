@@ -460,6 +460,9 @@ export const apiClient = {
   async getDailySummaryApiV1BreakfastDailySummaryGet(query: { "service_date": string; }): Promise<BreakfastDailySummary> {
     return request<BreakfastDailySummary>('GET', `/api/v1/breakfast/daily-summary`, query, undefined);
   },
+  async exportBreakfastDailyPdfApiV1BreakfastExportDailyGet(query: { "service_date": string; }): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/breakfast/export/daily`, query, undefined);
+  },
   async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
     return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
   },
