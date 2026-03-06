@@ -173,9 +173,9 @@ test('IA routes expose required view states via state test IDs', async ({ page }
 
 test('SIGNACE offset respects minimum per device class', async ({ page }) => {
   const scenarios = [
-    { name: 'phone', width: 390, height: 844, minOffset: 16 },
-    { name: 'tablet', width: 834, height: 1112, minOffset: 20 },
-    { name: 'desktop', width: 1440, height: 900, minOffset: 24 },
+    { name: 'phone', width: 390, height: 844, minOffset: 16, minThickness: 4.8, imgWidth: 24 },
+    { name: 'tablet', width: 834, height: 1112, minOffset: 20, minThickness: 4.8, imgWidth: 24 },
+    { name: 'desktop', width: 1440, height: 900, minOffset: 24, minThickness: 12, imgWidth: 60 },
   ];
 
   for (const scenario of scenarios) {
@@ -189,11 +189,24 @@ test('SIGNACE offset respects minimum per device class', async ({ page }) => {
       return {
         left: Number.parseFloat(styles.left || '0'),
         bottom: Number.parseFloat(styles.bottom || '0'),
+        minHeight: Number.parseFloat(styles.minHeight || '0'),
       };
+    });
+    const imgWidth = await sign.locator('img').evaluate((node) => {
+      const styles = window.getComputedStyle(node);
+      return Number.parseFloat(styles.width || '0');
     });
 
     expect(offsets.left, `SIGNACE left offset too small on ${scenario.name}`).toBeGreaterThanOrEqual(scenario.minOffset);
     expect(offsets.bottom, `SIGNACE bottom offset too small on ${scenario.name}`).toBeGreaterThanOrEqual(scenario.minOffset);
+    expect(
+      Math.abs(offsets.minHeight - scenario.minThickness),
+      `SIGNACE min height mismatch on ${scenario.name}`,
+    ).toBeLessThanOrEqual(0.5);
+    expect(
+      Math.abs(imgWidth - scenario.imgWidth),
+      `SIGNACE image width mismatch on ${scenario.name}`,
+    ).toBeLessThanOrEqual(0.5);
   }
 });
 
