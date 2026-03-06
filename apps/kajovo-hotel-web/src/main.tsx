@@ -46,11 +46,35 @@ import { PortalRoutes } from './portal/PortalRoutes';
 type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
 
-type BreakfastOrder = BreakfastOrderRead;
+type BreakfastOrder = BreakfastOrderRead & {
+  diet_no_gluten?: boolean;
+  diet_no_milk?: boolean;
+  diet_no_pork?: boolean;
+};
 
-type BreakfastPayload = BreakfastOrderCreate;
+type BreakfastPayload = BreakfastOrderCreate & {
+  diet_no_gluten?: boolean;
+  diet_no_milk?: boolean;
+  diet_no_pork?: boolean;
+};
 
 type BreakfastSummary = BreakfastDailySummary;
+
+type BreakfastImportItem = {
+  room: number;
+  count: number;
+  guest_name?: string | null;
+  diet_no_gluten?: boolean;
+  diet_no_milk?: boolean;
+  diet_no_pork?: boolean;
+};
+
+type BreakfastImportResponse = {
+  date: string;
+  status: 'FOUND' | 'MISSING';
+  saved: boolean;
+  items: BreakfastImportItem[];
+};
 
 type LostFoundItem = LostFoundItemRead;
 
@@ -464,6 +488,71 @@ function formatDateTime(value: string | null): string {
   return new Date(value).toLocaleString('cs-CZ');
 }
 
+type DietKey = 'diet_no_gluten' | 'diet_no_milk' | 'diet_no_pork';
+
+type DietToggleProps = {
+  active: boolean;
+  label: string;
+  disabled?: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+};
+
+function DietToggleButton({ active, label, disabled, onToggle, children }: DietToggleProps): JSX.Element {
+  return (
+    <button
+      type="button"
+      className={`k-diet-toggle${active ? ' k-diet-toggle--active' : ''}`}
+      aria-pressed={active}
+      aria-label={label}
+      onClick={onToggle}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DietIconBase({ children }: { children: React.ReactNode }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      {children}
+      <line x1="7" y1="17" x2="17" y2="7" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function DietIconGluten(): JSX.Element {
+  return (
+    <DietIconBase>
+      <path d="M9 7v10M12 6v11M15 7v10" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 10c1 0 1-2 2-2s1 2 2 2 1-2 2-2 1 2 2 2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    </DietIconBase>
+  );
+}
+
+function DietIconMilk(): JSX.Element {
+  return (
+    <DietIconBase>
+      <path d="M10 6h4l-1 2v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2V8l1-2z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M10 9h4" stroke="currentColor" strokeWidth="1.2" />
+    </DietIconBase>
+  );
+}
+
+function DietIconPork(): JSX.Element {
+  return (
+    <DietIconBase>
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="10.5" cy="11.5" r="0.6" fill="currentColor" />
+      <circle cx="13.5" cy="11.5" r="0.6" fill="currentColor" />
+      <path d="M10 14c1 1 3 1 4 0" stroke="currentColor" strokeWidth="1.2" fill="none" />
+      <path d="M9 8l-2-1M15 8l2-1" stroke="currentColor" strokeWidth="1.2" />
+    </DietIconBase>
+  );
+}
+
 function Dashboard(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'PĹ™ehled', '/');
@@ -498,48 +587,304 @@ function BreakfastList(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'SnĂ­danÄ›', '/snidane');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const actorRole = auth?.activeRole ?? auth?.role ?? 'recepce';
+  const roles = auth?.roles ?? [];
+  const isAdmin = actorRole === 'admin';
+  const isRecepce = isAdmin || actorRole === 'recepce' || roles.includes('recepce');
+  const isBreakfast = isAdmin || actorRole === 'snídaně' || roles.includes('snídaně');
+  const canImport = isRecepce || isAdmin;
+  const canReactivate = isRecepce || isAdmin;
+  const canServe = isBreakfast;
+  const canEditDiet = isRecepce || isAdmin;
+
+  const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState('');
 
+  const [importFile, setImportFile] = React.useState<File | null>(null);
+  const [importPreview, setImportPreview] = React.useState<BreakfastImportItem[] | null>(null);
+  const [importDate, setImportDate] = React.useState<string | null>(null);
+  const [importInfo, setImportInfo] = React.useState<string | null>(null);
+  const [importError, setImportError] = React.useState<string | null>(null);
+  const [importBusy, setImportBusy] = React.useState(false);
+
+  const loadDay = React.useCallback(
+    (targetDate: string) => {
+      if (state !== 'default') {
+        return;
+      }
+      let active = true;
+      Promise.all([
+        fetchJson<BreakfastOrder[]>(`/api/v1/breakfast?service_date=${targetDate}`),
+        fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${targetDate}`),
+      ])
+        .then(([orders, dailySummary]) => {
+          if (!active) {
+            return;
+          }
+          setItems(orders);
+          setSummary(dailySummary);
+          setError(null);
+        })
+        .catch(() => {
+          if (!active) {
+            return;
+          }
+          setError('NepodaĹ™ilo se naÄŤĂ­st seznam snĂ­danĂ­.');
+        });
+      return () => {
+        active = false;
+      };
+    },
+    [state]
+  );
+
   React.useEffect(() => {
-    if (state !== 'default') {
-      return;
-    }
-
-    let active = true;
-    Promise.all([
-      fetchJson<BreakfastOrder[]>(`/api/v1/breakfast?service_date=${defaultServiceDate}`),
-      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${defaultServiceDate}`),
-    ])
-      .then(([orders, dailySummary]) => {
-        if (!active) {
-          return;
-        }
-        setItems(orders);
-        setSummary(dailySummary);
-        setError(null);
-      })
-      .catch(() => {
-        if (!active) {
-          return;
-        }
-        setError('NepodaĹ™ilo se naÄŤĂ­st seznam snĂ­danĂ­.');
-      });
-
+    const cleanup = loadDay(serviceDate);
     return () => {
-      active = false;
+      if (cleanup) cleanup();
     };
-  }, [state]);
+  }, [loadDay, serviceDate]);
 
   const filteredItems = items.filter((item) => {
     const term = search.trim().toLowerCase();
     if (!term) {
       return true;
     }
-    return item.room_number.toLowerCase().includes(term) || item.guest_name.toLowerCase().includes(term);
+    return (
+      item.room_number.toLowerCase().includes(term) ||
+      (item.guest_name ?? '').toLowerCase().includes(term)
+    );
   });
+
+  const updateOrder = async (
+    order: BreakfastOrder,
+    updates: Partial<BreakfastPayload>
+  ): Promise<void> => {
+    const payload: BreakfastPayload = {
+      service_date: order.service_date,
+      room_number: order.room_number,
+      guest_name: order.guest_name,
+      guest_count: order.guest_count,
+      status: updates.status ?? order.status,
+      note: order.note ?? null,
+      diet_no_gluten: updates.diet_no_gluten ?? order.diet_no_gluten ?? false,
+      diet_no_milk: updates.diet_no_milk ?? order.diet_no_milk ?? false,
+      diet_no_pork: updates.diet_no_pork ?? order.diet_no_pork ?? false,
+    };
+
+    const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
+  };
+
+  const toggleDiet = (order: BreakfastOrder, key: DietKey): void => {
+    if (!canEditDiet) {
+      return;
+    }
+    const updates: Partial<BreakfastPayload> = {};
+    if (key === 'diet_no_gluten') updates.diet_no_gluten = !order.diet_no_gluten;
+    if (key === 'diet_no_milk') updates.diet_no_milk = !order.diet_no_milk;
+    if (key === 'diet_no_pork') updates.diet_no_pork = !order.diet_no_pork;
+    void updateOrder(order, updates);
+  };
+
+  const markServed = (order: BreakfastOrder): void => {
+    if (!canServe || order.status === 'served') {
+      return;
+    }
+    void updateOrder(order, { status: 'served' });
+  };
+
+  const reactivate = (order: BreakfastOrder): void => {
+    if (!canReactivate || order.status !== 'served') {
+      return;
+    }
+    void updateOrder(order, { status: 'pending' });
+  };
+
+  const renderDietToggles = (
+    data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean },
+    onToggle: (key: DietKey) => void,
+    disabled: boolean
+  ): JSX.Element => (
+    <div className="k-diet-toggle-group">
+      <DietToggleButton
+        active={Boolean(data.diet_no_gluten)}
+        label="Bez lepku"
+        disabled={disabled}
+        onToggle={() => onToggle('diet_no_gluten')}
+      >
+        <DietIconGluten />
+      </DietToggleButton>
+      <DietToggleButton
+        active={Boolean(data.diet_no_milk)}
+        label="Bez mléka"
+        disabled={disabled}
+        onToggle={() => onToggle('diet_no_milk')}
+      >
+        <DietIconMilk />
+      </DietToggleButton>
+      <DietToggleButton
+        active={Boolean(data.diet_no_pork)}
+        label="Bez vepřového"
+        disabled={disabled}
+        onToggle={() => onToggle('diet_no_pork')}
+      >
+        <DietIconPork />
+      </DietToggleButton>
+    </div>
+  );
+
+  const previewImport = async (file: File): Promise<void> => {
+    setImportBusy(true);
+    setImportError(null);
+    setImportInfo(null);
+    setImportPreview(null);
+    try {
+      const data = new FormData();
+      data.append('file', file);
+      const csrf = readCsrfToken();
+      const result = await fetchJson<BreakfastImportResponse>('/api/v1/breakfast/import', {
+        method: 'POST',
+        headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+        body: data,
+      });
+      setImportPreview(result.items);
+      setImportDate(result.date);
+    } catch {
+      setImportError('Validace PDF selhala.');
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const handleImportFile = (file: File | null): void => {
+    setImportFile(file);
+    if (file) {
+      void previewImport(file);
+    } else {
+      setImportPreview(null);
+      setImportDate(null);
+    }
+  };
+
+  const saveImport = async (): Promise<void> => {
+    if (!importFile || !importPreview) {
+      setImportError('Nejprve nahrajte PDF.');
+      return;
+    }
+    setImportBusy(true);
+    setImportError(null);
+    try {
+      const data = new FormData();
+      data.append('save', 'true');
+      data.append('file', importFile);
+      data.append(
+        'overrides',
+        JSON.stringify(
+          importPreview.map((item) => ({
+            room: String(item.room),
+            diet_no_gluten: Boolean(item.diet_no_gluten),
+            diet_no_milk: Boolean(item.diet_no_milk),
+            diet_no_pork: Boolean(item.diet_no_pork),
+          }))
+        )
+      );
+      const csrf = readCsrfToken();
+      const result = await fetchJson<BreakfastImportResponse>('/api/v1/breakfast/import', {
+        method: 'POST',
+        headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+        body: data,
+      });
+      setImportInfo(`Import uložen: ${result.items.length} pokojů (${result.date}).`);
+      setImportPreview(null);
+      setImportDate(result.date);
+      setServiceDate(result.date);
+      loadDay(result.date);
+    } catch {
+      setImportError('Uložení importu selhalo.');
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const importPreviewTable = importPreview ? (
+    <div className="k-card">
+      <div className="k-toolbar">
+        <strong>Kontrola importu</strong>
+        <span className="k-subtle">{importDate ?? '-'}</span>
+      </div>
+      <DataTable
+        headers={['Pokoj', 'Host', 'Počet', 'Diety']}
+        rows={importPreview.map((item, index) => [
+          item.room,
+          item.guest_name ?? `Pokoj ${item.room}`,
+          item.count,
+          renderDietToggles(
+            item,
+            (key) =>
+              setImportPreview((prev) => {
+                if (!prev) return prev;
+                return prev.map((row, rowIndex) => {
+                  if (rowIndex !== index) return row;
+                  if (key === 'diet_no_gluten') return { ...row, diet_no_gluten: !row.diet_no_gluten };
+                  if (key === 'diet_no_milk') return { ...row, diet_no_milk: !row.diet_no_milk };
+                  return { ...row, diet_no_pork: !row.diet_no_pork };
+                });
+              }),
+            false
+          ),
+        ])}
+      />
+      <div className="k-toolbar">
+        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy}>
+          Potvrdit import
+        </button>
+        <button className="k-button secondary" type="button" onClick={() => setImportPreview(null)}>
+          Zavřít náhled
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  const breakfastToolbar = (
+    <div className="k-toolbar">
+      <input
+        className="k-input"
+        type="date"
+        value={serviceDate}
+        aria-label="Datum"
+        onChange={(event) => setServiceDate(event.target.value)}
+      />
+      <input
+        className="k-input"
+        placeholder="Hledat dle pokoje nebo hosta"
+        aria-label="Hledat"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+      {canImport ? (
+        <>
+          <input
+            className="k-input"
+            type="file"
+            accept="application/pdf"
+            aria-label="Import PDF"
+            onChange={(event) => handleImportFile(event.target.files?.[0] ?? null)}
+          />
+        </>
+      ) : null}
+    </div>
+  );
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -550,8 +895,6 @@ function BreakfastList(): JSX.Element {
         stateUI
       ) : error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
-      ) : filteredItems.length === 0 ? (
-        <StateView title="PrĂˇzdnĂ˝ stav" description="Nebyly nalezeny ĹľĂˇdnĂ© objednĂˇvky." stateKey="empty" action={<Link className="k-button" to="/snidane/nova">NovĂˇ objednĂˇvka</Link>} />
       ) : (
         <>
           <div className="k-grid cards-3">
@@ -565,32 +908,59 @@ function BreakfastList(): JSX.Element {
               <strong>{getSummaryCount(summary, 'pending')}</strong>
             </Card>
           </div>
-          <div className="k-toolbar">
-            <input
-              className="k-input"
-              placeholder="Hledat dle pokoje nebo hosta"
-              aria-label="Hledat"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+          {breakfastToolbar}
+          {canImport && (importError || importInfo) ? (
+            <p className={importError ? 'k-text-error' : 'k-text-success'}>
+              {importError ?? importInfo}
+            </p>
+          ) : null}
+          {importPreviewTable}
+          {filteredItems.length === 0 ? (
+            <StateView
+              title="PrĂˇzdnĂ˝ stav"
+              description="Nebyly nalezeny ĹľĂˇdnĂ© objednĂˇvky."
+              stateKey="empty"
+              action={canImport ? undefined : undefined}
             />
-            <Link className="k-button" to="/snidane/nova">
-              NovĂˇ objednĂˇvka
-            </Link>
-          </div>
-          <DataTable
-            headers={['Datum', 'Pokoj', 'Host', 'PoÄŤet', 'Stav', 'PoznĂˇmka', 'Akce']}
-            rows={filteredItems.map((item) => [
-              item.service_date,
-              item.room_number,
-              item.guest_name,
-              item.guest_count,
-              breakfastStatusLabel(item.status),
-              item.note ?? '-',
-              <Link className="k-nav-link" to={`/snidane/${item.id}`} key={item.id}>
-                Detail
-              </Link>,
-            ])}
-          />
+          ) : (
+            <DataTable
+              headers={['Datum', 'Pokoj', 'Host', 'PoÄŤet', 'Diety', 'Stav', 'Akce']}
+              rows={filteredItems.map((item) => {
+                const rowClass = item.status === 'served' ? 'k-row-muted' : '';
+                const action = item.status === 'served'
+                  ? canReactivate
+                    ? (
+                      <button className="k-button secondary" type="button" onClick={() => reactivate(item)}>
+                        Reaktivovat
+                      </button>
+                    )
+                    : (
+                      <span className="k-text-muted">Zkonzumováno</span>
+                    )
+                  : canServe
+                    ? (
+                      <button className="k-button" type="button" onClick={() => markServed(item)}>
+                        Zkonzumováno
+                      </button>
+                    )
+                    : (
+                      <span className="k-text-muted">-</span>
+                    );
+
+                return [
+                  <span className={rowClass}>{item.service_date}</span>,
+                  <span className={rowClass}>{item.room_number}</span>,
+                  <span className={rowClass}>{item.guest_name ?? '-'}</span>,
+                  <span className={rowClass}>{item.guest_count}</span>,
+                  <span className={rowClass}>
+                    {renderDietToggles(item, (key) => toggleDiet(item, key), !canEditDiet)}
+                  </span>,
+                  <span className={rowClass}>{breakfastStatusLabel(item.status)}</span>,
+                  action,
+                ];
+              })}
+            />
+          )}
         </>
       )}
     </main>
@@ -972,7 +1342,7 @@ function HousekeepingForm(): JSX.Element {
           </div>
           <div className="k-form-grid">
             <FormField id="housekeeping_room" label="Pokoj (volitelně)">
-              <div className="k-toolbar">
+              <div className="k-toolbar k-room-grid">
                 <button
                   className={!selectedRoom ? 'k-button' : 'k-button secondary'}
                   type="button"

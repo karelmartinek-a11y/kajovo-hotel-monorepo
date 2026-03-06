@@ -25,9 +25,11 @@ ApiRequest = Callable[..., tuple[int, ResponseData]]
 
 def pytest_configure(config: pytest.Config) -> None:
     api_root = Path(__file__).resolve().parents[1]
-    base_temp = api_root / ".tmp" / "pytest"
-    base_temp.mkdir(parents=True, exist_ok=True)
-    config.option.basetemp = str(base_temp)
+    base_root = api_root / ".tmp" / "pytest"
+    base_root.mkdir(parents=True, exist_ok=True)
+    run_dir = base_root / f"run-{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    config.option.basetemp = str(run_dir)
 
 
 def _scrypt_hash(password: str, salt: bytes) -> str:

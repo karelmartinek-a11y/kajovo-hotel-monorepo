@@ -201,8 +201,8 @@ def delete_breakfast_order(order_id: int, db: Session = Depends(get_db)) -> None
 
 @router.post("/reactivate-all", status_code=status.HTTP_204_NO_CONTENT)
 def reactivate_all_breakfast_orders(
+    request: Request,
     service_date: date = Query(...),
-    request: Request = None,
     db: Session = Depends(get_db),
 ) -> None:
     actor_role = _actor_role(request)
@@ -221,10 +221,10 @@ def reactivate_all_breakfast_orders(
 
 @router.post("/import", response_model=BreakfastImportResponse)
 def import_breakfast_pdf(
+    request: Request,
     save: bool = Form(False),
     overrides: str | None = Form(None),
     file: UploadFile = File(...),
-    request: Request = None,
     db: Session = Depends(get_db),
 ) -> BreakfastImportResponse:
     actor_role = _actor_role(request)
