@@ -78,20 +78,20 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": "admin@kajovohotel.local", "password": "wrong-pass"},
     )
-    assert status_locked == 401
+    assert status_locked == 423
     assert isinstance(body_locked, dict)
-    assert body_locked.get("detail") == "Invalid credentials"
+    assert body_locked.get("detail") == "Account locked"
 
     status_wrong, body_wrong = api_request(
         opener,
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "wrong-pass"},
+        payload={"email": "admin@kajovohotel.local", "password": "another-wrong-pass"},
     )
-    assert status_wrong == 401
+    assert status_wrong == 423
     assert isinstance(body_wrong, dict)
     assert body_wrong.get("detail") == body_locked.get("detail")
 
@@ -183,3 +183,49 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
     )
     assert status == 200
     assert body == {"ok": True}
+
+
+def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url: str, api_db_path: Path) -> None:
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+
+    with sqlite3.connect(api_db_path) as connection:
+        connection.execute("DELETE FROM auth_unlock_tokens")
+        connection.execute("DELETE FROM auth_lockout_states")
+        connection.execute(
+            """
+            INSERT INTO auth_lockout_states
+            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at, locked_until)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "admin",
+                "admin@kajovohotel.local",
+                3,
+                datetime.utcnow().isoformat(),
+                datetime.utcnow().isoformat(),
+                (datetime.utcnow() + timedelta(minutes=30)).isoformat(),
+            ),
+        )
+        connection.commit()
+
+    status_ok, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status_ok == 200
+
+    with sqlite3.connect(api_db_path) as connection:
+        row = connection.execute(
+            """
+            SELECT failed_attempts, locked_until
+            FROM auth_lockout_states
+            WHERE actor_type = 'admin' AND principal = ?
+            """,
+            ("admin@kajovohotel.local",),
+        ).fetchone()
+    assert row is not None
+    assert int(row[0]) == 0
+    assert row[1] is None

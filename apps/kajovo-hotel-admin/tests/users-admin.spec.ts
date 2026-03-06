@@ -24,6 +24,40 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
   });
 }
 
+
+test('admin login shows structured error dialog for invalid and locked credentials', async ({ page }) => {
+  await page.route('**/api/auth/admin/login', async (route) => {
+    const payload = route.request().postDataJSON() as { password?: string };
+    if (payload.password === 'locked-pass') {
+      await route.fulfill({
+        status: 423,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Account locked' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Invalid credentials' }),
+    });
+  });
+
+  await page.goto(adminPath('/login'));
+  await page.locator('#admin_login_email').fill('admin@kajovohotel.local');
+  await page.locator('#admin_login_password').fill('wrong-password');
+  await page.getByRole('button', { name: 'Přihlásit' }).click();
+
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /Přihlášení se nezdařilo/i })).toBeVisible();
+  await expect(dialog).toContainText(/Zkontrolujte email a heslo/i);
+
+  await page.locator('#admin_login_password').fill('locked-pass');
+  await page.getByRole('button', { name: 'Přihlásit' }).click();
+  await expect(dialog).toContainText(/Účet je dočasně uzamčen/i);
+});
+
 test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');

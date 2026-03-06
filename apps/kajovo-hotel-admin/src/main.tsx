@@ -3287,27 +3287,52 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
   );
 }
 
+type LoginErrorState = {
+  title: string;
+  description: string;
+};
+
 function AdminLoginPage(): JSX.Element {
-  const navigate = useNavigate();
+  const bundle = React.useMemo(() => {
+    const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
+    return getAuthBundle('admin', lang);
+  }, []);
+  const { copy } = bundle;
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
+  const [loginError, setLoginError] = React.useState<LoginErrorState | null>(null);
   const [hintStatus, setHintStatus] = React.useState<string | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setError(null);
+    setLoginError(null);
     setHintStatus(null);
     const principal = email.trim();
-    if (!principal || !password) {
-      setError('Vyplňte email i heslo.');
+    if (!principal || !password.trim()) {
+      setLoginError({
+        title: copy.loginErrorTitle ?? 'Přihlášení se nezdařilo',
+        description: copy.credentialsRequired ?? 'Vyplňte email i heslo.',
+      });
       return;
     }
     try {
-      await apiClient.adminLoginApiAuthAdminLoginPost({ email: principal, password });
+      await fetchJson('/api/auth/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: principal, password }),
+      });
       window.location.assign('/admin/');
-    } catch {
-      setError('Neplatné přihlašovací údaje.');
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 423) {
+        setLoginError({
+          title: copy.loginErrorTitle ?? 'Přihlášení se nezdařilo',
+          description: copy.accountLockedError ?? 'Účet je dočasně uzamčen. Použijte odkaz pro odblokování účtu.',
+        });
+        return;
+      }
+      setLoginError({
+        title: copy.loginErrorTitle ?? 'Přihlášení se nezdařilo',
+        description: copy.loginErrorHelp ?? copy.loginError ?? 'Zkontrolujte email a heslo, případně použijte odblokování účtu.',
+      });
     }
   }
 
@@ -3317,7 +3342,7 @@ function AdminLoginPage(): JSX.Element {
       method: 'POST',
       body: JSON.stringify({ email }),
     });
-    setHintStatus('Pokud účet existuje, byl odeslán odkaz pro odblokování.');
+    setHintStatus(copy.hintInfo ?? 'Pokud účet existuje, byl odeslán odkaz pro odblokování.');
   }
 
   return (
@@ -3332,8 +3357,19 @@ function AdminLoginPage(): JSX.Element {
             <FormField id="admin_login_password" label="Admin heslo">
               <input id="admin_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
             </FormField>
-            {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
-            {hintStatus ? <StateView title="Info" description={hintStatus} stateKey="info" /> : null}
+            {loginError ? (
+              <section
+                className="k-admin-login-feedback"
+                role="alertdialog"
+                aria-live="assertive"
+                aria-labelledby="admin-login-error-title"
+                aria-describedby="admin-login-error-description"
+              >
+                <h2 id="admin-login-error-title" className="k-admin-login-feedback-title">{loginError.title}</h2>
+                <p id="admin-login-error-description" className="k-admin-login-feedback-description">{loginError.description}</p>
+              </section>
+            ) : null}
+            {hintStatus ? <p className="k-admin-login-hint" role="status">{hintStatus}</p> : null}
             <div className="k-toolbar">
               <button className="k-button" type="submit">Přihlásit</button>
               <button

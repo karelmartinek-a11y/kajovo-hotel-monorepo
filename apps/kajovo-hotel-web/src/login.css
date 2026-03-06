@@ -40,6 +40,26 @@
   gap: var(--k-spacing-3);
 }
 
+.k-login-feedback {
+  margin: 0;
+  border: 1px solid var(--k-color-error);
+  border-radius: var(--k-radius-2);
+  background: color-mix(in srgb, var(--k-color-error) 8%, var(--k-color-surface-raised));
+  padding: var(--k-spacing-3);
+}
+
+.k-login-feedback-title {
+  margin: 0 0 var(--k-spacing-1);
+  font-size: var(--k-font-size-base);
+  color: var(--k-color-ink);
+}
+
+.k-login-feedback-description {
+  margin: 0;
+  color: var(--k-color-ink-secondary);
+}
+
+
 .k-login-label {
   font-size: var(--k-font-size-sm);
   font-weight: var(--k-weight-bold);

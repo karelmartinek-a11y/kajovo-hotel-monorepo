@@ -4,6 +4,11 @@ import { getAuthBundle } from '@kajovo/shared';
 
 const adminMascot = '/brand/postavy/kaja-admin.png';
 
+type LoginErrorState = {
+  title: string;
+  description: string;
+};
+
 export function AdminLoginPage(): JSX.Element {
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
@@ -19,16 +24,19 @@ export function AdminLoginPage(): JSX.Element {
   }, [bundle.copy.eyebrow, bundle.locale]);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
+  const [loginError, setLoginError] = React.useState<LoginErrorState | null>(null);
   const [hintStatus, setHintStatus] = React.useState<string | null>(null);
 
   async function login(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    setError(null);
+    setLoginError(null);
     setHintStatus(null);
     const principal = email.trim();
     if (!principal || !password) {
-      setError(copy.credentialsRequired ?? copy.loginError ?? 'Neplatné přihlašovací údaje.');
+      setLoginError({
+        title: copy.loginErrorTitle ?? 'Přihlášení se nezdařilo',
+        description: copy.credentialsRequired ?? copy.loginError ?? 'Vyplňte email i heslo.',
+      });
       return;
     }
     const response = await fetch('/api/auth/admin/login', {
@@ -38,7 +46,13 @@ export function AdminLoginPage(): JSX.Element {
       body: JSON.stringify({ email: principal, password }),
     });
     if (!response.ok) {
-      setError(copy.loginError ?? 'Neplatné přihlašovací údaje.');
+      const locked = response.status === 423;
+      setLoginError({
+        title: copy.loginErrorTitle ?? 'Přihlášení se nezdařilo',
+        description: locked
+          ? (copy.accountLockedError ?? 'Účet je dočasně uzamčen. Použijte odkaz pro odblokování účtu.')
+          : (copy.loginErrorHelp ?? copy.loginError ?? 'Zkontrolujte přihlašovací údaje a zkuste to znovu.'),
+      });
       return;
     }
     window.location.assign('/admin/');
@@ -94,7 +108,12 @@ export function AdminLoginPage(): JSX.Element {
           <button className="k-button secondary" type="button" onClick={() => void sendPasswordHint()} disabled={!email.trim()}>
             {copy.hintAction ?? copy.forgotAction}
           </button>
-          {error ? <p id="admin-login-error" className="k-login-copy" role="alert">{error}</p> : null}
+          {loginError ? (
+            <section className="k-login-feedback" role="alertdialog" aria-live="assertive" aria-labelledby="admin-login-error-title" aria-describedby="admin-login-error-description">
+              <h2 id="admin-login-error-title" className="k-login-feedback-title">{loginError.title}</h2>
+              <p id="admin-login-error-description" className="k-login-feedback-description">{loginError.description}</p>
+            </section>
+          ) : null}
           {hintStatus ? <p id="admin-login-hint" className="k-login-copy" role="status">{hintStatus}</p> : null}
         </form>
       </section>
