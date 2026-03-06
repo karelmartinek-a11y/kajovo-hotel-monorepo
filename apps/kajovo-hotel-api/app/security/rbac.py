@@ -7,6 +7,7 @@ Permission = str
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     "admin": {
+        "dashboard:read",
         "housekeeping:read",
         "breakfast:read",
         "breakfast:write",
