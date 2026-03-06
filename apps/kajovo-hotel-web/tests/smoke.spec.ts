@@ -76,6 +76,19 @@ test.describe('admin smoke flows', () => {
     });
   }
 
+  async function gotoWithAbortRetry(page: Page, url: string) {
+    try {
+      await page.goto(url);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('net::ERR_ABORTED')) {
+        throw error;
+      }
+      await page.waitForLoadState('domcontentloaded');
+      await page.goto(url);
+    }
+  }
+
   test('admin login and user lifecycle works', async ({ page }) => {
     let users = [...seedUsers];
     let nextId = users.length + 1;
@@ -140,7 +153,7 @@ test.describe('admin smoke flows', () => {
     await page.getByRole('button', { name: /přihlásit/i }).click();
     await page.waitForURL('**/admin/**');
 
-    await page.goto('/admin/uzivatele');
+    await gotoWithAbortRetry(page, '/admin/uzivatele');
     await expect(page.getByText('karel.novak@example.com')).toBeVisible();
 
     const createForm = page.locator('#users-create');
