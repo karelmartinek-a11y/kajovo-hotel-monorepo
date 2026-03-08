@@ -58,7 +58,12 @@ jobs:
           script: |
             set -euo pipefail
             set -x
-            SSH_CMD="ssh -i /root/.ssh/deploy_kajovo_hotel_monorepo -o IdentitiesOnly=yes"
+            SSH_KEY_PATH="${HOME}/.ssh/deploy_kajovo_hotel_monorepo"
+            if [ ! -f "$SSH_KEY_PATH" ]; then
+              echo "Chybí SSH klíč pro fetch repozitáře: $SSH_KEY_PATH" >&2
+              exit 1
+            fi
+            SSH_CMD="ssh -i $SSH_KEY_PATH -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
             if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
               GIT_SSH_COMMAND="$SSH_CMD" git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
             fi
@@ -96,13 +101,20 @@ jobs:
           script: |
             set -euo pipefail
             set -x
+            SSH_KEY_PATH="${HOME}/.ssh/deploy_kajovo_hotel_monorepo"
+            if [ -f "$SSH_KEY_PATH" ]; then
+              SSH_CMD="ssh -i $SSH_KEY_PATH -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            else
+              SSH_CMD="ssh -o StrictHostKeyChecking=accept-new"
+            fi
             if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
-              git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
+              GIT_SSH_COMMAND="$SSH_CMD" git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
             fi
             git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
+            git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
             git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
             git -C /opt/kajovo-hotel-monorepo clean -fd
-            git -C /opt/kajovo-hotel-monorepo fetch --prune origin
+            GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
             git -C /opt/kajovo-hotel-monorepo checkout main
             git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
             if [ -n "${HOTEL_ADMIN_EMAIL:-}" ]; then export KAJOVO_API_ADMIN_EMAIL="$HOTEL_ADMIN_EMAIL"; fi
