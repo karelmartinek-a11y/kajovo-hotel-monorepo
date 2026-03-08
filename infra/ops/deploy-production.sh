@@ -10,6 +10,7 @@ DEPLOY_NETWORK="${DEPLOY_NETWORK:-deploy_hotelapp_net}"
 LOG_FILE="${LOG_FILE:-/var/log/hotelapp/deploy.log}"
 EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
 EXPECTED_TAG="${EXPECTED_TAG:-}"
+RESET_DB_ON_DEPLOY="${RESET_DB_ON_DEPLOY:-false}"
 
 require_cmd() {
   local name="$1"
@@ -72,19 +73,21 @@ fi
 commit_sha="$(git rev-parse --short HEAD)"
 echo "Deploy branch=$current_branch sha=$commit_sha"
 
-# Zastavíme případně běžící kontejnery a smažeme VŠECHNY lokální volume z compose (i postgres_data).
-# Pokud existoval starý cluster s jiným heslem, vznikala chyba autentizace API -> PostgreSQL.
-COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down -v --remove-orphans || true
-
-# Smažeme (a hned vytvoříme) naše postgres volume, abychom měli čistý start.
-docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
-docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
-# Pro jistotu vyčistíme obsah volume (kdyby docker volume rm neprošel) a ověříme prázdnotu
-docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'rm -rf /var/lib/postgresql/data/* /var/lib/postgresql/data/.* 2>/dev/null || true' >/dev/null
-if docker run --rm -v "${COMPOSE_PROJECT_NAME}_postgres_data":/var/lib/postgresql/data alpine sh -c 'find /var/lib/postgresql/data -mindepth 1 -maxdepth 1 | read'; then
-  echo "Volume ${COMPOSE_PROJECT_NAME}_postgres_data není prázdný, ruším deploy." >&2
+if [[ "$RESET_DB_ON_DEPLOY" != "true" && "$RESET_DB_ON_DEPLOY" != "false" ]]; then
+  echo "Neplatná hodnota RESET_DB_ON_DEPLOY='$RESET_DB_ON_DEPLOY' (povoleno: true/false)." >&2
   exit 1
+fi
+
+if [[ "$RESET_DB_ON_DEPLOY" == "true" ]]; then
+  echo "POZOR: RESET_DB_ON_DEPLOY=true -> provádím destruktivní reset DB volume."
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down -v --remove-orphans || true
+  docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
+  docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
+else
+  echo "Nedestruktivní deploy: zachovávám databázová volume."
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
 fi
 
 # Nejprve připrav DB heslo, aby API healthcheck prošel
