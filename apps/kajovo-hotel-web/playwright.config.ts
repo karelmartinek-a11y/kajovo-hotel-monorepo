@@ -17,6 +17,8 @@ export default defineConfig({
     port: 4173,
     env: {
       VITE_DISABLE_API_PROXY: '1',
+      VITE_ENABLE_QA_RUNTIME: '1',
+      VITE_QA_SERVICE_DATE: '2026-02-19',
     },
     reuseExistingServer: true,
   },

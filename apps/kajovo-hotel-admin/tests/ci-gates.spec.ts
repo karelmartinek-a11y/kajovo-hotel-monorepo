@@ -158,13 +158,14 @@ test('brand elements convention: maximum 2 per key views', async ({ page }) => {
 });
 
 test('IA routes expose required view states via state test IDs', async ({ page }) => {
+  test.setTimeout(120_000);
   const nonUtilityViews = ia.views.filter((view) => !['/intro', '/offline', '/maintenance', '/404'].includes(view.route));
 
   for (const view of nonUtilityViews) {
     const route = toConcreteRoute(view.route);
 
     for (const state of requiredStates) {
-    await page.goto(`${route}?state=${state}`);
+      await page.goto(`${route}?state=${state}`, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
       await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
     }

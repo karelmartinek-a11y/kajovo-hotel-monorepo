@@ -26,8 +26,6 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     },
     "pokojská": {
         "housekeeping:read",
-        "breakfast:read",
-        "breakfast:write",
         "issues:read",
         "issues:write",
         "inventory:read",
@@ -48,14 +46,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     "snídaně": {
         "breakfast:read",
         "breakfast:write",
-        "inventory:read",
-        "inventory:write",
-        "issues:read",
-        "issues:write",
     },
     "sklad": {
-        "breakfast:read",
-        "breakfast:write",
         "inventory:read",
         "inventory:write",
         "issues:read",
@@ -99,10 +91,11 @@ def role_for_audit(raw_role: str | None) -> str:
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:
-    from app.security.auth import read_session_cookie
+    from app.security.auth import require_session
 
-    session = read_session_cookie(request.cookies.get("kajovo_session"))
-    if not session:
+    try:
+        session = require_session(request)
+    except HTTPException:
         return "anonymous", "anonymous", "recepce"
     actor_id = session["email"]
     actor_name = session["email"]
@@ -182,6 +175,3 @@ def inject_identity(request: Request) -> None:
 
 
 IdentityDependency = Depends(inject_identity)
-
-
-

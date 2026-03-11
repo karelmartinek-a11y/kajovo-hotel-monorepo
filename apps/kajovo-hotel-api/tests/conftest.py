@@ -94,6 +94,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
             ("udrzba@example.com", "údržba", "udrzba", b"udrzba-salt"),
             ("snidane@example.com", "snídaně", "snidane", b"snidane-salt"),
             ("recepce@example.com", "recepce", "recepce", b"recepce-salt"),
+            ("pokojska@example.com", "pokojská", "pokojska", b"pokojska-salt"),
         ]:
             connection.execute(
                 """
@@ -123,8 +124,8 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
 
     env = os.environ.copy()
     env["KAJOVO_API_DATABASE_URL"] = database_url
-    env["KAJOVO_API_ADMIN_EMAIL"] = "admin@kajovohotel.local"
-    env["KAJOVO_API_ADMIN_PASSWORD"] = "admin123"
+    env["KAJOVO_API_ADMIN_EMAIL"] = "unused-admin-env@kajovo.local"
+    env["KAJOVO_API_ADMIN_PASSWORD"] = "unused-env-admin-password"
     media_root = api_db_path.parent / "media"
     media_root.mkdir(parents=True, exist_ok=True)
     env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)

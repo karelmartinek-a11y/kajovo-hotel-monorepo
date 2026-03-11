@@ -154,6 +154,28 @@ const lostFoundListPayload = [
 ];
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/me**', async (route) => {
+    await route.fulfill({
+      json: {
+        email: 'vizualni.operator@example.com',
+        role: 'admin',
+        permissions: [
+          'dashboard:read',
+          'breakfast:read',
+          'lost_found:read',
+          'issues:read',
+          'inventory:read',
+          'reports:read',
+        ],
+        actor_type: 'portal',
+      },
+    });
+  });
+
+  await page.route('**/api/auth/csrf**', async (route) => {
+    await route.fulfill({ json: { csrf_token: 'visual-test-token' } });
+  });
+
   await page.route('**/api/v1/breakfast?service_date=2026-02-19', async (route) => {
     await route.fulfill({ json: listPayload });
   });
@@ -260,6 +282,64 @@ test.beforeEach(async ({ page }) => {
       return;
     }
     await route.fulfill({ json: lostFoundListPayload[0] });
+  });
+});
+
+test.describe('critical visual baseline', () => {
+  test('@visual-critical dashboard snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await expect(page.getByTestId('dashboard-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('dashboard-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical lost found list snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/ztraty-a-nalezy');
+    await expect(page.getByTestId('lost-found-list-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('lost-found-list-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical inventory list snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/sklad');
+    await expect(page.getByTestId('inventory-list-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('inventory-list-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical issues list snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/zavady');
+    await expect(page.getByTestId('issues-list-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('issues-list-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical reports list snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/hlaseni');
+    await expect(page.getByTestId('reports-list-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('reports-list-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical offline snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/offline');
+    await expect(page.getByTestId('state-view-offline')).toBeVisible();
+    await expect(page).toHaveScreenshot('offline-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical 404 snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/404');
+    await expect(page.getByTestId('state-view-404')).toBeVisible();
+    await expect(page).toHaveScreenshot('404-desktop.png', { fullPage: true });
   });
 });
 

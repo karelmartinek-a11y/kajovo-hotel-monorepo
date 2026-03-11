@@ -1,11 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KajovoSign } from '@kajovo/ui';
+import { KajovoSign, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 const portalMascot = '/brand/postavy/kaja-user.png';
 
-export function PortalLoginPage(): JSX.Element {
+export function PortalLoginPage({ authError = null }: { authError?: string | null }): JSX.Element {
   const navigate = useNavigate();
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
@@ -106,6 +106,7 @@ export function PortalLoginPage(): JSX.Element {
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="portal-login-title">{copy.title}</h1>
         <p className="k-login-copy">{copy.description}</p>
+        {authError ? <StateView title="Overeni prihlaseni selhalo" description={authError} stateKey="error" /> : null}
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">{copy.emailLabel}</label>
           <input id="portal-email" className="k-input" type="email" placeholder="uzivatel@kajovohotel.cz" value={email} onChange={(event) => setEmail(event.target.value)} />

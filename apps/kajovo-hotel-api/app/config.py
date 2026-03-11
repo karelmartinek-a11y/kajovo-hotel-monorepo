@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "KájovoHotel API"
+    app_name: str = "KajovoHotel API"
     app_version: str = "0.1.0"
     environment: str = "development"
     database_url: str = "sqlite:///./kajovo_hotel.db"
@@ -15,16 +15,7 @@ class Settings(BaseSettings):
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
     media_root: str = "/app/data/media"
-    breakfast_scheduler_enabled: bool = False
-    breakfast_scheduler_interval_seconds: int = 300
-    breakfast_imap_host: str = ""
-    breakfast_imap_port: int = 993
-    breakfast_imap_use_ssl: bool = True
-    breakfast_imap_mailbox: str = "INBOX"
-    breakfast_imap_username: str = ""
-    breakfast_imap_password: str = ""
-    breakfast_imap_from_contains: str = "better-hotel.com"
-    breakfast_imap_subject_contains: str = "přehled stravy"
+    inventory_seed_enabled: bool = False
     trusted_hosts: list[str] = Field(
         default_factory=lambda: [
             "kajovohotel.hcasc.cz",
@@ -45,6 +36,8 @@ class Settings(BaseSettings):
         ]
     )
     session_max_age_seconds: int = 3600
+    device_token_pepper: str = ""
+    device_challenge_max_age_seconds: int = 300
     content_security_policy: str = (
         "default-src 'self'; "
         "img-src 'self' data:; "

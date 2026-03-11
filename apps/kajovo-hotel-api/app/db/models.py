@@ -10,12 +10,18 @@ except ImportError:  # pragma: no cover
         pass
 
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, LargeBinary, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class DeviceStatus(StrEnum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    REVOKED = "REVOKED"
 
 
 class Report(Base):
@@ -30,6 +36,12 @@ class Report(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
+    )
+    photos: Mapped[list["ReportPhoto"]] = relationship(
+        "ReportPhoto",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="ReportPhoto.sort_order.asc()",
     )
 
 
@@ -188,6 +200,12 @@ class InventoryMovementType(StrEnum):
     ADJUST = "adjust"
 
 
+class InventoryCardType(StrEnum):
+    IN = "in"
+    OUT = "out"
+    ADJUST = "adjust"
+
+
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
 
@@ -212,6 +230,75 @@ class InventoryItem(Base):
         cascade="all, delete-orphan",
         order_by="InventoryMovement.document_date.asc(), InventoryMovement.created_at.asc()",
     )
+    card_lines: Mapped[list["InventoryCardItem"]] = relationship(
+        "InventoryCardItem",
+        back_populates="ingredient",
+        cascade="all, delete-orphan",
+        order_by="InventoryCardItem.id.asc()",
+    )
+
+
+class InventoryCard(Base):
+    __tablename__ = "inventory_cards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    card_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    number: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
+    card_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    supplier: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    items: Mapped[list["InventoryCardItem"]] = relationship(
+        "InventoryCardItem",
+        back_populates="card",
+        cascade="all, delete-orphan",
+        order_by="InventoryCardItem.id.asc()",
+    )
+    movements: Mapped[list["InventoryMovement"]] = relationship(
+        "InventoryMovement",
+        back_populates="card",
+        order_by="InventoryMovement.created_at.asc(), InventoryMovement.id.asc()",
+    )
+
+
+class InventoryCardItem(Base):
+    __tablename__ = "inventory_card_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    card_id: Mapped[int] = mapped_column(
+        ForeignKey("inventory_cards.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    ingredient_id: Mapped[int] = mapped_column(
+        ForeignKey("inventory_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    quantity_base: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    quantity_pieces: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    card: Mapped["InventoryCard"] = relationship("InventoryCard", back_populates="items")
+    ingredient: Mapped["InventoryItem"] = relationship("InventoryItem", back_populates="card_lines")
+    movements: Mapped[list["InventoryMovement"]] = relationship(
+        "InventoryMovement",
+        back_populates="card_item",
+        order_by="InventoryMovement.created_at.asc(), InventoryMovement.id.asc()",
+    )
 
 
 class InventoryMovement(Base):
@@ -221,11 +308,18 @@ class InventoryMovement(Base):
     item_id: Mapped[int] = mapped_column(
         ForeignKey("inventory_items.id", ondelete="CASCADE"), index=True
     )
+    card_id: Mapped[int | None] = mapped_column(
+        ForeignKey("inventory_cards.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    card_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("inventory_card_items.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     movement_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     document_number: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     document_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
     document_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    quantity_pieces: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -235,6 +329,8 @@ class InventoryMovement(Base):
     )
 
     item: Mapped[InventoryItem] = relationship(back_populates="movements")
+    card: Mapped["InventoryCard | None"] = relationship("InventoryCard", back_populates="movements")
+    card_item: Mapped["InventoryCardItem | None"] = relationship("InventoryCardItem", back_populates="movements")
 
 
 class IssuePhoto(Base):
@@ -254,6 +350,25 @@ class IssuePhoto(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     issue: Mapped[Issue] = relationship(back_populates="photos")
+
+
+class ReportPhoto(Base):
+    __tablename__ = "report_photos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    report_id: Mapped[int] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    thumb_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(80), nullable=False, default="image/jpeg")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    report: Mapped[Report] = relationship(back_populates="photos")
 
 
 class LostFoundPhoto(Base):
@@ -330,6 +445,11 @@ class PortalUser(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    sessions: Mapped[list["AuthSession"]] = relationship(
+        "AuthSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class PortalUserRole(Base):
@@ -352,11 +472,56 @@ class PortalSmtpSettings(Base):
     password_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     use_tls: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_test_success: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_test_recipient: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_test_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[str] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class Device(Base):
+    __tablename__ = "devices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    device_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default=DeviceStatus.PENDING.value, index=True)
+    display_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    roles_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    public_key: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    public_key_alg: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    device_info_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_challenge_nonce: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    last_challenge_issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    @property
+    def roles(self) -> list[str]:
+        try:
+            parsed = json.loads(self.roles_json or "[]")
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(parsed, list):
+            return []
+        return [str(item) for item in parsed if str(item).strip()]
+
+    @roles.setter
+    def roles(self, value: list[str] | None) -> None:
+        roles = [str(item).strip().lower() for item in (value or []) if str(item).strip()]
+        self.roles_json = json.dumps(sorted(set(roles)), ensure_ascii=False)
 
 
 class AuthLockoutState(Base):
@@ -378,6 +543,48 @@ class AuthLockoutState(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    actor_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    principal: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    portal_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("portal_users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    roles_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    active_role: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+    user: Mapped[PortalUser | None] = relationship("PortalUser", back_populates="sessions")
+
+    @property
+    def roles(self) -> list[str]:
+        try:
+            parsed = json.loads(self.roles_json or "[]")
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(parsed, list):
+            return []
+        return [str(item) for item in parsed if str(item).strip()]
+
+    @roles.setter
+    def roles(self, value: list[str] | None) -> None:
+        roles = [str(item) for item in (value or []) if str(item).strip()]
+        self.roles_json = json.dumps(roles, ensure_ascii=False)
 
 
 class AuthUnlockToken(Base):

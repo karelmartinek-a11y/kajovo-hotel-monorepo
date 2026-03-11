@@ -140,6 +140,117 @@ def test_inventory_document_numbering_and_pdf(api_request: ApiRequest, api_base_
         assert content.startswith(b"%PDF-")
 
 
+def test_inventory_cards_and_movements_feed(api_request: ApiRequest) -> None:
+    flour = create_item(
+        api_request,
+        name="Mouka hladka",
+        unit="g",
+        current_stock=2000,
+        min_stock=500,
+        amount_per_piece_base=1000,
+    )
+    milk = create_item(
+        api_request,
+        name="Mleko trvanlive",
+        unit="l",
+        current_stock=3000,
+        min_stock=500,
+        amount_per_piece_base=1000,
+    )
+
+    card_status, card = api_request(
+        "/api/v1/inventory/cards",
+        method="POST",
+        payload={
+            "card_type": "out",
+            "card_date": "2026-03-05",
+            "reference": "VY-TEST-001",
+            "note": "Snidanovy vydej",
+            "items": [
+                {
+                    "ingredient_id": flour["id"],
+                    "quantity_base": 500,
+                    "quantity_pieces": 1,
+                    "note": "Test mouka",
+                },
+                {
+                    "ingredient_id": milk["id"],
+                    "quantity_base": 1000,
+                    "quantity_pieces": 1,
+                    "note": "Test mleko",
+                },
+            ],
+        },
+    )
+    assert card_status == 201
+    assert isinstance(card, dict)
+    assert card["number"].startswith("VY-2026-")
+    assert len(card["items"]) == 2
+
+    cards_status, cards = api_request("/api/v1/inventory/cards")
+    assert cards_status == 200
+    assert isinstance(cards, list)
+    assert cards[0]["id"] == card["id"]
+
+    movements_status, movements = api_request("/api/v1/inventory/movements")
+    assert movements_status == 200
+    assert isinstance(movements, list)
+    assert any(
+        movement["card_id"] == card["id"]
+        and movement["card_number"] == card["number"]
+        and movement["item_name"] == "Mouka hladka"
+        for movement in movements
+    )
+
+    flour_detail_status, flour_detail = api_request(f"/api/v1/inventory/{flour['id']}")
+    assert flour_detail_status == 200
+    assert isinstance(flour_detail, dict)
+    assert flour_detail["current_stock"] == 1500
+
+
+def test_inventory_card_delete_reverts_stock(api_request: ApiRequest) -> None:
+    created = create_item(
+        api_request,
+        name="Maslo",
+        unit="g",
+        current_stock=1000,
+        min_stock=100,
+        amount_per_piece_base=250,
+    )
+
+    card_status, card = api_request(
+        "/api/v1/inventory/cards",
+        method="POST",
+        payload={
+            "card_type": "in",
+            "card_date": "2026-03-06",
+            "reference": "DL-2026-0030",
+            "items": [
+                {
+                    "ingredient_id": created["id"],
+                    "quantity_base": 500,
+                    "quantity_pieces": 2,
+                }
+            ],
+        },
+    )
+    assert card_status == 201
+    assert isinstance(card, dict)
+
+    detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
+    assert detail_status == 200
+    assert isinstance(detail, dict)
+    assert detail["current_stock"] == 1500
+
+    delete_status, _ = api_request(f"/api/v1/inventory/cards/{card['id']}", method="DELETE")
+    assert delete_status == 204
+
+    reverted_status, reverted = api_request(f"/api/v1/inventory/{created['id']}")
+    assert reverted_status == 200
+    assert isinstance(reverted, dict)
+    assert reverted["current_stock"] == 1000
+
+
 def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: str) -> None:
     created = create_item(api_request, name="Test Delete", unit="ks", amount_per_piece_base=1)
     status_in, data_in = api_request(
@@ -184,3 +295,23 @@ def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: 
         method="DELETE",
     )
     assert delete_status == 204
+
+    item_delete_status, item_delete_error = api_request(
+        f"/api/v1/inventory/{created['id']}",
+        method="DELETE",
+    )
+    assert item_delete_status == 400
+    assert isinstance(item_delete_error, dict)
+    assert item_delete_error["detail"] == "Inventory item with history cannot be deleted"
+
+
+def test_inventory_bootstrap_is_disabled_by_default(api_request: ApiRequest) -> None:
+    status, data = api_request("/api/v1/inventory/bootstrap-status")
+    assert status == 200
+    assert isinstance(data, dict)
+    assert data["enabled"] is False
+
+    seed_status, seed_error = api_request("/api/v1/inventory/seed-defaults", method="POST")
+    assert seed_status == 403
+    assert isinstance(seed_error, dict)
+    assert seed_error["detail"] == "Inventory bootstrap is disabled"

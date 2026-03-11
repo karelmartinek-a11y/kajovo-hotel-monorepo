@@ -3,13 +3,14 @@ from types import SimpleNamespace
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.api.routes.auth import HintRequest, admin_hint
+from app.api.routes.auth import HintRequest, admin_hint, hash_password
 from app.api.routes.settings import SmtpTestEmailRequest
+from app.api.routes.settings import get_smtp_status
 from app.api.routes.settings import test_smtp_email as send_test_email
 from app.api.routes.users import create_user
 from app.api.schemas import PortalUserCreate
 from app.config import get_settings
-from app.db.models import Base, PortalSmtpSettings
+from app.db.models import Base, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.services.mail import MockSmtpTransport, SmtpEmailService, StoredSmtpConfig
 
 
@@ -31,6 +32,16 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
                 password_encrypted="ZW5jcnlwdGVkIiL4fQ6q-XcJQqcvTYw9rM1tm6fRMwVlk4hzU1Gk",
                 use_tls=False,
                 use_ssl=False,
+            )
+        )
+        db.add(
+            PortalUser(
+                first_name="Admin",
+                last_name="User",
+                email="admin@kajovohotel.local",
+                password_hash=hash_password("admin123"),
+                is_active=True,
+                roles=[PortalUserRole(role="admin")],
             )
         )
         db.commit()
@@ -58,11 +69,18 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         monkeypatch.setattr("app.api.routes.settings.build_email_service", _service_factory)
 
         admin_hint(HintRequest(email="admin@kajovohotel.local"), request=SimpleNamespace(base_url="https://hotel.test/"), db=db)
-        send_test_email(SmtpTestEmailRequest(recipient="admin@kajovohotel.local"), db=db)
+        response = send_test_email(SmtpTestEmailRequest(recipient="admin@kajovohotel.local"), db=db)
         create_user(PortalUserCreate(email="new.user@example.com", password="new-user-pass"), db=db)
+        status = get_smtp_status(db=db)
 
     assert [message.subject for message in transport.sent_messages] == [
         "KájovoHotel odblokování admin účtu",
         "KájovoHotel SMTP test",
         "KájovoHotel onboarding",
     ]
+    assert response.delivery_mode == "smtp"
+    assert status.configured is True
+    assert status.smtp_enabled is True
+    assert status.can_send_real_email is True
+    assert status.last_test_success is True
+    assert status.last_test_recipient == "admin@kajovohotel.local"

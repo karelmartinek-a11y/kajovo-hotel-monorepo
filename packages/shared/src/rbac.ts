@@ -33,10 +33,10 @@ export const ROLE_ALIASES: Record<string, Role> = {
 export const ROLE_MODULES: Record<Role, ModuleKey[]> = {
   admin: ['dashboard', 'breakfast', 'housekeeping', 'lost_found', 'issues', 'inventory', 'reports'],
   recepce: ['lost_found', 'breakfast'],
-  pokojská: ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
+  pokojská: ['housekeeping', 'lost_found', 'issues', 'inventory'],
   údržba: ['issues'],
-  snídaně: ['breakfast', 'issues', 'inventory'],
-  sklad: ['breakfast', 'issues', 'inventory'],
+  snídaně: ['breakfast'],
+  sklad: ['issues', 'inventory'],
 };
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -65,23 +65,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'lost_found:write',
     'issues:read',
     'issues:write',
-    'breakfast:read',
-    'breakfast:write',
     'inventory:read',
     'inventory:write',
   ],
   údržba: ['issues:read', 'issues:write'],
-  snídaně: [
-    'breakfast:read',
-    'breakfast:write',
-    'issues:read',
-    'issues:write',
-    'inventory:read',
-    'inventory:write',
-  ],
+  snídaně: ['breakfast:read', 'breakfast:write'],
   sklad: [
-    'breakfast:read',
-    'breakfast:write',
     'issues:read',
     'issues:write',
     'inventory:read',

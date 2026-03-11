@@ -10,10 +10,11 @@
     "test": "pnpm --filter @kajovo/kajovo-hotel-web test",
     "ci:tokens": "node apps/kajovo-hotel/ci/lint-tokens.mjs",
     "ci:brand-assets": "node apps/kajovo-hotel/ci/lint-brand-assets.mjs",
-    "ci:signage": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"SIGNACE|brand elements\" tests/ci-gates.spec.ts",
-    "ci:view-states": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"view states\" tests/ci-gates.spec.ts",
-    "ci:wcag": "pnpm --filter @kajovo/kajovo-hotel-web test -- --project=desktop --grep \"WCAG\" tests/ci-gates.spec.ts",
-    "ci:gates": "pnpm ci:tokens && pnpm ci:brand-assets && pnpm ci:signage && pnpm ci:view-states && pnpm ci:wcag",
+    "ci:signage": "node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/ci-gates.spec.ts --project=desktop --grep \"SIGNACE|brand elements\"",
+    "ci:view-states": "node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/ci-gates.spec.ts --project=desktop --grep \"view states\"",
+    "ci:wcag": "node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/ci-gates.spec.ts --project=desktop --grep \"WCAG\"",
+    "ci:visual-critical": "pnpm --filter @kajovo/kajovo-hotel-web test:visual-critical && pnpm --filter @kajovo/kajovo-hotel-admin test:visual-critical",
+    "ci:gates": "pnpm ci:tokens && pnpm ci:brand-assets && pnpm ci:signage && pnpm ci:view-states && pnpm ci:wcag && pnpm ci:visual-critical",
     "api:generate-contract": "PYTHONPATH=apps/kajovo-hotel-api python3 apps/kajovo-hotel-api/scripts/export_openapi.py",
     "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
     "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
@@ -23,7 +24,9 @@
     "ci:policy": "node apps/kajovo-hotel/ci/policy-sentinel.mjs",
     "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs",
     "ci:parity-placeholders": "node apps/kajovo-hotel/ci/check-parity-map-placeholders.mjs",
-    "ci:e2e-smoke": "pnpm --filter @kajovo/kajovo-hotel-admin test:smoke"
+    "ci:e2e-smoke": "pnpm --filter @kajovo/kajovo-hotel-admin test:smoke",
+    "ops:smoke": "bash ./infra/smoke/smoke.sh",
+    "ops:verify-deploy": "bash ./infra/verify/verify-deploy.sh"
   },
   "pnpm": {
     "overrides": {

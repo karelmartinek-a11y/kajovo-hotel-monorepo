@@ -12,6 +12,10 @@ export default defineConfig({
     command: 'corepack pnpm build && corepack pnpm preview --host 127.0.0.1 --port 4173',
     cwd: '.',
     port: 4173,
+    env: {
+      VITE_ENABLE_QA_RUNTIME: '1',
+      VITE_QA_SERVICE_DATE: '2026-02-19',
+    },
     reuseExistingServer: true,
   },
   projects: [

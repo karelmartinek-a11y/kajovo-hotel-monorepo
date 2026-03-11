@@ -8,7 +8,7 @@ from datetime import date
 from http.cookiejar import CookieJar
 from pathlib import Path
 
-from app.services.breakfast.parser import parse_breakfast_pdf
+from app.services.breakfast.parser import parse_breakfast_pdf, parse_breakfast_text
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
@@ -218,6 +218,27 @@ def test_parse_breakfast_sample_pdf() -> None:
     assert rows[0].guest_name == "Jan Novak"
 
 
+def test_parse_breakfast_text_for_hotel_chodov_pdf_shape() -> None:
+    parsed_day, rows = parse_breakfast_text(
+        """
+Přehled stravy 25.1.2026
+POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD Den BEZ STRAVY SNÍDANĚ
+101 KOMFORT Richard Sýkora; Jiří Brejcha 24.01.-25.01. 2 / 2 0 3 0 0 3 0 0 0
+204 SUPERIOR pan Nitra 24.01.-25.01. 2 / 2 0 1 0 0 0 0 0 0
+301 KOMFORT Gheorghe Pascal; Booking.com B.V. 23.01.-25.01. 3 / 3 0 3 0 0 0 0 0 0
+305 SUPERIOR Glenda Mehrani-Mylany; Booking.com B.V. 24.01.-26.01. 2 / 3 0 2 0 0 0 0 0 0
+"""
+    )
+
+    assert parsed_day == date(2026, 1, 25)
+    assert [row.room for row in rows] == ["101", "204", "301", "305"]
+    assert [row.breakfast_count for row in rows] == [3, 1, 3, 2]
+    assert rows[0].guest_name == "Richard Sýkora; Jiří Brejcha"
+    assert rows[1].guest_name == "pan Nitra"
+    assert rows[2].guest_name == "Gheorghe Pascal"
+    assert rows[3].guest_name == "Glenda Mehrani-Mylany"
+
+
 def test_import_breakfast_pdf_overwrite_and_diets(
     api_request: ApiRequest, api_base_url: str
 ) -> None:
@@ -329,3 +350,104 @@ def test_breakfast_reactivation_rbac(api_base_url: str, api_request: ApiRequest)
     assert status == 200
     assert isinstance(data, dict)
     assert data["status"] == "pending"
+
+
+def test_breakfast_role_is_limited_to_mark_served(api_base_url: str, api_request: ApiRequest) -> None:
+    created = create_order(
+        api_request,
+        service_date="2026-03-10",
+        room_number="204",
+        guest_name="Original Guest",
+        guest_count=2,
+        status="pending",
+    )
+
+    snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
+
+    status, data = snidane_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"guest_name": "Tamper", "status": "served"},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast role can only mark orders as served"
+
+    status, data = snidane_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"diet_no_gluten": True},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Diet updates are limited to recepce/admin roles"
+
+    status, data = snidane_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="DELETE",
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast delete requires recepce/admin role"
+
+    status, data = snidane_request(
+        "/api/v1/breakfast",
+        method="POST",
+        payload={
+            "service_date": "2026-03-10",
+            "room_number": "205",
+            "guest_name": "New Guest",
+            "guest_count": 1,
+            "status": "pending",
+        },
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast create requires recepce/admin role"
+
+    status, data = snidane_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"status": "served"},
+    )
+    assert status == 200
+    assert isinstance(data, dict)
+    assert data["status"] == "served"
+
+
+def test_recepce_can_reactivate_all_breakfast_orders(
+    api_base_url: str, api_request: ApiRequest
+) -> None:
+    create_order(
+        api_request,
+        service_date="2026-03-12",
+        room_number="501",
+        guest_name="Guest One",
+        guest_count=1,
+        status="served",
+    )
+    create_order(
+        api_request,
+        service_date="2026-03-12",
+        room_number="502",
+        guest_name="Guest Two",
+        guest_count=2,
+        status="served",
+    )
+
+    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
+    status, _ = recepce_request(
+        "/api/v1/breakfast/reactivate-all",
+        method="POST",
+        params={"service_date": "2026-03-12"},
+    )
+    assert status == 204
+
+    status, listed = api_request(
+        "/api/v1/breakfast",
+        params={"service_date": "2026-03-12"},
+    )
+    assert status == 200
+    assert isinstance(listed, list)
+    assert listed
+    assert all(item["status"] == "pending" for item in listed)

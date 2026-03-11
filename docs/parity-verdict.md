@@ -1,62 +1,56 @@
-# Parity verdict: continue vs regenerate
+# Parity verdict: continue and harden
 
-## 1) Summary numbers
+## Summary numbers
 
-From `docs/feature-parity-matrix.csv`:
-- Legacy features/capabilities tracked: **21**
-- `FULLY_WORKING`: **7**
-- `PARTIAL`: **6**
-- `SKELETON`: **0**
-- `MISSING`: **8**
+From `docs/feature-parity-matrix.csv` after the latest inventory, ops hardening and breakfast mail-ingestion removal wave:
 
-Missing+skeleton ratio = **38.1%** (8/21).
+- Legacy capabilities tracked: **21**
+- `FULLY_WORKING`: **19**
+- `PARTIAL`: **1**
+- `REMOVED`: **1**
+- `MISSING`: **0**
 
-## 2) Top 10 critical blockers
+The repo no longer sits in a "regenerate core architecture" state and no longer carries the previously open P2 operational parity gaps. The remaining `PARTIAL` row is limited to one report lifecycle UX detail. The former breakfast mail-ingestion path is no longer tracked as an open gap because it was explicitly removed from the target product.
 
-1. Missing admin auth/session model equivalent to legacy.
-2. Missing portal login/forgot/reset flows.
-3. Missing device registration/challenge/verify endpoints.
-4. Missing users-management module (`/admin/users*` parity).
-5. Missing settings/SMTP module (`/admin/settings*` parity).
-6. Missing admin profile/password workflow parity.
-7. Missing media authorization/thumbnail API path parity.
-8. Missing breakfast scheduler/email ingest automation.
-9. Inventory model divergence (ingredient/card/pictograms not preserved).
-10. E2E test stack not runnable out-of-box in audited environment (missing browser binaries).
+Implemented and verified:
 
-## 3) Operational readiness gaps
+- server-side admin/session model
+- device lifecycle
+- report media flow
+- admin profile/password
+- portal self-service password change
+- live admin dashboard KPI
+- non-stub housekeeping admin surface
+- guarded inventory bootstrap
+- explicit SMTP operational status
+- legacy inventory ingredient/card split and card workbench
+- backup manifest/checksum, forced restore integrity checks and safer deploy verification
+- removed breakfast IMAP/mail scheduler codepath from the active backend
 
-- Deploy and reverse-proxy cutover scripts exist, but smoke validation depends on externally running services.
-- Backups/restores are available as PowerShell scripts, but no Linux-native equivalent observed.
-- DB migrations are present and organized, but legacy-to-new functional migration is not fully represented as productionized workflow.
-- Monitoring/observability exists for request context/logging in API, but no full parity evidence for legacy media/auth operational controls.
+## Current verdict
 
-## 4) Recommendation
+## **CONTINUE incrementally, do not regenerate**
 
-## **REGENERATE (constrained), not incremental hardening of all generated parts**
+Rationale:
 
-Rationale: The monorepo is strong for the five core business modules (breakfast, lost&found, issues, inventory, reports), but parity-critical identity/admin/automation surfaces exceed the 30% threshold of missing/skeleton-equivalent operational features (38.1% missing). Reconstructing these foundational cross-cutting capabilities on top of divergent assumptions (header RBAC vs cookie/session + device auth + portal auth) creates high integration risk and prolonged stabilization time. A constrained regeneration focused on preserving validated assets while rebuilding core architecture contracts is likely faster and safer.
+- The backend and both UI surfaces have working auth/session contracts, real CRUD modules and end-to-end evidence.
+- The previous parity blockers are closed.
+- The remaining work is minor release hardening, not architecture replacement.
 
-## 5) Constrained regeneration plan
+## What is still open
 
-### Preserve
+1. Reports status lifecycle uses generic update flow rather than dedicated done/reopen commands.
 
-- Product/design SSOT and UX contracts: `ManifestDesignKájovo.md`, `apps/kajovo-hotel/ux/ia.json`.
-- Brand assets and design tokens: `brand/**`, `packages/ui/**` (after targeted validation).
-- Infra building blocks that already work conceptually: `infra/compose*.yml`, reverse-proxy switch/rollback scripts, smoke/verify skeletons.
-- API domain schemas and module intent from existing CRUD modules where valid.
+## Recommendation
 
-### Discard / rewrite
+Proceed only with constrained hardening:
 
-- Generated or partially aligned auth architecture in current API/web (`header-role-only` approach) where it conflicts with required legacy operational model.
-- Module implementations with major domain divergence (notably inventory ingredient/card workflow and breakfast ingestion automation).
-- Non-actionable broken generated fragments (including duplicate model-field definitions) that increase maintenance risk.
+1. Keep the new critical visual baseline in release gating and use the full snapshot matrix only as extended audit sweep.
+2. Decide whether reports need dedicated done/reopen commands or whether generic status mutation remains acceptable.
 
-### Safe re-generation order
+## What not to do
 
-1. **Foundation contracts**: identity/auth contract (admin + portal + device), session model, permission matrix.
-2. **Data model parity**: regenerate SQLAlchemy models + migrations from legacy parity map (including media + settings + user/auth tables).
-3. **API layer**: regenerate/port endpoints module-by-module with contract tests first.
-4. **Web layer**: regenerate IA-mapped routes preserving current IA/branding while reintroducing missing admin operational workflows.
-5. **Infra + validation**: finalize compose/reverse-proxy/smoke; ensure Playwright browser provisioning in CI.
-6. **Cutover rehearsal**: dry-run migration + smoke + rollback in staging before production hardening.
+- Do not regenerate auth/session architecture.
+- Do not revert to header-only RBAC assumptions.
+- Do not reopen removed demo/stub surfaces in admin runtime.
+- Do not treat historical March audit files as current-state truth without the refreshed current-state audit.

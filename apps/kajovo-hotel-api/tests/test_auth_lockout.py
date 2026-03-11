@@ -2,7 +2,7 @@ import json
 import sqlite3
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from http.cookiejar import CookieJar
 from pathlib import Path
 
@@ -66,9 +66,9 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
             (
                 "admin@kajovohotel.local",
                 "admin@kajovohotel.local",
-                datetime.utcnow().isoformat(),
-                datetime.utcnow().isoformat(),
-                (datetime.utcnow() + timedelta(minutes=30)).isoformat(),
+                datetime.now(UTC).isoformat(),
+                datetime.now(UTC).isoformat(),
+                (datetime.now(UTC) + timedelta(minutes=30)).isoformat(),
             ),
         )
         connection.commit()
@@ -183,3 +183,50 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
     )
     assert status == 200
     assert body == {"ok": True}
+
+
+def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api_db_path: Path) -> None:
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+    principal = "admin@kajovohotel.local"
+    now = datetime.now(UTC)
+
+    with sqlite3.connect(api_db_path) as connection:
+        connection.execute("DELETE FROM auth_lockout_states WHERE actor_type = 'admin' AND principal = ?", (principal,))
+        connection.execute(
+            """
+            INSERT INTO auth_lockout_states
+            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("admin", principal, 1, (now - timedelta(minutes=10)).isoformat(), now.isoformat()),
+        )
+        connection.execute(
+            """
+            INSERT INTO auth_lockout_states
+            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            ("admin", principal, 2, (now - timedelta(minutes=5)).isoformat(), now.isoformat()),
+        )
+        connection.commit()
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": principal, "password": "admin123"},
+    )
+    assert status == 200
+
+    with sqlite3.connect(api_db_path) as connection:
+        remaining = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM auth_lockout_states
+            WHERE actor_type = 'admin' AND principal = ?
+            """,
+            (principal,),
+        ).fetchone()
+        assert remaining is not None
+        assert int(remaining[0]) == 1

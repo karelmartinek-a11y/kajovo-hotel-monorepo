@@ -155,6 +155,125 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     assert identity["email"] == "new.user@example.com"
 
 
+def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None:
+    admin_jar = CookieJar()
+    admin_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(admin_jar))
+
+    status, _ = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, created = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "email": "role.revoke@example.com",
+            "password": "role-revoke-pass",
+            "roles": ["recepce"],
+        },
+        headers=csrf_header(admin_jar),
+    )
+    assert status == 201
+    assert isinstance(created, dict)
+    user_id = int(created["id"])
+
+    portal_jar = CookieJar()
+    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+    status, _ = api_request(
+        portal_opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "role.revoke@example.com", "password": "role-revoke-pass"},
+    )
+    assert status == 200
+
+    status, _ = api_request(
+        admin_opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+        method="PATCH",
+        payload={
+            "first_name": "Role",
+            "last_name": "Revoke",
+            "email": "role.revoke@example.com",
+            "roles": ["sklad"],
+            "phone": None,
+            "note": None,
+        },
+        headers=csrf_header(admin_jar),
+    )
+    assert status == 200
+
+    status, denied = api_request(portal_opener, api_base_url, "/api/auth/me")
+    assert status == 401
+    assert isinstance(denied, dict)
+    assert denied.get("detail") == "Authentication required"
+
+
+def test_disabling_user_revokes_existing_portal_sessions(api_base_url: str) -> None:
+    admin_jar = CookieJar()
+    admin_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(admin_jar))
+
+    status, _ = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, created = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "email": "disable.revoke@example.com",
+            "password": "disable-revoke-pass",
+            "roles": ["recepce"],
+        },
+        headers=csrf_header(admin_jar),
+    )
+    assert status == 201
+    assert isinstance(created, dict)
+    user_id = int(created["id"])
+
+    portal_jar = CookieJar()
+    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+    status, _ = api_request(
+        portal_opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "disable.revoke@example.com", "password": "disable-revoke-pass"},
+    )
+    assert status == 200
+
+    status, _ = api_request(
+        admin_opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}/active",
+        method="PATCH",
+        payload={"is_active": False},
+        headers=csrf_header(admin_jar),
+    )
+    assert status == 200
+
+    status, denied = api_request(portal_opener, api_base_url, "/api/auth/me")
+    assert status == 401
+    assert isinstance(denied, dict)
+    assert denied.get("detail") == "Authentication required"
+
+
 def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
@@ -281,7 +400,7 @@ def test_admin_can_delete_user(api_base_url: str) -> None:
     assert status == 404
 
 
-def test_admin_cannot_delete_primary_admin_account(api_base_url: str) -> None:
+def test_admin_cannot_delete_own_account(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
@@ -319,12 +438,12 @@ def test_admin_cannot_delete_primary_admin_account(api_base_url: str) -> None:
         method="DELETE",
         headers=csrf_header(jar),
     )
-    assert status == 409
+    assert status == 403
     assert isinstance(detail, dict)
-    assert detail.get("detail") == "Admin account cannot be deleted"
+    assert detail.get("detail") == "Cannot delete your own account"
 
 
-def test_admin_cannot_delete_last_active_admin(
+def test_deactivated_admin_session_cannot_delete_remaining_admin(
     api_base_url: str,
     api_db_path: Path,
 ) -> None:
@@ -396,23 +515,104 @@ def test_admin_cannot_delete_last_active_admin(
             method="DELETE",
             headers=csrf,
         )
-        assert status == 409
+        assert status == 401
         assert isinstance(detail, dict)
-        assert detail.get("detail") == "Cannot delete the last admin user"
+        assert detail.get("detail") == "Authentication required"
     finally:
-        if new_user_id is not None:
-            with sqlite3.connect(api_db_path) as connection:
+        with sqlite3.connect(api_db_path) as connection:
+            connection.execute(
+                "UPDATE portal_users SET is_active = 1 WHERE id = ?",
+                (admin_id,),
+            )
+            if new_user_id is not None:
                 connection.execute("DELETE FROM portal_user_roles WHERE user_id = ?", (new_user_id,))
                 connection.execute("DELETE FROM portal_users WHERE id = ?", (new_user_id,))
-                connection.commit()
-        api_request(
-            opener,
-            api_base_url,
-            f"/api/v1/users/{admin_id}/active",
-            method="PATCH",
-            payload={"is_active": True},
-            headers=csrf,
-        )
+            connection.commit()
+
+
+def test_admin_cannot_deactivate_last_active_admin(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, users = api_request(opener, api_base_url, "/api/v1/users")
+    assert status == 200
+    assert isinstance(users, list)
+    admin_user = next(
+        (
+            user
+            for user in users
+            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+        ),
+        None,
+    )
+    assert isinstance(admin_user, dict)
+
+    status, detail = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{int(admin_user['id'])}/active",
+        method="PATCH",
+        payload={"is_active": False},
+        headers=csrf_header(jar),
+    )
+    assert status == 409
+    assert isinstance(detail, dict)
+    assert detail.get("detail") == "Cannot deactivate the last admin user"
+
+
+def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+    )
+    assert status == 200
+
+    status, users = api_request(opener, api_base_url, "/api/v1/users")
+    assert status == 200
+    assert isinstance(users, list)
+    admin_user = next(
+        (
+            user
+            for user in users
+            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+        ),
+        None,
+    )
+    assert isinstance(admin_user, dict)
+
+    status, detail = api_request(
+        opener,
+        api_base_url,
+        f"/api/v1/users/{int(admin_user['id'])}",
+        method="PATCH",
+        payload={
+            "first_name": "Admin",
+            "last_name": "User",
+            "email": "admin@kajovohotel.local",
+            "roles": ["recepce"],
+            "phone": None,
+            "note": None,
+        },
+        headers=csrf_header(jar),
+    )
+    assert status == 409
+    assert isinstance(detail, dict)
+    assert detail.get("detail") == "Cannot remove admin role from the last admin user"
 
 def test_password_not_logged_in_audit_detail(
     api_base_url: str, api_db_path: Path

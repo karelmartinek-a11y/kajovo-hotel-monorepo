@@ -1,10 +1,10 @@
 import React from 'react';
-import { KajovoSign } from '@kajovo/ui';
+import { KajovoSign, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 const adminMascot = '/brand/postavy/kaja-admin.png';
 
-export function AdminLoginPage(): JSX.Element {
+export function AdminLoginPage({ authError = null }: { authError?: string | null }): JSX.Element {
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('admin', lang);
@@ -66,6 +66,7 @@ export function AdminLoginPage(): JSX.Element {
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="admin-login-title">{copy.title}</h1>
         <p className="k-login-copy" id="admin-login-description">{copy.description}</p>
+        {authError ? <StateView title="Overeni prihlaseni selhalo" description={authError} stateKey="error" /> : null}
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="admin-email">{copy.emailLabel}</label>
           <input

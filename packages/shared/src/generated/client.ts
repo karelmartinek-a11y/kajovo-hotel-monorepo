@@ -13,6 +13,21 @@ export type AuthIdentityResponse = {
   "role": string;
   "roles"?: Array<string>;
 };
+export type AuthProfileRead = {
+  "actor_type": string;
+  "email": string;
+  "first_name": string;
+  "last_name": string;
+  "note"?: string | null;
+  "phone"?: string | null;
+  "roles"?: Array<string>;
+};
+export type AuthProfileUpdate = {
+  "first_name": string;
+  "last_name": string;
+  "note"?: string | null;
+  "phone"?: string | null;
+};
 export type Body_import_breakfast_pdf_api_v1_breakfast_import_post = {
   "file": string;
   "overrides"?: string | null;
@@ -25,6 +40,9 @@ export type Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post
   "file": string;
 };
 export type Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post = {
+  "photos": Array<string>;
+};
+export type Body_upload_report_photos_api_v1_reports__report_id__photos_post = {
   "photos": Array<string>;
 };
 export type BreakfastDailySummary = {
@@ -85,6 +103,37 @@ export type BreakfastOrderUpdate = {
   "status"?: BreakfastStatus | null;
 };
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
+export type DeviceChallengeIn = {
+  "device_id": string;
+};
+export type DeviceChallengeOut = {
+  "challenge": string;
+  "issuedAt": string;
+  "nonce": string;
+};
+export type DeviceRegisterIn = {
+  "device_id": string;
+  "device_info"?: unknown | null;
+  "device_public_key"?: string | null;
+  "display_name"?: string | null;
+};
+export type DeviceStatusOut = {
+  "activatedAt"?: string | null;
+  "device_id"?: string | null;
+  "display_name"?: string | null;
+  "status": string;
+};
+export type DeviceVerifyIn = {
+  "device_id"?: string | null;
+  "nonce": string;
+  "signature": string;
+};
+export type DeviceVerifyOut = {
+  "deviceToken": string;
+  "device_token"?: string | null;
+  "display_name"?: string | null;
+  "status": string;
+};
 export type ForgotPasswordRequest = {
   "email": string;
 };
@@ -102,6 +151,59 @@ export type InventoryAuditLogRead = {
   "id": number;
   "resource_id": number;
 };
+export type InventoryBootstrapStatusRead = {
+  "enabled": boolean;
+  "environment": string;
+};
+export type InventoryCardCreate = {
+  "card_date": string;
+  "card_type": InventoryCardType;
+  "items": Array<InventoryCardItemCreate>;
+  "note"?: string | null;
+  "reference"?: string | null;
+  "supplier"?: string | null;
+};
+export type InventoryCardDetailRead = {
+  "card_date": string;
+  "card_type": InventoryCardType;
+  "created_at": string | null;
+  "id": number;
+  "items": Array<InventoryCardItemRead>;
+  "note"?: string | null;
+  "number": string;
+  "reference"?: string | null;
+  "supplier"?: string | null;
+  "updated_at": string | null;
+};
+export type InventoryCardItemCreate = {
+  "ingredient_id": number;
+  "note"?: string | null;
+  "quantity_base": number;
+  "quantity_pieces"?: number;
+};
+export type InventoryCardItemRead = {
+  "card_id": number;
+  "created_at": string | null;
+  "id": number;
+  "ingredient_id": number;
+  "ingredient_name"?: string | null;
+  "note"?: string | null;
+  "quantity_base": number;
+  "quantity_pieces"?: number;
+  "unit"?: string | null;
+};
+export type InventoryCardRead = {
+  "card_date": string;
+  "card_type": InventoryCardType;
+  "created_at": string | null;
+  "id": number;
+  "note"?: string | null;
+  "number": string;
+  "reference"?: string | null;
+  "supplier"?: string | null;
+  "updated_at": string | null;
+};
+export type InventoryCardType = "in" | "out" | "adjust";
 export type InventoryItemCreate = {
   "amount_per_piece_base"?: number;
   "current_stock": number;
@@ -170,17 +272,24 @@ export type InventoryMovementCreate = {
   "movement_type": InventoryMovementType;
   "note"?: string | null;
   "quantity": number;
+  "quantity_pieces"?: number;
 };
 export type InventoryMovementRead = {
+  "card_id"?: number | null;
+  "card_item_id"?: number | null;
+  "card_number"?: string | null;
   "created_at": string | null;
   "document_date"?: string | null;
   "document_number": string | null;
   "document_reference"?: string | null;
   "id": number;
   "item_id": number;
+  "item_name"?: string | null;
   "movement_type": InventoryMovementType;
   "note"?: string | null;
   "quantity": number;
+  "quantity_pieces"?: number;
+  "unit"?: string | null;
 };
 export type InventoryMovementType = "in" | "out" | "adjust";
 export type IssueCreate = {
@@ -286,6 +395,10 @@ export type PortalLoginRequest = {
   "email": string;
   "password": string;
 };
+export type PortalPasswordChangeRequest = {
+  "new_password": string;
+  "old_password": string;
+};
 export type PortalUserCreate = {
   "email": string;
   "first_name"?: string;
@@ -332,6 +445,7 @@ export type ReportRead = {
   "created_at": string | null;
   "description": string | null;
   "id": number;
+  "photos"?: Array<MediaPhotoRead>;
   "status": string;
   "title": string;
   "updated_at": string | null;
@@ -343,6 +457,16 @@ export type ReportUpdate = {
 };
 export type SelectRoleRequest = {
   "role": string;
+};
+export type SmtpOperationalStatusRead = {
+  "can_send_real_email": boolean;
+  "configured": boolean;
+  "delivery_mode": string;
+  "last_test_error"?: string | null;
+  "last_test_recipient"?: string | null;
+  "last_test_success"?: boolean | null;
+  "last_tested_at"?: string | null;
+  "smtp_enabled": boolean;
 };
 export type SmtpSettingsRead = {
   "host": string;
@@ -364,6 +488,8 @@ export type SmtpTestEmailRequest = {
   "recipient": string;
 };
 export type SmtpTestEmailResponse = {
+  "delivery_mode": string;
+  "message": string;
   "ok"?: boolean;
 };
 export type ValidationError = {
@@ -424,6 +550,9 @@ export const apiClient = {
   async adminLogoutApiAuthAdminLogoutPost(): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/admin/logout`, undefined, undefined);
   },
+  async changeOwnPasswordApiAuthChangePasswordPost(body: PortalPasswordChangeRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/change-password`, undefined, body);
+  },
   async forgotPasswordApiAuthForgotPasswordPost(body: ForgotPasswordRequest): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/forgot-password`, undefined, body);
   },
@@ -436,6 +565,12 @@ export const apiClient = {
   async authMeApiAuthMeGet(): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('GET', `/api/auth/me`, undefined, undefined);
   },
+  async authProfileApiAuthProfileGet(): Promise<AuthProfileRead> {
+    return request<AuthProfileRead>('GET', `/api/auth/profile`, undefined, undefined);
+  },
+  async updateAuthProfileApiAuthProfilePatch(body: AuthProfileUpdate): Promise<AuthProfileRead> {
+    return request<AuthProfileRead>('PATCH', `/api/auth/profile`, undefined, body);
+  },
   async selectPortalRoleApiAuthSelectRolePost(body: SelectRoleRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/select-role`, undefined, body);
   },
@@ -447,6 +582,9 @@ export const apiClient = {
   },
   async putSmtpSettingsApiV1AdminSettingsSmtpPut(body: SmtpSettingsUpsert): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('PUT', `/api/v1/admin/settings/smtp`, undefined, body);
+  },
+  async getSmtpStatusApiV1AdminSettingsSmtpStatusGet(): Promise<SmtpOperationalStatusRead> {
+    return request<SmtpOperationalStatusRead>('GET', `/api/v1/admin/settings/smtp/status`, undefined, undefined);
   },
   async testSmtpEmailApiV1AdminSettingsSmtpTestEmailPost(body: SmtpTestEmailRequest): Promise<SmtpTestEmailResponse> {
     return request<SmtpTestEmailResponse>('POST', `/api/v1/admin/settings/smtp/test-email`, undefined, body);
@@ -483,6 +621,27 @@ export const apiClient = {
   },
   async createItemApiV1InventoryPost(body: InventoryItemCreate): Promise<InventoryItemRead> {
     return request<InventoryItemRead>('POST', `/api/v1/inventory`, undefined, body);
+  },
+  async getInventoryBootstrapStatusApiV1InventoryBootstrapStatusGet(): Promise<InventoryBootstrapStatusRead> {
+    return request<InventoryBootstrapStatusRead>('GET', `/api/v1/inventory/bootstrap-status`, undefined, undefined);
+  },
+  async listCardsApiV1InventoryCardsGet(): Promise<Array<InventoryCardRead>> {
+    return request<Array<InventoryCardRead>>('GET', `/api/v1/inventory/cards`, undefined, undefined);
+  },
+  async createCardApiV1InventoryCardsPost(body: InventoryCardCreate): Promise<InventoryCardDetailRead> {
+    return request<InventoryCardDetailRead>('POST', `/api/v1/inventory/cards`, undefined, body);
+  },
+  async deleteCardApiV1InventoryCardsCardIdDelete(card_id: number): Promise<void> {
+    return request<void>('DELETE', `/api/v1/inventory/cards/${card_id}`, undefined, undefined);
+  },
+  async getCardApiV1InventoryCardsCardIdGet(card_id: number): Promise<InventoryCardDetailRead> {
+    return request<InventoryCardDetailRead>('GET', `/api/v1/inventory/cards/${card_id}`, undefined, undefined);
+  },
+  async listItemsApiV1InventoryIngredientsGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {
+    return request<Array<InventoryItemRead>>('GET', `/api/v1/inventory/ingredients`, query, undefined);
+  },
+  async listMovementsApiV1InventoryMovementsGet(): Promise<Array<InventoryMovementRead>> {
+    return request<Array<InventoryMovementRead>>('GET', `/api/v1/inventory/movements`, undefined, undefined);
   },
   async seedDefaultItemsApiV1InventorySeedDefaultsPost(): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('POST', `/api/v1/inventory/seed-defaults`, undefined, undefined);
@@ -574,6 +733,15 @@ export const apiClient = {
   async updateReportApiV1ReportsReportIdPut(report_id: number, body: ReportUpdate): Promise<ReportRead> {
     return request<ReportRead>('PUT', `/api/v1/reports/${report_id}`, undefined, body);
   },
+  async listReportPhotosApiV1ReportsReportIdPhotosGet(report_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('GET', `/api/v1/reports/${report_id}/photos`, undefined, undefined);
+  },
+  async uploadReportPhotosApiV1ReportsReportIdPhotosPost(report_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('POST', `/api/v1/reports/${report_id}/photos`, undefined, undefined);
+  },
+  async getReportPhotoApiV1ReportsReportIdPhotosPhotoIdKindGet(report_id: number, photo_id: number, kind: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/reports/${report_id}/photos/${photo_id}/${kind}`, undefined, undefined);
+  },
   async listUsersApiV1UsersGet(): Promise<Array<PortalUserRead>> {
     return request<Array<PortalUserRead>>('GET', `/api/v1/users`, undefined, undefined);
   },
@@ -600,6 +768,21 @@ export const apiClient = {
   },
   async sendUserResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);
+  },
+  async deviceChallengeDeviceChallengePost(body: DeviceChallengeIn): Promise<DeviceChallengeOut> {
+    return request<DeviceChallengeOut>('POST', `/device/challenge`, undefined, body);
+  },
+  async deviceRegisterDeviceRegisterPost(body: DeviceRegisterIn): Promise<DeviceStatusOut> {
+    return request<DeviceStatusOut>('POST', `/device/register`, undefined, body);
+  },
+  async deviceStatusDeviceStatusGet(query: { "device_id"?: string | null; }): Promise<DeviceStatusOut> {
+    return request<DeviceStatusOut>('GET', `/device/status`, query, undefined);
+  },
+  async deviceVerifyDeviceVerifyPost(body: DeviceVerifyIn): Promise<DeviceVerifyOut> {
+    return request<DeviceVerifyOut>('POST', `/device/verify`, undefined, body);
+  },
+  async deviceStatusCompatDeviceDeviceIdStatusGet(device_id: string): Promise<DeviceStatusOut> {
+    return request<DeviceStatusOut>('GET', `/device/${device_id}/status`, undefined, undefined);
   },
   async healthHealthGet(): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('GET', `/health`, undefined, undefined);

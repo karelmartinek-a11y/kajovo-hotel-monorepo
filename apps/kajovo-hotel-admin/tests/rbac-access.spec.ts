@@ -1,4 +1,4 @@
-﻿import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 const adminPath = (path: string): string => {
   if (path.startsWith('/admin')) {
@@ -24,6 +24,16 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
   });
 }
 
+async function mockAuthFailure(page: Page, status: number, detail = 'Auth service unavailable'): Promise<void> {
+  await page.route('**/api/auth/me', async (route: Route) => {
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail }),
+    });
+  });
+}
+
 test('restricted module is hidden in navigation and shows access denied on direct URL', async ({ page }) => {
   await mockAuth(page, {
     email: 'udrzba@example.com',
@@ -39,6 +49,25 @@ test('restricted module is hidden in navigation and shows access denied on direc
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
   await expect(page.getByText('Přístup odepřen')).toBeVisible();
   await expect(page.getByText(/Role údržba/)).toBeVisible();
+});
+
+test('admin without session is redirected to login', async ({ page }) => {
+  await mockAuthFailure(page, 401, 'Not authenticated');
+
+  await page.goto(adminPath('/sklad'));
+
+  await expect(page).toHaveURL(/\/admin\/login$/);
+  await expect(page.getByTestId('admin-login-page')).toBeVisible();
+});
+
+test('admin auth verification error is shown explicitly', async ({ page }) => {
+  await mockAuthFailure(page, 500, 'Auth service unavailable');
+
+  await page.goto(adminPath('/sklad'));
+
+  await expect(page.getByTestId('auth-status-page')).toBeVisible();
+  await expect(page.getByText('Overeni prihlaseni selhalo')).toBeVisible();
+  await expect(page.getByText('Auth service unavailable')).toBeVisible();
 });
 
 test('admin override keeps all modules visible and accessible', async ({ page }) => {
@@ -79,7 +108,7 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();
 });
 
-test('admin module switcher filtruje navigaci podle role', async ({ page }) => {
+test('admin module switcher filters navigation by role', async ({ page }) => {
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',

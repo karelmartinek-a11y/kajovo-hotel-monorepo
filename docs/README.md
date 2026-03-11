@@ -1,29 +1,39 @@
-# Dokumentace KájovoHotel
+# Dokumentace KajovoHotel
 
-Tento adresář je **hlavní zdroj dokumentace** pro vývoj, provoz a audit portálu `hotel.hcasc.cz`.
+Tento adresar je hlavni zdroj dokumentace pro vyvoj, provoz a audit portalu `hotel.hcasc.cz`.
 
-## Začít zde
+## Zacit zde
 
-- `docs/developer-handbook.md` — kompletní onboarding pro vývojáře bez přístupu na server.
-- `docs/how-to-run.md` — lokální spuštění (API, admin, web).
-- `docs/how-to-deploy.md` — produkční deploy přes GitHub Actions a fallback postup.
-- `docs/ci-gates.md` — popis CI gate kontrol.
-- `docs/release-checklist.md` — release checklist.
+- `docs/developer-handbook.md` - onboarding pro vyvojare bez pristupu na server
+- `docs/how-to-run.md` - lokalni spusteni API, admin a web
+- `docs/how-to-deploy.md` - produkcni deploy a fallback postup
+- `docs/ci-gates.md` - popis CI gate kontrol
+- `docs/release-checklist.md` - release checklist
 
-## Forenzní a parity dokumentace
+## Aktualni auditni source of truth
 
-- `docs/forensic-audit-2026-03-01.md` — průběžný forenzní audit parity.
-- `docs/forensic-audit-2026-03-01-docs-pipeline.md` — audit dokumentace + pipeline + větví.
-- `docs/feature-parity-matrix.csv` — maticové srovnání legacy vs. monorepo.
-- `docs/parity-verdict.md` — rozhodnutí o stavu parity.
+- `docs/forensic-audit-2026-03-11-current-state.md` - aktualni current-state forenzni audit
+- `docs/feature-parity-matrix.csv` - aktualni parity matice legacy vs monorepo
+- `docs/parity-verdict.md` - aktualni rozhodnuti continue vs regenerate
+- `docs/rbac.md` - aktualni session-backed auth a RBAC model
 
-## Provozní dokumentace
+## Historicke auditni dokumenty
 
-- `docs/cutover-plan.md`, `docs/cutover-runbook.md`
+Tyto soubory jsou dulezite jako casova stopa, ale nejsou current-state SSOT:
+
+- `docs/forensic-audit-2026-03-11-deep.md`
+- `docs/remediation-plan-2026-03-11-by-module.md`
+- `docs/remediation-task-breakdown-2026-03-11.md`
+- starsi unorne a breznove auditni reporty
+
+## Provozni dokumentace
+
+- `docs/cutover-plan.md`
+- `docs/cutover-runbook.md`
 - `docs/disaster-recovery.md`
 - `docs/observability.md`
 - `docs/test-accounts.md`
 
-## Závazná pravidla designu
+## Zavazna design pravidla
 
-- Root soubor `ManifestDesignKájovo.md` je SSOT a je kontrolovaný CI gate.
+- root soubor `ManifestDesignKajovo.md` je SSOT a je kontrolovany CI gate

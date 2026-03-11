@@ -26,6 +26,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/ci-gates.spec.ts tests/nav-robustness.spec.ts tests/rbac-access.spec.ts tests/users-admin.spec.ts",
+    "test:visual-critical": "playwright test tests/visual.spec.ts --project=desktop --grep @visual-critical",
     "test:visual": "VISUAL_SNAPSHOTS=1 playwright test tests/visual.spec.ts",
     "test:smoke": "playwright test -c playwright.smoke.config.ts",
     "test:smoke-auth": "playwright test -c playwright.auth-smoke.config.ts"
