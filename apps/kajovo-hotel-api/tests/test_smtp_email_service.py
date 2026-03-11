@@ -4,8 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import HintRequest, admin_hint, hash_password
-from app.api.routes.settings import SmtpTestEmailRequest
-from app.api.routes.settings import get_smtp_status
+from app.api.routes.settings import SmtpTestEmailRequest, get_smtp_status
 from app.api.routes.settings import test_smtp_email as send_test_email
 from app.api.routes.users import create_user
 from app.api.schemas import PortalUserCreate
