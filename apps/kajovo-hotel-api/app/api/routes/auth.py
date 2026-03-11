@@ -276,12 +276,16 @@ def admin_login(
     principal = payload.email.strip().lower()
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     user = _find_admin_user(db, principal)
-    valid = (
-        not _is_locked(state, now)
-        and user is not None
-        and _verify_password(payload.password, user.password_hash)
-    )
-    if not valid:
+    valid_credentials = user is not None and _verify_password(payload.password, user.password_hash)
+
+    # Valid admin credentials always clear lockout. This keeps admin access recoverable
+    # even if unlock email transport is unavailable.
+    if valid_credentials:
+        assert user is not None
+        _reset_lock_state(state)
+    elif _is_locked(state, now):
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Account locked")
+    else:
         became_locked = _record_failed_login(
             state,
             now=now,

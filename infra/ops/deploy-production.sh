@@ -14,6 +14,7 @@ ALLOW_GIT_CLEAN="${ALLOW_GIT_CLEAN:-0}"
 ALLOW_DB_REINIT="${ALLOW_DB_REINIT:-0}"
 VERIFY_SCRIPT="${VERIFY_SCRIPT:-$ROOT_DIR/infra/verify/verify-deploy.sh}"
 RUN_VERIFY_SCRIPT="${RUN_VERIFY_SCRIPT:-1}"
+RESET_DB_ON_DEPLOY="${RESET_DB_ON_DEPLOY:-false}"
 
 require_cmd() {
   local name="$1"
@@ -143,11 +144,22 @@ fi
 commit_sha="$(git rev-parse --short HEAD)"
 echo "Deploy branch=$current_branch sha=$commit_sha"
 
-if [[ "$ALLOW_DB_REINIT" == "1" ]]; then
-  echo "ALLOW_DB_REINIT=1 -> provadim destruktivni DB reset."
+if [[ "$RESET_DB_ON_DEPLOY" != "true" && "$RESET_DB_ON_DEPLOY" != "false" ]]; then
+  echo "Neplatna hodnota RESET_DB_ON_DEPLOY='$RESET_DB_ON_DEPLOY' (povoleno: true/false)." >&2
+  exit 1
+fi
+
+if [[ "$ALLOW_DB_REINIT" == "1" || "$RESET_DB_ON_DEPLOY" == "true" ]]; then
+  if [[ "$RESET_DB_ON_DEPLOY" == "true" ]]; then
+    echo "RESET_DB_ON_DEPLOY=true je pouzite jako kompatibilni alias pro destruktivni reset DB."
+  fi
+  echo "Provadim destruktivni DB reset."
   compose down -v --remove-orphans || true
   docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
   docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
+else
+  echo "Nedestruktivni deploy: zachovavam databazova volume."
+  compose down --remove-orphans || true
 fi
 
 compose up -d postgres

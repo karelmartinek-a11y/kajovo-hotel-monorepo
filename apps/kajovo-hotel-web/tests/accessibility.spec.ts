@@ -33,3 +33,37 @@ test('admin gateway stays readable even when auth session exists', async ({ page
   await expect(page.getByTestId('admin-surface-retired-page')).toBeVisible();
   await expect(page.getByText('Webovy runtime uz neobsahuje vlozeny admin panel.')).toBeVisible();
 });
+
+
+test('admin login renders structured error dialog on invalid and locked credentials', async ({ page }) => {
+  await page.route('**/api/auth/admin/login', async (route) => {
+    const payload = route.request().postDataJSON() as { password?: string };
+    if (payload.password === 'locked-pass') {
+      await route.fulfill({
+        status: 423,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'Account locked' }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Invalid credentials' }),
+    });
+  });
+
+  await page.goto('/admin/login');
+  await page.getByLabel(/email/i).fill('admin@kajovohotel.local');
+  await page.getByLabel(/heslo/i).fill('wrong-password');
+  await page.getByRole('button', { name: /přihlásit/i }).click();
+
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /přihlášení se nezdařilo/i })).toBeVisible();
+  await expect(dialog).toContainText(/zkontrolujte email a heslo/i);
+
+  await page.getByLabel(/heslo/i).fill('locked-pass');
+  await page.getByRole('button', { name: /přihlásit/i }).click();
+  await expect(dialog).toContainText(/účet je dočasně uzamčen/i);
+});

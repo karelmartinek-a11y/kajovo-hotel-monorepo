@@ -17,6 +17,9 @@ type AuthCopy = {
   passwordLabel: string;
   loginAction: string;
   loginError?: string;
+  loginErrorTitle?: string;
+  loginErrorHelp?: string;
+  accountLockedError?: string;
   forgotAction: string;
   forgotInfo: string;
   forgotLockedInfo?: string;
@@ -45,6 +48,9 @@ const AUTH_STRINGS: AuthDictionary = {
       passwordLabel: 'Heslo',
       loginAction: 'Přihlásit se',
       loginError: 'Neplatné přihlašovací údaje.',
+      loginErrorTitle: 'Přihlášení se nezdařilo',
+      loginErrorHelp: 'Zkontrolujte email a heslo, případně použijte odblokování účtu.',
+      accountLockedError: 'Účet je dočasně uzamčen. Použijte odkaz pro odblokování účtu.',
       forgotAction: 'Zapomenuté heslo',
       forgotInfo: 'Pokud účet existuje, byl odeslán odkaz pro obnovu.',
       forgotLockedInfo: 'Pokud je účet odemčený, byl odeslán odkaz pro obnovu.',
@@ -66,6 +72,9 @@ const AUTH_STRINGS: AuthDictionary = {
       passwordLabel: 'Password',
       loginAction: 'Sign in',
       loginError: 'Invalid credentials.',
+      loginErrorTitle: 'Sign-in failed',
+      loginErrorHelp: 'Check your email and password, or use account unlock.',
+      accountLockedError: 'Account is temporarily locked. Use the unlock link.',
       forgotAction: 'Forgotten password',
       forgotInfo: 'If the account exists, a recovery link has been sent.',
       forgotLockedInfo: 'If the account is unlocked, a recovery link has been sent.',
@@ -89,6 +98,9 @@ const AUTH_STRINGS: AuthDictionary = {
       passwordLabel: 'Heslo',
       loginAction: 'Přihlásit se',
       loginError: 'Neplatné přihlašovací údaje.',
+      loginErrorTitle: 'Přihlášení se nezdařilo',
+      loginErrorHelp: 'Zkontrolujte email a heslo, případně použijte odblokování účtu.',
+      accountLockedError: 'Účet je dočasně uzamčen. Použijte odkaz pro odblokování účtu.',
       forgotAction: 'Odblokovat účet',
       forgotInfo: 'Pokud účet existuje, byl odeslán odkaz pro odblokování.',
       emailRequired: 'Vyplňte email.',
@@ -104,6 +116,9 @@ const AUTH_STRINGS: AuthDictionary = {
       passwordLabel: 'Password',
       loginAction: 'Sign in',
       loginError: 'Invalid credentials.',
+      loginErrorTitle: 'Sign-in failed',
+      loginErrorHelp: 'Check your email and password, or use account unlock.',
+      accountLockedError: 'Account is temporarily locked. Use the unlock link.',
       forgotAction: 'Unlock account',
       forgotInfo: 'If the account exists, an unlock link has been sent.',
       emailRequired: 'Enter your email.',

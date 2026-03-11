@@ -78,20 +78,20 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": "admin@kajovohotel.local", "password": "wrong-pass"},
     )
-    assert status_locked == 401
+    assert status_locked == 423
     assert isinstance(body_locked, dict)
-    assert body_locked.get("detail") == "Invalid credentials"
+    assert body_locked.get("detail") == "Account locked"
 
     status_wrong, body_wrong = api_request(
         opener,
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "wrong-pass"},
+        payload={"email": "admin@kajovohotel.local", "password": "another-wrong-pass"},
     )
-    assert status_wrong == 401
+    assert status_wrong == 423
     assert isinstance(body_wrong, dict)
     assert body_wrong.get("detail") == body_locked.get("detail")
 
@@ -210,14 +210,14 @@ def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api
         )
         connection.commit()
 
-    status, _ = api_request(
+    status_ok, _ = api_request(
         opener,
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
         payload={"email": principal, "password": "admin123"},
     )
-    assert status == 200
+    assert status_ok == 200
 
     with sqlite3.connect(api_db_path) as connection:
         remaining = connection.execute(
@@ -230,3 +230,15 @@ def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api
         ).fetchone()
         assert remaining is not None
         assert int(remaining[0]) == 1
+
+        row = connection.execute(
+            """
+            SELECT failed_attempts, locked_until
+            FROM auth_lockout_states
+            WHERE actor_type = 'admin' AND principal = ?
+            """,
+            (principal,),
+        ).fetchone()
+    assert row is not None
+    assert int(row[0]) == 0
+    assert row[1] is None

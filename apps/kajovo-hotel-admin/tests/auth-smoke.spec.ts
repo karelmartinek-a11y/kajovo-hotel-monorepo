@@ -27,6 +27,12 @@ test.describe('Auth smoke scenarios', () => {
       ignoreHTTPSErrors: true,
     });
 
+    // First successful login always clears potential lockout state from previous runs.
+    const preflight = await api.post('/api/auth/admin/login', {
+      data: { email: seededAdmin.email, password: seededAdmin.password },
+    });
+    expect(preflight.status()).toBe(200);
+
     const invalid = await api.post('/api/auth/admin/login', {
       data: { email: seededAdmin.email, password: 'wrong-password' },
     });

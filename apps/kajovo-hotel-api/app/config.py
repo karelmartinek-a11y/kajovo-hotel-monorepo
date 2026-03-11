@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,8 +9,14 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     database_url: str = "sqlite:///./kajovo_hotel.db"
-    admin_email: str = "admin@kajovohotel.local"
-    admin_password: str = "admin123"
+    admin_email: str = Field(
+        default="admin@kajovohotel.local",
+        validation_alias=AliasChoices("KAJOVO_API_ADMIN_EMAIL", "HOTEL_ADMIN_EMAIL"),
+    )
+    admin_password: str = Field(
+        default="admin123",
+        validation_alias=AliasChoices("KAJOVO_API_ADMIN_PASSWORD", "HOTEL_ADMIN_PASSWORD"),
+    )
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
