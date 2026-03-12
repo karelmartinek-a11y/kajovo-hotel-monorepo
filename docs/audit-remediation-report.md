@@ -97,7 +97,7 @@
 - Chybí konzistentní keyboard path (skip link), preferovaný brand limit překročila hlavička, některé hlášky nejsou čteny screen readery a potvrzovací dialog při mazání není přístupný.
 
 ### Co bylo v repu skutečně nalezeno
-- `AppShell` neměl „Přeskočit na obsah“ a figurka + signace + wordmark překračovaly limity na všech breakpointech; texty používaly porušené kódování (`KĂˇja`, `KĂJOVO`).
+- `AppShell` neměl „Přeskočit na obsah“ a figurka + signace + wordmark překračovaly limity na všech breakpointech; texty používaly porušené kódování brandu.
 - `ModuleNavigation` neřešila fokus z draweru, nešlo jej zavřít klávesou Escape a fallback štítky byly bez diakritiky.
 - `StateView` renderoval pouze statické `<section>` bez `aria-live`, takže chybové/infomessages ve správě uživatelů a loginu se nehlásily.
 - Potvrzení mazání uživatele používalo běžnou kartu bez role, bez návratu fokusu a bez ESC.

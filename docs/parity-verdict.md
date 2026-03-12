@@ -1,4 +1,4 @@
-﻿HISTORICAL DOCUMENT - superseded by docs/SSOT_SCOPE_STATUS.md (2026-03-12).
+HISTORICAL DOCUMENT - superseded by docs/SSOT_SCOPE_STATUS.md (2026-03-12).
 
 # Parity verdict: continue vs regenerate
 
@@ -43,7 +43,7 @@ Rationale: The monorepo is strong for the five core business modules (breakfast,
 
 ### Preserve
 
-- Product/design SSOT and UX contracts: `ManifestDesignKĂˇjovo.md`, `apps/kajovo-hotel/ux/ia.json`.
+- Product/design SSOT and UX contracts: `ManifestDesignKájovo.md`, `apps/kajovo-hotel/ux/ia.json`.
 - Brand assets and design tokens: `brand/**`, `packages/ui/**` (after targeted validation).
 - Infra building blocks that already work conceptually: `infra/compose*.yml`, reverse-proxy switch/rollback scripts, smoke/verify skeletons.
 - API domain schemas and module intent from existing CRUD modules where valid.

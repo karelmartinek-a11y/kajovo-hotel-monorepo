@@ -121,7 +121,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         )
         assert status == 200
 
-        payload = {"name": "MĂ˝dlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
+        payload = {"name": "Mýdlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
         if case.path == "/api/v1/reports":
             payload = {"title": "No access", "status": "open"}
         if case.path == "/api/v1/users":
