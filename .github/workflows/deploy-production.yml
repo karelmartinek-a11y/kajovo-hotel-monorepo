@@ -115,7 +115,7 @@ jobs:
             exit "$DEPLOY_STATUS"
 
       - name: Deploy via SSH (password)
-        if: ${{ env.HOTEL_DEPLOY_PASS != '' && (env.HOTEL_DEPLOY_KEY == '' || steps.deploy_key.outcome == 'failure') }}
+        if: ${{ env.HOTEL_DEPLOY_PASS != '' && (env.HOTEL_DEPLOY_KEY == '' || steps.deploy_key.conclusion == 'failure') }}
         id: deploy_password
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -161,12 +161,13 @@ jobs:
         if: ${{ always() }}
         shell: bash
         run: |
-          key_outcome="${{ steps.deploy_key.outcome }}"
-          pass_outcome="${{ steps.deploy_password.outcome }}"
+          key_outcome="${{ steps.deploy_key.conclusion }}"
+          pass_outcome="${{ steps.deploy_password.conclusion }}"
           if [ "$key_outcome" = "success" ] || [ "$pass_outcome" = "success" ]; then
             echo "Deploy proběhl úspěšně (key=$key_outcome, password=$pass_outcome)."
             exit 0
           fi
           echo "Deploy selhal (key=$key_outcome, password=$pass_outcome)." >&2
           exit 1
+
 
