@@ -124,3 +124,28 @@ Tests run:
 What remains:
 - Push this governance-closure commit.
 - Confirm the new SHA passes all CI and deploy with a single authoritative production rollout.
+
+## Etapa 6 - Final commit-bound verification
+
+What was found:
+- After the governance-closure commit, `docs/SSOT_SCOPE_STATUS.md` still referenced the previously deployed SHA `2536d001...` instead of the newly deployed governance SHA `58789431...`.
+- The code and pipelines were already correct, but the final SSOT binding needed one more exact-sha refresh to keep the repository free of self-contradiction.
+
+What was changed:
+- Refreshed the authoritative SSOT to the exact deployed SHA `58789431fabbb0a69ae514429f6eee3a5e88f289`.
+- Bound the SSOT evidence section to the exact GitHub runs that passed for that SHA.
+
+Evidence:
+- `docs/SSOT_SCOPE_STATUS.md`
+- `gh run` results for `23013118723`, `23013118727`, `23013118729`, `23013245831`
+
+Tests run:
+- `CI Gates - KajovoHotel` run `23013118723` -> success
+- `CI Full - Kajovo Hotel` run `23013118727` -> success
+- `CI Release - Kajovo Hotel` run `23013118729` -> success
+- `Deploy - hotel.hcasc.cz` run `23013245831` -> success
+- Single deploy trigger observed for the SHA after narrowing `workflow_run` to `CI Gates - KajovoHotel`
+
+What remains:
+- Push this final SSOT refresh commit.
+- Confirm the refreshed documentation commit also passes CI and deploy.

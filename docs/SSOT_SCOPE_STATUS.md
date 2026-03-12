@@ -1,14 +1,14 @@
 # SSOT Scope/Status (Authoritative)
 
 Date: 2026-03-12
-Authoritative snapshot base SHA: `2536d001eed3b4d104f36f65cd28ebb10e977c38`
+Authoritative snapshot base SHA: `58789431fabbb0a69ae514429f6eee3a5e88f289`
 Authority: This is the single active status/scope/audit closure document for this repository.
 
 ## Release blockers (binary)
 - `manifest_status`: PASS
 - `scope_status`: PASS
-- `deploy_verify_status`: PASS (local `scripts/release_gate.py` artifact + GitHub deploy run `23012742412` for the exact released SHA)
-- `authoritative_ci_gate`: PASS (`CI Gates - KajovoHotel` run `23012671402`)
+- `deploy_verify_status`: PASS (local `scripts/release_gate.py` artifact + GitHub deploy run `23013245831` for the exact released SHA)
+- `authoritative_ci_gate`: PASS (`CI Gates - KajovoHotel` run `23013118723`)
 - `open_findings_f01_f09`: 0
 
 ## F-01..F-09 closure status
