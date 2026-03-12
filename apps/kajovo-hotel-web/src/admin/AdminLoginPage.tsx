@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
@@ -66,16 +66,16 @@ export function AdminLoginPage(): JSX.Element {
       body: JSON.stringify({ email }),
     });
     if (!response.ok) {
-      setHintStatus(copy.hintInfo ?? 'Pokud ĂşÄŤet existuje, byl odeslĂˇn odkaz pro odblokovĂˇnĂ­.');
+      setHintStatus(copy.hintInfo ?? 'Pokud účet existuje, byl odeslán odkaz pro odblokování.');
       return;
     }
-    setHintStatus(copy.hintInfo ?? 'Pokud ĂşÄŤet existuje, byl odeslĂˇn odkaz pro odblokovĂˇnĂ­.');
+    setHintStatus(copy.hintInfo ?? 'Pokud účet existuje, byl odeslán odkaz pro odblokování.');
   }
 
   return (
     <main className="k-login-page" data-testid="admin-login-page">
       <section className="k-login-card" aria-labelledby="admin-login-title">
-        <img className="k-login-wordmark" src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="KĂˇjovoHotel wordmark" loading="lazy" />
+        <img className="k-login-wordmark" src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="KájovoHotel wordmark" loading="lazy" />
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="admin-login-title">{copy.title}</h1>
         <p className="k-login-copy" id="admin-login-description">{copy.description}</p>
@@ -98,7 +98,7 @@ export function AdminLoginPage(): JSX.Element {
             className="k-input"
             type="password"
             autoComplete="current-password"
-            placeholder="â€˘â€˘â€˘â€˘â€˘â€˘â€˘â€˘"
+            placeholder="••••••••"
             aria-describedby="admin-login-description"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
