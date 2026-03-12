@@ -369,3 +369,24 @@ What remains:
 - Commit the verified local change set in clean commits.
 - Push the exact SHA to `main`.
 - Let GitHub CI and deploy prove the same release candidate remotely.
+
+## Etapa 12 - Release rerun fix for mobile admin smoke
+
+What was found:
+- GitHub `CI Release - Kajovo Hotel` for SHA `d80c38a...` failed in `apps/kajovo-hotel-web/tests/smoke.spec.ts` on the phone viewport.
+- The failing step clicked the first visible `Smazat` button directly from the users page, but on phone layout that button can end up outside the actionable viewport.
+
+What was changed:
+- Reworked the smoke delete flow to match the proven detail-pane pattern already used in the deeper admin E2E suite.
+- The smoke now opens the created user detail, scrolls the detail delete action into view, and confirms deletion from the dialog with a force-safe click.
+
+Evidence:
+- `apps/kajovo-hotel-web/tests/smoke.spec.ts`
+- GitHub run `23019976859` failed log for `Run smoke e2e suite`
+
+Tests run:
+- `pnpm --filter @kajovo/kajovo-hotel-web test:smoke` -> PASS (`6 passed`)
+
+What remains:
+- Commit this release-fix delta.
+- Push the new SHA and rerun the remote CI/deploy sequence.

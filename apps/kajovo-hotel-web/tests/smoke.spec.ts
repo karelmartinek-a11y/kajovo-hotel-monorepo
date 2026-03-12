@@ -176,10 +176,19 @@ test.describe('admin smoke flows', () => {
     await expect(page.getByText('Uživatel byl vytvořen.')).toBeVisible();
     await expect(page.getByText('nova.testova@example.com')).toBeVisible();
 
-    await page.getByRole('button', { name: /Smazat/i }).first().click();
+    const createdRow = page.getByRole('button', { name: 'Nova' });
+    await createdRow.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await createdRow.click({ force: true });
+
+    const deleteButton = page.locator('#users-detail').getByRole('button', { name: /Smazat/i });
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await page.evaluate(() => window.scrollBy(0, 120));
+    await deleteButton.evaluate((node: HTMLButtonElement) => node.click());
+
     const dialog = page.getByTestId('confirm-delete-card');
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: /Smazat/i }).click();
+    await dialog.getByRole('button', { name: /Smazat/i }).click({ force: true });
 
     await expect(page.getByText('Uživatel byl smazán.')).toBeVisible();
     await expect(page.getByText('nova.testova@example.com')).toHaveCount(0);
