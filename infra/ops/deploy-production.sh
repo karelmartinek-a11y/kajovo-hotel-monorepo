@@ -65,8 +65,9 @@ docker compose version >/dev/null
 docker network inspect "$DEPLOY_NETWORK" >/dev/null
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  echo "Chybi $ENV_FILE" >&2
-  exit 1
+  mkdir -p "$(dirname "$ENV_FILE")"
+  : > "$ENV_FILE"
+  echo "Chybi $ENV_FILE -> vytvarim prazdny env file a pokracuji s compose defaults."
 fi
 
 export POSTGRES_USER="kajovo"
