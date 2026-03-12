@@ -16,6 +16,8 @@ Produkce `hotel.hcasc.cz` se nasazuje z `main` automaticky přes GitHub Actions:
 
 Deploy workflow: `.github/workflows/deploy-production.yml`.
 
+Authoritative GitHub settings checklist: `docs/github-settings-checklist.md`.
+
 ## Nutná GitHub konfigurace
 
 V repo settings musí být vyplněné `secrets` nebo `variables`:
@@ -35,6 +37,11 @@ Volitelné aliasy:
 - `KAJOVO_API_ADMIN_PASSWORD`
 
 Pokud aliasy vyplníte, musí mít stejnou hodnotu jako `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. GitHub workflow je nyní validuje a bez těchto hodnot už nepoužívá žádný hardcoded fallback.
+
+Doporučené rozdělení:
+
+- `Variables`: `HOTEL_DEPLOY_HOST`, `HOTEL_DEPLOY_PORT`, `HOTEL_DEPLOY_USER`, `HOTEL_ADMIN_EMAIL`
+- `Secrets`: `HOTEL_DEPLOY_KEY` nebo `HOTEL_DEPLOY_PASS`, `HOTEL_ADMIN_PASSWORD`
 
 ## Co dělá deploy script na serveru
 

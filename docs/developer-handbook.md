@@ -64,6 +64,8 @@ Při push do `main` běží:
 
 ## 6) GitHub Secrets / Variables (produkční deploy)
 
+Autoritativní checklist: `docs/github-settings-checklist.md`
+
 Workflow `deploy-production.yml` a CI smoke běhy používají tyto klíče (primárně `secrets`, sekundárně `variables`):
 
 - `HOTEL_DEPLOY_HOST`
