@@ -3,7 +3,7 @@ name: Deploy - hotel.hcasc.cz
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["CI Release - Kájovo Hotel", "CI Full - Kájovo Hotel"]
+    workflows: ["CI Gates - KajovoHotel"]
     types:
       - completed
     branches:

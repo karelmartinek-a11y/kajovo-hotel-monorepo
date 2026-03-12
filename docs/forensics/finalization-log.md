@@ -96,3 +96,31 @@ Tests run:
 What remains:
 - Refresh SSOT against final `HEAD` and current verification evidence.
 - Run final verification bundle and let CI/deploy validate the final commit.
+
+## Etapa 5 - Release governance closure
+
+What was found:
+- Active GitHub workflow names still contained mojibake in the release layer, which kept broken Czech visible in the current operational surface.
+- Production deploy was triggered from both `CI Release` and `CI Full`, which created two deploy workflow runs for the same `main` push and left a cancelled run beside the successful one. Concurrency prevented overlap, but the evidence trail was less clean than a release-ready pipeline should be.
+
+What was changed:
+- Repaired the active workflow names to ASCII-safe `Kajovo` labels in `.github/workflows/ci-gates.yml`, `.github/workflows/ci-full.yml`, and `.github/workflows/release.yml`.
+- Narrowed production deploy triggering to the single authoritative workflow `CI Gates - KajovoHotel`.
+- Updated active deploy/developer docs and SSOT language so the documented release path matches the actual single-source deploy governance.
+
+Evidence:
+- `.github/workflows/ci-gates.yml`
+- `.github/workflows/ci-full.yml`
+- `.github/workflows/release.yml`
+- `.github/workflows/deploy-production.yml`
+- `docs/how-to-deploy.md`
+- `docs/developer-handbook.md`
+- `docs/SSOT_SCOPE_STATUS.md`
+
+Tests run:
+- Repository inspection of workflow triggers before/after the change.
+- Pending on the next pushed SHA: green `CI Gates`, `CI Full`, `CI Release`, and one successful `Deploy - hotel.hcasc.cz` run.
+
+What remains:
+- Push this governance-closure commit.
+- Confirm the new SHA passes all CI and deploy with a single authoritative production rollout.

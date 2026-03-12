@@ -60,10 +60,10 @@ pnpm ci:gates
 
 A push to `main` runs:
 
-- `CI Gates - KájovoHotel`
-- `CI Full - Kájovo Hotel`
-- `CI Release - Kájovo Hotel`
-- after successful CI: `Deploy - hotel.hcasc.cz`
+- `CI Gates - KajovoHotel`
+- `CI Full - Kajovo Hotel`
+- `CI Release - Kajovo Hotel`
+- after successful authoritative CI gate: `Deploy - hotel.hcasc.cz`
 
 ## 6) GitHub Secrets / Variables for production deploy
 
@@ -91,7 +91,7 @@ Credentials are never committed to the repository or documentation. Production c
 
 ## 7) Post-deploy smoke check
 
-The production deploy workflow now blocks unless all of these succeed:
+The production deploy workflow blocks unless all of these succeed:
 
 - `GET https://hotel.hcasc.cz/`
 - `GET https://hotel.hcasc.cz/admin/login`

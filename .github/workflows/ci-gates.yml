@@ -1,4 +1,4 @@
-name: CI Gates - KájovoHotel
+name: CI Gates - KajovoHotel
 
 on:
   pull_request:

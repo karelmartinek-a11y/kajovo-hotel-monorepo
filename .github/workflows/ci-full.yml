@@ -1,4 +1,4 @@
-name: CI Full - Kájovo Hotel
+name: CI Full - Kajovo Hotel
 
 on:
   pull_request:
