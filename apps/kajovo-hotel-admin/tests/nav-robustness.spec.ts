@@ -30,6 +30,20 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
   });
 }
 
+async function openAdminNavItem(page: Page, label: string): Promise<void> {
+  const desktopNav = page.getByTestId('module-navigation-desktop');
+  const directLink = desktopNav.getByRole('link', { name: label });
+  if (await directLink.count()) {
+    await directLink.first().click();
+    return;
+  }
+
+  const moreButton = desktopNav.getByRole('button', { name: 'Další' });
+  await expect(moreButton).toBeVisible();
+  await moreButton.click();
+  await desktopNav.getByRole('menuitem', { name: label }).click();
+}
+
 test.beforeEach(async ({ page }) => {
   await mockAuth(page, {
     email: 'admin@example.com',
@@ -111,4 +125,45 @@ test('page has no horizontal overflow outside table containers', async ({ page }
   });
 
   expect(hasHorizontalOverflow).toBeFalsy();
+});
+
+test('admin menu links open concrete admin routes instead of internal 404', async ({ page }) => {
+  await page.route('**/api/v1/users', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+  await page.route('**/api/v1/admin/profile', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          email: 'admin@example.com',
+          display_name: 'Admin',
+          password_changed_at: null,
+          updated_at: null,
+        }),
+      });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto(adminPath('/'));
+
+  await expect(page.getByTestId('module-navigation-desktop')).toBeVisible();
+
+  await openAdminNavItem(page, 'Uživatelé');
+  await expect(page).toHaveURL(/\/admin\/uzivatele$/);
+  await expect(page.getByTestId('users-admin-page')).toBeVisible();
+  await expect(page.getByText('Stránka nebyla nalezena.')).toHaveCount(0);
+
+  await openAdminNavItem(page, 'Nastavení');
+  await expect(page).toHaveURL(/\/admin\/nastaveni$/);
+  await expect(page.getByTestId('settings-admin-page')).toBeVisible();
+  await expect(page.getByText('Stránka nebyla nalezena.')).toHaveCount(0);
+
+  await openAdminNavItem(page, 'Profil');
+  await expect(page).toHaveURL(/\/admin\/profil$/);
+  await expect(page.getByTestId('admin-profile-page')).toBeVisible();
+  await expect(page.getByText('Stránka nebyla nalezena.')).toHaveCount(0);
 });

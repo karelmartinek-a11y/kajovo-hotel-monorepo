@@ -152,13 +152,13 @@ function toAdminNavRoute(route: string): string {
   if (!route.startsWith('/')) {
     return route;
   }
-  if (route === '/admin' || route.startsWith('/admin/')) {
-    return route;
+  if (route === '/admin') {
+    return '/';
   }
-  if (route === '/') {
-    return '/admin/';
+  if (route.startsWith('/admin/')) {
+    return route.slice('/admin'.length);
   }
-  return `/admin${route}`;
+  return route;
 }
 
 type PortalUser = {
@@ -3712,7 +3712,7 @@ function AppRoutes(): JSX.Element {
   }));
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
   const panelLayout = auth.role === 'admin' ? 'admin' : 'portal';
-  const adminCurrentPath = location.pathname === '/' ? '/admin/' : `/admin${location.pathname}`;
+  const adminCurrentPath = toAdminNavRoute(location.pathname || '/');
 
   return (
     <AuthContext.Provider value={auth}>
@@ -3806,7 +3806,6 @@ createRoot(document.getElementById('root')!).render(
     </ClientErrorBoundary>
   </React.StrictMode>,
 );
-
 
 
 
