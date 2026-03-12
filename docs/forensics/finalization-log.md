@@ -435,3 +435,46 @@ Tests run:
 What remains:
 - Commit this deploy verification fix.
 - Push a new SHA and rerun the full remote chain until CI and deploy are both green.
+
+## Etapa 15 - Final post-deploy forensic audit for d51755d
+
+What was found:
+- Final CI for `d51755d` is green and the deploy workflow finally completed with all post-deploy verification steps successful.
+- Live production endpoints for admin, portal, and API health responded successfully during the audit sweep.
+
+What was changed:
+- Added final audit outputs `docs/forensics/final-audit-after-deploy.md` and `docs/forensics/final-test-matrix.md` for the deployed SHA.
+
+Evidence:
+- GitHub runs `23021479714`, `23021479741`, `23021479701`, `23021567638`
+- Live checks against `https://hotel.hcasc.cz/`, `/admin/login`, `/admin/uzivatele`, `/admin/nastaveni`, `/admin/profil`, `/intro`, `/snidane`, `/ztraty-a-nalezy`, `/zavady`, `/sklad`, `/reporty`, `/api/health`
+
+Tests run:
+- remote CI/deploy verification for `d51755d` -> PASS
+- live HTTP/title verification against production -> PASS
+
+What remains:
+- No known P0/P1 release blockers remain for the deployed SHA `d51755d`.
+
+## Etapa 16 - Final audit documentation pack
+
+What was found:
+- The final audit package still lacked the required backend closure document.
+- `final-audit-after-deploy.md` and `final-test-matrix.md` existed only locally after the successful release deploy and still had to be folded into the documented forensic bundle.
+
+What was changed:
+- Added `docs/forensics/backend-closure.md`.
+- Finalized `docs/forensics/final-audit-after-deploy.md` and `docs/forensics/final-test-matrix.md` as the post-deploy audit outputs for the audited release runtime SHA.
+
+Evidence:
+- `docs/forensics/backend-closure.md`
+- `docs/forensics/final-audit-after-deploy.md`
+- `docs/forensics/final-test-matrix.md`
+
+Tests run:
+- direct production HTTP/title verification against `hotel.hcasc.cz`
+- GitHub run verification for `23021479714`, `23021479741`, `23021479701`, `23021567638`
+
+What remains:
+- Commit and push this final docs pack.
+- Let the docs follow-up SHA clear CI/deploy so the repository and the production proof trail end in a clean state.
