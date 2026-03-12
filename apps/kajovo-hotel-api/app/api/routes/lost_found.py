@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -27,6 +27,7 @@ router = APIRouter(
 
 @router.get("", response_model=list[LostFoundItemRead])
 def list_lost_found_items(
+    request: Request,
     item_type: LostFoundItemType | None = Query(default=None, alias="type"),
     status_filter: LostFoundStatus | None = Query(default=None, alias="status"),
     category: str | None = Query(default=None),
@@ -37,6 +38,10 @@ def list_lost_found_items(
         .options(selectinload(LostFoundItem.photos))
         .order_by(LostFoundItem.event_at.desc(), LostFoundItem.id.desc())
     )
+    actor_role = getattr(request.state, "actor_role", "")
+
+    if actor_role == "recepce" and status_filter is None:
+        query = query.where(LostFoundItem.status == LostFoundStatus.NEW.value)
 
     if item_type:
         query = query.where(LostFoundItem.item_type == item_type.value)
@@ -82,6 +87,7 @@ def create_lost_found_item(
 def update_lost_found_item(
     item_id: int,
     payload: LostFoundItemUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> LostFoundItem:
     item = db.get(LostFoundItem, item_id)
@@ -92,6 +98,19 @@ def update_lost_found_item(
         )
 
     updates = payload.model_dump(exclude_unset=True)
+    actor_role = getattr(request.state, "actor_role", "")
+    if actor_role == "recepce":
+        allowed_fields = {"status"}
+        if set(updates) - allowed_fields:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Reception can only mark lost & found items as processed",
+            )
+        if updates.get("status") not in {LostFoundStatus.CLAIMED, LostFoundStatus.CLAIMED.value}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Reception can only mark lost & found items as processed",
+            )
     if "item_type" in updates and updates["item_type"] is not None:
         updates["item_type"] = updates["item_type"].value
     if "status" in updates and updates["status"] is not None:
@@ -100,6 +119,9 @@ def update_lost_found_item(
 
     if updates.get("status") == LostFoundStatus.CLAIMED.value and "claimed_at" not in updates:
         updates["claimed_at"] = utc_now()
+    if updates.get("status") == LostFoundStatus.NEW.value:
+        updates["claimed_at"] = None
+        updates["returned_at"] = None
 
     for key, value in updates.items():
         setattr(item, key, value)

@@ -8,7 +8,7 @@ import {
 } from '@kajovo/shared';
 
 export type { Role };
-export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES };
+export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole };
 
 export type AuthProfile = {
   userId: string;

@@ -28,10 +28,19 @@ router = APIRouter(
 
 def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
     now = datetime.now(timezone.utc)
+    if next_status == IssueStatus.NEW.value:
+        issue.in_progress_at = None
+        issue.resolved_at = None
+        issue.closed_at = None
+        return
+    if next_status == IssueStatus.IN_PROGRESS.value:
+        issue.resolved_at = None
+        issue.closed_at = None
     if next_status == IssueStatus.IN_PROGRESS.value and issue.in_progress_at is None:
         issue.in_progress_at = now
     if next_status == IssueStatus.RESOLVED.value and issue.resolved_at is None:
         issue.resolved_at = now
+        issue.closed_at = None
     if next_status == IssueStatus.CLOSED.value and issue.closed_at is None:
         issue.closed_at = now
 
@@ -95,12 +104,32 @@ def create_issue(payload: IssueCreate, db: Session = Depends(get_db)) -> Issue:
 
 
 @router.put("/{issue_id}", response_model=IssueRead)
-def update_issue(issue_id: int, payload: IssueUpdate, db: Session = Depends(get_db)) -> Issue:
+def update_issue(
+    issue_id: int,
+    payload: IssueUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Issue:
     issue = db.get(Issue, issue_id)
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
 
     updates = payload.model_dump(exclude_unset=True)
+    actor_role = getattr(request.state, "actor_role", "")
+
+    if actor_role == "údržba":
+        allowed_fields = {"status"}
+        if set(updates) - allowed_fields:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maintenance can only change issue status",
+            )
+        if updates.get("status") not in {IssueStatus.RESOLVED, IssueStatus.RESOLVED.value}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maintenance can only mark issues as resolved",
+            )
+
     if "priority" in updates and updates["priority"] is not None:
         updates["priority"] = updates["priority"].value
     if "status" in updates and updates["status"] is not None:

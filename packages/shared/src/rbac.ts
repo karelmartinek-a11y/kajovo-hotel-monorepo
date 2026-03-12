@@ -1,4 +1,4 @@
-export type Role = 'recepce' | 'pokojská' | 'údržba' | 'snídaně' | 'sklad' | 'admin';
+﻿export type Role = 'recepce' | 'pokojská' | 'údržba' | 'snídaně' | 'sklad' | 'admin';
 
 export type ModuleKey =
   | 'dashboard'
@@ -33,10 +33,10 @@ export const ROLE_ALIASES: Record<string, Role> = {
 export const ROLE_MODULES: Record<Role, ModuleKey[]> = {
   admin: ['dashboard', 'breakfast', 'housekeeping', 'lost_found', 'issues', 'inventory', 'reports'],
   recepce: ['lost_found', 'breakfast'],
-  pokojská: ['housekeeping', 'lost_found', 'issues', 'breakfast', 'inventory'],
+  pokojská: ['housekeeping'],
   údržba: ['issues'],
-  snídaně: ['breakfast', 'issues', 'inventory'],
-  sklad: ['breakfast', 'issues', 'inventory'],
+  snídaně: ['breakfast', 'inventory'],
+  sklad: ['inventory'],
 };
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -59,34 +59,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings:write',
   ],
   recepce: ['breakfast:read', 'breakfast:write', 'lost_found:read', 'lost_found:write'],
-  pokojská: [
-    'housekeeping:read',
-    'lost_found:read',
-    'lost_found:write',
-    'issues:read',
-    'issues:write',
-    'breakfast:read',
-    'breakfast:write',
-    'inventory:read',
-    'inventory:write',
-  ],
+  pokojská: ['housekeeping:read', 'issues:write', 'lost_found:write'],
   údržba: ['issues:read', 'issues:write'],
-  snídaně: [
-    'breakfast:read',
-    'breakfast:write',
-    'issues:read',
-    'issues:write',
-    'inventory:read',
-    'inventory:write',
-  ],
-  sklad: [
-    'breakfast:read',
-    'breakfast:write',
-    'issues:read',
-    'issues:write',
-    'inventory:read',
-    'inventory:write',
-  ],
+  snídaně: ['breakfast:read', 'breakfast:write', 'inventory:read', 'inventory:write'],
+  sklad: ['inventory:read', 'inventory:write'],
 };
 
 export const ADMIN_SWITCHABLE_ROLES: Role[] = ['recepce', 'pokojská', 'údržba', 'snídaně', 'sklad'];
