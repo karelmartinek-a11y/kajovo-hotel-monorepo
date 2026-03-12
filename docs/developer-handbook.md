@@ -58,7 +58,7 @@ pnpm ci:gates
 
 A push to `main` runs:
 
-- `CI Gates - KĂˇjovoHotel`
+- `CI Gates - KájovoHotel`
 - `CI Full - KĂˇjovo Hotel`
 - `CI Release - KĂˇjovo Hotel`
 - after successful CI: `Deploy - hotel.hcasc.cz`
