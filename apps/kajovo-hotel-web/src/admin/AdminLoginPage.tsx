@@ -1,8 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
-const adminMascot = '/brand/postavy/kaja-admin.png';
 
 type LoginErrorState = {
   title: string;
@@ -67,16 +66,16 @@ export function AdminLoginPage(): JSX.Element {
       body: JSON.stringify({ email }),
     });
     if (!response.ok) {
-      setHintStatus(copy.hintInfo ?? 'Pokud účet existuje, byl odeslán odkaz pro odblokování.');
+      setHintStatus(copy.hintInfo ?? 'Pokud ĂşÄŤet existuje, byl odeslĂˇn odkaz pro odblokovĂˇnĂ­.');
       return;
     }
-    setHintStatus(copy.hintInfo ?? 'Pokud účet existuje, byl odeslán odkaz pro odblokování.');
+    setHintStatus(copy.hintInfo ?? 'Pokud ĂşÄŤet existuje, byl odeslĂˇn odkaz pro odblokovĂˇnĂ­.');
   }
 
   return (
     <main className="k-login-page" data-testid="admin-login-page">
       <section className="k-login-card" aria-labelledby="admin-login-title">
-        <img className="k-login-wordmark" src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="KájovoHotel wordmark" loading="lazy" />
+        <img className="k-login-wordmark" src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="KĂˇjovoHotel wordmark" loading="lazy" />
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="admin-login-title">{copy.title}</h1>
         <p className="k-login-copy" id="admin-login-description">{copy.description}</p>
@@ -99,7 +98,7 @@ export function AdminLoginPage(): JSX.Element {
             className="k-input"
             type="password"
             autoComplete="current-password"
-            placeholder="••••••••"
+            placeholder="â€˘â€˘â€˘â€˘â€˘â€˘â€˘â€˘"
             aria-describedby="admin-login-description"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -117,10 +116,8 @@ export function AdminLoginPage(): JSX.Element {
           {hintStatus ? <p id="admin-login-hint" className="k-login-copy" role="status">{hintStatus}</p> : null}
         </form>
       </section>
-      <aside className="k-login-preview" aria-label="Ilustrace Kája">
-        <img src={adminMascot} alt="Ilustrace Kája pro admin login" loading="lazy" />
-      </aside>
       <KajovoSign />
     </main>
   );
 }
+

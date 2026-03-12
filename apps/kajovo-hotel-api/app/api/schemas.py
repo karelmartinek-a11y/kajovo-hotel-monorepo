@@ -46,6 +46,7 @@ class ReportRead(BaseModel):
     status: str
     created_at: datetime | None
     updated_at: datetime | None
+    photos: list["MediaPhotoRead"] = Field(default_factory=list)
 
 
 class BreakfastStatus(StrEnum):
@@ -500,6 +501,69 @@ class AuthIdentityResponse(BaseModel):
     active_role: str | None = None
     permissions: list[str]
     actor_type: str
+
+
+class DeviceRegisterRequest(BaseModel):
+    device_id: str = Field(min_length=3, max_length=128)
+    display_name: str | None = Field(default=None, max_length=255)
+    bootstrap_key: str = Field(min_length=8, max_length=255)
+
+
+class DeviceRegisterResponse(BaseModel):
+    device_id: str
+    display_name: str
+    status: str
+    device_secret: str
+    registered_at: datetime
+
+
+class DeviceChallengeRequest(BaseModel):
+    device_id: str = Field(min_length=3, max_length=128)
+    device_secret: str = Field(min_length=16, max_length=255)
+
+
+class DeviceChallengeResponse(BaseModel):
+    challenge_id: str
+    challenge: str
+    expires_at: datetime
+
+
+class DeviceVerifyRequest(BaseModel):
+    device_id: str = Field(min_length=3, max_length=128)
+    device_secret: str = Field(min_length=16, max_length=255)
+    challenge_id: str = Field(min_length=8, max_length=64)
+    signature: str = Field(min_length=32, max_length=256)
+
+
+class DeviceVerifyResponse(BaseModel):
+    token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+
+
+class DeviceStatusResponse(BaseModel):
+    device_id: str
+    display_name: str
+    status: str
+    registered_at: datetime
+    last_seen_at: datetime | None
+    token_expires_at: datetime | None = None
+
+
+class AdminProfileRead(BaseModel):
+    email: str
+    display_name: str
+    password_changed_at: datetime | None
+    updated_at: datetime | None
+
+
+class AdminProfileUpdate(BaseModel):
+    display_name: str = Field(min_length=1, max_length=120)
+
+
+class AdminPasswordChangeRequest(BaseModel):
+    old_password: str = Field(min_length=8, max_length=255)
+    new_password: str = Field(min_length=8, max_length=255)
 
 
 class SmtpSettingsUpsert(BaseModel):

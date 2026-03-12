@@ -114,6 +114,8 @@ def require_session(request: Request) -> dict[str, str | list[str] | None]:
 def ensure_csrf(request: Request) -> None:
     if request.method not in WRITE_METHODS:
         return
+    if request.url.path.startswith("/api/v1/device/"):
+        return
     if request.url.path.startswith("/api/auth/") and request.url.path.endswith("/login"):
         return
     cookie_token = request.cookies.get(CSRF_COOKIE_NAME)

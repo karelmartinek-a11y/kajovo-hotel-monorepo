@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import '../tokens.css';
 import { KajovoSign } from './KajovoSign';
 import { KajovoWordmark } from './KajovoWordmark';
@@ -29,26 +29,9 @@ export function AppShell({
   navigationSections,
   currentPath,
   brandHref,
-  showFigure = true,
 }: AppShellProps): JSX.Element {
-  const figureByRoute: Array<{ match: RegExp; src: string; alt: string }> = [
-    { match: /^\/sklad(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro skladové hospodářství' },
-    { match: /^\/zavady(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro závady a údržbu' },
-    { match: /^\/ztraty-a-nalezy(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro ztráty a nálezy' },
-    { match: /^\/snidane(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro snídaňový servis' },
-    { match: /^\/uzivatele(?:\/|$)/, src: '/brand/postavy/kaja-admin.png', alt: 'Kája pro správu uživatelů' },
-  ];
-
-  const fallbackFigure = panelLayout === 'admin'
-    ? { src: '/brand/postavy/kaja-admin.png', alt: 'Kája pro administraci' }
-    : { src: '/brand/postavy/kaja-user.png', alt: 'Kája pro uživatelský portál' };
-
-  const matched = figureByRoute.find((item) => item.match.test(currentPath));
-  const figure = matched ?? fallbackFigure;
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
   const wordmarkVariant = panelLayout === 'admin' ? 'admin' : 'portal';
-
-  const shouldShowFigure = !isPopup && showFigure;
 
   React.useEffect(() => {
     const main =
@@ -91,11 +74,6 @@ export function AppShell({
         </div>
       </header>
       {children}
-      {shouldShowFigure ? (
-        <aside className="k-shell-figure" aria-label="Personifikace Kája" data-brand-element="true">
-          <img src={figure.src} alt={figure.alt} loading="lazy" />
-        </aside>
-      ) : null}
       {!isPopup ? <KajovoSign /> : null}
     </div>
   );

@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-03-12T03:22:28.433946+00:00",
+  "sha": "44e4cde30b3f720ec0a46b15abc3b44ed1af061b",
+  "overall_status": "PASS",
+  "checks": [
+    {
+      "name": "typecheck",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "typecheck"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-12T03:21:52.100743+00:00",
+      "finished_at": "2026-03-12T03:22:00.351024+00:00"
+    },
+    {
+      "name": "api-unit-tests",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "apps/kajovo-hotel-api/tests",
+        "-q"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-12T03:22:00.351047+00:00",
+      "finished_at": "2026-03-12T03:22:26.230861+00:00"
+    },
+    {
+      "name": "breakfast-imap-smoke",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "apps/kajovo-hotel-api/tests/test_breakfast_imap_smoke.py",
+        "-q"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-12T03:22:26.230884+00:00",
+      "finished_at": "2026-03-12T03:22:28.392980+00:00"
+    },
+    {
+      "name": "frontend-ci-gates",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "ci:gates"
+      ],
+      "status": "SKIPPED",
+      "return_code": 0,
+      "started_at": "2026-03-12T03:22:28.393003+00:00",
+      "finished_at": "2026-03-12T03:22:28.393006+00:00"
+    },
+    {
+      "name": "e2e-smoke",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "ci:e2e-smoke"
+      ],
+      "status": "SKIPPED",
+      "return_code": 0,
+      "started_at": "2026-03-12T03:22:28.393011+00:00",
+      "finished_at": "2026-03-12T03:22:28.393013+00:00"
+    }
+  ]
+}

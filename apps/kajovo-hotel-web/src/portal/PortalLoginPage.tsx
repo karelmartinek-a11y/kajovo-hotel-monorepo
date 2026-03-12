@@ -1,9 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
-const portalMascot = '/brand/postavy/kaja-user.png';
 
 export function PortalLoginPage(): JSX.Element {
   const navigate = useNavigate();
@@ -21,7 +20,7 @@ export function PortalLoginPage(): JSX.Element {
   }, [bundle.copy.eyebrow, bundle.locale]);
   const roleLabel = React.useCallback((role: string) => roleLabels[role] ?? role, [roleLabels]);
   const continueAs = React.useCallback(
-    (label: string) => (copy.continueAs ? copy.continueAs(label) : `Pokračovat jako ${label}`),
+    (label: string) => (copy.continueAs ? copy.continueAs(label) : `PokraÄŤovat jako ${label}`),
     [copy]
   );
   const [email, setEmail] = React.useState('');
@@ -36,7 +35,7 @@ export function PortalLoginPage(): JSX.Element {
     setInfo(null);
     const principal = email.trim();
     if (!principal || !password) {
-      setError(copy.credentialsRequired ?? copy.loginError ?? 'Neplatné přihlašovací údaje.');
+      setError(copy.credentialsRequired ?? copy.loginError ?? 'NeplatnĂ© pĹ™ihlaĹˇovacĂ­ Ăşdaje.');
       return;
     }
     const response = await fetch('/api/auth/login', {
@@ -46,7 +45,7 @@ export function PortalLoginPage(): JSX.Element {
       body: JSON.stringify({ email: principal, password }),
     });
     if (!response.ok) {
-      setError(copy.loginError ?? 'Neplatné přihlašovací údaje.');
+      setError(copy.loginError ?? 'NeplatnĂ© pĹ™ihlaĹˇovacĂ­ Ăşdaje.');
       return;
     }
     const payload = (await response.json()) as { active_role?: string | null; roles?: string[] };
@@ -62,7 +61,7 @@ export function PortalLoginPage(): JSX.Element {
     setInfo(null);
     const principal = email.trim();
     if (!principal) {
-      setError(copy.emailRequired ?? 'Vyplňte email.');
+      setError(copy.emailRequired ?? 'VyplĹte email.');
       return;
     }
     const response = await fetch('/api/auth/forgot-password', {
@@ -93,7 +92,7 @@ export function PortalLoginPage(): JSX.Element {
       body: JSON.stringify({ role }),
     });
     if (!response.ok) {
-      setError(copy.roleSelectError ?? 'Výběr role selhal.');
+      setError(copy.roleSelectError ?? 'VĂ˝bÄ›r role selhal.');
       return;
     }
     navigate('/');
@@ -102,7 +101,7 @@ export function PortalLoginPage(): JSX.Element {
   return (
     <main className="k-login-page" data-testid="portal-login-page">
       <section className="k-login-card" aria-labelledby="portal-login-title">
-        <img className="k-login-wordmark" src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="KájovoHotel wordmark" loading="lazy" />
+        <img className="k-login-wordmark" src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="KĂˇjovoHotel wordmark" loading="lazy" />
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="portal-login-title">{copy.title}</h1>
         <p className="k-login-copy">{copy.description}</p>
@@ -110,7 +109,7 @@ export function PortalLoginPage(): JSX.Element {
           <label className="k-login-label" htmlFor="portal-email">{copy.emailLabel}</label>
           <input id="portal-email" className="k-input" type="email" placeholder="uzivatel@kajovohotel.cz" value={email} onChange={(event) => setEmail(event.target.value)} />
           <label className="k-login-label" htmlFor="portal-password">{copy.passwordLabel}</label>
-          <input id="portal-password" className="k-input" type="password" placeholder="••••••••" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input id="portal-password" className="k-input" type="password" placeholder="â€˘â€˘â€˘â€˘â€˘â€˘â€˘â€˘" value={password} onChange={(event) => setPassword(event.target.value)} />
           <button className="k-button" type="submit">{copy.loginAction}</button>
           <button className="k-button secondary" type="button" onClick={() => void sendForgotPassword()} disabled={!email.trim()}>{copy.forgotAction}</button>
           {error ? <p className="k-login-copy" role="alert">{error}</p> : null}
@@ -126,12 +125,10 @@ export function PortalLoginPage(): JSX.Element {
           ) : null}
         </form>
       </section>
-      <aside className="k-login-preview" aria-label="Ilustrace Kája">
-        <img src={portalMascot} alt="Ilustrace Kája pro uživatelský login" loading="lazy" />
-      </aside>
       <KajovoSign />
     </main>
   );
 }
+
 
 

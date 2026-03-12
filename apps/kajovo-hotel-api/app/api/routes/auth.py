@@ -17,7 +17,13 @@ from app.api.schemas import (
     SelectRoleRequest,
 )
 from app.config import get_settings
-from app.db.models import AuthLockoutState, AuthUnlockToken, PortalSmtpSettings, PortalUser
+from app.db.models import (
+    AdminProfile,
+    AuthLockoutState,
+    AuthUnlockToken,
+    PortalSmtpSettings,
+    PortalUser,
+)
 from app.db.session import get_db
 from app.security.auth import (
     CSRF_COOKIE_NAME,
@@ -60,7 +66,7 @@ def _as_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
-def _verify_password(password: str, stored_hash: str) -> bool:
+def verify_password(password: str, stored_hash: str) -> bool:
     if not stored_hash.startswith("scrypt$"):
         return False
     _, salt_hex, digest_hex = stored_hash.split("$", 2)
@@ -205,22 +211,23 @@ def admin_login(
 ) -> AuthIdentityResponse:
     settings = get_settings()
     now = _utc_now()
-    principal = settings.admin_email.strip().lower()
-    expected_password = settings.admin_password.strip()
+    admin_profile = db.get(AdminProfile, 1)
+    principal = (
+        admin_profile.email.strip().lower()
+        if admin_profile is not None
+        else settings.admin_email.strip().lower()
+    )
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     provided_email = payload.email.strip().lower()
-    provided_password = payload.password
-    valid_credentials = provided_email == principal and provided_password == expected_password
-
-    # Correct admin credentials always clear lockout. This prevents permanent lockout
-    # in deployments where unlock email transport is unavailable.
-    if valid_credentials:
-        _reset_lock_state(state)
-        db.add(state)
-        db.commit()
-    elif _is_locked(state, now):
-        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Account locked")
-    else:
+    valid_password = (
+        verify_password(payload.password, admin_profile.password_hash)
+        if admin_profile is not None
+        else payload.password == settings.admin_password
+    )
+    valid = provided_email == principal and valid_password
+    if _is_locked(state, now):
+        valid = False
+    if not valid:
         became_locked = _record_failed_login(
             state,
             now=now,
@@ -237,7 +244,7 @@ def admin_login(
     response.set_cookie(
         SESSION_COOKIE_NAME,
         create_session_cookie(
-            settings.admin_email,
+            principal,
             "admin",
             "admin",
             roles=["admin"],
@@ -262,7 +269,7 @@ def admin_login(
         expires=session_expiry,
     )
     return AuthIdentityResponse(
-        email=settings.admin_email,
+        email=principal,
         role="admin",
         permissions=get_permissions("admin"),
         actor_type="admin",
@@ -282,8 +289,8 @@ def admin_hint(
     request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
-    settings = get_settings()
-    principal = settings.admin_email.strip().lower()
+    profile = db.get(AdminProfile, 1)
+    principal = profile.email.strip().lower() if profile is not None else get_settings().admin_email.strip().lower()
     if payload.email.strip().lower() != principal:
         return LogoutResponse()
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
@@ -313,7 +320,7 @@ def portal_login(
         not _is_locked(state, now)
         and user is not None
         and user.is_active
-        and _verify_password(payload.password, user.password_hash)
+        and verify_password(payload.password, user.password_hash)
     )
     if not is_valid:
         became_locked = _record_failed_login(

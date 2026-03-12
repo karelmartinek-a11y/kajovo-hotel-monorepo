@@ -38,6 +38,7 @@ import {
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
 import { resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
+import { currentDateForTimeZone } from './lib/date';
 import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
@@ -195,7 +196,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 }
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
-const defaultServiceDate = '2026-02-19';
+const defaultServiceDate = currentDateForTimeZone();
 
 
 const IntroRoute = React.lazy(async () => {
@@ -2266,12 +2267,12 @@ function InventoryDetail(): JSX.Element {
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [receiptQuantity, setReceiptQuantity] = React.useState<number>(0);
-  const [receiptDate, setReceiptDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [receiptDate, setReceiptDate] = React.useState<string>(currentDateForTimeZone());
   const [receiptReference, setReceiptReference] = React.useState<string>('');
   const [receiptNote, setReceiptNote] = React.useState<string>('');
   const [issueType, setIssueType] = React.useState<InventoryMovementType>('out');
   const [issueQuantity, setIssueQuantity] = React.useState<number>(0);
-  const [issueDate, setIssueDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [issueDate, setIssueDate] = React.useState<string>(currentDateForTimeZone());
   const [issueNote, setIssueNote] = React.useState<string>('');
 
   const loadDetail = React.useCallback(() => {

@@ -1,11 +1,11 @@
-from functools import lru_cache
+﻿from functools import lru_cache
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "KájovoHotel API"
+    app_name: str = "KajovoHotel API"
     app_version: str = "0.1.0"
     environment: str = "development"
     database_url: str = "sqlite:///./kajovo_hotel.db"
@@ -30,7 +30,10 @@ class Settings(BaseSettings):
     breakfast_imap_username: str = ""
     breakfast_imap_password: str = ""
     breakfast_imap_from_contains: str = "better-hotel.com"
-    breakfast_imap_subject_contains: str = "přehled stravy"
+    breakfast_imap_subject_contains: str = "prehled stravy"
+    device_bootstrap_key: str = "change-me-device-bootstrap-key"
+    device_challenge_ttl_seconds: int = 300
+    device_token_ttl_seconds: int = 86400
     trusted_hosts: list[str] = Field(
         default_factory=lambda: [
             "kajovohotel.hcasc.cz",

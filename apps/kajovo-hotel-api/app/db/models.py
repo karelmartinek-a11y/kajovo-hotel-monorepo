@@ -31,6 +31,12 @@ class Report(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    photos: Mapped[list["ReportPhoto"]] = relationship(
+        "ReportPhoto",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        order_by="ReportPhoto.sort_order.asc()",
+    )
 
 
 class BreakfastStatus(StrEnum):
@@ -256,6 +262,25 @@ class IssuePhoto(Base):
     issue: Mapped[Issue] = relationship(back_populates="photos")
 
 
+class ReportPhoto(Base):
+    __tablename__ = "report_photos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    report_id: Mapped[int] = mapped_column(
+        ForeignKey("reports.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    file_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    thumb_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(80), nullable=False, default="image/jpeg")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    report: Mapped[Report] = relationship(back_populates="photos")
+
+
 class LostFoundPhoto(Base):
     __tablename__ = "lost_found_photos"
 
@@ -289,6 +314,47 @@ class InventoryAuditLog(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class DeviceRegistration(Base):
+    __tablename__ = "device_registrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    device_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", index=True)
+    secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    registered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class DeviceChallenge(Base):
+    __tablename__ = "device_challenges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    challenge_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    device_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    challenge: Mapped[str] = mapped_column(String(128), nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+
+class DeviceAccessToken(Base):
+    __tablename__ = "device_access_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    device_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
 
 class AuditTrail(Base):
@@ -353,6 +419,22 @@ class PortalSmtpSettings(Base):
     use_tls: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[str] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class AdminProfile(Base):
+    __tablename__ = "admin_profile"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(120), nullable=False, default="Admin")
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),

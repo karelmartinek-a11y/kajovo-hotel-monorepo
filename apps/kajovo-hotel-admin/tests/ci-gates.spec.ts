@@ -3,11 +3,17 @@ import { expect, test } from '@playwright/test';
 import ia from '../../kajovo-hotel/ux/ia.json';
 
 const requiredStates = ['loading', 'empty', 'error', 'offline', 'maintenance', '404'] as const;
+const runtimeServiceDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(new Date());
 
 const listPayload = [
   {
     id: 1,
-    service_date: '2026-02-19',
+    service_date: runtimeServiceDate,
     room_number: '101',
     guest_name: 'Novák',
     guest_count: 2,
@@ -17,7 +23,7 @@ const listPayload = [
 ];
 
 const summaryPayload = {
-  service_date: '2026-02-19',
+  service_date: runtimeServiceDate,
   total_orders: 1,
   total_guests: 2,
   status_counts: { pending: 1, preparing: 0, served: 0, cancelled: 0 },
@@ -49,6 +55,17 @@ const toConcreteRoute = (route: string): string => adminPath(route.replace(/:id/
 
 const smokeRoutes = ia.views.map((view) => toConcreteRoute(view.route));
 const uniqueRoutes = Array.from(new Set(smokeRoutes));
+const brandGateRoutes = Array.from(
+  new Set([
+    ...uniqueRoutes,
+    adminPath('/login'),
+    adminPath('/profil'),
+    adminPath('/intro'),
+    adminPath('/offline'),
+    adminPath('/maintenance'),
+    adminPath('/404'),
+  ])
+);
 const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 test.beforeEach(async ({ page }) => {
@@ -150,7 +167,7 @@ test('all IA routes support smoke navigation', async ({ page }) => {
 });
 
 test('brand elements convention: maximum 2 per key views', async ({ page }) => {
-  for (const route of uniqueRoutes) {
+  for (const route of brandGateRoutes) {
     await page.goto(route);
     const count = await page.locator('[data-brand-element="true"]').count();
     expect(count, `Too many brand elements on ${route}`).toBeLessThanOrEqual(2);
@@ -219,6 +236,24 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
 
   const animationName = await skeleton.evaluate((node) => window.getComputedStyle(node).animationName);
   expect(animationName).toBe('none');
+});
+
+test('date defaults use runtime local day for breakfast and inventory forms', async ({ page }) => {
+  const expectedToday = await page.evaluate(() =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date())
+  );
+
+  await page.goto('/admin/snidane/nova');
+  await expect(page.locator('#service_date')).toHaveValue(expectedToday);
+
+  await page.goto('/admin/sklad/1');
+  await expect(page.locator('#receipt_date')).toHaveValue(expectedToday);
+  await expect(page.locator('#issue_date')).toHaveValue(expectedToday);
 });
 
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
