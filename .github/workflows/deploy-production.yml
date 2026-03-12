@@ -138,55 +138,58 @@ jobs:
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=80 || true
             exit "$DEPLOY_STATUS"
 
-      - name: Stage deploy runtime artifact on server
+      - name: Verify deploy runtime artifact on server
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
+          envs: DEPLOY_SHA
           script: |
             set -euo pipefail
             runtime_artifact="/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json"
-            staged_artifact="$HOME/deploy-runtime-latest.json"
             if [ ! -f "$runtime_artifact" ]; then
               echo "Missing runtime artifact on server: $runtime_artifact" >&2
               exit 1
             fi
-            cp "$runtime_artifact" "$staged_artifact"
+            python3 - <<'PY'
+            import json
+            import os
+            from pathlib import Path
 
-      - name: Fetch deploy runtime artifact
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.HOTEL_DEPLOY_HOST }}
-          username: ${{ env.HOTEL_DEPLOY_USER }}
-          password: ${{ env.HOTEL_DEPLOY_PASS }}
-          port: ${{ env.HOTEL_DEPLOY_PORT }}
-          source: deploy-runtime-latest.json
-          target: ./artifacts/
-          overwrite: true
+            path = Path("/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json")
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            expected = os.environ["DEPLOY_SHA"]
+            actual = str(payload.get("sha") or "")
+            if actual not in {expected, expected[:7]}:
+                raise SystemExit(f"deploy artifact SHA mismatch: expected {expected}, got {actual}")
+            print("Deploy runtime artifact SHA on server: PASS")
+            PY
 
-      - name: Normalize deploy runtime artifact path
+      - name: Write deploy verification artifact
         shell: bash
         run: |
           set -euo pipefail
-          mv artifacts/deploy-runtime-latest.json artifacts/latest.json
-
-      - name: Verify deploy runtime artifact SHA
-        shell: bash
-        run: |
-          set -euo pipefail
+          mkdir -p artifacts
           python - <<'PY'
           import json
+          import os
+          from datetime import datetime, timezone
           from pathlib import Path
 
-          path = Path('artifacts/latest.json')
-          payload = json.loads(path.read_text(encoding='utf-8'))
-          expected = '${{ env.DEPLOY_SHA }}'
-          actual = str(payload.get('sha') or '')
-          if actual not in {expected, expected[:7]}:
-              raise SystemExit(f'deploy artifact SHA mismatch: expected {expected}, got {actual}')
-          print('Deploy runtime artifact SHA: PASS')
+          payload = {
+              "verified_at": datetime.now(timezone.utc).isoformat(),
+              "sha": os.environ["DEPLOY_SHA"],
+              "base_url": os.environ["DEPLOY_BASE_URL"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "remote_runtime_artifact": "/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json",
+              "server_runtime_artifact_sha_verified": True,
+          }
+          Path("artifacts/latest.json").write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
           PY
 
       - name: Post-deploy HTTP gate

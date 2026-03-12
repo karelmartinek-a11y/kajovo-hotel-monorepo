@@ -413,3 +413,25 @@ Tests run:
 What remains:
 - Commit this deploy workflow fix.
 - Push a new SHA and rerun CI + deploy until the full remote chain is green.
+
+## Etapa 14 - Replace brittle SCP proof fetch with remote artifact verification
+
+What was found:
+- Even after staging `latest.json` into the deploy user's home directory, `appleboy/scp-action` still returned `tar: empty archive` when trying to fetch the file back to the runner.
+- The server-side deploy and artifact creation were successful, but the workflow stayed red because post-deploy verification depended on a brittle file-download mechanism.
+
+What was changed:
+- Removed the SCP download dependency from deploy verification.
+- Added a remote SSH verification step that reads `/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json` on the server and fails if its SHA does not match the deployed commit.
+- Added a runner-side `artifacts/latest.json` proof file that records the verified deploy SHA, base URL, run ID, and the fact that the server-side runtime artifact SHA check passed.
+
+Evidence:
+- `.github/workflows/deploy-production.yml`
+- GitHub deploy run `23021383518`
+
+Tests run:
+- local YAML/source review of `.github/workflows/deploy-production.yml`
+
+What remains:
+- Commit this deploy verification fix.
+- Push a new SHA and rerun the full remote chain until CI and deploy are both green.
