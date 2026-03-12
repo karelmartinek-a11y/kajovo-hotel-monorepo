@@ -61,8 +61,10 @@ const AUTH_STRINGS: AuthDictionary = {
       roleSelectError: 'Výběr role selhal.',
       continueAs: (roleLabel: string) => `Pokračovat jako ${roleLabel}`,
       accessDeniedTitle: 'Přístup odepřen',
-      accessDeniedModule: (moduleLabel, roleLabel, userId) => `Role ${roleLabel} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`,
-      accessDeniedNoModules: (roleLabel, userId) => `Role ${roleLabel} (uživatel ${userId}) nemá žádné dostupné moduly.`,
+      accessDeniedModule: (moduleLabel, roleLabel, userId) =>
+        `Role ${roleLabel} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`,
+      accessDeniedNoModules: (roleLabel, userId) =>
+        `Role ${roleLabel} (uživatel ${userId}) nemá žádné dostupné moduly.`,
     },
     en: {
       eyebrow: 'KájovoHotel · Portal',
@@ -85,8 +87,10 @@ const AUTH_STRINGS: AuthDictionary = {
       roleSelectError: 'Role selection failed.',
       continueAs: (roleLabel: string) => `Continue as ${roleLabel}`,
       accessDeniedTitle: 'Access denied',
-      accessDeniedModule: (moduleLabel, roleLabel, userId) => `Role ${roleLabel} (user ${userId}) doesn’t have permission for ${moduleLabel}.`,
-      accessDeniedNoModules: (roleLabel, userId) => `Role ${roleLabel} (user ${userId}) has no available modules.`,
+      accessDeniedModule: (moduleLabel, roleLabel, userId) =>
+        `Role ${roleLabel} (user ${userId}) doesn't have permission for ${moduleLabel}.`,
+      accessDeniedNoModules: (roleLabel, userId) =>
+        `Role ${roleLabel} (user ${userId}) has no available modules.`,
     },
   },
   admin: {

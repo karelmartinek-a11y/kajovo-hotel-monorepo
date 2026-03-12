@@ -67,6 +67,24 @@ test('recepce navigace obsahuje jen snídaně a nálezy', async ({ page }) => {
   }
 });
 
+test('recepce deep link do zakázaných modulů zůstává odepřený', async ({ page }) => {
+  await mockAuth(page, {
+    email: 'recepce@example.com',
+    role: 'recepce',
+    permissions: ['breakfast:read', 'lost_found:read'],
+    actor_type: 'portal',
+  });
+
+  await page.goto('/hlaseni');
+  await expect(page.getByTestId('access-denied-page')).toBeVisible();
+
+  await page.goto('/zavady');
+  await expect(page.getByTestId('access-denied-page')).toBeVisible();
+
+  await page.goto('/sklad');
+  await expect(page.getByTestId('access-denied-page')).toBeVisible();
+});
+
 
 test('admin rozhraní nabízí přepínání klíčových modulů', async ({ page }) => {
   await page.goto('/admin');

@@ -176,7 +176,9 @@ test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) =>
   });
 
   await page.goto(adminPath('/uzivatele'));
-  await page.getByTestId('users-admin-page').getByRole('button', { name: 'Upravit' }).first().click({ force: true });
+  const rowActivator = page.getByRole('button', { name: 'Karel' });
+  await rowActivator.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+  await rowActivator.click({ force: true });
 
   await expect(page.getByText('Smazání je dostupné pouze pro admina.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Smazat' })).toHaveCount(0);
@@ -354,9 +356,15 @@ test('admin smaže uživatele přes potvrzovací dialog', async ({ page }) => {
 
   await page.goto(adminPath('/uzivatele'));
 
-  const deleteButton = page.getByTestId('users-admin-page').getByRole('button', { name: 'Smazat' });
+  const rowActivator = page.getByRole('button', { name: 'Karel' });
+  await rowActivator.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+  await rowActivator.click({ force: true });
+
+  const deleteButton = page.locator('#users-detail').getByRole('button', { name: 'Smazat' });
   await expect(deleteButton).toBeVisible();
-  await deleteButton.click({ force: true });
+  await deleteButton.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+  await page.evaluate(() => window.scrollBy(0, 120));
+  await deleteButton.evaluate((node: HTMLButtonElement) => node.click());
 
   const confirmCard = page.getByTestId('confirm-delete-card');
   await expect(confirmCard).toBeVisible();

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import '../tokens.css';
 import { KajovoSign } from './KajovoSign';
 import { KajovoWordmark } from './KajovoWordmark';
@@ -15,7 +15,6 @@ type AppShellProps = {
   currentPath: string;
   panelLayout?: PanelLayout;
   brandHref?: string;
-  showFigure?: boolean;
 };
 
 const MAIN_TARGET_ID = 'main-content';
@@ -31,7 +30,9 @@ export function AppShell({
   brandHref,
 }: AppShellProps): JSX.Element {
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
+  const signHref = wordmarkHref;
   const wordmarkVariant = panelLayout === 'admin' ? 'admin' : 'portal';
+  const isIntroView = currentPath === '/intro' || currentPath.endsWith('/intro');
 
   React.useEffect(() => {
     const main =
@@ -54,17 +55,21 @@ export function AppShell({
       target.setAttribute('tabindex', '-1');
     }
     target.focus({ preventScroll: true });
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
   };
 
   return (
     <div className="k-app-shell" data-panel-layout={panelLayout}>
       <header className="k-app-header">
         <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>
-          Přeskočit na obsah
+          P?esko?it na obsah
         </a>
         <div className="k-shell-inner k-shell-header">
-          <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} />
+          {!isIntroView ? <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} /> : null}
           <ModuleNavigation
             modules={modules}
             rules={navigationRules}
@@ -74,7 +79,7 @@ export function AppShell({
         </div>
       </header>
       {children}
-      {!isPopup ? <KajovoSign /> : null}
+      {!isPopup ? <KajovoSign href={signHref} /> : null}
     </div>
   );
 }

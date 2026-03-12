@@ -34,10 +34,14 @@ function resolveAdminCredentials() {
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const result = { app: null, tests: [] };
+  const result = { app: null, tests: [], playwrightArgs: [] };
   let i = 0;
   while (i < args.length) {
     const token = args[i];
+    if (token === "--") {
+      result.playwrightArgs = args.slice(i + 1);
+      break;
+    }
     if (token === "--app" && i + 1 < args.length) {
       result.app = args[i + 1];
       i += 2;
@@ -59,6 +63,11 @@ function ensureTmp() {
   if (!fs.existsSync(TMP_DIR)) {
     fs.mkdirSync(TMP_DIR, { recursive: true });
   }
+}
+
+function uniqueTmpPath(name) {
+  const suffix = `${process.pid}-${Date.now()}`;
+  return path.join(TMP_DIR, `${name}-${suffix}`);
 }
 
 async function waitForHealthy(url, timeoutMs = 30000) {
@@ -90,15 +99,8 @@ async function waitForHealthy(url, timeoutMs = 30000) {
 
 function startBackend(envOverrides = {}) {
   const adminCredentials = resolveAdminCredentials();
-  const dbPath = path.join(TMP_DIR, "playwright-api.db");
-  try {
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-    }
-  } catch {
-    /* ignore */
-  }
-  const mediaRoot = path.join(TMP_DIR, "media");
+  const dbPath = uniqueTmpPath("playwright-api") + ".db";
+  const mediaRoot = uniqueTmpPath("media");
   fs.mkdirSync(mediaRoot, { recursive: true });
 
   const env = {
@@ -132,14 +134,14 @@ function startBackend(envOverrides = {}) {
   return backend;
 }
 
-async function runPlaywright(appDir, tests) {
+async function runPlaywright(appDir, tests, playwrightArgs = []) {
   const binName = "playwright";
   const playwrightPathRaw = path.join(appDir, "node_modules", ".bin", binName);
   const isWindows = process.platform === "win32";
   const runnerCmd = isWindows ? "cmd.exe" : playwrightPathRaw;
   const runnerArgs = isWindows
-    ? ["/c", `${playwrightPathRaw}.cmd`, "test", ...tests]
-    : ["test", ...tests];
+    ? ["/c", `${playwrightPathRaw}.cmd`, "test", ...tests, ...playwrightArgs]
+    : ["test", ...tests, ...playwrightArgs];
   return new Promise((resolve, reject) => {
     const runner = spawn(runnerCmd, runnerArgs, {
       cwd: appDir,
@@ -161,7 +163,7 @@ async function runPlaywright(appDir, tests) {
 }
 
 async function main() {
-  const { app, tests } = parseArgs();
+  const { app, tests, playwrightArgs } = parseArgs();
   const appDir = path.resolve(ROOT, app);
   if (!fs.existsSync(appDir)) {
     throw new Error(`Application folder not found: ${appDir}`);
@@ -184,7 +186,7 @@ async function main() {
 
   try {
     await waitForHealthy("http://127.0.0.1:8000/health", 30000);
-    await runPlaywright(appDir, tests);
+    await runPlaywright(appDir, tests, playwrightArgs);
   } finally {
     await exitHandler();
   }

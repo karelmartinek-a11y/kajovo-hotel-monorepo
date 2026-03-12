@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 
-const keyRoutes = ['/', '/snidane', '/ztraty-a-nalezy', '/intro', '/offline', '/maintenance', '/404', '/login'];
+const adminPath = (path: string): string => {
+  if (path.startsWith('/admin')) {
+    return path;
+  }
+  return path === '/' ? '/admin/' : `/admin${path}`;
+};
+
+const keyRoutes = ['/', '/snidane', '/ztraty-a-nalezy', '/intro', '/offline', '/maintenance', '/404', '/login'].map(adminPath);
 const runtimeServiceDate = new Intl.DateTimeFormat('en-CA', {
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   year: 'numeric',
@@ -9,11 +16,36 @@ const runtimeServiceDate = new Intl.DateTimeFormat('en-CA', {
 }).format(new Date());
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/me', async (route) =>
+    route.fulfill({
+      json: {
+        email: 'admin@example.com',
+        role: 'admin',
+        permissions: [
+          'dashboard:read',
+          'breakfast:read',
+          'lost_found:read',
+          'issues:read',
+          'inventory:read',
+          'reports:read',
+          'users:read',
+          'settings:read',
+        ],
+        actor_type: 'admin',
+      },
+    })
+  );
   await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: [] }));
   await page.route('**/api/v1/breakfast/daily-summary?*', async (route) =>
     route.fulfill({ json: { service_date: runtimeServiceDate, total_orders: 0, total_guests: 0, status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 } } })
   );
   await page.route('**/api/v1/lost-found?*', async (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/admin/profile', async (route) =>
+    route.fulfill({ json: { email: 'admin@example.com', display_name: 'Admin', password_changed_at: null, updated_at: null } })
+  );
+  await page.route('**/api/v1/admin/settings/smtp', async (route) =>
+    route.fulfill({ json: { host: 'smtp.example.com', port: 587, username: 'mailer', use_tls: true, use_ssl: false, password_masked: '••••••••' } })
+  );
 });
 
 test('signace is present on key routes', async ({ page }) => {

@@ -1,4 +1,4 @@
-﻿import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 
 const adminPath = (path: string): string => {
   if (path.startsWith('/admin')) {
@@ -30,7 +30,7 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
   });
 }
 
-async function openAdminNavItem(page: Page, label: string): Promise<void> {
+async function openAdminNavItem(page: Page, label: RegExp): Promise<void> {
   const desktopNav = page.getByTestId('module-navigation-desktop');
   const directLink = desktopNav.getByRole('link', { name: label });
   if (await directLink.count()) {
@@ -38,7 +38,7 @@ async function openAdminNavItem(page: Page, label: string): Promise<void> {
     return;
   }
 
-  const moreButton = desktopNav.getByRole('button', { name: 'Další' });
+  const moreButton = desktopNav.getByRole('button', { name: /Dal/i });
   await expect(moreButton).toBeVisible();
   await moreButton.click();
   await desktopNav.getByRole('menuitem', { name: label }).click();
@@ -63,11 +63,11 @@ test('desktop keeps overflow accessible with +3 injected items', async ({ page }
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
 
-  const moreButton = nav.getByRole('button', { name: 'Další' });
+  const moreButton = nav.getByRole('button', { name: /Dal/i });
   await expect(moreButton).toBeVisible();
   await moreButton.click();
 
-  await expect(nav.getByRole('menu', { name: 'Další' })).toBeVisible();
+  await expect(nav.getByRole('menu', { name: /Dal/i })).toBeVisible();
   await expect(nav.getByRole('menuitem', { name: 'Recepce+' })).toBeVisible();
   await expect(nav.getByRole('menuitem', { name: 'Spa+' })).toBeVisible();
   await expect(nav.getByRole('menuitem', { name: 'Transfer+' })).toBeVisible();
@@ -80,14 +80,15 @@ test('tablet collapses earlier and keeps overflow available', async ({ page }) =
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
 
+  const inventoryPattern = /Skladov/i;
   const width = await page.evaluate(() => window.innerWidth);
   if (width <= 1024) {
-    await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).not.toBeVisible();
-    const moreButton = nav.getByRole('button', { name: 'Další' });
+    await expect(nav.getByRole('link', { name: inventoryPattern })).not.toBeVisible();
+    const moreButton = nav.getByRole('button', { name: /Dal/i });
     await moreButton.click();
-    await expect(nav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+    await expect(nav.getByRole('menuitem', { name: inventoryPattern })).toBeVisible();
   } else {
-    await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
+    await expect(nav.getByRole('link', { name: inventoryPattern })).toBeVisible();
   }
 });
 
@@ -104,7 +105,7 @@ test('phone uses drawer navigation with search', async ({ page }) => {
 
   await search.fill('spa');
   await expect(phoneNav.getByRole('menuitem', { name: 'Spa+' })).toBeVisible();
-  await expect(phoneNav.getByRole('menuitem', { name: 'Snídaně' })).not.toBeVisible();
+  await expect(phoneNav.getByRole('menuitem', { name: /Sn.dan/i })).not.toBeVisible();
 });
 
 test('page has no horizontal overflow outside table containers', async ({ page }) => {
@@ -150,20 +151,39 @@ test('admin menu links open concrete admin routes instead of internal 404', asyn
 
   await page.goto(adminPath('/'));
 
-  await expect(page.getByTestId('module-navigation-desktop')).toBeVisible();
-
-  await openAdminNavItem(page, 'Uživatelé');
+  const isPhone = (page.viewportSize()?.width ?? 0) <= 767;
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await expect(phoneNav).toBeVisible();
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await phoneNav.getByRole('menuitem', { name: /U.*ivatel/i }).click();
+  } else {
+    await expect(page.getByTestId('module-navigation-desktop')).toBeVisible();
+    await openAdminNavItem(page, /U.*ivatel/i);
+  }
   await expect(page).toHaveURL(/\/admin\/uzivatele$/);
   await expect(page.getByTestId('users-admin-page')).toBeVisible();
-  await expect(page.getByText('Stránka nebyla nalezena.')).toHaveCount(0);
+  await expect(page.getByText(/Str.nka nebyla nalezena\./i)).toHaveCount(0);
 
-  await openAdminNavItem(page, 'Nastavení');
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await phoneNav.getByRole('menuitem', { name: /Nastaven/i }).click();
+  } else {
+    await openAdminNavItem(page, /Nastaven/i);
+  }
   await expect(page).toHaveURL(/\/admin\/nastaveni$/);
   await expect(page.getByTestId('settings-admin-page')).toBeVisible();
-  await expect(page.getByText('Stránka nebyla nalezena.')).toHaveCount(0);
+  await expect(page.getByText(/Str.nka nebyla nalezena\./i)).toHaveCount(0);
 
-  await openAdminNavItem(page, 'Profil');
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await phoneNav.getByRole('button', { name: 'Menu' }).click();
+    await phoneNav.getByRole('menuitem', { name: 'Profil' }).click();
+  } else {
+    await openAdminNavItem(page, /Profil/i);
+  }
   await expect(page).toHaveURL(/\/admin\/profil$/);
   await expect(page.getByTestId('admin-profile-page')).toBeVisible();
-  await expect(page.getByText('Stránka nebyla nalezena.')).toHaveCount(0);
+  await expect(page.getByText(/Str.nka nebyla nalezena\./i)).toHaveCount(0);
 });

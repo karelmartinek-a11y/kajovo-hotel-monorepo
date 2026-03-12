@@ -1,19 +1,35 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { StateView } from '@kajovo/ui';
+import { KajovoFullLockup, StateView } from '@kajovo/ui';
 
 function UtilityLayout({ children }: { children: React.ReactNode }): JSX.Element {
-  return <main className="k-page">{children}</main>;
+  return (
+    <main className="k-page k-utility-page">
+      <div className="k-utility-stack">{children}</div>
+    </main>
+  );
 }
 
 export function IntroRoute(): JSX.Element {
   return (
     <UtilityLayout>
-      <StateView
-        title="Intro"
-        description="Úvodní obrazovka aplikace."
-        action={<Link className="k-button" to="/">Pokračovat na dashboard</Link>}
-      />
+      <KajovoFullLockup title="KájovoHotel" subtitle="Provozní portál" href="/" />
+      <section className="k-utility-meta" aria-labelledby="portal-intro-title">
+        <p className="k-utility-eyebrow">Připraveno pro telefon, tablet i desktop</p>
+        <h1 id="portal-intro-title">Provoz hotelu bez zbytečných přepínačů</h1>
+        <p className="k-utility-copy">
+          Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a
+          bezpečný přístup k tomu, co právě potřebují.
+        </p>
+        <div className="k-state-view-action">
+          <Link className="k-button" to="/">
+            Vstoupit do portálu
+          </Link>
+          <Link className="k-button secondary" to="/snidane">
+            Otevřít dnešní provoz
+          </Link>
+        </div>
+      </section>
     </UtilityLayout>
   );
 }
@@ -22,8 +38,8 @@ export function OfflineRoute(): JSX.Element {
   return (
     <UtilityLayout>
       <StateView
-        title="Offline"
-        description="Aplikace je bez připojení. Zkontrolujte síť a zkuste synchronizaci znovu."
+        title="Jste offline"
+        description="Portál ztratil připojení. Zkontrolujte síť, případně pokračujte v úkolech, které nevyžadují online synchronizaci."
         stateKey="offline"
         action={
           <>
@@ -44,13 +60,13 @@ export function MaintenanceRoute(): JSX.Element {
   return (
     <UtilityLayout>
       <StateView
-        title="Maintenance"
-        description="Probíhá údržba systému. Sledujte status a zkuste to za chvíli znovu."
+        title="Probíhá údržba"
+        description="Portál právě dokončuje servisní zásah. Sledujte provozní diagnostiku a po obnovení navazujte tam, kde jste skončili."
         stateKey="maintenance"
         action={
           <>
             <Link className="k-button secondary" to="/">
-              Zpět na dashboard
+              Zpět na přehled
             </Link>
             <Link className="k-nav-link" to="/offline">
               Diagnostika provozu
@@ -67,9 +83,9 @@ export function NotFoundRoute(): JSX.Element {
     <UtilityLayout>
       <StateView
         title="404"
-        description="Stránka nebyla nalezena."
+        description="Tuhle stránku jsme v portálu nenašli. Vraťte se na přehled nebo pokračujte do provozních modulů."
         stateKey="404"
-        action={<Link className="k-button" to="/">Zpět na hlavní stránku</Link>}
+        action={<Link className="k-button" to="/">Zpět na přehled</Link>}
       />
     </UtilityLayout>
   );

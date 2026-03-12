@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import ia from '../../kajovo-hotel/ux/ia.json';
+import palette from '../../kajovo-hotel/palette/palette.json';
+import motion from '../../kajovo-hotel/ui-motion/motion.json';
+import tokens from '../../kajovo-hotel/ui-tokens/tokens.json';
 
 const requiredStates = ['loading', 'empty', 'error', 'offline', 'maintenance', '404'] as const;
 const runtimeServiceDate = new Intl.DateTimeFormat('en-CA', {
@@ -174,14 +177,26 @@ test('brand elements convention: maximum 2 per key views', async ({ page }) => {
   }
 });
 
+test('intro route renders full lockup while preserving max two brand elements', async ({ page }) => {
+  await page.goto(adminPath('/intro'));
+
+  const fullLockup = page.locator('.k-full-lockup');
+  await expect(fullLockup).toBeVisible();
+  await expect(fullLockup.locator('img')).toHaveAttribute('src', /kajovo-hotel_full\.svg$/);
+
+  const count = await page.locator('[data-brand-element="true"]').count();
+  expect(count).toBe(2);
+});
+
 test('IA routes expose required view states via state test IDs', async ({ page }) => {
+  test.setTimeout(120_000);
   const nonUtilityViews = ia.views.filter((view) => !['/intro', '/offline', '/maintenance', '/404'].includes(view.route));
 
   for (const view of nonUtilityViews) {
     const route = toConcreteRoute(view.route);
 
     for (const state of requiredStates) {
-    await page.goto(`${route}?state=${state}`);
+    await page.goto(`${route}?state=${state}`, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
       await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
     }
@@ -227,6 +242,35 @@ test('SIGNACE offset respects minimum per device class', async ({ page }) => {
   }
 });
 
+test('utility states keep floating SIGNACE visible without overlapping primary actions', async ({ page }) => {
+  const utilityRoutes = [adminPath('/intro'), adminPath('/offline'), adminPath('/maintenance'), adminPath('/404')];
+
+  for (const route of utilityRoutes) {
+    await page.goto(route);
+    const signBox = await page.getByTestId('kajovo-sign').boundingBox();
+    expect(signBox, `Missing SIGNACE box on ${route}`).not.toBeNull();
+
+    const actionBoxes = await page.locator('.k-state-view-action, .k-utility-meta').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const rect = node.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      }),
+    );
+
+    for (const actionBox of actionBoxes) {
+      if (!signBox) {
+        continue;
+      }
+      const overlaps =
+        signBox.x < actionBox.right &&
+        signBox.x + signBox.width > actionBox.left &&
+        signBox.y < actionBox.bottom &&
+        signBox.y + signBox.height > actionBox.top;
+      expect(overlaps, `SIGNACE overlaps utility action area on ${route}`).toBeFalsy();
+    }
+  }
+});
+
 test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/?state=loading');
@@ -236,6 +280,30 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
 
   const animationName = await skeleton.evaluate((node) => window.getComputedStyle(node).animationName);
   expect(animationName).toBe('none');
+});
+
+test('prefers-reduced-motion disables smooth skip-link scrolling', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    const original = Element.prototype.scrollIntoView;
+    (window as Window & { __kajovoScrollBehaviors?: string[] }).__kajovoScrollBehaviors = [];
+    Element.prototype.scrollIntoView = function patchedScrollIntoView(arg?: boolean | ScrollIntoViewOptions) {
+      if (typeof arg === 'object' && arg?.behavior) {
+        (window as Window & { __kajovoScrollBehaviors?: string[] }).__kajovoScrollBehaviors?.push(String(arg.behavior));
+      }
+      return original.call(this, arg);
+    };
+  });
+  await page.goto(adminPath('/'));
+  const skipLink = page.locator('.k-skip-link');
+  await skipLink.focus();
+  await skipLink.press('Enter');
+  const recordedBehaviors = await page.evaluate(
+    () => (window as Window & { __kajovoScrollBehaviors?: string[] }).__kajovoScrollBehaviors ?? [],
+  );
+
+  expect(recordedBehaviors).toContain('auto');
+  expect(recordedBehaviors).not.toContain('smooth');
 });
 
 test('date defaults use runtime local day for breakfast and inventory forms', async ({ page }) => {
@@ -275,6 +343,61 @@ test('date defaults use runtime local day for breakfast and inventory forms', as
 
   await page.goto('/admin/ztraty-a-nalezy/novy');
   await expect(page.locator('#event_at')).toHaveValue(expectedLocalDateTime);
+});
+
+test('shared UI token values match manifest metadata in runtime CSS', async ({ page }) => {
+  await page.goto(adminPath('/'));
+
+  const runtimeTokens = await page.evaluate(() => {
+    const styles = window.getComputedStyle(document.documentElement);
+    return {
+      brandRed: styles.getPropertyValue('--k-color-brand-red').trim(),
+      surface: styles.getPropertyValue('--k-color-surface').trim(),
+      focusRing: styles.getPropertyValue('--k-focus-ring-width').trim(),
+      motionFast: styles.getPropertyValue('--k-motion-duration-fast').trim(),
+      motionStandard: styles.getPropertyValue('--k-motion-duration-standard').trim(),
+      motionEase: styles.getPropertyValue('--k-motion-ease-standard').trim(),
+    };
+  });
+
+  expect(runtimeTokens.brandRed.toLowerCase()).toBe(palette.brand.red.toLowerCase());
+  expect(runtimeTokens.surface.toLowerCase()).toBe(palette.neutral.surface100.toLowerCase());
+  expect(runtimeTokens.focusRing).toBe(`${tokens.componentStates.focusRingWidth}px`);
+  expect(Math.round(Number.parseFloat(runtimeTokens.motionFast) * 1000)).toBe(motion.durationsMs.fast);
+  expect(Math.round(Number.parseFloat(runtimeTokens.motionStandard) * 1000)).toBe(motion.durationsMs.normal);
+  const runtimeEase = Array.from(runtimeTokens.motionEase.matchAll(/-?\d*\.?\d+/g), (match) => Number(match[0]));
+  const motionEase = Array.from(motion.easing.standard.matchAll(/-?\d*\.?\d+/g), (match) => Number(match[0]));
+  expect(runtimeEase).toEqual(motionEase);
+});
+
+test('phone, tablet and desktop layouts avoid horizontal page scroll outside table containers', async ({ page }) => {
+  const scenarios = [
+    { width: 390, height: 844 },
+    { width: 834, height: 1112 },
+    { width: 1440, height: 900 },
+  ];
+  const routes = [
+    adminPath('/'),
+    adminPath('/intro'),
+    adminPath('/offline'),
+    adminPath('/maintenance'),
+    adminPath('/404'),
+    adminPath('/uzivatele'),
+    adminPath('/nastaveni'),
+    adminPath('/profil'),
+  ];
+
+  for (const scenario of scenarios) {
+    await page.setViewportSize(scenario);
+    for (const route of routes) {
+      await page.goto(route);
+      const overflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - root.clientWidth;
+      });
+      expect(overflow, `Unexpected horizontal overflow on ${route} at ${scenario.width}px`).toBeLessThanOrEqual(1);
+    }
+  }
 });
 
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {

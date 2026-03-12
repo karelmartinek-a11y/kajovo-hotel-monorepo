@@ -145,7 +145,6 @@ export function PortalRoutes({
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('portal', lang);
   }, []);
-  const allowFigure = (ia.brandPolicy?.maxBrandElementsPerView ?? 3) > 2;
   React.useEffect(() => {
     if (typeof document === 'undefined') {
       return;
@@ -265,7 +264,6 @@ export function PortalRoutes({
       navigationRules={navigationRules}
       navigationSections={navigationSections}
       currentPath={currentPath}
-      showFigure={allowFigure}
     >
       <Routes>
         <Route

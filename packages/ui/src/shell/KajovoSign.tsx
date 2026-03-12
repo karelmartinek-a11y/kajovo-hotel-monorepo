@@ -1,7 +1,11 @@
 import React from 'react';
 import '../tokens.css';
 
-export function KajovoSign(): JSX.Element {
+type KajovoSignProps = {
+  href?: string;
+};
+
+export function KajovoSign({ href = '/' }: KajovoSignProps): JSX.Element {
   const labelText = 'KÁJOVO';
 
   return (
@@ -9,7 +13,7 @@ export function KajovoSign(): JSX.Element {
       className="kajovo-sign"
       data-testid="kajovo-sign"
       data-brand-element="true"
-      href="/"
+      href={href}
       aria-label={labelText}
       title={labelText}
     >

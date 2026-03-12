@@ -24,7 +24,6 @@ export function AdminRoutes({ currentPath }: { currentPath: string }): JSX.Eleme
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('admin', lang);
   }, []);
-  const allowFigure = (ia.brandPolicy?.maxBrandElementsPerView ?? 3) > 2;
   React.useEffect(() => {
     if (typeof document === 'undefined') {
       return;
@@ -92,7 +91,6 @@ export function AdminRoutes({ currentPath }: { currentPath: string }): JSX.Eleme
             navigationRules={localizedNavigationRules}
             navigationSections={localizedSections}
             currentPath={currentPath}
-            showFigure={allowFigure}
           >
             <Routes>
               <Route path="" element={<AdminHomePage />} />

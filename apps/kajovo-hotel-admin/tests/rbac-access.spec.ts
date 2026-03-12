@@ -138,8 +138,13 @@ test('admin module switcher filtruje navigaci podle role', async ({ page }) => {
 
   if (isPhone) {
     const phoneNav = page.getByTestId('module-navigation-phone');
-    await phoneNav.getByRole('button', { name: 'Menu' }).click();
-    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+    const menuButton = phoneNav.getByRole('button', { name: 'Menu' });
+    await menuButton.click();
+    const inventoryMenuItem = phoneNav.getByRole('menuitem', { name: /Skladov/i });
+    if ((await inventoryMenuItem.count()) === 0) {
+      await menuButton.click();
+    }
+    await expect(inventoryMenuItem).toBeVisible();
   } else {
     const desktopNav = page.getByTestId('module-navigation-desktop');
     const directLink = desktopNav.getByRole('link', { name: 'Skladové hospodářství' });
@@ -153,4 +158,25 @@ test('admin module switcher filtruje navigaci podle role', async ({ page }) => {
       }
     }
   }
+});
+
+test('sklad view nemá přístup do uživatelů, nastavení ani profilu ani přes deep link', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('kajovo_admin_role_view', 'sklad');
+  });
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['dashboard:read', 'inventory:read', 'inventory:write'],
+    actor_type: 'admin',
+  });
+
+  await page.goto(adminPath('/uzivatele'));
+  await expect(page.getByTestId('access-denied-page')).toBeVisible();
+
+  await page.goto(adminPath('/nastaveni'));
+  await expect(page.getByTestId('access-denied-page')).toBeVisible();
+
+  await page.goto(adminPath('/profil'));
+  await expect(page.getByTestId('admin-profile-page')).toBeVisible();
 });
