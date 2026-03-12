@@ -2,6 +2,8 @@ import sqlite3
 from collections.abc import Callable
 from pathlib import Path
 
+from tests.test_support import admin_email
+
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
 
@@ -44,4 +46,4 @@ def test_write_requests_are_audited(
     finally:
         conn.close()
 
-    assert row == ("admin@kajovohotel.local", "reports", "POST", "/api/v1/reports", 201)
+    assert row == (admin_email(), "reports", "POST", "/api/v1/reports", 201)

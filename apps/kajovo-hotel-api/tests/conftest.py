@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy import create_engine
 
 from app.db.models import Base
+from tests.test_support import admin_email, admin_login_payload, admin_password
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 ResponseData = dict[str, object] | list[dict[str, object]] | None
@@ -76,8 +77,8 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
             (
                 "Admin",
                 "User",
-                "admin@kajovohotel.local",
-                _scrypt_hash("admin123", b"admin-salt"),
+                admin_email(),
+                _scrypt_hash(admin_password(), b"admin-salt"),
             ),
         )
         connection.execute(
@@ -85,7 +86,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
             INSERT INTO portal_user_roles (user_id, role)
             VALUES ((SELECT id FROM portal_users WHERE email = ?), ?)
             """,
-            ("admin@kajovohotel.local", "admin"),
+            (admin_email(), "admin"),
         )
 
         # Portal users for other flows.
@@ -123,8 +124,8 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
 
     env = os.environ.copy()
     env["KAJOVO_API_DATABASE_URL"] = database_url
-    env["KAJOVO_API_ADMIN_EMAIL"] = "admin@kajovohotel.local"
-    env["KAJOVO_API_ADMIN_PASSWORD"] = "admin123"
+    env["KAJOVO_API_ADMIN_EMAIL"] = admin_email()
+    env["KAJOVO_API_ADMIN_PASSWORD"] = admin_password()
     media_root = api_db_path.parent / "media"
     media_root.mkdir(parents=True, exist_ok=True)
     env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)
@@ -177,9 +178,7 @@ def api_request(api_base_url: str) -> ApiRequest:
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
 
-    login_payload = json.dumps({"email": "admin@kajovohotel.local", "password": "admin123"}).encode(
-        "utf-8"
-    )
+    login_payload = json.dumps(admin_login_payload()).encode("utf-8")
     login_request = urllib.request.Request(
         url=f"{api_base_url}/api/auth/admin/login",
         data=login_payload,

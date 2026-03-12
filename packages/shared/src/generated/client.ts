@@ -5,6 +5,19 @@ export type AdminLoginRequest = {
   "email": string;
   "password": string;
 };
+export type AdminPasswordChangeRequest = {
+  "new_password": string;
+  "old_password": string;
+};
+export type AdminProfileRead = {
+  "display_name": string;
+  "email": string;
+  "password_changed_at": string | null;
+  "updated_at": string | null;
+};
+export type AdminProfileUpdate = {
+  "display_name": string;
+};
 export type AuthIdentityResponse = {
   "active_role"?: string | null;
   "actor_type": string;
@@ -25,6 +38,9 @@ export type Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post
   "file": string;
 };
 export type Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post = {
+  "photos": Array<string>;
+};
+export type Body_upload_report_photos_api_v1_reports__report_id__photos_post = {
   "photos": Array<string>;
 };
 export type BreakfastDailySummary = {
@@ -85,6 +101,46 @@ export type BreakfastOrderUpdate = {
   "status"?: BreakfastStatus | null;
 };
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
+export type DeviceChallengeRequest = {
+  "device_id": string;
+  "device_secret": string;
+};
+export type DeviceChallengeResponse = {
+  "challenge": string;
+  "challenge_id": string;
+  "expires_at": string;
+};
+export type DeviceRegisterRequest = {
+  "bootstrap_key": string;
+  "device_id": string;
+  "display_name"?: string | null;
+};
+export type DeviceRegisterResponse = {
+  "device_id": string;
+  "device_secret": string;
+  "display_name": string;
+  "registered_at": string;
+  "status": string;
+};
+export type DeviceStatusResponse = {
+  "device_id": string;
+  "display_name": string;
+  "last_seen_at": string | null;
+  "registered_at": string;
+  "status": string;
+  "token_expires_at"?: string | null;
+};
+export type DeviceVerifyRequest = {
+  "challenge_id": string;
+  "device_id": string;
+  "device_secret": string;
+  "signature": string;
+};
+export type DeviceVerifyResponse = {
+  "expires_at": string;
+  "token": string;
+  "token_type"?: string;
+};
 export type ForgotPasswordRequest = {
   "email": string;
 };
@@ -332,6 +388,7 @@ export type ReportRead = {
   "created_at": string | null;
   "description": string | null;
   "id": number;
+  "photos"?: Array<MediaPhotoRead>;
   "status": string;
   "title": string;
   "updated_at": string | null;
@@ -442,6 +499,15 @@ export const apiClient = {
   async unlockAccountApiAuthUnlockGet(query: { "token": string; "actor_type"?: string | null; }): Promise<LogoutResponse> {
     return request<LogoutResponse>('GET', `/api/auth/unlock`, query, undefined);
   },
+  async getAdminProfileApiV1AdminProfileGet(): Promise<AdminProfileRead> {
+    return request<AdminProfileRead>('GET', `/api/v1/admin/profile`, undefined, undefined);
+  },
+  async updateAdminProfileApiV1AdminProfilePut(body: AdminProfileUpdate): Promise<AdminProfileRead> {
+    return request<AdminProfileRead>('PUT', `/api/v1/admin/profile`, undefined, body);
+  },
+  async changeAdminPasswordApiV1AdminProfilePasswordPost(body: AdminPasswordChangeRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/v1/admin/profile/password`, undefined, body);
+  },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);
   },
@@ -477,6 +543,18 @@ export const apiClient = {
   },
   async updateBreakfastOrderApiV1BreakfastOrderIdPut(order_id: number, body: BreakfastOrderUpdate): Promise<BreakfastOrderRead> {
     return request<BreakfastOrderRead>('PUT', `/api/v1/breakfast/${order_id}`, undefined, body);
+  },
+  async issueChallengeApiV1DeviceChallengePost(body: DeviceChallengeRequest): Promise<DeviceChallengeResponse> {
+    return request<DeviceChallengeResponse>('POST', `/api/v1/device/challenge`, undefined, body);
+  },
+  async registerDeviceApiV1DeviceRegisterPost(body: DeviceRegisterRequest): Promise<DeviceRegisterResponse> {
+    return request<DeviceRegisterResponse>('POST', `/api/v1/device/register`, undefined, body);
+  },
+  async deviceStatusApiV1DeviceStatusGet(query: { "device_id"?: string | null; }): Promise<DeviceStatusResponse> {
+    return request<DeviceStatusResponse>('GET', `/api/v1/device/status`, query, undefined);
+  },
+  async verifyChallengeApiV1DeviceVerifyPost(body: DeviceVerifyRequest): Promise<DeviceVerifyResponse> {
+    return request<DeviceVerifyResponse>('POST', `/api/v1/device/verify`, undefined, body);
   },
   async listItemsApiV1InventoryGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('GET', `/api/v1/inventory`, query, undefined);
@@ -573,6 +651,15 @@ export const apiClient = {
   },
   async updateReportApiV1ReportsReportIdPut(report_id: number, body: ReportUpdate): Promise<ReportRead> {
     return request<ReportRead>('PUT', `/api/v1/reports/${report_id}`, undefined, body);
+  },
+  async listReportPhotosApiV1ReportsReportIdPhotosGet(report_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('GET', `/api/v1/reports/${report_id}/photos`, undefined, undefined);
+  },
+  async uploadReportPhotosApiV1ReportsReportIdPhotosPost(report_id: number): Promise<Array<MediaPhotoRead>> {
+    return request<Array<MediaPhotoRead>>('POST', `/api/v1/reports/${report_id}/photos`, undefined, undefined);
+  },
+  async getReportPhotoApiV1ReportsReportIdPhotosPhotoIdKindGet(report_id: number, photo_id: number, kind: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/reports/${report_id}/photos/${photo_id}/${kind}`, undefined, undefined);
   },
   async listUsersApiV1UsersGet(): Promise<Array<PortalUserRead>> {
     return request<Array<PortalUserRead>>('GET', `/api/v1/users`, undefined, undefined);

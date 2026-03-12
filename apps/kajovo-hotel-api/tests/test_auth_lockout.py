@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from http.cookiejar import CookieJar
 from pathlib import Path
 
+from tests.test_support import admin_email, admin_login_payload, admin_password
+
+ADMIN_EMAIL = admin_email()
+
 
 def api_request(
     opener: urllib.request.OpenerDirector,
@@ -64,8 +68,8 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
             )
             """,
             (
-                "admin@kajovohotel.local",
-                "admin@kajovohotel.local",
+                ADMIN_EMAIL,
+                ADMIN_EMAIL,
                 datetime.utcnow().isoformat(),
                 datetime.utcnow().isoformat(),
                 (datetime.utcnow() + timedelta(minutes=30)).isoformat(),
@@ -78,7 +82,7 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "wrong-pass"},
+        payload={"email": ADMIN_EMAIL, "password": "wrong-pass"},
     )
     assert status_locked == 423
     assert isinstance(body_locked, dict)
@@ -89,7 +93,7 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "another-wrong-pass"},
+        payload={"email": ADMIN_EMAIL, "password": "another-wrong-pass"},
     )
     assert status_wrong == 423
     assert isinstance(body_wrong, dict)
@@ -105,7 +109,7 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status_ok == 200
 
@@ -119,7 +123,7 @@ def test_admin_hint_rate_limited_to_once_per_hour(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -131,7 +135,7 @@ def test_admin_hint_rate_limited_to_once_per_hour(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/hint",
         method="POST",
-        payload={"email": "admin@kajovohotel.local"},
+        payload={"email": ADMIN_EMAIL},
         headers=headers,
     )
     assert status == 200
@@ -147,7 +151,7 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -158,7 +162,7 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
         api_base_url,
         "/api/auth/admin/hint",
         method="POST",
-        payload={"email": "admin@kajovohotel.local"},
+        payload={"email": ADMIN_EMAIL},
         headers=headers,
     )
     assert status == 200
@@ -178,7 +182,7 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
         api_base_url,
         "/api/auth/admin/hint",
         method="POST",
-        payload={"email": "admin@kajovohotel.local"},
+        payload={"email": ADMIN_EMAIL},
         headers=headers,
     )
     assert status == 200
@@ -199,7 +203,7 @@ def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url:
             """,
             (
                 "admin",
-                "admin@kajovohotel.local",
+                ADMIN_EMAIL,
                 3,
                 datetime.utcnow().isoformat(),
                 datetime.utcnow().isoformat(),
@@ -213,7 +217,7 @@ def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": ADMIN_EMAIL, "password": admin_password()},
     )
     assert status_ok == 200
 
@@ -224,7 +228,7 @@ def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url:
             FROM auth_lockout_states
             WHERE actor_type = 'admin' AND principal = ?
             """,
-            ("admin@kajovohotel.local",),
+            (ADMIN_EMAIL,),
         ).fetchone()
     assert row is not None
     assert int(row[0]) == 0

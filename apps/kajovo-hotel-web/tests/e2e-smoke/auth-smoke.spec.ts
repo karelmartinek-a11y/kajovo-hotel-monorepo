@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+type EnvMap = Record<string, string | undefined>;
+
+const readEnv = (key: string): string | undefined =>
+  (globalThis as { process?: { env?: EnvMap } }).process?.env?.[key];
+
+const ADMIN_EMAIL = readEnv('KAJOVO_API_ADMIN_EMAIL') ?? readEnv('HOTEL_ADMIN_EMAIL') ?? 'admin@kajovohotel.local';
+const ADMIN_PASSWORD = readEnv('KAJOVO_API_ADMIN_PASSWORD') ?? readEnv('HOTEL_ADMIN_PASSWORD') ?? 'admin123';
+
 test('admin login, hint flow, and user bootstrap to portal login are deterministic', async ({ browser }) => {
   test.setTimeout(150_000);
   const unique = Date.now();
@@ -19,13 +27,13 @@ test('admin login, hint flow, and user bootstrap to portal login are determinist
   });
 
   await adminPage.goto('/login');
-  await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
-  await adminPage.locator('#admin_login_password').fill('admin123');
+  await adminPage.locator('#admin_login_email').fill(ADMIN_EMAIL);
+  await adminPage.locator('#admin_login_password').fill(ADMIN_PASSWORD);
   await adminPage.getByRole('button', { name: 'Přihlásit' }).click();
   await expect(adminPage.getByTestId('dashboard-page')).toBeVisible();
 
   await adminPage.goto('/login');
-  await adminPage.locator('#admin_login_email').fill('admin@kajovohotel.local');
+  await adminPage.locator('#admin_login_email').fill(ADMIN_EMAIL);
   await adminPage.getByRole('button', { name: 'Poslat hint hesla' }).click();
   await expect(adminPage.getByText('Pokud email odpovídá admin účtu, byl odeslán hint hesla.')).toBeVisible();
 

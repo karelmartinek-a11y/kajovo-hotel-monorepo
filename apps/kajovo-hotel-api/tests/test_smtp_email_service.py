@@ -11,6 +11,7 @@ from app.api.schemas import PortalUserCreate
 from app.config import get_settings
 from app.db.models import Base, PortalSmtpSettings
 from app.services.mail import MockSmtpTransport, SmtpEmailService, StoredSmtpConfig
+from tests.test_support import admin_email
 
 
 def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tmp_path):
@@ -57,8 +58,8 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         monkeypatch.setattr("app.api.routes.users.build_email_service", _service_factory)
         monkeypatch.setattr("app.api.routes.settings.build_email_service", _service_factory)
 
-        admin_hint(HintRequest(email="admin@kajovohotel.local"), request=SimpleNamespace(base_url="https://hotel.test/"), db=db)
-        send_test_email(SmtpTestEmailRequest(recipient="admin@kajovohotel.local"), db=db)
+        admin_hint(HintRequest(email=admin_email()), request=SimpleNamespace(base_url="https://hotel.test/"), db=db)
+        send_test_email(SmtpTestEmailRequest(recipient=admin_email()), db=db)
         create_user(PortalUserCreate(email="new.user@example.com", password="new-user-pass"), db=db)
 
     assert [message.subject for message in transport.sent_messages] == [

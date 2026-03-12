@@ -37,6 +37,12 @@ def _run_check(name: str, command: list[str]) -> CheckResult:
     )
 
 
+def _pnpm_command(*args: str) -> list[str]:
+    if os.name == "nt":
+        return ["cmd", "/c", "pnpm", *args]
+    return ["pnpm", *args]
+
+
 def _git_sha() -> str:
     completed = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -54,15 +60,15 @@ def main() -> int:
     os.chdir(repo_root)
 
     checks: list[tuple[str, list[str], bool]] = [
-        ("typecheck", ["cmd", "/c", "pnpm", "typecheck"], True),
+        ("typecheck", _pnpm_command("typecheck"), True),
         ("api-unit-tests", ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests", "-q"], True),
         (
             "breakfast-imap-smoke",
             ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests/test_breakfast_imap_smoke.py", "-q"],
             True,
         ),
-        ("frontend-ci-gates", ["cmd", "/c", "pnpm", "ci:gates"], os.getenv("RUN_FRONTEND_GATES") == "1"),
-        ("e2e-smoke", ["cmd", "/c", "pnpm", "ci:e2e-smoke"], os.getenv("RUN_E2E_SMOKE") == "1"),
+        ("frontend-ci-gates", _pnpm_command("ci:gates"), os.getenv("RUN_FRONTEND_GATES") == "1"),
+        ("e2e-smoke", _pnpm_command("ci:e2e-smoke"), os.getenv("RUN_E2E_SMOKE") == "1"),
     ]
 
     results: list[CheckResult] = []

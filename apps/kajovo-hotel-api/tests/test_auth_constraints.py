@@ -3,6 +3,10 @@ import urllib.error
 import urllib.request
 from http.cookiejar import CookieJar
 
+from tests.test_support import admin_email, admin_login_payload, admin_password
+
+ADMIN_EMAIL = admin_email()
+
 
 def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
     token = next((cookie.value for cookie in cookie_jar if cookie.name == "kajovo_csrf"), "")
@@ -45,7 +49,7 @@ def test_admin_password_change_endpoint_is_not_available(api_base_url: str) -> N
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -54,7 +58,7 @@ def test_admin_password_change_endpoint_is_not_available(api_base_url: str) -> N
         api_base_url,
         "/api/auth/admin/password",
         method="POST",
-        payload={"old_password": "admin123", "new_password": "new-admin-pass"},
+        payload={"old_password": admin_password(), "new_password": "new-admin-pass"},
         headers=csrf_header(jar),
     )
     assert status == 404
@@ -68,7 +72,7 @@ def test_admin_hint_endpoint_is_stable(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
     status, body = api_request(
@@ -76,7 +80,7 @@ def test_admin_hint_endpoint_is_stable(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/hint",
         method="POST",
-        payload={"email": "admin@kajovohotel.local"},
+        payload={"email": ADMIN_EMAIL},
         headers=csrf_header(jar),
     )
     assert status == 200

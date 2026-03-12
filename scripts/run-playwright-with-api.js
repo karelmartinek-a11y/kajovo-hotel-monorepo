@@ -86,8 +86,8 @@ function startBackend(envOverrides = {}) {
     KAJOVO_API_DATABASE_URL: `sqlite:///${dbPath}`,
     KAJOVO_API_MEDIA_ROOT: mediaRoot,
     KAJOVO_API_SESSION_SECRET: "kajovo-playwright-secret",
-    KAJOVO_API_ADMIN_PASSWORD: "admin123",
-    KAJOVO_API_ADMIN_EMAIL: "admin@kajovohotel.local",
+    KAJOVO_API_ADMIN_PASSWORD: process.env.KAJOVO_API_ADMIN_PASSWORD || process.env.HOTEL_ADMIN_PASSWORD || "admin123",
+    KAJOVO_API_ADMIN_EMAIL: process.env.KAJOVO_API_ADMIN_EMAIL || process.env.HOTEL_ADMIN_EMAIL || "admin@kajovohotel.local",
     KAJOVO_API_ENVIRONMENT: "test",
     ...envOverrides,
   };

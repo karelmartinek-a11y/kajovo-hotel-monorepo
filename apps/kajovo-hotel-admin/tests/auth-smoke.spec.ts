@@ -1,13 +1,17 @@
 import { expect, request, test } from '@playwright/test';
 
+type EnvMap = Record<string, string | undefined>;
 type Cookie = {
   name: string;
   value: string;
 };
 
+const readEnv = (key: string): string | undefined =>
+  (globalThis as { process?: { env?: EnvMap } }).process?.env?.[key];
+
 const fixedAdmin = {
-  email: 'admin@kajovohotel.local',
-  password: 'admin123',
+  email: readEnv('KAJOVO_API_ADMIN_EMAIL') ?? readEnv('HOTEL_ADMIN_EMAIL') ?? 'admin@kajovohotel.local',
+  password: readEnv('KAJOVO_API_ADMIN_PASSWORD') ?? readEnv('HOTEL_ADMIN_PASSWORD') ?? 'admin123',
 };
 
 const getCookie = async (api: Awaited<ReturnType<typeof request.newContext>>, name: string): Promise<Cookie | undefined> => {

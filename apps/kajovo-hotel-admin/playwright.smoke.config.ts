@@ -4,6 +4,11 @@ import path from 'path';
 const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:18000';
 const smokeDbPath = process.env.SMOKE_DB_PATH ?? '/tmp/kajovo-smoke-e2e.db';
 const isWin = process.platform === 'win32';
+const adminEmail = process.env.KAJOVO_API_ADMIN_EMAIL ?? process.env.HOTEL_ADMIN_EMAIL ?? 'admin@kajovohotel.local';
+const adminPassword = process.env.KAJOVO_API_ADMIN_PASSWORD ?? process.env.HOTEL_ADMIN_PASSWORD ?? 'admin123';
+
+const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\"'\"'`)}'`;
+const powerShellQuote = (value: string): string => `'${value.replace(/'/g, "''")}'`;
 
 const dbPathNormalized = isWin ? smokeDbPath.replace(/\\/g, '/') : smokeDbPath;
 const initDbCommand = isWin
@@ -15,8 +20,8 @@ const apiEnv = [
   `KAJOVO_API_DATABASE_URL=sqlite:///${dbPathNormalized}`,
   `KAJOVO_API_SMTP_ENABLED=false`,
   `KAJOVO_API_ENVIRONMENT=test`,
-  `KAJOVO_API_ADMIN_EMAIL=admin@kajovohotel.local`,
-  `KAJOVO_API_ADMIN_PASSWORD=admin123`,
+  `KAJOVO_API_ADMIN_EMAIL=${shellQuote(adminEmail)}`,
+  `KAJOVO_API_ADMIN_PASSWORD=${shellQuote(adminPassword)}`,
 ].join(' ');
 
 const apiEnvWin = [
@@ -24,8 +29,8 @@ const apiEnvWin = [
   `$env:KAJOVO_API_DATABASE_URL='sqlite:///${dbPathNormalized}'`,
   `$env:KAJOVO_API_SMTP_ENABLED='false'`,
   `$env:KAJOVO_API_ENVIRONMENT='test'`,
-  `$env:KAJOVO_API_ADMIN_EMAIL='admin@kajovohotel.local'`,
-  `$env:KAJOVO_API_ADMIN_PASSWORD='admin123'`,
+  `$env:KAJOVO_API_ADMIN_EMAIL=${powerShellQuote(adminEmail)}`,
+  `$env:KAJOVO_API_ADMIN_PASSWORD=${powerShellQuote(adminPassword)}`,
 ].join('; ');
 
 const apiCommand = isWin

@@ -7,6 +7,12 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+  HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+  KAJOVO_API_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL || 'admin@kajovohotel.local' }}
+  KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD || 'admin123' }}
+
 jobs:
   release-gate:
     runs-on: ubuntu-latest

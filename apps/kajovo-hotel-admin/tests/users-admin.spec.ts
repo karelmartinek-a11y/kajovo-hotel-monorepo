@@ -1,5 +1,12 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 
+type EnvMap = Record<string, string | undefined>;
+
+const readEnv = (key: string): string | undefined =>
+  (globalThis as { process?: { env?: EnvMap } }).process?.env?.[key];
+
+const ADMIN_EMAIL = readEnv('KAJOVO_API_ADMIN_EMAIL') ?? readEnv('HOTEL_ADMIN_EMAIL') ?? 'admin@kajovohotel.local';
+
 const adminPath = (path: string): string => {
   if (path.startsWith('/admin')) {
     return path;
@@ -44,7 +51,7 @@ test('admin login shows structured error dialog for invalid and locked credentia
   });
 
   await page.goto(adminPath('/login'));
-  await page.locator('#admin_login_email').fill('admin@kajovohotel.local');
+  await page.locator('#admin_login_email').fill(ADMIN_EMAIL);
   await page.locator('#admin_login_password').fill('wrong-password');
   await page.getByRole('button', { name: 'Přihlásit' }).click();
 

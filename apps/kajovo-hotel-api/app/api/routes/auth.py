@@ -225,8 +225,12 @@ def admin_login(
         else payload.password == settings.admin_password
     )
     valid = provided_email == principal and valid_password
-    if _is_locked(state, now):
-        valid = False
+    if valid:
+        _reset_lock_state(state)
+        db.add(state)
+        db.commit()
+    elif _is_locked(state, now):
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Account locked")
     if not valid:
         became_locked = _record_failed_login(
             state,

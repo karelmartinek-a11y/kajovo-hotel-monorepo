@@ -1,5 +1,13 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 
+type EnvMap = Record<string, string | undefined>;
+
+const readEnv = (key: string): string | undefined =>
+  (globalThis as { process?: { env?: EnvMap } }).process?.env?.[key];
+
+const ADMIN_EMAIL = readEnv('KAJOVO_API_ADMIN_EMAIL') ?? readEnv('HOTEL_ADMIN_EMAIL') ?? 'admin@kajovohotel.local';
+const ADMIN_PASSWORD = readEnv('KAJOVO_API_ADMIN_PASSWORD') ?? readEnv('HOTEL_ADMIN_PASSWORD') ?? 'admin123';
+
 type PortalUser = {
   id: number;
   first_name: string;
@@ -17,7 +25,7 @@ type PortalUser = {
 
 test.describe('admin smoke flows', () => {
   const adminIdentity = {
-    email: 'admin@kajovohotel.local',
+    email: ADMIN_EMAIL,
     role: 'admin',
     permissions: [
       'users:read',
@@ -153,8 +161,8 @@ test.describe('admin smoke flows', () => {
     });
 
     await page.goto('/admin/login');
-    await page.getByLabel(/email/i).fill('admin@kajovohotel.local');
-    await page.getByLabel(/heslo/i).fill('admin123');
+    await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
+    await page.getByLabel(/heslo/i).fill(ADMIN_PASSWORD);
     await page.getByRole('button', { name: /přihlásit/i }).click();
     await page.waitForURL('**/admin/**');
 

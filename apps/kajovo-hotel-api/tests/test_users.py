@@ -6,8 +6,10 @@ from http.cookiejar import CookieJar
 from pathlib import Path
 
 from app.api.routes.auth import hash_password
+from tests.test_support import admin_email, admin_login_payload
 
 REQUEST_TIMEOUT_SECONDS = 30
+ADMIN_EMAIL = admin_email()
 
 
 def api_request(
@@ -51,7 +53,7 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -164,7 +166,7 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -202,7 +204,7 @@ def test_portal_user_cannot_delete_users(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -248,7 +250,7 @@ def test_admin_can_delete_user(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -290,7 +292,7 @@ def test_admin_cannot_delete_primary_admin_account(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
@@ -305,7 +307,7 @@ def test_admin_cannot_delete_primary_admin_account(api_base_url: str) -> None:
         (
             user
             for user in admin_user_detail
-            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
         ),
         None,
     )
@@ -336,7 +338,7 @@ def test_admin_cannot_delete_last_active_admin(
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
     csrf = csrf_header(jar)
@@ -348,7 +350,7 @@ def test_admin_cannot_delete_last_active_admin(
         (
             user
             for user in users
-            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
         ),
         None,
     )
@@ -424,7 +426,7 @@ def test_password_not_logged_in_audit_detail(
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload=admin_login_payload(),
     )
     assert status == 200
 
