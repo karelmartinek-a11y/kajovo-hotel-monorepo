@@ -1,14 +1,9 @@
-from datetime import datetime, timezone
-
 from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.db.models import AdminProfile
 from app.security.passwords import hash_password, verify_password
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+from app.time_utils import utc_now
 
 
 def normalize_admin_email(email: str) -> str:
@@ -38,7 +33,7 @@ def ensure_admin_profile(db: Session, settings: Settings, *, sync_from_env: bool
 
     if sync_from_env and not verify_password(settings.admin_password, profile.password_hash):
         profile.password_hash = hash_password(settings.admin_password)
-        profile.password_changed_at = _utc_now()
+        profile.password_changed_at = utc_now()
         changed = True
 
     if changed:

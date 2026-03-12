@@ -1,7 +1,7 @@
 import hashlib
 import json
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -32,6 +32,7 @@ from app.services.mail import (
     send_portal_onboarding,
     send_user_password_reset_link,
 )
+from app.time_utils import utc_now
 
 router = APIRouter(
     prefix="/api/v1/users",
@@ -83,7 +84,7 @@ def _is_admin_user(user: PortalUser) -> bool:
 def _issue_portal_reset_token(db: Session, principal: str) -> str:
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     db.add(
         AuthUnlockToken(
             actor_type="portal",
@@ -159,7 +160,7 @@ def update_user(
     user.phone = payload.phone
     user.note = payload.note
     user.roles = [PortalUserRole(role=role) for role in payload.roles]
-    user.updated_at = datetime.now()
+    user.updated_at = utc_now()
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -176,7 +177,7 @@ def set_user_active(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.is_active = payload.is_active
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utc_now()
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -194,7 +195,7 @@ def set_user_password(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.password_hash = hash_password(payload.password)
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utc_now()
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -215,7 +216,7 @@ def reset_user_password(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user.password_hash = hash_password(payload.password)
-    user.updated_at = datetime.utcnow()
+    user.updated_at = utc_now()
     db.add(user)
     db.commit()
     db.refresh(user)

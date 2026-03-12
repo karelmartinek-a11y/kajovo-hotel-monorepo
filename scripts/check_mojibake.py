@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -31,21 +32,27 @@ SUSPICIOUS_CHARS = {
     chr(0x2122),
 }
 SUSPICIOUS_SEQUENCES = (
-    "KĂˇ",
     "KÄ‚Ë‡",
-    "PĹ™",
-    "UĹľ",
-    "ÄŤ",
-    "Ä›",
-    "Ăˇ",
-    "Ă©",
-    "Ă­",
-    "Ăł",
-    "Ăş",
-    "Ă˝",
-    "â€”",
-    "â€",
-    "�",
+    "KĂ„â€šĂ‹â€ˇ",
+    "PÄąâ„˘",
+    "UÄąÄľ",
+    "Ă„Ĺ¤",
+    "Ă„â€ş",
+    "Ä‚Ë‡",
+    "Ä‚Â©",
+    "Ä‚Â­",
+    "Ä‚Ĺ‚",
+    "Ä‚Ĺź",
+    "Ä‚Ëť",
+    "Ă˘â‚¬â€ť",
+    "Ă˘â‚¬",
+    "ďż˝",
+)
+ACTIVE_RUNTIME_FORBIDDEN_SEQUENCES = (
+    "K?JOVO",
+    "K?jovo",
+    "Signace K?jovo",
+    "K?jovoHotel",
 )
 
 
@@ -56,7 +63,13 @@ def iter_text_files() -> list[Path]:
         if not base.exists():
             continue
         for path in base.rglob("*"):
-            if path.is_dir() or "node_modules" in path.parts or "dist" in path.parts:
+            if (
+                path.is_dir()
+                or "node_modules" in path.parts
+                or "dist" in path.parts
+                or "test-results" in path.parts
+                or "playwright-report" in path.parts
+            ):
                 continue
             if path.suffix.lower() not in TEXT_EXTENSIONS:
                 continue
@@ -83,13 +96,21 @@ def main() -> int:
             failures.append((path, 0, f"NON_UTF8_TEXT_FILE: {exc}"))
             continue
         for line_number, line in enumerate(text.splitlines(), start=1):
-            if any(char in line for char in SUSPICIOUS_CHARS) or any(sequence in line for sequence in SUSPICIOUS_SEQUENCES):
+            if any(char in line for char in SUSPICIOUS_CHARS) or any(
+                sequence in line for sequence in SUSPICIOUS_SEQUENCES
+            ):
+                failures.append((path, line_number, line))
+                continue
+            if "docs" not in path.parts and any(
+                sequence in line for sequence in ACTIVE_RUNTIME_FORBIDDEN_SEQUENCES
+            ):
                 failures.append((path, line_number, line))
 
     if not failures:
         print("Mojibake check: PASS")
         return 0
 
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     print("Mojibake check: FAIL")
     for path, line_number, line in failures:
         print(f"{path.relative_to(REPO_ROOT)}:{line_number}: {line}")

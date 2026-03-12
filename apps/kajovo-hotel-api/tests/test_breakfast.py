@@ -1,4 +1,4 @@
-import json
+﻿import json
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -274,6 +274,42 @@ def test_import_breakfast_pdf_overwrite_and_diets(
     assert room_101["diet_no_pork"] is True
 
 
+def test_import_breakfast_pdf_preview_does_not_mutate_existing_orders(
+    api_request: ApiRequest, api_base_url: str
+) -> None:
+    create_order(
+        api_request,
+        service_date="2026-03-05",
+        room_number="111",
+        guest_name="Preview Guest",
+        guest_count=1,
+        status="served",
+    )
+    opener = api_request.opener  # type: ignore[attr-defined]
+    jar = api_request.jar  # type: ignore[attr-defined]
+    pdf_bytes = SAMPLE_PDF_PATH.read_bytes()
+    payload, content_type = build_multipart(
+        {"save": "false"},
+        [("file", "breakfast-sample.pdf", pdf_bytes, "application/pdf")],
+    )
+    request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/breakfast/import",
+        data=payload,
+        headers={"Content-Type": content_type, **csrf_header(jar)},
+        method="POST",
+    )
+    with opener.open(request, timeout=10) as response:
+        assert response.status == 200
+        data = json.loads(response.read().decode("utf-8"))
+        assert data["saved"] is False
+        assert len(data["items"]) == 3
+
+    status, listed = api_request("/api/v1/breakfast", params={"service_date": "2026-03-05"})
+    assert status == 200
+    assert isinstance(listed, list)
+    assert any(item["room_number"] == "111" for item in listed)
+
+
 def test_breakfast_export_pdf(api_request: ApiRequest, api_base_url: str) -> None:
     target_date = "2026-03-09"
     create_order(
@@ -329,3 +365,47 @@ def test_breakfast_reactivation_rbac(api_base_url: str, api_request: ApiRequest)
     assert status == 200
     assert isinstance(data, dict)
     assert data["status"] == "pending"
+
+
+def test_breakfast_role_cannot_import_or_export_pdf(api_base_url: str) -> None:
+    snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
+    status, data = snidane_request(
+        "/api/v1/breakfast/export/daily",
+        params={"service_date": "2026-03-09"},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast export requires recepce/admin role"
+
+
+def test_breakfast_role_cannot_change_diet_flags(api_base_url: str, api_request: ApiRequest) -> None:
+    created = create_order(api_request, service_date="2026-03-10", room_number="305")
+    snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
+    status, data = snidane_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"diet_no_gluten": True},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Diet updates are limited to recepce/admin roles"
+
+
+def test_reactivate_all_requires_admin(api_base_url: str, api_request: ApiRequest) -> None:
+    create_order(api_request, service_date="2026-03-11", room_number="401", status="served")
+    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
+    status, data = recepce_request(
+        "/api/v1/breakfast/reactivate-all",
+        method="POST",
+        params={"service_date": "2026-03-11"},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast reactivation requires admin role"
+
+    status, _ = api_request(
+        "/api/v1/breakfast/reactivate-all",
+        method="POST",
+        params={"service_date": "2026-03-11"},
+    )
+    assert status == 204

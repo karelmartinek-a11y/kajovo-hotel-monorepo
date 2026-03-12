@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import email
 import imaplib
@@ -71,6 +71,18 @@ class BreakfastMailFetcher:
     def __init__(self, settings: Settings):
         self.settings = settings
 
+    def validate_configuration(self) -> list[str]:
+        missing: list[str] = []
+        required_fields = {
+            "breakfast_imap_host": self.settings.breakfast_imap_host,
+            "breakfast_imap_username": self.settings.breakfast_imap_username,
+            "breakfast_imap_password": self.settings.breakfast_imap_password,
+        }
+        for field_name, value in required_fields.items():
+            if not str(value).strip():
+                missing.append(field_name)
+        return missing
+
     def _connect(self) -> imaplib.IMAP4:
         if self.settings.breakfast_imap_use_ssl:
             client = imaplib.IMAP4_SSL(
@@ -84,26 +96,43 @@ class BreakfastMailFetcher:
         return client
 
     def fetch_and_store_for_day(self, db: Session, day: date) -> bool:
-        if not self.settings.breakfast_imap_host or not self.settings.breakfast_imap_username:
-            return False
-        if not self.settings.breakfast_imap_password:
+        missing = self.validate_configuration()
+        if missing:
+            log.warning(
+                "Breakfast IMAP import skipped due to missing configuration",
+                extra={"context": {"day": day.isoformat(), "missing": missing}},
+            )
             return False
 
-        client = self._connect()
+        try:
+            client = self._connect()
+        except imaplib.IMAP4.error:
+            log.exception("Breakfast IMAP login failed for %s", day.isoformat())
+            return False
+        except OSError:
+            log.exception("Breakfast IMAP connection failed for %s", day.isoformat())
+            return False
+
         try:
             typ, _ = client.select(self.settings.breakfast_imap_mailbox)
             if typ != "OK":
+                log.warning("Breakfast IMAP mailbox select failed for %s", day.isoformat())
                 return False
 
             since = _imap_date(day)
             before = _imap_date(day + timedelta(days=1))
             typ, data = client.search(None, "SINCE", since, "BEFORE", before)
             if typ != "OK" or not data:
+                log.warning("Breakfast IMAP search failed for %s", day.isoformat())
                 return False
             uids = data[0].split()
             for uid in reversed(uids):
                 typ, parts = client.fetch(uid, "(RFC822)")
                 if typ != "OK" or not parts:
+                    log.warning(
+                        "Breakfast IMAP fetch failed for uid=%s",
+                        uid.decode("utf-8", "ignore"),
+                    )
                     continue
                 raw = parts[0][1] if isinstance(parts[0], tuple) else b""
                 if not raw:
@@ -117,7 +146,14 @@ class BreakfastMailFetcher:
                     continue
                 attachments = _iter_pdf_attachments(msg)
                 for _, pdf_bytes in attachments:
-                    parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
+                    try:
+                        parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
+                    except ValueError:
+                        log.warning(
+                            "Breakfast IMAP attachment is not a valid breakfast PDF",
+                            extra={"context": {"day": day.isoformat()}},
+                        )
+                        continue
                     if parsed_day != day:
                         continue
                     db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
@@ -140,6 +176,7 @@ class BreakfastMailFetcher:
                     db.commit()
                     log.info("Breakfast IMAP import completed for %s", parsed_day.isoformat())
                     return True
+            log.info("Breakfast IMAP finished without matching PDF for %s", day.isoformat())
             return False
         finally:
             try:

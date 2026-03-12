@@ -1,4 +1,4 @@
-import json
+﻿import json
 from datetime import date
 from io import BytesIO
 
@@ -328,7 +328,6 @@ def import_breakfast_pdf(
             )
         db.commit()
 
-        # Ulozit zdrojovy PDF artefakt pro audit/import forenzni dohledatelnost.
         settings = get_settings()
         archive_dir = f"{settings.media_root}/breakfast/imports"
         import os

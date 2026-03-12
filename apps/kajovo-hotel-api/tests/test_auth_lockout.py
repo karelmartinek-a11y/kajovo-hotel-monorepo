@@ -2,13 +2,17 @@ import json
 import sqlite3
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http.cookiejar import CookieJar
 from pathlib import Path
 
 from tests.test_support import admin_email, admin_login_payload, admin_password
 
 ADMIN_EMAIL = admin_email()
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def api_request(
@@ -70,9 +74,9 @@ def test_admin_lockout_has_generic_response(api_base_url: str, api_db_path: Path
             (
                 ADMIN_EMAIL,
                 ADMIN_EMAIL,
-                datetime.utcnow().isoformat(),
-                datetime.utcnow().isoformat(),
-                (datetime.utcnow() + timedelta(minutes=30)).isoformat(),
+                _utc_now_iso(),
+                _utc_now_iso(),
+                (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
             ),
         )
         connection.commit()
@@ -205,9 +209,9 @@ def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url:
                 "admin",
                 ADMIN_EMAIL,
                 3,
-                datetime.utcnow().isoformat(),
-                datetime.utcnow().isoformat(),
-                (datetime.utcnow() + timedelta(minutes=30)).isoformat(),
+                _utc_now_iso(),
+                _utc_now_iso(),
+                (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
             ),
         )
         connection.commit()

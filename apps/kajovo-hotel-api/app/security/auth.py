@@ -1,15 +1,16 @@
-import base64
+﻿import base64
 import hashlib
 import hmac
 import json
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from fastapi import HTTPException, Request, status
 
 from app.config import get_settings
 from app.security.rbac import ROLE_PERMISSIONS, normalize_role
+from app.time_utils import UTC, utc_after, utc_now, utc_timestamp
 
 SESSION_COOKIE_NAME = "kajovo_session"
 CSRF_COOKIE_NAME = "kajovo_csrf"
@@ -42,15 +43,10 @@ def create_session_cookie(
         "roles": normalized_roles,
         "active_role": normalize_role(active_role) if active_role else None,
         "actor_type": actor_type,
-        "iat": int(datetime.now(timezone.utc).timestamp()),
+        "iat": utc_timestamp(),
     }
     if max_age_seconds is not None:
-        payload["exp"] = int(
-            (
-                datetime.now(timezone.utc)
-                + timedelta(seconds=max_age_seconds)
-            ).timestamp()
-        )
+        payload["exp"] = utc_timestamp(utc_after(seconds=max_age_seconds))
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     body = base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
     return f"{body}.{_sign(raw)}"
@@ -76,10 +72,10 @@ def read_session_cookie(cookie_value: str | None) -> dict[str, str | list[str] |
     exp_value = data.get("exp")
     if exp_value is not None:
         try:
-            expires_at = datetime.fromtimestamp(float(exp_value), timezone.utc)
+            expires_at = datetime.fromtimestamp(float(exp_value), tz=UTC)
         except (TypeError, ValueError, OSError, OverflowError):
             return None
-        if datetime.now(timezone.utc) >= expires_at:
+        if utc_now() >= expires_at:
             return None
     email = str(data.get("email", "")).strip().lower()
     role = normalize_role(str(data.get("role", "")))
@@ -118,6 +114,8 @@ def ensure_csrf(request: Request) -> None:
         return
     if request.url.path.startswith("/api/auth/") and request.url.path.endswith("/login"):
         return
+    if request.url.path in {"/api/auth/admin/hint", "/api/auth/forgot-password"}:
+        return
     cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
     header_token = request.headers.get(CSRF_HEADER_NAME)
     if (
@@ -137,3 +135,4 @@ def get_permissions(role: str) -> list[str]:
 
 def cookie_secure() -> bool:
     return get_settings().environment.lower() == "production"
+

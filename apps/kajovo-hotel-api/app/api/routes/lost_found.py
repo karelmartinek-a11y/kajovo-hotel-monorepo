@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -18,6 +16,7 @@ from app.db.models import LostFoundItem, LostFoundPhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
 from app.security.rbac import module_access_dependency, require_actor_type
+from app.time_utils import utc_now
 
 router = APIRouter(
     prefix="/api/v1/lost-found",
@@ -100,7 +99,7 @@ def update_lost_found_item(
     tags = updates.pop("tags", None)
 
     if updates.get("status") == LostFoundStatus.CLAIMED.value and "claimed_at" not in updates:
-        updates["claimed_at"] = datetime.utcnow()
+        updates["claimed_at"] = utc_now()
 
     for key, value in updates.items():
         setattr(item, key, value)

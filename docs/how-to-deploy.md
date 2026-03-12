@@ -1,4 +1,4 @@
-# How to deploy (production)
+﻿# How to deploy (production)
 
 ## Automated pipeline
 
@@ -11,8 +11,10 @@ Production `hotel.hcasc.cz` is deployed from `main` through GitHub Actions:
    - unified release gate artifact,
    - guardrails,
    - typecheck,
+   - frontend web/admin builds,
    - backend unit tests,
-   - deterministic smoke checks.
+   - deterministic breakfast IMAP smoke,
+   - deterministic breakfast runtime smoke.
 4. After successful `CI Gates - KajovoHotel`, GitHub runs:
    - `Deploy - hotel.hcasc.cz`
 
@@ -52,6 +54,10 @@ Recommended split:
 - uploads the archive to the production host over password-based SSH,
 - extracts the release on the server while preserving `infra/.env`,
 - runs `infra/ops/deploy-production.sh` in artifact mode (`SKIP_GIT_SYNC=true`),
+- blocks until `postgres`, `api`, `web`, and `admin` report healthy/running state,
+- blocks unless server-local health checks pass (`/ready`, `/api/health`, `/healthz`),
+- writes server-side runtime evidence to `artifacts/deploy-runtime/latest.json`,
+- pulls that artifact back into GitHub Actions and verifies the runtime SHA matches the workflow SHA,
 - prints compose diagnostics for `api`, `postgres`, `admin`, and `web`,
 - blocks the workflow unless public HTTP health checks pass,
 - blocks the workflow unless live admin login works with the same GitHub admin credentials.
@@ -64,6 +70,14 @@ The workflow treats these checks as blocking:
 - `https://hotel.hcasc.cz/admin/login`
 - `https://hotel.hcasc.cz/api/health`
 - live admin login against `/api/auth/admin/login` + `/api/auth/me`
+- fetched deploy runtime artifact SHA equals deployed workflow SHA
+
+## Deploy evidence artifacts
+
+Two artifact classes matter for a release-ready SHA:
+
+- release gate JSON artifact under `artifacts/release-gate/`
+- deploy runtime JSON artifact under `artifacts/deploy-runtime/latest.json` on the server and uploaded in GitHub Actions as `deploy-runtime-artifact`
 
 ## Preview/staging build
 

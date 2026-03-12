@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -23,6 +23,9 @@ require_cmd() {
 }
 
 require_cmd docker
+require_cmd curl
+require_cmd tar
+require_cmd mktemp
 if [[ "$SKIP_GIT_SYNC" != "true" ]]; then
   require_cmd git
 fi
@@ -58,6 +61,43 @@ docker_build_with_snapshot_retry() {
 
   rm -f "$build_log"
   return "$status"
+}
+
+wait_for_container_health() {
+  local service="$1"
+  local timeout_seconds="${2:-180}"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local container_id
+    container_id="$(compose_cmd ps -q "$service")"
+    if [[ -n "$container_id" ]]; then
+      local health
+      health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)"
+      if [[ "$health" == "healthy" || "$health" == "running" ]]; then
+        echo "$service healthy ($health)"
+        return 0
+      fi
+      echo "Waiting for $service health, current=$health"
+    fi
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+  echo "Service $service did not become healthy in ${timeout_seconds}s" >&2
+  return 1
+}
+
+http_check() {
+  local url="$1"
+  local label="$2"
+  local expected="${3:-200}"
+  local code
+  code="$(curl -sS -o /tmp/kajovo-deploy-http.txt -w '%{http_code}' --max-time 10 "$url" || true)"
+  if [[ "$code" != "$expected" ]]; then
+    echo "$label failed: expected HTTP $expected got $code" >&2
+    cat /tmp/kajovo-deploy-http.txt >&2 || true
+    return 1
+  fi
+  echo "$label PASS ($code)"
 }
 
 docker info >/dev/null
@@ -249,5 +289,33 @@ if [[ "$sql_ok" -ne 1 ]]; then
 fi
 
 compose_cmd up -d --force-recreate api web admin
+
+wait_for_container_health postgres 180
+wait_for_container_health api 180
+wait_for_container_health web 180
+wait_for_container_health admin 180
+
+http_check "http://127.0.0.1:${API_PORT:-8202}/ready" "API readiness"
+http_check "http://127.0.0.1:${API_PORT:-8202}/api/health" "API health"
+http_check "http://127.0.0.1:${WEB_PORT:-8080}/healthz" "Web health"
+http_check "http://127.0.0.1:${ADMIN_PORT:-8083}/healthz" "Admin health"
+
+deploy_artifact_dir="$ROOT_DIR/artifacts/deploy-runtime"
+mkdir -p "$deploy_artifact_dir"
+cat > "$deploy_artifact_dir/latest.json" <<JSON
+{
+  "deployed_at": "$(date -u +%FT%TZ)",
+  "branch": "$current_branch",
+  "sha": "$commit_sha",
+  "artifact_mode": "$SKIP_GIT_SYNC",
+  "checks": {
+    "postgres": "healthy",
+    "api_ready": "200",
+    "api_health": "200",
+    "web_healthz": "200",
+    "admin_healthz": "200"
+  }
+}
+JSON
 
 printf '%s HOTEL web: deploy z monorepa (%s, branch=%s)\n' "$(date '+%F %T')" "$commit_sha" "$current_branch" >> "$LOG_FILE"

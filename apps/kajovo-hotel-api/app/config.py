@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     media_root: str = "/app/data/media"
     breakfast_scheduler_enabled: bool = False
     breakfast_scheduler_interval_seconds: int = 300
+    breakfast_scheduler_retry_seconds: int = 30
+    breakfast_scheduler_max_retries: int = 3
     breakfast_imap_host: str = ""
     breakfast_imap_port: int = 993
     breakfast_imap_use_ssl: bool = True
@@ -31,6 +33,7 @@ class Settings(BaseSettings):
     breakfast_imap_password: str = ""
     breakfast_imap_from_contains: str = "better-hotel.com"
     breakfast_imap_subject_contains: str = "prehled stravy"
+    breakfast_runtime_artifact_dir: str = "/app/data/runtime-artifacts"
     device_bootstrap_key: str = "change-me-device-bootstrap-key"
     device_challenge_ttl_seconds: int = 300
     device_token_ttl_seconds: int = 86400

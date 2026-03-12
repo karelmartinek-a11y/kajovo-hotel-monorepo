@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -61,12 +61,15 @@ def main() -> int:
 
     checks: list[tuple[str, list[str], bool]] = [
         ("typecheck", _pnpm_command("typecheck"), True),
+        ("web-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "build"), True),
+        ("admin-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "build"), True),
         ("api-unit-tests", ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests", "-q"], True),
         (
             "breakfast-imap-smoke",
             ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests/test_breakfast_imap_smoke.py", "-q"],
             True,
         ),
+        ("breakfast-runtime-smoke", ["python", "scripts/run_breakfast_runtime_smoke.py"], True),
         ("frontend-ci-gates", _pnpm_command("ci:gates"), os.getenv("RUN_FRONTEND_GATES") == "1"),
         ("e2e-smoke", _pnpm_command("ci:e2e-smoke"), os.getenv("RUN_E2E_SMOKE") == "1"),
     ]

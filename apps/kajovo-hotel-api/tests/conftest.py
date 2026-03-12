@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import http.cookiejar
 import json
 import os
@@ -25,8 +25,8 @@ ApiRequest = Callable[..., tuple[int, ResponseData]]
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    api_root = Path(__file__).resolve().parents[1]
-    base_root = api_root / ".tmp" / "pytest"
+    repo_root = Path(__file__).resolve().parents[3]
+    base_root = repo_root / "artifacts" / "pytest"
     base_root.mkdir(parents=True, exist_ok=True)
     run_dir = base_root / f"run-{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -233,6 +233,8 @@ def api_request(api_base_url: str) -> ApiRequest:
     _request.opener = opener  # type: ignore[attr-defined]
     _request.jar = jar  # type: ignore[attr-defined]
     return _request
+
+
 
 
 

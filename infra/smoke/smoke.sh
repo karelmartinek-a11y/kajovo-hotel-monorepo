@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
 WEB_BASE_URL="${WEB_BASE_URL:-http://localhost:8080}"
@@ -26,11 +26,9 @@ main() {
   echo "WEB_BASE_URL=$WEB_BASE_URL"
   echo "API_BASE_URL=$API_BASE_URL"
 
-  # Required checks
   curl_check "Web home" "$WEB_BASE_URL/"
   curl_check "API health" "$API_BASE_URL/health"
 
-  # One endpoint per module
   curl_check "Snídaně module" "$API_BASE_URL/api/v1/breakfast"
   curl_check "Ztráty a nálezy module" "$API_BASE_URL/api/v1/lost-found"
   curl_check "Závady module" "$API_BASE_URL/api/v1/issues"

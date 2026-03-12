@@ -2,16 +2,17 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import Request
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.audit_utils import sanitize_for_audit
 from app.db.models import AuditTrail
 from app.db.session import SessionLocal
 from app.security.rbac import parse_identity, role_for_audit
+from app.time_utils import utc_now
 
 logger = logging.getLogger("kajovo.api")
 
@@ -19,7 +20,7 @@ logger = logging.getLogger("kajovo.api")
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": utc_now().isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
         }
@@ -82,9 +83,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 raw_body = body_bytes.decode("utf-8", errors="ignore")
                 try:
                     parsed = json.loads(raw_body)
-                    if isinstance(parsed, dict) and "password" in parsed:
-                        parsed = {**parsed, "password": "***"}
-                    request_body = json.dumps(parsed, ensure_ascii=False)[:2000]
+                    request_body = json.dumps(sanitize_for_audit(parsed), ensure_ascii=False)[:2000]
                 except json.JSONDecodeError:
                     request_body = raw_body[:2000]
 

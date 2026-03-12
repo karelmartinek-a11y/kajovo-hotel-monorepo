@@ -62,6 +62,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         "issues:write",
     },
 }
+
 ROLE_ALIASES: dict[str, str] = {
     "admin": "admin",
     "pokojská": "pokojská",
@@ -78,6 +79,7 @@ ROLE_ALIASES: dict[str, str] = {
     "warehouse": "sklad",
     "sklad": "sklad",
 }
+
 ROLE_AUDIT_EXPORT: dict[str, str] = {
     "admin": "admin",
     "pokojská": "housekeeping",
@@ -86,11 +88,33 @@ ROLE_AUDIT_EXPORT: dict[str, str] = {
     "snídaně": "breakfast",
     "sklad": "warehouse",
 }
+
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
+COMMON_ENCODING_DRIFT_REPAIRS: dict[str, str] = {
+    "pokojskăˇ": "pokojská",
+    "ăşdrĹľba": "údržba",
+    "snă­danÄ›": "snídaně",
+}
+
+
+def _repair_text_encoding_drift(value: str) -> str:
+    repaired = COMMON_ENCODING_DRIFT_REPAIRS.get(value, value)
+    if repaired != value:
+        return repaired
+    for source_encoding in ("cp1250", "latin-1"):
+        try:
+            candidate = value.encode(source_encoding).decode("utf-8")
+        except UnicodeError:
+            continue
+        if candidate != value:
+            return candidate
+    return value
+
+
 def normalize_role(raw_role: str | None) -> str:
-    role = (raw_role or "recepce").strip().lower()
+    role = _repair_text_encoding_drift(raw_role or "recepce").strip().lower()
     return ROLE_ALIASES.get(role, "recepce")
 
 
@@ -182,6 +206,3 @@ def inject_identity(request: Request) -> None:
 
 
 IdentityDependency = Depends(inject_identity)
-
-
-

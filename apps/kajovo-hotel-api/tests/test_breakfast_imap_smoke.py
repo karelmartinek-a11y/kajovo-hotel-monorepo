@@ -1,4 +1,5 @@
-import email
+﻿import email
+import json
 from datetime import date
 from types import SimpleNamespace
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.db.models import Base, BreakfastOrder
 from app.services.breakfast.mail_fetcher import BreakfastMailFetcher
+from app.services.breakfast.scheduler import run_breakfast_scheduler_iteration
 
 
 class _FakeImapClient:
@@ -58,6 +60,7 @@ def test_breakfast_imap_smoke_fetch_import(tmp_path, monkeypatch) -> None:
         breakfast_imap_from_contains="better-hotel.com",
         breakfast_imap_subject_contains="Přehled stravy",
         media_root=str(tmp_path / "media"),
+        breakfast_runtime_artifact_dir=str(tmp_path / "runtime-artifacts"),
     )
     fetcher = BreakfastMailFetcher(settings)
     monkeypatch.setattr(
@@ -83,3 +86,13 @@ def test_breakfast_imap_smoke_fetch_import(tmp_path, monkeypatch) -> None:
 
     archived = tmp_path / "media" / "breakfast" / "imports" / f"{target_day.isoformat()}-imap.pdf"
     assert archived.exists()
+
+    runtime_artifact = tmp_path / "runtime-artifacts" / "breakfast-scheduler-latest.json"
+    monkeypatch.setattr("app.services.breakfast.scheduler.get_settings", lambda: settings)
+    monkeypatch.setattr("app.services.breakfast.scheduler.SessionLocal", lambda: Session(engine))
+    result = run_breakfast_scheduler_iteration(fetcher=fetcher, target_day=target_day)
+    assert result.ok is True
+    assert runtime_artifact.exists()
+    payload = json.loads(runtime_artifact.read_text(encoding="utf-8"))
+    assert payload["service_date"] == target_day.isoformat()
+    assert payload["ok"] is True

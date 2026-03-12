@@ -18,7 +18,7 @@ from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
 from app.config import get_settings
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
 from app.services.admin_credentials import ensure_admin_profile
@@ -78,6 +78,7 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def startup_scheduler() -> None:
+        initialize_database()
         with SessionLocal() as db:
             ensure_admin_profile(db, settings, sync_from_env=True)
         if settings.breakfast_scheduler_enabled:
