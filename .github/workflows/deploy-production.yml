@@ -3,7 +3,7 @@ name: Deploy - hotel.hcasc.cz
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["CI Release - Kájovo Hotel", "CI Full - Kájovo Hotel"]
+    workflows: ["CI Release - KĂˇjovo Hotel", "CI Full - KĂˇjovo Hotel"]
     types:
       - completed
     branches:
@@ -21,153 +21,152 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY != '' && secrets.HOTEL_DEPLOY_KEY || vars.HOTEL_DEPLOY_KEY }}
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+      DEPLOY_BASE_URL: https://hotel.hcasc.cz
+      HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
+      HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
+      HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
       HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
       HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
       KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
     steps:
-      - name: Validate admin credential environment
+      - name: Checkout deploy SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate deploy target environment
         shell: bash
         run: |
           set -euo pipefail
-          resolved_email="${HOTEL_ADMIN_EMAIL:-${KAJOVO_API_ADMIN_EMAIL:-}}"
-          resolved_password="${HOTEL_ADMIN_PASSWORD:-${KAJOVO_API_ADMIN_PASSWORD:-}}"
-          if [ -z "$resolved_email" ]; then
-            echo "Missing HOTEL_ADMIN_EMAIL / KAJOVO_API_ADMIN_EMAIL in GitHub secrets or variables." >&2
+          if [ -z "${HOTEL_DEPLOY_HOST:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_HOST in GitHub secrets or variables." >&2
             exit 1
           fi
-          if [ -z "$resolved_password" ]; then
-            echo "Missing HOTEL_ADMIN_PASSWORD / KAJOVO_API_ADMIN_PASSWORD in GitHub secrets or variables." >&2
+          if [ -z "${HOTEL_DEPLOY_PORT:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_PORT in GitHub secrets or variables." >&2
             exit 1
           fi
-          if [ -n "${HOTEL_ADMIN_EMAIL:-}" ] && [ -n "${KAJOVO_API_ADMIN_EMAIL:-}" ] && [ "$HOTEL_ADMIN_EMAIL" != "$KAJOVO_API_ADMIN_EMAIL" ]; then
-            echo "HOTEL_ADMIN_EMAIL and KAJOVO_API_ADMIN_EMAIL must match." >&2
+          if [ -z "${HOTEL_DEPLOY_USER:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_USER in GitHub secrets or variables." >&2
             exit 1
           fi
-          if [ -n "${HOTEL_ADMIN_PASSWORD:-}" ] && [ -n "${KAJOVO_API_ADMIN_PASSWORD:-}" ] && [ "$HOTEL_ADMIN_PASSWORD" != "$KAJOVO_API_ADMIN_PASSWORD" ]; then
-            echo "HOTEL_ADMIN_PASSWORD and KAJOVO_API_ADMIN_PASSWORD must match." >&2
+          if [ -z "${HOTEL_DEPLOY_PASS:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_PASS in GitHub secrets or variables." >&2
             exit 1
           fi
-          echo "Admin credential environment check: PASS"
+          echo "Deploy target environment check: PASS"
 
-      - name: Připrav SSH klíč
-        if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
+      - name: Validate admin credential environment
+        run: python scripts/check_admin_credentials_env.py
+
+      - name: Build release archive
         shell: bash
-        env:
-          DEPLOY_KEY: ${{ env.HOTEL_DEPLOY_KEY }}
         run: |
-          if [ -z "$DEPLOY_KEY" ]; then
-            echo "Chybí secret HOTEL_DEPLOY_KEY" >&2
-            exit 1
-          fi
-          if grep -q "BEGIN .*PRIVATE KEY" <<<"$DEPLOY_KEY"; then
-            printf '%b' "$DEPLOY_KEY" > deploy_key.pem
-          else
-            echo "$DEPLOY_KEY" | base64 -d > deploy_key.pem || printf '%b' "$DEPLOY_KEY" > deploy_key.pem
-          fi
-          chmod 600 deploy_key.pem
-          ssh-keygen -lf deploy_key.pem || true
+          set -euo pipefail
+          archive="kajovo-deploy-${DEPLOY_SHA}.tar.gz"
+          git archive --format=tar.gz --output "$archive" "$DEPLOY_SHA"
+          echo "RELEASE_ARCHIVE=$archive" >> "$GITHUB_ENV"
 
-      - name: Deploy via SSH (key)
-        if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
-        id: deploy_key
-        continue-on-error: true
+      - name: Upload release archive to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          source: ${{ env.RELEASE_ARCHIVE }}
+          target: /tmp/
+          overwrite: true
+
+      - name: Deploy uploaded release via SSH password
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
-          username: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
-          key_path: deploy_key.pem
-          port: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
-          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          envs: DEPLOY_SHA,RELEASE_ARCHIVE,HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD
           script: |
             set -euo pipefail
             set -x
-            SSH_KEY_PATH="${HOME}/.ssh/deploy_kajovo_hotel_monorepo"
-            if [ ! -f "$SSH_KEY_PATH" ]; then
-              echo "Chybí SSH klíč pro fetch repozitáře: $SSH_KEY_PATH" >&2
+            release_archive="/tmp/${RELEASE_ARCHIVE}"
+            release_root="/opt/kajovo-hotel-monorepo"
+            preserve_dir="$(mktemp -d)"
+            if [ ! -f "$release_archive" ]; then
+              echo "Missing uploaded archive: $release_archive" >&2
               exit 1
             fi
-            SSH_CMD="ssh -i $SSH_KEY_PATH -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-            if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
-              GIT_SSH_COMMAND="$SSH_CMD" git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
+            if [ -f "$release_root/infra/.env" ]; then
+              mkdir -p "$preserve_dir/infra"
+              cp "$release_root/infra/.env" "$preserve_dir/infra/.env"
             fi
-            git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
-            git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
-            git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
-            git -C /opt/kajovo-hotel-monorepo clean -fd
-            GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
-            git -C /opt/kajovo-hotel-monorepo checkout main
-            git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
+            rm -rf "$release_root"
+            mkdir -p "$release_root"
+            tar -xzf "$release_archive" -C "$release_root"
+            if [ -f "$preserve_dir/infra/.env" ]; then
+              mkdir -p "$release_root/infra"
+              mv "$preserve_dir/infra/.env" "$release_root/infra/.env"
+            fi
+            rm -rf "$preserve_dir"
+            rm -f "$release_archive"
             export KAJOVO_API_ADMIN_EMAIL="${KAJOVO_API_ADMIN_EMAIL:-$HOTEL_ADMIN_EMAIL}"
             export KAJOVO_API_ADMIN_PASSWORD="${KAJOVO_API_ADMIN_PASSWORD:-$HOTEL_ADMIN_PASSWORD}"
+            export SKIP_GIT_SYNC=true
+            export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
             set +e
-            /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
+            "$release_root/infra/ops/deploy-production.sh"
             DEPLOY_STATUS=$?
-            cd /opt/kajovo-hotel-monorepo
+            cd "$release_root"
             export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=50 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=50 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=80 || true
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=80 || true
             exit "$DEPLOY_STATUS"
 
-      - name: Deploy via SSH (password)
-        if: ${{ env.HOTEL_DEPLOY_PASS != '' && (env.HOTEL_DEPLOY_KEY == '' || steps.deploy_key.conclusion == 'failure') }}
-        id: deploy_password
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
-          username: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
-          password: ${{ env.HOTEL_DEPLOY_PASS }}
-          port: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
-          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD
-          script: |
-            set -euo pipefail
-            set -x
-            SSH_KEY_PATH="${HOME}/.ssh/deploy_kajovo_hotel_monorepo"
-            if [ -f "$SSH_KEY_PATH" ]; then
-              SSH_CMD="ssh -i $SSH_KEY_PATH -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
-            else
-              SSH_CMD="ssh -o StrictHostKeyChecking=accept-new"
-            fi
-            if [ ! -d /opt/kajovo-hotel-monorepo/.git ]; then
-              GIT_SSH_COMMAND="$SSH_CMD" git clone git@github.com:karelmartinek-a11y/kajovo-hotel-monorepo.git /opt/kajovo-hotel-monorepo
-            fi
-            git -C /opt/kajovo-hotel-monorepo config --global --add safe.directory /opt/kajovo-hotel-monorepo
-            git -C /opt/kajovo-hotel-monorepo config core.sshCommand "$SSH_CMD"
-            git -C /opt/kajovo-hotel-monorepo reset --hard HEAD
-            git -C /opt/kajovo-hotel-monorepo clean -fd
-            GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
-            git -C /opt/kajovo-hotel-monorepo checkout main
-            git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
-            export KAJOVO_API_ADMIN_EMAIL="${KAJOVO_API_ADMIN_EMAIL:-$HOTEL_ADMIN_EMAIL}"
-            export KAJOVO_API_ADMIN_PASSWORD="${KAJOVO_API_ADMIN_PASSWORD:-$HOTEL_ADMIN_PASSWORD}"
-            set +e
-            /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
-            DEPLOY_STATUS=$?
-            cd /opt/kajovo-hotel-monorepo
-            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=50 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=50 || true
-            exit "$DEPLOY_STATUS"
-
-      - name: Vyhodnocení deploye
-        if: ${{ always() }}
+      - name: Post-deploy HTTP gate
         shell: bash
         run: |
-          key_outcome="${{ steps.deploy_key.conclusion }}"
-          pass_outcome="${{ steps.deploy_password.conclusion }}"
-          if [ "$key_outcome" = "success" ] || [ "$pass_outcome" = "success" ]; then
-            echo "Deploy proběhl úspěšně (key=$key_outcome, password=$pass_outcome)."
-            exit 0
-          fi
-          echo "Deploy selhal (key=$key_outcome, password=$pass_outcome)." >&2
-          exit 1
+          set -euo pipefail
+          check_endpoint() {
+            local url="$1"
+            local label="$2"
+            local expected="$3"
+            local code=""
+            for attempt in $(seq 1 30); do
+              code=$(curl -k -sS -o /tmp/deploy-check-body.txt -w '%{http_code}' "$url" || true)
+              if [[ "$code" == "$expected" ]]; then
+                echo "$label PASS ($code)"
+                return 0
+              fi
+              echo "$label attempt $attempt/30 -> HTTP $code"
+              sleep 10
+            done
+            echo "$label FAIL -> expected HTTP $expected, got $code" >&2
+            cat /tmp/deploy-check-body.txt >&2 || true
+            return 1
+          }
+          check_endpoint "$DEPLOY_BASE_URL/" "public root" "200"
+          check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
+          check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
 
-
+      - name: Verify live admin login with GitHub credentials
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL != '' && env.KAJOVO_API_ADMIN_EMAIL || env.HOTEL_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
+        run: node scripts/verify_live_admin_login.mjs

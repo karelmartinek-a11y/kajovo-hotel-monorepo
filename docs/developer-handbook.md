@@ -1,23 +1,23 @@
-# Developer Handbook (bez přístupu na server)
+# Developer Handbook (no direct server access)
 
-Tento dokument říká vše, co vývojář potřebuje pro práci na portálu bez SSH přístupu na produkční server.
+This document summarizes what a developer needs to work on the portal without SSH access to the production server.
 
-## 1) Zdroj pravdy
+## 1) Source of truth
 
-- Zdrojové kódy: GitHub repozitář `karelmartinek-a11y/kajovo-hotel-monorepo`, branch `main`.
-- Produkce se nasazuje automaticky z `main` přes GitHub Actions workflow `Deploy - hotel.hcasc.cz`.
-- Lokální kopie na serveru (`/opt/kajovo-hotel-monorepo`) je pouze deploy checkout, ne primární zdroj pravdy.
+- Source code: GitHub repository `karelmartinek-a11y/kajovo-hotel-monorepo`, branch `main`.
+- Production is deployed automatically from `main` through GitHub Actions workflow `Deploy - hotel.hcasc.cz`.
+- The server copy in `/opt/kajovo-hotel-monorepo` is only a deployment workspace, not the source of truth.
 
-## 2) Co musí vývojář znát
+## 2) What a developer needs to know
 
-- Design SSOT: `ManifestDesignKájovo.md` (v rootu repozitáře).
-- Informační architektura: `apps/kajovo-hotel/ux/ia.json`.
-- RBAC pravidla: `docs/rbac.md`.
-- Forenzní stav parity: `docs/feature-parity-matrix.csv`, `docs/forensic-audit-2026-03-01.md`.
+- Design SSOT: `ManifestDesignKĂˇjovo.md`.
+- Information architecture: `apps/kajovo-hotel/ux/ia.json`.
+- RBAC rules: `docs/rbac.md`.
+- Forensic parity state: `docs/feature-parity-matrix.csv`, `docs/forensic-audit-2026-03-01.md`.
 
-## 3) Lokální spuštění
+## 3) Local run
 
-Použij `pnpm` workspaces z rootu repozitáře.
+Use `pnpm` workspaces from the repo root.
 
 ```bash
 pnpm install
@@ -45,7 +45,7 @@ cd apps/kajovo-hotel-web
 pnpm dev
 ```
 
-## 4) Povinné kontroly před push
+## 4) Required checks before push
 
 ```bash
 pnpm lint
@@ -56,43 +56,42 @@ pnpm ci:gates
 
 ## 5) GitHub pipelines
 
-Při push do `main` běží:
+A push to `main` runs:
 
-- `CI Gates - KájovoHotel`
-- `CI Full - Kájovo Hotel`
-- po úspěchu CI Full: `Deploy - hotel.hcasc.cz`
+- `CI Gates - KĂˇjovoHotel`
+- `CI Full - KĂˇjovo Hotel`
+- `CI Release - KĂˇjovo Hotel`
+- after successful CI: `Deploy - hotel.hcasc.cz`
 
-## 6) GitHub Secrets / Variables (produkční deploy)
+## 6) GitHub Secrets / Variables for production deploy
 
-Autoritativní checklist: `docs/github-settings-checklist.md`
+Authoritative checklist: `docs/github-settings-checklist.md`
 
-Workflow `deploy-production.yml` a CI smoke běhy používají tyto klíče (primárně `secrets`, sekundárně `variables`):
+Deploy and CI workflows use these keys (prefer `Secrets` for secret values and `Variables` for non-secret values):
 
 - `HOTEL_DEPLOY_HOST`
 - `HOTEL_DEPLOY_PORT`
 - `HOTEL_DEPLOY_USER`
-- `HOTEL_DEPLOY_KEY` (preferováno) nebo `HOTEL_DEPLOY_PASS` (fallback)
+- `HOTEL_DEPLOY_PASS`
 - `HOTEL_ADMIN_EMAIL`
 - `HOTEL_ADMIN_PASSWORD`
 
-Admin username je totožný s admin emailem, takže `HOTEL_ADMIN_EMAIL` je současně přihlašovací email i uživatelské jméno.
+Admin username is the same value as the admin email, so `HOTEL_ADMIN_EMAIL` is both login email and username.
 
-Volitelné aliasy:
+Optional aliases:
 
 - `KAJOVO_API_ADMIN_EMAIL`
 - `KAJOVO_API_ADMIN_PASSWORD`
 
-Pokud jsou aliasy vyplněné, musí být shodné s `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. CI a deploy workflow tuto shodu kontrolují a na GitHubu už neexistuje hardcoded fallback na testovací admin účet.
+If aliases are present, they must match `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. CI, deploy, and post-deploy verify all enforce that rule and no GitHub workflow uses a hardcoded fallback admin account.
 
-Poznámka: credentialy se nikdy necommitují do repozitáře ani do dokumentace; produkční compose je bez nich blokující.
+Credentials are never committed to the repository or documentation. Production compose blocks API startup if the resolved admin credentials are missing.
 
-## 7) Provozní smoke-check po deploy
+## 7) Post-deploy smoke check
 
-Minimálně:
+The production deploy workflow now blocks unless all of these succeed:
 
 - `GET https://hotel.hcasc.cz/`
-- `GET https://hotel.hcasc.cz/login`
 - `GET https://hotel.hcasc.cz/admin/login`
 - `GET https://hotel.hcasc.cz/api/health`
-
-Doporučeno navíc ověřit admin login + moduly `Sklad` a `Snídaně`.
+- live admin login using the GitHub admin email/username and password

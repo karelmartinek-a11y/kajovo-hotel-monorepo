@@ -1,72 +1,68 @@
 # How to deploy (production)
 
-## Automatizované pipeline
+## Automated pipeline
 
-Produkce `hotel.hcasc.cz` se nasazuje z `main` automaticky přes GitHub Actions:
+Production `hotel.hcasc.cz` is deployed from `main` through GitHub Actions:
 
-1. Push commit do `main`.
-2. `CI Release - Kájovo Hotel` spustí:
-   - instalaci závislostí (Node/PNPM, Python),
+1. Push a commit to `main`.
+2. `CI Release - KĂˇjovo Hotel` runs:
+   - dependency install (Node/PNPM, Python),
    - TypeScript lint,
-   - backend unit testy (`pnpm unit`),
-   - frontend buildy (`@kajovo/kajovo-hotel-web` + `admin`),
-   - lehký smoke Playwright (`apps/kajovo-hotel-web/tests/smoke.spec.ts`).
-3. Po úspěšném `CI Release` (a pro kompatibilitu také po `CI Full - Kájovo Hotel`) se spustí:
+   - backend unit tests (`pnpm unit`),
+   - frontend builds (`@kajovo/kajovo-hotel-web` + `@kajovo/kajovo-hotel-admin`),
+   - lightweight Playwright smoke.
+3. After successful `CI Release` or `CI Full - KĂˇjovo Hotel`, GitHub runs:
    - `Deploy - hotel.hcasc.cz`
 
 Deploy workflow: `.github/workflows/deploy-production.yml`.
 
 Authoritative GitHub settings checklist: `docs/github-settings-checklist.md`.
 
-## Nutná GitHub konfigurace
+## Required GitHub configuration
 
-V repo settings musí být vyplněné `secrets` nebo `variables`:
+Repository `Secrets` / `Variables` must contain:
 
 - `HOTEL_DEPLOY_HOST`
 - `HOTEL_DEPLOY_PORT`
 - `HOTEL_DEPLOY_USER`
-- `HOTEL_DEPLOY_KEY` (preferováno) nebo `HOTEL_DEPLOY_PASS`
+- `HOTEL_DEPLOY_PASS`
 - `HOTEL_ADMIN_EMAIL`
 - `HOTEL_ADMIN_PASSWORD`
 
-Admin přihlášení používá email jako uživatelské jméno, takže hodnota `HOTEL_ADMIN_EMAIL` je zároveň login username.
+Admin login uses email as username, so `HOTEL_ADMIN_EMAIL` is also the admin username.
 
-Volitelné aliasy:
+Optional aliases:
 
 - `KAJOVO_API_ADMIN_EMAIL`
 - `KAJOVO_API_ADMIN_PASSWORD`
 
-Pokud aliasy vyplníte, musí mít stejnou hodnotu jako `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. GitHub workflow je nyní validuje a bez těchto hodnot už nepoužívá žádný hardcoded fallback.
+If aliases are set, they must equal `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. GitHub workflows validate this and no workflow uses a hardcoded fallback admin account anymore.
 
-Doporučené rozdělení:
+Recommended split:
 
 - `Variables`: `HOTEL_DEPLOY_HOST`, `HOTEL_DEPLOY_PORT`, `HOTEL_DEPLOY_USER`, `HOTEL_ADMIN_EMAIL`
-- `Secrets`: `HOTEL_DEPLOY_KEY` nebo `HOTEL_DEPLOY_PASS`, `HOTEL_ADMIN_PASSWORD`
+- `Secrets`: `HOTEL_DEPLOY_PASS`, `HOTEL_ADMIN_PASSWORD`
 
-## Co dělá deploy script na serveru
+## What the deploy workflow does
 
-- synchronizuje `/opt/kajovo-hotel-monorepo` na `origin/main`
-- spouští `infra/ops/deploy-production.sh`
-- vypíše diagnostické logy kontejnerů (`api`, `postgres`, `admin`, `web`)
-- exportuje admin credentialy do `KAJOVO_API_ADMIN_EMAIL` / `KAJOVO_API_ADMIN_PASSWORD` a produkční compose bez nich nespustí API
+- checks out the exact SHA that passed CI,
+- creates a release archive from that SHA,
+- uploads the archive to the production host over password-based SSH,
+- extracts the release on the server while preserving `infra/.env`,
+- runs `infra/ops/deploy-production.sh` in artifact mode (`SKIP_GIT_SYNC=true`),
+- prints compose diagnostics for `api`, `postgres`, `admin`, and `web`,
+- blocks the workflow unless public HTTP health checks pass,
+- blocks the workflow unless live admin login works with the same GitHub admin credentials.
 
-## Post-deploy ověření
+## Post-deploy verification
+
+The workflow now treats these checks as blocking:
 
 - `https://hotel.hcasc.cz/`
-- `https://hotel.hcasc.cz/login`
 - `https://hotel.hcasc.cz/admin/login`
 - `https://hotel.hcasc.cz/api/health`
+- live admin login against `/api/auth/admin/login` + `/api/auth/me`
 
 ## Preview/staging build
 
-Pokud potřebujete aktuální artefakt bez přímého deploye na server, použijte `Preview Build - Kájovo Hotel` (`.github/workflows/preview.yml`). Tato workflow:
-
-- vytvoří buildy pro web i admin,
-- zabalí `dist` složky do artefaktů (web-preview.tar.gz, admin-preview.tar.gz),
-- upozorní, že nasazení na staging potřebuje správné hosty/credentials (např. `STAGING_DEPLOY_HOST`).
-
-Skutečné staging nasazení zatím běží přes manuální postupy (`docs/how-to-deploy-staging.md`) – automatizované spuštění by vyžadovalo přístup k cílovému serveru (host, uživatel, klíč) a aktuální `infra/compose.staging.yml`.
-
-## Co chybí k úplnému staging deployi
-
-Bez veřejného staging hostu a jeho tajných proměnných nelze automaticky přepnout build z GitHubu na staging. Preview workflow je připravený skelet (vytvoří artefakty), ale finální deploy do `/opt/kajovo-hotel-staging` musí vázat na konkrétní cílové prostředí.
+If you need a build artifact without deploying to production, use `Preview Build - KĂˇjovo Hotel` (`.github/workflows/preview.yml`). It creates preview artifacts for web and admin.

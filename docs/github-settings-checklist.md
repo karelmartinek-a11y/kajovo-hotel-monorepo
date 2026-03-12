@@ -10,14 +10,14 @@ Purpose: authoritative checklist for repository-level GitHub `Secrets` and `Vari
 - GitHub workflows do not permit a hardcoded fallback admin account anymore.
 - If `KAJOVO_API_ADMIN_*` aliases are set, they must match `HOTEL_ADMIN_*`.
 - Production API synchronizes the persisted admin profile from the resolved GitHub admin credentials on startup, so the deployed login always follows the repository credential source of truth.
-- CI smoke and auth tests resolve the same admin credentials and fail in CI if they are missing.
+- CI smoke, auth tests, and post-deploy verify use the same admin credentials and fail in CI if they are missing.
 
 ## Minimal production-ready setup
 
 ### Repository Variables
 
 - `HOTEL_DEPLOY_HOST`
-  - Production host for SSH deploy.
+  - Production host for password-based SSH deploy.
 - `HOTEL_DEPLOY_PORT`
   - SSH port.
 - `HOTEL_DEPLOY_USER`
@@ -27,12 +27,10 @@ Purpose: authoritative checklist for repository-level GitHub `Secrets` and `Vari
 
 ### Repository Secrets
 
-- `HOTEL_DEPLOY_KEY`
-  - Preferred SSH private key for deploy.
 - `HOTEL_DEPLOY_PASS`
-  - Use only when key-based deploy is unavailable.
+  - Required password for production deploy.
 - `HOTEL_ADMIN_PASSWORD`
-  - Canonical admin password for CI smoke and production runtime.
+  - Canonical admin password for CI smoke, deploy verify, and production runtime.
 
 ## Optional alias keys
 
@@ -52,7 +50,7 @@ Use these only if another integration already expects `KAJOVO_API_*` names:
 
 - Keep `HOTEL_ADMIN_EMAIL` in `Variables`.
 - Keep `HOTEL_ADMIN_PASSWORD` in `Secrets`.
-- Prefer `HOTEL_DEPLOY_KEY` over `HOTEL_DEPLOY_PASS`.
+- Keep deploy transport in `HOTEL_DEPLOY_HOST`, `HOTEL_DEPLOY_PORT`, `HOTEL_DEPLOY_USER`, and `HOTEL_DEPLOY_PASS`.
 - Leave `KAJOVO_API_ADMIN_*` unset unless you explicitly need alias compatibility.
 
 ## Enforced by repository
@@ -62,7 +60,9 @@ Use these only if another integration already expects `KAJOVO_API_*` names:
 - `.github/workflows/release.yml`
 - `.github/workflows/deploy-production.yml`
 - `scripts/check_admin_credentials_env.py`
+- `scripts/verify_live_admin_login.mjs`
 - `infra/compose.prod.yml`
+- `infra/ops/deploy-production.sh`
 
 ## Failure conditions
 
@@ -70,6 +70,8 @@ CI or deploy must fail when:
 
 - admin email is missing,
 - admin password is missing,
+- deploy host, port, user, or password is missing,
 - `HOTEL_ADMIN_EMAIL` and `KAJOVO_API_ADMIN_EMAIL` differ,
 - `HOTEL_ADMIN_PASSWORD` and `KAJOVO_API_ADMIN_PASSWORD` differ,
-- production compose starts without `KAJOVO_API_ADMIN_EMAIL` / `KAJOVO_API_ADMIN_PASSWORD`.
+- production compose starts without `KAJOVO_API_ADMIN_EMAIL` / `KAJOVO_API_ADMIN_PASSWORD`,
+- public runtime health endpoints or live admin login fail after deploy.
