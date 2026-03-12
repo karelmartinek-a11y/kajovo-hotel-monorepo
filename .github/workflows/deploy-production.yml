@@ -113,8 +113,8 @@ jobs:
               mkdir -p "$preserve_dir/infra"
               cp "$release_root/infra/.env" "$preserve_dir/infra/.env"
             fi
-            rm -rf "$release_root"
             mkdir -p "$release_root"
+            find "$release_root" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
             tar -xzf "$release_archive" -C "$release_root"
             if [ -f "$preserve_dir/infra/.env" ]; then
               mkdir -p "$release_root/infra"
