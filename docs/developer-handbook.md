@@ -64,7 +64,7 @@ Při push do `main` běží:
 
 ## 6) GitHub Secrets / Variables (produkční deploy)
 
-Workflow `deploy-production.yml` používá tyto klíče (primárně `secrets`, fallback `vars`):
+Workflow `deploy-production.yml` a CI smoke běhy používají tyto klíče (primárně `secrets`, sekundárně `variables`):
 
 - `HOTEL_DEPLOY_HOST`
 - `HOTEL_DEPLOY_PORT`
@@ -73,7 +73,16 @@ Workflow `deploy-production.yml` používá tyto klíče (primárně `secrets`, 
 - `HOTEL_ADMIN_EMAIL`
 - `HOTEL_ADMIN_PASSWORD`
 
-Poznámka: credentialy se nikdy necommitují do repozitáře ani do dokumentace.
+Admin username je totožný s admin emailem, takže `HOTEL_ADMIN_EMAIL` je současně přihlašovací email i uživatelské jméno.
+
+Volitelné aliasy:
+
+- `KAJOVO_API_ADMIN_EMAIL`
+- `KAJOVO_API_ADMIN_PASSWORD`
+
+Pokud jsou aliasy vyplněné, musí být shodné s `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. CI a deploy workflow tuto shodu kontrolují a na GitHubu už neexistuje hardcoded fallback na testovací admin účet.
+
+Poznámka: credentialy se nikdy necommitují do repozitáře ani do dokumentace; produkční compose je bez nich blokující.
 
 ## 7) Provozní smoke-check po deploy
 

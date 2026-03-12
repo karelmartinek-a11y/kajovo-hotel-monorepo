@@ -18,7 +18,7 @@ Deploy workflow: `.github/workflows/deploy-production.yml`.
 
 ## Nutná GitHub konfigurace
 
-V repo settings musí být vyplněné `secrets` (nebo `variables` fallback):
+V repo settings musí být vyplněné `secrets` nebo `variables`:
 
 - `HOTEL_DEPLOY_HOST`
 - `HOTEL_DEPLOY_PORT`
@@ -27,11 +27,21 @@ V repo settings musí být vyplněné `secrets` (nebo `variables` fallback):
 - `HOTEL_ADMIN_EMAIL`
 - `HOTEL_ADMIN_PASSWORD`
 
+Admin přihlášení používá email jako uživatelské jméno, takže hodnota `HOTEL_ADMIN_EMAIL` je zároveň login username.
+
+Volitelné aliasy:
+
+- `KAJOVO_API_ADMIN_EMAIL`
+- `KAJOVO_API_ADMIN_PASSWORD`
+
+Pokud aliasy vyplníte, musí mít stejnou hodnotu jako `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. GitHub workflow je nyní validuje a bez těchto hodnot už nepoužívá žádný hardcoded fallback.
+
 ## Co dělá deploy script na serveru
 
 - synchronizuje `/opt/kajovo-hotel-monorepo` na `origin/main`
 - spouští `infra/ops/deploy-production.sh`
 - vypíše diagnostické logy kontejnerů (`api`, `postgres`, `admin`, `web`)
+- exportuje admin credentialy do `KAJOVO_API_ADMIN_EMAIL` / `KAJOVO_API_ADMIN_PASSWORD` a produkční compose bez nich nespustí API
 
 ## Post-deploy ověření
 

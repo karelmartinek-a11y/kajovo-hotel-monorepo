@@ -25,7 +25,33 @@ jobs:
       HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
       HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+      KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+      KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
     steps:
+      - name: Validate admin credential environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          resolved_email="${HOTEL_ADMIN_EMAIL:-${KAJOVO_API_ADMIN_EMAIL:-}}"
+          resolved_password="${HOTEL_ADMIN_PASSWORD:-${KAJOVO_API_ADMIN_PASSWORD:-}}"
+          if [ -z "$resolved_email" ]; then
+            echo "Missing HOTEL_ADMIN_EMAIL / KAJOVO_API_ADMIN_EMAIL in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          if [ -z "$resolved_password" ]; then
+            echo "Missing HOTEL_ADMIN_PASSWORD / KAJOVO_API_ADMIN_PASSWORD in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          if [ -n "${HOTEL_ADMIN_EMAIL:-}" ] && [ -n "${KAJOVO_API_ADMIN_EMAIL:-}" ] && [ "$HOTEL_ADMIN_EMAIL" != "$KAJOVO_API_ADMIN_EMAIL" ]; then
+            echo "HOTEL_ADMIN_EMAIL and KAJOVO_API_ADMIN_EMAIL must match." >&2
+            exit 1
+          fi
+          if [ -n "${HOTEL_ADMIN_PASSWORD:-}" ] && [ -n "${KAJOVO_API_ADMIN_PASSWORD:-}" ] && [ "$HOTEL_ADMIN_PASSWORD" != "$KAJOVO_API_ADMIN_PASSWORD" ]; then
+            echo "HOTEL_ADMIN_PASSWORD and KAJOVO_API_ADMIN_PASSWORD must match." >&2
+            exit 1
+          fi
+          echo "Admin credential environment check: PASS"
+
       - name: Připrav SSH klíč
         if: ${{ env.HOTEL_DEPLOY_KEY != '' }}
         shell: bash
@@ -54,7 +80,7 @@ jobs:
           username: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
           key_path: deploy_key.pem
           port: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
-          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD
+          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD
           script: |
             set -euo pipefail
             set -x
@@ -74,8 +100,8 @@ jobs:
             GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
             git -C /opt/kajovo-hotel-monorepo checkout main
             git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
-            if [ -n "${HOTEL_ADMIN_EMAIL:-}" ]; then export KAJOVO_API_ADMIN_EMAIL="$HOTEL_ADMIN_EMAIL"; fi
-            if [ -n "${HOTEL_ADMIN_PASSWORD:-}" ]; then export KAJOVO_API_ADMIN_PASSWORD="$HOTEL_ADMIN_PASSWORD"; fi
+            export KAJOVO_API_ADMIN_EMAIL="${KAJOVO_API_ADMIN_EMAIL:-$HOTEL_ADMIN_EMAIL}"
+            export KAJOVO_API_ADMIN_PASSWORD="${KAJOVO_API_ADMIN_PASSWORD:-$HOTEL_ADMIN_PASSWORD}"
             set +e
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?
@@ -97,7 +123,7 @@ jobs:
           username: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
           port: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
-          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD
+          envs: HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD
           script: |
             set -euo pipefail
             set -x
@@ -117,8 +143,8 @@ jobs:
             GIT_SSH_COMMAND="$SSH_CMD" git -C /opt/kajovo-hotel-monorepo fetch --prune origin
             git -C /opt/kajovo-hotel-monorepo checkout main
             git -C /opt/kajovo-hotel-monorepo reset --hard origin/main
-            if [ -n "${HOTEL_ADMIN_EMAIL:-}" ]; then export KAJOVO_API_ADMIN_EMAIL="$HOTEL_ADMIN_EMAIL"; fi
-            if [ -n "${HOTEL_ADMIN_PASSWORD:-}" ]; then export KAJOVO_API_ADMIN_PASSWORD="$HOTEL_ADMIN_PASSWORD"; fi
+            export KAJOVO_API_ADMIN_EMAIL="${KAJOVO_API_ADMIN_EMAIL:-$HOTEL_ADMIN_EMAIL}"
+            export KAJOVO_API_ADMIN_PASSWORD="${KAJOVO_API_ADMIN_PASSWORD:-$HOTEL_ADMIN_PASSWORD}"
             set +e
             /opt/kajovo-hotel-monorepo/infra/ops/deploy-production.sh
             DEPLOY_STATUS=$?
