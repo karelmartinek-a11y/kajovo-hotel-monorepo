@@ -165,7 +165,6 @@ export type InventoryItemCreate = {
   "name": string;
   "pictogram_path"?: string | null;
   "pictogram_thumb_path"?: string | null;
-  "supplier"?: string | null;
   "unit": string;
 };
 export type InventoryItemDetailRead = {
@@ -178,7 +177,6 @@ export type InventoryItemDetailRead = {
   "name": string;
   "pictogram_path"?: string | null;
   "pictogram_thumb_path"?: string | null;
-  "supplier"?: string | null;
   "unit": string;
   "updated_at": string | null;
 };
@@ -191,7 +189,6 @@ export type InventoryItemRead = {
   "name": string;
   "pictogram_path"?: string | null;
   "pictogram_thumb_path"?: string | null;
-  "supplier"?: string | null;
   "unit": string;
   "updated_at": string | null;
 };
@@ -202,7 +199,6 @@ export type InventoryItemUpdate = {
   "name"?: string | null;
   "pictogram_path"?: string | null;
   "pictogram_thumb_path"?: string | null;
-  "supplier"?: string | null;
   "unit"?: string | null;
 };
 export type InventoryItemWithAuditRead = {
@@ -216,7 +212,6 @@ export type InventoryItemWithAuditRead = {
   "name": string;
   "pictogram_path"?: string | null;
   "pictogram_thumb_path"?: string | null;
-  "supplier"?: string | null;
   "unit": string;
   "updated_at": string | null;
 };

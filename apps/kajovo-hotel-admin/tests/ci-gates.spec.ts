@@ -106,9 +106,9 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/issues/1', async (route) => route.fulfill({ json: { id: 1, title: 'Issue', description: null, location: 'Lobby', room_number: null, priority: 'high', status: 'new', assignee: null, in_progress_at: null, resolved_at: null, closed_at: null, created_at: '2026-01-01', updated_at: '2026-01-01' } }));
   await page.route('**/api/v1/issues/*/photos', async (route) => route.fulfill({ json: [] }));
 
-  await page.route('**/api/v1/inventory?*', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
-  await page.route('**/api/v1/inventory', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
-  await page.route('**/api/v1/inventory/1', async (route) => route.fulfill({ json: { id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, supplier: null, created_at: '2026-01-01', updated_at: '2026-01-01', movements: [], audit_logs: [] } }));
+  await page.route('**/api/v1/inventory?*', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/inventory', async (route) => route.fulfill({ json: [{ id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
+  await page.route('**/api/v1/inventory/1', async (route) => route.fulfill({ json: { id: 1, name: 'Mléko', unit: 'l', min_stock: 1, current_stock: 2, created_at: '2026-01-01', updated_at: '2026-01-01', movements: [], audit_logs: [] } }));
 
   await page.route('**/api/v1/reports?*', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));
   await page.route('**/api/v1/reports', async (route) => route.fulfill({ json: [{ id: 1, title: 'Report', description: null, status: 'open', created_at: '2026-01-01', updated_at: '2026-01-01' }] }));

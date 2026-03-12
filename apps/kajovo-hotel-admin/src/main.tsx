@@ -161,6 +161,26 @@ function toAdminNavRoute(route: string): string {
   return route;
 }
 
+const ADMIN_PERSISTENT_MODULE_KEYS = new Set(['users', 'settings', 'profile']);
+const ADMIN_PERSISTENT_PERMISSION_PREFIXES = ['users:', 'settings:'];
+
+function roleViewPermissionSet(roleView: Role, adminPermissions: Set<string>): Set<string> {
+  if (roleView === 'admin') {
+    return new Set(adminPermissions);
+  }
+  return rolePermissions(roleView);
+}
+
+function mergeAdminViewPermissions(roleViewPermissions: Set<string>, adminPermissions: Set<string>): Set<string> {
+  const merged = new Set(roleViewPermissions);
+  for (const permission of adminPermissions) {
+    if (ADMIN_PERSISTENT_PERMISSION_PREFIXES.some((prefix) => permission.startsWith(prefix))) {
+      merged.add(permission);
+    }
+  }
+  return merged;
+}
+
 type PortalUser = {
   id: number;
   first_name: string;
@@ -765,6 +785,40 @@ function formatDateTime(value: string | null): string {
   return new Date(value).toLocaleString('cs-CZ');
 }
 
+function inventoryThumbSrc(item: { id: number; pictogram_thumb_path?: string | null }): string | null {
+  return item.pictogram_thumb_path ? `/api/v1/inventory/${item.id}/pictogram/thumb` : null;
+}
+
+async function uploadInventoryPictogram(itemId: number, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('file', file);
+  await fetchJson<InventoryItem>(`/api/v1/inventory/${itemId}/pictogram`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+function InventoryThumb({
+  item,
+  alt,
+  size = 'list',
+}: {
+  item: { id: number; name: string; pictogram_thumb_path?: string | null };
+  alt?: string;
+  size?: 'list' | 'detail' | 'form';
+}): JSX.Element {
+  const src = inventoryThumbSrc(item);
+  return (
+    <div className={`k-inventory-thumb k-inventory-thumb--${size}`} aria-hidden={src ? undefined : 'true'}>
+      {src ? (
+        <img src={src} alt={alt ?? `Miniatura položky ${item.name}`} />
+      ) : (
+        <span className="k-inventory-thumb-fallback">{item.name.slice(0, 1).toUpperCase()}</span>
+      )}
+    </div>
+  );
+}
+
 type DietKey = 'diet_no_gluten' | 'diet_no_milk' | 'diet_no_pork';
 
 type DietToggleProps = {
@@ -803,8 +857,11 @@ function DietIconBase({ children }: { children: React.ReactNode }): JSX.Element 
 function DietIconGluten(): JSX.Element {
   return (
     <DietIconBase>
-      <path d="M9 7v10M12 6v11M15 7v10" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M8 10c1 0 1-2 2-2s1 2 2 2 1-2 2-2 1 2 2 2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M12 6v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 8c-2.6 0-3.6 1.3-3.6 2.8 0 1.4 1 2.5 3.6 2.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 10.5c2.6 0 3.6 1.1 3.6 2.5 0 1.5-1 2.8-3.6 2.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 13.1c-2 0-2.8 0.9-2.8 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M12 15.1c2 0 2.8 0.9 2.8 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </DietIconBase>
   );
 }
@@ -812,8 +869,12 @@ function DietIconGluten(): JSX.Element {
 function DietIconMilk(): JSX.Element {
   return (
     <DietIconBase>
-      <path d="M10 6h4l-1 2v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2V8l1-2z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M10 9h4" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M8 13.5c0-2 1.6-3.5 3.5-3.5h3.6c1.8 0 3.2 1.4 3.2 3.2v1.1c0 1.5-1.2 2.7-2.7 2.7H11c-1.7 0-3-1.3-3-3V13.5z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 11.3 7.8 9.6M16.6 10.8l1.2-1.4" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="11.8" cy="13.7" r="0.55" fill="currentColor" />
+      <circle cx="14.6" cy="13.7" r="0.55" fill="currentColor" />
+      <path d="M12 16.2c.8.5 1.6.5 2.4 0" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+      <path d="M10.1 16.4v1.8M16.1 16.4v1.8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </DietIconBase>
   );
 }
@@ -821,11 +882,14 @@ function DietIconMilk(): JSX.Element {
 function DietIconPork(): JSX.Element {
   return (
     <DietIconBase>
-      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="10.5" cy="11.5" r="0.6" fill="currentColor" />
-      <circle cx="13.5" cy="11.5" r="0.6" fill="currentColor" />
-      <path d="M10 14c1 1 3 1 4 0" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <path d="M9 8l-2-1M15 8l2-1" stroke="currentColor" strokeWidth="1.2" />
+      <ellipse cx="12" cy="13" rx="4.6" ry="3.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <ellipse cx="12" cy="13.3" rx="1.9" ry="1.4" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11.2" cy="13.3" r="0.3" fill="currentColor" />
+      <circle cx="12.8" cy="13.3" r="0.3" fill="currentColor" />
+      <circle cx="10.3" cy="11.7" r="0.45" fill="currentColor" />
+      <circle cx="13.7" cy="11.7" r="0.45" fill="currentColor" />
+      <path d="M9 9.6 7.7 8.2l.7-1.3 1.8 1" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d="M15 9.6 16.3 8.2l-.7-1.3-1.8 1" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
     </DietIconBase>
   );
 }
@@ -869,10 +933,11 @@ function BreakfastList(): JSX.Element {
   const roles = auth?.roles ?? [];
   const isAdmin = actorRole === 'admin';
   const isRecepce = isAdmin || actorRole === 'recepce' || roles.includes('recepce');
+  const isBreakfast = isAdmin || actorRole === 'snídaně' || roles.includes('snídaně');
   const canImport = isRecepce || isAdmin;
   const canReactivate = isRecepce || isAdmin;
   const canEditDiet = isRecepce || isAdmin;
-  const canServe = isAdmin;
+  const canServe = isBreakfast;
 
   const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
@@ -1492,6 +1557,136 @@ function HousekeepingAdmin(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Pokojská', '/pokojska');
   const stateMarker = <StateMarker state={state} />;
+  const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
+  const [selectedRoom, setSelectedRoom] = React.useState<string | null>(null);
+  const [location, setLocation] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [photos, setPhotos] = React.useState<File[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
+
+  const resetForm = React.useCallback(() => {
+    setSelectedRoom(null);
+    setLocation('');
+    setDescription('');
+    setPhotos([]);
+    setError(null);
+    setSuccess(null);
+  }, []);
+
+  const onFileChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length > 3) {
+      setError('Lze připojit nejvýše 3 fotografie.');
+      setPhotos(files.slice(0, 3));
+      return;
+    }
+    setPhotos(files);
+  };
+
+  const submit = async (): Promise<void> => {
+    if (state !== 'default') return;
+    const shortDescription = description.trim();
+    if (!shortDescription) {
+      setError('Vyplňte krátký popis.');
+      return;
+    }
+    const roomValue = selectedRoom?.trim() || '';
+    const locationValue = roomValue ? `Pokoj ${roomValue}` : location.trim();
+    if (!locationValue) {
+      setError('Bez pokoje je nutné vyplnit umístění.');
+      return;
+    }
+    const normalizedDescription = roomValue
+      ? shortDescription
+      : `${locationValue} - ${shortDescription}`;
+    setSaving(true);
+    setError(null);
+    try {
+      if (mode === 'issue') {
+        const created = await fetchJson<Issue>('/api/v1/issues', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: shortDescription,
+            description: normalizedDescription,
+            location: locationValue,
+            room_number: roomValue || null,
+            status: 'new',
+            priority: 'medium',
+          }),
+        });
+        if (photos.length > 0) {
+          const formData = new FormData();
+          photos.forEach((file) => formData.append('photos', file));
+          const csrfToken = readCsrfToken();
+          const response = await fetch(`/api/v1/issues/${created.id}/photos`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : undefined,
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error('Fotografie závady se nepodařilo nahrát.');
+          }
+        }
+      } else {
+        const created = await fetchJson<LostFoundItem>('/api/v1/lost-found', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_type: 'found',
+            category: 'Nález',
+            description: normalizedDescription,
+            location: locationValue,
+            room_number: roomValue || null,
+            event_at: new Date().toISOString(),
+            status: 'new',
+            tags: [],
+          }),
+        });
+        if (photos.length > 0) {
+          const formData = new FormData();
+          photos.forEach((file) => formData.append('photos', file));
+          const csrfToken = readCsrfToken();
+          const response = await fetch(`/api/v1/lost-found/${created.id}/photos`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : undefined,
+            body: formData,
+          });
+          if (!response.ok) {
+            throw new Error('Fotografie nálezu se nepodařilo nahrát.');
+          }
+        }
+      }
+      setSuccess('Záznam byl uložen.');
+      resetForm();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Uložení záznamu selhalo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <main className="k-page" data-testid="housekeeping-admin-page">
+        {stateMarker}
+        <h1>Pokojská</h1>
+        <StateSwitcher />
+        {stateUI ?? (
+          <StateView
+            title="Pokojská"
+            description={success}
+            stateKey="info"
+            action={<button className="k-button" type="button" onClick={resetForm}>Zadat další</button>}
+          />
+        )}
+      </main>
+    );
+  }
 
   return (
     <main className="k-page" data-testid="housekeeping-admin-page">
@@ -1499,12 +1694,76 @@ function HousekeepingAdmin(): JSX.Element {
       <h1>Pokojská</h1>
       <StateSwitcher />
       {stateUI ?? (
-        <StateView
-          title="Pokojská"
-          description="Tento modul je určen pro portálové role. Pro zadání použijte portál."
-          stateKey="empty"
-          action={<Link className="k-button secondary" to="/">Zpět na přehled</Link>}
-        />
+        <div className="k-card">
+          <div className="k-toolbar">
+            <button
+              className={mode === 'issue' ? 'k-button' : 'k-button secondary'}
+              type="button"
+              onClick={() => setMode('issue')}
+            >
+              Zadání závady
+            </button>
+            <button
+              className={mode === 'lost_found' ? 'k-button' : 'k-button secondary'}
+              type="button"
+              onClick={() => setMode('lost_found')}
+            >
+              Zadání nálezu
+            </button>
+          </div>
+          {error ? <p className="k-text-error">{error}</p> : null}
+          <div className="k-form-grid">
+            <FormField id="housekeeping_room" label="Pokoj">
+              <input
+                id="housekeeping_room"
+                className="k-input"
+                value={selectedRoom ?? ''}
+                onChange={(event) => setSelectedRoom(event.target.value || null)}
+                placeholder="Např. 204"
+              />
+            </FormField>
+            <FormField id="housekeeping_location" label="Umístění mimo pokoj">
+              <input
+                id="housekeeping_location"
+                className="k-input"
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+                placeholder="Např. chodba A"
+                disabled={Boolean(selectedRoom)}
+              />
+            </FormField>
+            <FormField
+              id="housekeeping_description"
+              label={mode === 'issue' ? 'Popis závady' : 'Popis nálezu'}
+            >
+              <textarea
+                id="housekeeping_description"
+                className="k-textarea"
+                rows={4}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+            </FormField>
+            <FormField id="housekeeping_photos" label="Fotografie (max. 3)">
+              <input
+                id="housekeeping_photos"
+                type="file"
+                className="k-input"
+                multiple
+                accept="image/*"
+                onChange={onFileChange}
+              />
+            </FormField>
+          </div>
+          <div className="k-toolbar">
+            <button className="k-button" type="button" onClick={() => void submit()} disabled={saving}>
+              Uložit
+            </button>
+            <button className="k-button secondary" type="button" onClick={resetForm} disabled={saving}>
+              Vyčistit
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );
@@ -2179,23 +2438,15 @@ function InventoryList(): JSX.Element {
           </div>
           {seedInfo ? <p>{seedInfo}</p> : null}
           <DataTable
-            headers={['Ikona', 'Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']}
+            headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Status', 'Akce']}
             rows={items.map((item) => [
-              item.pictogram_thumb_path ? (
-                <img
-                  key={`pic-${item.id}`}
-                  src={`/api/v1/inventory/${item.id}/pictogram/thumb`}
-                  alt={`Piktogram ${item.name}`}
-                  className="k-pictogram-thumb k-pictogram-thumb-small"
-                />
-              ) : (
-                '-'
-              ),
-              item.name,
+              <div key={`inventory-cell-${item.id}`} className="k-inventory-item-cell">
+                <InventoryThumb item={item} />
+                <strong>{item.name}</strong>
+              </div>,
               item.current_stock,
               item.min_stock,
               item.unit,
-              item.supplier ?? '-',
               item.current_stock <= item.min_stock
                 ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge>
                 : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>,
@@ -2219,10 +2470,11 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     unit: 'ks',
     min_stock: 0,
     current_stock: 0,
-    supplier: '',
     amount_per_piece_base: 1,
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [pictogramFile, setPictogramFile] = React.useState<File | null>(null);
+  const [pictogramPreview, setPictogramPreview] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -2231,20 +2483,32 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       unit: item.unit,
       min_stock: item.min_stock,
       current_stock: item.current_stock,
-      supplier: item.supplier ?? '',
       amount_per_piece_base: item.amount_per_piece_base,
       pictogram_path: item.pictogram_path,
       pictogram_thumb_path: item.pictogram_thumb_path,
     })).catch(() => setError('Položku se nepodařilo načíst.'));
   }, [id, mode, state]);
 
+  React.useEffect(() => {
+    if (!pictogramFile) {
+      setPictogramPreview(null);
+      return;
+    }
+    const nextPreview = URL.createObjectURL(pictogramFile);
+    setPictogramPreview(nextPreview);
+    return () => URL.revokeObjectURL(nextPreview);
+  }, [pictogramFile]);
+
   const save = async (): Promise<void> => {
     try {
       const saved = await fetchJson<InventoryItem>(mode === 'create' ? '/api/v1/inventory' : `/api/v1/inventory/${id}`, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, supplier: payload.supplier || null }),
+        body: JSON.stringify(payload),
       });
+      if (pictogramFile) {
+        await uploadInventoryPictogram(saved.id, pictogramFile);
+      }
       navigate(`/sklad/${saved.id}`);
     } catch {
       setError('Položku se nepodařilo uložit.');
@@ -2272,6 +2536,13 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
             <button className="k-button" type="button" onClick={() => void save()}>Uložit</button>
+          </div>
+          <div className="k-inventory-form-media">
+            {pictogramPreview ? (
+              <img className="k-inventory-thumb-preview" src={pictogramPreview} alt={payload.name ? `Náhled položky ${payload.name}` : 'Náhled položky'} />
+            ) : (
+              <InventoryThumb item={{ id: Number(id ?? 0), name: payload.name || 'Položka', pictogram_thumb_path: payload.pictogram_thumb_path }} size="form" />
+            )}
           </div>
           <div className="k-form-grid">
             <FormField id="inventory_name" label="Název">
@@ -2314,12 +2585,13 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))}
               />
             </FormField>
-            <FormField id="inventory_supplier" label="Dodavatel (volitelné)">
+            <FormField id="inventory_pictogram" label="Miniatura položky">
               <input
-                id="inventory_supplier"
+                id="inventory_pictogram"
                 className="k-input"
-                value={payload.supplier ?? ''}
-                onChange={(event) => setPayload((prev) => ({ ...prev, supplier: event.target.value }))}
+                type="file"
+                accept="image/*"
+                onChange={(event) => setPictogramFile(event.target.files?.[0] ?? null)}
               />
             </FormField>
           </div>
@@ -2442,15 +2714,21 @@ function InventoryDetail(): JSX.Element {
               <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
               <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
             </div>
+            <div className="k-inventory-detail-hero">
+              <InventoryThumb item={item} size="detail" />
+              <div>
+                <h2>{item.name}</h2>
+                <p className="k-subtle">Miniatura položky slouží jako primární vizuální orientace ve skladu.</p>
+              </div>
+            </div>
             <DataTable
-              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Dodavatel', 'Hodnota veličiny v 1 ks']}
+              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Hodnota veličiny v 1 ks']}
               rows={[
                 [
                   item.name,
                   item.current_stock,
                   item.min_stock,
                   item.unit,
-                  item.supplier ?? '-',
                   item.amount_per_piece_base ?? 0,
                 ],
               ]}
@@ -3676,93 +3954,123 @@ function AppRoutes(): JSX.Element {
     ]
     : [];
   const modules = [...ia.modules, ...adminModules, ...injectedModules];
-
-  const roleViewKeys: string[] | null = auth.role === 'admin' && roleView !== 'admin'
-    ? (ROLE_MODULES[roleView] ?? [])
-    : null;
+  const effectiveRoleView = auth.role === 'admin' ? roleView : auth.activeRole ?? auth.role;
+  const roleViewKeys: string[] = ROLE_MODULES[effectiveRoleView] ?? [];
   const moduleByKey = new Map(modules.map((module) => [module.key, module]));
-  const orderedRoleModules = roleViewKeys
-    ? roleViewKeys.map((key) => moduleByKey.get(key)).filter((module): module is typeof modules[number] => Boolean(module))
-    : modules;
-  const allowedModules = orderedRoleModules.filter((module) => {
-    // View-state odkazy jsou interní QA trasa a v produkční navigaci nemají být vidět.
+  const roleScopedModules = roleViewKeys
+    .map((key) => moduleByKey.get(key))
+    .filter((module): module is typeof modules[number] => Boolean(module));
+  const roleScopedPermissions = roleViewPermissionSet(effectiveRoleView, auth.permissions);
+  const effectiveAuth: AuthProfile = {
+    ...auth,
+    activeRole: effectiveRoleView === 'admin' ? auth.activeRole : effectiveRoleView,
+    permissions: mergeAdminViewPermissions(roleScopedPermissions, auth.permissions),
+  };
+
+  const isVisibleModule = (module: typeof modules[number]): boolean => {
     if (module.route.includes('?state=')) {
       return false;
     }
-    const required =
-      Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
+    const required = Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
     if (!required) {
-      // Testovací / injektované moduly bez explicitních oprávnění ukazujeme vždy.
       return true;
     }
-    return required.every((permission) => auth.permissions.has(`${module.key}:${permission}`));
+    const permissionSource = ADMIN_PERSISTENT_MODULE_KEYS.has(module.key) ? auth.permissions : roleScopedPermissions;
+    return required.every((permission) => permissionSource.has(`${module.key}:${permission}`));
+  };
+
+  const allowedRoleModules = roleScopedModules.filter(isVisibleModule);
+  const persistentAdminModules = adminModules.filter((module) => {
+    if (module.key === 'profile') {
+      return true;
+    }
+    return isVisibleModule(module);
   });
-  const extraModules = roleViewKeys
-    ? modules.filter((module) => {
-      const hasPermissions = Array.isArray(module.permissions) && module.permissions.length > 0;
-      if (hasPermissions) {
-        return false;
-      }
-      return !roleViewKeys.includes(module.key);
-    })
-    : [];
-  const adminNavModules = [...allowedModules, ...extraModules].map((module) => ({
+  const auxiliaryModules = modules.filter((module) => {
+    if (ADMIN_PERSISTENT_MODULE_KEYS.has(module.key)) {
+      return false;
+    }
+    if (roleViewKeys.includes(module.key)) {
+      return false;
+    }
+    const hasPermissions = Array.isArray(module.permissions) && module.permissions.length > 0;
+    return !hasPermissions;
+  });
+  const adminNavModules = [...allowedRoleModules, ...persistentAdminModules, ...auxiliaryModules].map((module) => ({
     ...module,
     route: toAdminNavRoute(module.route),
   }));
-  const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
+  const roleHomeRoute = effectiveRoleView === 'admin'
+    ? '/'
+    : toAdminNavRoute(allowedRoleModules[0]?.route ?? '/');
+  const isAllowed = (moduleKey: string): boolean => {
+    if (moduleKey === 'profile') {
+      return true;
+    }
+    if (ADMIN_PERSISTENT_MODULE_KEYS.has(moduleKey)) {
+      return canReadModule(auth.permissions, moduleKey);
+    }
+    return canReadModule(roleScopedPermissions, moduleKey);
+  };
   const panelLayout = auth.role === 'admin' ? 'admin' : 'portal';
   const adminCurrentPath = toAdminNavRoute(location.pathname || '/');
+  const roleViewLabel = roleSwitcherLabels[effectiveRoleView] ?? effectiveRoleView;
+  const headerControls = auth.role === 'admin' ? (
+    <>
+      <label htmlFor="admin-role-view-select" className="k-subtle">
+        Role pohledu
+      </label>
+      <select
+        id="admin-role-view-select"
+        className="k-select k-select-inline"
+        aria-label="Role pohledu"
+        value={roleView}
+        onChange={(event) => setRoleView(event.target.value as AdminRoleView)}
+      >
+        {ADMIN_ROLE_VIEW_OPTIONS.map((role) => (
+          <option key={role} value={role}>
+            {roleSwitcherLabels[role] ?? role}
+          </option>
+        ))}
+      </select>
+    </>
+  ) : null;
 
   return (
-    <AuthContext.Provider value={auth}>
+    <AuthContext.Provider value={effectiveAuth}>
       <AppShell
         modules={adminNavModules}
         navigationRules={ia.navigation.rules}
         navigationSections={ia.navigation.sections}
         currentPath={adminCurrentPath}
         panelLayout={panelLayout}
+        headerControls={headerControls}
       >
-        {auth.role === 'admin' ? (
-          <div className="k-toolbar" data-testid="admin-module-switcher">
-            <span>Role pohledu:</span>
-            {ADMIN_ROLE_VIEW_OPTIONS.map((role) => (
-              <button
-                key={role}
-                className={roleView === role ? 'k-button' : 'k-button secondary'}
-                type="button"
-                onClick={() => setRoleView(role)}
-              >
-                {roleSwitcherLabels[role] ?? role}
-              </button>
-            ))}
-          </div>
-        ) : null}
         <Routes>
-        <Route path="/" element={isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={auth.role} userId={auth.userId} />} />
-<Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojská" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Snídaně" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="Závady" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad" element={isAllowed('inventory') ? <InventoryList /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/nova" element={isAllowed('inventory') ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={auth.role} userId={auth.userId} />} />
-        <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={auth.role} userId={auth.userId} />} />
-        <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="Nastavení" role={auth.role} userId={auth.userId} />} />
+        <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={roleViewLabel} userId={auth.userId} />} />
+<Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojská" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Snídaně" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="Snídaně" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Snídaně" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <IssuesForm mode="edit" /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/sklad" element={isAllowed('inventory') ? <InventoryList /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/sklad/nova" element={isAllowed('inventory') ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/sklad/:id" element={isAllowed('inventory') ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="Nastavení" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/profil" element={<AdminProfilePage />} />
         <Route path="/login" element={<AdminLoginPage />} />
         <Route
@@ -3806,14 +4114,5 @@ createRoot(document.getElementById('root')!).render(
     </ClientErrorBoundary>
   </React.StrictMode>,
 );
-
-
-
-
-
-
-
-
-
 
 

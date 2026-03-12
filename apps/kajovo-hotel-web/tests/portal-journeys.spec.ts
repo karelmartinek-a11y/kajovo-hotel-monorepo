@@ -285,12 +285,12 @@ test('portal records workflows cover lost-found, issues, inventory and reports',
     unit: 'ks',
     min_stock: 5,
     current_stock: 8,
-    supplier: 'Makro',
     amount_per_piece_base: 1,
-    pictogram_path: null,
-    pictogram_thumb_path: null,
+    pictogram_path: null as string | null,
+    pictogram_thumb_path: null as string | null,
     movements: [] as Array<Record<string, unknown>>,
   };
+  let inventoryPictogramUploaded = false;
   let reports = [
     {
       id: 51,
@@ -412,6 +412,15 @@ test('portal records workflows cover lost-found, issues, inventory and reports',
     };
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(inventoryItem) });
   });
+  await page.route('**/api/v1/inventory/*/pictogram', async (route) => {
+    inventoryPictogramUploaded = true;
+    inventoryItem = {
+      ...inventoryItem,
+      pictogram_path: '/media/inventory/original/inventory-42.png',
+      pictogram_thumb_path: '/media/inventory/thumb/inventory-42.webp',
+    };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(inventoryItem) });
+  });
   await page.route('**/api/v1/inventory/*', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(inventoryItem) });
@@ -479,6 +488,23 @@ test('portal records workflows cover lost-found, issues, inventory and reports',
 
   await page.goto('/sklad');
   await expect(page.getByTestId('inventory-list-page')).toContainText('Pomerančový džus');
+  await page.getByRole('link', { name: /nová položka/i }).click();
+  await expect(page.getByTestId('inventory-create-page')).toBeVisible();
+  await expect(page.getByText(/dodavatel/i)).toHaveCount(0);
+  await page.getByLabel(/^název$/i).fill('Jablečný mošt');
+  await page.getByLabel(/hodnota veličiny v 1 ks/i).fill('1');
+  await page.getByLabel(/minimální stav/i).fill('6');
+  await page.setInputFiles('#inventory_pictogram', {
+    name: 'jablecny-most.png',
+    mimeType: 'image/png',
+    buffer: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+  });
+  await page.getByRole('button', { name: /uložit/i }).click();
+  expect(inventoryPictogramUploaded).toBeTruthy();
+  await expect(page).toHaveURL(/\/sklad\/42$/);
+  await expect(page.getByTestId('inventory-detail-page')).toContainText('Jablečný mošt');
+  await expect(page.getByText(/dodavatel/i)).toHaveCount(0);
+  await page.goto('/sklad');
   await page.getByRole('link', { name: /detail/i }).first().click();
   await page.getByLabel(/počet kusů/i).first().fill('4');
   await page.getByLabel(/číslo dodacího listu/i).fill('INV-24');

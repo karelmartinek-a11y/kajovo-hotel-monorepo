@@ -489,6 +489,40 @@ function formatDateTime(value: string | null): string {
   return new Date(value).toLocaleString('cs-CZ');
 }
 
+function inventoryThumbSrc(item: { id: number; pictogram_thumb_path?: string | null }): string | null {
+  return item.pictogram_thumb_path ? `/api/v1/inventory/${item.id}/pictogram/thumb` : null;
+}
+
+async function uploadInventoryPictogram(itemId: number, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('file', file);
+  await fetchJson<InventoryItem>(`/api/v1/inventory/${itemId}/pictogram`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+function InventoryThumb({
+  item,
+  alt,
+  size = 'list',
+}: {
+  item: { id: number; name: string; pictogram_thumb_path?: string | null };
+  alt?: string;
+  size?: 'list' | 'detail' | 'form';
+}): JSX.Element {
+  const src = inventoryThumbSrc(item);
+  return (
+    <div className={`k-inventory-thumb k-inventory-thumb--${size}`} aria-hidden={src ? undefined : 'true'}>
+      {src ? (
+        <img src={src} alt={alt ?? `Miniatura položky ${item.name}`} />
+      ) : (
+        <span className="k-inventory-thumb-fallback">{item.name.slice(0, 1).toUpperCase()}</span>
+      )}
+    </div>
+  );
+}
+
 type DietKey = 'diet_no_gluten' | 'diet_no_milk' | 'diet_no_pork';
 
 type DietToggleProps = {
@@ -527,8 +561,11 @@ function DietIconBase({ children }: { children: React.ReactNode }): JSX.Element 
 function DietIconGluten(): JSX.Element {
   return (
     <DietIconBase>
-      <path d="M9 7v10M12 6v11M15 7v10" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M8 10c1 0 1-2 2-2s1 2 2 2 1-2 2-2 1 2 2 2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M12 6v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 8c-2.6 0-3.6 1.3-3.6 2.8 0 1.4 1 2.5 3.6 2.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 10.5c2.6 0 3.6 1.1 3.6 2.5 0 1.5-1 2.8-3.6 2.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M12 13.1c-2 0-2.8 0.9-2.8 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M12 15.1c2 0 2.8 0.9 2.8 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </DietIconBase>
   );
 }
@@ -536,8 +573,12 @@ function DietIconGluten(): JSX.Element {
 function DietIconMilk(): JSX.Element {
   return (
     <DietIconBase>
-      <path d="M10 6h4l-1 2v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2V8l1-2z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M10 9h4" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M8 13.5c0-2 1.6-3.5 3.5-3.5h3.6c1.8 0 3.2 1.4 3.2 3.2v1.1c0 1.5-1.2 2.7-2.7 2.7H11c-1.7 0-3-1.3-3-3V13.5z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 11.3 7.8 9.6M16.6 10.8l1.2-1.4" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="11.8" cy="13.7" r="0.55" fill="currentColor" />
+      <circle cx="14.6" cy="13.7" r="0.55" fill="currentColor" />
+      <path d="M12 16.2c.8.5 1.6.5 2.4 0" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+      <path d="M10.1 16.4v1.8M16.1 16.4v1.8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </DietIconBase>
   );
 }
@@ -545,11 +586,14 @@ function DietIconMilk(): JSX.Element {
 function DietIconPork(): JSX.Element {
   return (
     <DietIconBase>
-      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="10.5" cy="11.5" r="0.6" fill="currentColor" />
-      <circle cx="13.5" cy="11.5" r="0.6" fill="currentColor" />
-      <path d="M10 14c1 1 3 1 4 0" stroke="currentColor" strokeWidth="1.2" fill="none" />
-      <path d="M9 8l-2-1M15 8l2-1" stroke="currentColor" strokeWidth="1.2" />
+      <ellipse cx="12" cy="13" rx="4.6" ry="3.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <ellipse cx="12" cy="13.3" rx="1.9" ry="1.4" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11.2" cy="13.3" r="0.3" fill="currentColor" />
+      <circle cx="12.8" cy="13.3" r="0.3" fill="currentColor" />
+      <circle cx="10.3" cy="11.7" r="0.45" fill="currentColor" />
+      <circle cx="13.7" cy="11.7" r="0.45" fill="currentColor" />
+      <path d="M9 9.6 7.7 8.2l.7-1.3 1.8 1" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d="M15 9.6 16.3 8.2l-.7-1.3-1.8 1" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
     </DietIconBase>
   );
 }
@@ -2152,13 +2196,15 @@ function InventoryList(): JSX.Element {
             <Link className="k-button" to="/sklad/nova">Nová položka</Link>
           </div>
           <DataTable
-            headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']}
+            headers={['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Status', 'Akce']}
             rows={items.map((item) => [
-              item.name,
+              <div key={`inventory-cell-${item.id}`} className="k-inventory-item-cell">
+                <InventoryThumb item={item} />
+                <strong>{item.name}</strong>
+              </div>,
               item.current_stock,
               item.min_stock,
               item.unit,
-              item.supplier ?? '-',
               item.current_stock <= item.min_stock
                 ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge>
                 : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>,
@@ -2182,10 +2228,11 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     unit: 'ks',
     min_stock: 0,
     current_stock: 0,
-    supplier: '',
     amount_per_piece_base: 1,
   });
   const [error, setError] = React.useState<string | null>(null);
+  const [pictogramFile, setPictogramFile] = React.useState<File | null>(null);
+  const [pictogramPreview, setPictogramPreview] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (mode !== 'edit' || state !== 'default' || !id) return;
@@ -2194,20 +2241,32 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       unit: item.unit,
       min_stock: item.min_stock,
       current_stock: item.current_stock,
-      supplier: item.supplier ?? '',
       amount_per_piece_base: item.amount_per_piece_base,
       pictogram_path: item.pictogram_path,
       pictogram_thumb_path: item.pictogram_thumb_path,
     })).catch(() => setError('Položku se nepodařilo načíst.'));
   }, [id, mode, state]);
 
+  React.useEffect(() => {
+    if (!pictogramFile) {
+      setPictogramPreview(null);
+      return;
+    }
+    const nextPreview = URL.createObjectURL(pictogramFile);
+    setPictogramPreview(nextPreview);
+    return () => URL.revokeObjectURL(nextPreview);
+  }, [pictogramFile]);
+
   const save = async (): Promise<void> => {
     try {
       const saved = await fetchJson<InventoryItem>(mode === 'create' ? '/api/v1/inventory' : `/api/v1/inventory/${id}`, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, supplier: payload.supplier || null }),
+        body: JSON.stringify(payload),
       });
+      if (pictogramFile) {
+        await uploadInventoryPictogram(saved.id, pictogramFile);
+      }
       navigate(`/sklad/${saved.id}`);
     } catch {
       setError('Položku se nepodařilo uložit.');
@@ -2232,6 +2291,13 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
             <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
             <button className="k-button" type="button" onClick={() => void save()}>Uložit</button>
           </div>
+          <div className="k-inventory-form-media">
+            {pictogramPreview ? (
+              <img className="k-inventory-thumb-preview" src={pictogramPreview} alt={payload.name ? `Náhled položky ${payload.name}` : 'Náhled položky'} />
+            ) : (
+              <InventoryThumb item={{ id: Number(id ?? 0), name: payload.name || 'Položka', pictogram_thumb_path: payload.pictogram_thumb_path }} size="form" />
+            )}
+          </div>
           <div className="k-form-grid">
             <FormField id="inventory_name" label="Název">
               <input id="inventory_name" className="k-input" value={payload.name} onChange={(e) => setPayload((prev) => ({ ...prev, name: e.target.value }))} />
@@ -2249,8 +2315,8 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
             <FormField id="inventory_min_stock" label="Minimální stav">
               <input id="inventory_min_stock" type="number" className="k-input" value={payload.min_stock} onChange={(e) => setPayload((prev) => ({ ...prev, min_stock: Number(e.target.value) }))} />
             </FormField>
-            <FormField id="inventory_supplier" label="Dodavatel (volitelné)">
-              <input id="inventory_supplier" className="k-input" value={payload.supplier ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, supplier: e.target.value }))} />
+            <FormField id="inventory_pictogram" label="Miniatura položky">
+              <input id="inventory_pictogram" type="file" className="k-input" accept="image/*" onChange={(e) => setPictogramFile(e.target.files?.[0] ?? null)} />
             </FormField>
           </div>
         </div>
@@ -2346,9 +2412,16 @@ function InventoryDetail(): JSX.Element {
               <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
               <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
             </div>
+            <div className="k-inventory-detail-hero">
+              <InventoryThumb item={item} size="detail" />
+              <div>
+                <h2>{item.name}</h2>
+                <p className="k-subtle">Miniatura položky slouží jako primární vizuální orientace ve skladu.</p>
+              </div>
+            </div>
             <DataTable
-              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Dodavatel', 'Hodnota veličiny v 1 ks']}
-              rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.supplier ?? '-', item.amount_per_piece_base ?? 0]]}
+              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Hodnota veličiny v 1 ks']}
+              rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.amount_per_piece_base ?? 0]]}
             />
           </div>
           <div className="k-card">

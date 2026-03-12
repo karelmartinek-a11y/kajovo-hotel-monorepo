@@ -1007,18 +1007,6 @@
             ],
             "title": "Pictogram Thumb Path"
           },
-          "supplier": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supplier"
-          },
           "unit": {
             "maxLength": 32,
             "minLength": 1,
@@ -1103,18 +1091,6 @@
               }
             ],
             "title": "Pictogram Thumb Path"
-          },
-          "supplier": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supplier"
           },
           "unit": {
             "maxLength": 32,
@@ -1209,18 +1185,6 @@
               }
             ],
             "title": "Pictogram Thumb Path"
-          },
-          "supplier": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supplier"
           },
           "unit": {
             "maxLength": 32,
@@ -1326,18 +1290,6 @@
             ],
             "title": "Pictogram Thumb Path"
           },
-          "supplier": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supplier"
-          },
           "unit": {
             "anyOf": [
               {
@@ -1430,18 +1382,6 @@
               }
             ],
             "title": "Pictogram Thumb Path"
-          },
-          "supplier": {
-            "anyOf": [
-              {
-                "maxLength": 255,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supplier"
           },
           "unit": {
             "maxLength": 32,

@@ -272,7 +272,6 @@ class InventoryItemBase(BaseModel):
     unit: str = Field(min_length=1, max_length=32)
     min_stock: int = Field(ge=0)
     current_stock: int = Field(ge=0)
-    supplier: str | None = Field(default=None, max_length=255)
     amount_per_piece_base: int = Field(default=1, ge=1)
     pictogram_path: str | None = None
     pictogram_thumb_path: str | None = None
@@ -295,7 +294,6 @@ class InventoryItemUpdate(BaseModel):
     unit: str | None = Field(default=None, min_length=1, max_length=32)
     min_stock: int | None = Field(default=None, ge=0)
     current_stock: int | None = Field(default=None, ge=0)
-    supplier: str | None = Field(default=None, max_length=255)
     amount_per_piece_base: int | None = Field(default=None, ge=1)
     pictogram_path: str | None = None
     pictogram_thumb_path: str | None = None

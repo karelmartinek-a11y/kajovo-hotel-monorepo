@@ -37,7 +37,6 @@ DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
         unit="g",
         min_stock=5,
         current_stock=12,
-        supplier="Default supplier",
         amount_per_piece_base=1000,
     ),
     InventoryItemCreate(
@@ -45,7 +44,6 @@ DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
         unit="g",
         min_stock=3,
         current_stock=8,
-        supplier="Default supplier",
         amount_per_piece_base=1000,
     ),
     InventoryItemCreate(
@@ -53,7 +51,6 @@ DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
         unit="g",
         min_stock=2,
         current_stock=4,
-        supplier="Default supplier",
         amount_per_piece_base=1000,
     ),
     InventoryItemCreate(
@@ -61,7 +58,6 @@ DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
         unit="ks",
         min_stock=20,
         current_stock=80,
-        supplier="Default supplier",
         amount_per_piece_base=1,
     ),
 ]

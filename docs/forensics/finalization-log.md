@@ -478,3 +478,77 @@ Tests run:
 What remains:
 - Commit and push this final docs pack.
 - Let the docs follow-up SHA clear CI/deploy so the repository and the production proof trail end in a clean state.
+
+## Etapa 17 - Admin role-view parity and header ergonomics
+
+What was found:
+- The admin `Role pohledu` switch only filtered navigation and did not consistently drive the same effective module behavior as the portal role it was supposed to preview.
+- The housekeeping role view still rendered a placeholder instead of the real operational intake used by housekeeping in the portal.
+- The role switcher lived below the shell header as a row of buttons, which made the control feel detached from navigation and increased drift risk during future module changes.
+- The shared shell still contained a broken skip-link label (`P?esko?it na obsah`) instead of the correct Czech copy.
+
+What was changed:
+- Added a header control slot to the shared app shell and moved `Role pohledu` into a single dropdown anchored at the end of the first header row.
+- Introduced an effective admin role-view model driven directly from `ROLE_MODULES`, so non-admin role previews now inherit the same role-scoped primary module order as the portal while still keeping admin modules available.
+- Replaced the admin housekeeping placeholder with the real issue/lost-found intake workflow so the housekeeping preview now matches the actual operational form.
+- Aligned admin breakfast role-view behavior with the portal by letting the breakfast preview serve orders while keeping recepce-only import/export controls hidden for the `snídaně` role.
+- Corrected the shared skip-link Czech text in the app shell.
+
+Evidence:
+- `packages/ui/src/shell/AppShell.tsx`
+- `packages/ui/src/tokens.css`
+- `apps/kajovo-hotel-admin/src/main.tsx`
+- `apps/kajovo-hotel-admin/tests/role-view-parity.spec.ts`
+
+Tests run:
+- `python scripts/check_mojibake.py` -> PASS
+- `pnpm typecheck` -> PASS
+- `pnpm --filter @kajovo/kajovo-hotel-web build` -> PASS
+- `pnpm --filter @kajovo/kajovo-hotel-admin build` -> PASS
+- `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/role-view-parity.spec.ts tests/nav-robustness.spec.ts --project=desktop` -> PASS
+
+What remains:
+- Commit, push and run the full remote CI/deploy chain for this role-view/ergonomics closure.
+
+## Etapa 18 - Inventory thumbnails, supplier removal and diet icon clarity
+
+What was found:
+- Inventory create flows in admin and portal still privileged text over visual orientation: thumbnails could only be uploaded later in detail, not already during item creation.
+- The active inventory contract still carried a legacy `supplier` field, so the UI change alone would have left a dead optional concept in runtime API payloads and generated client types.
+- Inventory defaults and regression fixtures still mixed stale seed semantics and older visual placeholders.
+- The breakfast diet icon set was too abstract for quick service recognition, especially for gluten-free and milk-free markers.
+
+What was changed:
+- Added thumbnail upload directly into inventory create/edit forms in both admin and portal so a new stock item can be created with its miniature as part of the primary workflow.
+- Promoted the thumbnail into list/detail presentation so stock orientation is image-first rather than name-only.
+- Removed `supplier` from the active inventory API schemas and regenerated `apps/kajovo-hotel-api/openapi.json` plus `packages/shared/src/generated/client.ts`, so supplier no longer survives as an optional active-field contract.
+- Cleaned inventory defaults and touched regression fixtures to align with the current stock model.
+- Replaced diet pictograms with clearer recognisable icons: a single wheat ear for gluten-free, a cow for milk-free, and a clearer pig for pork-free.
+- Added focused Playwright regression specs for portal and admin inventory thumbnail upload flows and checked that `Dodavatel` is absent from the UI.
+
+Evidence:
+- `apps/kajovo-hotel-admin/src/main.tsx`
+- `apps/kajovo-hotel-web/src/main.tsx`
+- `packages/ui/src/tokens.css`
+- `apps/kajovo-hotel-api/app/api/schemas.py`
+- `apps/kajovo-hotel-api/app/api/routes/inventory.py`
+- `apps/kajovo-hotel-api/openapi.json`
+- `packages/shared/src/generated/client.ts`
+- `apps/kajovo-hotel-api/tests/test_inventory.py`
+- `apps/kajovo-hotel-web/tests/inventory-media.spec.ts`
+- `apps/kajovo-hotel-admin/tests/inventory-media.spec.ts`
+- `apps/kajovo-hotel-web/tests/fixtures/inventory-thumb.png`
+- `apps/kajovo-hotel-admin/tests/fixtures/inventory-thumb.png`
+
+Tests run:
+- `pnpm contract:generate` -> PASS
+- `python -m pytest apps/kajovo-hotel-api/tests/test_inventory.py -q` -> PASS
+- `pnpm typecheck` -> PASS
+- `pnpm --filter @kajovo/kajovo-hotel-web build` -> PASS
+- `pnpm --filter @kajovo/kajovo-hotel-admin build` -> PASS
+- `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/inventory-media.spec.ts --project=desktop` -> PASS
+- `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/inventory-media.spec.ts --project=desktop` -> PASS
+- `python scripts/check_mojibake.py` -> PASS
+
+What remains:
+- Commit, push and run the remote CI/deploy chain for the combined role-view plus inventory/media closure.

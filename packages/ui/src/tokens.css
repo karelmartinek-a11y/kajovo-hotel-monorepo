@@ -141,6 +141,14 @@ body {
   gap: var(--k-spacing-4);
 }
 
+.k-shell-header-controls {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-spacing-2);
+  flex-wrap: wrap;
+}
+
 .k-nav {
   display: block;
   flex: 1 1 auto;
@@ -463,6 +471,11 @@ body {
   color: var(--k-color-ink);
 }
 
+.k-select-inline {
+  min-width: 220px;
+  max-width: 100%;
+}
+
 .k-form-grid {
   display: grid;
   gap: var(--k-spacing-3);
@@ -591,6 +604,12 @@ body {
     gap: var(--k-spacing-3);
   }
 
+  .k-shell-header-controls {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .k-wordmark img {
     height: 28px;
   }
@@ -627,6 +646,15 @@ body {
     padding: var(--k-spacing-3);
   }
 
+  .k-shell-header-controls {
+    justify-content: stretch;
+  }
+
+  .k-select-inline {
+    min-width: 0;
+    width: 100%;
+  }
+
   .k-utility-page {
     padding-bottom: calc(var(--k-spacing-8) + 104px);
   }
@@ -642,6 +670,10 @@ body {
   .k-grid.cards-2,
   .k-grid.cards-3 {
     grid-template-columns: 1fr;
+  }
+
+  .k-inventory-detail-hero {
+    align-items: flex-start;
   }
 
   .kajovo-sign {
@@ -836,6 +868,68 @@ body {
 .k-diet-toggle:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.k-inventory-item-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-spacing-3);
+}
+
+.k-inventory-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--k-radius-2);
+  overflow: hidden;
+  background: var(--k-color-surface-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--k-color-border);
+  flex: 0 0 auto;
+}
+
+.k-inventory-thumb--detail {
+  width: 108px;
+  height: 108px;
+}
+
+.k-inventory-thumb--form {
+  width: 92px;
+  height: 92px;
+}
+
+.k-inventory-thumb img,
+.k-inventory-thumb-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.k-inventory-thumb-fallback {
+  font-size: var(--k-font-size-xl);
+  font-weight: var(--k-weight-bold);
+  color: var(--k-color-metal-accessible);
+}
+
+.k-inventory-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--k-spacing-4);
+  margin-bottom: var(--k-spacing-4);
+}
+
+.k-inventory-form-media {
+  margin-bottom: var(--k-spacing-4);
+  display: inline-flex;
+}
+
+.k-inventory-thumb-preview {
+  width: 92px;
+  height: 92px;
+  border-radius: var(--k-radius-2);
+  border: 1px solid var(--k-color-border);
 }
 
 .k-row-muted {

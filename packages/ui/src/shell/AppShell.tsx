@@ -15,6 +15,7 @@ type AppShellProps = {
   currentPath: string;
   panelLayout?: PanelLayout;
   brandHref?: string;
+  headerControls?: React.ReactNode;
 };
 
 const MAIN_TARGET_ID = 'main-content';
@@ -28,6 +29,7 @@ export function AppShell({
   navigationSections,
   currentPath,
   brandHref,
+  headerControls,
 }: AppShellProps): JSX.Element {
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
   const signHref = wordmarkHref;
@@ -66,7 +68,7 @@ export function AppShell({
     <div className="k-app-shell" data-panel-layout={panelLayout}>
       <header className="k-app-header">
         <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>
-          P?esko?it na obsah
+          Přeskočit na obsah
         </a>
         <div className="k-shell-inner k-shell-header">
           {!isIntroView ? <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} /> : null}
@@ -76,6 +78,7 @@ export function AppShell({
             sections={navigationSections}
             currentPath={currentPath}
           />
+          {headerControls ? <div className="k-shell-header-controls">{headerControls}</div> : null}
         </div>
       </header>
       {children}

@@ -14,7 +14,6 @@ def create_item(api_request: ApiRequest, **overrides: object) -> dict[str, objec
         "min_stock": 10,
         "current_stock": 12,
         "amount_per_piece_base": 1,
-        "supplier": "FreshTrade",
     }
     payload.update(overrides)
     status, data = api_request("/api/v1/inventory", method="POST", payload=payload)
@@ -34,12 +33,12 @@ def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
     update_status, updated = api_request(
         f"/api/v1/inventory/{created['id']}",
         method="PUT",
-        payload={"supplier": "Updated Supplier", "min_stock": 15},
+        payload={"min_stock": 15, "amount_per_piece_base": 6},
     )
     assert update_status == 200
     assert isinstance(updated, dict)
-    assert updated["supplier"] == "Updated Supplier"
     assert updated["min_stock"] == 15
+    assert updated["amount_per_piece_base"] == 6
 
     movement_status, movement_result = api_request(
         f"/api/v1/inventory/{created['id']}/movements",
