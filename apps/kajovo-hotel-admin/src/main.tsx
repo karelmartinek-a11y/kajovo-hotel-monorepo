@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, KajovoSign, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   getAuthBundle,
@@ -38,6 +38,7 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
+import { toLocalDateInputValue } from './dateDefaults';
 import {
   ADMIN_SWITCHABLE_ROLES,
   ROLE_MODULES,
@@ -247,7 +248,6 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 }
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
-const defaultServiceDate = '2026-02-19';
 
 
 const IntroRoute = React.lazy(async () => {
@@ -821,7 +821,7 @@ function BreakfastList(): JSX.Element {
   const canEditDiet = isRecepce || isAdmin;
   const canServe = isAdmin;
 
-  const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
+  const [serviceDate, setServiceDate] = React.useState(() => toLocalDateInputValue());
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -1229,7 +1229,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const navigate = useNavigate();
   const { id } = useParams();
   const [payload, setPayload] = React.useState<BreakfastPayload>({
-    service_date: defaultServiceDate,
+    service_date: toLocalDateInputValue(),
     room_number: '',
     guest_name: '',
     guest_count: 1,
@@ -2284,12 +2284,12 @@ function InventoryDetail(): JSX.Element {
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [receiptQuantity, setReceiptQuantity] = React.useState<number>(0);
-  const [receiptDate, setReceiptDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [receiptDate, setReceiptDate] = React.useState<string>(() => toLocalDateInputValue());
   const [receiptReference, setReceiptReference] = React.useState<string>('');
   const [receiptNote, setReceiptNote] = React.useState<string>('');
   const [issueType, setIssueType] = React.useState<InventoryMovementType>('out');
   const [issueQuantity, setIssueQuantity] = React.useState<number>(0);
-  const [issueDate, setIssueDate] = React.useState<string>(new Date().toISOString().slice(0, 10));
+  const [issueDate, setIssueDate] = React.useState<string>(() => toLocalDateInputValue());
   const [issueNote, setIssueNote] = React.useState<string>('');
   const [pictogram, setPictogram] = React.useState<File | null>(null);
   const [mediaInfo, setMediaInfo] = React.useState<string | null>(null);
@@ -3352,7 +3352,7 @@ function AdminLoginPage(): JSX.Element {
     <main className="k-page k-admin-login-page" data-testid="admin-login-page">
       <section className="k-admin-login-layout">
         <Card title="KájovoHotel Admin login">
-          <img className="k-admin-login-logo" src={brandWordmark} alt="KájovoHotel" />
+          <img className="k-admin-login-logo" src={brandWordmark} alt="KájovoHotel" data-brand-element="true" />
           <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
             <FormField id="admin_login_email" label="Admin email">
               <input id="admin_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -3390,7 +3390,7 @@ function AdminLoginPage(): JSX.Element {
           <img src={adminLoginFigure} alt="Kája pro administraci" loading="lazy" />
         </aside>
       </section>
-      <KajovoSign />
+
     </main>
   );
 }

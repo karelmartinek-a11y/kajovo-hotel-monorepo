@@ -233,3 +233,50 @@ test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
   }
 });
 
+
+
+test('default service and document dates follow local timezone day', async ({ browser, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Timezone emulation is deterministic in chromium project.');
+  const scenarios = [
+    { timezoneId: 'Europe/Prague', expected: '2026-02-19' },
+    { timezoneId: 'Pacific/Kiritimati', expected: '2026-02-20' },
+  ];
+
+  for (const scenario of scenarios) {
+    const context = await browser.newContext({ timezoneId: scenario.timezoneId });
+    const page = await context.newPage();
+    await page.route('**/api/auth/me', async (route) =>
+      route.fulfill({
+        json: {
+          email: 'admin@example.com',
+          role: 'admin',
+          permissions: [
+            'dashboard:read',
+            'housekeeping:read',
+            'breakfast:read',
+            'lost_found:read',
+            'issues:read',
+            'inventory:read',
+            'reports:read',
+          ],
+          actor_type: 'admin',
+        },
+      })
+    );
+    await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
+    await page.route('**/api/v1/breakfast/daily-summary?*', async (route) => route.fulfill({ json: summaryPayload }));
+
+    await page.addInitScript((iso) => {
+      const fixed = new Date(iso as string).valueOf();
+      Date.now = () => fixed;
+    }, '2026-02-19T23:30:00.000Z');
+
+    await page.goto('/admin/snidane');
+    await expect(page.locator('#service_date')).toHaveValue(scenario.expected);
+
+    await page.goto('/admin/sklad/nova');
+    await expect(page.locator('#receipt_date')).toHaveValue(scenario.expected);
+    await expect(page.locator('#issue_date')).toHaveValue(scenario.expected);
+    await context.close();
+  }
+});

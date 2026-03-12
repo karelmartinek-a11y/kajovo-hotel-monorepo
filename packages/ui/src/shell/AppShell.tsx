@@ -29,7 +29,7 @@ export function AppShell({
   navigationSections,
   currentPath,
   brandHref,
-  showFigure = true,
+  showFigure = false,
 }: AppShellProps): JSX.Element {
   const figureByRoute: Array<{ match: RegExp; src: string; alt: string }> = [
     { match: /^\/sklad(?:\/|$)/, src: '/brand/postavy/kaja-user.png', alt: 'Kája pro skladové hospodářství' },
