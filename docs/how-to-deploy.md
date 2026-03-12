@@ -5,13 +5,13 @@
 Production `hotel.hcasc.cz` is deployed from `main` through GitHub Actions:
 
 1. Push a commit to `main`.
-2. `CI Release - KĂˇjovo Hotel` runs:
+2. `CI Release - Kájovo Hotel` runs:
    - dependency install (Node/PNPM, Python),
    - TypeScript lint,
    - backend unit tests (`pnpm unit`),
    - frontend builds (`@kajovo/kajovo-hotel-web` + `@kajovo/kajovo-hotel-admin`),
    - lightweight Playwright smoke.
-3. After successful `CI Release` or `CI Full - KĂˇjovo Hotel`, GitHub runs:
+3. After successful `CI Release` or `CI Full - Kájovo Hotel`, GitHub runs:
    - `Deploy - hotel.hcasc.cz`
 
 Deploy workflow: `.github/workflows/deploy-production.yml`.
@@ -65,4 +65,4 @@ The workflow now treats these checks as blocking:
 
 ## Preview/staging build
 
-If you need a build artifact without deploying to production, use `Preview Build - KĂˇjovo Hotel` (`.github/workflows/preview.yml`). It creates preview artifacts for web and admin.
+If you need a build artifact without deploying to production, use `Preview Build - Kájovo Hotel` (`.github/workflows/preview.yml`). It creates preview artifacts for web and admin.

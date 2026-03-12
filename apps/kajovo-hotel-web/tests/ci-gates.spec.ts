@@ -206,6 +206,50 @@ test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
   expect(animationDuration).toBe('0s');
 });
 
+test('lost-found form uses runtime local datetime default', async ({ page }) => {
+  await page.unroute('**/api/auth/me');
+  await page.route('**/api/auth/me', async (route) =>
+    route.fulfill({
+      json: {
+        email: 'portal@example.com',
+        role: 'recepce',
+        permissions: [
+          'dashboard:read',
+          'housekeeping:read',
+          'breakfast:read',
+          'lost_found:read',
+          'lost_found:write',
+          'issues:read',
+          'inventory:read',
+          'reports:read',
+        ],
+        actor_type: 'portal',
+      },
+    })
+  );
+
+  const expectedLocalDateTime = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date()).reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== 'literal') {
+        acc[part.type] = part.value;
+      }
+      return acc;
+    }, {});
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  });
+
+  await page.goto('/ztraty-a-nalezy/novy');
+  await expect(page.locator('#event_at')).toHaveValue(expectedLocalDateTime);
+});
+
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }, testInfo) => {
   test.skip(
     testInfo.project.name !== 'desktop',

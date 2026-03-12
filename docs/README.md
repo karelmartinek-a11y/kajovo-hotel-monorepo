@@ -12,10 +12,10 @@ Tento adresář je **hlavní zdroj dokumentace** pro vývoj, provoz a audit port
 
 ## Forenzní a parity dokumentace
 
-- `docs/forensic-audit-2026-03-01.md` — průběžný forenzní audit parity.
-- `docs/forensic-audit-2026-03-01-docs-pipeline.md` — audit dokumentace + pipeline + větví.
+- `docs/SSOT_SCOPE_STATUS.md` — jediný autoritativní status/scope dokument.
+- `docs/forensics/finalization-log.md` — průběžný pracovní forenzní log finalizace.
 - `docs/feature-parity-matrix.csv` — maticové srovnání legacy vs. monorepo.
-- `docs/parity-verdict.md` — rozhodnutí o stavu parity.
+- `docs/forensics/` — důkazní implementační a closure dokumenty.
 
 ## Provozní dokumentace
 

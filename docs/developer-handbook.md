@@ -10,10 +10,12 @@ This document summarizes what a developer needs to work on the portal without SS
 
 ## 2) What a developer needs to know
 
-- Design SSOT: `ManifestDesignKĂˇjovo.md`.
+- Design SSOT: `ManifestDesignKájovo.md`.
 - Information architecture: `apps/kajovo-hotel/ux/ia.json`.
 - RBAC rules: `docs/rbac.md`.
-- Forensic parity state: `docs/feature-parity-matrix.csv`, `docs/forensic-audit-2026-03-01.md`.
+- Authoritative status/scope: `docs/SSOT_SCOPE_STATUS.md`.
+- Working finalization record: `docs/forensics/finalization-log.md`.
+- Forensic parity matrix: `docs/feature-parity-matrix.csv`.
 
 ## 3) Local run
 
@@ -59,8 +61,8 @@ pnpm ci:gates
 A push to `main` runs:
 
 - `CI Gates - KájovoHotel`
-- `CI Full - KĂˇjovo Hotel`
-- `CI Release - KĂˇjovo Hotel`
+- `CI Full - Kájovo Hotel`
+- `CI Release - Kájovo Hotel`
 - after successful CI: `Deploy - hotel.hcasc.cz`
 
 ## 6) GitHub Secrets / Variables for production deploy

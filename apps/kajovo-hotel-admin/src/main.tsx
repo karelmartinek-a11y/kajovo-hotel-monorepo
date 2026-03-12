@@ -47,7 +47,7 @@ import {
   type AuthProfile,
   type Role,
 } from './rbac';
-import { currentDateForTimeZone } from './lib/date';
+import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
 
 const brandWordmark = '/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg';
 
@@ -1642,7 +1642,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     category: '',
     location: '',
     room_number: '',
-    event_at: '2026-02-18T10:00:00Z',
+    event_at: localDateTimeInputToIsoUtc(currentDateTimeInputValue()),
     status: 'new',
     tags: [],
     claimant_name: '',
@@ -1765,9 +1765,9 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 id="event_at"
                 type="datetime-local"
                 className="k-input"
-                value={payload.event_at.slice(0, 16)}
+                value={isoUtcToLocalDateTimeInput(payload.event_at)}
                 onChange={(event) =>
-                  setPayload((prev) => ({ ...prev, event_at: `${event.target.value}:00Z` }))
+                  setPayload((prev) => ({ ...prev, event_at: localDateTimeInputToIsoUtc(event.target.value) }))
                 }
               />
             </FormField>
@@ -3806,7 +3806,6 @@ createRoot(document.getElementById('root')!).render(
     </ClientErrorBoundary>
   </React.StrictMode>,
 );
-
 
 
 

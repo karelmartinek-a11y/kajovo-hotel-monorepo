@@ -254,6 +254,27 @@ test('date defaults use runtime local day for breakfast and inventory forms', as
   await page.goto('/admin/sklad/1');
   await expect(page.locator('#receipt_date')).toHaveValue(expectedToday);
   await expect(page.locator('#issue_date')).toHaveValue(expectedToday);
+
+  const expectedLocalDateTime = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date()).reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== 'literal') {
+        acc[part.type] = part.value;
+      }
+      return acc;
+    }, {});
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  });
+
+  await page.goto('/admin/ztraty-a-nalezy/novy');
+  await expect(page.locator('#event_at')).toHaveValue(expectedLocalDateTime);
 });
 
 test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {

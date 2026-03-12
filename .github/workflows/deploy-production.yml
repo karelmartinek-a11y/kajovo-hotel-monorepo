@@ -162,6 +162,7 @@ jobs:
           }
           check_endpoint "$DEPLOY_BASE_URL/" "public root" "200"
           check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
+          check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
 
       - name: Verify live admin login with GitHub credentials
         env:
