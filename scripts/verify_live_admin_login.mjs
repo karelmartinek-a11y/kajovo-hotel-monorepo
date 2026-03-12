@@ -54,8 +54,8 @@ const pageResponse = await fetch(`${origin}/admin/login`, {
 });
 await assertOk(pageResponse, 'GET /admin/login');
 const pageBody = await pageResponse.text();
-if (!pageBody.includes('admin_login_email')) {
-  throw new Error('Admin login page does not contain expected admin_login_email field.');
+if (!pageBody.includes('<div id="root"></div>') || !pageBody.includes('/admin/assets/')) {
+  throw new Error('Admin login page does not expose the expected SPA shell.');
 }
 
 const loginResponse = await fetch(`${origin}/api/auth/admin/login`, {
