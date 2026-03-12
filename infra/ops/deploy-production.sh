@@ -23,6 +23,39 @@ require_cmd() {
 require_cmd docker
 require_cmd git
 
+compose_cmd() {
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" "$@"
+}
+
+docker_build_with_snapshot_retry() {
+  local build_log
+  local status
+  build_log="$(mktemp)"
+
+  set +e
+  compose_cmd build --pull 2>&1 | tee "$build_log"
+  status=${PIPESTATUS[0]}
+  set -e
+
+  if [[ "$status" -eq 0 ]]; then
+    rm -f "$build_log"
+    return 0
+  fi
+
+  if grep -Eq "failed to prepare extraction snapshot|parent snapshot .* does not exist" "$build_log"; then
+    echo "Detekován poškozený Docker build cache snapshot -> provádím builder/image prune a opakuji build."
+    docker builder prune -af || true
+    docker image prune -af || true
+    compose_cmd build --pull
+    rm -f "$build_log"
+    return 0
+  fi
+
+  rm -f "$build_log"
+  return "$status"
+}
+
 docker info >/dev/null
 docker compose version >/dev/null
 docker network inspect "$DEPLOY_NETWORK" >/dev/null
@@ -80,19 +113,16 @@ fi
 
 if [[ "$RESET_DB_ON_DEPLOY" == "true" ]]; then
   echo "POZOR: RESET_DB_ON_DEPLOY=true -> provádím destruktivní reset DB volume."
-  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down -v --remove-orphans || true
+  compose_cmd down -v --remove-orphans || true
   docker volume rm -f "${COMPOSE_PROJECT_NAME}_postgres_data" || true
   docker volume create --name "${COMPOSE_PROJECT_NAME}_postgres_data" >/dev/null
 else
   echo "Nedestruktivní deploy: zachovávám databázová volume."
-  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" down --remove-orphans || true
+  compose_cmd down --remove-orphans || true
 fi
 
 # Nejprve připrav DB heslo, aby API healthcheck prošel
-COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d postgres
+compose_cmd up -d postgres
 
 # Po startu počkáme na stabilní dostupnost Postgresu (3x po sobě),
 # aby nás nepřerušil init restart.
@@ -101,8 +131,7 @@ ready=0
 streak=0
 for i in {1..60}; do
   if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
-     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     compose_cmd exec -T postgres \
      pg_isready -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; then
     streak=$((streak + 1))
     if [[ "$streak" -ge 3 ]]; then
@@ -117,8 +146,7 @@ done
 
 if [[ "$ready" -ne 1 ]]; then
   echo "Postgres není stabilně dostupný ani po 120 s" >&2
-  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" logs postgres --tail=50 || true
+  compose_cmd logs postgres --tail=50 || true
   exit 1
 fi
 
@@ -139,8 +167,7 @@ sql_ok=0
 for i in {1..10}; do
   echo "Nastavuji roli a DB (pokus $i/10)..."
   if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
-     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     compose_cmd exec -T postgres \
      psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "$sql_do"; then
     sql_ok=1
     break
@@ -155,11 +182,9 @@ if [[ "$sql_ok" -ne 1 ]]; then
 fi
 
 # Pro jistotu zrusime stare kontejnery, aby nedoslo ke kolizi jmen
-COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" rm -f -s api web admin
+compose_cmd rm -f -s api web admin
 
-COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" build --pull
+docker_build_with_snapshot_retry
 
 # Inicializace DB schema bez Alembic migraci (v produkci je migration chain nekompatibilni
 # s defaultnim typem sloupce alembic_version.version_num); vytvorime vsechny tabulky z modelu.
@@ -167,8 +192,7 @@ set +e
 schema_ok=0
 for i in {1..10}; do
   echo "Inicializuji DB schema z ORM modelu (pokus $i/10)..."
-  if COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" run --rm api \
+  if compose_cmd run --rm api \
      python -c "from app.db.models import Base; from app.db.session import engine; Base.metadata.create_all(bind=engine)"; then
     schema_ok=1
     break
@@ -181,8 +205,7 @@ if [[ "$schema_ok" -ne 1 ]]; then
   exit 1
 fi
 
-COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate postgres
+compose_cmd up -d --force-recreate postgres
 
 # Po recreate postgres ještě jednou ověříme připojení a roli/databázi,
 # aby API nestartovalo proti neinitializovanému clusteru.
@@ -191,8 +214,7 @@ ready=0
 streak=0
 for i in {1..60}; do
   if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
-     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     compose_cmd exec -T postgres \
      pg_isready -U "$POSTGRES_USER" -d postgres >/dev/null 2>&1; then
     streak=$((streak + 1))
     if [[ "$streak" -ge 3 ]]; then
@@ -214,8 +236,7 @@ sql_ok=0
 for i in {1..10}; do
   echo "Final DB sync (pokus $i/10)..."
   if PGPASSWORD="${POSTGRES_PASSWORD:-}" \
-     COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-     docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" exec -T postgres \
+     compose_cmd exec -T postgres \
      psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "$sql_do"; then
     sql_ok=1
     break
@@ -228,7 +249,6 @@ if [[ "$sql_ok" -ne 1 ]]; then
   exit 1
 fi
 
-COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-  docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" up -d --force-recreate api web admin
+compose_cmd up -d --force-recreate api web admin
 
 printf '%s HOTEL web: deploy z monorepa (%s, branch=%s)\n' "$(date '+%F %T')" "$commit_sha" "$current_branch" >> "$LOG_FILE"
