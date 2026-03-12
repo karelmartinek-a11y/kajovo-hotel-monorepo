@@ -390,3 +390,26 @@ Tests run:
 What remains:
 - Commit this release-fix delta.
 - Push the new SHA and rerun the remote CI/deploy sequence.
+
+## Etapa 13 - Deploy artifact fetch fix after remote rollout failure
+
+What was found:
+- The production deploy for SHA `081c6f8...` reached the server and the deploy script finished, but the GitHub workflow still failed afterward.
+- The failure was in `Fetch deploy runtime artifact`: `appleboy/scp-action` created an empty archive when asked to download `/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json` directly from an absolute path.
+- Because of that, the post-deploy HTTP gate and live admin login verification never ran, even though the release had already been unpacked on the server.
+
+What was changed:
+- Added an explicit SSH staging step that copies the server-side runtime artifact into the deploy user's home directory.
+- Changed the SCP download step to fetch that staged file by relative name and normalized it back to `artifacts/latest.json` on the runner before SHA verification and post-deploy checks.
+
+Evidence:
+- `.github/workflows/deploy-production.yml`
+- GitHub deploy run `23020442646`
+
+Tests run:
+- workflow logic inspection against failed GitHub log
+- local YAML/source review of `.github/workflows/deploy-production.yml`
+
+What remains:
+- Commit this deploy workflow fix.
+- Push a new SHA and rerun CI + deploy until the full remote chain is green.

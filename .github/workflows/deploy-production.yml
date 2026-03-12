@@ -138,6 +138,23 @@ jobs:
             docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=80 || true
             exit "$DEPLOY_STATUS"
 
+      - name: Stage deploy runtime artifact on server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            runtime_artifact="/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json"
+            staged_artifact="$HOME/deploy-runtime-latest.json"
+            if [ ! -f "$runtime_artifact" ]; then
+              echo "Missing runtime artifact on server: $runtime_artifact" >&2
+              exit 1
+            fi
+            cp "$runtime_artifact" "$staged_artifact"
+
       - name: Fetch deploy runtime artifact
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -145,10 +162,15 @@ jobs:
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
-          source: /opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json
+          source: deploy-runtime-latest.json
           target: ./artifacts/
           overwrite: true
-          strip_components: 5
+
+      - name: Normalize deploy runtime artifact path
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv artifacts/deploy-runtime-latest.json artifacts/latest.json
 
       - name: Verify deploy runtime artifact SHA
         shell: bash
