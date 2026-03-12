@@ -1,11 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { getAdminCredentials } from '../test-admin-credentials';
 
-type EnvMap = Record<string, string | undefined>;
-
-const readEnv = (key: string): string | undefined =>
-  (globalThis as { process?: { env?: EnvMap } }).process?.env?.[key];
-
-const ADMIN_EMAIL = readEnv('KAJOVO_API_ADMIN_EMAIL') ?? readEnv('HOTEL_ADMIN_EMAIL') ?? 'admin@kajovohotel.local';
+const { email: ADMIN_EMAIL } = getAdminCredentials();
 
 const adminPath = (path: string): string => {
   if (path.startsWith('/')) {

@@ -1,11 +1,11 @@
 import { defineConfig } from '@playwright/test';
 import path from 'path';
+import { getAdminCredentials } from './test-admin-credentials';
 
 const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:18000';
 const smokeDbPath = process.env.SMOKE_DB_PATH ?? '/tmp/kajovo-smoke-e2e.db';
 const isWin = process.platform === 'win32';
-const adminEmail = process.env.KAJOVO_API_ADMIN_EMAIL ?? process.env.HOTEL_ADMIN_EMAIL ?? 'admin@kajovohotel.local';
-const adminPassword = process.env.KAJOVO_API_ADMIN_PASSWORD ?? process.env.HOTEL_ADMIN_PASSWORD ?? 'admin123';
+const { email: adminEmail, password: adminPassword } = getAdminCredentials();
 
 const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\"'\"'`)}'`;
 const powerShellQuote = (value: string): string => `'${value.replace(/'/g, "''")}'`;

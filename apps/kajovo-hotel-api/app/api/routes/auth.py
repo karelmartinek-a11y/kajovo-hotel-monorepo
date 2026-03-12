@@ -33,7 +33,9 @@ from app.security.auth import (
     get_permissions,
     require_session,
 )
+from app.security.passwords import verify_password
 from app.security.rbac import normalize_role
+from app.services.admin_credentials import ensure_admin_profile
 from app.services.mail import (
     StoredSmtpConfig,
     build_email_service,
@@ -64,28 +66,6 @@ def _as_utc(value: datetime | None) -> datetime | None:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
-
-
-def verify_password(password: str, stored_hash: str) -> bool:
-    if not stored_hash.startswith("scrypt$"):
-        return False
-    _, salt_hex, digest_hex = stored_hash.split("$", 2)
-    calc = hashlib.scrypt(
-        password.encode("utf-8"),
-        salt=bytes.fromhex(salt_hex),
-        n=2**14,
-        r=8,
-        p=1,
-    )
-    return secrets.compare_digest(calc.hex(), digest_hex)
-
-
-def hash_password(password: str) -> str:
-    salt = secrets.token_bytes(16)
-    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
-    return f"scrypt${salt.hex()}${digest.hex()}"
-
-
 def _get_lockout_state(
     db: Session,
     *,
@@ -211,19 +191,11 @@ def admin_login(
 ) -> AuthIdentityResponse:
     settings = get_settings()
     now = _utc_now()
-    admin_profile = db.get(AdminProfile, 1)
-    principal = (
-        admin_profile.email.strip().lower()
-        if admin_profile is not None
-        else settings.admin_email.strip().lower()
-    )
+    admin_profile = ensure_admin_profile(db, settings, sync_from_env=False)
+    principal = admin_profile.email.strip().lower()
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     provided_email = payload.email.strip().lower()
-    valid_password = (
-        verify_password(payload.password, admin_profile.password_hash)
-        if admin_profile is not None
-        else payload.password == settings.admin_password
-    )
+    valid_password = verify_password(payload.password, admin_profile.password_hash)
     valid = provided_email == principal and valid_password
     if valid:
         _reset_lock_state(state)

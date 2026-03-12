@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.routes.auth import hash_password
 from app.api.schemas import (
     LogoutResponse,
     PortalUserCreate,
@@ -20,6 +19,7 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
+from app.security.passwords import hash_password
 from app.security.rbac import (
     module_access_dependency,
     normalize_role,

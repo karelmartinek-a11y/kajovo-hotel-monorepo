@@ -5,7 +5,7 @@ import urllib.request
 from http.cookiejar import CookieJar
 from pathlib import Path
 
-from app.api.routes.auth import hash_password
+from app.security.passwords import hash_password
 from tests.test_support import admin_email, admin_login_payload
 
 REQUEST_TIMEOUT_SECONDS = 30

@@ -13,6 +13,25 @@ const TMP_DIR = path.join(ROOT, ".tmp");
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
+function resolveAdminCredentials() {
+  const email = process.env.KAJOVO_API_ADMIN_EMAIL || process.env.HOTEL_ADMIN_EMAIL;
+  const password = process.env.KAJOVO_API_ADMIN_PASSWORD || process.env.HOTEL_ADMIN_PASSWORD;
+  const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+
+  if (email && password) {
+    return { email, password };
+  }
+  if (isCi) {
+    throw new Error(
+      "Admin test credentials are missing. Set HOTEL_ADMIN_EMAIL/HOTEL_ADMIN_PASSWORD or KAJOVO_API_ADMIN_EMAIL/KAJOVO_API_ADMIN_PASSWORD."
+    );
+  }
+  return {
+    email: "admin@kajovohotel.local",
+    password: "admin123",
+  };
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const result = { app: null, tests: [] };
@@ -70,6 +89,7 @@ async function waitForHealthy(url, timeoutMs = 30000) {
 }
 
 function startBackend(envOverrides = {}) {
+  const adminCredentials = resolveAdminCredentials();
   const dbPath = path.join(TMP_DIR, "playwright-api.db");
   try {
     if (fs.existsSync(dbPath)) {
@@ -86,8 +106,8 @@ function startBackend(envOverrides = {}) {
     KAJOVO_API_DATABASE_URL: `sqlite:///${dbPath}`,
     KAJOVO_API_MEDIA_ROOT: mediaRoot,
     KAJOVO_API_SESSION_SECRET: "kajovo-playwright-secret",
-    KAJOVO_API_ADMIN_PASSWORD: process.env.KAJOVO_API_ADMIN_PASSWORD || process.env.HOTEL_ADMIN_PASSWORD || "admin123",
-    KAJOVO_API_ADMIN_EMAIL: process.env.KAJOVO_API_ADMIN_EMAIL || process.env.HOTEL_ADMIN_EMAIL || "admin@kajovohotel.local",
+    KAJOVO_API_ADMIN_PASSWORD: adminCredentials.password,
+    KAJOVO_API_ADMIN_EMAIL: adminCredentials.email,
     KAJOVO_API_ENVIRONMENT: "test",
     ...envOverrides,
   };

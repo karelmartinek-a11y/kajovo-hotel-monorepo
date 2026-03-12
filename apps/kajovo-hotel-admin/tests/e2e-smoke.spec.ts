@@ -1,12 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { getAdminCredentials } from '../test-admin-credentials';
 
-type EnvMap = Record<string, string | undefined>;
-
-const readEnv = (key: string): string | undefined =>
-  (globalThis as { process?: { env?: EnvMap } }).process?.env?.[key];
-
-const ADMIN_EMAIL = readEnv('KAJOVO_API_ADMIN_EMAIL') ?? readEnv('HOTEL_ADMIN_EMAIL') ?? 'admin@kajovohotel.local';
-const ADMIN_PASSWORD = readEnv('KAJOVO_API_ADMIN_PASSWORD') ?? readEnv('HOTEL_ADMIN_PASSWORD') ?? 'admin123';
+const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
 
 async function csrfHeaderFor(context: APIRequestContext) {
   const state = await context.storageState();

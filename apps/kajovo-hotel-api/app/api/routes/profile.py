@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.api.routes.auth import hash_password, verify_password
 from app.api.schemas import (
     AdminPasswordChangeRequest,
     AdminProfileRead,
@@ -12,9 +11,10 @@ from app.api.schemas import (
     LogoutResponse,
 )
 from app.config import get_settings
-from app.db.models import AdminProfile
 from app.db.session import get_db
+from app.security.passwords import hash_password, verify_password
 from app.security.rbac import require_actor_type
+from app.services.admin_credentials import ensure_admin_profile
 
 router = APIRouter(
     prefix="/api/v1/admin/profile",
@@ -27,22 +27,9 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _get_or_create_admin_profile(db: Session) -> AdminProfile:
+def _get_or_create_admin_profile(db: Session):
     settings = get_settings()
-    profile = db.get(AdminProfile, 1)
-    if profile is not None:
-        return profile
-    profile = AdminProfile(
-        id=1,
-        email=settings.admin_email.strip().lower(),
-        password_hash=hash_password(settings.admin_password),
-        display_name="Admin",
-        password_changed_at=None,
-    )
-    db.add(profile)
-    db.commit()
-    db.refresh(profile)
-    return profile
+    return ensure_admin_profile(db, settings, sync_from_env=False)
 
 
 @router.get("", response_model=AdminProfileRead)
