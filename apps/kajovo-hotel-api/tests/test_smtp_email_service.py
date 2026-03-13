@@ -1,8 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import HintRequest, admin_hint, hash_password
