@@ -495,7 +495,7 @@ export type SmtpSettingsRead = {
 };
 export type SmtpSettingsUpsert = {
   "host": string;
-  "password": string;
+  "password"?: string | null;
   "port": number;
   "use_ssl"?: boolean;
   "use_tls"?: boolean;

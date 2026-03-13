@@ -3566,10 +3566,16 @@
             "type": "string"
           },
           "password": {
-            "maxLength": 1024,
-            "minLength": 1,
-            "title": "Password",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
           },
           "port": {
             "maximum": 65535.0,
@@ -3597,8 +3603,7 @@
         "required": [
           "host",
           "port",
-          "username",
-          "password"
+          "username"
         ],
         "title": "SmtpSettingsUpsert",
         "type": "object"
