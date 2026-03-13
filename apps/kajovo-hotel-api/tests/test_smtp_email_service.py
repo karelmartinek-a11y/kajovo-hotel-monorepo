@@ -255,3 +255,38 @@ def test_smtp_settings_routes_tolerate_legacy_table_without_status_columns(tmp_p
     assert status.last_test_success is None
     assert status.last_test_recipient is None
     assert status.last_test_error is None
+
+
+def test_smtp_test_email_tolerates_legacy_table_without_status_columns(monkeypatch, tmp_path):
+    db_path = tmp_path / "smtp-legacy-test-email.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+
+    monkeypatch.setenv("KAJOVO_API_SMTP_ENABLED", "false")
+    get_settings.cache_clear()
+
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE portal_smtp_settings (
+              id INTEGER PRIMARY KEY,
+              host VARCHAR(255) NOT NULL,
+              port INTEGER NOT NULL,
+              username VARCHAR(255) NOT NULL,
+              password_encrypted TEXT NOT NULL,
+              use_tls BOOLEAN NOT NULL,
+              use_ssl BOOLEAN NOT NULL
+            )
+        """))
+        conn.execute(
+            text("""
+                INSERT INTO portal_smtp_settings
+                  (id, host, port, username, password_encrypted, use_tls, use_ssl)
+                VALUES
+                  (1, 'smtp.legacy.local', 587, 'mailer', 'bad', 1, 0)
+            """)
+        )
+
+    with Session(engine) as db:
+        response = send_test_email(SmtpTestEmailRequest(recipient="admin@example.com"), db=db)
+
+    assert response.ok is True
+    assert response.delivery_mode == "mock"

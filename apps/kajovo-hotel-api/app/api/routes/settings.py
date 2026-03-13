@@ -101,6 +101,15 @@ def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
     return dict(row) if row is not None else None
 
 
+def _safe_load_smtp_record(db: Session) -> PortalSmtpSettings | None:
+    try:
+        return db.get(PortalSmtpSettings, 1)
+    except Exception:
+        logger.exception("smtp.settings.orm_load_failed")
+        db.rollback()
+        return None
+
+
 def _persist_smtp_test_result(
     db: Session,
     record: PortalSmtpSettings,
@@ -247,16 +256,24 @@ def test_smtp_email(
     db: Session = Depends(get_db),
 ) -> SmtpTestEmailResponse:
     settings = get_settings()
-    record = db.get(PortalSmtpSettings, 1)
-    if record is None:
+    row = _safe_load_smtp_row(db)
+    if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="SMTP settings not configured",
         )
 
     delivery_mode = _delivery_mode(smtp_enabled=settings.smtp_enabled, configured=True)
+    stored = StoredSmtpConfig(
+        host=str(row.get("host") or ""),
+        port=int(row.get("port") or 587),
+        username=str(row.get("username") or ""),
+        use_tls=bool(True if row.get("use_tls") is None else row.get("use_tls")),
+        use_ssl=bool(False if row.get("use_ssl") is None else row.get("use_ssl")),
+        password_encrypted=str(row.get("password_encrypted") or ""),
+    )
     try:
-        service = build_email_service(settings, _stored_from_record(record))
+        service = build_email_service(settings, stored)
         service.send(
             MailMessage(
                 recipient=payload.recipient,
@@ -264,29 +281,37 @@ def test_smtp_email(
                 body="Toto je testovaci email SMTP konfigurace.",
             )
         )
-        try:
-            _persist_smtp_test_result(
-                db,
-                record,
-                recipient=payload.recipient,
-                success=True,
-                error=None,
-            )
-        except Exception:
-            db.rollback()
-            logger.exception("smtp.test_email.persist_success_failed")
+        record = _safe_load_smtp_record(db)
+        if record is None:
+            logger.warning("smtp.test_email.skip_persist_success")
+        else:
+            try:
+                _persist_smtp_test_result(
+                    db,
+                    record,
+                    recipient=payload.recipient,
+                    success=True,
+                    error=None,
+                )
+            except Exception:
+                db.rollback()
+                logger.exception("smtp.test_email.persist_success_failed")
     except Exception as exc:
-        try:
-            _persist_smtp_test_result(
-                db,
-                record,
-                recipient=payload.recipient,
-                success=False,
-                error=str(exc),
-            )
-        except Exception:
-            db.rollback()
-            logger.exception("smtp.test_email.persist_failure_failed")
+        record = _safe_load_smtp_record(db)
+        if record is None:
+            logger.warning("smtp.test_email.skip_persist_failure")
+        else:
+            try:
+                _persist_smtp_test_result(
+                    db,
+                    record,
+                    recipient=payload.recipient,
+                    success=False,
+                    error=str(exc),
+                )
+            except Exception:
+                db.rollback()
+                logger.exception("smtp.test_email.persist_failure_failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"SMTP test delivery failed: {exc}",
