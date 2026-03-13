@@ -171,6 +171,16 @@ function toAdminNavRoute(route: string): string {
 
 const ADMIN_PERSISTENT_MODULE_KEYS = new Set(['users', 'settings', 'profile']);
 const ADMIN_PERSISTENT_PERMISSION_PREFIXES = ['users:', 'settings:'];
+const todayBreakfasts: number | null = null;
+const tomorrowBreakfasts: number | null = null;
+const openIssuesCount: number | null = null;
+const newLostFoundCount: number | null = null;
+const inventoryStockTotal: number | null = null;
+const inventoryItemCount: number | null = null;
+
+function metricValue(value: number | null): string {
+  return value === null ? '—' : String(value);
+}
 
 function roleViewPermissionSet(roleView: Role, adminPermissions: Set<string>): Set<string> {
   if (roleView === 'admin') {
@@ -223,6 +233,20 @@ type SmtpSettingsReadModel = {
   use_tls: boolean;
   use_ssl: boolean;
   password_masked: string;
+};
+
+type SmtpSettingsSnapshot = {
+  host: string;
+  port: number;
+  username: string;
+  useTls: boolean;
+  useSsl: boolean;
+};
+
+type SmtpTestDialogState = {
+  phase: 'saving' | 'sending' | 'success' | 'error';
+  title: string;
+  description: string;
 };
 
 type AdminProfileReadModel = {
@@ -948,9 +972,29 @@ function Dashboard(): JSX.Element {
       <h1>Přehled</h1>
       <StateSwitcher />
       {stateUI ?? (
-        <div className="k-grid cards-3 k-dashboard-cards">
+        <>
+          <div className="k-grid cards-4 k-dashboard-cards">
+            <Card title="Snídaně dnes a zítra">
+              <strong>{metricValue(todayBreakfasts)}</strong>
+              <p>Zítra: {metricValue(tomorrowBreakfasts)}</p>
+            </Card>
+            <Card title="Neopravené závady">
+              <strong>{metricValue(openIssuesCount)}</strong>
+              <p>Aktuálně otevřené závady</p>
+            </Card>
+            <Card title="Nezpracované nálezy">
+              <strong>{metricValue(newLostFoundCount)}</strong>
+              <p>Položky čekající na zpracování</p>
+            </Card>
+            <Card title="Stav skladu">
+              <strong>{metricValue(inventoryStockTotal)}</strong>
+              <p>Položek v evidenci: {metricValue(inventoryItemCount)}</p>
+            </Card>
+          </div>
+          <div className="k-grid cards-4 k-dashboard-cards" hidden>
+        
           <Card title="Snídaně dnes">
-            <strong>18</strong>
+            <strong>{metricValue(todayBreakfasts)}</strong>
             <p>3 čekající objednávky</p>
           </Card>
           <Card title="Závady">
@@ -960,6 +1004,93 @@ function Dashboard(): JSX.Element {
           <Card title="Sklad">
             <strong>12</strong>
             <p>2 položky pod minimem</p>
+          </Card>
+          </div>
+        </>
+      )}
+    </main>
+  );
+}
+
+function DashboardLive(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'PĹ™ehled', '/');
+  const stateMarker = <StateMarker state={state} />;
+  const [todayCount, setTodayCount] = React.useState<number | null>(null);
+  const [tomorrowCount, setTomorrowCount] = React.useState<number | null>(null);
+  const [unresolvedIssuesCount, setUnresolvedIssuesCount] = React.useState<number | null>(null);
+  const [unprocessedLostFoundCount, setUnprocessedLostFoundCount] = React.useState<number | null>(null);
+  const [stockTotal, setStockTotal] = React.useState<number | null>(null);
+  const [stockItemCount, setStockItemCount] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default') {
+      return;
+    }
+
+    const today = currentDateForTimeZone();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = currentDateForTimeZone(tomorrowDate);
+
+    let active = true;
+    Promise.all([
+      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${today}`),
+      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${tomorrow}`),
+      fetchJson<Issue[]>('/api/v1/issues'),
+      fetchJson<LostFoundItem[]>('/api/v1/lost-found?status=new'),
+      fetchJson<InventoryItem[]>('/api/v1/inventory'),
+    ])
+      .then(([todaySummary, tomorrowSummary, issues, lostFoundItems, inventoryItems]) => {
+        if (!active) {
+          return;
+        }
+        setTodayCount(todaySummary.total_guests);
+        setTomorrowCount(tomorrowSummary.total_guests);
+        setUnresolvedIssuesCount(issues.filter((item) => item.status !== 'resolved').length);
+        setUnprocessedLostFoundCount(lostFoundItems.length);
+        setStockTotal(inventoryItems.reduce((total, item) => total + item.current_stock, 0));
+        setStockItemCount(inventoryItems.length);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        setTodayCount(null);
+        setTomorrowCount(null);
+        setUnresolvedIssuesCount(null);
+        setUnprocessedLostFoundCount(null);
+        setStockTotal(null);
+        setStockItemCount(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [state]);
+
+  return (
+    <main className="k-page" data-testid="dashboard-page">
+      {stateMarker}
+      <h1>PĹ™ehled</h1>
+      <StateSwitcher />
+      {stateUI ?? (
+        <div className="k-grid cards-4 k-dashboard-cards">
+          <Card title="Snídaně dnes a zítra">
+            <strong>{metricValue(todayCount)}</strong>
+            <p>Zítra: {metricValue(tomorrowCount)}</p>
+          </Card>
+          <Card title="Neopravené závady">
+            <strong>{metricValue(unresolvedIssuesCount)}</strong>
+            <p>Aktuálně otevřené závady</p>
+          </Card>
+          <Card title="Nezpracované nálezy">
+            <strong>{metricValue(unprocessedLostFoundCount)}</strong>
+            <p>Položky čekající na zpracování</p>
+          </Card>
+          <Card title="Stav skladu">
+            <strong>{metricValue(stockTotal)}</strong>
+            <p>Položek v evidenci: {metricValue(stockItemCount)}</p>
           </Card>
         </div>
       )}
@@ -3164,6 +3295,8 @@ function SettingsAdmin(): JSX.Element {
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [loadedConfig, setLoadedConfig] = React.useState<SmtpSettingsSnapshot | null>(null);
+  const [testDialog, setTestDialog] = React.useState<SmtpTestDialogState | null>(null);
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -3177,9 +3310,17 @@ function SettingsAdmin(): JSX.Element {
         setUseTls(data.use_tls);
         setUseSsl(data.use_ssl);
         setTestRecipient(data.username);
+        setLoadedConfig({
+          host: data.host,
+          port: data.port,
+          username: data.username,
+          useTls: data.use_tls,
+          useSsl: data.use_ssl,
+        });
       })
       .catch((err: Error) => {
         if (err.message.includes('SMTP settings not configured')) {
+          setLoadedConfig(null);
           return;
         }
         setError('Nepodařilo se načíst SMTP nastavení.');
@@ -3190,6 +3331,22 @@ function SettingsAdmin(): JSX.Element {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  const hasUnsavedSmtpChanges = React.useMemo(() => {
+    if (password.trim()) {
+      return true;
+    }
+    if (!loadedConfig) {
+      return Boolean(host.trim() || username.trim() || port || useTls || useSsl);
+    }
+    return (
+      host.trim() !== loadedConfig.host
+      || Number(port) !== loadedConfig.port
+      || username.trim() !== loadedConfig.username
+      || useTls !== loadedConfig.useTls
+      || useSsl !== loadedConfig.useSsl
+    );
+  }, [host, loadedConfig, password, port, useSsl, useTls, username]);
 
   async function save(): Promise<void> {
     if (!host.trim() || !username.trim() || !password.trim()) {
@@ -3211,6 +3368,13 @@ function SettingsAdmin(): JSX.Element {
           use_ssl: useSsl,
         }),
       });
+      setLoadedConfig({
+        host: host.trim(),
+        port: Number(port),
+        username: username.trim(),
+        useTls,
+        useSsl,
+      });
       setMessage('SMTP nastavení bylo uloženo.');
       setPassword('');
     } catch {
@@ -3226,17 +3390,67 @@ function SettingsAdmin(): JSX.Element {
       setError('Vyplňte příjemce testovacího e-mailu.');
       return;
     }
+    if (hasUnsavedSmtpChanges && (!host.trim() || !username.trim() || !password.trim())) {
+      setError('Před testem doplňte host, uživatele a heslo, aby bylo možné uložit aktuální SMTP konfiguraci.');
+      return;
+    }
     setSaving(true);
     setError(null);
     setMessage(null);
+    setTestDialog({
+      phase: hasUnsavedSmtpChanges ? 'saving' : 'sending',
+      title: hasUnsavedSmtpChanges ? 'Ukládám SMTP konfiguraci' : 'Odesílám testovací e-mail',
+      description: hasUnsavedSmtpChanges
+        ? 'Nejdřív uložíme aktuálně zadané SMTP údaje, aby test běžel nad správnou konfigurací.'
+        : `Probíhá odeslání testovací zprávy na ${recipient}.`,
+    });
     try {
+      if (hasUnsavedSmtpChanges) {
+        await fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp', {
+          method: 'PUT',
+          body: JSON.stringify({
+            host: host.trim(),
+            port: Number(port),
+            username: username.trim(),
+            password,
+            use_tls: useTls,
+            use_ssl: useSsl,
+          }),
+        });
+        setLoadedConfig({
+          host: host.trim(),
+          port: Number(port),
+          username: username.trim(),
+          useTls,
+          useSsl,
+        });
+        setPassword('');
+      }
+      setTestDialog({
+        phase: 'sending',
+        title: 'Odesílám testovací e-mail',
+        description: `Probíhá odeslání testovací zprávy na ${recipient}.`,
+      });
       await fetchJson<{ ok: boolean }>('/api/v1/admin/settings/smtp/test-email', {
         method: 'POST',
         body: JSON.stringify({ recipient }),
       });
       setMessage('Testovací e-mail byl odeslán.');
-    } catch {
+      setTestDialog({
+        phase: 'success',
+        title: 'Test SMTP proběhl úspěšně',
+        description: `Testovací e-mail byl odeslán na ${recipient}.`,
+      });
+    } catch (err) {
+      const description = err instanceof Error && err.message.trim()
+        ? err.message.trim()
+        : 'Testovací e-mail se nepodařilo odeslat.';
       setError('Testovací e-mail se nepodařilo odeslat.');
+      setTestDialog({
+        phase: 'error',
+        title: 'Test SMTP selhal',
+        description,
+      });
     } finally {
       setSaving(false);
     }
@@ -3278,6 +3492,30 @@ function SettingsAdmin(): JSX.Element {
           </div>
         </Card>
       )}
+      {testDialog ? (
+        <div className="k-modal-backdrop" role="presentation">
+          <div
+            className="k-modal-card"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="smtp-test-dialog-title"
+            aria-describedby="smtp-test-dialog-description"
+          >
+            <h2 id="smtp-test-dialog-title">{testDialog.title}</h2>
+            <p id="smtp-test-dialog-description">{testDialog.description}</p>
+            {testDialog.phase === 'saving' || testDialog.phase === 'sending' ? (
+              <div className="k-modal-progress" aria-live="polite">
+                <span className="k-modal-spinner" aria-hidden="true" />
+                <span>Probíhá testování…</span>
+              </div>
+            ) : (
+              <div className="k-toolbar">
+                <button className="k-button" type="button" onClick={() => setTestDialog(null)}>Zavřít</button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -3746,7 +3984,7 @@ function AppRoutes(): JSX.Element {
         headerLeadingControls={headerLeadingControls}
       >
         <Routes>
-        <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="Přehled" role={roleViewLabel} userId={auth.userId} />} />
 <Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojská" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/snidane/nova" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Sn?dan?" role={roleViewLabel} userId={auth.userId} />} />

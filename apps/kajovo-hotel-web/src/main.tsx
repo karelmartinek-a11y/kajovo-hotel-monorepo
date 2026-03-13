@@ -101,6 +101,11 @@ type InventoryDetail = Omit<InventoryItemWithAuditRead, 'movements'> & { movemen
 
 type InventoryItemPayload = InventoryItemCreate;
 
+type InventoryDraftMovement = {
+  itemId: number;
+  quantity: number;
+};
+
 type ReportStatus = 'open' | 'in_progress' | 'closed';
 
 type Report = ReportRead;
@@ -282,6 +287,12 @@ const reportStatusLabels: Record<ReportStatus, string> = {
 const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   in: 'Příjem',
   out: 'Výdej',
+  adjust: 'Odpis',
+};
+
+const inventoryMovementPanelLabels: Record<InventoryMovementType, string> = {
+  in: 'Příjemka',
+  out: 'Výdejka',
   adjust: 'Odpis',
 };
 
@@ -546,6 +557,133 @@ function hoursOpenSince(value: string | null): string {
   return `${Math.max(0, Math.floor(diffMs / 3_600_000))} h`;
 }
 
+function lostFoundThumbSrc(item: LostFoundItem): string | null {
+  const photo = item.photos?.[0];
+  return photo ? `/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb` : null;
+}
+
+function formatTaskBoardDate(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+  return new Date(value).toLocaleDateString('cs-CZ');
+}
+
+function formatTaskBoardTime(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+  return new Date(value).toLocaleTimeString('cs-CZ', { hour: 'numeric', minute: '2-digit' });
+}
+
+function TaskBoardKpi({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}): JSX.Element {
+  return (
+    <div className="k-task-kpi">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function TaskBoardCard({
+  href,
+  title,
+  description,
+  date,
+  time,
+  openFor,
+  imageSrc,
+  imageAlt,
+  actionLabel,
+  onAction,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  openFor: string;
+  imageSrc: string | null;
+  imageAlt: string;
+  actionLabel: string;
+  onAction: () => void;
+}): JSX.Element {
+  return (
+    <article className="k-task-card">
+      <Link className="k-task-card-main" to={href}>
+        <div className="k-task-card-topline">
+          <h2>{title}</h2>
+          <span>{date}</span>
+        </div>
+        <div className="k-task-card-body">
+          <div className="k-task-photo" aria-hidden={imageSrc ? undefined : 'true'}>
+            {imageSrc ? <img src={imageSrc} alt={imageAlt} /> : <span>{title.slice(0, 2).toUpperCase()}</span>}
+          </div>
+          <div className="k-task-copy">
+            <p className="k-task-description">{description}</p>
+            <p className="k-task-meta">Nahlášeno: {date}</p>
+            <strong>{time}</strong>
+            <span>Otevřeno: {openFor}</span>
+          </div>
+        </div>
+      </Link>
+      <button className="k-task-action" type="button" onClick={onAction}>{actionLabel}</button>
+    </article>
+  );
+}
+
+function TaskBoardHero({
+  title,
+  description,
+  date,
+  time,
+  openFor,
+  imageSrc,
+  imageAlt,
+  actionLabel,
+  onAction,
+  children,
+}: {
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  openFor: string;
+  imageSrc: string | null;
+  imageAlt: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  children?: React.ReactNode;
+}): JSX.Element {
+  return (
+    <section className="k-task-hero">
+      <div className="k-task-card-topline">
+        <h2>{title}</h2>
+        <span>{date}</span>
+      </div>
+      <div className="k-task-card-body">
+        <div className="k-task-photo" aria-hidden={imageSrc ? undefined : 'true'}>
+          {imageSrc ? <img src={imageSrc} alt={imageAlt} /> : <span>{title.slice(0, 2).toUpperCase()}</span>}
+        </div>
+        <div className="k-task-copy">
+          <p className="k-task-description">{description}</p>
+          <p className="k-task-meta">Nahlášeno: {date}</p>
+          <strong>{time}</strong>
+          <span>Otevřeno: {openFor}</span>
+        </div>
+        {actionLabel && onAction ? <button className="k-task-action" type="button" onClick={onAction}>{actionLabel}</button> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function inventoryThumbSrc(item: { id: number; pictogram_thumb_path?: string | null }): string | null {
   return item.pictogram_thumb_path ? `/api/v1/inventory/${item.id}/pictogram/thumb` : null;
 }
@@ -578,6 +716,11 @@ function InventoryThumb({
       )}
     </div>
   );
+}
+
+function inventoryItemById(items: InventoryItem[], itemId: string | number): InventoryItem | undefined {
+  const normalizedId = Number(itemId);
+  return items.find((item) => item.id === normalizedId);
 }
 
 type DietKey = 'diet_no_gluten' | 'diet_no_milk' | 'diet_no_pork';
@@ -1474,15 +1617,50 @@ function LostFoundList(): JSX.Element {
     }
   };
 
+  const visibleItems = React.useMemo(() => {
+    if (isReception) {
+      return items;
+    }
+    if (statusFilter === 'all') {
+      return items;
+    }
+    return items.filter((item) => item.status === statusFilter);
+  }, [isReception, items, statusFilter]);
+
   return (
     <main className="k-page" data-testid="lost-found-list-page">
       {stateMarker}
-      <h1>{isReception ? 'Nálezy pro recepci' : 'Ztráty a nálezy'}</h1>
+      <h1>{isReception ? 'Recepční úkoly' : 'Ztráty a nálezy'}</h1>
       <StateSwitcher />
       {stateUI ? stateUI : error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} />
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <StateView title={isReception ? '?ekaj?c? n?lezy' : 'Pr?zdn? stav'} description={isReception ? '??dn? ?ekaj?c? n?lez pro recepci.' : '??dn? evidovan? n?lez.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/ztraty-a-nalezy/novy">P?idat z?znam</Link> : undefined} />
+      ) : isReception ? (
+        <section className="k-task-board">
+          <div className="k-task-kpis">
+            <TaskBoardKpi label="Čeká na recepci" value={String(visibleItems.length)} />
+            <TaskBoardKpi label="S fotografií" value={String(visibleItems.filter((item) => (item.photos?.length ?? 0) > 0).length)} />
+            <TaskBoardKpi label="Z pokojů" value={String(visibleItems.filter((item) => Boolean(item.room_number)).length)} />
+          </div>
+          <div className="k-task-list">
+            {visibleItems.map((item) => (
+              <TaskBoardCard
+                key={item.id}
+                href={`/ztraty-a-nalezy/${item.id}`}
+                title={item.room_number ? `Pokoj ${item.room_number}` : 'Nález'}
+                description={item.description}
+                date={formatTaskBoardDate(item.event_at)}
+                time={formatTaskBoardTime(item.event_at)}
+                openFor={hoursOpenSince(item.event_at)}
+                imageSrc={lostFoundThumbSrc(item)}
+                imageAlt={`Fotografie nálezu ${item.description}`}
+                actionLabel="Hotovo"
+                onAction={() => void markProcessed(item.id)}
+              />
+            ))}
+          </div>
+        </section>
       ) : (
         <>
           {!isReception ? (
@@ -1497,7 +1675,7 @@ function LostFoundList(): JSX.Element {
           ) : null}
           <DataTable
             headers={isReception ? ['Miniatura', 'Pokoj', 'Popis', 'Vznik', 'Akce'] : ['Stav', 'Pokoj', 'Popis', 'Vznik', 'Akce']}
-            rows={items.map((item) => (isReception
+            rows={visibleItems.map((item) => (isReception
               ? [
                   item.photos && item.photos.length > 0 ? <img key={`thumb-${item.id}`} src={`/api/v1/lost-found/${item.id}/photos/${item.photos[0].id}/thumb`} alt="Miniatura nálezu" className="k-photo-thumb" /> : '-',
                   item.room_number ?? '-',
@@ -1793,16 +1971,26 @@ function LostFoundDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="lost-found-detail-page">
       {stateMarker}
-      <h1>Detail nálezu</h1>
+      <h1>{canProcess ? 'Recepční úkoly' : 'Detail nálezu'}</h1>
       <StateSwitcher />
       {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? (
-        <div className="k-card">
+        <div className="k-task-board">
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/ztraty-a-nalezy">Zpět na seznam</Link>
-            {canProcess ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('claimed')}>Označit jako zpracováno</button> : null}
             {canAdmin && item.status !== 'new' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('new')}>Vrátit do nezpracovaných</button> : null}
             {canAdmin ? <button className="k-button secondary" type="button" onClick={() => void deleteItem()}>Smazat</button> : null}
           </div>
+          <TaskBoardHero
+            title={item.room_number ? `Pokoj ${item.room_number}` : 'Nález'}
+            description={item.description}
+            date={formatTaskBoardDate(item.event_at)}
+            time={formatTaskBoardTime(item.event_at)}
+            openFor={hoursOpenSince(item.event_at)}
+            imageSrc={lostFoundThumbSrc(item)}
+            imageAlt={`Fotografie nálezu ${item.description}`}
+            actionLabel={canProcess ? 'Hotovo' : undefined}
+            onAction={canProcess ? () => void setWorkflowStatus('claimed') : undefined}
+          />
           <DataTable
             headers={['Položka', 'Hodnota']}
             rows={[
@@ -1830,18 +2018,18 @@ function IssuesList(): JSX.Element {
   const isMaintenance = normalizeRole(activeRole) === normalizeRole('udrzba');
   const isAdmin = activeRole === 'admin';
   const [items, setItems] = React.useState<Issue[]>([]);
-  const [statusFilter, setStatusFilter] = React.useState<'all' | IssueStatus>(isMaintenance ? 'new' : 'all');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | 'open' | IssueStatus>(isMaintenance ? 'open' : 'all');
   const [error, setError] = React.useState<string | null>(null);
 
   const loadItems = React.useCallback(() => {
     const params = new URLSearchParams();
-    if (!isMaintenance && statusFilter !== 'all') {
+    if (!isMaintenance && statusFilter !== 'all' && statusFilter !== 'open') {
       params.set('status', statusFilter);
     }
     const query = params.toString();
     fetchJson<Issue[]>(query ? `/api/v1/issues?${query}` : '/api/v1/issues')
       .then((response) => {
-        setItems(response.filter((item) => (isMaintenance ? item.status !== 'resolved' && item.status !== 'closed' : true)));
+        setItems(response);
         setError(null);
       })
       .catch(() => setError('Nepodařilo se načíst seznam závad.'));
@@ -1852,6 +2040,16 @@ function IssuesList(): JSX.Element {
     loadItems();
   }, [loadItems, state]);
 
+  const visibleItems = React.useMemo(() => {
+    if (!isMaintenance) {
+      return items;
+    }
+    if (statusFilter === 'all') {
+      return items;
+    }
+    return items.filter((item) => item.status !== 'resolved' && item.status !== 'closed');
+  }, [isMaintenance, items, statusFilter]);
+
   const markResolved = async (issueId: number): Promise<void> => {
     try {
       await fetchJson<Issue>(`/api/v1/issues/${issueId}`, {
@@ -1859,7 +2057,7 @@ function IssuesList(): JSX.Element {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'resolved' }),
       });
-      setItems((prev) => prev.filter((item) => item.id !== issueId));
+      setItems((prev) => prev.map((item) => (item.id === issueId ? { ...item, status: 'resolved', resolved_at: new Date().toISOString() } : item)));
     } catch {
       setError('Označení závady jako odstraněné selhalo.');
     }
@@ -1868,21 +2066,44 @@ function IssuesList(): JSX.Element {
   return (
     <main className="k-page" data-testid="issues-list-page">
       {stateMarker}
-      <h1>{isMaintenance ? 'Závady pro údržbu' : 'Závady'}</h1>
+      <h1>{isMaintenance ? 'Údržba' : 'Závady'}</h1>
       <StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} /> : items.length === 0 ? (
+      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} /> : visibleItems.length === 0 ? (
         <StateView title="Pr?zdn? stav" description={isMaintenance ? 'Žádná otevřená závada.' : 'Zatím nejsou evidované žádné závady.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link> : undefined} />
       ) : isMaintenance ? (
-        <DataTable
-          headers={['Pokoj', 'Popis', 'Vznik', 'Otevřeno', 'Akce']}
-          rows={items.map((item) => [
-            item.room_number ?? '-',
-            item.description ?? item.title,
-            formatShortDateTime(item.created_at),
-            hoursOpenSince(item.created_at),
-            <div className="k-inline-links" key={`issue-actions-${item.id}`}><Link className="k-nav-link" to={`/zavady/${item.id}`}>Detail</Link><button className="k-button" type="button" onClick={() => void markResolved(item.id)}>Odstraněno</button></div>,
-          ])}
-        />
+        <section className="k-task-board" aria-label="Seznam závad pro údržbu">
+          <div className="k-task-kpis">
+            <TaskBoardKpi label="Aktivní úkoly" value={String(visibleItems.length)} />
+            <TaskBoardKpi label="S fotografií" value={String(visibleItems.filter((item) => (item.photos?.length ?? 0) > 0).length)} />
+            <TaskBoardKpi label="Nad 24 h" value={String(visibleItems.filter((item) => {
+              if (!item.created_at) return false;
+              return Date.now() - new Date(item.created_at).getTime() >= 86_400_000;
+            }).length)} />
+          </div>
+          <div className="k-issues-toolbar">
+            <div className="k-issues-filters" role="tablist" aria-label="Filtr závad">
+              <button className={`k-issues-filter${statusFilter === 'open' ? ' is-active' : ''}`} type="button" onClick={() => setStatusFilter('open')} aria-pressed={statusFilter === 'open'}>Otevřené</button>
+              <button className={`k-issues-filter${statusFilter === 'all' ? ' is-active' : ''}`} type="button" onClick={() => setStatusFilter('all')} aria-pressed={statusFilter === 'all'}>Vše</button>
+            </div>
+          </div>
+          <div className="k-task-list">
+            {visibleItems.map((item) => (
+              <TaskBoardCard
+                key={item.id}
+                href={`/zavady/${item.id}`}
+                title={item.room_number ? `Pokoj ${item.room_number}` : item.location}
+                description={item.description ?? item.title}
+                date={formatTaskBoardDate(item.created_at)}
+                time={formatTaskBoardTime(item.created_at)}
+                openFor={hoursOpenSince(item.created_at)}
+                imageSrc={item.photos?.[0] ? `/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb` : null}
+                imageAlt={`Fotografie závady ${item.description ?? item.title}`}
+                actionLabel="Hotovo"
+                onAction={() => void markResolved(item.id)}
+              />
+            ))}
+          </div>
+        </section>
       ) : (
         <>
           <div className="k-toolbar">
@@ -1893,7 +2114,7 @@ function IssuesList(): JSX.Element {
             </select>
             {isAdmin ? <Link className="k-button" to="/zavady/nova">Nová závada</Link> : null}
           </div>
-          <DataTable headers={['Stav', 'Pokoj', 'Popis', 'Vznik', 'Otevřeno', 'Akce']} rows={items.map((item) => [
+          <DataTable headers={['Stav', 'Pokoj', 'Popis', 'Vznik', 'Otevřeno', 'Akce']} rows={visibleItems.map((item) => [
             issueStatusLabel(item.status), item.room_number ?? '-', item.description ?? item.title, formatShortDateTime(item.created_at), hoursOpenSince(item.created_at),
             <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>Detail</Link>,
           ])} />
@@ -2010,8 +2231,8 @@ function IssuesDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="issues-detail-page">
       {stateMarker}
-      <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Odstraněno</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+      <h1>{canResolve ? 'Údržbářské úkoly' : 'Detail závady'}</h1><StateSwitcher />
+      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-task-board"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><TaskBoardHero title={item.room_number ? `Pokoj ${item.room_number}` : item.location} description={item.description ?? item.title} date={formatTaskBoardDate(item.created_at)} time={formatTaskBoardTime(item.created_at)} openFor={hoursOpenSince(item.created_at)} imageSrc={photos[0] ? `/api/v1/issues/${item.id}/photos/${photos[0].id}/thumb` : null} imageAlt={`Fotografie závady ${item.description ?? item.title}`} actionLabel={canResolve && item.status !== 'resolved' ? 'Hotovo' : undefined} onAction={canResolve && item.status !== 'resolved' ? () => void updateStatus('resolved') : undefined} /><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -2019,7 +2240,7 @@ function IssuesDetail(): JSX.Element {
 
 function InventoryList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Skladov? hospod??stv?', '/sklad');
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
   const stateMarker = <StateMarker state={state} />;
   const auth = useAuth();
   const actorRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'recepce');
@@ -2027,12 +2248,14 @@ function InventoryList(): JSX.Element {
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [movementItemId, setMovementItemId] = React.useState<string>('');
-  const [movementType, setMovementType] = React.useState<InventoryMovementType>('out');
+  const [movementType, setMovementType] = React.useState<InventoryMovementType>('in');
   const [movementQuantity, setMovementQuantity] = React.useState<number>(1);
   const [movementDate, setMovementDate] = React.useState<string>(currentDateForTimeZone());
   const [movementReference, setMovementReference] = React.useState<string>('');
   const [movementNote, setMovementNote] = React.useState<string>('');
   const [movementInfo, setMovementInfo] = React.useState<string | null>(null);
+  const [draftMovements, setDraftMovements] = React.useState<InventoryDraftMovement[]>([]);
+  const [carouselIndex, setCarouselIndex] = React.useState<number>(0);
 
   const loadItems = React.useCallback(() => {
     fetchJson<InventoryItem[]>('/api/v1/inventory')
@@ -2054,87 +2277,224 @@ function InventoryList(): JSX.Element {
     }
   }, [items, movementItemId]);
 
+  React.useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+    const selectedIndex = Math.max(0, items.findIndex((item) => String(item.id) === movementItemId));
+    setCarouselIndex(Math.max(0, Math.min(selectedIndex, Math.max(0, items.length - 1))));
+  }, [items, movementItemId]);
+
   const downloadStocktakePdf = (): void => {
     window.open('/api/v1/inventory/stocktake/pdf', '_blank', 'noopener');
   };
 
-  const submitMovement = async (): Promise<void> => {
-    if (!movementItemId) {
-      setError('Vyberte polo?ku skladu.');
+  const selectedItem = React.useMemo(
+    () => inventoryItemById(items, movementItemId),
+    [items, movementItemId],
+  );
+
+  const visibleCarouselItems = React.useMemo(() => {
+    if (items.length <= 5) {
+      return items;
+    }
+    const start = Math.max(0, Math.min(carouselIndex - 2, items.length - 5));
+    return items.slice(start, start + 5);
+  }, [carouselIndex, items]);
+
+  const draftSummary = React.useMemo(() => draftMovements.map((entry) => ({
+    ...entry,
+    item: inventoryItemById(items, entry.itemId),
+  })), [draftMovements, items]);
+
+  const moveCarousel = (direction: 'prev' | 'next'): void => {
+    setCarouselIndex((prev) => {
+      if (items.length === 0) {
+        return 0;
+      }
+      return direction === 'prev' ? Math.max(0, prev - 1) : Math.min(items.length - 1, prev + 1);
+    });
+  };
+
+  const addDraftMovement = (): void => {
+    if (!selectedItem) {
+      setError('Vyberte položku skladu.');
       return;
     }
     if (movementQuantity <= 0) {
-      setError('Mno?stv? mus? b?t v?t?? ne? nula.');
+      setError('Množství musí být větší než nula.');
+      return;
+    }
+    setDraftMovements((prev) => [...prev, { itemId: selectedItem.id, quantity: movementQuantity }]);
+    setMovementQuantity(1);
+    setMovementInfo(null);
+    setError(null);
+  };
+
+  const removeDraftMovement = (index: number): void => {
+    setDraftMovements((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const submitMovement = async (): Promise<void> => {
+    if (draftMovements.length === 0) {
+      setError('Přidejte alespoň jednu položku do připravovaného pohybu.');
       return;
     }
     try {
-      const response = await fetchJson<InventoryDetail>(`/api/v1/inventory/${movementItemId}/movements`, {
+      const results = await Promise.all(draftMovements.map((entry) => fetchJson<InventoryDetail>(`/api/v1/inventory/${entry.itemId}/movements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           movement_type: movementType,
-          quantity: movementQuantity,
+          quantity: entry.quantity,
           document_date: movementDate,
           document_reference: movementReference || null,
           note: movementNote || null,
         }),
-      });
-      const latestMovement = [...response.movements].sort((left, right) => right.id - left.id)[0];
+      })));
+      const latestMovement = results
+        .flatMap((response) => response.movements)
+        .sort((left, right) => right.id - left.id)[0];
       setMovementInfo(latestMovement?.document_number
-        ? `Pohyb ulo?en. Intern? ??slo ${latestMovement.document_number}.`
-        : 'Pohyb ulo?en.');
-      setMovementQuantity(1);
+        ? `${inventoryMovementPanelLabels[movementType]} uložena. Interní číslo ${latestMovement.document_number}.`
+        : `${inventoryMovementPanelLabels[movementType]} uložena.`);
       setMovementReference('');
       setMovementNote('');
+      setDraftMovements([]);
       loadItems();
       setError(null);
     } catch {
-      setError('Pohyb skladu se nepoda?ilo ulo?it.');
+      setError('Pohyb skladu se nepodařilo uložit.');
     }
   };
 
   const movementCard = items.length > 0 ? (
-    <div className="k-card">
-      <h2>Nov? pohyb skladu</h2>
-      <div className="k-form-grid">
-        <FormField id="inventory_movement_type" label="Druh pohybu">
-          <select id="inventory_movement_type" className="k-select" value={movementType} onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}>
-            <option value="in">P??jem</option>
-            <option value="out">V?dej</option>
-            <option value="adjust">Odpis</option>
-          </select>
-        </FormField>
-        <FormField id="inventory_movement_item" label="Polo?ka">
-          <select id="inventory_movement_item" className="k-select" value={movementItemId} onChange={(event) => setMovementItemId(event.target.value)}>
-            {items.map((item) => (
-              <option key={item.id} value={item.id}>{item.name}</option>
-            ))}
-          </select>
-        </FormField>
-        <FormField id="inventory_movement_quantity" label="Mno?stv?">
-          <input id="inventory_movement_quantity" type="number" min={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
-        </FormField>
-        <FormField id="inventory_movement_date" label="Datum dokladu">
-          <input id="inventory_movement_date" type="date" className="k-input" value={movementDate} onChange={(event) => setMovementDate(event.target.value)} />
-        </FormField>
-        <FormField id="inventory_movement_reference" label="??slo dokladu (voliteln?)">
-          <input id="inventory_movement_reference" className="k-input" value={movementReference} onChange={(event) => setMovementReference(event.target.value)} />
-        </FormField>
-        <FormField id="inventory_movement_note" label="Pozn?mka (voliteln?)">
-          <input id="inventory_movement_note" className="k-input" value={movementNote} onChange={(event) => setMovementNote(event.target.value)} />
-        </FormField>
+    <section className="k-stock-movement-panel">
+      <div className="k-stock-movement-header">
+        <div className="k-stock-movement-brand">
+          <span className="k-stock-movement-logo">KÁJOVO</span>
+          <span className="k-stock-movement-logo k-stock-movement-logo--hotel">Hotel</span>
+        </div>
+        <p className="k-stock-movement-kicker">Skladové hospodářství</p>
       </div>
-      <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void submitMovement()}>Potvrdit pohyb</button>
+
+      <div className="k-stock-movement-segments" role="tablist" aria-label="Druh pohybu">
+        {(['in', 'out', 'adjust'] as InventoryMovementType[]).map((type) => (
+          <button
+            key={type}
+            type="button"
+            className={`k-stock-segment${movementType === type ? ' is-active' : ''}`}
+            aria-pressed={movementType === type}
+            onClick={() => setMovementType(type)}
+          >
+            {inventoryMovementPanelLabels[type]}
+          </button>
+        ))}
       </div>
+
+      <div className="k-stock-carousel">
+        <button className="k-stock-carousel-arrow" type="button" onClick={() => moveCarousel('prev')} aria-label="Předchozí zboží">‹</button>
+        <div className="k-stock-carousel-track" role="list" aria-label="Výběr zboží">
+          {visibleCarouselItems.map((item) => {
+            const isSelected = String(item.id) === movementItemId;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`k-stock-carousel-item${isSelected ? ' is-selected' : ''}`}
+                onClick={() => setMovementItemId(String(item.id))}
+              >
+                <InventoryThumb item={item} size={isSelected ? 'detail' : 'list'} alt={`Miniatura ${item.name}`} />
+                <span>{item.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <button className="k-stock-carousel-arrow" type="button" onClick={() => moveCarousel('next')} aria-label="Další zboží">›</button>
+      </div>
+
+      <div className="k-stock-carousel-dots" aria-hidden="true">
+        {items.slice(0, Math.min(items.length, 6)).map((item) => (
+          <span key={`dot-${item.id}`} className={`k-stock-carousel-dot${String(item.id) === movementItemId ? ' is-active' : ''}`} />
+        ))}
+      </div>
+
+      <div className="k-stock-movement-layout">
+        <div className="k-stock-movement-primary">
+          <div className="k-stock-selected-card">
+            <div className="k-stock-selected-head">
+              <span>Vyberte zboží:</span>
+            </div>
+            {selectedItem ? (
+              <div className="k-stock-selected-row">
+                <div className="k-stock-selected-item">
+                  <InventoryThumb item={selectedItem} size="form" alt={`Vybrané zboží ${selectedItem.name}`} />
+                  <div>
+                    <strong>{selectedItem.name}</strong>
+                    <p>{selectedItem.current_stock} skladem · minimum {selectedItem.min_stock}</p>
+                  </div>
+                </div>
+                <button className="k-button" type="button" onClick={addDraftMovement}>Přidat</button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="k-stock-quantity-card">
+            <FormField id="inventory_movement_quantity" label="Zadejte množství">
+              <div className="k-stock-quantity-row">
+                <input id="inventory_movement_quantity" type="number" min={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
+                <button className="k-button" type="button" onClick={addDraftMovement}>Přidat</button>
+              </div>
+            </FormField>
+          </div>
+
+          <div className="k-stock-draft-card">
+            <h3>{inventoryMovementLabel(movementType)} se připravuje…</h3>
+            {draftSummary.length > 0 ? (
+              <div className="k-stock-draft-list">
+                {draftSummary.map((entry, index) => (
+                  <div key={`draft-${entry.itemId}-${index}`} className="k-stock-draft-row">
+                    <div className="k-stock-draft-item">
+                      {entry.item ? <InventoryThumb item={entry.item} alt={`Položka ${entry.item.name}`} /> : null}
+                      <strong>{entry.item?.name ?? `Položka ${entry.itemId}`}</strong>
+                      <span>{entry.quantity} {entry.item?.unit ?? 'ks'}</span>
+                    </div>
+                    <button className="k-stock-delete" type="button" onClick={() => removeDraftMovement(index)} aria-label={`Odebrat ${entry.item?.name ?? 'položku'}`}>X</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="k-subtle">Zatím není přidaná žádná položka.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="k-stock-movement-secondary">
+          <div className="k-stock-document-card">
+            <FormField id="inventory_movement_date" label="Datum">
+              <input id="inventory_movement_date" type="date" className="k-input" value={movementDate} onChange={(event) => setMovementDate(event.target.value)} />
+            </FormField>
+            <FormField id="inventory_movement_reference" label="Číslo dokladu">
+              <input id="inventory_movement_reference" className="k-input" value={movementReference} onChange={(event) => setMovementReference(event.target.value)} placeholder="PR-2024-001" />
+            </FormField>
+            <FormField id="inventory_movement_note" label="Poznámka (volitelné)">
+              <input id="inventory_movement_note" className="k-input" value={movementNote} onChange={(event) => setMovementNote(event.target.value)} />
+            </FormField>
+            <button className="k-button k-stock-confirm" type="button" onClick={() => void submitMovement()}>
+              Potvrdit {movementType === 'in' ? 'příjem' : movementType === 'out' ? 'výdej' : 'odpis'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {movementInfo ? <p className="k-text-success">{movementInfo}</p> : null}
-    </div>
+    </section>
   ) : null;
 
   return (
     <main className="k-page" data-testid="inventory-list-page">
       {stateMarker}
-      <h1>Skladov? hospod??stv?</h1>
+      <h1>Skladové hospodářství</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
