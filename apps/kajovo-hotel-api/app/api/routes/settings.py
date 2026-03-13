@@ -65,14 +65,18 @@ def _default_smtp_settings_read() -> SmtpSettingsRead:
     )
 
 
-def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
+def _smtp_table_columns(db: Session) -> set[str]:
     bind = db.get_bind()
     inspector = inspect(bind)
     try:
-        columns = {str(column["name"]) for column in inspector.get_columns("portal_smtp_settings")}
+        return {str(column["name"]) for column in inspector.get_columns("portal_smtp_settings")}
     except Exception:
         logger.exception("smtp.settings.inspect_failed")
-        return None
+        return set()
+
+
+def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
+    columns = _smtp_table_columns(db)
 
     if not columns:
         return None
@@ -99,6 +103,45 @@ def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
     params = {"id": 1} if "id" in columns else {}
     row = db.execute(query, params).mappings().first()
     return dict(row) if row is not None else None
+
+
+def _upsert_smtp_row(db: Session, stored: StoredSmtpConfig) -> None:
+    columns = _smtp_table_columns(db)
+    if not columns:
+        raise RuntimeError("SMTP settings table is unavailable")
+
+    values = {
+        "id": 1,
+        "host": stored.host,
+        "port": stored.port,
+        "username": stored.username,
+        "password_encrypted": stored.password_encrypted,
+        "use_tls": stored.use_tls,
+        "use_ssl": stored.use_ssl,
+    }
+    writable_columns = [column for column in values if column in columns]
+    if "id" not in writable_columns:
+        raise RuntimeError("SMTP settings table is missing id column")
+
+    existing_row = db.execute(
+        text("SELECT 1 FROM portal_smtp_settings WHERE id = :id"),
+        {"id": 1},
+    ).first()
+    if existing_row is None:
+        insert_columns = ", ".join(writable_columns)
+        insert_placeholders = ", ".join(f":{column}" for column in writable_columns)
+        db.execute(
+            text(f"INSERT INTO portal_smtp_settings ({insert_columns}) VALUES ({insert_placeholders})"),
+            {column: values[column] for column in writable_columns},
+        )
+    else:
+        update_columns = [column for column in writable_columns if column != "id"]
+        assignments = ", ".join(f"{column} = :{column}" for column in update_columns)
+        db.execute(
+            text(f"UPDATE portal_smtp_settings SET {assignments} WHERE id = :id"),
+            {column: values[column] for column in writable_columns},
+        )
+    db.commit()
 
 
 def _safe_load_smtp_record(db: Session) -> PortalSmtpSettings | None:
@@ -193,14 +236,14 @@ def put_smtp_settings(
     db: Session = Depends(get_db),
 ) -> SmtpSettingsRead:
     settings = get_settings()
-    record = db.get(PortalSmtpSettings, 1)
+    row = _safe_load_smtp_row(db)
     password = (payload.password or "").strip()
-    if record is None and not password:
+    if row is None and not password:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="SMTP password is required for new configuration",
         )
-    if record is None:
+    if row is None:
         stored = to_stored_config(
             SmtpSettingsPayload(
                 host=payload.host,
@@ -213,7 +256,7 @@ def put_smtp_settings(
             settings.smtp_encryption_key,
         )
     else:
-        password_encrypted = record.password_encrypted
+        password_encrypted = str(row.get("password_encrypted") or "")
         if password:
             password_encrypted = to_stored_config(
                 SmtpSettingsPayload(
@@ -235,19 +278,13 @@ def put_smtp_settings(
             password_encrypted=password_encrypted,
         )
 
-    if record is None:
-        record = PortalSmtpSettings(id=1)
-    record.host = stored.host
-    record.port = stored.port
-    record.username = stored.username
-    record.password_encrypted = stored.password_encrypted
-    record.use_tls = stored.use_tls
-    record.use_ssl = stored.use_ssl
-    db.add(record)
-    db.commit()
+    _upsert_smtp_row(db, stored)
 
-    read_model = to_read_model(stored, settings.smtp_encryption_key)
-    return SmtpSettingsRead(**read_model.__dict__)
+    try:
+        read_model = to_read_model(stored, settings.smtp_encryption_key)
+        return SmtpSettingsRead(**read_model.__dict__)
+    except Exception:
+        return _fallback_smtp_settings_read(SimpleNamespace(**stored.__dict__))
 
 
 @router.post("/smtp/test-email", response_model=SmtpTestEmailResponse)

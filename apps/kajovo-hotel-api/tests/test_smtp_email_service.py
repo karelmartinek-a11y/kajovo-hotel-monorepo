@@ -290,3 +290,62 @@ def test_smtp_test_email_tolerates_legacy_table_without_status_columns(monkeypat
 
     assert response.ok is True
     assert response.delivery_mode == "mock"
+
+
+def test_put_smtp_settings_tolerates_legacy_table_without_status_columns(tmp_path):
+    db_path = tmp_path / "smtp-legacy-put.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE portal_smtp_settings (
+              id INTEGER PRIMARY KEY,
+              host VARCHAR(255) NOT NULL,
+              port INTEGER NOT NULL,
+              username VARCHAR(255) NOT NULL,
+              password_encrypted TEXT NOT NULL,
+              use_tls BOOLEAN NOT NULL,
+              use_ssl BOOLEAN NOT NULL
+            )
+        """))
+        conn.execute(
+            text("""
+                INSERT INTO portal_smtp_settings
+                  (id, host, port, username, password_encrypted, use_tls, use_ssl)
+                VALUES
+                  (1, 'smtp.legacy.local', 587, 'mailer', 'legacy-secret', 1, 0)
+            """)
+        )
+
+    with Session(engine) as db:
+        updated = put_smtp_settings(
+            SmtpSettingsUpsert(
+                host="smtp.updated.local",
+                port=2525,
+                username="mailer-updated",
+                password=None,
+                use_tls=False,
+                use_ssl=True,
+            ),
+            db=db,
+        )
+        stored_row = db.execute(
+            text("""
+                SELECT host, port, username, password_encrypted, use_tls, use_ssl
+                FROM portal_smtp_settings
+                WHERE id = 1
+            """)
+        ).mappings().first()
+
+    assert updated.host == "smtp.updated.local"
+    assert updated.port == 2525
+    assert updated.username == "mailer-updated"
+    assert updated.use_tls is False
+    assert updated.use_ssl is True
+    assert stored_row is not None
+    assert stored_row["host"] == "smtp.updated.local"
+    assert stored_row["port"] == 2525
+    assert stored_row["username"] == "mailer-updated"
+    assert stored_row["password_encrypted"] == "legacy-secret"
+    assert bool(stored_row["use_tls"]) is False
+    assert bool(stored_row["use_ssl"]) is True
