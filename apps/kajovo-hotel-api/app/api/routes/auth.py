@@ -42,7 +42,7 @@ from app.security.auth import (
     revoke_sessions_for_portal_user,
     set_active_role,
 )
-from app.security.passwords import verify_password
+from app.security.passwords import hash_password, verify_password
 from app.security.rbac import normalize_role
 from app.services.admin_credentials import ensure_admin_profile
 from app.services.mail import (
@@ -282,18 +282,14 @@ def admin_login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     _reset_lock_state(state)
-    assert user is not None
-    user.last_login_at = now
-    db.add(user)
     db.add(state)
-    session_record = create_session_record(
+    create_session_record(
         db,
-        principal=user.email,
+        principal=principal,
         role="admin",
         actor_type="admin",
         roles=["admin"],
         active_role="admin",
-        portal_user_id=user.id,
         max_age_seconds=settings.session_max_age_seconds,
     )
     db.commit()
@@ -614,7 +610,7 @@ def change_own_password(
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
     _, user = _current_user_from_session(request, db)
-    if not _verify_password(payload.old_password, user.password_hash):
+    if not verify_password(payload.old_password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid credentials")
     user.password_hash = hash_password(payload.new_password)
     user.updated_at = _utc_now()

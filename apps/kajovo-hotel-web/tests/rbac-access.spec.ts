@@ -17,20 +17,10 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
   });
 }
 
-async function mockAuthFailure(page: Page, status: number, detail = 'Auth service unavailable'): Promise<void> {
-  await page.route('**/api/auth/me', async (route: Route) => {
-    await route.fulfill({
-      status,
-      contentType: 'application/json',
-      body: JSON.stringify({ detail }),
-    });
-  });
-}
-
 test('restricted module is hidden in navigation and shows access denied on direct URL', async ({ page }) => {
   await mockAuth(page, {
     email: 'udrzba@example.com',
-    role: 'udrzba',
+    role: 'údržba',
     permissions: ['issues:read', 'issues:write'],
     actor_type: 'portal',
   });
@@ -39,15 +29,15 @@ test('restricted module is hidden in navigation and shows access denied on direc
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: /Sklad/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
 
   await page.goto('/sklad');
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /odep/i })).toBeVisible();
-  await expect(page.getByText(/udrzba@example\.com/i)).toBeVisible();
+  await expect(page.getByText('Přístup odepřen')).toBeVisible();
+  await expect(page.getByText(/Role\s+údržba/i)).toBeVisible();
 });
 
-test('recepce navigation contains only breakfast and lost-found', async ({ page }) => {
+test('recepce navigace obsahuje jen snídaně a nálezy', async ({ page }) => {
   await mockAuth(page, {
     email: 'recepce@example.com',
     role: 'recepce',
@@ -65,15 +55,15 @@ test('recepce navigation contains only breakfast and lost-found', async ({ page 
   if (isPhone) {
     const phoneNav = page.getByTestId('module-navigation-phone');
     await phoneNav.getByRole('button', { name: 'Menu' }).click();
-    await expect(phoneNav.getByRole('menuitem', { name: /Sn.dan/i })).toBeVisible();
-    await expect(phoneNav.getByRole('menuitem', { name: /Ztr.ty/i })).toBeVisible();
-    await expect(phoneNav.getByRole('menuitem', { name: /Z.vady/i })).toHaveCount(0);
-    await expect(phoneNav.getByRole('menuitem', { name: /Sklad/i })).toHaveCount(0);
+    await expect(phoneNav.getByRole('menuitem', { name: 'Snídaně' })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Ztráty a nálezy' })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: 'Závady' })).toHaveCount(0);
+    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toHaveCount(0);
   } else {
-    await expect(page.getByRole('link', { name: /Sn.dan/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Ztr.ty/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Z.vady/i })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Sklad/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Snídaně' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Ztráty a nálezy' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Závady' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
   }
 });
 
@@ -95,9 +85,45 @@ test('recepce deep link do zakázaných modulů zůstává odepřený', async ({
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
 });
 
-
+test('admin rozhraní nabízí přepínání klíčových modulů', async ({ page }) => {
   await page.goto('/admin');
-  await expect(page.getByTestId('admin-surface-retired-page')).toBeVisible();
-  await expect(page.getByText('Admin je presunut do samostatne aplikace')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Otevrit admin aplikaci' })).toBeVisible();
+  await page.waitForSelector('[data-testid="module-navigation-desktop"], [data-testid="module-navigation-phone"]', { state: 'attached' });
+  const expectedModules = [
+    'Snídaně',
+    'Skladové hospodářství',
+    'Závady',
+    'Pokojská',
+    'Ztráty a nálezy',
+  ];
+
+  const desktopNav = page.getByTestId('module-navigation-desktop');
+  const phoneNav = page.getByTestId('module-navigation-phone');
+  for (const label of expectedModules) {
+    const pattern = new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const link = desktopNav.getByRole('link', { name: pattern });
+    if ((await link.count()) > 0) {
+      expect(await link.first().isVisible()).toBeTruthy();
+      continue;
+    }
+
+    const overflowButton = desktopNav.getByRole('button', { name: 'Další' });
+    if ((await overflowButton.count()) > 0) {
+      await overflowButton.first().click();
+      const menuItem = desktopNav.getByRole('menuitem', { name: pattern });
+      await expect(menuItem).toBeVisible();
+      continue;
+    }
+
+    const phoneToggle = phoneNav.getByRole('button', { name: /Menu/i });
+    if ((await phoneToggle.count()) > 0) {
+      const expanded = await phoneToggle.first().getAttribute('aria-expanded');
+      if (expanded !== 'true') {
+        await phoneToggle.first().click();
+      }
+      await expect(phoneNav.getByRole('menuitem', { name: pattern })).toBeVisible();
+      continue;
+    }
+
+    throw new Error(`Module ${label} not found in admin navigation`);
+  }
 });

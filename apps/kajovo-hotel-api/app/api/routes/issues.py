@@ -17,7 +17,7 @@ from app.config import get_settings
 from app.db.models import Issue, IssuePhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
-from app.security.rbac import module_access_dependency, parse_identity, require_actor_type
+from app.security.rbac import module_access_dependency, normalize_role, parse_identity, require_actor_type
 
 router = APIRouter(
     prefix="/api/v1/issues",
