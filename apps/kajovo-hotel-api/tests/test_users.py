@@ -6,10 +6,11 @@ from http.cookiejar import CookieJar
 from pathlib import Path
 
 from app.security.passwords import hash_password
-from tests.test_support import admin_email, admin_login_payload
+from tests.test_support import admin_email, admin_login_payload, admin_password
 
 REQUEST_TIMEOUT_SECONDS = 30
 ADMIN_EMAIL = admin_email()
+ADMIN_PASSWORD = admin_password()
 
 
 def api_request(
@@ -166,7 +167,7 @@ def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
     )
     assert status == 200
 
@@ -229,7 +230,7 @@ def test_disabling_user_revokes_existing_portal_sessions(api_base_url: str) -> N
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
     )
     assert status == 200
 
@@ -541,7 +542,7 @@ def test_admin_cannot_deactivate_last_active_admin(api_base_url: str) -> None:
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
     )
     assert status == 200
 
@@ -552,7 +553,7 @@ def test_admin_cannot_deactivate_last_active_admin(api_base_url: str) -> None:
         (
             user
             for user in users
-            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
         ),
         None,
     )
@@ -580,7 +581,7 @@ def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> No
         api_base_url,
         "/api/auth/admin/login",
         method="POST",
-        payload={"email": "admin@kajovohotel.local", "password": "admin123"},
+        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
     )
     assert status == 200
 
@@ -591,7 +592,7 @@ def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> No
         (
             user
             for user in users
-            if isinstance(user, dict) and user.get("email") == "admin@kajovohotel.local"
+            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
         ),
         None,
     )
@@ -605,7 +606,7 @@ def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> No
         payload={
             "first_name": "Admin",
             "last_name": "User",
-            "email": "admin@kajovohotel.local",
+            "email": ADMIN_EMAIL,
             "roles": ["recepce"],
             "phone": None,
             "note": None,

@@ -164,7 +164,6 @@ def update_user(
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    previous_email = user.email.strip().lower()
     previous_roles = sorted(normalize_role(role.role) for role in user.roles)
     was_admin = "admin" in previous_roles
     new_roles = [normalize_role(role) for role in payload.roles]

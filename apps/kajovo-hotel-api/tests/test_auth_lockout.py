@@ -195,7 +195,7 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
 
 def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api_db_path: Path) -> None:
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
-    principal = "admin@kajovohotel.local"
+    principal = ADMIN_EMAIL
 
     with sqlite3.connect(api_db_path) as connection:
         connection.execute("DELETE FROM auth_lockout_states WHERE actor_type = 'admin' AND principal = ?", (principal,))

@@ -14,11 +14,15 @@ from app.services.mail import MockSmtpTransport, SmtpEmailService, StoredSmtpCon
 
 
 def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tmp_path):
+    admin_email = "admin@kajovohotel.local"
+    admin_password = "admin123"
     db_path = tmp_path / "smtp-service.db"
     engine = create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(bind=engine)
 
     monkeypatch.setenv("KAJOVO_API_SMTP_ENABLED", "true")
+    monkeypatch.setenv("KAJOVO_API_ADMIN_EMAIL", admin_email)
+    monkeypatch.setenv("KAJOVO_API_ADMIN_PASSWORD", admin_password)
     get_settings.cache_clear()
 
     with Session(engine) as db:
@@ -35,13 +39,13 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         )
         db.add(
             PortalUser(
-                first_name="Admin",
-                last_name="User",
-                email="admin@kajovohotel.local",
-                password_hash=hash_password("admin123"),
-                is_active=True,
-                roles=[PortalUserRole(role="admin")],
-            )
+                    first_name="Admin",
+                    last_name="User",
+                    email=admin_email,
+                    password_hash=hash_password(admin_password),
+                    is_active=True,
+                    roles=[PortalUserRole(role="admin")],
+                )
         )
         db.commit()
 
@@ -68,11 +72,11 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         monkeypatch.setattr("app.api.routes.settings.build_email_service", _service_factory)
 
         admin_hint(
-            HintRequest(email="admin@kajovohotel.local"),
+            HintRequest(email=admin_email),
             request=SimpleNamespace(base_url="https://hotel.test/"),
             db=db,
         )
-        response = send_test_email(SmtpTestEmailRequest(recipient="admin@kajovohotel.local"), db=db)
+        response = send_test_email(SmtpTestEmailRequest(recipient=admin_email), db=db)
         create_user(PortalUserCreate(email="new.user@example.com", password="new-user-pass"), db=db)
         status = get_smtp_status(db=db)
 
@@ -86,4 +90,4 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
     assert status.smtp_enabled is True
     assert status.can_send_real_email is True
     assert status.last_test_success is True
-    assert status.last_test_recipient == "admin@kajovohotel.local"
+    assert status.last_test_recipient == admin_email

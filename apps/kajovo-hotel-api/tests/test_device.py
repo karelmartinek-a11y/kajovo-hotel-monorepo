@@ -6,7 +6,6 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 
 

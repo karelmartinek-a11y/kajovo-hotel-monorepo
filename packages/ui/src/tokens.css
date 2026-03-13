@@ -33,6 +33,7 @@
   --k-radius-2: 12px;
   --k-radius-3: 16px;
   --k-radius-pill: 999px;
+  --k-radius-round: var(--k-radius-pill);
 
   --k-font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   --k-font-size-xs: 12px;
@@ -78,6 +79,20 @@
   --k-motion-duration-fast: 120ms;
   --k-motion-duration-standard: 200ms;
   --k-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --k-motion-spin-sequence: k-spin 800ms linear infinite;
+  --k-motion-skeleton-sequence: k-skeleton-wave var(--k-motion-duration-standard) var(--k-motion-ease-standard) infinite;
+
+  --k-spacing-compact: 2px;
+  --k-spacing-hairline: 1px;
+  --k-spacing-tight: 4px;
+
+  --k-color-stock-logo: #b11d18;
+  --k-color-stock-logo-hotel: #2f6e47;
+  --k-color-stock-active: #345a1f;
+  --k-color-stock-selected-border: #9fc66b;
+  --k-color-stock-confirm-border: #5b8b19;
+  --k-color-carousel-dot: #d0d0d0;
+  --k-color-carousel-dot-active: #818181;
 }
 
 * {
@@ -720,7 +735,7 @@ body {
 
 .k-task-copy {
   display: grid;
-  gap: 2px;
+  gap: var(--k-spacing-compact);
 }
 
 .k-task-description,
@@ -744,7 +759,7 @@ body {
 .k-task-action {
   min-width: 144px;
   min-height: 56px;
-  border: 1px solid #5f9222;
+  border: 1px solid var(--k-color-stock-confirm-border);
   border-radius: var(--k-radius-1);
   background: linear-gradient(180deg, #97cf35 0%, #6aa722 100%);
   color: var(--k-color-brand-white);
@@ -789,10 +804,10 @@ body {
 .k-modal-spinner {
   width: 24px;
   height: 24px;
-  border-radius: 999px;
+  border-radius: var(--k-radius-round);
   border: 3px solid var(--k-color-border);
   border-top-color: var(--k-color-info);
-  animation: k-spin 800ms linear infinite;
+  animation: var(--k-motion-spin-sequence);
 }
 
 @keyframes k-spin {
@@ -812,8 +827,8 @@ body {
 .k-issues-filters {
   display: inline-flex;
   gap: var(--k-spacing-2);
-  padding: 4px;
-  border-radius: var(--k-radius-pill);
+  padding: var(--k-spacing-tight);
+  border-radius: var(--k-radius-round);
   background: var(--k-color-surface-muted);
 }
 
@@ -937,7 +952,7 @@ body {
 .k-issue-status-dot {
   width: 48px;
   height: 48px;
-  border-radius: 999px;
+  border-radius: var(--k-radius-round);
   display: inline-grid;
   place-items: center;
   color: var(--k-color-brand-white);
@@ -1301,7 +1316,7 @@ body {
   border-radius: var(--k-radius-1);
   background: linear-gradient(100deg, var(--k-color-surface) 20%, var(--k-color-surface-raised) 40%, var(--k-color-surface) 60%);
   background-size: 200% 100%;
-  animation: k-skeleton-wave var(--k-motion-duration-standard) var(--k-motion-ease-standard) infinite;
+  animation: var(--k-motion-skeleton-sequence);
 }
 
 @keyframes k-skeleton-wave {
@@ -1461,7 +1476,7 @@ body {
 
 .k-stock-movement-brand {
   display: inline-flex;
-  gap: 2px;
+  gap: var(--k-spacing-compact);
   align-items: baseline;
   font-size: clamp(1.8rem, 1.5rem + 0.6vw, 2.4rem);
   font-weight: var(--k-weight-bold);
@@ -1469,11 +1484,11 @@ body {
 }
 
 .k-stock-movement-logo {
-  color: #b11d18;
+  color: var(--k-color-stock-logo);
 }
 
 .k-stock-movement-logo--hotel {
-  color: #2f6e47;
+  color: var(--k-color-stock-logo-hotel);
 }
 
 .k-stock-movement-kicker {
@@ -1508,7 +1523,7 @@ body {
 
 .k-stock-segment.is-active {
   background: linear-gradient(180deg, #d7f1ab 0%, #a9d46f 100%);
-  color: #345a1f;
+  color: var(--k-color-stock-active);
   box-shadow: inset 0 -2px 0 #7cab3f;
 }
 
@@ -1540,7 +1555,7 @@ body {
 .k-stock-carousel-item .k-inventory-thumb {
   width: 72px;
   height: 72px;
-  border-radius: 999px;
+  border-radius: var(--k-radius-round);
   box-shadow: var(--k-shadow-elevated);
   background: linear-gradient(180deg, var(--k-color-surface) 0%, var(--k-color-surface-raised) 100%);
 }
@@ -1548,7 +1563,7 @@ body {
 .k-stock-carousel-item.is-selected .k-inventory-thumb {
   width: 132px;
   height: 132px;
-  border-color: #9fc66b;
+  border-color: var(--k-color-stock-selected-border);
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
 }
 
@@ -1561,7 +1576,7 @@ body {
   width: 44px;
   height: 44px;
   border: 1px solid var(--k-color-border);
-  border-radius: 999px;
+  border-radius: var(--k-radius-round);
   background: linear-gradient(180deg, #b9dc74 0%, #82b340 100%);
   color: var(--k-color-brand-white);
   font-size: 28px;
@@ -1578,12 +1593,12 @@ body {
 .k-stock-carousel-dot {
   width: 10px;
   height: 10px;
-  border-radius: 999px;
-  background: #d0d0d0;
+  border-radius: var(--k-radius-round);
+  background: var(--k-color-carousel-dot);
 }
 
 .k-stock-carousel-dot.is-active {
-  background: #818181;
+  background: var(--k-color-carousel-dot-active);
 }
 
 .k-stock-movement-layout {
@@ -1642,7 +1657,7 @@ body {
 
 .k-stock-draft-list {
   display: grid;
-  gap: 1px;
+  gap: var(--k-spacing-hairline);
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-1);
   overflow: hidden;
@@ -1683,7 +1698,7 @@ body {
   width: 100%;
   justify-content: center;
   background: linear-gradient(180deg, #9fd33f 0%, #6ea91f 100%);
-  border-color: #5b8b19;
+  border-color: var(--k-color-stock-confirm-border);
   color: var(--k-color-brand-white);
 }
 
