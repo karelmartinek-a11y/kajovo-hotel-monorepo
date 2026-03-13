@@ -2,6 +2,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable
 from http.cookiejar import CookieJar
+from pathlib import Path
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
@@ -137,6 +138,67 @@ def test_inventory_document_numbering_and_pdf(api_request: ApiRequest, api_base_
         assert response.headers.get("content-type") == "application/pdf"
         content = response.read()
         assert content.startswith(b"%PDF-")
+
+
+def test_inventory_pictogram_upload_requires_csrf_and_persists_media(
+    api_request: ApiRequest, api_base_url: str
+) -> None:
+    created = create_item(api_request, name="Miniatura", unit="ks", amount_per_piece_base=1)
+
+    opener = getattr(api_request, "opener", urllib.request.build_opener())
+    csrf_token = next(
+        (cookie.value for cookie in getattr(api_request, "jar", []) if cookie.name == "kajovo_csrf"),
+        "",
+    )
+    fixture_path = Path(__file__).resolve().parents[3] / "apps" / "kajovo-hotel-admin" / "tests" / "fixtures" / "inventory-thumb.png"
+    boundary = "inventory-boundary"
+    file_bytes = fixture_path.read_bytes()
+    multipart = (
+        b"--" + boundary.encode("ascii") + b"\r\n"
+        + b'Content-Disposition: form-data; name="file"; filename="inventory-thumb.png"\r\n'
+        + b"Content-Type: image/png\r\n\r\n"
+        + file_bytes
+        + b"\r\n--" + boundary.encode("ascii") + b"--\r\n"
+    )
+
+    missing_csrf_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory/{created['id']}/pictogram",
+        data=multipart,
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    try:
+        opener.open(missing_csrf_request, timeout=10)
+        assert False, "Expected 403 for pictogram upload without CSRF"
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+
+    upload_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory/{created['id']}/pictogram",
+        data=multipart,
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "x-csrf-token": csrf_token,
+        },
+        method="POST",
+    )
+    with opener.open(upload_request, timeout=10) as response:
+        assert response.status == 200
+
+    detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
+    assert detail_status == 200
+    assert isinstance(detail, dict)
+    assert isinstance(detail["pictogram_path"], str)
+    assert isinstance(detail["pictogram_thumb_path"], str)
+
+    thumb_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory/{created['id']}/pictogram/thumb",
+        method="GET",
+    )
+    with opener.open(thumb_request, timeout=10) as response:
+        assert response.status == 200
+        assert response.headers.get_content_type().startswith("image/")
+        assert len(response.read()) > 0
 
 
 def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: str) -> None:

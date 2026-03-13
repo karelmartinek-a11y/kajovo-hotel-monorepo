@@ -779,9 +779,17 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   }
 
+  const fallbackHeaders = normalizeHeaders(init?.headers);
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrf = readCsrfToken();
+    if (csrf) {
+      fallbackHeaders['x-csrf-token'] = csrf;
+    }
+  }
   const fallbackResponse = await fetch(path + url.search, {
     ...init,
     credentials: 'include',
+    headers: fallbackHeaders,
   });
   if (!fallbackResponse.ok) {
     throw await buildHttpError(fallbackResponse);
