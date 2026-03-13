@@ -227,7 +227,7 @@ test('portal breakfast workflow covers import preview, export, diets, serving an
   expect(savePayloadSeen).toBeTruthy();
 
   await page.getByRole('button', { name: /bez mléka/i }).nth(1).click();
-  await page.getByRole('button', { name: /reaktivovat/i }).first().click();
+  await page.getByRole('button', { name: /^vrátit$/i }).first().click();
 
   await page.getByRole('button', { name: /export snídaní/i }).click();
   const exportUrl = await page.evaluate(() => (window as Window & { __openCalls?: string[] }).__openCalls?.[0] ?? null);
@@ -469,7 +469,7 @@ test('portal records workflows cover lost-found, issues, inventory and reports',
   await page.goto('/ztraty-a-nalezy');
   await expect(page.getByTestId('lost-found-list-page')).toBeVisible();
   await expect(page.getByText('Modrá šála')).toBeVisible();
-  await page.getByRole('link', { name: /nová položka/i }).click();
+  await page.getByRole('link', { name: /nový záznam/i }).click();
   await page.getByLabel(/kategorie/i).fill('Elektronika');
   await page.getByLabel(/místo nálezu/i).fill('Recepce');
   await page.getByLabel(/popis položky/i).fill('Nabíječka');
@@ -478,7 +478,6 @@ test('portal records workflows cover lost-found, issues, inventory and reports',
   await expect(page).toHaveURL(/\/ztraty-a-nalezy\/22$/);
 
   await page.goto('/zavady');
-  await page.getByLabel(/filtr priority/i).selectOption('high');
   await page.getByRole('link', { name: /nová závada/i }).click();
   await page.getByLabel(/^název$/i).fill('Nesvítí světlo');
   await page.getByLabel(/lokalita/i).fill('Pokoj 110');
@@ -488,31 +487,32 @@ test('portal records workflows cover lost-found, issues, inventory and reports',
 
   await page.goto('/sklad');
   await expect(page.getByTestId('inventory-list-page')).toContainText('Pomerančový džus');
-  await page.getByRole('link', { name: /nová položka/i }).click();
+  await page.locator('a[href="/sklad/nova"]').click();
   await expect(page.getByTestId('inventory-create-page')).toBeVisible();
   await expect(page.getByText(/dodavatel/i)).toHaveCount(0);
   await page.getByLabel(/^název$/i).fill('Jablečný mošt');
   await page.getByLabel(/hodnota veličiny v 1 ks/i).fill('1');
   await page.getByLabel(/minimální stav/i).fill('6');
-  await page.setInputFiles('#inventory_pictogram', {
-    name: 'jablecny-most.png',
-    mimeType: 'image/png',
-    buffer: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
-  });
+  await page.setInputFiles('#inventory_pictogram', 'tests/fixtures/inventory-thumb.png');
   await page.getByRole('button', { name: /uložit/i }).click();
-  expect(inventoryPictogramUploaded).toBeTruthy();
+  await expect.poll(() => inventoryPictogramUploaded).toBeTruthy();
   await expect(page).toHaveURL(/\/sklad\/42$/);
   await expect(page.getByTestId('inventory-detail-page')).toContainText('Jablečný mošt');
   await expect(page.getByText(/dodavatel/i)).toHaveCount(0);
   await page.goto('/sklad');
-  await page.getByRole('link', { name: /detail/i }).first().click();
-  await page.getByLabel(/počet kusů/i).first().fill('4');
-  await page.getByLabel(/číslo dodacího listu/i).fill('INV-24');
-  await page.getByRole('button', { name: /uložit příjem/i }).click();
+  await page.locator('#inventory_movement_type').selectOption('in');
+  await page.locator('#inventory_movement_item').selectOption('42');
+  await page.locator('#inventory_movement_quantity').fill('4');
+  await page.locator('#inventory_movement_reference').fill('INV-24');
+  await page.getByRole('button', { name: /potvrdit pohyb/i }).click();
+  await page.goto('/sklad/42');
   await expect(page.getByTestId('inventory-detail-page')).toContainText('PR-001');
-  await page.getByLabel(/druh výdejky/i).selectOption('adjust');
-  await page.getByLabel(/počet kusů/i).nth(1).fill('2');
-  await page.getByRole('button', { name: /uložit výdej/i }).click();
+  await page.goto('/sklad');
+  await page.locator('#inventory_movement_type').selectOption('adjust');
+  await page.locator('#inventory_movement_item').selectOption('42');
+  await page.locator('#inventory_movement_quantity').fill('2');
+  await page.getByRole('button', { name: /potvrdit pohyb/i }).click();
+  await page.goto('/sklad/42');
   await expect(page.getByTestId('inventory-detail-page')).toContainText('VD-001');
 
   await page.goto('/hlaseni');

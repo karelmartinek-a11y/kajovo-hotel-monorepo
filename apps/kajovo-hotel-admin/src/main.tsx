@@ -1219,7 +1219,7 @@ function Dashboard(): JSX.Element {
 
 function DashboardLive(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'PĹ™ehled', '/');
+  const stateUI = stateViewForRoute(state, 'Přehled', '/');
   const stateMarker = <StateMarker state={state} />;
   const [todayCount, setTodayCount] = React.useState<number | null>(null);
   const [tomorrowCount, setTomorrowCount] = React.useState<number | null>(null);
@@ -1277,7 +1277,7 @@ function DashboardLive(): JSX.Element {
   return (
     <main className="k-page" data-testid="dashboard-page">
       {stateMarker}
-      <h1>PĹ™ehled</h1>
+      <h1>Přehled</h1>
       <StateSwitcher />
       {stateUI ?? (
         <div className="k-grid cards-4 k-dashboard-cards">
