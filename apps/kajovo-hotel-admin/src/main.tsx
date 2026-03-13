@@ -12,7 +12,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, KajovoSign, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   getAuthBundle,
@@ -38,6 +38,7 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
+import { toLocalDateInputValue } from './dateDefaults';
 import {
   ADMIN_SWITCHABLE_ROLES,
   ROLE_MODULES,
@@ -1116,7 +1117,7 @@ function BreakfastList(): JSX.Element {
   const canServe = isBreakfast;
   const canClearDay = isRecepce || isAdmin;
 
-  const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
+  const [serviceDate, setServiceDate] = React.useState(() => toLocalDateInputValue());
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -1455,7 +1456,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const navigate = useNavigate();
   const { id } = useParams();
   const [payload, setPayload] = React.useState<BreakfastPayload>({
-    service_date: defaultServiceDate,
+    service_date: toLocalDateInputValue(),
     room_number: '',
     guest_name: '',
     guest_count: 1,
@@ -3762,7 +3763,7 @@ function AdminLoginPage(): JSX.Element {
     <main className="k-page k-admin-login-page" data-testid="admin-login-page">
       <section className="k-admin-login-layout">
         <Card title="KájovoHotel Admin login">
-          <img className="k-admin-login-logo" src={brandWordmark} alt="KájovoHotel" />
+          <img className="k-admin-login-logo" src={brandWordmark} alt="KájovoHotel" data-brand-element="true" />
           <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
             <FormField id="admin_login_email" label="Admin email">
               <input id="admin_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -3797,7 +3798,7 @@ function AdminLoginPage(): JSX.Element {
           </form>
         </Card>
       </section>
-      <KajovoSign />
+
     </main>
   );
 }
