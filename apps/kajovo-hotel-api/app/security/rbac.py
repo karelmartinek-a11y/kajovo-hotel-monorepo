@@ -116,8 +116,9 @@ def role_for_audit(raw_role: str | None) -> str:
 def parse_identity(request: Request) -> tuple[str, str, str]:
     from app.security.auth import require_session
 
-    session = read_session_cookie(request.cookies.get('kajovo_session'))
-    if not session:
+    try:
+        session = require_session(request)
+    except HTTPException:
         return 'anonymous', 'anonymous', 'recepce'
     actor_id = session['email']
     actor_name = session['email']

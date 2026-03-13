@@ -44,6 +44,7 @@ import {
   ROLE_MODULES,
   canReadModule,
   normalizeRole,
+  rolePermissions,
   resolveAuthProfile,
   type AuthProfile,
   type ResolvedAuthState,
@@ -309,11 +310,45 @@ type SmtpTestDialogState = {
   description: string;
 };
 
+type SmtpOperationalStatusReadModel = {
+  configured: boolean;
+  smtp_enabled: boolean;
+  delivery_mode: string;
+  can_send_real_email: boolean;
+  last_tested_at: string | null;
+  last_test_success: boolean | null;
+  last_test_recipient: string | null;
+  last_test_error: string | null;
+};
+
 type AdminProfileReadModel = {
   email: string;
   display_name: string;
   password_changed_at: string | null;
   updated_at: string | null;
+};
+
+type AuthProfileReadModel = {
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  note: string | null;
+  roles: string[];
+  actor_type: string;
+};
+
+type AdminOverview = {
+  breakfastSummary: BreakfastSummary;
+  issues: Issue[];
+  lowStockItems: InventoryItem[];
+  reports: Report[];
+  lostFoundItems: LostFoundItem[];
+};
+
+type InventoryBootstrapStatusReadModel = {
+  enabled: boolean;
+  environment: string;
 };
 
 type ErrorBoundaryProps = { children: React.ReactNode };
@@ -367,6 +402,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 
 const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = currentDateForTimeZone();
+const qaRuntimeEnabled = (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD !== true;
 
 
 const IntroRoute = React.lazy(async () => {
@@ -2468,7 +2504,7 @@ function IssuesDetail(): JSX.Element {
       .catch(() => setError('Závada nebyla nalezena.'));
   }, [id, state]);
 
-  const updateStatus = async (status: IssueStatus): Promise<void> => {
+  const updateStatusLegacy = async (status: IssueStatus): Promise<void> => {
     if (!id) return;
     try {
       const updated = await fetchJson<Issue>(`/api/v1/issues/${id}`, {
@@ -2533,6 +2569,7 @@ function InventoryList(): JSX.Element {
   const [movementReference, setMovementReference] = React.useState<string>('');
   const [movementNote, setMovementNote] = React.useState<string>('');
   const [movementInfo, setMovementInfo] = React.useState<string | null>(null);
+  const [bootstrapStatus, setBootstrapStatus] = React.useState<InventoryBootstrapStatusReadModel | null>(null);
 
   const loadItems = React.useCallback(() => {
     fetchJson<InventoryItem[]>('/api/v1/inventory')
@@ -3134,7 +3171,7 @@ function InventoryWorkbench(): JSX.Element {
                 item.current_stock,
                 item.min_stock,
                 item.unit,
-                item.supplier ?? '-',
+                '-',
                 item.current_stock <= item.min_stock
                   ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge>
                   : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>,
@@ -3904,6 +3941,7 @@ function SettingsAdmin(): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [loadedConfig, setLoadedConfig] = React.useState<SmtpSettingsSnapshot | null>(null);
+  const [status, setStatus] = React.useState<SmtpOperationalStatusReadModel | null>(null);
   const [testDialog, setTestDialog] = React.useState<SmtpTestDialogState | null>(null);
 
   const load = React.useCallback(() => {
@@ -4147,7 +4185,7 @@ function SettingsAdmin(): JSX.Element {
   );
 }
 
-function AdminProfilePage(): JSX.Element {
+function AuthSelfServiceProfilePage(): JSX.Element {
   const [profile, setProfile] = React.useState<AdminProfileReadModel | null>(null);
   const [displayName, setDisplayName] = React.useState('');
   const [oldPassword, setOldPassword] = React.useState('');

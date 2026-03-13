@@ -4,7 +4,7 @@ import hmac
 import json
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
@@ -45,21 +45,9 @@ def _sign(raw: bytes) -> str:
     return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
 
 
-def create_session_cookie(
-    email: str,
-    role: str,
-    actor_type: str,
-    roles: list[str] | None = None,
-    active_role: str | None = None,
-    max_age_seconds: int | None = None,
-) -> str:
-    normalized_roles = [normalize_role(r) for r in (roles or [role])]
-    payload: dict[str, str | list[str] | int | None] = {
-        "email": email,
-        "role": normalize_role(role),
-        "roles": normalized_roles,
-        "active_role": normalize_role(active_role) if active_role else None,
-        "actor_type": actor_type,
+def create_session_cookie(session_id: str, max_age_seconds: int | None = None) -> str:
+    payload: dict[str, str | int] = {
+        "sid": session_id,
         "iat": utc_timestamp(),
     }
     if max_age_seconds is not None:

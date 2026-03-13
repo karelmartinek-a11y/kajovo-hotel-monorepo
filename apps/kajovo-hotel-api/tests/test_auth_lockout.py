@@ -196,23 +196,40 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
 def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api_db_path: Path) -> None:
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
     principal = "admin@kajovohotel.local"
-    now = datetime.now(UTC)
 
     with sqlite3.connect(api_db_path) as connection:
         connection.execute("DELETE FROM auth_lockout_states WHERE actor_type = 'admin' AND principal = ?", (principal,))
+        first_failed_at = _utc_now_iso()
+        second_failed_at = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        locked_until = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
         connection.execute(
             """
             INSERT INTO auth_lockout_states
-            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at)
-            VALUES (?, ?, ?, ?, ?)
+            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at, locked_until)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 "admin",
-                ADMIN_EMAIL,
+                principal,
                 3,
-                _utc_now_iso(),
-                _utc_now_iso(),
-                (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat(),
+                first_failed_at,
+                first_failed_at,
+                locked_until,
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO auth_lockout_states
+            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at, locked_until)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "admin",
+                principal,
+                2,
+                second_failed_at,
+                second_failed_at,
+                locked_until,
             ),
         )
         connection.commit()

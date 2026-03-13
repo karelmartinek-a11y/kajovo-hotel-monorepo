@@ -75,6 +75,8 @@ def _as_utc(value: datetime | None) -> datetime | None:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
 def _get_lockout_state(
     db: Session,
     *,
@@ -260,11 +262,19 @@ def admin_login(
     settings = get_settings()
     now = _utc_now()
     admin_profile = ensure_admin_profile(db, settings, sync_from_env=False)
-    principal = admin_profile.email.strip().lower()
-    state = _get_lockout_state(db, actor_type="admin", principal=principal)
     provided_email = payload.email.strip().lower()
-    valid_password = verify_password(payload.password, admin_profile.password_hash)
-    valid = provided_email == principal and valid_password
+    principal = provided_email or admin_profile.email.strip().lower()
+    state = _get_lockout_state(db, actor_type="admin", principal=principal)
+    admin_user = _find_admin_user(db, provided_email)
+    valid_env_login = (
+        provided_email == admin_profile.email.strip().lower()
+        and verify_password(payload.password, admin_profile.password_hash)
+    )
+    valid_portal_admin_login = admin_user is not None and verify_password(
+        payload.password,
+        admin_user.password_hash,
+    )
+    valid = valid_env_login or valid_portal_admin_login
     if valid:
         _reset_lock_state(state)
     elif _is_locked(state, now):
@@ -283,13 +293,18 @@ def admin_login(
 
     _reset_lock_state(state)
     db.add(state)
-    create_session_record(
+    portal_user_id = admin_user.id if valid_portal_admin_login and admin_user is not None else None
+    if admin_user is not None and portal_user_id is not None:
+        admin_user.last_login_at = now
+        db.add(admin_user)
+    session_record = create_session_record(
         db,
         principal=principal,
         role="admin",
         actor_type="admin",
         roles=["admin"],
         active_role="admin",
+        portal_user_id=portal_user_id,
         max_age_seconds=settings.session_max_age_seconds,
     )
     db.commit()
@@ -298,11 +313,7 @@ def admin_login(
     response.set_cookie(
         SESSION_COOKIE_NAME,
         create_session_cookie(
-            principal,
-            "admin",
-            "admin",
-            roles=["admin"],
-            active_role="admin",
+            session_record.session_id,
             max_age_seconds=settings.session_max_age_seconds,
         ),
         httponly=True,

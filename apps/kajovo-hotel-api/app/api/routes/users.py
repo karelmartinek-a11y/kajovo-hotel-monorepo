@@ -19,6 +19,7 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
+from app.security.auth import revoke_sessions_for_portal_user
 from app.security.passwords import hash_password
 from app.security.rbac import (
     module_access_dependency,
@@ -166,18 +167,24 @@ def update_user(
     previous_email = user.email.strip().lower()
     previous_roles = sorted(normalize_role(role.role) for role in user.roles)
     was_admin = "admin" in previous_roles
+    new_roles = [normalize_role(role) for role in payload.roles]
     email = _normalize_email(payload.email)
     conflict = db.execute(
         select(PortalUser).where(PortalUser.email == email, PortalUser.id != user_id)
     ).scalar_one_or_none()
     if conflict is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+    if was_admin and "admin" not in new_roles and user.is_active and _count_active_admins(db) <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot remove admin role from the last admin user",
+        )
     user.first_name = payload.first_name
     user.last_name = payload.last_name
     user.email = email
     user.phone = payload.phone
     user.note = payload.note
-    user.roles = [PortalUserRole(role=role) for role in payload.roles]
+    user.roles = [PortalUserRole(role=role) for role in new_roles]
     user.updated_at = utc_now()
     db.add(user)
     db.commit()
