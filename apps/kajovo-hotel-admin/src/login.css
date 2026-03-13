@@ -115,7 +115,7 @@
 
 .k-header-select-stack {
   display: grid;
-  gap: 8px;
+  gap: var(--k-spacing-2);
 }
 
 .k-header-select-stack .k-subtle {
