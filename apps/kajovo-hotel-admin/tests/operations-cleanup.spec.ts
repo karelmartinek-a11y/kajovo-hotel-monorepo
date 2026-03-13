@@ -235,9 +235,9 @@ test('lost-found empty state uses correct Czech copy', async ({ page }) => {
 test('settings page exposes SMTP operational status', async ({ page }) => {
   await page.goto(adminPath('/nastaveni'));
   await expect(page.getByTestId('settings-admin-page')).toBeVisible();
-  await expect(page.getByText('Provozni stav')).toBeVisible();
+  await expect(page.getByText('Provozn\u00ed stav')).toBeVisible();
   await expect(page.getByText('Mock / no-op')).toBeVisible();
-  await expect(page.getByText('Jeste nebehl')).toBeVisible();
+  await expect(page.getByText('Je\u0161t\u011b neb\u011bhl')).toBeVisible();
 });
 
 test('settings page treats missing SMTP config as empty form, not as load error', async ({ page }) => {
@@ -267,7 +267,7 @@ test('settings page treats missing SMTP config as empty form, not as load error'
   await expect(page.getByTestId('settings-admin-page')).toBeVisible();
   await expect(page.getByText('Nepodařilo se načíst SMTP nastavení.')).toHaveCount(0);
   await expect(page.locator('#smtp_host')).toHaveValue('');
-  await expect(page.getByText('Nenakonfigurovano')).toBeVisible();
+  await expect(page.getByText('Nenakonfigurov\u00e1no')).toBeVisible();
 });
 
 test('settings page treats generic 404 SMTP config as empty form when status says unconfigured', async ({ page }) => {
@@ -297,7 +297,7 @@ test('settings page treats generic 404 SMTP config as empty form when status say
   await expect(page.getByTestId('settings-admin-page')).toBeVisible();
   await expect(page.getByText('Nepodařilo se načíst SMTP nastavení.')).toHaveCount(0);
   await expect(page.locator('#smtp_host')).toHaveValue('');
-  await expect(page.getByText('Nenakonfigurovano')).toBeVisible();
+  await expect(page.getByText('Nenakonfigurov\u00e1no')).toBeVisible();
 });
 
 

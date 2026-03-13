@@ -45,7 +45,7 @@ test('sklad role gets movement form without stock visibility or item creation', 
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([{ id: 5, name: 'K?va', unit: 'kg', min_stock: 3, current_stock: 10, amount_per_piece_base: 1 }]),
+        body: JSON.stringify([{ id: 5, name: 'Káva', unit: 'kg', min_stock: 3, current_stock: 10, amount_per_piece_base: 1 }]),
       });
       return;
     }
@@ -57,7 +57,7 @@ test('sklad role gets movement form without stock visibility or item creation', 
       contentType: 'application/json',
       body: JSON.stringify({
         id: 5,
-        name: 'K?va',
+        name: 'Káva',
         unit: 'kg',
         min_stock: 3,
         current_stock: 8,

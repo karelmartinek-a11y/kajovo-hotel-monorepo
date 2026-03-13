@@ -1356,7 +1356,7 @@ function DashboardLive(): JSX.Element {
 
 function BreakfastList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
+  const stateUI = stateViewForRoute(state, 'S\u00eddan\u011b', '/snidane');
   const stateMarker = <StateMarker state={state} />;
   const auth = useAuth();
   const actorRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'admin');
@@ -1706,7 +1706,7 @@ function BreakfastList(): JSX.Element {
 
 function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Sn?dan?', '/snidane');
+  const stateUI = stateViewForRoute(state, 'S\u00eddan\u011b', '/snidane');
   const stateMarker = <StateMarker state={state} />;
   const auth = useAuth();
   const canManage = isBreakfastManager(auth);
@@ -1843,7 +1843,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
               >
                 <option value="pending">Čeká</option>
                 <option value="preparing">Připravuje se</option>
-                <option value="served">Vyd?no</option>
+                <option value="served">Vydáno</option>
                 <option value="cancelled">Zrušeno</option>
               </select>
             </FormField>
@@ -1865,7 +1865,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
 function BreakfastDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Sn?dan?', '/snidane');
+  const stateUI = stateViewForRoute(state, 'S\u00eddan\u011b', '/snidane');
   const stateMarker = <StateMarker state={state} />;
   const auth = useAuth();
   const canManage = isBreakfastManager(auth);
@@ -2628,7 +2628,7 @@ function InventoryList(): JSX.Element {
         setItems(response);
         setError(null);
       })
-      .catch(() => setError('Polo?ky skladu se nepoda?ilo na??st.'));
+      .catch(() => setError('Položky skladu se nepodařilo načíst.'));
   }, []);
 
   const loadBootstrapStatus = React.useCallback(() => {
@@ -2655,7 +2655,7 @@ function InventoryList(): JSX.Element {
 
   const submitMovement = async (): Promise<void> => {
     if (!movementItemId) {
-      setError('Vyberte polo?ku skladu.');
+      setError('Vyberte položku skladu.');
       return;
     }
     if (movementQuantity <= 0) {
@@ -2676,15 +2676,15 @@ function InventoryList(): JSX.Element {
       });
       const latestMovement = [...response.movements].sort((left, right) => right.id - left.id)[0];
       setMovementInfo(latestMovement?.document_number
-        ? `Pohyb ulo?en. Intern? ??slo ${latestMovement.document_number}.`
-        : 'Pohyb ulo?en.');
+        ? `Pohyb uložen. Interní číslo ${latestMovement.document_number}.`
+        : 'Pohyb uložen.');
       setMovementQuantity(1);
       setMovementReference('');
       setMovementNote('');
       loadItems();
       setError(null);
     } catch {
-      setError('Pohyb skladu se nepoda?ilo ulo?it.');
+      setError('Pohyb skladu se nepodařilo uložit.');
     }
   };
 
@@ -2694,7 +2694,7 @@ function InventoryList(): JSX.Element {
       <div className="k-form-grid">
         <FormField id="inventory_movement_type" label="Druh pohybu">
           <select id="inventory_movement_type" className="k-select" value={movementType} onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}>
-            <option value="in">P??jem</option>
+            <option value="in">Příjem</option>
             <option value="out">Výdej</option>
             <option value="adjust">Odpis</option>
           </select>
@@ -2738,7 +2738,7 @@ function InventoryList(): JSX.Element {
       ) : items.length === 0 ? (
         <StateView
           title="Prázdný stav"
-          description="Ve skladu zat?m nejsou polo?ky."
+          description="Ve skladu zatím nejsou položky."
           stateKey="empty"
           action={isAdmin ? <Link className="k-button" to="/sklad/nova">Nová položka</Link> : undefined}
         />
@@ -2762,7 +2762,7 @@ function InventoryList(): JSX.Element {
                 return [
                   itemLabel,
                   item.unit,
-                  <span key={`inventory-action-${item.id}`} className="k-subtle">Pohyb vytvo??te naho?e.</span>,
+                  <span key={`inventory-action-${item.id}`} className="k-subtle">Pohyb vytvořte nahoře.</span>,
                 ];
               }
               return [
@@ -4187,27 +4187,27 @@ function SettingsAdmin(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="settings-admin-page">
-      <h1>Nastavení SMTP</h1>
+      <h1>{'Nastaven\u00ed SMTP'}</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
       {loading ? <SkeletonPage /> : (
         <>
-        <Card title="Provozni stav">
+        <Card title={'Provozn\u00ed stav'}>
           <DataTable
-            headers={['Polozka', 'Stav']}
+            headers={['Polo\u017eka', 'Stav']}
             rows={[
-              ['Konfigurace ulozena', status?.configured ? 'Ano' : 'Ne'],
-              ['ENV odesilani povoleno', status?.smtp_enabled ? 'Ano' : 'Ne'],
-              ['Rezim doruceni', status?.delivery_mode === 'smtp' ? 'Realne SMTP' : status?.delivery_mode === 'mock' ? 'Mock / no-op' : 'Nenakonfigurovano'],
-              ['Realne odeslani mozne', status?.can_send_real_email ? 'Ano' : 'Ne'],
-              ['Posledni test', status?.last_tested_at ? formatDateTime(status.last_tested_at) : 'Jeste nebehl'],
-              ['Posledni prijemce', status?.last_test_recipient ?? '-'],
-              ['Posledni vysledek', status?.last_test_success == null ? 'Bez zaznamu' : status.last_test_success ? 'Uspech' : 'Selhani'],
-              ['Posledni chyba', status?.last_test_error ?? '-'],
+              ['Konfigurace ulo\u017eena', status?.configured ? 'Ano' : 'Ne'],
+              ['ENV odes\u00edl\u00e1n\u00ed povoleno', status?.smtp_enabled ? 'Ano' : 'Ne'],
+              ['Re\u017eim doru\u010den\u00ed', status?.delivery_mode === 'smtp' ? 'Re\u00e1ln\u00e9 SMTP' : status?.delivery_mode === 'mock' ? 'Mock / no-op' : 'Nenakonfigurov\u00e1no'],
+              ['Re\u00e1ln\u00e9 odesl\u00e1n\u00ed mo\u017en\u00e9', status?.can_send_real_email ? 'Ano' : 'Ne'],
+              ['Posledn\u00ed test', status?.last_tested_at ? formatDateTime(status.last_tested_at) : 'Je\u0161t\u011b neb\u011bhl'],
+              ['Posledn\u00ed p\u0159\u00edjemce', status?.last_test_recipient ?? '-'],
+              ['Posledn\u00ed v\u00fdsledek', status?.last_test_success == null ? 'Bez z\u00e1znamu' : status.last_test_success ? '\u00dasp\u011bch' : 'Selh\u00e1n\u00ed'],
+              ['Posledn\u00ed chyba', status?.last_test_error ?? '-'],
             ]}
           />
         </Card>
-        <Card title="E-mailová konfigurace">
+        <Card title={'E-mailov\u00e1 konfigurace'}>
           <div className="k-form-grid">
             <FormField id="smtp_host" label="SMTP host">
               <input id="smtp_host" className="k-input" value={host} onChange={(e) => setHost(e.target.value)} />
@@ -4215,24 +4215,24 @@ function SettingsAdmin(): JSX.Element {
             <FormField id="smtp_port" label="SMTP port">
               <input id="smtp_port" className="k-input" type="number" value={port} onChange={(e) => setPort(Number(e.target.value) || 0)} />
             </FormField>
-            <FormField id="smtp_username" label="SMTP uživatel">
+            <FormField id="smtp_username" label={'SMTP u\u017eivatel'}>
               <input id="smtp_username" className="k-input" value={username} onChange={(e) => setUsername(e.target.value)} />
             </FormField>
             <FormField id="smtp_password" label="SMTP heslo">
               <input id="smtp_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormField>
             <label className="k-role-label">
-              <input type="checkbox" checked={useTls} onChange={(e) => setUseTls(e.target.checked)} /> Použít TLS
+              <input type="checkbox" checked={useTls} onChange={(e) => setUseTls(e.target.checked)} /> {'Pou\u017e\u00edt TLS'}
             </label>
             <label className="k-role-label">
-              <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} /> Použít SSL
+              <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} /> {'Pou\u017e\u00edt SSL'}
             </label>
-            <FormField id="smtp_test_recipient" label="Testovací příjemce">
+            <FormField id="smtp_test_recipient" label={'Testovac\u00ed p\u0159\u00edjemce'}>
               <input id="smtp_test_recipient" className="k-input" type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} />
             </FormField>
             <div className="k-toolbar">
-              <button className="k-button" type="button" onClick={() => void save()} disabled={saving}>Uložit SMTP</button>
-              <button className="k-button secondary" type="button" onClick={() => void sendTestEmail()} disabled={saving}>Odeslat testovací e-mail</button>
+              <button className="k-button" type="button" onClick={() => void save()} disabled={saving}>{'Ulo\u017eit SMTP'}</button>
+              <button className="k-button secondary" type="button" onClick={() => void sendTestEmail()} disabled={saving}>{'Odeslat testovac\u00ed e-mail'}</button>
             </div>
           </div>
         </Card>
@@ -4256,7 +4256,7 @@ function SettingsAdmin(): JSX.Element {
               </div>
             ) : (
               <div className="k-toolbar">
-                <button className="k-button" type="button" onClick={() => setTestDialog(null)}>Zavřít</button>
+                <button className="k-button" type="button" onClick={() => setTestDialog(null)}>{'Zav\u0159\u00edt'}</button>
               </div>
             )}
           </div>
@@ -4880,16 +4880,16 @@ function AppRoutes(): JSX.Element {
         headerLeadingControls={headerLeadingControls}
       >
         <Routes>
-        <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="Přehled" role={roleViewLabel} userId={auth.userId} />} />
-<Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojská" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="Snídaně" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="Sn?dan?" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="Sn?dan?" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="Sn?dan?" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztráty a nálezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="P\u0159ehled" role={roleViewLabel} userId={auth.userId} />} />
+<Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojsk\u00e1" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="S\u00eddan\u011b" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane/nova" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastForm mode="create" /> : <AccessDeniedPage moduleLabel="S\u00eddan\u011b" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane/:id" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastDetail /> : <AccessDeniedPage moduleLabel="S\u00eddan\u011b" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') && canManageBreakfast ? <BreakfastForm mode="edit" /> : <AccessDeniedPage moduleLabel="S\u00eddan\u011b" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <LostFoundList /> : <AccessDeniedPage moduleLabel="Ztr\u00e1ty a n\u00e1lezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <LostFoundForm mode="create" /> : <AccessDeniedPage moduleLabel="Ztr\u00e1ty a n\u00e1lezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <LostFoundDetail /> : <AccessDeniedPage moduleLabel="Ztr\u00e1ty a n\u00e1lezy" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/ztraty-a-nalezy/:id/edit" element={isAllowed('lost_found') ? <LostFoundForm mode="edit" /> : <AccessDeniedPage moduleLabel="Ztr\u00e1ty a n\u00e1lezy" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/zavady" element={isAllowed('issues') ? <IssuesList /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/zavady/nova" element={isAllowed('issues') ? <IssuesForm mode="create" /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/zavady/:id" element={isAllowed('issues') ? <IssuesDetail /> : <AccessDeniedPage moduleLabel="Závady" role={roleViewLabel} userId={auth.userId} />} />

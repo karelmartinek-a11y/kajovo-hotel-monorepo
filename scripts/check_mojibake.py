@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import sys
 
 
@@ -55,6 +56,38 @@ ACTIVE_RUNTIME_FORBIDDEN_SEQUENCES = (
     "K?jovoHotel",
 )
 
+QUESTION_MARK_ALLOWED_SUBSTRINGS = (
+    "?:",
+    "??",
+    "?.",
+    "?state=",
+    "/api/",
+    "low_stock=true",
+    "status=new",
+)
+
+BROKEN_QUOTED_LITERAL_RE = re.compile(r"""(['"])(?P<value>(?:\\.|(?!\1).)*)\1""")
+BROKEN_JSX_TEXT_RE = re.compile(r">(?P<value>[^<{]*\?[^<{]*)<")
+BROKEN_QUESTION_MARK_RE = re.compile(r"[A-Za-zÀ-ž]\?[A-Za-zÀ-ž?]|\?[A-Za-zÀ-ž]")
+
+
+def has_broken_question_mark_text(line: str) -> bool:
+    if not ("?" in line):
+        return False
+    if ".toHaveCount(0)" in line:
+        return False
+    candidates = [line]
+    for match in BROKEN_QUOTED_LITERAL_RE.finditer(line):
+        candidates.append(match.group("value"))
+    for match in BROKEN_JSX_TEXT_RE.finditer(line):
+        candidates.append(match.group("value"))
+    filtered_candidates = [
+        candidate
+        for candidate in candidates
+        if not any(token in candidate for token in QUESTION_MARK_ALLOWED_SUBSTRINGS)
+    ]
+    return any(BROKEN_QUESTION_MARK_RE.search(candidate) for candidate in filtered_candidates)
+
 
 def iter_text_files() -> list[Path]:
     files: list[Path] = []
@@ -99,6 +132,9 @@ def main() -> int:
             if any(char in line for char in SUSPICIOUS_CHARS) or any(
                 sequence in line for sequence in SUSPICIOUS_SEQUENCES
             ):
+                failures.append((path, line_number, line))
+                continue
+            if "docs" not in path.parts and has_broken_question_mark_text(line):
                 failures.append((path, line_number, line))
                 continue
             if "docs" not in path.parts and any(

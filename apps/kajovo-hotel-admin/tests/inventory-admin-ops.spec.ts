@@ -23,7 +23,7 @@ test('admin sees stock values and item management in inventory', async ({ page }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([{ id: 5, name: 'K?va', unit: 'kg', min_stock: 3, current_stock: 10, amount_per_piece_base: 1 }]),
+      body: JSON.stringify([{ id: 5, name: 'Káva', unit: 'kg', min_stock: 3, current_stock: 10, amount_per_piece_base: 1 }]),
     });
   });
 
