@@ -91,3 +91,28 @@ test('admin inventory create flow uploads thumbnail and hides supplier field', a
   await expect(page.getByRole('img', { name: /miniatura položky jablečný mošt/i })).toBeVisible();
   await expect(page.getByText(/dodavatel/i)).toHaveCount(0);
 });
+
+test('admin inventory create flow blocks invalid amount before submit', async ({ page }) => {
+  await mockAuth(page);
+
+  let createRequests = 0;
+
+  await page.route('**/api/v1/inventory', async (route) => {
+    if (route.request().method() === 'POST') {
+      createRequests += 1;
+      await route.fulfill({ status: 422, contentType: 'application/json', body: JSON.stringify({ detail: 'should not submit' }) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  });
+
+  await page.goto(adminPath('/sklad/nova'));
+  await expect(page.getByTestId('inventory-create-page')).toBeVisible();
+
+  await page.getByLabel(/^název$/i).fill('Test položka');
+  await page.getByLabel(/hodnota veličiny v 1 ks/i).fill('0');
+  await page.getByRole('button', { name: /uložit/i }).click();
+
+  await expect(page.getByText('Hodnota veličiny v 1 ks musí být alespoň 1.')).toBeVisible();
+  await expect.poll(() => createRequests).toBe(0);
+});

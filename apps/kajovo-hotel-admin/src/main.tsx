@@ -523,6 +523,13 @@ async function buildHttpError(response: Response): Promise<HttpError> {
       detail = parsed;
       if (parsed && typeof parsed.detail === 'string') {
         message = parsed.detail;
+      } else if (parsed && Array.isArray(parsed.detail)) {
+        const messages = parsed.detail
+          .map((item) => (typeof item === 'object' && item && 'msg' in item && typeof item.msg === 'string' ? item.msg : null))
+          .filter((item): item is string => item !== null);
+        if (messages.length > 0) {
+          message = messages.join(' ');
+        }
       }
     } catch {
       detail = raw;
@@ -2363,19 +2370,40 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     return () => URL.revokeObjectURL(nextPreview);
   }, [pictogramFile]);
 
+  const normalizedPayload: InventoryItemPayload = {
+    ...payload,
+    name: payload.name.trim(),
+    unit: payload.unit.trim().toLowerCase(),
+  };
+
+  const validationError =
+    normalizedPayload.name.length === 0
+      ? 'Název položky je povinný.'
+      : !Number.isInteger(normalizedPayload.amount_per_piece_base) || (normalizedPayload.amount_per_piece_base ?? 0) < 1
+        ? 'Hodnota veličiny v 1 ks musí být alespoň 1.'
+        : !Number.isInteger(normalizedPayload.min_stock) || normalizedPayload.min_stock < 0
+          ? 'Minimální stav musí být nula nebo vyšší.'
+          : !Number.isInteger(normalizedPayload.current_stock) || normalizedPayload.current_stock < 0
+            ? 'Počáteční stav musí být nula nebo vyšší.'
+            : null;
+
   const save = async (): Promise<void> => {
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     try {
       const saved = await fetchJson<InventoryItem>(mode === 'create' ? '/api/v1/inventory' : `/api/v1/inventory/${id}`, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(normalizedPayload),
       });
       if (pictogramFile) {
         await uploadInventoryPictogram(saved.id, pictogramFile);
       }
       navigate(`/sklad/${saved.id}`);
-    } catch {
-      setError('Položku se nepodařilo uložit.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Položku se nepodařilo uložit.');
     }
   };
 
@@ -2411,10 +2439,10 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
               </select>
             </FormField>
             <FormField id="inventory_amount_per_piece_base" label="Hodnota veličiny v 1 ks">
-              <input id="inventory_amount_per_piece_base" type="number" className="k-input" value={payload.amount_per_piece_base ?? 0} onChange={(event) => setPayload((prev) => ({ ...prev, amount_per_piece_base: Number(event.target.value) }))} />
+              <input id="inventory_amount_per_piece_base" type="number" min={1} step={1} className="k-input" value={payload.amount_per_piece_base ?? 1} onChange={(event) => setPayload((prev) => ({ ...prev, amount_per_piece_base: Number(event.target.value) }))} />
             </FormField>
             <FormField id="inventory_min_stock" label="Minimální stav">
-              <input id="inventory_min_stock" type="number" className="k-input" value={payload.min_stock} onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))} />
+              <input id="inventory_min_stock" type="number" min={0} step={1} className="k-input" value={payload.min_stock} onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))} />
             </FormField>
             <FormField id="inventory_pictogram" label="Miniatura položky">
               <input id="inventory_pictogram" type="file" className="k-input" accept="image/*" onChange={(event) => setPictogramFile(event.target.files?.[0] ?? null)} />

@@ -203,7 +203,7 @@ class InventoryItem(Base):
     min_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     current_stock: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     supplier: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    amount_per_piece_base: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    amount_per_piece_base: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     pictogram_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     pictogram_thumb_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
