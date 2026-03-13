@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,6 +30,8 @@ router = APIRouter(
     dependencies=[Depends(require_actor_type("admin")), Depends(module_access_dependency("settings"))],
 )
 
+logger = logging.getLogger("kajovo.api.smtp")
+
 
 def _stored_from_record(record: PortalSmtpSettings) -> StoredSmtpConfig:
     return StoredSmtpConfig(
@@ -58,6 +61,22 @@ def _default_smtp_settings_read() -> SmtpSettingsRead:
         use_ssl=False,
         password_masked="",
     )
+
+
+def _persist_smtp_test_result(
+    db: Session,
+    record: PortalSmtpSettings,
+    *,
+    recipient: str,
+    success: bool,
+    error: str | None,
+) -> None:
+    record.last_tested_at = datetime.now(timezone.utc)
+    record.last_test_success = success
+    record.last_test_recipient = recipient
+    record.last_test_error = error
+    db.add(record)
+    db.commit()
 
 
 def _fallback_smtp_settings_read(record: PortalSmtpSettings | None) -> SmtpSettingsRead:
@@ -196,22 +215,32 @@ def test_smtp_email(
                 body="Toto je testovaci email SMTP konfigurace.",
             )
         )
-        record.last_tested_at = datetime.now(timezone.utc)
-        record.last_test_success = True
-        record.last_test_recipient = payload.recipient
-        record.last_test_error = None
-        db.add(record)
-        db.commit()
+        try:
+            _persist_smtp_test_result(
+                db,
+                record,
+                recipient=payload.recipient,
+                success=True,
+                error=None,
+            )
+        except Exception:
+            db.rollback()
+            logger.exception("smtp.test_email.persist_success_failed")
     except Exception as exc:
-        record.last_tested_at = datetime.now(timezone.utc)
-        record.last_test_success = False
-        record.last_test_recipient = payload.recipient
-        record.last_test_error = str(exc)
-        db.add(record)
-        db.commit()
+        try:
+            _persist_smtp_test_result(
+                db,
+                record,
+                recipient=payload.recipient,
+                success=False,
+                error=str(exc),
+            )
+        except Exception:
+            db.rollback()
+            logger.exception("smtp.test_email.persist_failure_failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="SMTP test delivery failed",
+            detail=f"SMTP test delivery failed: {exc}",
         ) from exc
 
     message = (

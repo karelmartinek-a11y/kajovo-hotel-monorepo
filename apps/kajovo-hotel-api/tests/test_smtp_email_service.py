@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -172,3 +173,46 @@ def test_fallback_smtp_settings_read_tolerates_malformed_legacy_record():
     assert fallback.use_tls is True
     assert fallback.use_ssl is False
     assert fallback.password_masked == ""
+
+
+def test_send_test_email_returns_502_even_when_status_persist_fails(monkeypatch, tmp_path):
+    db_path = tmp_path / "smtp-persist-failure.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(bind=engine)
+
+    monkeypatch.setenv("KAJOVO_API_SMTP_ENABLED", "true")
+    get_settings.cache_clear()
+
+    with Session(engine) as db:
+        db.add(
+            PortalSmtpSettings(
+                id=1,
+                host="smtp.local",
+                port=1025,
+                username="mailer",
+                password_encrypted="bad",
+                use_tls=False,
+                use_ssl=False,
+            )
+        )
+        db.commit()
+
+        original_commit = db.commit
+        commit_calls = 0
+
+        def flaky_commit() -> None:
+            nonlocal commit_calls
+            commit_calls += 1
+            raise RuntimeError("persist unavailable")
+
+        db.commit = flaky_commit  # type: ignore[method-assign]
+
+        with pytest.raises(Exception) as exc_info:
+            send_test_email(SmtpTestEmailRequest(recipient="admin@example.com"), db=db)
+
+        db.commit = original_commit  # type: ignore[method-assign]
+
+    exc = exc_info.value
+    assert getattr(exc, "status_code", None) == 502
+    assert "SMTP test delivery failed" in str(getattr(exc, "detail", exc))
+    assert commit_calls == 1
