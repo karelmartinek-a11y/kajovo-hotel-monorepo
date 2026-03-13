@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.auth import HintRequest, admin_hint, hash_password
 from app.api.routes.settings import (
     SmtpTestEmailRequest,
+    _fallback_smtp_settings_read,
     get_smtp_settings,
     get_smtp_status,
     put_smtp_settings,
@@ -152,3 +153,22 @@ def test_put_smtp_settings_preserves_existing_password_when_blank(tmp_path):
     assert updated.use_ssl is True
     assert updated.password_masked == initial.password_masked
     assert stored is not None
+
+
+def test_fallback_smtp_settings_read_tolerates_malformed_legacy_record():
+    record = SimpleNamespace(
+        host=None,
+        port="not-a-number",
+        username=None,
+        use_tls=None,
+        use_ssl=None,
+    )
+
+    fallback = _fallback_smtp_settings_read(record)
+
+    assert fallback.host == ""
+    assert fallback.port == 587
+    assert fallback.username == ""
+    assert fallback.use_tls is True
+    assert fallback.use_ssl is False
+    assert fallback.password_masked == ""

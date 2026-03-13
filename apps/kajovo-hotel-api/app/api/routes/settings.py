@@ -49,32 +49,48 @@ def _delivery_mode(*, smtp_enabled: bool, configured: bool) -> str:
     return "mock"
 
 
+def _default_smtp_settings_read() -> SmtpSettingsRead:
+    return SmtpSettingsRead(
+        host="",
+        port=587,
+        username="",
+        use_tls=True,
+        use_ssl=False,
+        password_masked="",
+    )
+
+
+def _fallback_smtp_settings_read(record: PortalSmtpSettings | None) -> SmtpSettingsRead:
+    if record is None:
+        return _default_smtp_settings_read()
+
+    try:
+        port = int(record.port) if record.port is not None else 587
+    except (TypeError, ValueError):
+        port = 587
+
+    return SmtpSettingsRead(
+        host=(record.host or "").strip(),
+        port=port,
+        username=(record.username or "").strip(),
+        use_tls=True if record.use_tls is None else bool(record.use_tls),
+        use_ssl=False if record.use_ssl is None else bool(record.use_ssl),
+        password_masked="",
+    )
+
+
 @router.get("/smtp", response_model=SmtpSettingsRead)
 def get_smtp_settings(db: Session = Depends(get_db)) -> SmtpSettingsRead:
     settings = get_settings()
     record = db.get(PortalSmtpSettings, 1)
     if record is None:
-        return SmtpSettingsRead(
-            host="",
-            port=587,
-            username="",
-            use_tls=True,
-            use_ssl=False,
-            password_masked="",
-        )
+        return _default_smtp_settings_read()
     try:
         read_model = to_read_model(_stored_from_record(record), settings.smtp_encryption_key)
         return SmtpSettingsRead(**read_model.__dict__)
     except Exception:
-        # Keep the form editable even if the stored secret can no longer be decrypted.
-        return SmtpSettingsRead(
-            host=record.host,
-            port=record.port,
-            username=record.username,
-            use_tls=record.use_tls,
-            use_ssl=record.use_ssl,
-            password_masked="",
-        )
+        # Keep the form editable even if the stored secret or legacy row is malformed.
+        return _fallback_smtp_settings_read(record)
 
 
 @router.get("/smtp/status", response_model=SmtpOperationalStatusRead)
