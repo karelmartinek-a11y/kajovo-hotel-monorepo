@@ -112,3 +112,24 @@
   margin: 0;
   color: var(--k-color-ink-secondary);
 }
+
+.k-header-select-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.k-header-select-stack .k-subtle {
+  margin: 0;
+}
+
+.k-admin-role-select {
+  width: 176px;
+  min-width: 176px;
+}
+
+@media (max-width: 1024px) {
+  .k-admin-role-select {
+    width: 100%;
+    min-width: 0;
+  }
+}

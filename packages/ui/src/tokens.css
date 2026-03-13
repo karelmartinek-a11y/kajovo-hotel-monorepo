@@ -129,6 +129,13 @@ body {
   border-bottom: 1px solid var(--k-color-border);
 }
 
+.k-shell-header-leading {
+  position: absolute;
+  top: var(--k-spacing-4);
+  left: var(--k-spacing-4);
+  z-index: 1;
+}
+
 .k-shell-inner {
   max-width: var(--k-shell-max-width);
   margin: 0 auto;
@@ -139,6 +146,7 @@ body {
   display: flex;
   align-items: center;
   gap: var(--k-spacing-4);
+  min-height: 88px;
 }
 
 .k-shell-header-controls {
@@ -349,6 +357,28 @@ body {
   margin: 0 0 var(--k-spacing-4);
   font-size: var(--k-font-size-2xl);
   line-height: var(--k-line-height-h1);
+}
+
+.k-dashboard-cards .k-card {
+  min-height: 176px;
+  padding: var(--k-spacing-6) var(--k-spacing-5);
+}
+
+.k-dashboard-cards .k-card h3 {
+  margin: 0 0 var(--k-spacing-5);
+  font-size: 22px;
+  line-height: 30px;
+}
+
+.k-dashboard-cards .k-card strong {
+  display: block;
+  margin-bottom: var(--k-spacing-3);
+  font-size: 22px;
+  line-height: 30px;
+}
+
+.k-dashboard-cards .k-card p {
+  margin: 0;
 }
 
 .k-admin-login-page {
@@ -602,12 +632,20 @@ body {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--k-spacing-3);
+    min-height: 0;
   }
 
   .k-shell-header-controls {
     margin-left: 0;
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .k-shell-header-leading {
+    position: static;
+    max-width: var(--k-shell-max-width);
+    margin: 0 auto;
+    padding: var(--k-spacing-4) var(--k-spacing-4) 0;
   }
 
   .k-wordmark img {
@@ -644,6 +682,10 @@ body {
   .k-shell-inner,
   .k-page {
     padding: var(--k-spacing-3);
+  }
+
+  .k-shell-header-leading {
+    padding: var(--k-spacing-3) var(--k-spacing-3) 0;
   }
 
   .k-shell-header-controls {

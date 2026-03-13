@@ -948,7 +948,7 @@ function Dashboard(): JSX.Element {
       <h1>Přehled</h1>
       <StateSwitcher />
       {stateUI ?? (
-        <div className="k-grid cards-3">
+        <div className="k-grid cards-3 k-dashboard-cards">
           <Card title="Snídaně dnes">
             <strong>18</strong>
             <p>3 čekající objednávky</p>
@@ -3683,6 +3683,20 @@ function AppRoutes(): JSX.Element {
     ...module,
     route: toAdminNavRoute(module.route),
   }));
+  const adminHeaderModuleOrder = ['breakfast', 'lost_found', 'issues', 'inventory', 'profile', 'users', 'settings'];
+  const adminShellModules = auth.role === 'admin'
+    ? adminHeaderModuleOrder
+      .map((key) => adminNavModules.find((module) => module.key === key))
+      .filter((module): module is typeof adminNavModules[number] => Boolean(module))
+    : adminNavModules;
+  const shellNavigationRules = auth.role === 'admin'
+    ? {
+      ...ia.navigation.rules,
+      grouping: false,
+      maxTopLevelItemsDesktop: adminHeaderModuleOrder.length,
+      maxTopLevelItemsTablet: 4,
+    }
+    : ia.navigation.rules;
   const roleHomeRoute = effectiveRoleView === 'admin'
     ? '/'
     : toAdminNavRoute(allowedRoleModules[0]?.route ?? '/');
@@ -3700,14 +3714,14 @@ function AppRoutes(): JSX.Element {
   const roleViewLabel = roleSwitcherLabels[effectiveRoleView] ?? effectiveRoleView;
   const canManageBreakfast = effectiveRoleView === 'admin' || effectiveRoleView === 'recepce';
   const canManageInventory = effectiveRoleView === 'admin';
-  const headerControls = auth.role === 'admin' ? (
-    <>
+  const headerLeadingControls = auth.role === 'admin' ? (
+    <div className="k-header-select-stack">
       <label htmlFor="admin-role-view-select" className="k-subtle">
         Role pohledu
       </label>
       <select
         id="admin-role-view-select"
-        className="k-select k-select-inline"
+        className="k-select k-admin-role-select"
         aria-label="Role pohledu"
         value={roleView}
         onChange={(event) => setRoleView(event.target.value as AdminRoleView)}
@@ -3718,18 +3732,18 @@ function AppRoutes(): JSX.Element {
           </option>
         ))}
       </select>
-    </>
+    </div>
   ) : null;
 
   return (
     <AuthContext.Provider value={effectiveAuth}>
       <AppShell
-        modules={adminNavModules}
-        navigationRules={ia.navigation.rules}
+        modules={adminShellModules}
+        navigationRules={shellNavigationRules}
         navigationSections={ia.navigation.sections}
         currentPath={adminCurrentPath}
         panelLayout={panelLayout}
-        headerControls={headerControls}
+        headerLeadingControls={headerLeadingControls}
       >
         <Routes>
         <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <Dashboard /> : <AccessDeniedPage moduleLabel="Přehled" role={roleViewLabel} userId={auth.userId} />} />
