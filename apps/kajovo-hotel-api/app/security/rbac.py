@@ -171,6 +171,24 @@ def require_actor_type(expected_actor_type: str) -> Callable[[Request], None]:
     return _check_actor_type
 
 
+def require_role(expected_role: str) -> Callable[[Request], None]:
+    normalized_expected_role = normalize_role(expected_role)
+
+    def _check_role(request: Request) -> None:
+        from app.security.auth import require_session
+
+        session = require_session(request)
+        selected = session.get('active_role') or session.get('role')
+        actor_role = normalize_role(str(selected) if selected else None)
+        if actor_role != normalized_expected_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f'Missing role: {normalized_expected_role}',
+            )
+
+    return _check_role
+
+
 def require_module_access(module: str, request: Request) -> None:
     action = 'write' if request.method in WRITE_METHODS else 'read'
     checker = require_permission(module, action)

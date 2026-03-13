@@ -224,3 +224,33 @@ test('settings page exposes SMTP operational status', async ({ page }) => {
   await expect(page.getByText('Mock / no-op')).toBeVisible();
   await expect(page.getByText('Jeste nebehl')).toBeVisible();
 });
+
+test('settings page treats missing SMTP config as empty form, not as load error', async ({ page }) => {
+  await page.route('**/api/v1/admin/settings/smtp', async (route) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'SMTP settings not configured' }),
+    });
+  });
+  await page.route('**/api/v1/admin/settings/smtp/status', async (route) => {
+    await route.fulfill({
+      json: {
+        configured: false,
+        smtp_enabled: false,
+        delivery_mode: 'unconfigured',
+        can_send_real_email: false,
+        last_tested_at: null,
+        last_test_success: null,
+        last_test_recipient: null,
+        last_test_error: null,
+      },
+    });
+  });
+
+  await page.goto(adminPath('/nastaveni'));
+  await expect(page.getByTestId('settings-admin-page')).toBeVisible();
+  await expect(page.getByText('Nepodařilo se načíst SMTP nastavení.')).toHaveCount(0);
+  await expect(page.locator('#smtp_host')).toHaveValue('');
+  await expect(page.getByText('Nenakonfigurovano')).toBeVisible();
+});

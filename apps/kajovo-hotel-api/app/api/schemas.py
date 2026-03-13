@@ -658,7 +658,7 @@ class SmtpSettingsUpsert(BaseModel):
     host: str = Field(min_length=1, max_length=255)
     port: int = Field(ge=1, le=65535)
     username: str = Field(min_length=1, max_length=255)
-    password: str = Field(min_length=1, max_length=1024)
+    password: str | None = Field(default=None, max_length=1024)
     use_tls: bool = True
     use_ssl: bool = False
 

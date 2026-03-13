@@ -34,7 +34,7 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.media.storage import InventoryMediaStorage
-from app.security.rbac import module_access_dependency, require_actor_type
+from app.security.rbac import module_access_dependency, require_role
 from app.services.pdf.inventory import build_inventory_stocktake_pdf
 
 router = APIRouter(
@@ -325,7 +325,7 @@ def get_card(card_id: int, db: Session = Depends(get_db)) -> InventoryCardDetail
 def delete_card(
     card_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> None:
     card = _load_card_or_404(db, card_id)
     for movement in card.movements:
@@ -353,7 +353,7 @@ def delete_card(
 
 @router.get("/bootstrap-status", response_model=InventoryBootstrapStatusRead)
 def get_inventory_bootstrap_status(
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> InventoryBootstrapStatusRead:
     settings = get_settings()
     return InventoryBootstrapStatusRead(
@@ -365,7 +365,7 @@ def get_inventory_bootstrap_status(
 @router.post("/seed-defaults", response_model=list[InventoryItemRead], status_code=status.HTTP_201_CREATED)
 def seed_default_items(
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> list[InventoryItem]:
     existing_names = {name for (name,) in db.execute(select(InventoryItem.name)).all()}
     created: list[InventoryItem] = []
@@ -387,7 +387,7 @@ def seed_default_items(
 def create_item(
     payload: InventoryItemCreate,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItem:
     item = InventoryItem(**payload.model_dump())
     db.add(item)
@@ -402,7 +402,7 @@ def create_item(
 def get_item(
     item_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItemWithAuditRead:
     item = db.scalar(
         select(InventoryItem)
@@ -435,7 +435,7 @@ def update_item(
     item_id: int,
     payload: InventoryItemUpdate,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id)
 
@@ -503,7 +503,7 @@ def add_movement(
 def delete_item(
     item_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> None:
     item = _load_item_detail(db, item_id)
     has_history = db.scalar(
@@ -528,7 +528,7 @@ def delete_movement(
     item_id: int,
     movement_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> None:
     item = _load_item_or_404(db, item_id)
     movement = db.scalar(
@@ -569,7 +569,7 @@ def upload_item_pictogram(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id)
 
@@ -606,7 +606,7 @@ def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
 @router.get("/stocktake/pdf")
 def export_stocktake_pdf(
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_actor_type("admin")),
+    _admin: None = Depends(require_role("admin")),
 ):
     items = list(
         db.scalars(select(InventoryItem).order_by(InventoryItem.name.asc(), InventoryItem.id.asc()))

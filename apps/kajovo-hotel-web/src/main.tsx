@@ -2019,7 +2019,7 @@ function IssuesDetail(): JSX.Element {
 
 function InventoryList(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Skladov? hospod??stv?', '/sklad');
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
   const stateMarker = <StateMarker state={state} />;
   const auth = useAuth();
   const actorRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'recepce');
@@ -2040,7 +2040,7 @@ function InventoryList(): JSX.Element {
         setItems(response);
         setError(null);
       })
-      .catch(() => setError('Polo?ky skladu se nepoda?ilo na??st.'));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Položky skladu se nepodařilo načíst.'));
   }, []);
 
   React.useEffect(() => {
@@ -2060,11 +2060,11 @@ function InventoryList(): JSX.Element {
 
   const submitMovement = async (): Promise<void> => {
     if (!movementItemId) {
-      setError('Vyberte polo?ku skladu.');
+      setError('Vyberte položku skladu.');
       return;
     }
     if (movementQuantity <= 0) {
-      setError('Mno?stv? mus? b?t v?t?? ne? nula.');
+      setError('Množství musí být větší než nula.');
       return;
     }
     try {
@@ -2081,46 +2081,46 @@ function InventoryList(): JSX.Element {
       });
       const latestMovement = [...response.movements].sort((left, right) => right.id - left.id)[0];
       setMovementInfo(latestMovement?.document_number
-        ? `Pohyb ulo?en. Intern? ??slo ${latestMovement.document_number}.`
-        : 'Pohyb ulo?en.');
+        ? `Pohyb uložen. Interní číslo ${latestMovement.document_number}.`
+        : 'Pohyb uložen.');
       setMovementQuantity(1);
       setMovementReference('');
       setMovementNote('');
       loadItems();
       setError(null);
     } catch {
-      setError('Pohyb skladu se nepoda?ilo ulo?it.');
+      setError('Pohyb skladu se nepodařilo uložit.');
     }
   };
 
   const movementCard = items.length > 0 ? (
     <div className="k-card">
-      <h2>Nov? pohyb skladu</h2>
+      <h2>Nový pohyb skladu</h2>
       <div className="k-form-grid">
         <FormField id="inventory_movement_type" label="Druh pohybu">
           <select id="inventory_movement_type" className="k-select" value={movementType} onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}>
-            <option value="in">P??jem</option>
-            <option value="out">V?dej</option>
+            <option value="in">Příjem</option>
+            <option value="out">Výdej</option>
             <option value="adjust">Odpis</option>
           </select>
         </FormField>
-        <FormField id="inventory_movement_item" label="Polo?ka">
+        <FormField id="inventory_movement_item" label="Položka">
           <select id="inventory_movement_item" className="k-select" value={movementItemId} onChange={(event) => setMovementItemId(event.target.value)}>
             {items.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </select>
         </FormField>
-        <FormField id="inventory_movement_quantity" label="Mno?stv?">
+        <FormField id="inventory_movement_quantity" label="Množství">
           <input id="inventory_movement_quantity" type="number" min={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
         </FormField>
         <FormField id="inventory_movement_date" label="Datum dokladu">
           <input id="inventory_movement_date" type="date" className="k-input" value={movementDate} onChange={(event) => setMovementDate(event.target.value)} />
         </FormField>
-        <FormField id="inventory_movement_reference" label="??slo dokladu (voliteln?)">
+        <FormField id="inventory_movement_reference" label="Číslo dokladu (volitelné)">
           <input id="inventory_movement_reference" className="k-input" value={movementReference} onChange={(event) => setMovementReference(event.target.value)} />
         </FormField>
-        <FormField id="inventory_movement_note" label="Pozn?mka (voliteln?)">
+        <FormField id="inventory_movement_note" label="Poznámka (volitelná)">
           <input id="inventory_movement_note" className="k-input" value={movementNote} onChange={(event) => setMovementNote(event.target.value)} />
         </FormField>
       </div>
@@ -2134,7 +2134,7 @@ function InventoryList(): JSX.Element {
   return (
     <main className="k-page" data-testid="inventory-list-page">
       {stateMarker}
-      <h1>Skladov? hospod??stv?</h1>
+      <h1>Skladové hospodářství</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
@@ -2142,20 +2142,20 @@ function InventoryList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : items.length === 0 ? (
         <StateView
-          title="Pr?zdn? stav"
-          description="Ve skladu zat?m nejsou polo?ky."
+          title="Prázdný stav"
+          description="Ve skladu zatím nejsou položky."
           stateKey="empty"
-          action={isAdmin ? <Link className="k-button" to="/sklad/nova">Nov? polo?ka</Link> : undefined}
+          action={isAdmin ? <Link className="k-button" to="/sklad/nova">Nová položka</Link> : undefined}
         />
       ) : (
         <>
           <div className="k-toolbar">
-            {isAdmin ? <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>Inventurn? protokol (PDF)</button> : null}
-            {isAdmin ? <Link className="k-button" to="/sklad/nova">Nov? polo?ka</Link> : null}
+            {isAdmin ? <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>Inventurní protokol (PDF)</button> : null}
+            {isAdmin ? <Link className="k-button" to="/sklad/nova">Nová položka</Link> : null}
           </div>
           {movementCard}
           <DataTable
-            headers={isAdmin ? ['Polo?ka', 'Skladem', 'Minimum', 'Jednotka', 'Status', 'Akce'] : ['Polo?ka', 'Jednotka', 'Akce']}
+            headers={isAdmin ? ['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Status', 'Akce'] : ['Položka', 'Jednotka', 'Akce']}
             rows={items.map((item) => {
               const itemLabel = (
                 <div key={`inventory-cell-${item.id}`} className="k-inventory-item-cell">
@@ -2167,7 +2167,7 @@ function InventoryList(): JSX.Element {
                 return [
                   itemLabel,
                   item.unit,
-                  <span key={`inventory-action-${item.id}`} className="k-subtle">Pohyb vytvo??te naho?e.</span>,
+                  <span key={`inventory-action-${item.id}`} className="k-subtle">Pohyb vytvořte nahoře.</span>,
                 ];
               }
               return [
@@ -2219,7 +2219,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
           pictogram_thumb_path: item.pictogram_thumb_path,
         })
       )
-      .catch(() => setError('Položku se nepodařilo načíst.'));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Položku se nepodařilo načíst.'));
   }, [id, mode, state]);
 
   React.useEffect(() => {
@@ -2318,7 +2318,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
 function InventoryDetail(): JSX.Element {
   const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Skladov? hospod??stv?', '/sklad');
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
   const stateMarker = <StateMarker state={state} />;
   const { id } = useParams();
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
@@ -2331,7 +2331,7 @@ function InventoryDetail(): JSX.Element {
         setItem(response);
         setError(null);
       })
-      .catch(() => setError('Polo?ka nebyla nalezena.'));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Položka nebyla nalezena.'));
   }, [id]);
 
   React.useEffect(() => {
@@ -2348,43 +2348,43 @@ function InventoryDetail(): JSX.Element {
         headers: csrf ? { 'x-csrf-token': csrf } : undefined,
       });
       loadDetail();
-    } catch {
-      setError('Pohyb se nepoda?ilo smazat.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Pohyb se nepodařilo smazat.');
     }
   };
 
   return (
     <main className="k-page" data-testid="inventory-detail-page">
       {stateMarker}
-      <h1>Detail skladov? polo?ky</h1>
+      <h1>Detail skladové položky</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
       ) : error ? (
-        <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/sklad">Zp?t na seznam</Link>} />
+        <StateView title={error.includes('Missing role') || error.includes('Missing actor type') ? 'Přístup odepřen' : '404'} description={error} stateKey={error.includes('Missing role') || error.includes('Missing actor type') ? 'error' : '404'} action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>} />
       ) : item ? (
         <>
           <div className="k-card">
             <div className="k-toolbar">
-              <Link className="k-nav-link" to="/sklad">Zp?t na seznam</Link>
+              <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
               <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
             </div>
             <div className="k-inventory-detail-hero">
               <InventoryThumb item={item} size="detail" />
               <div>
                 <h2>{item.name}</h2>
-                <p className="k-subtle">Aktu?ln? mno?stv? a historie pohyb? z?st?vaj? dostupn? jen adminovi.</p>
+                <p className="k-subtle">Aktuální množství a historie pohybů zůstávají dostupné jen adminovi.</p>
               </div>
             </div>
             <DataTable
-              headers={['Polo?ka', 'Skladem', 'Minimum', 'Veli?ina v 1 ks', 'Hodnota veli?iny v 1 ks']}
+              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Hodnota veličiny v 1 ks']}
               rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.amount_per_piece_base ?? 0]]}
             />
           </div>
           <div className="k-card">
             <h2>Pohyby</h2>
             <DataTable
-              headers={['Intern? ??slo', 'Datum', 'Druh', 'Mno?stv?', '??slo dokladu', 'Pozn?mka', 'Akce']}
+              headers={['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka', 'Akce']}
               rows={item.movements.map((movement) => [
                 movement.document_number ?? '-',
                 formatDateTime(movement.document_date ?? movement.created_at),

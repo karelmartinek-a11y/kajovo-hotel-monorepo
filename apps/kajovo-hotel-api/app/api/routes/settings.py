@@ -54,12 +54,27 @@ def get_smtp_settings(db: Session = Depends(get_db)) -> SmtpSettingsRead:
     settings = get_settings()
     record = db.get(PortalSmtpSettings, 1)
     if record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="SMTP settings not configured",
+        return SmtpSettingsRead(
+            host="",
+            port=587,
+            username="",
+            use_tls=True,
+            use_ssl=False,
+            password_masked="",
         )
-    read_model = to_read_model(_stored_from_record(record), settings.smtp_encryption_key)
-    return SmtpSettingsRead(**read_model.__dict__)
+    try:
+        read_model = to_read_model(_stored_from_record(record), settings.smtp_encryption_key)
+        return SmtpSettingsRead(**read_model.__dict__)
+    except Exception:
+        # Keep the form editable even if the stored secret can no longer be decrypted.
+        return SmtpSettingsRead(
+            host=record.host,
+            port=record.port,
+            username=record.username,
+            use_tls=record.use_tls,
+            use_ssl=record.use_ssl,
+            password_masked="",
+        )
 
 
 @router.get("/smtp/status", response_model=SmtpOperationalStatusRead)
@@ -85,19 +100,48 @@ def put_smtp_settings(
     db: Session = Depends(get_db),
 ) -> SmtpSettingsRead:
     settings = get_settings()
-    stored = to_stored_config(
-        SmtpSettingsPayload(
-            host=payload.host,
+    record = db.get(PortalSmtpSettings, 1)
+    password = (payload.password or "").strip()
+    if record is None and not password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="SMTP password is required for new configuration",
+        )
+    if record is None:
+        stored = to_stored_config(
+            SmtpSettingsPayload(
+                host=payload.host,
+                port=payload.port,
+                username=payload.username,
+                password=password,
+                use_tls=payload.use_tls,
+                use_ssl=payload.use_ssl,
+            ),
+            settings.smtp_encryption_key,
+        )
+    else:
+        password_encrypted = record.password_encrypted
+        if password:
+            password_encrypted = to_stored_config(
+                SmtpSettingsPayload(
+                    host=payload.host,
+                    port=payload.port,
+                    username=payload.username,
+                    password=password,
+                    use_tls=payload.use_tls,
+                    use_ssl=payload.use_ssl,
+                ),
+                settings.smtp_encryption_key,
+            ).password_encrypted
+        stored = StoredSmtpConfig(
+            host=payload.host.strip(),
             port=payload.port,
-            username=payload.username,
-            password=payload.password,
+            username=payload.username.strip(),
             use_tls=payload.use_tls,
             use_ssl=payload.use_ssl,
-        ),
-        settings.smtp_encryption_key,
-    )
+            password_encrypted=password_encrypted,
+        )
 
-    record = db.get(PortalSmtpSettings, 1)
     if record is None:
         record = PortalSmtpSettings(id=1)
     record.host = stored.host
