@@ -193,20 +193,6 @@ def update_issue(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
 
     updates = payload.model_dump(exclude_unset=True)
-    actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
-
-    if actor_role == "údržba":
-        allowed_fields = {"status"}
-        if set(updates) - allowed_fields:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Maintenance can only change issue status",
-            )
-        if updates.get("status") not in {IssueStatus.RESOLVED, IssueStatus.RESOLVED.value}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Maintenance can only mark issues as resolved",
-            )
 
     if "priority" in updates and updates["priority"] is not None:
         updates["priority"] = updates["priority"].value

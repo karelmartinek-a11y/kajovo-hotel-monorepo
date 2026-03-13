@@ -11,6 +11,7 @@ from app.api.schemas import (
     LogoutResponse,
 )
 from app.config import get_settings
+from app.db.models import PortalUser
 from app.db.session import get_db
 from app.security.passwords import hash_password, verify_password
 from app.security.rbac import require_actor_type
@@ -76,6 +77,15 @@ def change_admin_password(
     profile.password_hash = hash_password(payload.new_password)
     profile.password_changed_at = _utc_now()
     db.add(profile)
+    matching_admin_user = (
+        db.query(PortalUser)
+        .filter(PortalUser.email == profile.email.strip().lower())
+        .one_or_none()
+    )
+    if matching_admin_user is not None:
+        matching_admin_user.password_hash = profile.password_hash
+        matching_admin_user.updated_at = _utc_now()
+        db.add(matching_admin_user)
     db.commit()
     request.state.audit_detail_override = json.dumps(
         {"password_action": "admin_change"},

@@ -42,8 +42,6 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     'snídaně': {
         'breakfast:read',
         'breakfast:write',
-        'inventory:read',
-        'inventory:write',
     },
     'sklad': {
         'breakfast:read',
