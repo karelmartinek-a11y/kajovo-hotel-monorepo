@@ -1365,7 +1365,7 @@ function HousekeepingForm(): JSX.Element {
       <StateSwitcher />
       {stateUI ? stateUI : (
         <div className="k-card k-card--compact">
-          <div className="k-toolbar" role="tablist" aria-label="Typ zápisu pokojské">
+          <div className="k-toolbar" role="group" aria-label="Typ zápisu pokojské">
             <button className={mode === 'issue' ? 'k-button' : 'k-button secondary'} type="button" onClick={() => setMode('issue')} aria-pressed={mode === 'issue'}>
               Závada
             </button>

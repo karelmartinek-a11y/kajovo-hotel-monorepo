@@ -1626,7 +1626,7 @@ function HousekeepingAdmin(): JSX.Element {
       <StateSwitcher />
       {stateUI ?? (
         <div className="k-card k-card--compact">
-          <div className="k-toolbar" role="tablist" aria-label="Typ zápisu pokojské">
+          <div className="k-toolbar" role="group" aria-label="Typ zápisu pokojské">
             <button className={mode === 'issue' ? 'k-button' : 'k-button secondary'} type="button" onClick={() => setMode('issue')} aria-pressed={mode === 'issue'}>Závada</button>
             <button className={mode === 'lost_found' ? 'k-button' : 'k-button secondary'} type="button" onClick={() => setMode('lost_found')} aria-pressed={mode === 'lost_found'}>Nález</button>
           </div>

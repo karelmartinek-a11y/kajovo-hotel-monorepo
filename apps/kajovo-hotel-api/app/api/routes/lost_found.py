@@ -39,7 +39,6 @@ def list_lost_found_items(
         .options(selectinload(LostFoundItem.photos))
         .order_by(LostFoundItem.event_at.desc(), LostFoundItem.id.desc())
     )
-    actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
     session = read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
     actor_type = str((session or {}).get("actor_type") or ("portal" if session else ""))
 
