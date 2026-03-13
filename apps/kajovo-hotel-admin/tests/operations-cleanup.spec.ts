@@ -217,6 +217,21 @@ test('inventory bootstrap helper stays hidden when disabled', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Doplnit výchozí položky' })).toHaveCount(0);
 });
 
+test('lost-found empty state uses correct Czech copy', async ({ page }) => {
+  await page.route('**/api/v1/lost-found?*', async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route('**/api/v1/lost-found', async (route) => {
+    await route.fulfill({ json: [] });
+  });
+
+  await page.goto(adminPath('/ztraty-a-nalezy'));
+  await expect(page.getByRole('heading', { name: 'Ztr\u00e1ty a n\u00e1lezy' })).toBeVisible();
+  await expect(page.getByText('Pr\u00e1zdn\u00fd stav')).toBeVisible();
+  await expect(page.getByText('\u017d\u00e1dn\u00fd evidovan\u00fd n\u00e1lez.')).toBeVisible();
+  await expect(page.getByText('Pr?zdn? stav')).toHaveCount(0);
+});
+
 test('settings page exposes SMTP operational status', async ({ page }) => {
   await page.goto(adminPath('/nastaveni'));
   await expect(page.getByTestId('settings-admin-page')).toBeVisible();

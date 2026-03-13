@@ -590,7 +590,7 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
     case 'empty':
       return (
         <StateView
-          title="Pr?zdn? stav"
+          title="Prázdný stav"
           description={`Pro modul ${title} zatím nejsou dostupná data.`}
           stateKey="empty"
           action={<Link className="k-button secondary" to={fallbackRoute}>Obnovit data</Link>}
@@ -2102,7 +2102,7 @@ function LostFoundList(): JSX.Element {
       {stateMarker}
       <h1>Ztráty a nálezy</h1>
       <StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Pr?zdn? stav" description="Žádný evidovaný nález." stateKey="empty" /> : (
+      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Žádný evidovaný nález." stateKey="empty" /> : (
         <>
           <div className="k-toolbar">
             <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}>
@@ -2461,7 +2461,7 @@ function IssuesList(): JSX.Element {
       {stateMarker}
       <h1>Závady</h1>
       <StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Pr?zdn? stav" description="Žádná evidovaná závada." stateKey="empty" /> : (
+      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Žádná evidovaná závada." stateKey="empty" /> : (
         <>
           <div className="k-toolbar">
             <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | IssueStatus)}>
@@ -2737,7 +2737,7 @@ function InventoryList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : items.length === 0 ? (
         <StateView
-          title="Pr?zdn? stav"
+          title="Prázdný stav"
           description="Ve skladu zat?m nejsou polo?ky."
           stateKey="empty"
           action={isAdmin ? <Link className="k-button" to="/sklad/nova">Nová položka</Link> : undefined}
@@ -3412,7 +3412,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, [state]);
 
-  return <main className="k-page" data-testid="reports-list-page">{stateMarker}<h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Pr?zdn? stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page">{stateMarker}<h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -3843,7 +3843,7 @@ function UsersAdmin(): JSX.Element {
               ) : null}
             </div>
             {users.length === 0 ? (
-              <StateView title="Pr?zdn? stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" />
+              <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" />
             ) : filteredUsers.length === 0 ? (
               <StateView title="Nenalezeno" description="Filtru neodpovídá žádný uživatel." stateKey="empty" />
             ) : (
