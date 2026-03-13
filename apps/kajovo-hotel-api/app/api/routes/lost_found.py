@@ -15,7 +15,8 @@ from app.config import get_settings
 from app.db.models import LostFoundItem, LostFoundPhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
-from app.security.rbac import module_access_dependency, require_actor_type
+from app.security.auth import SESSION_COOKIE_NAME, read_session_cookie
+from app.security.rbac import module_access_dependency, parse_identity, require_actor_type
 from app.time_utils import utc_now
 
 router = APIRouter(
@@ -38,9 +39,11 @@ def list_lost_found_items(
         .options(selectinload(LostFoundItem.photos))
         .order_by(LostFoundItem.event_at.desc(), LostFoundItem.id.desc())
     )
-    actor_role = getattr(request.state, "actor_role", "")
+    actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
+    session = read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
+    actor_type = str((session or {}).get("actor_type") or ("portal" if session else ""))
 
-    if actor_role == "recepce" and status_filter is None:
+    if actor_type == "portal" and status_filter is None:
         query = query.where(LostFoundItem.status == LostFoundStatus.NEW.value)
 
     if item_type:
@@ -98,7 +101,7 @@ def update_lost_found_item(
         )
 
     updates = payload.model_dump(exclude_unset=True)
-    actor_role = getattr(request.state, "actor_role", "")
+    actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
     if actor_role == "recepce":
         allowed_fields = {"status"}
         if set(updates) - allowed_fields:

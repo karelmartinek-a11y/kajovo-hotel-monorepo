@@ -391,17 +391,25 @@ def test_breakfast_role_cannot_change_diet_flags(api_base_url: str, api_request:
     assert data["detail"] == "Diet updates are limited to recepce/admin roles"
 
 
-def test_reactivate_all_requires_admin(api_base_url: str, api_request: ApiRequest) -> None:
+def test_reactivate_all_requires_recepce_or_admin(api_base_url: str, api_request: ApiRequest) -> None:
     create_order(api_request, service_date="2026-03-11", room_number="401", status="served")
-    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
-    status, data = recepce_request(
+    snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
+    status, data = snidane_request(
         "/api/v1/breakfast/reactivate-all",
         method="POST",
         params={"service_date": "2026-03-11"},
     )
     assert status == 403
     assert isinstance(data, dict)
-    assert data["detail"] == "Breakfast reactivation requires admin role"
+    assert data["detail"] == "Breakfast reactivation requires recepce/admin role"
+
+    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
+    status, _ = recepce_request(
+        "/api/v1/breakfast/reactivate-all",
+        method="POST",
+        params={"service_date": "2026-03-11"},
+    )
+    assert status == 204
 
     status, _ = api_request(
         "/api/v1/breakfast/reactivate-all",
@@ -409,3 +417,33 @@ def test_reactivate_all_requires_admin(api_base_url: str, api_request: ApiReques
         params={"service_date": "2026-03-11"},
     )
     assert status == 204
+
+
+def test_breakfast_delete_day_requires_recepce_or_admin(api_base_url: str, api_request: ApiRequest) -> None:
+    create_order(api_request, service_date="2026-03-12", room_number="401", status="pending")
+    create_order(api_request, service_date="2026-03-12", room_number="402", status="served")
+
+    snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
+    status, data = snidane_request(
+        "/api/v1/breakfast/day/delete",
+        method="DELETE",
+        params={"service_date": "2026-03-12"},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast deletion requires recepce/admin role"
+
+    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
+    status, _ = recepce_request(
+        "/api/v1/breakfast/day/delete",
+        method="DELETE",
+        params={"service_date": "2026-03-12"},
+    )
+    assert status == 204
+
+    status, data = api_request(
+        "/api/v1/breakfast",
+        params={"service_date": "2026-03-12"},
+    )
+    assert status == 200
+    assert data == []

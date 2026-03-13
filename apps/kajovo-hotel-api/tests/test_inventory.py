@@ -183,3 +183,55 @@ def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: 
         method="DELETE",
     )
     assert delete_status == 204
+
+
+def test_inventory_item_management_and_stocktake_require_admin(
+    api_request: ApiRequest, api_base_url: str
+) -> None:
+    created = create_item(api_request, name="Admin Only Item", unit="ks", amount_per_piece_base=1)
+
+    portal_jar = CookieJar()
+    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+    login_payload = b"{\"email\":\"sklad@example.com\",\"password\":\"sklad-pass\"}"
+    login_request = urllib.request.Request(
+        url=f"{api_base_url}/api/auth/login",
+        data=login_payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with portal_opener.open(login_request, timeout=10) as response:
+        assert response.status == 200
+
+    csrf_token = next((cookie.value for cookie in portal_jar if cookie.name == "kajovo_csrf"), "")
+
+    create_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory",
+        data=b'{\"name\":\"Portal Item\",\"unit\":\"ks\",\"min_stock\":1,\"current_stock\":0,\"amount_per_piece_base\":1}',
+        headers={"Content-Type": "application/json", "x-csrf-token": csrf_token},
+        method="POST",
+    )
+    try:
+        portal_opener.open(create_request, timeout=10)
+        assert False, "Expected 403 for portal item create"
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+
+    detail_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory/{created['id']}",
+        method="GET",
+    )
+    try:
+        portal_opener.open(detail_request, timeout=10)
+        assert False, "Expected 403 for portal inventory detail"
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+
+    stocktake_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/inventory/stocktake/pdf",
+        method="GET",
+    )
+    try:
+        portal_opener.open(stocktake_request, timeout=10)
+        assert False, "Expected 403 for portal stocktake export"
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403

@@ -2,7 +2,7 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
 import { AppShell, SkeletonPage, StateView } from '@kajovo/ui';
-import { canReadModule, ROLE_MODULES, type AuthProfile, type Role } from '../rbac';
+import { canReadModule, normalizeRole, ROLE_MODULES, type AuthProfile, type Role } from '../rbac';
 import { getAuthBundle, type AuthBundle } from '@kajovo/shared';
 
 type AuthCopy = AuthBundle['copy'];
@@ -245,6 +245,8 @@ export function PortalRoutes({
   }
 
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
+  const breakfastManager = ['admin', 'recepce'].includes(normalizeRole(auth.activeRole ?? auth.role));
+  const inventoryManager = normalizeRole(auth.activeRole ?? auth.role) === 'admin';
   const renderAccessDenied = React.useCallback(
     (moduleKey: string) => (
       <AccessDeniedPage
@@ -272,9 +274,9 @@ export function PortalRoutes({
         />
         <Route path="/pokojska" element={isAllowed('housekeeping') ? <deps.HousekeepingForm /> : renderAccessDenied('housekeeping')} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <deps.BreakfastList /> : renderAccessDenied('breakfast')} />
-        <Route path="/snidane/nova" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="create" /> : renderAccessDenied('breakfast')} />
-        <Route path="/snidane/:id" element={isAllowed('breakfast') ? <deps.BreakfastDetail /> : renderAccessDenied('breakfast')} />
-        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') ? <deps.BreakfastForm mode="edit" /> : renderAccessDenied('breakfast')} />
+        <Route path="/snidane/nova" element={isAllowed('breakfast') && breakfastManager ? <deps.BreakfastForm mode="create" /> : renderAccessDenied('breakfast')} />
+        <Route path="/snidane/:id" element={isAllowed('breakfast') && breakfastManager ? <deps.BreakfastDetail /> : renderAccessDenied('breakfast')} />
+        <Route path="/snidane/:id/edit" element={isAllowed('breakfast') && breakfastManager ? <deps.BreakfastForm mode="edit" /> : renderAccessDenied('breakfast')} />
         <Route path="/ztraty-a-nalezy" element={isAllowed('lost_found') ? <deps.LostFoundList /> : renderAccessDenied('lost_found')} />
         <Route path="/ztraty-a-nalezy/novy" element={isAllowed('lost_found') ? <deps.LostFoundForm mode="create" /> : renderAccessDenied('lost_found')} />
         <Route path="/ztraty-a-nalezy/:id" element={isAllowed('lost_found') ? <deps.LostFoundDetail /> : renderAccessDenied('lost_found')} />
@@ -284,9 +286,9 @@ export function PortalRoutes({
         <Route path="/zavady/:id" element={isAllowed('issues') ? <deps.IssuesDetail /> : renderAccessDenied('issues')} />
         <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <deps.IssuesForm mode="edit" /> : renderAccessDenied('issues')} />
         <Route path="/sklad" element={isAllowed('inventory') ? <deps.InventoryList /> : renderAccessDenied('inventory')} />
-        <Route path="/sklad/nova" element={isAllowed('inventory') ? <deps.InventoryForm mode="create" /> : renderAccessDenied('inventory')} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') ? <deps.InventoryDetail /> : renderAccessDenied('inventory')} />
-        <Route path="/sklad/:id/edit" element={isAllowed('inventory') ? <deps.InventoryForm mode="edit" /> : renderAccessDenied('inventory')} />
+        <Route path="/sklad/nova" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="create" /> : renderAccessDenied('inventory')} />
+        <Route path="/sklad/:id" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryDetail /> : renderAccessDenied('inventory')} />
+        <Route path="/sklad/:id/edit" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="edit" /> : renderAccessDenied('inventory')} />
         <Route path="/hlaseni" element={isAllowed('reports') ? <deps.ReportsList /> : renderAccessDenied('reports')} />
         <Route path="/hlaseni/nove" element={isAllowed('reports') ? <deps.ReportsForm mode="create" /> : renderAccessDenied('reports')} />
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <deps.ReportsDetail /> : renderAccessDenied('reports')} />

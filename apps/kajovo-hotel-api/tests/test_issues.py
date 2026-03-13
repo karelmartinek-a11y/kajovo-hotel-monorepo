@@ -176,3 +176,41 @@ def test_issue_delete_requires_admin(api_request: ApiRequest, api_base_url: str)
 
     delete_status, _ = api_request(f"/api/v1/issues/{created['id']}", method="DELETE")
     assert delete_status == 204
+
+
+def test_maintenance_can_only_resolve_open_issues(api_request: ApiRequest, api_base_url: str) -> None:
+    created = create_issue(api_request, title="Pokoj 224", room_number="224", location="Pokoj 224")
+    opener, jar = portal_login(api_base_url, "udrzba@example.com", "udrzba-pass")
+
+    list_request = urllib.request.Request(url=f"{api_base_url}/api/v1/issues", method="GET")
+    with opener.open(list_request, timeout=10) as response:
+        listed = json.loads(response.read().decode("utf-8"))
+    assert any(item["id"] == created["id"] for item in listed)
+
+    bad_payload = json.dumps({"description": "Nesmí přepisovat popis"}).encode("utf-8")
+    bad_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/issues/{created['id']}",
+        data=bad_payload,
+        headers={"Content-Type": "application/json", **csrf_header(jar)},
+        method="PUT",
+    )
+    try:
+        opener.open(bad_request, timeout=10)
+        assert False, "Expected 403 when maintenance edits non-status fields"
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+
+    resolve_payload = json.dumps({"status": "resolved"}).encode("utf-8")
+    resolve_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/issues/{created['id']}",
+        data=resolve_payload,
+        headers={"Content-Type": "application/json", **csrf_header(jar)},
+        method="PUT",
+    )
+    with opener.open(resolve_request, timeout=10) as response:
+        resolved = json.loads(response.read().decode("utf-8"))
+    assert resolved["status"] == "resolved"
+
+    with opener.open(list_request, timeout=10) as response:
+        listed_after = json.loads(response.read().decode("utf-8"))
+    assert all(item["id"] != created["id"] for item in listed_after)

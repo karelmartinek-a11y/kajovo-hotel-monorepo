@@ -102,7 +102,10 @@ def list_items(
 
 
 @router.post("/seed-defaults", response_model=list[InventoryItemRead], status_code=status.HTTP_201_CREATED)
-def seed_default_items(db: Session = Depends(get_db)) -> list[InventoryItem]:
+def seed_default_items(
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> list[InventoryItem]:
     existing_names = {name for (name,) in db.execute(select(InventoryItem.name)).all()}
     created: list[InventoryItem] = []
     for payload in DEFAULT_INVENTORY_ITEMS:
@@ -120,7 +123,11 @@ def seed_default_items(db: Session = Depends(get_db)) -> list[InventoryItem]:
 
 
 @router.post("", response_model=InventoryItemRead, status_code=status.HTTP_201_CREATED)
-def create_item(payload: InventoryItemCreate, db: Session = Depends(get_db)) -> InventoryItem:
+def create_item(
+    payload: InventoryItemCreate,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> InventoryItem:
     item = InventoryItem(**payload.model_dump())
     db.add(item)
     db.flush()
@@ -131,7 +138,11 @@ def create_item(payload: InventoryItemCreate, db: Session = Depends(get_db)) -> 
 
 
 @router.get("/{item_id}", response_model=InventoryItemWithAuditRead)
-def get_item(item_id: int, db: Session = Depends(get_db)) -> InventoryItemWithAuditRead:
+def get_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> InventoryItemWithAuditRead:
     item = db.scalar(
         select(InventoryItem)
         .where(InventoryItem.id == item_id)
@@ -158,7 +169,10 @@ def get_item(item_id: int, db: Session = Depends(get_db)) -> InventoryItemWithAu
 
 @router.put("/{item_id}", response_model=InventoryItemRead)
 def update_item(
-    item_id: int, payload: InventoryItemUpdate, db: Session = Depends(get_db)
+    item_id: int,
+    payload: InventoryItemUpdate,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
 ) -> InventoryItem:
     item = db.get(InventoryItem, item_id)
     if not item:
@@ -299,6 +313,7 @@ def upload_item_pictogram(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
 ) -> InventoryItem:
     item = db.get(InventoryItem, item_id)
     if not item:
@@ -337,7 +352,10 @@ def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
 
 
 @router.get("/stocktake/pdf")
-def export_stocktake_pdf(db: Session = Depends(get_db)):
+def export_stocktake_pdf(
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+):
     items = list(
         db.scalars(select(InventoryItem).order_by(InventoryItem.name.asc(), InventoryItem.id.asc()))
     )

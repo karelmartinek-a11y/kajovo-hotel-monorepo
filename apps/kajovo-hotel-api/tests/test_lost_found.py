@@ -170,3 +170,31 @@ def test_lost_found_delete_requires_admin(api_request: ApiRequest, api_base_url:
 
     delete_status, _ = api_request(f"/api/v1/lost-found/{created['id']}", method="DELETE")
     assert delete_status == 204
+
+
+def test_reception_only_sees_unprocessed_lost_found_and_can_mark_processed(
+    api_request: ApiRequest, api_base_url: str
+) -> None:
+    pending = create_record(api_request, category="Nález", description="Šála", room_number="223", status="new")
+    opener, jar = portal_login(api_base_url, "recepce@example.com", "recepce-pass")
+    list_request = urllib.request.Request(url=f"{api_base_url}/api/v1/lost-found", method="GET")
+    with opener.open(list_request, timeout=10) as response:
+        listed = json.loads(response.read().decode("utf-8"))
+    visible = [item for item in listed if item["status"] == "new" and item["id"] == pending["id"]]
+    assert [item["id"] for item in visible] == [pending["id"]]
+
+    process_payload = json.dumps({"status": "claimed"}).encode("utf-8")
+    process_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/lost-found/{pending['id']}",
+        data=process_payload,
+        headers={"Content-Type": "application/json", **csrf_header(jar)},
+        method="PUT",
+    )
+    with opener.open(process_request, timeout=10) as response:
+        processed = json.loads(response.read().decode("utf-8"))
+    assert processed["status"] == "claimed"
+
+    with opener.open(list_request, timeout=10) as response:
+        listed_after = json.loads(response.read().decode("utf-8"))
+    visible_after = [item for item in listed_after if item["status"] == "new" and item["id"] == pending["id"]]
+    assert visible_after == []

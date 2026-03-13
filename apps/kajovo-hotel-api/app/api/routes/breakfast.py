@@ -136,8 +136,16 @@ def get_breakfast_order(order_id: int, db: Session = Depends(get_db)) -> Breakfa
 @router.post("", response_model=BreakfastOrderRead, status_code=status.HTTP_201_CREATED)
 def create_breakfast_order(
     payload: BreakfastOrderCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> BreakfastOrder:
+    actor_role = _actor_role(request)
+    if actor_role not in {"admin", "recepce"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Breakfast planning requires recepce/admin role",
+        )
+
     payload_data = payload.model_dump()
     payload_data["status"] = payload.status.value
     order = BreakfastOrder(**payload_data)
@@ -199,7 +207,14 @@ def update_breakfast_order(
 
 
 @router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_breakfast_order(order_id: int, db: Session = Depends(get_db)) -> None:
+def delete_breakfast_order(order_id: int, request: Request, db: Session = Depends(get_db)) -> None:
+    actor_role = _actor_role(request)
+    if actor_role not in {"admin", "recepce"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Breakfast deletion requires recepce/admin role",
+        )
+
     order = db.get(BreakfastOrder, order_id)
     if not order:
         raise HTTPException(
@@ -218,16 +233,35 @@ def reactivate_all_breakfast_orders(
     db: Session = Depends(get_db),
 ) -> None:
     actor_role = _actor_role(request)
-    if actor_role != "admin":
+    if actor_role not in {"admin", "recepce"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Breakfast reactivation requires admin role",
+            detail="Breakfast reactivation requires recepce/admin role",
         )
 
     db.query(BreakfastOrder).filter(
         BreakfastOrder.service_date == service_date,
         BreakfastOrder.status == BreakfastStatus.SERVED.value,
     ).update({BreakfastOrder.status: BreakfastStatus.PENDING.value})
+    db.commit()
+
+
+@router.delete("/day/delete", status_code=status.HTTP_204_NO_CONTENT)
+def delete_breakfast_orders_for_day(
+    request: Request,
+    service_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> None:
+    actor_role = _actor_role(request)
+    if actor_role not in {"admin", "recepce"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Breakfast deletion requires recepce/admin role",
+        )
+
+    db.query(BreakfastOrder).filter(BreakfastOrder.service_date == service_date).delete(
+        synchronize_session=False
+    )
     db.commit()
 
 

@@ -552,3 +552,60 @@ Tests run:
 
 What remains:
 - Commit, push and run the remote CI/deploy chain for the combined role-view plus inventory/media closure.
+
+## 2026-03-13T00:25:57+01:00 - Housekeeping minimal workflow closure
+- Nalezeno:
+  - housekeeping/pokojsk? flow pro z?vady a n?lezy byl v current HEAD p??li? slo?it?, s encoding driftem v nov?ch bloc?ch a s UI/RBAC odchylkami mezi pokojskou, recepc?, ?dr?bou a adminem.
+  - recep?n? a ?dr?b??sk? seznamy pot?ebovaly jednodu??? operativn? zobrazen? odpov?daj?c? re?ln?mu pou?it? na mobilu a v provozu.
+- Zm?n?no:
+  - zjednodu?en? one-page formul?? pokojsk? v port?lu i admin preview: p?ep?na? z?vada/n?lez, povinn? v?b?r pokoje z autorizovan?ho seznamu, kr?tk? popis, a? 3 fotografie, okam?it? odesl?n?.
+  - role a moduly byly srovn?ny v backend RBAC i shared/frontend mapov?n? tak, aby pokojsk? vid?la jen housekeeping intake, ?dr?ba z?vady a recepce n?lezy.
+  - z?vady: ?dr?ba sm? jen ??st otev?en? a ozna?it je jako odstran?n?; admin m??e znovu otev??t nebo smazat.
+  - n?lezy: recepce sm? ozna?it jako zpracovan?; admin m??e vr?tit do nezpracovan?ch nebo smazat.
+  - do?i?t?ny po?kozen? ?esk? texty v nov? p?epsan?ch housekeeping/issues/lost-found view bloc?ch a v nov?ch E2E testech.
+- D?kazy:
+  - backend: `python -m pytest apps/kajovo-hotel-api/tests/test_issues.py apps/kajovo-hotel-api/tests/test_lost_found.py apps/kajovo-hotel-api/tests/test_rbac_admin_matrix.py -q` -> PASS (11 passed)
+  - web E2E: `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/housekeeping-workflow.spec.ts --project=desktop` -> PASS
+  - admin E2E: `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/housekeeping-admin-workflow.spec.ts --project=desktop` -> PASS
+  - hygiene: `pnpm typecheck` -> PASS, `python scripts/check_mojibake.py` -> PASS
+- Zb?v?:
+  - zm?ny jsou zat?m lok?ln? v pracovn?m stromu a nejsou je?t? commitnut? ani nasazen?.
+
+
+## 2026-03-13T00:49:00+01:00 - Breakfast serving view simplification and role parity
+- Nalezeno:
+  - sn?da?ov? modul v current HEAD m?chal provozn? serving view role `sn?dan?` s mana?ersk?mi akcemi recepce/admina a admin role-view je?t? pou?t?l sn?da?ov? formul??e/detail i pro preview role `sn?dan?`.
+  - chyb?l jednoduch? d?kaz, ?e role `sn?dan?` vid? jen datum + ??dky sn?dan? a nem??e vracet ani pl?novat, zat?mco `recepce` a `admin` dost?vaj? zp?tn? vr?cen?, maz?n? dne a dietn? editace.
+  - v breakfast view bloc?ch z?staly rozpadl? ?esk? ?et?zce (`Sn?dan?`, `Po?et`, `Vyd?no`), kter? zhor?ovaly ?itelnost a stabilitu selektor?.
+- Zm?n?no:
+  - backend breakfast API bylo dota?eno tak, ?e pl?nov?n?, maz?n? dne a reaktivace pat?? jen `recepce`/`admin`, zat?mco role `sn?dan?` m??e pouze na??st den a p?epnout objedn?vku do stavu `served`.
+  - web i admin `BreakfastList` te? pou??vaj? jednoduch? serving layout pro roli `sn?dan?`: datum, pokoj, osoby, jm?no, dietn? ikony a akce `Vyd?no`; recepce/admin dost?vaj? roz???en? toolbar s importem/exportem, vr?cen?m dne, maz?n?m dne a dietn? editac?.
+  - admin role-view routing pro `/snidane/nova`, `/snidane/:id` a `/snidane/:id/edit` je nov? sv?zan? s tou samou mana?erskou logikou jako portal, tak?e preview role `sn?dan?` vid? jen provozn? list.
+  - do?i?t?ny rozpadl? ?esk? texty p??mo v breakfast bloc?ch a p?id?ny c?len? E2E pro portal i admin role-view.
+- D?kazy:
+  - `python -m pytest apps/kajovo-hotel-api/tests/test_breakfast.py -q` -> PASS (13 passed)
+  - `pnpm typecheck` -> PASS
+  - `python scripts/check_mojibake.py` -> PASS
+  - `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/breakfast-role-view.spec.ts --project=desktop` -> PASS
+  - `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/breakfast-role-ops.spec.ts --project=desktop` -> PASS
+- Zb?v?:
+  - zm?ny jsou zat?m pouze lok?ln? a je?t? nejsou commitnut? ani nasazen?.
+
+
+## 2026-03-13T00:58:00+01:00 - Inventory movement workflow and admin-only stock visibility
+- Nalezeno:
+  - sklad v current HEAD rozd?loval pohyby mezi detail polo?ky a samostatn? formul??e, zobrazoval aktu?ln? stavy i ne-admin rol?m a zakl?d?n? polo?ek nebylo dota?en? jako ?ist? admin-only workflow.
+  - detail/form routy skladu byly v port?lu i admin role-preview otev?en? ?ir??m rol?m, ne? odpov?dalo zadan? provozn? logice.
+- Zm?n?no:
+  - pohyb skladu je nov? sjednocen? naho?e na seznamu jako jeden formul??: druh pohybu (`p??jem`, `v?dej`, `odpis`), voliteln? reference ??sla dokladu, v?b?r polo?ky, mno?stv?, datum a potvrzen? pohybu; intern? ??slo dokladu generuje server a po ulo?en? se vrac? v potvrzen?.
+  - zalo?en?, editace a detail skladov? polo?ky z?staly jen adminovi; port?lov? role `sklad`/`sn?dan?` u? neotev?raj? `/sklad/nova`, `/sklad/:id` ani `/sklad/:id/edit` a v admin role-view preview plat? stejn? logika.
+  - aktu?ln? mno?stv? a minima se v seznamu zobrazuj? jen adminovi; ne-admin role vid? pouze polo?ky a provozn? formul?? pohybu.
+  - backend inventory API bylo dota?eno tak, ?e seed/defaults, vytvo?en? polo?ky, detail polo?ky, update polo?ky, upload miniatury a stocktake PDF jsou admin-only; smaz?n? ulo?en?ho pohybu z?st?v? admin-only a detail admina obsahuje tla??tko pro tvrd? smaz?n? pohybu.
+- D?kazy:
+  - `python -m pytest apps/kajovo-hotel-api/tests/test_inventory.py -q` -> PASS (5 passed)
+  - `pnpm typecheck` -> PASS
+  - `python scripts/check_mojibake.py` -> PASS
+  - `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/inventory-role-ops.spec.ts --project=desktop` -> PASS
+  - `node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/inventory-admin-ops.spec.ts --project=desktop` -> PASS
+- Zb?v?:
+  - zm?ny jsou zat?m lok?ln? a nejsou je?t? commitnut? ani nasazen?.

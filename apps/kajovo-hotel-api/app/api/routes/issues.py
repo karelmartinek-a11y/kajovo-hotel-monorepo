@@ -17,7 +17,7 @@ from app.config import get_settings
 from app.db.models import Issue, IssuePhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
-from app.security.rbac import module_access_dependency, require_actor_type
+from app.security.rbac import module_access_dependency, parse_identity, require_actor_type
 
 router = APIRouter(
     prefix="/api/v1/issues",
@@ -59,7 +59,7 @@ def list_issues(
         .options(selectinload(Issue.photos))
         .order_by(Issue.created_at.desc(), Issue.id.desc())
     )
-    actor_role = getattr(request.state, "actor_role", "")
+    actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
     if actor_role == "údržba" and status_filter is None:
         query = query.where(
             Issue.status.in_(
@@ -115,7 +115,7 @@ def update_issue(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
 
     updates = payload.model_dump(exclude_unset=True)
-    actor_role = getattr(request.state, "actor_role", "")
+    actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
 
     if actor_role == "údržba":
         allowed_fields = {"status"}
