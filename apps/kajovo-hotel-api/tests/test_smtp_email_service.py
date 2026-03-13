@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -216,3 +217,42 @@ def test_send_test_email_returns_502_even_when_status_persist_fails(monkeypatch,
     assert getattr(exc, "status_code", None) == 502
     assert "SMTP test delivery failed" in str(getattr(exc, "detail", exc))
     assert commit_calls == 1
+
+
+def test_smtp_settings_routes_tolerate_legacy_table_without_status_columns(tmp_path):
+    db_path = tmp_path / "smtp-legacy.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE portal_smtp_settings (
+              id INTEGER PRIMARY KEY,
+              host VARCHAR(255) NOT NULL,
+              port INTEGER NOT NULL,
+              username VARCHAR(255) NOT NULL,
+              password_encrypted TEXT NOT NULL,
+              use_tls BOOLEAN NOT NULL,
+              use_ssl BOOLEAN NOT NULL
+            )
+        """))
+        conn.execute(
+            text("""
+                INSERT INTO portal_smtp_settings
+                  (id, host, port, username, password_encrypted, use_tls, use_ssl)
+                VALUES
+                  (1, 'smtp.legacy.local', 587, 'mailer', 'bad', 1, 0)
+            """)
+        )
+
+    with Session(engine) as db:
+        settings = get_smtp_settings(db=db)
+        status = get_smtp_status(db=db)
+
+    assert settings.host == "smtp.legacy.local"
+    assert settings.port == 587
+    assert settings.username == "mailer"
+    assert status.configured is True
+    assert status.last_tested_at is None
+    assert status.last_test_success is None
+    assert status.last_test_recipient is None
+    assert status.last_test_error is None

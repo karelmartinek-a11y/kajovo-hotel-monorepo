@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -63,6 +65,42 @@ def _default_smtp_settings_read() -> SmtpSettingsRead:
     )
 
 
+def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
+    bind = db.get_bind()
+    inspector = inspect(bind)
+    try:
+        columns = {str(column["name"]) for column in inspector.get_columns("portal_smtp_settings")}
+    except Exception:
+        logger.exception("smtp.settings.inspect_failed")
+        return None
+
+    if not columns:
+        return None
+
+    wanted_columns = [
+        "id",
+        "host",
+        "port",
+        "username",
+        "password_encrypted",
+        "use_tls",
+        "use_ssl",
+        "last_tested_at",
+        "last_test_success",
+        "last_test_recipient",
+        "last_test_error",
+    ]
+    selected_columns = [column for column in wanted_columns if column in columns]
+    if not selected_columns:
+        return None
+
+    where_clause = "WHERE id = :id" if "id" in columns else "LIMIT 1"
+    query = text(f"SELECT {', '.join(selected_columns)} FROM portal_smtp_settings {where_clause}")
+    params = {"id": 1} if "id" in columns else {}
+    row = db.execute(query, params).mappings().first()
+    return dict(row) if row is not None else None
+
+
 def _persist_smtp_test_result(
     db: Session,
     record: PortalSmtpSettings,
@@ -101,31 +139,42 @@ def _fallback_smtp_settings_read(record: PortalSmtpSettings | None) -> SmtpSetti
 @router.get("/smtp", response_model=SmtpSettingsRead)
 def get_smtp_settings(db: Session = Depends(get_db)) -> SmtpSettingsRead:
     settings = get_settings()
-    record = db.get(PortalSmtpSettings, 1)
-    if record is None:
+    row = _safe_load_smtp_row(db)
+    if row is None:
         return _default_smtp_settings_read()
     try:
-        read_model = to_read_model(_stored_from_record(record), settings.smtp_encryption_key)
+        stored = StoredSmtpConfig(
+            host=str(row.get("host") or ""),
+            port=int(row.get("port") or 587),
+            username=str(row.get("username") or ""),
+            use_tls=bool(True if row.get("use_tls") is None else row.get("use_tls")),
+            use_ssl=bool(False if row.get("use_ssl") is None else row.get("use_ssl")),
+            password_encrypted=str(row.get("password_encrypted") or ""),
+        )
+        read_model = to_read_model(stored, settings.smtp_encryption_key)
         return SmtpSettingsRead(**read_model.__dict__)
     except Exception:
         # Keep the form editable even if the stored secret or legacy row is malformed.
-        return _fallback_smtp_settings_read(record)
+        return _fallback_smtp_settings_read(SimpleNamespace(**row))
 
 
 @router.get("/smtp/status", response_model=SmtpOperationalStatusRead)
 def get_smtp_status(db: Session = Depends(get_db)) -> SmtpOperationalStatusRead:
     settings = get_settings()
-    record = db.get(PortalSmtpSettings, 1)
-    configured = record is not None
+    row = _safe_load_smtp_row(db)
+    configured = row is not None
+    last_tested_at = row.get("last_tested_at") if isinstance(row, dict) else None
+    if not isinstance(last_tested_at, datetime):
+        last_tested_at = None
     return SmtpOperationalStatusRead(
         configured=configured,
         smtp_enabled=settings.smtp_enabled,
         delivery_mode=_delivery_mode(smtp_enabled=settings.smtp_enabled, configured=configured),
         can_send_real_email=bool(configured and settings.smtp_enabled),
-        last_tested_at=record.last_tested_at if record is not None else None,
-        last_test_success=record.last_test_success if record is not None else None,
-        last_test_recipient=record.last_test_recipient if record is not None else None,
-        last_test_error=record.last_test_error if record is not None else None,
+        last_tested_at=last_tested_at,
+        last_test_success=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
+        last_test_recipient=str(row["last_test_recipient"]) if isinstance(row, dict) and row.get("last_test_recipient") is not None else None,
+        last_test_error=str(row["last_test_error"]) if isinstance(row, dict) and row.get("last_test_error") is not None else None,
     )
 
 
