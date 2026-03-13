@@ -254,3 +254,93 @@ test('settings page treats missing SMTP config as empty form, not as load error'
   await expect(page.locator('#smtp_host')).toHaveValue('');
   await expect(page.getByText('Nenakonfigurovano')).toBeVisible();
 });
+
+test('settings page treats generic 404 SMTP config as empty form when status says unconfigured', async ({ page }) => {
+  await page.route('**/api/v1/admin/settings/smtp', async (route) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Not Found' }),
+    });
+  });
+  await page.route('**/api/v1/admin/settings/smtp/status', async (route) => {
+    await route.fulfill({
+      json: {
+        configured: false,
+        smtp_enabled: false,
+        delivery_mode: 'unconfigured',
+        can_send_real_email: false,
+        last_tested_at: null,
+        last_test_success: null,
+        last_test_recipient: null,
+        last_test_error: null,
+      },
+    });
+  });
+
+  await page.goto(adminPath('/nastaveni'));
+  await expect(page.getByTestId('settings-admin-page')).toBeVisible();
+  await expect(page.getByText('Nepodařilo se načíst SMTP nastavení.')).toHaveCount(0);
+  await expect(page.locator('#smtp_host')).toHaveValue('');
+  await expect(page.getByText('Nenakonfigurovano')).toBeVisible();
+});
+
+
+test('inventory detail shows proper Czech copy and item data', async ({ page }) => {
+  await page.route('**/api/v1/inventory/1', async (route) => {
+    await route.fulfill({
+      json: {
+        id: 1,
+        name: 'Mléko',
+        unit: 'l',
+        min_stock: 10,
+        current_stock: 3,
+        amount_per_piece_base: 1,
+        pictogram_path: null,
+        pictogram_thumb_path: null,
+        created_at: '2026-03-11T08:00:00Z',
+        updated_at: '2026-03-11T08:00:00Z',
+        audit_logs: [],
+        movements: [
+          {
+            id: 11,
+            item_id: 1,
+            movement_type: 'in',
+            quantity: 5,
+            quantity_pieces: 5,
+            document_number: 'PR-20260311-001',
+            document_reference: 'FA-2026-001',
+            document_date: '2026-03-11T08:00:00Z',
+            note: 'Naskladnění',
+            created_at: '2026-03-11T08:00:00Z',
+            card_id: null,
+            card_item_id: null,
+            card_number: null,
+          },
+        ],
+      },
+    });
+  });
+
+  await page.goto(adminPath('/sklad/1'));
+  await expect(page.getByTestId('inventory-detail-page')).toContainText('Detail skladové položky');
+  await expect(page.getByText('Aktuální množství a historie pohybů zůstávají dostupné jen adminovi.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Zpět na seznam' })).toBeVisible();
+  await expect(page.getByText('Interní číslo')).toBeVisible();
+  await expect(page.getByText('Číslo dokladu')).toBeVisible();
+});
+
+test('inventory detail does not mask access denial as 404', async ({ page }) => {
+  await page.route('**/api/v1/inventory/1', async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: 'Missing role: admin' }),
+    });
+  });
+
+  await page.goto(adminPath('/sklad/1'));
+  await expect(page.getByTestId('inventory-detail-page')).toBeVisible();
+  await expect(page.getByText('Přístup odepřen')).toBeVisible();
+  await expect(page.getByText('404')).toHaveCount(0);
+});

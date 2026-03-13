@@ -756,14 +756,65 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (path === '/api/v1/issues' && method === 'POST') return (await apiClient.createIssueApiV1IssuesPost(body as IssueCreate)) as T;
 
   if (path === '/api/v1/inventory' && method === 'GET') {
-    return (await apiClient.listItemsApiV1InventoryGet({ low_stock: url.searchParams.get('low_stock') === 'true' })) as T;
+    const response = await fetch(`${path}${url.search}`, { credentials: 'include' });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
   }
   const inventoryId = path.match(/^\/api\/v1\/inventory\/(\d+)$/);
-  if (inventoryId && method === 'GET') return (await apiClient.getItemApiV1InventoryItemIdGet(Number(inventoryId[1]))) as T;
-  if (inventoryId && method === 'PUT') return (await apiClient.updateItemApiV1InventoryItemIdPut(Number(inventoryId[1]), body as InventoryItemCreate)) as T;
-  if (path === '/api/v1/inventory' && method === 'POST') return (await apiClient.createItemApiV1InventoryPost(body as InventoryItemCreate)) as T;
+  if (inventoryId && method === 'GET') {
+    const response = await fetch(path, { credentials: 'include' });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (inventoryId && method === 'PUT') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'PUT',
+      credentials: 'include',
+      headers,
+      body: init?.body,
+    });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/inventory' && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: init?.body,
+    });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
   const inventoryMoveId = path.match(/^\/api\/v1\/inventory\/(\d+)\/movements$/);
-  if (inventoryMoveId && method === 'POST') return (await apiClient.addMovementApiV1InventoryItemIdMovementsPost(Number(inventoryMoveId[1]), body as { movement_type: InventoryMovementType; quantity: number; document_date: string; document_reference?: string | null; note?: string | null })) as T;
+  if (inventoryMoveId && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: init?.body,
+    });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
 
   if (path === '/api/v1/reports' && method === 'GET') return (await apiClient.listReportsApiV1ReportsGet({ status: url.searchParams.get('status') })) as T;
   const reportId = path.match(/^\/api\/v1\/reports\/(\d+)$/);
@@ -2875,7 +2926,7 @@ function InventoryDetail(): JSX.Element {
         setItem(response);
         setError(null);
       })
-      .catch(() => setError('Položka nebyla nalezena.'));
+      .catch((err) => setError(err instanceof Error ? err.message : 'Položku se nepodařilo načíst.'));
   }, [id]);
 
   React.useEffect(() => {
@@ -2893,31 +2944,40 @@ function InventoryDetail(): JSX.Element {
       });
       loadDetail();
     } catch {
-      setError('Pohyb se nepoda?ilo smazat.');
+      setError('Pohyb se nepodařilo smazat.');
     }
   };
+
+  const normalizedError = error?.toLowerCase() ?? '';
+  const isAccessDenied = normalizedError.includes('missing role') || normalizedError.includes('missing actor type') || normalizedError.includes('not authenticated');
+  const isNotFound = normalizedError.includes('not found') || normalizedError.includes('nenalez');
 
   return (
     <main className="k-page" data-testid="inventory-detail-page">
       {stateMarker}
-      <h1>Detail skladov? polo?ky</h1>
+      <h1>Detail skladové položky</h1>
       <StateSwitcher />
       {stateUI ? (
         stateUI
       ) : error ? (
-        <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/sklad">Zp?t na seznam</Link>} />
+        <StateView
+          title={isAccessDenied ? 'Přístup odepřen' : isNotFound ? '404' : 'Chyba'}
+          description={error}
+          stateKey={isNotFound ? '404' : 'error'}
+          action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>}
+        />
       ) : item ? (
         <>
           <div className="k-card">
             <div className="k-toolbar">
-              <Link className="k-nav-link" to="/sklad">Zp?t na seznam</Link>
+              <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
               <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
             </div>
             <div className="k-inventory-detail-hero">
               <InventoryThumb item={item} size="detail" />
               <div>
                 <h2>{item.name}</h2>
-                <p className="k-subtle">Aktu?ln? mno?stv? a historie pohyb? z?st?vaj? dostupn? jen adminovi.</p>
+                <p className="k-subtle">Aktuální množství a historie pohybů zůstávají dostupné jen adminovi.</p>
               </div>
             </div>
             <DataTable
@@ -3953,6 +4013,7 @@ function SettingsAdmin(): JSX.Element {
       fetchJson<SmtpOperationalStatusReadModel>('/api/v1/admin/settings/smtp/status'),
     ])
       .then(([settingsResult, statusResult]) => {
+        const smtpStatus = statusResult.status === 'fulfilled' ? statusResult.value : null;
         if (statusResult.status === 'fulfilled') {
           setStatus(statusResult.value);
         } else {
@@ -3976,8 +4037,9 @@ function SettingsAdmin(): JSX.Element {
           return;
         }
         const settingsError = settingsResult.reason;
+        const settingsHttpStatus = settingsError instanceof HttpError ? settingsError.status : null;
         const settingsMessage = settingsError instanceof Error ? settingsError.message : '';
-        if (settingsMessage.includes('SMTP settings not configured')) {
+        if (settingsMessage.includes('SMTP settings not configured') || (settingsHttpStatus === 404 && smtpStatus?.configured === false)) {
           setHost('');
           setPort(587);
           setUsername('');
