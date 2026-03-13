@@ -521,6 +521,9 @@ export const apiClient = {
   async getDailySummaryApiV1BreakfastDailySummaryGet(query: { "service_date": string; }): Promise<BreakfastDailySummary> {
     return request<BreakfastDailySummary>('GET', `/api/v1/breakfast/daily-summary`, query, undefined);
   },
+  async deleteBreakfastOrdersForDayApiV1BreakfastDayDeleteDelete(query: { "service_date": string; }): Promise<void> {
+    return request<void>('DELETE', `/api/v1/breakfast/day/delete`, query, undefined);
+  },
   async exportBreakfastDailyPdfApiV1BreakfastExportDailyGet(query: { "service_date": string; }): Promise<unknown> {
     return request<unknown>('GET', `/api/v1/breakfast/export/daily`, query, undefined);
   },

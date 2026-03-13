@@ -3686,6 +3686,42 @@
         ]
       }
     },
+    "/api/v1/breakfast/day/delete": {
+      "delete": {
+        "operationId": "delete_breakfast_orders_for_day_api_v1_breakfast_day_delete_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "service_date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Service Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Breakfast Orders For Day",
+        "tags": [
+          "breakfast"
+        ]
+      }
+    },
     "/api/v1/breakfast/export/daily": {
       "get": {
         "operationId": "export_breakfast_daily_pdf_api_v1_breakfast_export_daily_get",
