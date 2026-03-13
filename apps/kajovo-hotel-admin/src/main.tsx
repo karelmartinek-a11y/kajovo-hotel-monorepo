@@ -3821,7 +3821,7 @@ function UsersAdmin(): JSX.Element {
   return (
     <main className="k-page" data-testid="users-admin-page">
       <h1>Uživatelé</h1>
-      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
+      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={() => load()}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
       {users === null ? <SkeletonPage /> : (
         <div className="k-grid cards-2">
@@ -4004,10 +4004,12 @@ function SettingsAdmin(): JSX.Element {
   const [status, setStatus] = React.useState<SmtpOperationalStatusReadModel | null>(null);
   const [testDialog, setTestDialog] = React.useState<SmtpTestDialogState | null>(null);
 
-  const load = React.useCallback(() => {
+  const load = React.useCallback((options?: { preserveMessage?: boolean }) => {
     setLoading(true);
     setError(null);
-    setMessage(null);
+    if (!options?.preserveMessage) {
+      setMessage(null);
+    }
     void Promise.allSettled([
       fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp'),
       fetchJson<SmtpOperationalStatusReadModel>('/api/v1/admin/settings/smtp/status'),
@@ -4104,7 +4106,7 @@ function SettingsAdmin(): JSX.Element {
       });
       setMessage('SMTP nastavení bylo uloženo.');
       setPassword('');
-      load();
+      load({ preserveMessage: true });
     } catch {
       setError('SMTP nastavení se nepodařilo uložit.');
     } finally {
@@ -4163,7 +4165,7 @@ function SettingsAdmin(): JSX.Element {
         method: 'POST',
         body: JSON.stringify({ recipient }),
       });
-      load();
+      load({ preserveMessage: true });
       setMessage('Testovací e-mail byl odeslán.');
       setTestDialog({
         phase: 'success',
@@ -4188,7 +4190,7 @@ function SettingsAdmin(): JSX.Element {
   return (
     <main className="k-page" data-testid="settings-admin-page">
       <h1>{'Nastaven\u00ed SMTP'}</h1>
-      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
+      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={() => load()}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
       {loading ? <SkeletonPage /> : (
         <>
@@ -4472,124 +4474,7 @@ function AuthStatusPage({
 }
 
 function AdminProfilePage(): JSX.Element {
-  const [profile, setProfile] = React.useState<AuthProfileReadModel | null>(null);
-  const [firstName, setFirstName] = React.useState('');
-  const [lastName, setLastName] = React.useState('');
-  const [phone, setPhone] = React.useState('');
-  const [note, setNote] = React.useState('');
-  const [currentPassword, setCurrentPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [saving, setSaving] = React.useState(false);
-
-  const load = React.useCallback(() => {
-    setLoading(true);
-    setError(null);
-    void fetchJson<AuthProfileReadModel>('/api/auth/profile')
-      .then((data) => {
-        setProfile(data);
-        setFirstName(data.first_name);
-        setLastName(data.last_name);
-        setPhone(data.phone ?? '');
-        setNote(data.note ?? '');
-      })
-      .catch(() => setError('Profil se nepodarilo nacist.'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  React.useEffect(() => {
-    load();
-  }, [load]);
-
-  async function saveProfile(): Promise<void> {
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const updated = await fetchJson<AuthProfileReadModel>('/api/auth/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone: phone.trim() || null,
-          note: note.trim() || null,
-        }),
-      });
-      setProfile(updated);
-      setMessage('Profil byl ulozen.');
-    } catch {
-      setError('Profil se nepodarilo ulozit.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function changePassword(): Promise<void> {
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-    try {
-      await fetchJson('/api/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          old_password: currentPassword,
-          new_password: newPassword,
-        }),
-      });
-      window.location.assign('/admin/login');
-    } catch {
-      setError('Zmena hesla se nepodarila.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <main className="k-page" data-testid="admin-profile-page">
-      <h1>Profil administratora</h1>
-      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
-      {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
-      {loading || profile === null ? <SkeletonPage /> : (
-        <div className="k-grid cards-2">
-          <Card title="Profil">
-            <div className="k-form-grid">
-              <FormField id="admin_profile_email" label="Email">
-                <input id="admin_profile_email" className="k-input" value={profile.email} readOnly />
-              </FormField>
-              <FormField id="admin_profile_first_name" label="Jmeno">
-                <input id="admin_profile_first_name" className="k-input" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
-              </FormField>
-              <FormField id="admin_profile_last_name" label="Prijmeni">
-                <input id="admin_profile_last_name" className="k-input" value={lastName} onChange={(event) => setLastName(event.target.value)} />
-              </FormField>
-              <FormField id="admin_profile_phone" label="Telefon">
-                <input id="admin_profile_phone" className="k-input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+420123456789" />
-              </FormField>
-              <FormField id="admin_profile_note" label="Poznamka">
-                <textarea id="admin_profile_note" className="k-input" value={note} onChange={(event) => setNote(event.target.value)} />
-              </FormField>
-              <button className="k-button" type="button" onClick={() => void saveProfile()} disabled={saving}>Ulozit profil</button>
-            </div>
-          </Card>
-          <Card title="Zmena hesla">
-            <div className="k-form-grid">
-              <FormField id="admin_profile_current_password" label="Aktualni heslo">
-                <input id="admin_profile_current_password" className="k-input" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
-              </FormField>
-              <FormField id="admin_profile_new_password" label="Nove heslo">
-                <input id="admin_profile_new_password" className="k-input" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-              </FormField>
-              <button className="k-button" type="button" onClick={() => void changePassword()} disabled={saving || currentPassword.length < 8 || newPassword.length < 8}>Zmenit heslo</button>
-            </div>
-          </Card>
-        </div>
-      )}
-    </main>
-  );
+  return <AuthSelfServiceProfilePage />;
 }
 
 type LoginErrorState = {

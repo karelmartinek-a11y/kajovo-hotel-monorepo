@@ -184,6 +184,22 @@ test('admin settings and profile workflows save data, send test mail and logout 
   let logoutCalled = false;
   let passwordChanged = false;
 
+  await page.route('**/api/v1/admin/settings/smtp/status', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        configured: true,
+        env_enabled: true,
+        mode: 'configured',
+        can_send_real_email: true,
+        last_test_at: '2026-03-10T09:00:00Z',
+        last_test_recipient: 'qa@example.com',
+        last_test_success: true,
+      }),
+    });
+  });
+
   await page.route('**/api/v1/admin/settings/smtp', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -249,7 +265,7 @@ test('admin settings and profile workflows save data, send test mail and logout 
   await page.getByRole('button', { name: /uložit smtp/i }).click();
   await expect(page.getByText(/smtp nastavení bylo uloženo/i)).toBeVisible();
   await page.getByRole('button', { name: /odeslat testovací e-mail/i }).click();
-  await expect(page.getByText(/testovací e-mail byl odeslán/i)).toBeVisible();
+  await expect(page.getByText(/testovací e-mail byl odeslán/i).first()).toBeVisible();
 
   await page.goto(adminPath('/profil'));
   await expect(page.getByTestId('admin-profile-page')).toBeVisible();
