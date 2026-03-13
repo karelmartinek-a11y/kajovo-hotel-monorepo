@@ -8,7 +8,7 @@ from datetime import date
 from http.cookiejar import CookieJar
 from pathlib import Path
 
-from app.services.breakfast.parser import parse_breakfast_pdf
+from app.services.breakfast.parser import parse_breakfast_pdf, parse_breakfast_text
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
@@ -216,6 +216,27 @@ def test_parse_breakfast_sample_pdf() -> None:
     assert [row.room for row in rows] == ["101", "102", "103"]
     assert [row.breakfast_count for row in rows] == [2, 1, 1]
     assert rows[0].guest_name == "Jan Novak"
+
+
+def test_parse_breakfast_text_for_hotel_chodov_pdf_shape() -> None:
+    parsed_day, rows = parse_breakfast_text(
+        """
+Přehled stravy 25.1.2026
+POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD Den BEZ STRAVY SNÍDANĚ
+101 KOMFORT Richard Sýkora; Jiří Brejcha 24.01.-25.01. 2 / 2 0 3 0 0 3 0 0 0
+204 SUPERIOR pan Nitra 24.01.-25.01. 2 / 2 0 1 0 0 0 0 0 0
+301 KOMFORT Gheorghe Pascal; Booking.com B.V. 23.01.-25.01. 3 / 3 0 3 0 0 0 0 0 0
+305 SUPERIOR Glenda Mehrani-Mylany; Booking.com B.V. 24.01.-26.01. 2 / 3 0 2 0 0 0 0 0 0
+"""
+    )
+
+    assert parsed_day == date(2026, 1, 25)
+    assert [row.room for row in rows] == ["101", "204", "301", "305"]
+    assert [row.breakfast_count for row in rows] == [3, 1, 3, 2]
+    assert rows[0].guest_name == "Richard Sýkora; Jiří Brejcha"
+    assert rows[1].guest_name == "pan Nitra"
+    assert rows[2].guest_name == "Gheorghe Pascal"
+    assert rows[3].guest_name == "Glenda Mehrani-Mylany"
 
 
 def test_import_breakfast_pdf_overwrite_and_diets(

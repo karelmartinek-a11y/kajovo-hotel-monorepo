@@ -77,83 +77,12 @@ test.describe('admin smoke flows', () => {
         body: JSON.stringify(identity),
       });
     });
-  }
+  });
+}
 
-  async function gotoWithAbortRetry(page: Page, url: string) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        await page.goto(url);
-        return;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const isNavigationRace =
-          message.includes('net::ERR_ABORTED') ||
-          message.includes('interrupted by another navigation');
-        if (!isNavigationRace || attempt === 2) {
-          throw error;
-        }
-        await page.waitForTimeout(150);
-      }
-    }
-  }
-
-  test('admin login and user lifecycle works', async ({ page }) => {
-    let users = [...seedUsers];
-    let nextId = users.length + 1;
-
-    await page.route('**/api/auth/admin/login', async (route) => {
-      await route.fulfill({ status: 200 });
-    });
-
-    await autorouteAuth(page, adminIdentity);
-
-    await page.route('**/api/v1/users', async (route: Route) => {
-      const method = route.request().method();
-      if (method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(users),
-        });
-        return;
-      }
-      if (method === 'POST') {
-        const payload = route.request().postDataJSON() as Record<string, unknown>;
-        const roles = Array.isArray(payload.roles) ? payload.roles.map(String) : ['recepce'];
-        const user: PortalUser = {
-          id: nextId++,
-          first_name: String(payload.first_name ?? 'Novy'),
-          last_name: String(payload.last_name ?? 'Uzivatel'),
-          email: String(payload.email ?? `generated${nextId}@kajovo.local`),
-          roles,
-          role: roles[0] ?? 'recepce',
-          phone: (payload.phone as string) ?? null,
-          note: (payload.note as string) ?? null,
-          is_active: true,
-          created_at: null,
-          updated_at: null,
-          last_login_at: null,
-        };
-        users = [...users, user];
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify(user),
-        });
-        return;
-      }
-      await route.continue();
-    });
-
-    await page.route('**/api/v1/users/*', async (route: Route) => {
-      if (route.request().method() === 'DELETE') {
-        const id = Number(route.request().url().split('/').pop() ?? '0');
-        users = users.filter((item) => item.id !== id);
-        await route.fulfill({ status: 204 });
-        return;
-      }
-      await route.continue();
-    });
+test.describe('web admin retirement smoke', () => {
+  test('admin login path shows deprecation gateway instead of embedded login form', async ({ page }) => {
+    await mockAuth(page, 401, { detail: 'Not authenticated' });
 
     await page.goto('/admin/login');
     await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
@@ -194,18 +123,17 @@ test.describe('admin smoke flows', () => {
     await expect(page.getByText('nova.testova@example.com')).toHaveCount(0);
   });
 
-  test('portal user sees blocked message in users admin', async ({ page }) => {
-    await autorouteAuth(page, unauthorizedIdentity);
-
-    await page.route('**/api/v1/users', async (route) => {
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        body: JSON.stringify({ detail: 'Missing permission: users:read' }),
-      });
+  test('authenticated admin hitting web root is redirected away from portal runtime', async ({ page }) => {
+    await mockAuth(page, 200, {
+      email: 'admin@kajovohotel.local',
+      role: 'admin',
+      permissions: ['users:read', 'users:write'],
+      actor_type: 'admin',
     });
 
-    await page.goto('/admin/uzivatele');
-    await expect(page.getByText(/Nemáte oprávnění/)).toBeVisible();
+    await page.goto('/');
+
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId('admin-surface-retired-page')).toBeVisible();
   });
 });

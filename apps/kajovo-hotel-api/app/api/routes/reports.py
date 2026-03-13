@@ -60,8 +60,7 @@ def update_report(report_id: int, payload: ReportUpdate, db: Session = Depends(g
 
     db.add(report)
     db.commit()
-    db.refresh(report)
-    return report
+    return db.scalar(select(Report).where(Report.id == report_id).options(selectinload(Report.photos)))
 
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)

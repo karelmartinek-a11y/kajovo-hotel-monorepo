@@ -267,6 +267,12 @@ class InventoryMovementType(StrEnum):
     ADJUST = "adjust"
 
 
+class InventoryCardType(StrEnum):
+    IN = "in"
+    OUT = "out"
+    ADJUST = "adjust"
+
+
 class InventoryItemBase(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     unit: str = Field(min_length=1, max_length=32)
@@ -324,6 +330,7 @@ class MediaPhotoRead(BaseModel):
 class InventoryMovementBase(BaseModel):
     movement_type: InventoryMovementType
     quantity: int = Field(ge=1)
+    quantity_pieces: int = Field(default=0, ge=0)
     document_date: date | None = None
     document_reference: str | None = Field(default=None, max_length=64)
     note: str | None = Field(default=None, max_length=2000)
@@ -338,8 +345,59 @@ class InventoryMovementRead(InventoryMovementBase):
 
     id: int
     item_id: int
+    item_name: str | None = None
+    unit: str | None = None
+    card_id: int | None = None
+    card_item_id: int | None = None
+    card_number: str | None = None
     document_number: str | None
     created_at: datetime | None
+
+
+class InventoryCardItemBase(BaseModel):
+    ingredient_id: int = Field(ge=1)
+    quantity_base: int = Field(ge=1)
+    quantity_pieces: int = Field(default=0, ge=0)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class InventoryCardItemCreate(InventoryCardItemBase):
+    pass
+
+
+class InventoryCardItemRead(InventoryCardItemBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    card_id: int
+    ingredient_name: str | None = None
+    unit: str | None = None
+    created_at: datetime | None
+
+
+class InventoryCardBase(BaseModel):
+    card_type: InventoryCardType
+    card_date: date
+    supplier: str | None = Field(default=None, max_length=255)
+    reference: str | None = Field(default=None, max_length=64)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class InventoryCardCreate(InventoryCardBase):
+    items: list[InventoryCardItemCreate] = Field(min_length=1)
+
+
+class InventoryCardRead(InventoryCardBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    number: str
+    created_at: datetime | None
+    updated_at: datetime | None
+
+
+class InventoryCardDetailRead(InventoryCardRead):
+    items: list[InventoryCardItemRead]
 
 
 class InventoryAuditLogRead(BaseModel):
@@ -370,6 +428,7 @@ class InventoryItemWithAuditRead(InventoryItemDetailRead):
 
 
 ALLOWED_PORTAL_ROLES = {
+    "admin",
     "pokojská",
     "údržba",
     "recepce",
@@ -488,6 +547,37 @@ class PortalPasswordChangeRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=255)
 
 
+class AuthProfileRead(BaseModel):
+    email: str
+    first_name: str
+    last_name: str
+    phone: str | None = None
+    note: str | None = None
+    roles: list[str] = Field(default_factory=list)
+    actor_type: str
+
+
+class AuthProfileUpdate(BaseModel):
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
+    phone: str | None = Field(default=None, max_length=16)
+    note: str | None = Field(default=None, max_length=4000)
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        phone = value.strip()
+        if not phone:
+            return None
+        import re
+
+        if not re.match(r"^\+[1-9]\d{1,14}$", phone):
+            raise ValueError("Phone must be in E.164 format")
+        return phone
+
+
 class SelectRoleRequest(BaseModel):
     role: str = Field(min_length=1, max_length=32)
 
@@ -582,9 +672,27 @@ class SmtpSettingsRead(BaseModel):
     password_masked: str
 
 
+class SmtpOperationalStatusRead(BaseModel):
+    configured: bool
+    smtp_enabled: bool
+    delivery_mode: str
+    can_send_real_email: bool
+    last_tested_at: datetime | None = None
+    last_test_success: bool | None = None
+    last_test_recipient: str | None = None
+    last_test_error: str | None = None
+
+
 class SmtpTestEmailRequest(BaseModel):
     recipient: str = Field(min_length=3, max_length=255)
 
 
 class SmtpTestEmailResponse(BaseModel):
     ok: bool = True
+    delivery_mode: str
+    message: str
+
+
+class InventoryBootstrapStatusRead(BaseModel):
+    enabled: bool
+    environment: str

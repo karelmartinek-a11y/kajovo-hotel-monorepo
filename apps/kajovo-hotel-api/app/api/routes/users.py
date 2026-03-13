@@ -81,6 +81,21 @@ def _is_admin_user(user: PortalUser) -> bool:
     return any(normalize_role(role.role) == "admin" for role in user.roles)
 
 
+def _count_active_admins(db: Session) -> int:
+    return (
+        db.scalar(
+            select(func.count())
+            .select_from(PortalUserRole)
+            .join(PortalUser)
+            .where(
+                PortalUserRole.role == "admin",
+                PortalUser.is_active.is_(True),
+            )
+        )
+        or 0
+    )
+
+
 def _issue_portal_reset_token(db: Session, principal: str) -> str:
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -148,6 +163,9 @@ def update_user(
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    previous_email = user.email.strip().lower()
+    previous_roles = sorted(normalize_role(role.role) for role in user.roles)
+    was_admin = "admin" in previous_roles
     email = _normalize_email(payload.email)
     conflict = db.execute(
         select(PortalUser).where(PortalUser.email == email, PortalUser.id != user_id)
@@ -176,6 +194,11 @@ def set_user_active(
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if _is_admin_user(user) and user.is_active and not payload.is_active and _count_active_admins(db) <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot deactivate the last admin user",
+        )
     user.is_active = payload.is_active
     user.updated_at = utc_now()
     db.add(user)
@@ -261,17 +284,8 @@ def delete_user(
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    settings = get_settings()
-    admin_email = settings.admin_email.strip().lower()
     actor_email, _, _ = parse_identity(request)
     target_email = user.email.strip().lower()
-
-    if target_email == admin_email:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Admin account cannot be deleted",
-        )
 
     if actor_email and actor_email.strip().lower() == target_email:
         raise HTTPException(
@@ -279,23 +293,14 @@ def delete_user(
             detail="Cannot delete your own account",
         )
 
-    active_admin_count = db.scalar(
-        select(func.count())
-        .select_from(PortalUserRole)
-        .join(PortalUser)
-        .where(
-            PortalUserRole.role == "admin",
-            PortalUser.is_active.is_(True),
-        )
-    ) or 0
-
-    if _is_admin_user(user) and user.is_active and active_admin_count <= 1:
+    if _is_admin_user(user) and user.is_active and _count_active_admins(db) <= 1:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Cannot delete the last admin user",
         )
 
     audit_payload = json.dumps({"user_id": user.id, "email": user.email})
+    revoke_sessions_for_portal_user(db, user.id)
     db.delete(user)
     db.commit()
     request.state.audit_detail_override = audit_payload

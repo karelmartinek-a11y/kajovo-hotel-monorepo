@@ -114,7 +114,7 @@ def role_for_audit(raw_role: str | None) -> str:
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:
-    from app.security.auth import read_session_cookie
+    from app.security.auth import require_session
 
     session = read_session_cookie(request.cookies.get('kajovo_session'))
     if not session:

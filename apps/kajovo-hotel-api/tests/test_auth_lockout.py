@@ -193,17 +193,18 @@ def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_pa
     assert body == {"ok": True}
 
 
-def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url: str, api_db_path: Path) -> None:
+def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api_db_path: Path) -> None:
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+    principal = "admin@kajovohotel.local"
+    now = datetime.now(UTC)
 
     with sqlite3.connect(api_db_path) as connection:
-        connection.execute("DELETE FROM auth_unlock_tokens")
-        connection.execute("DELETE FROM auth_lockout_states")
+        connection.execute("DELETE FROM auth_lockout_states WHERE actor_type = 'admin' AND principal = ?", (principal,))
         connection.execute(
             """
             INSERT INTO auth_lockout_states
-            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at, locked_until)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (actor_type, principal, failed_attempts, first_failed_at, last_failed_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
             (
                 "admin",
@@ -226,6 +227,17 @@ def test_admin_valid_credentials_clear_lockout_without_unlock_link(api_base_url:
     assert status_ok == 200
 
     with sqlite3.connect(api_db_path) as connection:
+        remaining = connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM auth_lockout_states
+            WHERE actor_type = 'admin' AND principal = ?
+            """,
+            (principal,),
+        ).fetchone()
+        assert remaining is not None
+        assert int(remaining[0]) == 1
+
         row = connection.execute(
             """
             SELECT failed_attempts, locked_until

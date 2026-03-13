@@ -9,16 +9,29 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.schemas import (
     InventoryAuditLogRead,
+    InventoryBootstrapStatusRead,
+    InventoryCardCreate,
+    InventoryCardDetailRead,
+    InventoryCardItemRead,
+    InventoryCardRead,
+    InventoryCardType,
     InventoryItemCreate,
     InventoryItemDetailRead,
     InventoryItemRead,
     InventoryItemUpdate,
     InventoryItemWithAuditRead,
     InventoryMovementCreate,
+    InventoryMovementRead,
     InventoryMovementType,
 )
 from app.config import get_settings
-from app.db.models import InventoryAuditLog, InventoryItem, InventoryMovement
+from app.db.models import (
+    InventoryAuditLog,
+    InventoryCard,
+    InventoryCardItem,
+    InventoryItem,
+    InventoryMovement,
+)
 from app.db.session import get_db
 from app.media.storage import InventoryMediaStorage
 from app.security.rbac import module_access_dependency, require_actor_type
@@ -74,6 +87,14 @@ def _log_audit(db: Session, entity: str, resource_id: int, action: str, detail: 
     )
 
 
+def _movement_prefix(movement_type: str) -> str:
+    if movement_type == InventoryMovementType.IN.value:
+        return "PR"
+    if movement_type == InventoryMovementType.ADJUST.value:
+        return "OD"
+    return "VY"
+
+
 def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
     year = doc_date.year
     like = f"{prefix}-{year}-%"
@@ -91,7 +112,96 @@ def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
     return f"{prefix}-{year}-{seq + 1:04d}"
 
 
+def _load_item_or_404(db: Session, item_id: int) -> InventoryItem:
+    item = db.get(InventoryItem, item_id)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+    return item
+
+
+def _serialize_movement(movement: InventoryMovement) -> InventoryMovementRead:
+    return InventoryMovementRead.model_validate(
+        {
+            "id": movement.id,
+            "item_id": movement.item_id,
+            "item_name": movement.item.name if movement.item else None,
+            "unit": movement.item.unit if movement.item else None,
+            "card_id": movement.card_id,
+            "card_item_id": movement.card_item_id,
+            "card_number": movement.card.number if movement.card else None,
+            "movement_type": movement.movement_type,
+            "document_number": movement.document_number,
+            "document_reference": movement.document_reference,
+            "document_date": movement.document_date,
+            "quantity": movement.quantity,
+            "quantity_pieces": movement.quantity_pieces,
+            "note": movement.note,
+            "created_at": movement.created_at,
+        }
+    )
+
+
+def _serialize_card_item(card_item: InventoryCardItem) -> InventoryCardItemRead:
+    return InventoryCardItemRead.model_validate(
+        {
+            "id": card_item.id,
+            "card_id": card_item.card_id,
+            "ingredient_id": card_item.ingredient_id,
+            "ingredient_name": card_item.ingredient.name if card_item.ingredient else None,
+            "unit": card_item.ingredient.unit if card_item.ingredient else None,
+            "quantity_base": card_item.quantity_base,
+            "quantity_pieces": card_item.quantity_pieces,
+            "note": card_item.note,
+            "created_at": card_item.created_at,
+        }
+    )
+
+
+def _serialize_card(card: InventoryCard) -> InventoryCardDetailRead:
+    return InventoryCardDetailRead.model_validate(
+        {
+            "id": card.id,
+            "card_type": card.card_type,
+            "number": card.number,
+            "card_date": card.card_date,
+            "supplier": card.supplier,
+            "reference": card.reference,
+            "note": card.note,
+            "created_at": card.created_at,
+            "updated_at": card.updated_at,
+            "items": [_serialize_card_item(item).model_dump() for item in card.items],
+        }
+    )
+
+
+def _load_card_or_404(db: Session, card_id: int) -> InventoryCard:
+    card = db.scalar(
+        select(InventoryCard)
+        .where(InventoryCard.id == card_id)
+        .options(selectinload(InventoryCard.items).selectinload(InventoryCardItem.ingredient))
+        .options(selectinload(InventoryCard.movements).selectinload(InventoryMovement.item))
+    )
+    if not card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory card not found")
+    return card
+
+
+def _load_item_detail(db: Session, item_id: int) -> InventoryItem:
+    item = db.scalar(
+        select(InventoryItem)
+        .where(InventoryItem.id == item_id)
+        .options(
+            selectinload(InventoryItem.movements).selectinload(InventoryMovement.card),
+            selectinload(InventoryItem.movements).selectinload(InventoryMovement.item),
+        )
+    )
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+    return item
+
+
 @router.get("", response_model=list[InventoryItemRead])
+@router.get("/ingredients", response_model=list[InventoryItemRead])
 def list_items(
     low_stock: bool = Query(default=False), db: Session = Depends(get_db)
 ) -> list[InventoryItem]:
@@ -99,6 +209,157 @@ def list_items(
     if low_stock:
         query = query.where(InventoryItem.current_stock <= InventoryItem.min_stock)
     return list(db.scalars(query))
+
+
+@router.get("/movements", response_model=list[InventoryMovementRead])
+def list_movements(db: Session = Depends(get_db)) -> list[InventoryMovementRead]:
+    movements = list(
+        db.scalars(
+            select(InventoryMovement)
+            .options(selectinload(InventoryMovement.item), selectinload(InventoryMovement.card))
+            .order_by(
+                InventoryMovement.document_date.desc(),
+                InventoryMovement.created_at.desc(),
+                InventoryMovement.id.desc(),
+            )
+        )
+    )
+    return [_serialize_movement(movement) for movement in movements]
+
+
+@router.get("/cards", response_model=list[InventoryCardRead])
+def list_cards(db: Session = Depends(get_db)) -> list[InventoryCard]:
+    return list(
+        db.scalars(
+            select(InventoryCard)
+            .order_by(InventoryCard.card_date.desc(), InventoryCard.id.desc())
+        )
+    )
+
+
+@router.post("/cards", response_model=InventoryCardDetailRead, status_code=status.HTTP_201_CREATED)
+def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> InventoryCardDetailRead:
+    ingredient_ids = sorted({item.ingredient_id for item in payload.items})
+    ingredients = {
+        item.id: item
+        for item in db.scalars(select(InventoryItem).where(InventoryItem.id.in_(ingredient_ids)))
+    }
+    missing_ids = [ingredient_id for ingredient_id in ingredient_ids if ingredient_id not in ingredients]
+    if missing_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Inventory ingredient not found: {missing_ids[0]}",
+        )
+
+    if payload.card_type in {InventoryCardType.OUT, InventoryCardType.ADJUST}:
+        for line in payload.items:
+            item = ingredients[line.ingredient_id]
+            if line.quantity_base > item.current_stock:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Insufficient stock for ingredient '{item.name}'",
+                )
+
+    card = InventoryCard(
+        card_type=payload.card_type.value,
+        number=_next_document_number(db, _movement_prefix(payload.card_type.value), payload.card_date),
+        card_date=payload.card_date,
+        supplier=payload.supplier,
+        reference=payload.reference,
+        note=payload.note,
+    )
+    db.add(card)
+    db.flush()
+
+    for line in payload.items:
+        ingredient = ingredients[line.ingredient_id]
+        card_item = InventoryCardItem(
+            card_id=card.id,
+            ingredient_id=ingredient.id,
+            quantity_base=line.quantity_base,
+            quantity_pieces=line.quantity_pieces,
+            note=line.note,
+        )
+        db.add(card_item)
+        db.flush()
+
+        if payload.card_type == InventoryCardType.IN:
+            ingredient.current_stock += line.quantity_base
+        else:
+            ingredient.current_stock -= line.quantity_base
+        db.add(ingredient)
+
+        movement = InventoryMovement(
+            item_id=ingredient.id,
+            card_id=card.id,
+            card_item_id=card_item.id,
+            movement_type=payload.card_type.value,
+            document_number=card.number,
+            document_reference=payload.reference,
+            document_date=payload.card_date,
+            quantity=line.quantity_base,
+            quantity_pieces=line.quantity_pieces,
+            note=line.note or payload.note,
+        )
+        db.add(movement)
+        _log_audit(
+            db,
+            "item",
+            ingredient.id,
+            "card",
+            f"Card {card.number} ({payload.card_type.value}) changed stock by {line.quantity_base}.",
+        )
+
+    _log_audit(db, "card", card.id, "create", f"Created inventory card {card.number}.")
+    db.commit()
+    db.refresh(card)
+    return _serialize_card(_load_card_or_404(db, card.id))
+
+
+@router.get("/cards/{card_id}", response_model=InventoryCardDetailRead)
+def get_card(card_id: int, db: Session = Depends(get_db)) -> InventoryCardDetailRead:
+    return _serialize_card(_load_card_or_404(db, card_id))
+
+
+@router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_card(
+    card_id: int,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> None:
+    card = _load_card_or_404(db, card_id)
+    for movement in card.movements:
+        item = movement.item or _load_item_or_404(db, movement.item_id)
+        if movement.movement_type == InventoryMovementType.IN.value:
+            if movement.quantity > item.current_stock:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Insufficient stock to revert card {card.number}",
+                )
+            item.current_stock -= movement.quantity
+        else:
+            item.current_stock += movement.quantity
+        db.add(item)
+
+    for movement in list(card.movements):
+        db.delete(movement)
+    for item in list(card.items):
+        db.delete(item)
+
+    _log_audit(db, "card", card.id, "delete", f"Deleted inventory card {card.number}.")
+    db.delete(card)
+    db.commit()
+
+
+@router.get("/bootstrap-status", response_model=InventoryBootstrapStatusRead)
+def get_inventory_bootstrap_status(
+    _admin: None = Depends(require_actor_type("admin")),
+) -> InventoryBootstrapStatusRead:
+    settings = get_settings()
+    return InventoryBootstrapStatusRead(
+        enabled=settings.inventory_seed_enabled,
+        environment=settings.environment,
+    )
 
 
 @router.post("/seed-defaults", response_model=list[InventoryItemRead], status_code=status.HTTP_201_CREATED)
@@ -160,9 +421,11 @@ def get_item(
             .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
         )
     )
+    item_payload = InventoryItemDetailRead.model_validate(item).model_dump(exclude={"movements"})
 
     return InventoryItemWithAuditRead(
-        **InventoryItemDetailRead.model_validate(item).model_dump(),
+        **item_payload,
+        movements=[_serialize_movement(movement) for movement in item.movements],
         audit_logs=[InventoryAuditLogRead.model_validate(log) for log in audit_logs],
     )
 
@@ -174,11 +437,7 @@ def update_item(
     db: Session = Depends(get_db),
     _admin: None = Depends(require_actor_type("admin")),
 ) -> InventoryItem:
-    item = db.get(InventoryItem, item_id)
-    if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
-        )
+    item = _load_item_or_404(db, item_id)
 
     updates = payload.model_dump(exclude_unset=True)
     updates.pop("current_stock", None)
@@ -198,19 +457,9 @@ def update_item(
 def add_movement(
     item_id: int, payload: InventoryMovementCreate, db: Session = Depends(get_db)
 ) -> InventoryItem:
-    item = db.get(InventoryItem, item_id)
-    if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
-        )
+    item = _load_item_or_404(db, item_id)
 
     doc_date = payload.document_date
-    prefix = "PR"
-    if payload.movement_type == InventoryMovementType.OUT:
-        prefix = "VY"
-    elif payload.movement_type == InventoryMovementType.ADJUST:
-        prefix = "OD"
-
     if payload.movement_type == InventoryMovementType.IN:
         if not payload.document_reference:
             raise HTTPException(
@@ -229,10 +478,11 @@ def add_movement(
     movement = InventoryMovement(
         item_id=item.id,
         movement_type=payload.movement_type.value,
-        document_number=_next_document_number(db, prefix, doc_date),
+        document_number=_next_document_number(db, _movement_prefix(payload.movement_type.value), doc_date),
         document_reference=payload.document_reference,
         document_date=doc_date,
         quantity=payload.quantity,
+        quantity_pieces=payload.quantity_pieces,
         note=payload.note,
     )
 
@@ -246,27 +496,26 @@ def add_movement(
         f"Recorded movement {payload.movement_type.value} ({payload.quantity}).",
     )
     db.commit()
-
-    db.refresh(item)
-    item = db.scalar(
-        select(InventoryItem)
-        .where(InventoryItem.id == item_id)
-        .options(selectinload(InventoryItem.movements))
-    )
-    if not item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
-        )
-
-    return item
+    return _load_item_detail(db, item_id)
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_item(item_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
-    item = db.get(InventoryItem, item_id)
-    if not item:
+def delete_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> None:
+    item = _load_item_detail(db, item_id)
+    has_history = db.scalar(
+        select(InventoryAuditLog.id)
+        .where(InventoryAuditLog.entity == "item", InventoryAuditLog.resource_id == item.id)
+        .where(InventoryAuditLog.action.in_(["movement", "movement_delete", "card"]))
+        .limit(1)
+    )
+    if item.movements or item.card_lines or has_history:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inventory item with history cannot be deleted",
         )
 
     _log_audit(db, "item", item.id, "delete", f"Deleted inventory item '{item.name}'.")
@@ -281,12 +530,19 @@ def delete_movement(
     db: Session = Depends(get_db),
     _admin: None = Depends(require_actor_type("admin")),
 ) -> None:
-    item = db.get(InventoryItem, item_id)
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
-    movement = db.get(InventoryMovement, movement_id)
+    item = _load_item_or_404(db, item_id)
+    movement = db.scalar(
+        select(InventoryMovement)
+        .where(InventoryMovement.id == movement_id)
+        .options(selectinload(InventoryMovement.card))
+    )
     if not movement or movement.item_id != item.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory movement not found")
+    if movement.card_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Delete the inventory card instead of an attached movement",
+        )
     if movement.movement_type == InventoryMovementType.IN.value:
         if movement.quantity > item.current_stock:
             raise HTTPException(
@@ -315,9 +571,7 @@ def upload_item_pictogram(
     db: Session = Depends(get_db),
     _admin: None = Depends(require_actor_type("admin")),
 ) -> InventoryItem:
-    item = db.get(InventoryItem, item_id)
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+    item = _load_item_or_404(db, item_id)
 
     storage = InventoryMediaStorage(get_settings().media_root)
     stored = storage.store_pictogram(
@@ -335,9 +589,7 @@ def upload_item_pictogram(
 
 @router.get("/{item_id}/pictogram/{kind}")
 def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
-    item = db.get(InventoryItem, item_id)
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+    item = _load_item_or_404(db, item_id)
     if kind not in {"thumb", "original"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported kind")
     rel = item.pictogram_thumb_path if kind == "thumb" else item.pictogram_path

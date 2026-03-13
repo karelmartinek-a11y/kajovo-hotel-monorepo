@@ -27,7 +27,7 @@ Legacy is a mixed server-rendered + API system with:
 - portal auth flows (login/forgot/reset),
 - device registration/challenge/verification API,
 - media and thumbnail serving,
-- breakfast PDF ingest and scheduler,
+- breakfast PDF ingest,
 - inventory ingredient/card workflows with pictogram/media handling,
 - strong coupling between templates and backend routes.
 
@@ -47,7 +47,7 @@ Major absences vs legacy:
 - no device provisioning API,
 - no SMTP/settings/users/profile modules,
 - no legacy media auth/thumb serving path,
-- no breakfast mail/PDF scheduler equivalent.
+- no breakfast mail scheduler equivalent.
 
 (See `docs/new-system-inventory.md` and `docs/feature-parity-matrix.csv`.)
 
@@ -90,7 +90,7 @@ Major absences vs legacy:
 Top parity risk clusters:
 1. Authentication/regulatory surface not parity-complete (admin/portal/device).
 2. Operational workflows around media and SMTP settings absent.
-3. Breakfast ingestion automation missing (PDF/email scheduler).
+3. Breakfast mail ingestion is intentionally out of scope; PDF import is the target flow.
 4. Inventory data model divergence (ingredient/card vs single item model).
 5. E2E verification pipeline not immediately executable in this environment.
 

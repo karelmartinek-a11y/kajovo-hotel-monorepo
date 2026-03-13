@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const { once } = require("events");
 const fs = require("fs");
 const http = require("http");
@@ -115,6 +115,52 @@ function startBackend(envOverrides = {}) {
   };
 
   const pythonCmd = process.platform === "win32" ? "python.exe" : "python";
+  const initScript = `
+import hashlib
+import os
+import sqlite3
+from sqlalchemy import create_engine
+from app.db.models import Base
+
+db_url = os.environ["KAJOVO_API_DATABASE_URL"]
+db_path = db_url.removeprefix("sqlite:///")
+engine = create_engine(db_url)
+Base.metadata.create_all(bind=engine)
+
+def scrypt_hash(password: str, salt: bytes) -> str:
+    digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
+    return f"scrypt\${salt.hex()}\${digest.hex()}"
+
+with sqlite3.connect(db_path) as connection:
+    connection.execute(
+        """
+        INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
+        VALUES (?, ?, ?, ?, 1)
+        """,
+        (
+            "Admin",
+            "User",
+            os.environ["KAJOVO_API_ADMIN_EMAIL"],
+            scrypt_hash(os.environ["KAJOVO_API_ADMIN_PASSWORD"], b"playwright-admin-salt"),
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO portal_user_roles (user_id, role)
+        VALUES ((SELECT id FROM portal_users WHERE email = ?), ?)
+        """,
+        (os.environ["KAJOVO_API_ADMIN_EMAIL"], "admin"),
+    )
+    connection.commit()
+`;
+  const initResult = spawnSync(pythonCmd, ["-c", initScript], {
+    cwd: API_DIR,
+    env,
+    stdio: "inherit",
+  });
+  if (initResult.status !== 0) {
+    throw new Error(`API database bootstrap failed with code ${initResult.status ?? "unknown"}`);
+  }
   const backend = spawn(
     pythonCmd,
     ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000", "--no-access-log"],

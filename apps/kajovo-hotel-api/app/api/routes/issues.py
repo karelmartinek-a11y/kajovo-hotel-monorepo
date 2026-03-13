@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
@@ -25,6 +25,26 @@ router = APIRouter(
     dependencies=[Depends(module_access_dependency("issues"))],
 )
 
+ADMIN_ROLE = normalize_role("admin")
+HOUSEKEEPING_ROLE = normalize_role("pokojska")
+MAINTENANCE_ROLE = normalize_role("udrzba")
+
+
+def _actor_role(request: Request) -> str:
+    return normalize_role(getattr(request.state, "actor_role", None))
+
+
+def _is_admin(role: str) -> bool:
+    return normalize_role(role) == ADMIN_ROLE
+
+
+def _is_housekeeping(role: str) -> bool:
+    return normalize_role(role) == HOUSEKEEPING_ROLE
+
+
+def _is_maintenance(role: str) -> bool:
+    return normalize_role(role) == MAINTENANCE_ROLE
+
 
 def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
     now = datetime.now(timezone.utc)
@@ -43,6 +63,59 @@ def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
         issue.closed_at = None
     if next_status == IssueStatus.CLOSED.value and issue.closed_at is None:
         issue.closed_at = now
+
+
+def _guard_issue_create(actor_role: str) -> None:
+    if _is_admin(actor_role) or _is_housekeeping(actor_role):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Issue create requires housekeeping/admin role",
+    )
+
+
+def _guard_issue_photo_upload(actor_role: str) -> None:
+    if _is_admin(actor_role) or _is_housekeeping(actor_role):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Issue photo upload requires housekeeping/admin role",
+    )
+
+
+def _guard_issue_update(actor_role: str, issue: Issue, updates: dict[str, object]) -> dict[str, object]:
+    if _is_admin(actor_role):
+        return updates
+
+    if _is_maintenance(actor_role):
+        disallowed = set(updates) - {"status"}
+        if disallowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maintenance can only change issue status",
+            )
+        next_status = updates.get("status")
+        if next_status is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maintenance can only change issue status",
+            )
+        if next_status not in {IssueStatus.IN_PROGRESS.value, IssueStatus.RESOLVED.value}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maintenance can only move issues to in_progress or resolved",
+            )
+        if issue.status in {IssueStatus.RESOLVED.value, IssueStatus.CLOSED.value}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maintenance cannot reopen completed issues",
+            )
+        return {"status": next_status}
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Issue update requires maintenance/admin role",
+    )
 
 
 @router.get("", response_model=list[IssueRead])
@@ -81,16 +154,21 @@ def list_issues(
 
 @router.get("/{issue_id}", response_model=IssueRead)
 def get_issue(issue_id: int, db: Session = Depends(get_db)) -> Issue:
-    issue = db.scalar(
-        select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos))
-    )
+    issue = db.scalar(select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos)))
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
     return issue
 
 
 @router.post("", response_model=IssueRead, status_code=status.HTTP_201_CREATED)
-def create_issue(payload: IssueCreate, db: Session = Depends(get_db)) -> Issue:
+def create_issue(
+    payload: IssueCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Issue:
+    actor_role = _actor_role(request)
+    _guard_issue_create(actor_role)
+
     payload_data = payload.model_dump()
     payload_data["priority"] = payload.priority.value
     payload_data["status"] = payload.status.value
@@ -100,7 +178,7 @@ def create_issue(payload: IssueCreate, db: Session = Depends(get_db)) -> Issue:
     db.add(issue)
     db.commit()
     db.refresh(issue)
-    return issue
+    return db.scalar(select(Issue).where(Issue.id == issue.id).options(selectinload(Issue.photos))) or issue
 
 
 @router.put("/{issue_id}", response_model=IssueRead)
@@ -135,20 +213,29 @@ def update_issue(
     if "status" in updates and updates["status"] is not None:
         updates["status"] = updates["status"].value
 
-    for key, value in updates.items():
+    actor_role = _actor_role(request)
+    allowed_updates = _guard_issue_update(actor_role, issue, updates)
+
+    for key, value in allowed_updates.items():
         setattr(issue, key, value)
 
-    if "status" in updates:
-        _apply_status_timestamps(issue, updates["status"])
+    if "status" in allowed_updates:
+        _apply_status_timestamps(issue, str(allowed_updates["status"]))
 
     db.add(issue)
     db.commit()
-    db.refresh(issue)
-    return issue
+    refreshed = db.scalar(select(Issue).where(Issue.id == issue.id).options(selectinload(Issue.photos)))
+    if not refreshed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
+    return refreshed
 
 
 @router.delete("/{issue_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_issue(issue_id: int, db: Session = Depends(get_db), _admin: None = Depends(require_actor_type("admin"))) -> None:
+def delete_issue(
+    issue_id: int,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_actor_type("admin")),
+) -> None:
     issue = db.get(Issue, issue_id)
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
@@ -168,13 +255,17 @@ def list_issue_photos(issue_id: int, db: Session = Depends(get_db)) -> list[Issu
 @router.post("/{issue_id}/photos", response_model=list[MediaPhotoRead])
 def upload_issue_photos(
     issue_id: int,
+    request: Request,
     photos: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ) -> list[IssuePhoto]:
-    issue = db.get(Issue, issue_id)
+    actor_role = _actor_role(request)
+    _guard_issue_photo_upload(actor_role)
+
+    issue = db.scalar(select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos)))
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
-    if len(photos) > 3:
+    if len(issue.photos) + len(photos) > 3:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum 3 photos")
 
     storage = MediaStorage(get_settings().media_root)
@@ -211,9 +302,7 @@ def get_issue_photo(
     kind: str,
     db: Session = Depends(get_db),
 ):
-    photo = db.scalar(
-        select(IssuePhoto).where(IssuePhoto.id == photo_id, IssuePhoto.issue_id == issue_id)
-    )
+    photo = db.scalar(select(IssuePhoto).where(IssuePhoto.id == photo_id, IssuePhoto.issue_id == issue_id))
     if not photo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo not found")
     if kind not in {"thumb", "original"}:
@@ -224,4 +313,3 @@ def get_issue_photo(
     if not path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
     return FileResponse(path, media_type=photo.mime_type)
-

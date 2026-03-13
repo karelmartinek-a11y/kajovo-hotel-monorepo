@@ -95,6 +95,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
             ("udrzba@example.com", "údržba", "udrzba", b"udrzba-salt"),
             ("snidane@example.com", "snídaně", "snidane", b"snidane-salt"),
             ("recepce@example.com", "recepce", "recepce", b"recepce-salt"),
+            ("pokojska@example.com", "pokojská", "pokojska", b"pokojska-salt"),
         ]:
             connection.execute(
                 """

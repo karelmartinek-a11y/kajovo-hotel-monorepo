@@ -57,6 +57,10 @@ def _actor_role(request: Request) -> str:
     return getattr(request.state, "actor_role", None) or parse_identity(request)[2]
 
 
+def _is_breakfast_manager(actor_role: str) -> bool:
+    return actor_role in {"admin", "recepce"}
+
+
 def _parse_diet_overrides(raw: str | None) -> dict[str, dict[str, bool]]:
     if not raw:
         return {}
@@ -172,16 +176,25 @@ def update_breakfast_order(
     updates = payload.model_dump(exclude_unset=True)
     actor_role = _actor_role(request)
     diet_keys = {"diet_no_gluten", "diet_no_milk", "diet_no_pork"}
+    is_manager = _is_breakfast_manager(actor_role)
 
-    if diet_keys.intersection(updates.keys()) and actor_role not in {"admin", "recepce"}:
+    if diet_keys.intersection(updates.keys()) and not is_manager:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Diet updates are limited to recepce/admin roles",
         )
 
+    if not is_manager:
+        disallowed_keys = set(updates) - {"status"}
+        if disallowed_keys:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Breakfast role can only mark orders as served",
+            )
+
     if "status" in updates and updates["status"] is not None:
         next_status = updates["status"].value
-        if actor_role == "snídaně" and next_status != BreakfastStatus.SERVED.value:
+        if not is_manager and next_status != BreakfastStatus.SERVED.value:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Breakfast role can only mark orders as served",
@@ -189,7 +202,7 @@ def update_breakfast_order(
         if (
             order.status == BreakfastStatus.SERVED.value
             and next_status == BreakfastStatus.PENDING.value
-            and actor_role not in {"admin", "recepce"}
+            and not is_manager
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -272,7 +285,7 @@ def export_breakfast_daily_pdf(
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     actor_role = _actor_role(request)
-    if actor_role not in {"admin", "recepce"}:
+    if not _is_breakfast_manager(actor_role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast export requires recepce/admin role",
@@ -291,11 +304,7 @@ def export_breakfast_daily_pdf(
     return StreamingResponse(
         BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": (
-                f"attachment; filename={filename}"
-            )
-        },
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -308,11 +317,12 @@ def import_breakfast_pdf(
     db: Session = Depends(get_db),
 ) -> BreakfastImportResponse:
     actor_role = _actor_role(request)
-    if actor_role not in {"recepce", "admin"}:
+    if not _is_breakfast_manager(actor_role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast import requires recepce/admin role",
         )
+
     filename = (file.filename or "").lower()
     if not filename.endswith(".pdf"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected PDF file")
@@ -364,11 +374,9 @@ def import_breakfast_pdf(
 
         settings = get_settings()
         archive_dir = f"{settings.media_root}/breakfast/imports"
-        import os
-
         os.makedirs(archive_dir, exist_ok=True)
-        with open(f"{archive_dir}/{parsed_day.isoformat()}.pdf", "wb") as fh:
-            fh.write(pdf_bytes)
+        with open(f"{archive_dir}/{parsed_day.isoformat()}.pdf", "wb") as handle:
+            handle.write(pdf_bytes)
 
     return BreakfastImportResponse(
         date=parsed_day,

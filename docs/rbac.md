@@ -1,75 +1,134 @@
-# RBAC (Role-Based Access Control)
+# RBAC
 
-## Role model
+## Current auth source
 
-RBAC uses `x-user-role` request header and the following operational roles:
+RBAC is session-backed.
 
-- **Reception** (`reception`): breakfast, lost & found, issues, read reports.
-- **Maintenance** (`maintenance`): issues module and report read access.
-- **Warehouse** (`warehouse`): inventory module and report read access.
-- **Manager** (`manager`): full operational access across all modules.
-- **Admin** (`admin`): full operational access across all modules.
+- Browser clients authenticate through `/api/auth/login` or `/api/auth/admin/login`.
+- API identity is loaded from the server-side session store via `require_session`.
+- Web and admin frontends resolve identity through `/api/auth/me`.
+- Missing or invalid session does **not** fall back to a local pseudo-user.
 
-If role is missing or unknown, API and web fallback to `manager`.
+This replaces the older header-driven and local-fallback behavior described in historical documents.
+
+## Actor types
+
+There are two actor types:
+
+- `admin`
+- `portal`
+
+`admin` sessions always operate as role `admin`.
+
+`portal` sessions may carry multiple roles. If more than one role is assigned, the user must select an active role before guarded module access is allowed.
+
+## Canonical roles
+
+Canonical backend roles are:
+
+- `admin`
+- `pokojska`
+- `udrzba`
+- `recepce`
+- `snidane`
+- `sklad`
+
+Aliases such as `housekeeping`, `maintenance`, `reception`, `breakfast` and `warehouse` are normalized to the canonical Czech role set in backend and frontend helpers.
 
 ## Permission matrix
 
-Permissions use `<module>:<action>` where action is `read` or `write`.
+Permissions use `<module>:<action>` and are defined in `apps/kajovo-hotel-api/app/security/rbac.py`.
 
-| Module | Reception | Maintenance | Warehouse | Manager | Admin |
-|---|---|---|---|---|---|
-| dashboard | read | read | read | read/write* | read/write* |
-| breakfast | read/write | - | - | read/write | read/write |
-| lost_found | read/write | - | - | read/write | read/write |
-| issues | read/write | read/write | - | read/write | read/write |
-| inventory | - | - | read/write | read/write | read/write |
-| reports | read | read | read | read/write | read/write |
+### admin
 
-`*` dashboard currently has read use case only.
+- `dashboard:read`
+- `housekeeping:read`
+- `breakfast:read`, `breakfast:write`
+- `lost_found:read`, `lost_found:write`
+- `issues:read`, `issues:write`
+- `inventory:read`, `inventory:write`
+- `reports:read`, `reports:write`
+- `users:read`, `users:write`
+- `settings:read`, `settings:write`
+
+### pokojska
+
+- `housekeeping:read`
+- `breakfast:read`, `breakfast:write`
+- `issues:read`, `issues:write`
+- `inventory:read`, `inventory:write`
+- `lost_found:read`, `lost_found:write`
+
+### udrzba
+
+- `issues:read`, `issues:write`
+
+### recepce
+
+- `breakfast:read`, `breakfast:write`
+- `lost_found:read`, `lost_found:write`
+
+### snidane
+
+- `breakfast:read`, `breakfast:write`
+- `inventory:read`, `inventory:write`
+- `issues:read`, `issues:write`
+
+### sklad
+
+- `breakfast:read`, `breakfast:write`
+- `inventory:read`, `inventory:write`
+- `issues:read`, `issues:write`
 
 ## API enforcement
 
-- All `/api/v1/<module>` routers enforce module-level RBAC.
-- `GET`/read operations require `<module>:read`.
-- `POST`/`PUT`/`PATCH`/`DELETE` operations require `<module>:write`.
-- Authorization failure returns `403` with detail in format `Missing permission: <module>:<action>`.
+- Module routers use `require_permission`, `require_module_access`, or `require_actor_type`.
+- Read requests map to `:read`.
+- `POST`, `PUT`, `PATCH`, `DELETE` map to `:write`.
+- Missing permission returns `403` with `Missing permission: <module>:<action>`.
+- Missing active role on a multi-role portal session returns `403` with `Active role must be selected`.
 
-## Auditability
+## Session lifecycle and revocation
 
-All write requests under `/api/v1/*` are persisted in `audit_trail`, including denied writes (`403`), with actor identity:
+RBAC depends on the session store in `auth_sessions`.
 
-- `actor` (display name)
-- `actor_id`
-- `actor_role`
-- `request_id`, module, method/action, resource, status code, payload snippet, timestamp
+- Login creates a server-side session record.
+- Logout revokes the current session.
+- Disable user, role changes, email changes, password changes and password reset flows revoke active user sessions.
+- Session validation also checks that the backing user still exists, is active, and still has the required admin role when the actor type is `admin`.
 
-Identity source order:
+## Audit identity
 
-1. `x-user-id`
-2. `x-user`
-3. `x-forwarded-user`
-4. fallback `anonymous`
+Write requests under guarded routes are audited with normalized actor identity.
 
-Role source:
+- actor id: session email
+- actor role: normalized active role or base role
+- actor type: `admin` or `portal`
 
-- `x-user-role` (normalized to known roles), fallback `manager`.
+For legacy-compatible exports, audit serialization maps canonical Czech roles to English labels:
 
-## Web behavior
+- `pokojska` -> `housekeeping`
+- `udrzba` -> `maintenance`
+- `recepce` -> `reception`
+- `snidane` -> `breakfast`
+- `sklad` -> `warehouse`
 
-Web resolves auth profile from:
+## Frontend behavior
 
-1. test hook `window.__KAJOVO_TEST_AUTH__` (for e2e)
-2. URL token `access_token` (base64-encoded JSON payload)
-3. fallback defaults
+Both frontends now use the same high-level auth-state contract:
 
-Token payload format:
+- `authenticated`
+- `unauthenticated`
+- `error`
 
-```json
-{
-  "userId": "maint-4",
-  "role": "maintenance",
-  "permissions": ["issues:read", "issues:write", "reports:read"]
-}
-```
+Behavior:
 
-Navigation (`ia.json` + permissions) hides modules without required `read` permission, and direct route access shows a finished **Přístup odepřen** screen.
+- `401` or `403` from `/api/auth/me` becomes `unauthenticated`
+- other failures become explicit auth error state
+- protected routes redirect to login instead of fabricating access
+
+## Test-only QA behavior
+
+Some CI gate tests still validate utility states such as `loading`, `empty`, `error`, `offline`, `maintenance` and `404`.
+
+That forcing is no longer part of the normal production runtime. It is available only when the QA runtime flag is explicitly enabled for the Playwright test build.

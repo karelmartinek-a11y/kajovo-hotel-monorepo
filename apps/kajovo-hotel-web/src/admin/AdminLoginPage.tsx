@@ -1,5 +1,5 @@
 import React from 'react';
-import { KajovoSign } from '@kajovo/ui';
+import { KajovoSign, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 type LoginErrorState = {
@@ -7,7 +7,7 @@ type LoginErrorState = {
   description: string;
 };
 
-export function AdminLoginPage(): JSX.Element {
+export function AdminLoginPage({ authError = null }: { authError?: string | null }): JSX.Element {
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('admin', lang);

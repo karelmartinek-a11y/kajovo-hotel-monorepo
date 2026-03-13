@@ -5,7 +5,8 @@ param(
     [string]$OutputDir = "../backups",
     [string]$DbName,
     [string]$DbUser,
-    [string]$FilePrefix = "kajovo-postgres"
+    [string]$FilePrefix = "kajovo-postgres",
+    [switch]$SkipManifest
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,5 +74,27 @@ if ($LASTEXITCODE -ne 0) {
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText($backupFile, $dumpOutput, $utf8NoBom)
 
+$hash = Get-FileHash -Path $backupFile -Algorithm SHA256
+$hashFile = "$backupFile.sha256"
+"{0} *{1}" -f $hash.Hash.ToLowerInvariant(), [System.IO.Path]::GetFileName($backupFile) | Set-Content -Path $hashFile -Encoding utf8
+
+if (-not $SkipManifest) {
+    $manifestFile = "$backupFile.json"
+    $manifest = [ordered]@{
+        created_at = (Get-Date).ToString("o")
+        compose_file = $ComposeFile
+        env_file = $EnvFile
+        database = $DbName
+        user = $DbUser
+        backup_file = [System.IO.Path]::GetFileName($backupFile)
+        sha256 = $hash.Hash.ToLowerInvariant()
+        size_bytes = (Get-Item -Path $backupFile).Length
+        host = $env:COMPUTERNAME
+    }
+    $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $manifestFile -Encoding utf8
+    Write-Host "Manifest: $manifestFile"
+}
+
 Write-Host "Backup completed successfully."
 Write-Host "File: $backupFile"
+Write-Host "SHA256: $($hash.Hash.ToLowerInvariant())"

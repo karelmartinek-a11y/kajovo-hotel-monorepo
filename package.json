@@ -25,7 +25,9 @@
     "ci:policy": "node apps/kajovo-hotel/ci/policy-sentinel.mjs",
     "ci:verification-doc": "node apps/kajovo-hotel/ci/check-pr-verification-doc.mjs",
     "ci:parity-placeholders": "node apps/kajovo-hotel/ci/check-parity-map-placeholders.mjs",
-    "ci:e2e-smoke": "pnpm --filter @kajovo/kajovo-hotel-admin test:smoke"
+    "ci:e2e-smoke": "pnpm --filter @kajovo/kajovo-hotel-admin test:smoke",
+    "ops:smoke": "bash ./infra/smoke/smoke.sh",
+    "ops:verify-deploy": "bash ./infra/verify/verify-deploy.sh"
   },
   "pnpm": {
     "overrides": {

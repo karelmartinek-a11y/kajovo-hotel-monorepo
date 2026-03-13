@@ -1,6 +1,3 @@
-import asyncio
-import contextlib
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -65,6 +62,7 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(auth_router)
+    app.include_router(device_router)
     app.include_router(health_router)
     app.include_router(reports_router)
     app.include_router(breakfast_router)

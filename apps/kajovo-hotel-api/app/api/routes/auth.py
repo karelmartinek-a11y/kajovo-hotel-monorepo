@@ -1,4 +1,5 @@
 import hashlib
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -11,9 +12,12 @@ from sqlalchemy.orm import Session
 from app.api.schemas import (
     AdminLoginRequest,
     AuthIdentityResponse,
+    AuthProfileRead,
+    AuthProfileUpdate,
     ForgotPasswordRequest,
     LogoutResponse,
     PortalLoginRequest,
+    PortalPasswordChangeRequest,
     SelectRoleRequest,
 )
 from app.config import get_settings
@@ -30,8 +34,13 @@ from app.security.auth import (
     SESSION_COOKIE_NAME,
     cookie_secure,
     create_session_cookie,
+    create_session_record,
     get_permissions,
+    read_session_cookie,
     require_session,
+    revoke_session_by_id,
+    revoke_sessions_for_portal_user,
+    set_active_role,
 )
 from app.security.passwords import verify_password
 from app.security.rbac import normalize_role
@@ -73,16 +82,37 @@ def _get_lockout_state(
     principal: str,
     create: bool = True,
 ) -> AuthLockoutState | None:
-    state = db.execute(
+    states = (
+        db.execute(
         select(AuthLockoutState).where(
             AuthLockoutState.actor_type == actor_type,
             AuthLockoutState.principal == principal,
         )
-    ).scalar_one_or_none()
+        .order_by(AuthLockoutState.id.asc())
+        )
+        .scalars()
+        .all()
+    )
+    state = states[0] if states else None
     if state is None and create:
         state = AuthLockoutState(actor_type=actor_type, principal=principal)
         db.add(state)
         db.flush()
+        return state
+    if state is not None and len(states) > 1:
+        duplicates = states[1:]
+        state.failed_attempts = max(int(item.failed_attempts or 0) for item in states)
+        first_failed_values = [_as_utc(item.first_failed_at) for item in states if item.first_failed_at]
+        last_failed_values = [_as_utc(item.last_failed_at) for item in states if item.last_failed_at]
+        locked_until_values = [_as_utc(item.locked_until) for item in states if item.locked_until]
+        forgot_values = [_as_utc(item.last_forgot_sent_at) for item in states if item.last_forgot_sent_at]
+        state.first_failed_at = min(first_failed_values) if first_failed_values else None
+        state.last_failed_at = max(last_failed_values) if last_failed_values else None
+        state.locked_until = max(locked_until_values) if locked_until_values else None
+        state.last_forgot_sent_at = max(forgot_values) if forgot_values else None
+        db.add(state)
+        for duplicate in duplicates:
+            db.delete(duplicate)
     return state
 
 
@@ -182,6 +212,44 @@ def _send_unlock_email(
         pass
 
 
+def _is_admin_user(user: PortalUser) -> bool:
+    return any(normalize_role(role.role) == "admin" for role in user.roles)
+
+
+def _portal_roles_for_user(user: PortalUser) -> list[str]:
+    return [normalize_role(role.role) for role in user.roles if normalize_role(role.role) != "admin"]
+
+
+def _find_admin_user(db: Session, email: str) -> PortalUser | None:
+    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
+    if user is None or not user.is_active or not _is_admin_user(user):
+        return None
+    return user
+
+
+def _current_user_from_session(request: Request, db: Session) -> tuple[dict[str, object], PortalUser]:
+    session = require_session(request, db)
+    portal_user_id = session.get("portal_user_id")
+    if portal_user_id is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    user = db.get(PortalUser, int(portal_user_id))
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    return session, user
+
+
+def _profile_response(session: dict[str, object], user: PortalUser) -> AuthProfileRead:
+    return AuthProfileRead(
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        phone=user.phone,
+        note=user.note,
+        roles=[normalize_role(role.role) for role in user.roles],
+        actor_type=str(session["actor_type"]),
+    )
+
+
 @router.post("/admin/login", response_model=AuthIdentityResponse)
 def admin_login(
     payload: AdminLoginRequest,
@@ -199,8 +267,6 @@ def admin_login(
     valid = provided_email == principal and valid_password
     if valid:
         _reset_lock_state(state)
-        db.add(state)
-        db.commit()
     elif _is_locked(state, now):
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="Account locked")
     if not valid:
@@ -215,6 +281,22 @@ def admin_login(
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
+    _reset_lock_state(state)
+    assert user is not None
+    user.last_login_at = now
+    db.add(user)
+    db.add(state)
+    session_record = create_session_record(
+        db,
+        principal=user.email,
+        role="admin",
+        actor_type="admin",
+        roles=["admin"],
+        active_role="admin",
+        portal_user_id=user.id,
+        max_age_seconds=settings.session_max_age_seconds,
+    )
+    db.commit()
     csrf_token = secrets.token_urlsafe(32)
     session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
     response.set_cookie(
@@ -253,7 +335,13 @@ def admin_login(
 
 
 @router.post("/admin/logout", response_model=LogoutResponse)
-def admin_logout(response: Response) -> LogoutResponse:
+def admin_logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    parsed = read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
+    revoke_session_by_id(db, parsed["session_id"] if parsed else None)
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")
     return LogoutResponse()
@@ -314,24 +402,32 @@ def portal_login(
     user.last_login_at = now
     db.add(user)
     db.add(state)
-    db.commit()
-    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
-    roles = [normalize_role(role.role) for role in user.roles]
+    roles = _portal_roles_for_user(user)
     if not roles:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     role = roles[0]
     active_role = role if len(roles) == 1 else None
+    session_record = create_session_record(
+        db,
+        principal=email,
+        role=role,
+        actor_type="portal",
+        roles=roles,
+        active_role=active_role,
+        portal_user_id=user.id,
+        max_age_seconds=settings.session_max_age_seconds,
+    )
+    db.commit()
+    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
+    assert user is not None
+    roles = _portal_roles_for_user(user)
     permissions = get_permissions(active_role) if active_role else []
     csrf_token = secrets.token_urlsafe(32)
     session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         create_session_cookie(
-            email,
-            role,
-            "portal",
-            roles=roles,
-            active_role=active_role,
+            session_record.session_id,
             max_age_seconds=settings.session_max_age_seconds,
         ),
         httponly=True,
@@ -385,7 +481,13 @@ def forgot_password(
 
 
 @router.post("/logout", response_model=LogoutResponse)
-def portal_logout(response: Response) -> LogoutResponse:
+def portal_logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    parsed = read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
+    revoke_session_by_id(db, parsed["session_id"] if parsed else None)
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")
     return LogoutResponse()
@@ -425,8 +527,8 @@ def unlock_account(
 
 
 @router.get("/me", response_model=AuthIdentityResponse)
-def auth_me(request: Request) -> AuthIdentityResponse:
-    session = require_session(request)
+def auth_me(request: Request, db: Session = Depends(get_db)) -> AuthIdentityResponse:
+    session = require_session(request, db)
     role = session["role"]
     roles = [str(item) for item in session.get("roles", [role])]
     active_role = str(session["active_role"]) if session.get("active_role") else None
@@ -445,32 +547,25 @@ def auth_me(request: Request) -> AuthIdentityResponse:
 def select_portal_role(
     payload: SelectRoleRequest,
     request: Request,
-    response: Response,
+    db: Session = Depends(get_db),
 ) -> AuthIdentityResponse:
-    session = require_session(request)
+    session = require_session(request, db)
     role = str(session["role"])
     roles = [str(item) for item in session.get("roles", [role])]
     selected_role = normalize_role(payload.role)
     if selected_role not in roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role not assigned")
-    settings = get_settings()
-    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
-    response.set_cookie(
-        SESSION_COOKIE_NAME,
-        create_session_cookie(
-            str(session["email"]),
-            role,
-            str(session["actor_type"]),
-            roles=roles,
-            active_role=selected_role,
-            max_age_seconds=settings.session_max_age_seconds,
-        ),
-        httponly=True,
-        samesite="lax",
-        secure=cookie_secure(),
-        path="/",
-        max_age=settings.session_max_age_seconds,
-        expires=session_expiry,
+    session_record = set_active_role(db, str(session["session_id"]), selected_role)
+    if session_record is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    db.commit()
+    setattr(
+        request.state,
+        "_kajovo_auth_session",
+        {
+            **session,
+            "active_role": selected_role,
+        },
     )
     return AuthIdentityResponse(
         email=str(session["email"]),
@@ -480,3 +575,57 @@ def select_portal_role(
         permissions=get_permissions(selected_role),
         actor_type=str(session["actor_type"]),
     )
+
+
+@router.get("/profile", response_model=AuthProfileRead)
+def auth_profile(request: Request, db: Session = Depends(get_db)) -> AuthProfileRead:
+    session, user = _current_user_from_session(request, db)
+    return _profile_response(session, user)
+
+
+@router.patch("/profile", response_model=AuthProfileRead)
+def update_auth_profile(
+    payload: AuthProfileUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> AuthProfileRead:
+    session, user = _current_user_from_session(request, db)
+    user.first_name = payload.first_name.strip()
+    user.last_name = payload.last_name.strip()
+    user.phone = payload.phone.strip() if payload.phone else None
+    user.note = payload.note.strip() if payload.note else None
+    user.updated_at = _utc_now()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    setattr(
+        request.state,
+        "audit_detail_override",
+        json.dumps({"profile_action": "update", "user_id": user.id}),
+    )
+    return _profile_response(session, user)
+
+
+@router.post("/change-password", response_model=LogoutResponse)
+def change_own_password(
+    payload: PortalPasswordChangeRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    _, user = _current_user_from_session(request, db)
+    if not _verify_password(payload.old_password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid credentials")
+    user.password_hash = hash_password(payload.new_password)
+    user.updated_at = _utc_now()
+    revoke_sessions_for_portal_user(db, user.id)
+    db.add(user)
+    db.commit()
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
+    setattr(
+        request.state,
+        "audit_detail_override",
+        json.dumps({"password_action": "self_change", "user_id": user.id}),
+    )
+    return LogoutResponse()

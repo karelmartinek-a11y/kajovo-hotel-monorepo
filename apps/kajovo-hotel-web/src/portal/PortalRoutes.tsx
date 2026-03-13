@@ -108,6 +108,7 @@ function AccessDeniedPage({ moduleLabel, roleLabel, userId, copy }: AccessDenied
 
 type PortalRouteDeps = {
   Dashboard: () => JSX.Element;
+  PortalProfilePage: () => JSX.Element;
   HousekeepingForm: () => JSX.Element;
   BreakfastList: () => JSX.Element;
   BreakfastForm: ({ mode }: { mode: 'create' | 'edit' }) => JSX.Element;
@@ -272,6 +273,7 @@ export function PortalRoutes({
           path="/"
           element={primaryRoute !== '/' ? <Navigate to={`${primaryRoute}${currentSearch}`} replace /> : <deps.Dashboard />}
         />
+        <Route path="/profil" element={<deps.PortalProfilePage />} />
         <Route path="/pokojska" element={isAllowed('housekeeping') ? <deps.HousekeepingForm /> : renderAccessDenied('housekeeping')} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <deps.BreakfastList /> : renderAccessDenied('breakfast')} />
         <Route path="/snidane/nova" element={isAllowed('breakfast') && breakfastManager ? <deps.BreakfastForm mode="create" /> : renderAccessDenied('breakfast')} />

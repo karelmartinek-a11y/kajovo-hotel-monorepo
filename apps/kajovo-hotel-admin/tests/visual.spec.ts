@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+const adminPath = (path: string): string => {
+  if (path.startsWith('/admin')) {
+    return path;
+  }
+  return `/admin${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const listPayload = [
   {
     id: 1,
@@ -152,6 +159,31 @@ const lostFoundListPayload = [
 ];
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/me**', async (route) => {
+    await route.fulfill({
+      json: {
+        email: 'admin.visual@example.com',
+        role: 'admin',
+        permissions: [
+          'dashboard:read',
+          'housekeeping:read',
+          'breakfast:read',
+          'lost_found:read',
+          'issues:read',
+          'inventory:read',
+          'reports:read',
+          'users:read',
+          'settings:read',
+        ],
+        actor_type: 'admin',
+      },
+    });
+  });
+
+  await page.route('**/api/auth/csrf**', async (route) => {
+    await route.fulfill({ json: { csrf_token: 'visual-test-token' } });
+  });
+
   await page.route('**/api/v1/breakfast?service_date=2026-02-19', async (route) => {
     await route.fulfill({ json: listPayload });
   });
@@ -259,6 +291,76 @@ test.beforeEach(async ({ page }) => {
     }
     await route.fulfill({ json: lostFoundListPayload[0] });
   });
+
+  await page.route('**/api/v1/admin/settings/smtp**', async (route) => {
+    if (route.request().url().includes('/status')) {
+      await route.fulfill({
+        json: {
+          configured: true,
+          smtp_enabled: false,
+          delivery_mode: 'mock',
+          can_send_real_email: false,
+          last_tested_at: null,
+          last_test_success: null,
+          last_test_recipient: null,
+          last_test_error: null,
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        host: 'smtp.local',
+        port: 1025,
+        username: 'mailer@kajovohotel.local',
+        use_tls: false,
+        use_ssl: false,
+        password_masked: 'm****r',
+      },
+    });
+  });
+});
+
+test.describe('critical visual baseline', () => {
+  test('@visual-critical dashboard snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(adminPath('/'));
+    await expect(page.getByTestId('dashboard-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('dashboard-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical housekeeping handoff snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(adminPath('/pokojska'));
+    await expect(page.getByTestId('housekeeping-admin-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('housekeeping-admin-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical settings snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(adminPath('/nastaveni'));
+    await expect(page.getByTestId('settings-admin-page')).toBeVisible();
+    await expect(page).toHaveScreenshot('settings-admin-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical offline snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(adminPath('/offline'));
+    await expect(page.getByTestId('state-view-offline')).toBeVisible();
+    await expect(page).toHaveScreenshot('offline-desktop.png', { fullPage: true });
+  });
+
+  test('@visual-critical 404 snapshot desktop', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Critical visual gate runs on desktop baseline.');
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(adminPath('/404'));
+    await expect(page.getByTestId('state-view-404')).toBeVisible();
+    await expect(page).toHaveScreenshot('404-desktop.png', { fullPage: true });
+  });
 });
 
 test.describe('visual states', () => {
@@ -270,21 +372,21 @@ test.describe('visual states', () => {
   ] as const) {
     test(`lost found list snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/ztraty-a-nalezy');
+      await page.goto(adminPath('/ztraty-a-nalezy'));
       await expect(page.getByTestId('lost-found-list-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`lost-found-list-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`lost found detail snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/ztraty-a-nalezy/1');
+      await page.goto(adminPath('/ztraty-a-nalezy/1'));
       await expect(page.getByTestId('lost-found-detail-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`lost-found-detail-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`lost found edit snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/ztraty-a-nalezy/1/edit');
+      await page.goto(adminPath('/ztraty-a-nalezy/1/edit'));
       await expect(page.getByTestId('lost-found-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`lost-found-edit-${viewport.name}.png`, { fullPage: true });
     });
@@ -292,21 +394,21 @@ test.describe('visual states', () => {
 
     test(`inventory list snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/sklad');
+      await page.goto(adminPath('/sklad'));
       await expect(page.getByTestId('inventory-list-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`inventory-list-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`inventory detail snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/sklad/1');
+      await page.goto(adminPath('/sklad/1'));
       await expect(page.getByTestId('inventory-detail-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`inventory-detail-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`inventory edit snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/sklad/1/edit');
+      await page.goto(adminPath('/sklad/1/edit'));
       await expect(page.getByTestId('inventory-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`inventory-edit-${viewport.name}.png`, { fullPage: true });
     });
@@ -314,42 +416,42 @@ test.describe('visual states', () => {
 
     test(`reports list snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/hlaseni');
+      await page.goto(adminPath('/hlaseni'));
       await expect(page.getByTestId('reports-list-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`reports-list-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`reports detail snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/hlaseni/1');
+      await page.goto(adminPath('/hlaseni/1'));
       await expect(page.getByTestId('reports-detail-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`reports-detail-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`reports edit snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/hlaseni/1/edit');
+      await page.goto(adminPath('/hlaseni/1/edit'));
       await expect(page.getByTestId('reports-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`reports-edit-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`issues list snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/zavady');
+      await page.goto(adminPath('/zavady'));
       await expect(page.getByTestId('issues-list-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`issues-list-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`issues detail snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/zavady/1');
+      await page.goto(adminPath('/zavady/1'));
       await expect(page.getByTestId('issues-detail-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`issues-detail-${viewport.name}.png`, { fullPage: true });
     });
 
     test(`issues edit snapshot ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize(viewport.size);
-      await page.goto('/zavady/1/edit');
+      await page.goto(adminPath('/zavady/1/edit'));
       await expect(page.getByTestId('issues-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`issues-edit-${viewport.name}.png`, { fullPage: true });
     });
@@ -364,7 +466,7 @@ test.describe('visual states', () => {
     test(`dashboard snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/');
+      await page.goto(adminPath('/'));
       await expect(page.getByTestId('dashboard-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`dashboard-${viewport.name}.png`, { fullPage: true });
     });
@@ -372,7 +474,7 @@ test.describe('visual states', () => {
     test(`breakfast list snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/snidane');
+      await page.goto(adminPath('/snidane'));
       await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`breakfast-list-${viewport.name}.png`, { fullPage: true });
     });
@@ -380,7 +482,7 @@ test.describe('visual states', () => {
     test(`breakfast detail snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/snidane/1');
+      await page.goto(adminPath('/snidane/1'));
       await expect(page.getByTestId('breakfast-detail-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`breakfast-detail-${viewport.name}.png`, { fullPage: true });
     });
@@ -388,7 +490,7 @@ test.describe('visual states', () => {
     test(`breakfast edit snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/snidane/1/edit');
+      await page.goto(adminPath('/snidane/1/edit'));
       await expect(page.getByTestId('breakfast-edit-page')).toBeVisible();
       await expect(page).toHaveScreenshot(`breakfast-edit-${viewport.name}.png`, { fullPage: true });
     });
@@ -396,7 +498,7 @@ test.describe('visual states', () => {
     test(`offline snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/offline');
+      await page.goto(adminPath('/offline'));
       await expect(page.getByTestId('state-view-offline')).toBeVisible();
       await expect(page).toHaveScreenshot(`offline-${viewport.name}.png`, { fullPage: true });
     });
@@ -404,7 +506,7 @@ test.describe('visual states', () => {
     test(`maintenance snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/maintenance');
+      await page.goto(adminPath('/maintenance'));
       await expect(page.getByTestId('state-view-maintenance')).toBeVisible();
       await expect(page).toHaveScreenshot(`maintenance-${viewport.name}.png`, { fullPage: true });
     });
@@ -412,7 +514,7 @@ test.describe('visual states', () => {
     test(`404 snapshot ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) return;
       await page.setViewportSize(viewport.size);
-      await page.goto('/404');
+      await page.goto(adminPath('/404'));
       await expect(page.getByTestId('state-view-404')).toBeVisible();
       await expect(page).toHaveScreenshot(`404-${viewport.name}.png`, { fullPage: true });
     });
@@ -440,7 +542,7 @@ test.describe('visual states', () => {
           test(`${view.key} ${state} state snapshot ${viewport.name}`, async ({ page }, testInfo) => {
             if (testInfo.project.name !== viewport.name) return;
             await page.setViewportSize(viewport.size);
-            await page.goto(`${view.route}?state=${state}`);
+            await page.goto(adminPath(`${view.route}?state=${state}`));
             await expect(page.getByTestId(view.marker)).toBeVisible();
             await expect(page.getByTestId(`state-view-${state}`)).toBeVisible();
             await expect(page).toHaveScreenshot(`state-sweep-${view.key}-${state}-${viewport.name}.png`, { fullPage: true });
@@ -450,7 +552,7 @@ test.describe('visual states', () => {
     }
   });
   test('signage stays visible while scrolling', async ({ page }) => {
-    await page.goto('/ztraty-a-nalezy');
+    await page.goto(adminPath('/ztraty-a-nalezy'));
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign).toBeVisible();
     const before = await sign.boundingBox();

@@ -5,7 +5,10 @@ param(
     [string]$ComposeFile = "compose.prod.yml",
     [string]$EnvFile = ".env",
     [string]$TargetDb,
-    [string]$DbUser
+    [string]$DbUser,
+    [switch]$Force,
+    [switch]$SkipIntegrityCheck,
+    [switch]$CreatePreRestoreBackup
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +32,33 @@ function Get-EnvValue {
     }
 
     return ($line -replace "^\s*$Key\s*=\s*", "").Trim()
+}
+
+function Test-BackupIntegrity {
+    param(
+        [string]$BackupPath,
+        [string]$ExpectedDb
+    )
+
+    $hash = Get-FileHash -Path $BackupPath -Algorithm SHA256
+    $hashFile = "$BackupPath.sha256"
+    if (Test-Path -Path $hashFile) {
+        $expectedHash = ((Get-Content -Path $hashFile -Raw).Trim().Split(" ")[0]).ToLowerInvariant()
+        if ($expectedHash -ne $hash.Hash.ToLowerInvariant()) {
+            throw "Checksum mismatch for backup file: $BackupPath"
+        }
+    }
+
+    $manifestFile = "$BackupPath.json"
+    if (Test-Path -Path $manifestFile) {
+        $manifest = Get-Content -Path $manifestFile -Raw | ConvertFrom-Json
+        if ($manifest.sha256 -and $manifest.sha256.ToLowerInvariant() -ne $hash.Hash.ToLowerInvariant()) {
+            throw "Manifest checksum mismatch for backup file: $BackupPath"
+        }
+        if ($ExpectedDb -and $manifest.database -and $manifest.database -ne $ExpectedDb) {
+            throw "Backup manifest DB '$($manifest.database)' does not match target DB '$ExpectedDb'"
+        }
+    }
 }
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -55,6 +85,22 @@ if (-not $DbUser) {
 
 if (-not $TargetDb -or -not $DbUser) {
     throw "Unable to resolve target DB/user. Provide -TargetDb and -DbUser or define POSTGRES_DB and POSTGRES_USER in $envPath"
+}
+
+if (-not $Force) {
+    throw "Restore requires -Force confirmation."
+}
+
+if (-not $SkipIntegrityCheck) {
+    Test-BackupIntegrity -BackupPath $backupPath -ExpectedDb $TargetDb
+}
+
+if ($CreatePreRestoreBackup) {
+    $backupScript = Join-Path $scriptDir "backup.ps1"
+    & $backupScript -ComposeFile $ComposeFile -EnvFile $EnvFile -DbName $TargetDb -DbUser $DbUser -FilePrefix "pre-restore-$TargetDb"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pre-restore backup failed with exit code $LASTEXITCODE"
+    }
 }
 
 Write-Warning "This operation will overwrite data in target DB '$TargetDb'."

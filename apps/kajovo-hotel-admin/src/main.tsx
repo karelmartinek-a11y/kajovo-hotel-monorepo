@@ -45,8 +45,8 @@ import {
   canReadModule,
   normalizeRole,
   resolveAuthProfile,
-  rolePermissions,
   type AuthProfile,
+  type ResolvedAuthState,
   type Role,
 } from './rbac';
 import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
@@ -99,11 +99,62 @@ type IssuePayload = IssueCreate;
 type InventoryItem = InventoryItemRead;
 
 type InventoryMovement = InventoryMovementRead & {
+  item_name?: string | null;
+  unit?: string | null;
+  card_id?: number | null;
+  card_item_id?: number | null;
+  card_number?: string | null;
   document_number?: string | null;
   document_reference?: string | null;
   document_date?: string | null;
+  quantity_pieces?: number;
 };
 
+type InventoryCardType = 'in' | 'out' | 'adjust';
+
+type InventoryCardItemReadModel = {
+  id: number;
+  card_id: number;
+  ingredient_id: number;
+  ingredient_name?: string | null;
+  unit?: string | null;
+  quantity_base: number;
+  quantity_pieces: number;
+  note?: string | null;
+  created_at?: string | null;
+};
+
+type InventoryCardReadModel = {
+  id: number;
+  card_type: InventoryCardType;
+  number: string;
+  card_date: string;
+  supplier?: string | null;
+  reference?: string | null;
+  note?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+type InventoryCardDetail = InventoryCardReadModel & {
+  items: InventoryCardItemReadModel[];
+};
+
+type InventoryCardLinePayload = {
+  ingredient_id: number;
+  quantity_base: number;
+  quantity_pieces: number;
+  note?: string | null;
+};
+
+type InventoryCardPayload = {
+  card_type: InventoryCardType;
+  card_date: string;
+  supplier?: string | null;
+  reference?: string | null;
+  note?: string | null;
+  items: InventoryCardLinePayload[];
+};
 
 
 type InventoryDetail = Omit<InventoryItemWithAuditRead, 'movements'> & { movements: InventoryMovement[] };
@@ -157,6 +208,14 @@ const portalRoleLabels: Record<PortalRole, string> = {
   sklad: 'Sklad',
 };
 
+type ManagedPortalRole = PortalRole | 'admin';
+
+const managedPortalRoleOptions: ManagedPortalRole[] = ['admin', ...portalRoleOptions];
+const managedPortalRoleLabels: Record<ManagedPortalRole, string> = {
+  admin: 'Administrator',
+  ...portalRoleLabels,
+};
+
 function toAdminNavRoute(route: string): string {
   if (!route.startsWith('/')) {
     return route;
@@ -205,7 +264,7 @@ type PortalUser = {
   first_name: string;
   last_name: string;
   email: string;
-  roles: PortalRole[];
+  roles: ManagedPortalRole[];
   phone: string | null;
   note: string | null;
   is_active: boolean;
@@ -218,7 +277,7 @@ type PortalUserUpsertPayload = {
   first_name: string;
   last_name: string;
   email: string;
-  roles: PortalRole[];
+  roles: ManagedPortalRole[];
   phone?: string;
   note?: string;
 };
@@ -378,6 +437,12 @@ const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   adjust: 'Odpis',
 };
 
+const inventoryCardTypeLabels: Record<InventoryCardType, string> = {
+  in: 'Příjemka',
+  out: 'Výdejka',
+  adjust: 'Odpis',
+};
+
 
 
 function breakfastStatusLabel(status: BreakfastStatus | null | undefined): string {
@@ -415,6 +480,10 @@ function inventoryMovementLabel(movementType: InventoryMovementType | null | und
   return movementType ? inventoryMovementLabels[movementType] : '-';
 }
 
+function inventoryCardTypeLabel(cardType: InventoryCardType | null | undefined): string {
+  return cardType ? inventoryCardTypeLabels[cardType] : '-';
+}
+
 function reportStatusLabel(status: string | null | undefined): string {
   if (status === 'open' || status === 'in_progress' || status === 'closed') {
     return reportStatusLabels[status];
@@ -425,6 +494,39 @@ function reportStatusLabel(status: string | null | undefined): string {
 function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStatus): number {
   const value = summary?.status_counts?.[status];
   return typeof value === 'number' ? value : 0;
+}
+
+function countOpenIssues(items: Issue[]): number {
+  return items.filter((item) => item.status !== 'resolved' && item.status !== 'closed').length;
+}
+
+function countCriticalIssues(items: Issue[]): number {
+  return items.filter((item) => item.priority === 'critical' && item.status !== 'closed').length;
+}
+
+function countActiveReports(items: Report[]): number {
+  return items.filter((item) => item.status !== 'closed').length;
+}
+
+function countStoredLostFound(items: LostFoundItem[]): number {
+  return items.filter((item) => item.status === 'stored' || item.status === 'new').length;
+}
+
+async function loadAdminOverview(serviceDate: string): Promise<AdminOverview> {
+  const [breakfastSummary, issues, lowStockItems, reports, lostFoundItems] = await Promise.all([
+    fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${serviceDate}`),
+    fetchJson<Issue[]>('/api/v1/issues'),
+    fetchJson<InventoryItem[]>('/api/v1/inventory?low_stock=true'),
+    fetchJson<Report[]>('/api/v1/reports'),
+    fetchJson<LostFoundItem[]>('/api/v1/lost-found'),
+  ]);
+  return {
+    breakfastSummary,
+    issues,
+    lowStockItems,
+    reports,
+    lostFoundItems,
+  };
 }
 const stateLabels: Record<ViewState, string> = {
   default: 'Výchozí',
@@ -437,6 +539,9 @@ const stateLabels: Record<ViewState, string> = {
 };
 
 function useViewState(): ViewState {
+  if (!qaRuntimeEnabled) {
+    return 'default';
+  }
   const [params] = useSearchParams();
   const input = params.get('state') as ViewState | null;
   return input && requiredStates.includes(input) ? input : 'default';
@@ -501,8 +606,7 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
 }
 
 function StateSwitcher(): JSX.Element {
-  const isProd = (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD === true;
-  if (isProd) {
+  if (!qaRuntimeEnabled) {
     return <></>;
   }
   return (
@@ -615,7 +719,9 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (issueId && method === 'PUT') return (await apiClient.updateIssueApiV1IssuesIssueIdPut(Number(issueId[1]), body as IssueCreate)) as T;
   if (path === '/api/v1/issues' && method === 'POST') return (await apiClient.createIssueApiV1IssuesPost(body as IssueCreate)) as T;
 
-  if (path === '/api/v1/inventory' && method === 'GET') return (await apiClient.listItemsApiV1InventoryGet({ low_stock: false })) as T;
+  if (path === '/api/v1/inventory' && method === 'GET') {
+    return (await apiClient.listItemsApiV1InventoryGet({ low_stock: url.searchParams.get('low_stock') === 'true' })) as T;
+  }
   const inventoryId = path.match(/^\/api\/v1\/inventory\/(\d+)$/);
   if (inventoryId && method === 'GET') return (await apiClient.getItemApiV1InventoryItemIdGet(Number(inventoryId[1]))) as T;
   if (inventoryId && method === 'PUT') return (await apiClient.updateItemApiV1InventoryItemIdPut(Number(inventoryId[1]), body as InventoryItemCreate)) as T;
@@ -722,10 +828,16 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   }
 
   if (path === '/api/auth/admin/hint' && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers = normalizeHeaders(init?.headers);
+    headers['Content-Type'] = 'application/json';
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
     const response = await fetch(path, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error(await response.text());
@@ -733,6 +845,11 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   }
 
   if (path === '/api/v1/admin/settings/smtp' && method === 'GET') {
+    const response = await fetch(path, { credentials: 'include' });
+    if (!response.ok) throw new Error(await response.text());
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/smtp/status' && method === 'GET') {
     const response = await fetch(path, { credentials: 'include' });
     if (!response.ok) throw new Error(await response.text());
     return (await response.json()) as T;
@@ -962,10 +1079,61 @@ function DietIconPork(): JSX.Element {
   );
 }
 
+function breakfastActorRole(auth: AuthProfile | null | undefined): string {
+  return auth?.activeRole ?? auth?.role ?? 'admin';
+}
+
+function isBreakfastManager(auth: AuthProfile | null | undefined): boolean {
+  const actorRole = breakfastActorRole(auth);
+  const roles = auth?.roles ?? [];
+  return actorRole === 'admin' || actorRole === 'recepce' || roles.includes('recepce');
+}
+
+function isBreakfastOperator(auth: AuthProfile | null | undefined): boolean {
+  const actorRole = breakfastActorRole(auth);
+  const roles = auth?.roles ?? [];
+  return actorRole === 'admin' || actorRole === 'snídaně' || roles.includes('snídaně');
+}
+
+function issueActorRole(auth: AuthProfile | null | undefined): string {
+  return auth?.activeRole ?? auth?.role ?? 'admin';
+}
+
+function isIssueAdmin(auth: AuthProfile | null | undefined): boolean {
+  return issueActorRole(auth) === 'admin';
+}
+
+function isIssueMaintenance(auth: AuthProfile | null | undefined): boolean {
+  return issueActorRole(auth) === 'údržba';
+}
+
 function Dashboard(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Přehled', '/');
   const stateMarker = <StateMarker state={state} />;
+  const [overview, setOverview] = React.useState<AdminOverview | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const load = React.useCallback(() => {
+    if (state !== 'default') {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    void loadAdminOverview(defaultServiceDate)
+      .then((data) => {
+        setOverview(data);
+        setError(null);
+      })
+      .catch(() => setError('Nepodařilo se načíst přehled.'))
+      .finally(() => setLoading(false));
+  }, [state]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <main className="k-page" data-testid="dashboard-page">
@@ -1453,6 +1621,8 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Sn?dan?', '/snidane');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const canManage = isBreakfastManager(auth);
   const navigate = useNavigate();
   const { id } = useParams();
   const [payload, setPayload] = React.useState<BreakfastPayload>({
@@ -1518,6 +1688,13 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       <StateSwitcher />
       {stateUI ? (
         stateUI
+      ) : !canManage ? (
+        <StateView
+          title="Přístup odepřen"
+          description="Snídaně může vytvářet a upravovat jen recepce nebo admin."
+          stateKey="error"
+          action={<Link className="k-button secondary" to="/snidane">Zpět na seznam</Link>}
+        />
       ) : error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
@@ -1603,6 +1780,8 @@ function BreakfastDetail(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Sn?dan?', '/snidane');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const canManage = isBreakfastManager(auth);
   const { id } = useParams();
   const [item, setItem] = React.useState<BreakfastOrder | null>(null);
   const [notFound, setNotFound] = React.useState(false);
@@ -1639,9 +1818,11 @@ function BreakfastDetail(): JSX.Element {
             <Link className="k-nav-link" to="/snidane">
               Zpět na seznam
             </Link>
-            <Link className="k-button" to={`/snidane/${item.id}/edit`}>
-              Upravit
-            </Link>
+            {canManage ? (
+              <Link className="k-button" to={`/snidane/${item.id}/edit`}>
+                Upravit
+              </Link>
+            ) : null}
           </div>
           <DataTable
             headers={['Položka', 'Hodnota']}
@@ -2155,6 +2336,11 @@ function IssuesList(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const isMaintenance = isIssueMaintenance(auth);
+  const isAdmin = isIssueAdmin(auth);
+  const canCreateIssue = isAdmin;
+  const canMarkDone = isMaintenance || isAdmin;
   const [items, setItems] = React.useState<Issue[]>([]);
   const [statusFilter, setStatusFilter] = React.useState<'all' | IssueStatus>('all');
   const [error, setError] = React.useState<string | null>(null);
@@ -2168,6 +2354,20 @@ function IssuesList(): JSX.Element {
       .then((response) => { setItems(response); setError(null); })
       .catch(() => setError('Nepodařilo se načíst seznam závad.'));
   }, [state, statusFilter]);
+
+  const markDone = async (issueId: number): Promise<void> => {
+    try {
+      const updated = await fetchJson<Issue>(`/api/v1/issues/${issueId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved' }),
+      });
+      setItems((prev) => prev.map((item) => (item.id === issueId ? updated : item)));
+      setError(null);
+    } catch {
+      setError('Označení závady jako hotové selhalo.');
+    }
+  };
 
   return (
     <main className="k-page" data-testid="issues-list-page">
@@ -2194,6 +2394,8 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
   const stateMarker = <StateMarker state={state} />;
+  const auth = useAuth();
+  const canManage = isIssueAdmin(auth);
   const { id } = useParams();
   const navigate = useNavigate();
   const [payload, setPayload] = React.useState<IssuePayload>({
@@ -2228,7 +2430,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     } catch { setError('Závadu se nepodařilo uložit.'); }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
+  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1><StateSwitcher />{stateUI ? stateUI : !canManage ? <StateView title="Přístup odepřen" description="Závadu může upravovat nebo znovu zakládat jen admin." stateKey="error" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
 <FormField id="issue_title" label="Název"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
 <FormField id="issue_location" label="Lokalita"><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
 <FormField id="issue_room_number" label="Pokoj (volitelné)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
@@ -2248,6 +2450,11 @@ function IssuesDetail(): JSX.Element {
   const [item, setItem] = React.useState<Issue | null>(null);
   const [photos, setPhotos] = React.useState<MediaPhoto[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const auth = useAuth();
+  const canDelete = isIssueAdmin(auth);
+  const canEdit = isIssueAdmin(auth);
+  const canReopen = isIssueAdmin(auth);
+  const canMarkDone = isIssueAdmin(auth) || isIssueMaintenance(auth);
 
   React.useEffect(() => {
     if (state !== 'default' || !id) return;
@@ -2282,6 +2489,21 @@ function IssuesDetail(): JSX.Element {
       window.location.assign('/admin/zavady');
     } catch {
       setError('Smazání závady selhalo.');
+    }
+  };
+
+  const updateStatus = async (nextStatus: IssueStatus): Promise<void> => {
+    if (!id) return;
+    try {
+      const updated = await fetchJson<Issue>(`/api/v1/issues/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setItem(updated);
+      setError(null);
+    } catch {
+      setError(nextStatus === 'new' ? 'Znovuotevření závady selhalo.' : 'Označení závady jako hotové selhalo.');
     }
   };
 
@@ -2321,10 +2543,17 @@ function InventoryList(): JSX.Element {
       .catch(() => setError('Polo?ky skladu se nepoda?ilo na??st.'));
   }, []);
 
+  const loadBootstrapStatus = React.useCallback(() => {
+    void fetchJson<InventoryBootstrapStatusReadModel>('/api/v1/inventory/bootstrap-status')
+      .then((response) => setBootstrapStatus(response))
+      .catch(() => setBootstrapStatus({ enabled: false, environment: 'unknown' }));
+  }, []);
+
   React.useEffect(() => {
     if (state !== 'default') return;
     loadItems();
-  }, [loadItems, state]);
+    loadBootstrapStatus();
+  }, [loadBootstrapStatus, loadItems, state]);
 
   React.useEffect(() => {
     if (!movementItemId && items.length > 0) {
@@ -2682,6 +2911,380 @@ function InventoryDetail(): JSX.Element {
   );
 }
 
+function InventoryWorkbench(): JSX.Element {
+  const state = useViewState();
+  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
+  const stateMarker = <StateMarker state={state} />;
+  const [items, setItems] = React.useState<InventoryItem[]>([]);
+  const [cards, setCards] = React.useState<InventoryCardReadModel[]>([]);
+  const [movements, setMovements] = React.useState<InventoryMovement[]>([]);
+  const [error, setError] = React.useState<string | null>(null);
+  const [seedInfo, setSeedInfo] = React.useState<string | null>(null);
+  const [bootstrapStatus, setBootstrapStatus] = React.useState<InventoryBootstrapStatusReadModel | null>(null);
+  const [cardInfo, setCardInfo] = React.useState<string | null>(null);
+  const [cardPayload, setCardPayload] = React.useState<InventoryCardPayload>({
+    card_type: 'in',
+    card_date: new Date().toISOString().slice(0, 10),
+    supplier: '',
+    reference: '',
+    note: '',
+    items: [{ ingredient_id: 0, quantity_base: 0, quantity_pieces: 0, note: '' }],
+  });
+
+  const loadItems = React.useCallback(() => {
+    fetchJson<InventoryItem[]>('/api/v1/inventory')
+      .then((response) => {
+        setItems(response);
+        setError(null);
+      })
+      .catch(() => setError('Položky skladu se nepodařilo načíst.'));
+  }, []);
+
+  const loadCards = React.useCallback(() => {
+    fetchJson<InventoryCardReadModel[]>('/api/v1/inventory/cards')
+      .then((response) => setCards(response))
+      .catch(() => setError('Skladové karty se nepodařilo načíst.'));
+  }, []);
+
+  const loadMovements = React.useCallback(() => {
+    fetchJson<InventoryMovement[]>('/api/v1/inventory/movements')
+      .then((response) => setMovements(response))
+      .catch(() => setError('Pohyby skladu se nepodařilo načíst.'));
+  }, []);
+
+  const loadBootstrapStatus = React.useCallback(() => {
+    void fetchJson<InventoryBootstrapStatusReadModel>('/api/v1/inventory/bootstrap-status')
+      .then((response) => setBootstrapStatus(response))
+      .catch(() => setBootstrapStatus({ enabled: false, environment: 'unknown' }));
+  }, []);
+
+  React.useEffect(() => {
+    if (state !== 'default') {
+      return;
+    }
+    loadItems();
+    loadCards();
+    loadMovements();
+    loadBootstrapStatus();
+  }, [loadBootstrapStatus, loadCards, loadItems, loadMovements, state]);
+
+  React.useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+    setCardPayload((prev) => ({
+      ...prev,
+      items: prev.items.map((item, index) => (
+        item.ingredient_id > 0
+          ? item
+          : { ...item, ingredient_id: items[Math.min(index, items.length - 1)]?.id ?? items[0].id }
+      )),
+    }));
+  }, [items]);
+
+  const reloadAll = React.useCallback(() => {
+    loadItems();
+    loadCards();
+    loadMovements();
+  }, [loadCards, loadItems, loadMovements]);
+
+  const seedDefaults = async (): Promise<void> => {
+    try {
+      const seeded = await fetchJson<InventoryItem[]>('/api/v1/inventory/seed-defaults', {
+        method: 'POST',
+      });
+      setSeedInfo(`Doplněno ${seeded.length} výchozích položek.`);
+      reloadAll();
+    } catch {
+      setSeedInfo('Bootstrap výchozích položek je vypnutý nebo se nepodařilo dokončit.');
+    }
+  };
+
+  const saveCard = async (): Promise<void> => {
+    setCardInfo(null);
+    try {
+      await fetchJson<InventoryCardDetail>('/api/v1/inventory/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...cardPayload,
+          supplier: cardPayload.supplier || null,
+          reference: cardPayload.reference || null,
+          note: cardPayload.note || null,
+          items: cardPayload.items.map((item) => ({
+            ingredient_id: item.ingredient_id,
+            quantity_base: item.quantity_base,
+            quantity_pieces: item.quantity_pieces,
+            note: item.note || null,
+          })),
+        }),
+      });
+      setCardInfo('Skladová karta byla uložena.');
+      setCardPayload({
+        card_type: 'in',
+        card_date: new Date().toISOString().slice(0, 10),
+        supplier: '',
+        reference: '',
+        note: '',
+        items: [{ ingredient_id: items[0]?.id ?? 0, quantity_base: 0, quantity_pieces: 0, note: '' }],
+      });
+      reloadAll();
+    } catch {
+      setCardInfo('Skladovou kartu se nepodařilo uložit.');
+    }
+  };
+
+  const updateCardLine = (index: number, patch: Partial<InventoryCardLinePayload>): void => {
+    setCardPayload((prev) => ({
+      ...prev,
+      items: prev.items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    }));
+  };
+
+  const addCardLine = (): void => {
+    setCardPayload((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { ingredient_id: items[0]?.id ?? 0, quantity_base: 0, quantity_pieces: 0, note: '' },
+      ],
+    }));
+  };
+
+  const removeCardLine = (index: number): void => {
+    setCardPayload((prev) => ({
+      ...prev,
+      items: prev.items.length === 1 ? prev.items : prev.items.filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
+
+  const downloadStocktakePdf = (): void => {
+    window.open('/api/v1/inventory/stocktake/pdf', '_blank', 'noopener');
+  };
+
+  const bootstrapAction = bootstrapStatus?.enabled ? (
+    <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
+      Doplnit výchozí položky
+    </button>
+  ) : null;
+
+  return (
+    <main className="k-page" data-testid="inventory-list-page">
+      {stateMarker}
+      <h1>Skladové hospodářství</h1>
+      <StateSwitcher />
+      {stateUI ? (
+        stateUI
+      ) : error ? (
+        <StateView
+          title="Chyba"
+          description={error}
+          stateKey="error"
+          action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
+        />
+      ) : items.length === 0 ? (
+        <>
+          <div className="k-toolbar">
+            {bootstrapAction}
+            <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>
+              Inventurní protokol (PDF)
+            </button>
+            <Link className="k-button" to="/sklad/nova">Nová položka</Link>
+          </div>
+          {bootstrapStatus && !bootstrapStatus.enabled ? (
+            <p>Bootstrap katalogu je vypnutý pro prostředí {bootstrapStatus.environment}.</p>
+          ) : null}
+          {seedInfo ? <p>{seedInfo}</p> : null}
+          <StateView
+            title="Prázdný stav"
+            description="Ve skladu zatím nejsou položky."
+            stateKey="empty"
+            action={<Link className="k-button" to="/sklad/nova">Nová položka</Link>}
+          />
+        </>
+      ) : (
+        <>
+          <div className="k-toolbar">
+            {bootstrapAction}
+            <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>
+              Inventurní protokol (PDF)
+            </button>
+            <Link className="k-button" to="/sklad/nova">Nová položka</Link>
+          </div>
+          {bootstrapStatus && !bootstrapStatus.enabled ? (
+            <p>Bootstrap katalogu je vypnutý pro prostředí {bootstrapStatus.environment}.</p>
+          ) : null}
+          {seedInfo ? <p>{seedInfo}</p> : null}
+          <div className="k-card">
+            <h2>Ingredience</h2>
+            <DataTable
+              headers={['Ikona', 'Položka', 'Skladem', 'Minimum', 'Jednotka', 'Dodavatel', 'Status', 'Akce']}
+              rows={items.map((item) => [
+                item.pictogram_thumb_path ? (
+                  <img
+                    key={`pic-${item.id}`}
+                    src={`/api/v1/inventory/${item.id}/pictogram/thumb`}
+                    alt={`Piktogram ${item.name}`}
+                    className="k-pictogram-thumb k-pictogram-thumb-small"
+                  />
+                ) : (
+                  '-'
+                ),
+                item.name,
+                item.current_stock,
+                item.min_stock,
+                item.unit,
+                item.supplier ?? '-',
+                item.current_stock <= item.min_stock
+                  ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge>
+                  : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>,
+                <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>,
+              ])}
+            />
+          </div>
+          <div className="k-card">
+            <div className="k-toolbar">
+              <h2>Nová skladová karta</h2>
+              <button className="k-button" type="button" onClick={() => void saveCard()}>
+                Uložit kartu
+              </button>
+            </div>
+            <div className="k-form-grid">
+              <FormField id="inventory_card_type" label="Typ dokladu">
+                <select
+                  id="inventory_card_type"
+                  className="k-select"
+                  value={cardPayload.card_type}
+                  onChange={(event) => setCardPayload((prev) => ({ ...prev, card_type: event.target.value as InventoryCardType }))}
+                >
+                  <option value="in">Příjemka</option>
+                  <option value="out">Výdejka</option>
+                  <option value="adjust">Odpis</option>
+                </select>
+              </FormField>
+              <FormField id="inventory_card_date" label="Datum dokladu">
+                <input
+                  id="inventory_card_date"
+                  type="date"
+                  className="k-input"
+                  value={cardPayload.card_date}
+                  onChange={(event) => setCardPayload((prev) => ({ ...prev, card_date: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="inventory_card_supplier" label="Dodavatel">
+                <input
+                  id="inventory_card_supplier"
+                  className="k-input"
+                  value={cardPayload.supplier ?? ''}
+                  onChange={(event) => setCardPayload((prev) => ({ ...prev, supplier: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="inventory_card_reference" label="Reference">
+                <input
+                  id="inventory_card_reference"
+                  className="k-input"
+                  value={cardPayload.reference ?? ''}
+                  onChange={(event) => setCardPayload((prev) => ({ ...prev, reference: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="inventory_card_note" label="Poznámka">
+                <input
+                  id="inventory_card_note"
+                  className="k-input"
+                  value={cardPayload.note ?? ''}
+                  onChange={(event) => setCardPayload((prev) => ({ ...prev, note: event.target.value }))}
+                />
+              </FormField>
+            </div>
+            {cardPayload.items.map((line, index) => (
+              <div className="k-form-grid" key={`card-line-${index}`}>
+                <FormField id={`inventory_card_ingredient_${index}`} label={`Ingredience ${index + 1}`}>
+                  <select
+                    id={`inventory_card_ingredient_${index}`}
+                    className="k-select"
+                    value={line.ingredient_id}
+                    onChange={(event) => updateCardLine(index, { ingredient_id: Number(event.target.value) })}
+                  >
+                    {items.map((item) => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField id={`inventory_card_quantity_base_${index}`} label="Množství ve skladové jednotce">
+                  <input
+                    id={`inventory_card_quantity_base_${index}`}
+                    type="number"
+                    className="k-input"
+                    value={line.quantity_base}
+                    onChange={(event) => updateCardLine(index, { quantity_base: Number(event.target.value) })}
+                  />
+                </FormField>
+                <FormField id={`inventory_card_quantity_pieces_${index}`} label="Počet kusů">
+                  <input
+                    id={`inventory_card_quantity_pieces_${index}`}
+                    type="number"
+                    className="k-input"
+                    value={line.quantity_pieces}
+                    onChange={(event) => updateCardLine(index, { quantity_pieces: Number(event.target.value) })}
+                  />
+                </FormField>
+                <FormField id={`inventory_card_note_${index}`} label="Poznámka řádku">
+                  <input
+                    id={`inventory_card_note_${index}`}
+                    className="k-input"
+                    value={line.note ?? ''}
+                    onChange={(event) => updateCardLine(index, { note: event.target.value })}
+                  />
+                </FormField>
+                <div className="k-align-end">
+                  <button className="k-button secondary" type="button" onClick={() => removeCardLine(index)}>
+                    Odebrat řádek
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="k-toolbar">
+              <button className="k-button secondary" type="button" onClick={addCardLine}>
+                Přidat řádek
+              </button>
+            </div>
+            {cardInfo ? <p>{cardInfo}</p> : null}
+          </div>
+          <div className="k-card">
+            <h2>Skladové karty</h2>
+            <DataTable
+              headers={['Doklad', 'Datum', 'Typ', 'Dodavatel', 'Reference', 'Poznámka']}
+              rows={cards.map((card) => [
+                card.number,
+                formatDateTime(card.card_date),
+                inventoryCardTypeLabel(card.card_type),
+                card.supplier ?? '-',
+                card.reference ?? '-',
+                card.note ?? '-',
+              ])}
+            />
+          </div>
+          <div className="k-card">
+            <h2>Pohyby</h2>
+            <DataTable
+              headers={['Doklad', 'Datum', 'Typ', 'Položka', 'Množství', 'Ks', 'Poznámka']}
+              rows={movements.map((movement) => [
+                movement.card_number ?? movement.document_number ?? '-',
+                formatDateTime(movement.document_date ?? movement.created_at),
+                inventoryMovementLabel(movement.movement_type),
+                movement.item_name ?? '-',
+                `${movement.quantity} ${movement.unit ?? ''}`.trim(),
+                movement.quantity_pieces ?? 0,
+                movement.note ?? '-',
+              ])}
+            />
+          </div>
+        </>
+      )}
+    </main>
+  );
+}
+
 function GenericModule({ title }: { title: string }): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, title, '/');
@@ -2785,7 +3388,7 @@ function UsersAdmin(): JSX.Element {
   const [createLastName, setCreateLastName] = React.useState('');
   const [createEmail, setCreateEmail] = React.useState('');
   const [createPassword, setCreatePassword] = React.useState('');
-  const [createRoles, setCreateRoles] = React.useState<PortalRole[]>([]);
+  const [createRoles, setCreateRoles] = React.useState<ManagedPortalRole[]>([]);
   const [createPhone, setCreatePhone] = React.useState('');
   const [createNote, setCreateNote] = React.useState('');
 
@@ -2796,7 +3399,7 @@ function UsersAdmin(): JSX.Element {
   const [editFirstName, setEditFirstName] = React.useState('');
   const [editLastName, setEditLastName] = React.useState('');
   const [editEmail, setEditEmail] = React.useState('');
-  const [editRoles, setEditRoles] = React.useState<PortalRole[]>([]);
+  const [editRoles, setEditRoles] = React.useState<ManagedPortalRole[]>([]);
   const [editPhone, setEditPhone] = React.useState('');
   const [editNote, setEditNote] = React.useState('');
 
@@ -2987,11 +3590,15 @@ function UsersAdmin(): JSX.Element {
     }
   }
 
-  const roleToggle = (selectedRoles: PortalRole[], setter: (value: PortalRole[]) => void, role: PortalRole): void => {
+  const roleToggle = (
+    selectedRoles: ManagedPortalRole[],
+    setter: (value: ManagedPortalRole[]) => void,
+    role: ManagedPortalRole
+  ): void => {
     setter(selectedRoles.includes(role) ? selectedRoles.filter((item) => item !== role) : [...selectedRoles, role]);
   };
 
-  const roleLabel = (role: string): string => portalRoleLabels[role as PortalRole] ?? role;
+  const roleLabel = (role: string): string => managedPortalRoleLabels[role as ManagedPortalRole] ?? role;
 
   const normalizeSearchValue = (value: string): string =>
     value
@@ -3184,13 +3791,13 @@ function UsersAdmin(): JSX.Element {
                     <textarea id="edit_note" className="k-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
                   </FormField>
                   <fieldset className="k-card"><legend>Role</legend>
-                    {portalRoleOptions.map((role) => (
+                    {managedPortalRoleOptions.map((role) => (
                       <label key={`edit-role-${role}`} className="k-role-label">
-                        <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {portalRoleLabels[role]}
+                        <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {managedPortalRoleLabels[role]}
                       </label>
                     ))}
                   </fieldset>
-                  <small>Admin přístup se nastavuje mimo role portálu.</small>
+                  <small>Role administratora je spravovana stejne jako ostatni role uzivatele.</small>
                   <div className="k-toolbar">
                     <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={!editValid || saving}>Upravit</button>
                     <button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>
@@ -3237,13 +3844,13 @@ function UsersAdmin(): JSX.Element {
                   <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
                 </FormField>
                 <fieldset className="k-card"><legend>Role</legend>
-                  {portalRoleOptions.map((role) => (
+                    {managedPortalRoleOptions.map((role) => (
                     <label key={`create-role-${role}`} className="k-role-label">
-                      <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {portalRoleLabels[role]}
+                      <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {managedPortalRoleLabels[role]}
                     </label>
                   ))}
                 </fieldset>
-                <small>Admin přístup se nastavuje mimo role portálu.</small>
+                <small>Role administratora je spravovana stejne jako ostatni role uzivatele.</small>
                 <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>Vytvořit uživatele</button>
               </div>
             </Card>
@@ -3378,6 +3985,7 @@ function SettingsAdmin(): JSX.Element {
       });
       setMessage('SMTP nastavení bylo uloženo.');
       setPassword('');
+      load();
     } catch {
       setError('SMTP nastavení se nepodařilo uložit.');
     } finally {
@@ -3436,6 +4044,7 @@ function SettingsAdmin(): JSX.Element {
         method: 'POST',
         body: JSON.stringify({ recipient }),
       });
+      load();
       setMessage('Testovací e-mail byl odeslán.');
       setTestDialog({
         phase: 'success',
@@ -3463,6 +4072,22 @@ function SettingsAdmin(): JSX.Element {
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
       {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
       {loading ? <SkeletonPage /> : (
+        <>
+        <Card title="Provozni stav">
+          <DataTable
+            headers={['Polozka', 'Stav']}
+            rows={[
+              ['Konfigurace ulozena', status?.configured ? 'Ano' : 'Ne'],
+              ['ENV odesilani povoleno', status?.smtp_enabled ? 'Ano' : 'Ne'],
+              ['Rezim doruceni', status?.delivery_mode === 'smtp' ? 'Realne SMTP' : status?.delivery_mode === 'mock' ? 'Mock / no-op' : 'Nenakonfigurovano'],
+              ['Realne odeslani mozne', status?.can_send_real_email ? 'Ano' : 'Ne'],
+              ['Posledni test', status?.last_tested_at ? formatDateTime(status.last_tested_at) : 'Jeste nebehl'],
+              ['Posledni prijemce', status?.last_test_recipient ?? '-'],
+              ['Posledni vysledek', status?.last_test_success == null ? 'Bez zaznamu' : status.last_test_success ? 'Uspech' : 'Selhani'],
+              ['Posledni chyba', status?.last_test_error ?? '-'],
+            ]}
+          />
+        </Card>
         <Card title="E-mailová konfigurace">
           <div className="k-form-grid">
             <FormField id="smtp_host" label="SMTP host">
@@ -3492,6 +4117,7 @@ function SettingsAdmin(): JSX.Element {
             </div>
           </div>
         </Card>
+        </>
       )}
       {testDialog ? (
         <div className="k-modal-backdrop" role="presentation">
@@ -3685,6 +4311,8 @@ type AccessDeniedProps = {
   userId: string;
 };
 
+type AuthLoadState = { status: 'loading' } | ResolvedAuthState;
+
 function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX.Element {
   return (
     <main className="k-page" data-testid="access-denied-page">
@@ -3698,12 +4326,159 @@ function AccessDeniedPage({ moduleLabel, role, userId }: AccessDeniedProps): JSX
   );
 }
 
+function AuthStatusPage({
+  description,
+  loginPath,
+  onRetry,
+}: {
+  description: string;
+  loginPath: string;
+  onRetry: () => void;
+}): JSX.Element {
+  return (
+    <main className="k-page" data-testid="auth-status-page">
+      <StateView
+        title="Overeni prihlaseni selhalo"
+        description={description}
+        stateKey="error"
+        action={(
+          <div className="k-toolbar">
+            <button className="k-button" type="button" onClick={onRetry}>Zkusit znovu</button>
+            <Link className="k-button secondary" to={loginPath}>Prejit na prihlaseni</Link>
+          </div>
+        )}
+      />
+    </main>
+  );
+}
+
+function AdminProfilePage(): JSX.Element {
+  const [profile, setProfile] = React.useState<AuthProfileReadModel | null>(null);
+  const [firstName, setFirstName] = React.useState('');
+  const [lastName, setLastName] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [note, setNote] = React.useState('');
+  const [currentPassword, setCurrentPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+
+  const load = React.useCallback(() => {
+    setLoading(true);
+    setError(null);
+    void fetchJson<AuthProfileReadModel>('/api/auth/profile')
+      .then((data) => {
+        setProfile(data);
+        setFirstName(data.first_name);
+        setLastName(data.last_name);
+        setPhone(data.phone ?? '');
+        setNote(data.note ?? '');
+      })
+      .catch(() => setError('Profil se nepodarilo nacist.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  async function saveProfile(): Promise<void> {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const updated = await fetchJson<AuthProfileReadModel>('/api/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim() || null,
+          note: note.trim() || null,
+        }),
+      });
+      setProfile(updated);
+      setMessage('Profil byl ulozen.');
+    } catch {
+      setError('Profil se nepodarilo ulozit.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changePassword(): Promise<void> {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await fetchJson('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          old_password: currentPassword,
+          new_password: newPassword,
+        }),
+      });
+      window.location.assign('/admin/login');
+    } catch {
+      setError('Zmena hesla se nepodarila.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <main className="k-page" data-testid="admin-profile-page">
+      <h1>Profil administratora</h1>
+      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={load}>Zkusit znovu</button>} /> : null}
+      {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
+      {loading || profile === null ? <SkeletonPage /> : (
+        <div className="k-grid cards-2">
+          <Card title="Profil">
+            <div className="k-form-grid">
+              <FormField id="admin_profile_email" label="Email">
+                <input id="admin_profile_email" className="k-input" value={profile.email} readOnly />
+              </FormField>
+              <FormField id="admin_profile_first_name" label="Jmeno">
+                <input id="admin_profile_first_name" className="k-input" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+              </FormField>
+              <FormField id="admin_profile_last_name" label="Prijmeni">
+                <input id="admin_profile_last_name" className="k-input" value={lastName} onChange={(event) => setLastName(event.target.value)} />
+              </FormField>
+              <FormField id="admin_profile_phone" label="Telefon">
+                <input id="admin_profile_phone" className="k-input" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+420123456789" />
+              </FormField>
+              <FormField id="admin_profile_note" label="Poznamka">
+                <textarea id="admin_profile_note" className="k-input" value={note} onChange={(event) => setNote(event.target.value)} />
+              </FormField>
+              <button className="k-button" type="button" onClick={() => void saveProfile()} disabled={saving}>Ulozit profil</button>
+            </div>
+          </Card>
+          <Card title="Zmena hesla">
+            <div className="k-form-grid">
+              <FormField id="admin_profile_current_password" label="Aktualni heslo">
+                <input id="admin_profile_current_password" className="k-input" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+              </FormField>
+              <FormField id="admin_profile_new_password" label="Nove heslo">
+                <input id="admin_profile_new_password" className="k-input" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+              </FormField>
+              <button className="k-button" type="button" onClick={() => void changePassword()} disabled={saving || currentPassword.length < 8 || newPassword.length < 8}>Zmenit heslo</button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </main>
+  );
+}
+
 type LoginErrorState = {
   title: string;
   description: string;
 };
 
-function AdminLoginPage(): JSX.Element {
+function AdminLoginPage({ authError = null }: { authError?: string | null }): JSX.Element {
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('admin', lang);
@@ -3809,7 +4584,7 @@ type AdminRoleView = Role;
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const [auth, setAuth] = React.useState<AuthProfile | null>(null);
+  const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
   const [roleView, setRoleView] = React.useState<AdminRoleView>(() => {
     if (typeof window === 'undefined') {
       return 'admin';
@@ -3828,20 +4603,15 @@ function AppRoutes(): JSX.Element {
     return base;
   }, [adminLocale]);
 
-  React.useEffect(() => {
-    void resolveAuthProfile()
-      .then(setAuth)
-      .catch(() =>
-        setAuth({
-          userId: 'anonymous',
-          role: 'recepce',
-          roles: ['recepce'],
-          activeRole: null,
-          permissions: rolePermissions('recepce'),
-          actorType: 'portal',
-        })
-      );
+  const refreshAuth = React.useCallback(() => {
+    void resolveAuthProfile().then(setAuthState);
   }, []);
+
+  React.useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
+
+  const auth = authState.status === 'authenticated' ? authState.profile : null;
 
   React.useEffect(() => {
     if (auth?.role === 'admin' && typeof window !== 'undefined') {
@@ -3849,22 +4619,28 @@ function AppRoutes(): JSX.Element {
     }
   }, [auth?.role, roleView]);
 
-  if (!auth) {
+  if (authState.status === 'loading') {
     return <SkeletonPage />;
   }
 
   if (location.pathname === '/login') {
-    if (auth.actorType === 'admin') {
+    if (auth?.actorType === 'admin') {
       return <Navigate to="/" replace />;
     }
-    return <AdminLoginPage />;
+    return <AdminLoginPage authError={authState.status === 'error' ? authState.message : null} />;
   }
 
-  if (auth.actorType !== 'admin') {
+  if (authState.status === 'error') {
+    return <AuthStatusPage description={authState.message} loginPath="/login" onRetry={refreshAuth} />;
+  }
+
+  if (!auth || auth.actorType !== 'admin') {
     return <Navigate to="/login" replace />;
   }
 
-  const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
+  const testNav = qaRuntimeEnabled && typeof window !== 'undefined'
+    ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__
+    : undefined;
   const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
     ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
     : [];

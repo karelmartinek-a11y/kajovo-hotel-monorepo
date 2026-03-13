@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KajovoSign } from '@kajovo/ui';
+import { KajovoSign, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 export function PortalLoginPage(): JSX.Element {
@@ -113,6 +113,7 @@ export function PortalLoginPage(): JSX.Element {
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="portal-login-title">{copy.title}</h1>
         <p className="k-login-copy">{copy.description}</p>
+        {authError ? <StateView title="Overeni prihlaseni selhalo" description={authError} stateKey="error" /> : null}
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">
             {copy.emailLabel}

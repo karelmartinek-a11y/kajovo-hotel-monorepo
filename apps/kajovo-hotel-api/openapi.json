@@ -150,6 +150,109 @@
         "title": "AuthIdentityResponse",
         "type": "object"
       },
+      "AuthProfileRead": {
+        "properties": {
+          "actor_type": {
+            "title": "Actor Type",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "email",
+          "first_name",
+          "last_name",
+          "actor_type"
+        ],
+        "title": "AuthProfileRead",
+        "type": "object"
+      },
+      "AuthProfileUpdate": {
+        "properties": {
+          "first_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name"
+        ],
+        "title": "AuthProfileUpdate",
+        "type": "object"
+      },
       "Body_import_breakfast_pdf_api_v1_breakfast_import_post": {
         "properties": {
           "file": {
@@ -961,6 +1064,405 @@
         "title": "InventoryAuditLogRead",
         "type": "object"
       },
+      "InventoryBootstrapStatusRead": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "environment"
+        ],
+        "title": "InventoryBootstrapStatusRead",
+        "type": "object"
+      },
+      "InventoryCardCreate": {
+        "properties": {
+          "card_date": {
+            "format": "date",
+            "title": "Card Date",
+            "type": "string"
+          },
+          "card_type": {
+            "$ref": "#/components/schemas/InventoryCardType"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryCardItemCreate"
+            },
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "supplier": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier"
+          }
+        },
+        "required": [
+          "card_type",
+          "card_date",
+          "items"
+        ],
+        "title": "InventoryCardCreate",
+        "type": "object"
+      },
+      "InventoryCardDetailRead": {
+        "properties": {
+          "card_date": {
+            "format": "date",
+            "title": "Card Date",
+            "type": "string"
+          },
+          "card_type": {
+            "$ref": "#/components/schemas/InventoryCardType"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryCardItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "supplier": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "card_type",
+          "card_date",
+          "id",
+          "number",
+          "created_at",
+          "updated_at",
+          "items"
+        ],
+        "title": "InventoryCardDetailRead",
+        "type": "object"
+      },
+      "InventoryCardItemCreate": {
+        "properties": {
+          "ingredient_id": {
+            "minimum": 1.0,
+            "title": "Ingredient Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "quantity_base": {
+            "minimum": 1.0,
+            "title": "Quantity Base",
+            "type": "integer"
+          },
+          "quantity_pieces": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Quantity Pieces",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ingredient_id",
+          "quantity_base"
+        ],
+        "title": "InventoryCardItemCreate",
+        "type": "object"
+      },
+      "InventoryCardItemRead": {
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ingredient_id": {
+            "minimum": 1.0,
+            "title": "Ingredient Id",
+            "type": "integer"
+          },
+          "ingredient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Name"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "quantity_base": {
+            "minimum": 1.0,
+            "title": "Quantity Base",
+            "type": "integer"
+          },
+          "quantity_pieces": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Quantity Pieces",
+            "type": "integer"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "ingredient_id",
+          "quantity_base",
+          "id",
+          "card_id",
+          "created_at"
+        ],
+        "title": "InventoryCardItemRead",
+        "type": "object"
+      },
+      "InventoryCardRead": {
+        "properties": {
+          "card_date": {
+            "format": "date",
+            "title": "Card Date",
+            "type": "string"
+          },
+          "card_type": {
+            "$ref": "#/components/schemas/InventoryCardType"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "supplier": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "card_type",
+          "card_date",
+          "id",
+          "number",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "InventoryCardRead",
+        "type": "object"
+      },
+      "InventoryCardType": {
+        "enum": [
+          "in",
+          "out",
+          "adjust"
+        ],
+        "title": "InventoryCardType",
+        "type": "string"
+      },
       "InventoryItemCreate": {
         "properties": {
           "amount_per_piece_base": {
@@ -1454,6 +1956,12 @@
             "minimum": 1.0,
             "title": "Quantity",
             "type": "integer"
+          },
+          "quantity_pieces": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Quantity Pieces",
+            "type": "integer"
           }
         },
         "required": [
@@ -1466,6 +1974,39 @@
       },
       "InventoryMovementRead": {
         "properties": {
+          "card_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Id"
+          },
+          "card_item_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Item Id"
+          },
+          "card_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Number"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -1521,6 +2062,17 @@
             "title": "Item Id",
             "type": "integer"
           },
+          "item_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Name"
+          },
           "movement_type": {
             "$ref": "#/components/schemas/InventoryMovementType"
           },
@@ -1540,6 +2092,23 @@
             "minimum": 1.0,
             "title": "Quantity",
             "type": "integer"
+          },
+          "quantity_pieces": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Quantity Pieces",
+            "type": "integer"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
           }
         },
         "required": [
@@ -2429,6 +2998,28 @@
         "title": "PortalLoginRequest",
         "type": "object"
       },
+      "PortalPasswordChangeRequest": {
+        "properties": {
+          "new_password": {
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          },
+          "old_password": {
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "Old Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "PortalPasswordChangeRequest",
+        "type": "object"
+      },
       "PortalUserCreate": {
         "properties": {
           "email": {
@@ -2855,6 +3446,79 @@
         "title": "SelectRoleRequest",
         "type": "object"
       },
+      "SmtpOperationalStatusRead": {
+        "properties": {
+          "can_send_real_email": {
+            "title": "Can Send Real Email",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "delivery_mode": {
+            "title": "Delivery Mode",
+            "type": "string"
+          },
+          "last_test_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Error"
+          },
+          "last_test_recipient": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Recipient"
+          },
+          "last_test_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Success"
+          },
+          "last_tested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Tested At"
+          },
+          "smtp_enabled": {
+            "title": "Smtp Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "configured",
+          "smtp_enabled",
+          "delivery_mode",
+          "can_send_real_email"
+        ],
+        "title": "SmtpOperationalStatusRead",
+        "type": "object"
+      },
       "SmtpSettingsRead": {
         "properties": {
           "host": {
@@ -2956,12 +3620,24 @@
       },
       "SmtpTestEmailResponse": {
         "properties": {
+          "delivery_mode": {
+            "title": "Delivery Mode",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
           "ok": {
             "default": true,
             "title": "Ok",
             "type": "boolean"
           }
         },
+        "required": [
+          "delivery_mode",
+          "message"
+        ],
         "title": "SmtpTestEmailResponse",
         "type": "object"
       },
@@ -3109,6 +3785,47 @@
         ]
       }
     },
+    "/api/auth/change-password": {
+      "post": {
+        "operationId": "change_own_password_api_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalPasswordChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Own Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/auth/forgot-password": {
       "post": {
         "operationId": "forgot_password_api_auth_forgot_password_post",
@@ -3228,6 +3945,66 @@
           }
         },
         "summary": "Auth Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/profile": {
+      "get": {
+        "operationId": "auth_profile_api_auth_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Auth Profile",
+        "tags": [
+          "auth"
+        ]
+      },
+      "patch": {
+        "operationId": "update_auth_profile_api_auth_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthProfileUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProfileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Auth Profile",
         "tags": [
           "auth"
         ]
@@ -3488,6 +4265,27 @@
           }
         },
         "summary": "Put Smtp Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/smtp/status": {
+      "get": {
+        "operationId": "get_smtp_status_api_v1_admin_settings_smtp_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmtpOperationalStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Smtp Status",
         "tags": [
           "settings"
         ]
@@ -4250,6 +5048,238 @@
           }
         },
         "summary": "Create Item",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/bootstrap-status": {
+      "get": {
+        "operationId": "get_inventory_bootstrap_status_api_v1_inventory_bootstrap_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryBootstrapStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Inventory Bootstrap Status",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/cards": {
+      "get": {
+        "operationId": "list_cards_api_v1_inventory_cards_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryCardRead"
+                  },
+                  "title": "Response List Cards Api V1 Inventory Cards Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Cards",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "post": {
+        "operationId": "create_card_api_v1_inventory_cards_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InventoryCardCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryCardDetailRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Card",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/cards/{card_id}": {
+      "delete": {
+        "operationId": "delete_card_api_v1_inventory_cards__card_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card_id",
+            "required": true,
+            "schema": {
+              "title": "Card Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Card",
+        "tags": [
+          "inventory"
+        ]
+      },
+      "get": {
+        "operationId": "get_card_api_v1_inventory_cards__card_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card_id",
+            "required": true,
+            "schema": {
+              "title": "Card Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryCardDetailRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Card",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/ingredients": {
+      "get": {
+        "operationId": "list_items_api_v1_inventory_ingredients_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "low_stock",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Low Stock",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryItemRead"
+                  },
+                  "title": "Response List Items Api V1 Inventory Ingredients Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Items",
+        "tags": [
+          "inventory"
+        ]
+      }
+    },
+    "/api/v1/inventory/movements": {
+      "get": {
+        "operationId": "list_movements_api_v1_inventory_movements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryMovementRead"
+                  },
+                  "title": "Response List Movements Api V1 Inventory Movements Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Movements",
         "tags": [
           "inventory"
         ]
@@ -6210,6 +7240,254 @@
         "summary": "Send User Reset Link",
         "tags": [
           "users"
+        ]
+      }
+    },
+    "/device/challenge": {
+      "post": {
+        "operationId": "device_challenge_device_challenge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceChallengeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceChallengeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Device Challenge",
+        "tags": [
+          "device"
+        ]
+      }
+    },
+    "/device/register": {
+      "post": {
+        "operationId": "device_register_device_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRegisterIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Device Register",
+        "tags": [
+          "device"
+        ]
+      }
+    },
+    "/device/status": {
+      "get": {
+        "operationId": "device_status_device_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "device_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Device Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Device-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Device Status",
+        "tags": [
+          "device"
+        ]
+      }
+    },
+    "/device/verify": {
+      "post": {
+        "operationId": "device_verify_device_verify_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Device-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceVerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceVerifyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Device Verify",
+        "tags": [
+          "device"
+        ]
+      }
+    },
+    "/device/{device_id}/status": {
+      "get": {
+        "operationId": "device_status_compat_device__device_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "device_id",
+            "required": true,
+            "schema": {
+              "title": "Device Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Device Status Compat",
+        "tags": [
+          "device"
         ]
       }
     },

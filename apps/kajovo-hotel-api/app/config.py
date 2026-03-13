@@ -59,6 +59,8 @@ class Settings(BaseSettings):
         ]
     )
     session_max_age_seconds: int = 3600
+    device_token_pepper: str = ""
+    device_challenge_max_age_seconds: int = 300
     content_security_policy: str = (
         "default-src 'self'; "
         "img-src 'self' data:; "

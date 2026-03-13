@@ -17,7 +17,7 @@ const csrfHeader = async (api: Awaited<ReturnType<typeof request.newContext>>): 
 };
 
 test.describe('Auth smoke scenarios', () => {
-  test('admin login (fixed admin) is deterministic', async ({ baseURL }) => {
+  test('admin login works against the seeded admin account', async ({ baseURL }) => {
     const api = await request.newContext({
       baseURL,
       ignoreHTTPSErrors: true,
@@ -25,23 +25,23 @@ test.describe('Auth smoke scenarios', () => {
 
     // First successful login always clears potential lockout state from previous runs.
     const preflight = await api.post('/api/auth/admin/login', {
-      data: { email: fixedAdmin.email, password: fixedAdmin.password },
+      data: { email: seededAdmin.email, password: seededAdmin.password },
     });
     expect(preflight.status()).toBe(200);
 
     const invalid = await api.post('/api/auth/admin/login', {
-      data: { email: fixedAdmin.email, password: 'wrong-password' },
+      data: { email: seededAdmin.email, password: 'wrong-password' },
     });
     expect(invalid.status()).toBe(401);
 
     const response = await api.post('/api/auth/admin/login', {
-      data: { email: fixedAdmin.email, password: fixedAdmin.password },
+      data: { email: seededAdmin.email, password: seededAdmin.password },
     });
     expect(response.status()).toBe(200);
 
     const payload = await response.json();
     expect(payload).toMatchObject({
-      email: fixedAdmin.email,
+      email: seededAdmin.email,
       role: 'admin',
       actor_type: 'admin',
     });
@@ -58,12 +58,12 @@ test.describe('Auth smoke scenarios', () => {
     const api = await request.newContext({ baseURL });
 
     const login = await api.post('/api/auth/admin/login', {
-      data: { email: fixedAdmin.email, password: fixedAdmin.password },
+      data: { email: seededAdmin.email, password: seededAdmin.password },
     });
     expect(login.status()).toBe(200);
 
     const response = await api.post('/api/auth/admin/hint', {
-      data: { email: fixedAdmin.email },
+      data: { email: seededAdmin.email },
       headers: await csrfHeader(api),
     });
 
@@ -84,14 +84,17 @@ test.describe('Auth smoke scenarios', () => {
     const adminApi = await request.newContext({ baseURL });
 
     const login = await adminApi.post('/api/auth/admin/login', {
-      data: { email: fixedAdmin.email, password: fixedAdmin.password },
+      data: { email: seededAdmin.email, password: seededAdmin.password },
     });
     expect(login.status()).toBe(200);
 
     const unique = Date.now();
     const portalUser = {
       email: `portal-smoke-${unique}@kajovohotel.local`,
+      first_name: 'Portal',
+      last_name: 'Smoke',
       password: `Portal-${unique}!`,
+      roles: ['recepce'],
     };
 
     const createResponse = await adminApi.post('/api/v1/users', {

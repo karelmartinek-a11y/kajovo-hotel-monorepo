@@ -35,7 +35,13 @@ test.describe('CI smoke auth flows', () => {
     const userPassword = `Smoke-${suffix}-pass`;
 
     const createUserResponse = await request.post('/api/v1/users', {
-      data: { email: userEmail, password: userPassword },
+      data: {
+        email: userEmail,
+        password: userPassword,
+        first_name: 'Smoke',
+        last_name: 'User',
+        roles: ['recepce'],
+      },
       headers: csrfHeaders,
     });
     expect(createUserResponse.status()).toBe(201);

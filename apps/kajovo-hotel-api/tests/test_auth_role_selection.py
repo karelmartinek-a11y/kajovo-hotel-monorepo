@@ -31,6 +31,10 @@ def csrf_header(jar: CookieJar) -> dict[str, str]:
     return {"x-csrf-token": token} if token else {}
 
 
+def session_cookie_value(jar: CookieJar) -> str:
+    return next((c.value for c in jar if c.name == "kajovo_session"), "")
+
+
 def test_multi_role_user_must_select_active_role(api_base_url: str, api_request) -> None:
     status, created = api_request(
         "/api/v1/users",
@@ -85,4 +89,53 @@ def test_multi_role_user_must_select_active_role(api_base_url: str, api_request)
     assert status == 200
     assert isinstance(me_after, dict)
     assert me_after.get("active_role") == "recepce"
+
+
+def test_logout_revokes_server_side_session(api_base_url: str, api_request) -> None:
+    status, created = api_request(
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "first_name": "Logout",
+            "last_name": "Check",
+            "email": "logout.check@example.com",
+            "password": "logout-check-pass",
+            "roles": ["recepce"],
+        },
+    )
+    assert status == 201
+    assert isinstance(created, dict)
+
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = raw_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "logout.check@example.com", "password": "logout-check-pass"},
+    )
+    assert status == 200
+    stale_session_cookie = session_cookie_value(jar)
+    assert stale_session_cookie
+
+    status, body = raw_request(
+        opener,
+        api_base_url,
+        "/api/auth/logout",
+        method="POST",
+        headers=csrf_header(jar),
+    )
+    assert status == 200
+    assert body == {"ok": True}
+
+    status, denied = raw_request(
+        opener,
+        api_base_url,
+        "/api/auth/me",
+        headers={"Cookie": f"kajovo_session={stale_session_cookie}"},
+    )
+    assert status == 401
+    assert isinstance(denied, dict)
+    assert denied.get("detail") == "Authentication required"
 
