@@ -2578,25 +2578,34 @@ function PortalProfilePage(): JSX.Element {
   );
 }
 
+type AuthLoadState =
+  | { status: 'loading' }
+  | { status: 'authenticated'; profile: AuthProfile }
+  | { status: 'unauthenticated' };
+
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const [auth, setAuth] = React.useState<AuthProfile | null>(null);
+  const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
 
   React.useEffect(() => {
     void resolveAuthProfile()
       .then((resolved) => {
         if (resolved.status === 'authenticated') {
-          setAuth(resolved.profile);
+          setAuthState({ status: 'authenticated', profile: resolved.profile });
           return;
         }
-        setAuth(null);
+        setAuthState({ status: 'unauthenticated' });
       })
       .catch(() => {
-        setAuth(null);
+        setAuthState({ status: 'unauthenticated' });
       });
   }, []);
 
-  if (!auth) {
+  if (authState.status === 'loading') {
+    return <SkeletonPage />;
+  }
+
+  if (authState.status !== 'authenticated') {
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -2606,6 +2615,8 @@ function AppRoutes(): JSX.Element {
       </Routes>
     );
   }
+
+  const auth = authState.profile;
   const modules = ia.modules;
 
   return (
