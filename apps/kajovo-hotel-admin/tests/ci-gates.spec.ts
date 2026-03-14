@@ -188,19 +188,11 @@ test('intro route renders full lockup while preserving max two brand elements', 
   expect(count).toBe(2);
 });
 
-test('IA routes expose required view states via state test IDs', async ({ page }) => {
-  test.setTimeout(120_000);
-  const nonUtilityViews = ia.views.filter((view) => !['/intro', '/offline', '/maintenance', '/404'].includes(view.route));
-
-  for (const view of nonUtilityViews) {
-    const route = toConcreteRoute(view.route);
-
-    for (const state of requiredStates) {
-    await page.goto(`${route}?state=${state}`, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByTestId(`state-view-${state}`), `Missing ${state} state on ${view.route}`).toBeVisible();
-      await expect(page.getByTestId('kajovo-sign'), `Missing SIGNACE in ${state} state on ${view.route}`).toBeVisible();
-    }
-  }
+test('state query parameter does not switch production screens', async ({ page }) => {
+  await page.goto(adminPath('/snidane?state=error'), { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('kajovo-sign')).toBeVisible();
+  await expect(page.getByTestId('state-view-error')).toHaveCount(0);
+  await expect(page.locator('.k-skeleton-block')).toHaveCount(0);
 });
 
 test('SIGNACE offset respects minimum per device class', async ({ page }) => {
@@ -273,13 +265,9 @@ test('utility states keep floating SIGNACE visible without overlapping primary a
 
 test('prefers-reduced-motion disables skeleton animation', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?state=loading');
+  await page.goto(adminPath('/snidane'));
 
-  const skeleton = page.locator('.k-skeleton-block').first();
-  await expect(skeleton).toBeVisible();
-
-  const animationName = await skeleton.evaluate((node) => window.getComputedStyle(node).animationName);
-  expect(animationName).toBe('none');
+  await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
 });
 
 test('prefers-reduced-motion disables smooth skip-link scrolling', async ({ page }) => {

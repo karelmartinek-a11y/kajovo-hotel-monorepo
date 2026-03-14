@@ -2,6 +2,7 @@ import {
   ADMIN_SWITCHABLE_ROLES,
   ROLE_MODULES,
   canReadModule as sharedCanReadModule,
+  parseRole,
   normalizeRole,
   rolePermissionSet,
   type Role,
@@ -67,11 +68,20 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
       };
     }
     const payload = (await response.json()) as AuthMeResponse;
-    const role = normalizeRole(payload.role);
+    const role = parseRole(payload.role);
+    if (!role) {
+      return { status: 'error', message: 'Auth service returned an invalid role.' };
+    }
     const roles = Array.isArray(payload.roles) && payload.roles.length > 0
-      ? payload.roles.map((item) => normalizeRole(item))
+      ? payload.roles.map((item) => parseRole(item)).filter((item): item is Role => item !== null)
       : [role];
-    const activeRole = payload.active_role ? normalizeRole(payload.active_role) : role;
+    if (roles.length === 0) {
+      return { status: 'error', message: 'Auth service returned no valid roles.' };
+    }
+    const activeRole = payload.active_role ? parseRole(payload.active_role) : role;
+    if (!activeRole) {
+      return { status: 'error', message: 'Auth service returned an invalid active role.' };
+    }
     return {
       status: 'authenticated',
       profile: {

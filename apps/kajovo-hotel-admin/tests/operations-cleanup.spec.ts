@@ -160,16 +160,15 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/lost-found', async (route) => {
     await route.fulfill({ json: lostFound });
   });
-  await page.route('**/api/v1/inventory/bootstrap-status', async (route) => {
-    await route.fulfill({ json: { enabled: false, environment: 'test' } });
-  });
   await page.route('**/api/v1/admin/settings/smtp/status', async (route) => {
     await route.fulfill({
       json: {
         configured: true,
         smtp_enabled: false,
-        delivery_mode: 'mock',
+        delivery_mode: 'disabled',
         can_send_real_email: false,
+        last_test_connected: null,
+        last_test_send_attempted: null,
         last_tested_at: null,
         last_test_success: null,
         last_test_recipient: null,
@@ -210,10 +209,19 @@ test('housekeeping admin page is a live handoff, not a dead-end stub', async ({ 
   await expect(page.getByText('Tento modul je určen pro portálové role. Pro zadání použijte portál.')).toHaveCount(0);
 });
 
-test('inventory bootstrap helper stays hidden when disabled', async ({ page }) => {
+test('inventory empty state stays operational without bootstrap helpers', async ({ page }) => {
+  await page.route('**/api/v1/inventory', async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route('**/api/v1/inventory/cards', async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route('**/api/v1/inventory/movements', async (route) => {
+    await route.fulfill({ json: [] });
+  });
   await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();
-  await expect(page.getByText('Bootstrap katalogu je vypnutý pro prostředí test.')).toBeVisible();
+  await expect(page.getByText('Ve skladu zatím nejsou položky.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Doplnit výchozí položky' })).toHaveCount(0);
 });
 
@@ -236,7 +244,7 @@ test('settings page exposes SMTP operational status', async ({ page }) => {
   await page.goto(adminPath('/nastaveni'));
   await expect(page.getByTestId('settings-admin-page')).toBeVisible();
   await expect(page.getByText('Provozn\u00ed stav')).toBeVisible();
-  await expect(page.getByText('Mock / no-op')).toBeVisible();
+  await expect(page.getByText('SMTP není aktivní')).toBeVisible();
   await expect(page.getByText('Je\u0161t\u011b neb\u011bhl')).toBeVisible();
 });
 

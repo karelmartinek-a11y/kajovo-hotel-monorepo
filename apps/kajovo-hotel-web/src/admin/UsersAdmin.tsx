@@ -165,8 +165,7 @@ export function UsersAdmin(): JSX.Element {
   const deleteTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const confirmDeleteRef = React.useRef<HTMLButtonElement | null>(null);
 
-  const roleView = typeof window !== 'undefined' ? window.sessionStorage.getItem('kajovo_admin_role_view') : null;
-  const canDelete = roleView === null || roleView === 'admin';
+  const canDelete = true;
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const e164Regex = /^\+[1-9]\d{1,14}$/;

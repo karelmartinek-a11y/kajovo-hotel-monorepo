@@ -52,6 +52,10 @@ class EmailService(Protocol):
     def send(self, message: MailMessage) -> None: ...
 
 
+class SmtpNotConfiguredError(RuntimeError):
+    pass
+
+
 class MockSmtpTransport:
     def __init__(self) -> None:
         self.sent_messages: list[MailMessage] = []
@@ -167,11 +171,6 @@ class SmtpEmailService:
                 client.send_message(email)
 
 
-class MockEmailService:
-    def send(self, message: MailMessage) -> None:
-        _ = message
-
-
 def send_portal_onboarding(*, service: EmailService, recipient: str) -> None:
     service.send(
         MailMessage(
@@ -220,7 +219,7 @@ def build_email_service(
     transport: MockSmtpTransport | None = None,
 ) -> EmailService:
     if not settings.smtp_enabled or smtp_config is None:
-        return MockEmailService()
+        raise SmtpNotConfiguredError("Real SMTP is not configured")
     return SmtpEmailService(
         sender=settings.smtp_from_email,
         smtp_config=smtp_config,

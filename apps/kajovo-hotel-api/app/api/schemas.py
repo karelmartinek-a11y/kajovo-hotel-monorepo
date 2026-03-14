@@ -677,6 +677,8 @@ class SmtpOperationalStatusRead(BaseModel):
     smtp_enabled: bool
     delivery_mode: str
     can_send_real_email: bool
+    last_test_connected: bool | None = None
+    last_test_send_attempted: bool | None = None
     last_tested_at: datetime | None = None
     last_test_success: bool | None = None
     last_test_recipient: str | None = None
@@ -690,9 +692,8 @@ class SmtpTestEmailRequest(BaseModel):
 class SmtpTestEmailResponse(BaseModel):
     ok: bool = True
     delivery_mode: str
+    connected: bool
+    send_attempted: bool
     message: str
 
 
-class InventoryBootstrapStatusRead(BaseModel):
-    enabled: bool
-    environment: str

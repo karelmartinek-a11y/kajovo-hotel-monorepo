@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.schemas import (
     InventoryAuditLogRead,
-    InventoryBootstrapStatusRead,
     InventoryCardCreate,
     InventoryCardDetailRead,
     InventoryCardItemRead,
@@ -42,38 +41,6 @@ router = APIRouter(
     tags=["inventory"],
     dependencies=[Depends(module_access_dependency("inventory"))],
 )
-
-
-DEFAULT_INVENTORY_ITEMS: list[InventoryItemCreate] = [
-    InventoryItemCreate(
-        name="Mouka",
-        unit="g",
-        min_stock=5,
-        current_stock=12,
-        amount_per_piece_base=1000,
-    ),
-    InventoryItemCreate(
-        name="Cukr",
-        unit="g",
-        min_stock=3,
-        current_stock=8,
-        amount_per_piece_base=1000,
-    ),
-    InventoryItemCreate(
-        name="Káva",
-        unit="g",
-        min_stock=2,
-        current_stock=4,
-        amount_per_piece_base=1000,
-    ),
-    InventoryItemCreate(
-        name="Čaj",
-        unit="ks",
-        min_stock=20,
-        current_stock=80,
-        amount_per_piece_base=1,
-    ),
-]
 
 
 def _log_audit(db: Session, entity: str, resource_id: int, action: str, detail: str) -> None:
@@ -349,38 +316,6 @@ def delete_card(
     _log_audit(db, "card", card.id, "delete", f"Deleted inventory card {card.number}.")
     db.delete(card)
     db.commit()
-
-
-@router.get("/bootstrap-status", response_model=InventoryBootstrapStatusRead)
-def get_inventory_bootstrap_status(
-    _admin: None = Depends(require_role("admin")),
-) -> InventoryBootstrapStatusRead:
-    settings = get_settings()
-    return InventoryBootstrapStatusRead(
-        enabled=settings.inventory_seed_enabled,
-        environment=settings.environment,
-    )
-
-
-@router.post("/seed-defaults", response_model=list[InventoryItemRead], status_code=status.HTTP_201_CREATED)
-def seed_default_items(
-    db: Session = Depends(get_db),
-    _admin: None = Depends(require_role("admin")),
-) -> list[InventoryItem]:
-    existing_names = {name for (name,) in db.execute(select(InventoryItem.name)).all()}
-    created: list[InventoryItem] = []
-    for payload in DEFAULT_INVENTORY_ITEMS:
-        if payload.name in existing_names:
-            continue
-        item = InventoryItem(**payload.model_dump())
-        db.add(item)
-        db.flush()
-        _log_audit(db, "item", item.id, "seed", f"Seeded default inventory item '{item.name}'.")
-        created.append(item)
-    db.commit()
-    for item in created:
-        db.refresh(item)
-    return created
 
 
 @router.post("", response_model=InventoryItemRead, status_code=status.HTTP_201_CREATED)

@@ -27,9 +27,6 @@ test('inventory workbench shows cards and creates a stock card', async ({ page }
   let cards = [] as Array<Record<string, unknown>>;
   await mockAuth(page);
 
-  await page.route('**/api/v1/inventory/bootstrap-status', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ enabled: false, environment: 'test' }) });
-  });
   await page.route('**/api/v1/inventory**', async (route) => {
     await route.fulfill({
       status: 200,

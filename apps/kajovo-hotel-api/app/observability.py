@@ -4,7 +4,7 @@ import time
 import uuid
 from typing import Any
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -69,7 +69,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         module = _module_from_path(request.url.path)
-        actor_id, actor_name, actor_role = parse_identity(request)
+        try:
+            actor_id, actor_name, actor_role = parse_identity(request)
+        except HTTPException:
+            actor_id, actor_name, actor_role = "", "", "unauthenticated"
         actor_role_audit = role_for_audit(actor_role)
         request.state.request_id = request_id
         request.state.actor = actor_name

@@ -85,9 +85,17 @@ export const ROLE_LABELS_EN: Record<Role, string> = {
   sklad: 'Inventory',
 };
 
-export function normalizeRole(raw?: string | null): Role {
+export function parseRole(raw?: string | null): Role | null {
   const normalized = (raw ?? '').trim().toLowerCase();
-  return ROLE_ALIASES[normalized] ?? 'recepce';
+  return ROLE_ALIASES[normalized] ?? null;
+}
+
+export function normalizeRole(raw?: string | null): Role {
+  const role = parseRole(raw);
+  if (!role) {
+    throw new Error(`Unknown role: ${String(raw ?? '')}`);
+  }
+  return role;
 }
 
 export function rolePermissionList(role: Role): Permission[] {

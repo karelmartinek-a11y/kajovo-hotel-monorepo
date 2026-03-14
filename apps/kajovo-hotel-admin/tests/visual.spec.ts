@@ -298,8 +298,10 @@ test.beforeEach(async ({ page }) => {
         json: {
           configured: true,
           smtp_enabled: false,
-          delivery_mode: 'mock',
+          delivery_mode: 'disabled',
           can_send_real_email: false,
+          last_test_connected: null,
+          last_test_send_attempted: null,
           last_tested_at: null,
           last_test_success: null,
           last_test_recipient: null,

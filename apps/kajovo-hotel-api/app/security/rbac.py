@@ -102,26 +102,40 @@ def _repair_text_encoding_drift(value: str) -> str:
     return value
 
 
+def parse_role(raw_role: str | None) -> str | None:
+    role = _repair_text_encoding_drift(raw_role or "").strip().lower()
+    if not role:
+        return None
+    return ROLE_ALIASES.get(role)
+
+
 def normalize_role(raw_role: str | None) -> str:
-    role = _repair_text_encoding_drift(raw_role or 'recepce').strip().lower()
-    return ROLE_ALIASES.get(role, 'recepce')
+    role = parse_role(raw_role)
+    if role is None:
+        raise ValueError(f"Unknown role: {raw_role!r}")
+    return role
 
 
 def role_for_audit(raw_role: str | None) -> str:
-    return ROLE_AUDIT_EXPORT.get(normalize_role(raw_role), 'reception')
+    role = parse_role(raw_role)
+    if role is None:
+        return "unauthenticated"
+    return ROLE_AUDIT_EXPORT.get(role, "unauthenticated")
 
 
 def parse_identity(request: Request) -> tuple[str, str, str]:
     from app.security.auth import require_session
 
-    try:
-        session = require_session(request)
-    except HTTPException:
-        return 'anonymous', 'anonymous', 'recepce'
+    session = require_session(request)
     actor_id = session['email']
     actor_name = session['email']
     selected = session.get('active_role') or session.get('role')
-    actor_role = normalize_role(str(selected) if selected else None)
+    actor_role = parse_role(str(selected) if selected else None)
+    if actor_role is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
     return actor_id, actor_name, actor_role
 
 
@@ -139,7 +153,12 @@ def require_permission(module: str, action: str) -> Callable[[Request], None]:
         session = require_session(request)
         actor_id = session['email']
         selected = session.get('active_role') or session.get('role')
-        actor_role = normalize_role(str(selected) if selected else None)
+        actor_role = parse_role(str(selected) if selected else None)
+        if actor_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Authentication required',
+            )
         request.state.actor_id = actor_id
         request.state.actor_role = actor_role
         if session.get('actor_type') == 'portal' and not session.get('active_role'):
@@ -161,7 +180,7 @@ def require_actor_type(expected_actor_type: str) -> Callable[[Request], None]:
         from app.security.auth import require_session
 
         session = require_session(request)
-        actor_type = session.get('actor_type', 'portal')
+        actor_type = session.get('actor_type')
         if actor_type != expected_actor_type:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -179,7 +198,12 @@ def require_role(expected_role: str) -> Callable[[Request], None]:
 
         session = require_session(request)
         selected = session.get('active_role') or session.get('role')
-        actor_role = normalize_role(str(selected) if selected else None)
+        actor_role = parse_role(str(selected) if selected else None)
+        if actor_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Authentication required',
+            )
         if actor_role != normalized_expected_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -208,7 +232,12 @@ def inject_identity(request: Request) -> None:
     session = require_session(request)
     actor_id = session['email']
     selected = session.get('active_role') or session.get('role')
-    actor_role = normalize_role(str(selected) if selected else None)
+    actor_role = parse_role(str(selected) if selected else None)
+    if actor_role is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
     request.state.actor_id = actor_id
     request.state.actor_role = actor_role
 

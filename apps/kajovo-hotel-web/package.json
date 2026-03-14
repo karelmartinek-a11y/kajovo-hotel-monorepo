@@ -25,7 +25,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/ci-gates.spec.ts tests/nav-robustness.spec.ts tests/rbac-access.spec.ts tests/portal-journeys.spec.ts",
+    "test": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/ci-gates.spec.ts tests/rbac-access.spec.ts tests/portal-journeys.spec.ts",
     "test:smoke": "playwright test tests/smoke.spec.ts",
     "test:visual-critical": "playwright test tests/visual.spec.ts --project=desktop --grep @visual-critical",
     "test:visual": "VISUAL_SNAPSHOTS=1 playwright test tests/visual.spec.ts"

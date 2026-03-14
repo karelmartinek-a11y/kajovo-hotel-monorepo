@@ -173,10 +173,6 @@ export type InventoryAuditLogRead = {
   "id": number;
   "resource_id": number;
 };
-export type InventoryBootstrapStatusRead = {
-  "enabled": boolean;
-  "environment": string;
-};
 export type InventoryCardCreate = {
   "card_date": string;
   "card_type": InventoryCardType;
@@ -479,8 +475,10 @@ export type SmtpOperationalStatusRead = {
   "can_send_real_email": boolean;
   "configured": boolean;
   "delivery_mode": string;
+  "last_test_connected"?: boolean | null;
   "last_test_error"?: string | null;
   "last_test_recipient"?: string | null;
+  "last_test_send_attempted"?: boolean | null;
   "last_test_success"?: boolean | null;
   "last_tested_at"?: string | null;
   "smtp_enabled": boolean;
@@ -505,9 +503,11 @@ export type SmtpTestEmailRequest = {
   "recipient": string;
 };
 export type SmtpTestEmailResponse = {
+  "connected": boolean;
   "delivery_mode": string;
   "message": string;
   "ok"?: boolean;
+  "send_attempted": boolean;
 };
 export type ValidationError = {
   "loc": Array<string | number>;
@@ -663,9 +663,6 @@ export const apiClient = {
   async createItemApiV1InventoryPost(body: InventoryItemCreate): Promise<InventoryItemRead> {
     return request<InventoryItemRead>('POST', `/api/v1/inventory`, undefined, body);
   },
-  async getInventoryBootstrapStatusApiV1InventoryBootstrapStatusGet(): Promise<InventoryBootstrapStatusRead> {
-    return request<InventoryBootstrapStatusRead>('GET', `/api/v1/inventory/bootstrap-status`, undefined, undefined);
-  },
   async listCardsApiV1InventoryCardsGet(): Promise<Array<InventoryCardRead>> {
     return request<Array<InventoryCardRead>>('GET', `/api/v1/inventory/cards`, undefined, undefined);
   },
@@ -683,9 +680,6 @@ export const apiClient = {
   },
   async listMovementsApiV1InventoryMovementsGet(): Promise<Array<InventoryMovementRead>> {
     return request<Array<InventoryMovementRead>>('GET', `/api/v1/inventory/movements`, undefined, undefined);
-  },
-  async seedDefaultItemsApiV1InventorySeedDefaultsPost(): Promise<Array<InventoryItemRead>> {
-    return request<Array<InventoryItemRead>>('POST', `/api/v1/inventory/seed-defaults`, undefined, undefined);
   },
   async exportStocktakePdfApiV1InventoryStocktakePdfGet(): Promise<unknown> {
     return request<unknown>('GET', `/api/v1/inventory/stocktake/pdf`, undefined, undefined);

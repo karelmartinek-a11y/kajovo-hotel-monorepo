@@ -9,7 +9,6 @@ import {
   useLocation,
   useNavigate,
   useParams,
-  useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
 import { Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
@@ -37,7 +36,7 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
-import { normalizeRole, resolveAuthProfile, rolePermissions, type AuthProfile } from './rbac';
+import { normalizeRole, resolveAuthProfile, type AuthProfile } from './rbac';
 import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
 import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
@@ -213,8 +212,11 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
   }
 }
 
-const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = currentDateForTimeZone();
+
+function metricValue(value: number | null): string {
+  return value === null ? '—' : String(value);
+}
 
 
 const IntroRoute = React.lazy(async () => {
@@ -333,20 +335,30 @@ function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStat
   const value = summary?.status_counts?.[status];
   return typeof value === 'number' ? value : 0;
 }
-const stateLabels: Record<ViewState, string> = {
-  default: 'Výchozí',
-  loading: 'Načítání',
-  empty: 'Prázdno',
-  error: 'Chyba',
-  offline: 'Offline',
-  maintenance: 'Údržba',
-  '404': '404',
-};
 
+function compareRoomNumbers(left: string, right: string): number {
+  const leftMatch = left.match(/\d+/);
+  const rightMatch = right.match(/\d+/);
+  if (leftMatch && rightMatch) {
+    const numericDiff = Number(leftMatch[0]) - Number(rightMatch[0]);
+    if (numericDiff !== 0) {
+      return numericDiff;
+    }
+  } else if (leftMatch) {
+    return -1;
+  } else if (rightMatch) {
+    return 1;
+  }
+  return left.localeCompare(right, 'cs-CZ', { numeric: true, sensitivity: 'base' });
+}
+
+function prepareBreakfastListItems(items: BreakfastOrder[]): BreakfastOrder[] {
+  return [...items]
+    .filter((item) => item.guest_count > 0)
+    .sort((left, right) => compareRoomNumbers(left.room_number, right.room_number));
+}
 function useViewState(): ViewState {
-  const [params] = useSearchParams();
-  const input = params.get('state') as ViewState | null;
-  return input && requiredStates.includes(input) ? input : 'default';
+  return 'default';
 }
 
 function stateViewForRoute(state: ViewState, title: string, fallbackRoute: string): JSX.Element | null {
@@ -408,29 +420,11 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
 }
 
 function StateSwitcher(): JSX.Element {
-  const isProd = (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD === true;
-  if (isProd) {
-    return <></>;
-  }
-  return (
-    <div className="k-toolbar">
-      <span>Stavy view:</span>
-      <div className="k-inline-links">
-        {requiredStates.map((state) => (
-          <Link key={state} className="k-nav-link" to={`?state=${state}`}>
-            {stateLabels[state]}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+  return <></>;
 }
 
 function StateMarker({ state }: { state: ViewState }): JSX.Element | null {
-  if (state !== 'default') {
-    return null;
-  }
-  return <span className="k-state-marker" data-testid={`state-view-${state}`} aria-hidden="true" />;
+  return null;
 }
 
 function readCsrfToken(): string {
@@ -659,6 +653,58 @@ function Dashboard(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Přehled', '/');
   const stateMarker = <StateMarker state={state} />;
+  const [todayCount, setTodayCount] = React.useState<number | null>(null);
+  const [tomorrowCount, setTomorrowCount] = React.useState<number | null>(null);
+  const [unresolvedIssuesCount, setUnresolvedIssuesCount] = React.useState<number | null>(null);
+  const [unprocessedLostFoundCount, setUnprocessedLostFoundCount] = React.useState<number | null>(null);
+  const [stockTotal, setStockTotal] = React.useState<number | null>(null);
+  const [stockItemCount, setStockItemCount] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (state !== 'default') {
+      return;
+    }
+
+    const today = currentDateForTimeZone();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = currentDateForTimeZone(tomorrowDate);
+
+    let active = true;
+    Promise.all([
+      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${today}`),
+      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${tomorrow}`),
+      fetchJson<Issue[]>('/api/v1/issues'),
+      fetchJson<LostFoundItem[]>('/api/v1/lost-found?status=new'),
+      fetchJson<InventoryItem[]>('/api/v1/inventory'),
+    ])
+      .then(([todaySummary, tomorrowSummary, issues, lostFoundItems, inventoryItems]) => {
+        if (!active) {
+          return;
+        }
+        setTodayCount(todaySummary.total_guests);
+        setTomorrowCount(tomorrowSummary.total_guests);
+        setUnresolvedIssuesCount(issues.filter((item) => item.status !== 'resolved').length);
+        setUnprocessedLostFoundCount(lostFoundItems.length);
+        setStockTotal(inventoryItems.reduce((total, item) => total + item.current_stock, 0));
+        setStockItemCount(inventoryItems.length);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        setTodayCount(null);
+        setTomorrowCount(null);
+        setUnresolvedIssuesCount(null);
+        setUnprocessedLostFoundCount(null);
+        setStockTotal(null);
+        setStockItemCount(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [state]);
 
   return (
     <main className="k-page" data-testid="dashboard-page">
@@ -666,18 +712,22 @@ function Dashboard(): JSX.Element {
       <h1>Přehled</h1>
       <StateSwitcher />
       {stateUI ?? (
-        <div className="k-grid cards-3">
-          <Card title="Snídaně dnes">
-            <strong>18</strong>
-            <p>3 čekající objednávky</p>
+        <div className="k-grid cards-4 k-dashboard-cards">
+          <Card title="Snídaně dnes a zítra">
+            <strong>{metricValue(todayCount)}</strong>
+            <p>Zítra: {metricValue(tomorrowCount)}</p>
           </Card>
-          <Card title="Závady">
-            <strong>4</strong>
-            <p>1 kritická závada</p>
+          <Card title="Neopravené závady">
+            <strong>{metricValue(unresolvedIssuesCount)}</strong>
+            <p>Aktuálně otevřené závady</p>
           </Card>
-          <Card title="Sklad">
-            <strong>12</strong>
-            <p>2 položky pod minimem</p>
+          <Card title="Nezpracované nálezy">
+            <strong>{metricValue(unprocessedLostFoundCount)}</strong>
+            <p>Položky čekající na zpracování</p>
+          </Card>
+          <Card title="Stav skladu">
+            <strong>{metricValue(stockTotal)}</strong>
+            <p>Položek v evidenci: {metricValue(stockItemCount)}</p>
           </Card>
         </div>
       )}
@@ -750,7 +800,9 @@ function BreakfastList(): JSX.Element {
     };
   }, [loadDay, serviceDate]);
 
-  const filteredItems = items.filter((item) => {
+  const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
+
+  const filteredItems = visibleItems.filter((item) => {
     const term = search.trim().toLowerCase();
     if (!term || isServingView) {
       return true;
@@ -973,7 +1025,7 @@ function BreakfastList(): JSX.Element {
     </div>
   );
 
-  const listItems = isServingView ? items : filteredItems;
+  const listItems = isServingView ? visibleItems : filteredItems;
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -2404,20 +2456,6 @@ function InventoryDetail(): JSX.Element {
   );
 }
 
-function GenericModule({ title }: { title: string }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, title, '/');
-
-  return (
-    <main className="k-page">
-      <h1>{title}</h1>
-      <StateSwitcher />
-      {stateUI ?? <StateView title={`${title} připraveno`} description="Modul je připraven na workflow." />}
-    </main>
-  );
-}
-
-
 function ReportsList(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
@@ -2492,13 +2530,50 @@ function ReportsDetail(): JSX.Element {
 }
 
 function PortalProfilePage(): JSX.Element {
-  const auth = useAuth();
+  const [profile, setProfile] = React.useState<{
+    email: string;
+    first_name: string;
+    last_name: string;
+    phone: string | null;
+    note: string | null;
+    roles: string[];
+  } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetchJson('/api/auth/profile')
+      .then((response) => {
+        setProfile(response as {
+          email: string;
+          first_name: string;
+          last_name: string;
+          phone: string | null;
+          note: string | null;
+          roles: string[];
+        });
+        setError(null);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Profil se nepodařilo načíst.'));
+  }, []);
+
   return (
     <main className="k-page" data-testid="portal-profile-page">
       <h1>Profil</h1>
-      <div className="k-card">
-        <p>{auth?.userId ?? ''}</p>
-      </div>
+      {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+      {profile ? (
+        <div className="k-card">
+          <DataTable
+            headers={['Položka', 'Hodnota']}
+            rows={[
+              ['E-mail', profile.email],
+              ['Jméno', `${profile.first_name} ${profile.last_name}`.trim()],
+              ['Telefon', profile.phone ?? '-'],
+              ['Poznámka', profile.note ?? '-'],
+              ['Role', profile.roles.join(', ') || '-'],
+            ]}
+          />
+        </div>
+      ) : !error ? <SkeletonPage /> : null}
     </main>
   );
 }
@@ -2508,36 +2583,30 @@ function AppRoutes(): JSX.Element {
   const [auth, setAuth] = React.useState<AuthProfile | null>(null);
 
   React.useEffect(() => {
-    const fallbackAuth: AuthProfile = {
-      userId: 'anonymous',
-      role: 'recepce',
-      roles: ['recepce'],
-      activeRole: null,
-      permissions: rolePermissions('recepce'),
-      actorType: 'portal',
-    };
-
     void resolveAuthProfile()
       .then((resolved) => {
         if (resolved.status === 'authenticated') {
           setAuth(resolved.profile);
           return;
         }
-        setAuth(fallbackAuth);
+        setAuth(null);
       })
       .catch(() => {
-        setAuth(fallbackAuth);
+        setAuth(null);
       });
   }, []);
 
   if (!auth) {
-    return <SkeletonPage />;
+    return (
+      <Routes>
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
+        <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
   }
-  const testNav = typeof window !== 'undefined' ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__ : undefined;
-  const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
-    ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
-    : [];
-  const modules = [...ia.modules, ...injectedModules];
+  const modules = ia.modules;
 
   return (
     <AuthContext.Provider value={auth}>

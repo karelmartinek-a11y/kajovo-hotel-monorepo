@@ -1064,24 +1064,6 @@
         "title": "InventoryAuditLogRead",
         "type": "object"
       },
-      "InventoryBootstrapStatusRead": {
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "environment": {
-            "title": "Environment",
-            "type": "string"
-          }
-        },
-        "required": [
-          "enabled",
-          "environment"
-        ],
-        "title": "InventoryBootstrapStatusRead",
-        "type": "object"
-      },
       "InventoryCardCreate": {
         "properties": {
           "card_date": {
@@ -3460,6 +3442,17 @@
             "title": "Delivery Mode",
             "type": "string"
           },
+          "last_test_connected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Connected"
+          },
           "last_test_error": {
             "anyOf": [
               {
@@ -3481,6 +3474,17 @@
               }
             ],
             "title": "Last Test Recipient"
+          },
+          "last_test_send_attempted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Test Send Attempted"
           },
           "last_test_success": {
             "anyOf": [
@@ -3625,6 +3629,10 @@
       },
       "SmtpTestEmailResponse": {
         "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
           "delivery_mode": {
             "title": "Delivery Mode",
             "type": "string"
@@ -3637,10 +3645,16 @@
             "default": true,
             "title": "Ok",
             "type": "boolean"
+          },
+          "send_attempted": {
+            "title": "Send Attempted",
+            "type": "boolean"
           }
         },
         "required": [
           "delivery_mode",
+          "connected",
+          "send_attempted",
           "message"
         ],
         "title": "SmtpTestEmailResponse",
@@ -5058,27 +5072,6 @@
         ]
       }
     },
-    "/api/v1/inventory/bootstrap-status": {
-      "get": {
-        "operationId": "get_inventory_bootstrap_status_api_v1_inventory_bootstrap_status_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InventoryBootstrapStatusRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Inventory Bootstrap Status",
-        "tags": [
-          "inventory"
-        ]
-      }
-    },
     "/api/v1/inventory/cards": {
       "get": {
         "operationId": "list_cards_api_v1_inventory_cards_get",
@@ -5285,31 +5278,6 @@
           }
         },
         "summary": "List Movements",
-        "tags": [
-          "inventory"
-        ]
-      }
-    },
-    "/api/v1/inventory/seed-defaults": {
-      "post": {
-        "operationId": "seed_default_items_api_v1_inventory_seed_defaults_post",
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/InventoryItemRead"
-                  },
-                  "title": "Response Seed Default Items Api V1 Inventory Seed Defaults Post",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Seed Default Items",
         "tags": [
           "inventory"
         ]

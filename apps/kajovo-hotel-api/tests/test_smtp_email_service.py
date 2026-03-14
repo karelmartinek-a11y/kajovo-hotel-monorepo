@@ -286,10 +286,11 @@ def test_smtp_test_email_tolerates_legacy_table_without_status_columns(monkeypat
         )
 
     with Session(engine) as db:
-        response = send_test_email(SmtpTestEmailRequest(recipient="admin@example.com"), db=db)
+        with pytest.raises(Exception) as exc_info:
+            send_test_email(SmtpTestEmailRequest(recipient="admin@example.com"), db=db)
 
-    assert response.ok is True
-    assert response.delivery_mode == "mock"
+    exc = exc_info.value
+    assert getattr(exc, "status_code", None) == 503
 
 
 def test_put_smtp_settings_tolerates_legacy_table_without_status_columns(tmp_path):

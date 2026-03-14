@@ -19,6 +19,7 @@ from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
 from app.services.mail import (
     MailMessage,
+    SmtpNotConfiguredError,
     SmtpSettingsPayload,
     StoredSmtpConfig,
     build_email_service,
@@ -49,9 +50,9 @@ def _stored_from_record(record: PortalSmtpSettings) -> StoredSmtpConfig:
 def _delivery_mode(*, smtp_enabled: bool, configured: bool) -> str:
     if not configured:
         return "unconfigured"
-    if smtp_enabled:
-        return "smtp"
-    return "mock"
+    if not smtp_enabled:
+        return "disabled"
+    return "smtp"
 
 
 def _default_smtp_settings_read() -> SmtpSettingsRead:
@@ -223,6 +224,8 @@ def get_smtp_status(db: Session = Depends(get_db)) -> SmtpOperationalStatusRead:
         smtp_enabled=settings.smtp_enabled,
         delivery_mode=_delivery_mode(smtp_enabled=settings.smtp_enabled, configured=configured),
         can_send_real_email=bool(configured and settings.smtp_enabled),
+        last_test_connected=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
+        last_test_send_attempted=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
         last_tested_at=last_tested_at,
         last_test_success=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
         last_test_recipient=str(row["last_test_recipient"]) if isinstance(row, dict) and row.get("last_test_recipient") is not None else None,
@@ -301,6 +304,11 @@ def test_smtp_email(
         )
 
     delivery_mode = _delivery_mode(smtp_enabled=settings.smtp_enabled, configured=True)
+    if not settings.smtp_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="SMTP is disabled in this environment",
+        )
     stored = StoredSmtpConfig(
         host=str(row.get("host") or ""),
         port=int(row.get("port") or 587),
@@ -333,7 +341,7 @@ def test_smtp_email(
             except Exception:
                 db.rollback()
                 logger.exception("smtp.test_email.persist_success_failed")
-    except Exception as exc:
+    except (SmtpNotConfiguredError, Exception) as exc:
         record = _safe_load_smtp_record(db)
         if record is None:
             logger.warning("smtp.test_email.skip_persist_failure")
@@ -354,9 +362,11 @@ def test_smtp_email(
             detail=f"SMTP test delivery failed: {exc}",
         ) from exc
 
-    message = (
-        "Testovaci e-mail byl odeslan pres realne SMTP."
-        if delivery_mode == "smtp"
-        else "Test SMTP probehl v mock rezimu; realny e-mail nebyl odeslan."
+    message = "Testovaci e-mail byl odeslan pres realne SMTP."
+    return SmtpTestEmailResponse(
+        ok=True,
+        delivery_mode=delivery_mode,
+        connected=True,
+        send_attempted=True,
+        message=message,
     )
-    return SmtpTestEmailResponse(ok=True, delivery_mode=delivery_mode, message=message)

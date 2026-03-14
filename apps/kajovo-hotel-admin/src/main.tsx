@@ -9,7 +9,6 @@ import {
   useLocation,
   useNavigate,
   useParams,
-  useSearchParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
 import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
@@ -232,13 +231,6 @@ function toAdminNavRoute(route: string): string {
 
 const ADMIN_PERSISTENT_MODULE_KEYS = new Set(['users', 'settings', 'profile']);
 const ADMIN_PERSISTENT_PERMISSION_PREFIXES = ['users:', 'settings:'];
-const todayBreakfasts: number | null = null;
-const tomorrowBreakfasts: number | null = null;
-const openIssuesCount: number | null = null;
-const newLostFoundCount: number | null = null;
-const inventoryStockTotal: number | null = null;
-const inventoryItemCount: number | null = null;
-
 function metricValue(value: number | null): string {
   return value === null ? '—' : String(value);
 }
@@ -315,6 +307,8 @@ type SmtpOperationalStatusReadModel = {
   smtp_enabled: boolean;
   delivery_mode: string;
   can_send_real_email: boolean;
+  last_test_connected: boolean | null;
+  last_test_send_attempted: boolean | null;
   last_tested_at: string | null;
   last_test_success: boolean | null;
   last_test_recipient: string | null;
@@ -336,19 +330,6 @@ type AuthProfileReadModel = {
   note: string | null;
   roles: string[];
   actor_type: string;
-};
-
-type AdminOverview = {
-  breakfastSummary: BreakfastSummary;
-  issues: Issue[];
-  lowStockItems: InventoryItem[];
-  reports: Report[];
-  lostFoundItems: LostFoundItem[];
-};
-
-type InventoryBootstrapStatusReadModel = {
-  enabled: boolean;
-  environment: string;
 };
 
 type ErrorBoundaryProps = { children: React.ReactNode };
@@ -400,9 +381,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
   }
 }
 
-const requiredStates: ViewState[] = ['default', 'loading', 'empty', 'error', 'offline', 'maintenance', '404'];
 const defaultServiceDate = currentDateForTimeZone();
-const qaRuntimeEnabled = (import.meta as ImportMeta & { env?: { PROD?: boolean } }).env?.PROD !== true;
 
 
 const IntroRoute = React.lazy(async () => {
@@ -532,6 +511,28 @@ function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStat
   return typeof value === 'number' ? value : 0;
 }
 
+function compareRoomNumbers(left: string, right: string): number {
+  const leftMatch = left.match(/\d+/);
+  const rightMatch = right.match(/\d+/);
+  if (leftMatch && rightMatch) {
+    const numericDiff = Number(leftMatch[0]) - Number(rightMatch[0]);
+    if (numericDiff !== 0) {
+      return numericDiff;
+    }
+  } else if (leftMatch) {
+    return -1;
+  } else if (rightMatch) {
+    return 1;
+  }
+  return left.localeCompare(right, 'cs-CZ', { numeric: true, sensitivity: 'base' });
+}
+
+function prepareBreakfastListItems(items: BreakfastOrder[]): BreakfastOrder[] {
+  return [...items]
+    .filter((item) => item.guest_count > 0)
+    .sort((left, right) => compareRoomNumbers(left.room_number, right.room_number));
+}
+
 function countOpenIssues(items: Issue[]): number {
   return items.filter((item) => item.status !== 'resolved' && item.status !== 'closed').length;
 }
@@ -548,39 +549,8 @@ function countStoredLostFound(items: LostFoundItem[]): number {
   return items.filter((item) => item.status === 'stored' || item.status === 'new').length;
 }
 
-async function loadAdminOverview(serviceDate: string): Promise<AdminOverview> {
-  const [breakfastSummary, issues, lowStockItems, reports, lostFoundItems] = await Promise.all([
-    fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${serviceDate}`),
-    fetchJson<Issue[]>('/api/v1/issues'),
-    fetchJson<InventoryItem[]>('/api/v1/inventory?low_stock=true'),
-    fetchJson<Report[]>('/api/v1/reports'),
-    fetchJson<LostFoundItem[]>('/api/v1/lost-found'),
-  ]);
-  return {
-    breakfastSummary,
-    issues,
-    lowStockItems,
-    reports,
-    lostFoundItems,
-  };
-}
-const stateLabels: Record<ViewState, string> = {
-  default: 'Výchozí',
-  loading: 'Načítání',
-  empty: 'Prázdno',
-  error: 'Chyba',
-  offline: 'Offline',
-  maintenance: 'Údržba',
-  '404': '404',
-};
-
 function useViewState(): ViewState {
-  if (!qaRuntimeEnabled) {
-    return 'default';
-  }
-  const [params] = useSearchParams();
-  const input = params.get('state') as ViewState | null;
-  return input && requiredStates.includes(input) ? input : 'default';
+  return 'default';
 }
 
 function stateViewForRoute(state: ViewState, title: string, fallbackRoute: string): JSX.Element | null {
@@ -642,28 +612,11 @@ function stateViewForRoute(state: ViewState, title: string, fallbackRoute: strin
 }
 
 function StateSwitcher(): JSX.Element {
-  if (!qaRuntimeEnabled) {
-    return <></>;
-  }
-  return (
-    <div className="k-toolbar">
-      <span>Stavy view:</span>
-      <div className="k-inline-links">
-        {requiredStates.map((state) => (
-          <Link key={state} className="k-nav-link" to={`?state=${state}`}>
-            {stateLabels[state]}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+  return <></>;
 }
 
 function StateMarker({ state }: { state: ViewState }): JSX.Element | null {
-  if (state !== 'default') {
-    return null;
-  }
-  return <span className="k-state-marker" data-testid={`state-view-${state}`} aria-hidden="true" />;
+  return null;
 }
 
 class HttpError extends Error {
@@ -1194,80 +1147,6 @@ function isIssueMaintenance(auth: AuthProfile | null | undefined): boolean {
   return issueActorRole(auth) === 'údržba';
 }
 
-function Dashboard(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Přehled', '/');
-  const stateMarker = <StateMarker state={state} />;
-  const [overview, setOverview] = React.useState<AdminOverview | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const load = React.useCallback(() => {
-    if (state !== 'default') {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    void loadAdminOverview(defaultServiceDate)
-      .then((data) => {
-        setOverview(data);
-        setError(null);
-      })
-      .catch(() => setError('Nepodařilo se načíst přehled.'))
-      .finally(() => setLoading(false));
-  }, [state]);
-
-  React.useEffect(() => {
-    load();
-  }, [load]);
-
-  return (
-    <main className="k-page" data-testid="dashboard-page">
-      {stateMarker}
-      <h1>Přehled</h1>
-      <StateSwitcher />
-      {stateUI ?? (
-        <>
-          <div className="k-grid cards-4 k-dashboard-cards">
-            <Card title="Snídaně dnes a zítra">
-              <strong>{metricValue(todayBreakfasts)}</strong>
-              <p>Zítra: {metricValue(tomorrowBreakfasts)}</p>
-            </Card>
-            <Card title="Neopravené závady">
-              <strong>{metricValue(openIssuesCount)}</strong>
-              <p>Aktuálně otevřené závady</p>
-            </Card>
-            <Card title="Nezpracované nálezy">
-              <strong>{metricValue(newLostFoundCount)}</strong>
-              <p>Položky čekající na zpracování</p>
-            </Card>
-            <Card title="Stav skladu">
-              <strong>{metricValue(inventoryStockTotal)}</strong>
-              <p>Položek v evidenci: {metricValue(inventoryItemCount)}</p>
-            </Card>
-          </div>
-          <div className="k-grid cards-4 k-dashboard-cards" hidden>
-        
-          <Card title="Snídaně dnes">
-            <strong>{metricValue(todayBreakfasts)}</strong>
-            <p>3 čekající objednávky</p>
-          </Card>
-          <Card title="Závady">
-            <strong>4</strong>
-            <p>1 kritická závada</p>
-          </Card>
-          <Card title="Sklad">
-            <strong>12</strong>
-            <p>2 položky pod minimem</p>
-          </Card>
-          </div>
-        </>
-      )}
-    </main>
-  );
-}
-
 function DashboardLive(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Přehled', '/');
@@ -1419,7 +1298,9 @@ function BreakfastList(): JSX.Element {
     };
   }, [loadDay, serviceDate]);
 
-  const filteredItems = items.filter((item) => {
+  const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
+
+  const filteredItems = visibleItems.filter((item) => {
     const term = search.trim().toLowerCase();
     if (!term || isServingView) {
       return true;
@@ -1642,7 +1523,7 @@ function BreakfastList(): JSX.Element {
     </div>
   );
 
-  const listItems = isServingView ? items : filteredItems;
+  const listItems = isServingView ? visibleItems : filteredItems;
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -2620,7 +2501,6 @@ function InventoryList(): JSX.Element {
   const [movementReference, setMovementReference] = React.useState<string>('');
   const [movementNote, setMovementNote] = React.useState<string>('');
   const [movementInfo, setMovementInfo] = React.useState<string | null>(null);
-  const [bootstrapStatus, setBootstrapStatus] = React.useState<InventoryBootstrapStatusReadModel | null>(null);
 
   const loadItems = React.useCallback(() => {
     fetchJson<InventoryItem[]>('/api/v1/inventory')
@@ -2631,17 +2511,10 @@ function InventoryList(): JSX.Element {
       .catch(() => setError('Položky skladu se nepodařilo načíst.'));
   }, []);
 
-  const loadBootstrapStatus = React.useCallback(() => {
-    void fetchJson<InventoryBootstrapStatusReadModel>('/api/v1/inventory/bootstrap-status')
-      .then((response) => setBootstrapStatus(response))
-      .catch(() => setBootstrapStatus({ enabled: false, environment: 'unknown' }));
-  }, []);
-
   React.useEffect(() => {
     if (state !== 'default') return;
     loadItems();
-    loadBootstrapStatus();
-  }, [loadBootstrapStatus, loadItems, state]);
+  }, [loadItems, state]);
 
   React.useEffect(() => {
     if (!movementItemId && items.length > 0) {
@@ -3016,8 +2889,6 @@ function InventoryWorkbench(): JSX.Element {
   const [cards, setCards] = React.useState<InventoryCardReadModel[]>([]);
   const [movements, setMovements] = React.useState<InventoryMovement[]>([]);
   const [error, setError] = React.useState<string | null>(null);
-  const [seedInfo, setSeedInfo] = React.useState<string | null>(null);
-  const [bootstrapStatus, setBootstrapStatus] = React.useState<InventoryBootstrapStatusReadModel | null>(null);
   const [cardInfo, setCardInfo] = React.useState<string | null>(null);
   const [cardPayload, setCardPayload] = React.useState<InventoryCardPayload>({
     card_type: 'in',
@@ -3049,12 +2920,6 @@ function InventoryWorkbench(): JSX.Element {
       .catch(() => setError('Pohyby skladu se nepodařilo načíst.'));
   }, []);
 
-  const loadBootstrapStatus = React.useCallback(() => {
-    void fetchJson<InventoryBootstrapStatusReadModel>('/api/v1/inventory/bootstrap-status')
-      .then((response) => setBootstrapStatus(response))
-      .catch(() => setBootstrapStatus({ enabled: false, environment: 'unknown' }));
-  }, []);
-
   React.useEffect(() => {
     if (state !== 'default') {
       return;
@@ -3062,8 +2927,7 @@ function InventoryWorkbench(): JSX.Element {
     loadItems();
     loadCards();
     loadMovements();
-    loadBootstrapStatus();
-  }, [loadBootstrapStatus, loadCards, loadItems, loadMovements, state]);
+  }, [loadCards, loadItems, loadMovements, state]);
 
   React.useEffect(() => {
     if (items.length === 0) {
@@ -3084,18 +2948,6 @@ function InventoryWorkbench(): JSX.Element {
     loadCards();
     loadMovements();
   }, [loadCards, loadItems, loadMovements]);
-
-  const seedDefaults = async (): Promise<void> => {
-    try {
-      const seeded = await fetchJson<InventoryItem[]>('/api/v1/inventory/seed-defaults', {
-        method: 'POST',
-      });
-      setSeedInfo(`Doplněno ${seeded.length} výchozích položek.`);
-      reloadAll();
-    } catch {
-      setSeedInfo('Bootstrap výchozích položek je vypnutý nebo se nepodařilo dokončit.');
-    }
-  };
 
   const saveCard = async (): Promise<void> => {
     setCardInfo(null);
@@ -3159,12 +3011,6 @@ function InventoryWorkbench(): JSX.Element {
     window.open('/api/v1/inventory/stocktake/pdf', '_blank', 'noopener');
   };
 
-  const bootstrapAction = bootstrapStatus?.enabled ? (
-    <button className="k-button secondary" type="button" onClick={() => void seedDefaults()}>
-      Doplnit výchozí položky
-    </button>
-  ) : null;
-
   return (
     <main className="k-page" data-testid="inventory-list-page">
       {stateMarker}
@@ -3182,16 +3028,11 @@ function InventoryWorkbench(): JSX.Element {
       ) : items.length === 0 ? (
         <>
           <div className="k-toolbar">
-            {bootstrapAction}
             <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>
               Inventurní protokol (PDF)
             </button>
             <Link className="k-button" to="/sklad/nova">Nová položka</Link>
           </div>
-          {bootstrapStatus && !bootstrapStatus.enabled ? (
-            <p>Bootstrap katalogu je vypnutý pro prostředí {bootstrapStatus.environment}.</p>
-          ) : null}
-          {seedInfo ? <p>{seedInfo}</p> : null}
           <StateView
             title="Prázdný stav"
             description="Ve skladu zatím nejsou položky."
@@ -3202,16 +3043,11 @@ function InventoryWorkbench(): JSX.Element {
       ) : (
         <>
           <div className="k-toolbar">
-            {bootstrapAction}
             <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>
               Inventurní protokol (PDF)
             </button>
             <Link className="k-button" to="/sklad/nova">Nová položka</Link>
           </div>
-          {bootstrapStatus && !bootstrapStatus.enabled ? (
-            <p>Bootstrap katalogu je vypnutý pro prostředí {bootstrapStatus.environment}.</p>
-          ) : null}
-          {seedInfo ? <p>{seedInfo}</p> : null}
           <div className="k-card">
             <h2>Ingredience</h2>
             <DataTable
@@ -3382,20 +3218,6 @@ function InventoryWorkbench(): JSX.Element {
   );
 }
 
-function GenericModule({ title }: { title: string }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, title, '/');
-
-  return (
-    <main className="k-page">
-      <h1>{title}</h1>
-      <StateSwitcher />
-      {stateUI ?? <StateView title={`${title} připraveno`} description="Modul je připraven na workflow." />}
-    </main>
-  );
-}
-
-
 function ReportsList(): JSX.Element {
   const state = useViewState();
   const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
@@ -3476,10 +3298,7 @@ function UsersAdmin(): JSX.Element {
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [filterQuery, setFilterQuery] = React.useState('');
-  const roleView = typeof window !== 'undefined'
-    ? window.sessionStorage.getItem('kajovo_admin_role_view')
-    : null;
-  const canDelete = roleView === null || roleView === 'admin';
+  const canDelete = true;
 
   const [createFirstName, setCreateFirstName] = React.useState('');
   const [createLastName, setCreateLastName] = React.useState('');
@@ -4161,10 +3980,13 @@ function SettingsAdmin(): JSX.Element {
         title: 'Odesílám testovací e-mail',
         description: `Probíhá odeslání testovací zprávy na ${recipient}.`,
       });
-      await fetchJson<{ ok: boolean }>('/api/v1/admin/settings/smtp/test-email', {
+      const response = await fetchJson<{ ok: boolean; connected: boolean; send_attempted: boolean }>('/api/v1/admin/settings/smtp/test-email', {
         method: 'POST',
         body: JSON.stringify({ recipient }),
       });
+      if (!response.connected || !response.send_attempted) {
+        throw new Error('SMTP test nespustil reálné připojení a reálný pokus o odeslání.');
+      }
       load({ preserveMessage: true });
       setMessage('Testovací e-mail byl odeslán.');
       setTestDialog({
@@ -4200,7 +4022,7 @@ function SettingsAdmin(): JSX.Element {
             rows={[
               ['Konfigurace ulo\u017eena', status?.configured ? 'Ano' : 'Ne'],
               ['ENV odes\u00edl\u00e1n\u00ed povoleno', status?.smtp_enabled ? 'Ano' : 'Ne'],
-              ['Re\u017eim doru\u010den\u00ed', status?.delivery_mode === 'smtp' ? 'Re\u00e1ln\u00e9 SMTP' : status?.delivery_mode === 'mock' ? 'Mock / no-op' : 'Nenakonfigurov\u00e1no'],
+              ['Re\u017eim doru\u010den\u00ed', status?.delivery_mode === 'smtp' ? 'Re\u00e1ln\u00e9 SMTP' : status?.delivery_mode === 'disabled' ? 'SMTP nen\u00ed aktivn\u00ed' : 'Nenakonfigurov\u00e1no'],
               ['Re\u00e1ln\u00e9 odesl\u00e1n\u00ed mo\u017en\u00e9', status?.can_send_real_email ? 'Ano' : 'Ne'],
               ['Posledn\u00ed test', status?.last_tested_at ? formatDateTime(status.last_tested_at) : 'Je\u0161t\u011b neb\u011bhl'],
               ['Posledn\u00ed p\u0159\u00edjemce', status?.last_test_recipient ?? '-'],
@@ -4582,25 +4404,14 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
   );
 }
 
-const ADMIN_ROLE_VIEW_OPTIONS: Role[] = ['admin', ...ADMIN_SWITCHABLE_ROLES];
-
-type AdminRoleView = Role;
-
 function AppRoutes(): JSX.Element {
   const location = useLocation();
   const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
-  const [roleView, setRoleView] = React.useState<AdminRoleView>(() => {
-    if (typeof window === 'undefined') {
-      return 'admin';
-    }
-    const stored = window.sessionStorage.getItem('kajovo_admin_role_view') as AdminRoleView | null;
-    return stored ?? 'admin';
-  });
   const adminLocale = typeof document !== 'undefined' ? document.documentElement.lang : 'cs';
   const roleSwitcherLabels = React.useMemo(() => {
     const bundle = getAuthBundle('admin', adminLocale);
     const base = {} as Record<Role, string>;
-    for (const role of ADMIN_ROLE_VIEW_OPTIONS) {
+    for (const role of ['admin', ...ADMIN_SWITCHABLE_ROLES] as Role[]) {
       base[role] = bundle.roleLabels[role] ?? role;
     }
     base.admin = bundle.roleLabels.admin ?? (adminLocale.startsWith('en') ? 'Administrator' : 'Administrátor');
@@ -4616,12 +4427,6 @@ function AppRoutes(): JSX.Element {
   }, [refreshAuth]);
 
   const auth = authState.status === 'authenticated' ? authState.profile : null;
-
-  React.useEffect(() => {
-    if (auth?.role === 'admin' && typeof window !== 'undefined') {
-      window.sessionStorage.setItem('kajovo_admin_role_view', roleView);
-    }
-  }, [auth?.role, roleView]);
 
   if (authState.status === 'loading') {
     return <SkeletonPage />;
@@ -4642,12 +4447,6 @@ function AppRoutes(): JSX.Element {
     return <Navigate to="/login" replace />;
   }
 
-  const testNav = qaRuntimeEnabled && typeof window !== 'undefined'
-    ? (window as Window & { __KAJOVO_TEST_NAV__?: unknown }).__KAJOVO_TEST_NAV__
-    : undefined;
-  const injectedModules = Array.isArray((testNav as { modules?: unknown } | undefined)?.modules)
-    ? ((testNav as { modules: typeof ia.modules }).modules ?? [])
-    : [];
   const adminModules = auth.role === 'admin'
     ? [
       { key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
@@ -4655,8 +4454,8 @@ function AppRoutes(): JSX.Element {
       { key: 'profile', label: 'Profil', route: '/profil', icon: 'users', active: true, section: 'records', permissions: [] },
     ]
     : [];
-  const modules = [...ia.modules, ...adminModules, ...injectedModules];
-  const effectiveRoleView = auth.role === 'admin' ? roleView : auth.activeRole ?? auth.role;
+  const modules = [...ia.modules, ...adminModules];
+  const effectiveRoleView = auth.activeRole ?? auth.role;
   const roleViewKeys: string[] = ROLE_MODULES[effectiveRoleView] ?? [];
   const moduleByKey = new Map(modules.map((module) => [module.key, module]));
   const roleScopedModules = roleViewKeys
@@ -4670,9 +4469,6 @@ function AppRoutes(): JSX.Element {
   };
 
   const isVisibleModule = (module: typeof modules[number]): boolean => {
-    if (module.route.includes('?state=')) {
-      return false;
-    }
     const required = Array.isArray(module.permissions) && module.permissions.length > 0 ? module.permissions : null;
     if (!required) {
       return true;
@@ -4733,26 +4529,7 @@ function AppRoutes(): JSX.Element {
   const roleViewLabel = roleSwitcherLabels[effectiveRoleView] ?? effectiveRoleView;
   const canManageBreakfast = effectiveRoleView === 'admin' || effectiveRoleView === 'recepce';
   const canManageInventory = effectiveRoleView === 'admin';
-  const headerLeadingControls = auth.role === 'admin' ? (
-    <div className="k-header-select-stack">
-      <label htmlFor="admin-role-view-select" className="k-subtle">
-        Role pohledu
-      </label>
-      <select
-        id="admin-role-view-select"
-        className="k-select k-admin-role-select"
-        aria-label="Role pohledu"
-        value={roleView}
-        onChange={(event) => setRoleView(event.target.value as AdminRoleView)}
-      >
-        {ADMIN_ROLE_VIEW_OPTIONS.map((role) => (
-          <option key={role} value={role}>
-            {roleSwitcherLabels[role] ?? role}
-          </option>
-        ))}
-      </select>
-    </div>
-  ) : null;
+  const headerLeadingControls = null;
 
   return (
     <AuthContext.Provider value={effectiveAuth}>
