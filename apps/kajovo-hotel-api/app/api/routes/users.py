@@ -148,14 +148,15 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     db.add(user)
     db.commit()
     db.refresh(user)
+    response_model = _to_read_model(user)
     settings = get_settings()
     try:
         service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
         send_portal_onboarding(service=service, recipient=user.email)
     except Exception:
-        # User CRUD flow must not fail when SMTP is unavailable.
-        pass
-    return _to_read_model(user)
+        # CRUD uzivatele nesmi spadnout na volitelnem onboarding e-mailu.
+        db.rollback()
+    return response_model
 
 
 @router.patch("/{user_id}", response_model=PortalUserRead)
