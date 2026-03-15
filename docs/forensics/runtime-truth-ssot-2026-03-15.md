@@ -12,6 +12,7 @@ Tento audit je autoritativni jen pro runtime pravdivost, simulace, bootstrap vrs
 Pro zavazna pravidla znacky, UI, ergonomie, povinnych stavu view a zakazu nehotovych nebo fake vystupu plati:
 
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md`
 
 Stare closeout dokumenty s prehnane finalnim jazykem byly z repozitare odstranene a nesmi byt znovu vytvarene jako paralelni autorita.
 
@@ -28,6 +29,9 @@ Jeho cil je odlisit:
 - oblasti, ktere uz nejsou aktivnim problemem.
 
 Tento dokument nesmi tvrdit vic, nez je dolozene zdrojovym kodem, testy nebo explicitnim runtime dukazem.
+Simulace, bootstrap helpery a compat vrstvy se posuzuji spolu s doplnkovym inventarem:
+
+- `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md`
 
 ## Metodika
 

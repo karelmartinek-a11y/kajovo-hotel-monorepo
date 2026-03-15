@@ -4,8 +4,8 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 
 ## Začít zde
 
-- `docs/developer-handbook.md` - onboarding pro vývojáře bez přístupu na server
-- `docs/how-to-run.md` - lokální spuštění API, admin a web
+- `docs/developer-handbook.md` - stručný onboarding pro vývojáře bez přímého přístupu na server
+- `docs/how-to-run.md` - lokální spuštění API, adminu a webu
 - `docs/how-to-deploy.md` - produkční deploy a fallback postup
 - `docs/ci-gates.md` - popis CI gate kontrol
 - `docs/release-checklist.md` - release checklist
@@ -14,6 +14,7 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md` - jediný závazný dokument pro značku, UI, ergonomii a pravidla finálnosti výstupu
 - `docs/forensics/runtime-truth-ssot-2026-03-15.md` - jediný aktivní forenzní audit runtime pravdivosti, simulací, bootstrap vrstev a otevřených nálezů
+- `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md` - autoritativní inventář test-only simulací, compat vrstev a legitimních bootstrap domén
 - `docs/feature-parity-matrix.csv` - maticové srovnání legacy vs. monorepo a rozsahu reálně doložené parity
 - `docs/forensics/finalization-log.md` - chronologický pracovní log; není autoritativní verdict
 

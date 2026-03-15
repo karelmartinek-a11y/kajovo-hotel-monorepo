@@ -21,6 +21,8 @@ from app.db.models import Base, BreakfastOrder
 from app.services.breakfast.mail_fetcher import BreakfastMailFetcher
 from app.services.breakfast.scheduler import run_breakfast_scheduler_iteration
 
+# Tento smoke script overuje scheduler pipeline a artefakty.
+# Nepredstavuje dukaz realne IMAP integrace, protoze zamerne pouziva fake klient a synteticky payload.
 
 class _FakeImapClient:
     def __init__(self, payload: bytes):

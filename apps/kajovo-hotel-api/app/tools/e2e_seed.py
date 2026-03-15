@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.db.models import Base, PortalSmtpSettings
 
+# Tento seed je urceny jen pro E2E a lokalni smoke pripravu.
+# Neni dukazem produkcni SMTP integrace a nesmi byt pouzivan jako runtime proof.
 
 def _hash_password(password: str, salt: bytes) -> str:
     digest = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1)
@@ -32,6 +34,7 @@ def main() -> None:
     with Session(bind=engine) as session:
         smtp = PortalSmtpSettings(
             id=1,
+            # Test-only SMTP profil pro E2E pripravu.
             host="mock.smtp.local",
             port=1025,
             username="mock-user",

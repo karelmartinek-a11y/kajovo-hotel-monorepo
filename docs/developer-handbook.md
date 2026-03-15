@@ -1,26 +1,26 @@
-# Developer Handbook (no direct server access)
+# Developer Handbook
 
-This document summarizes what a developer needs to work on the portal without SSH access to the production server.
+Tento dokument shrnuje, co potřebuje vývojář pro práci na portálu bez přímého SSH přístupu na produkční server.
 
-## 1) Source of truth
+## 1. Source of truth
 
-- Source code: GitHub repository `karelmartinek-a11y/kajovo-hotel-monorepo`, branch `main`.
-- Production is deployed automatically from `main` through GitHub Actions workflow `Deploy - hotel.hcasc.cz`.
-- The server copy in `/opt/kajovo-hotel-monorepo` is only a deployment workspace, not the source of truth.
+- Zdrojový kód: GitHub repozitář `karelmartinek-a11y/kajovo-hotel-monorepo`, branch `main`.
+- Produkce se nasazuje automaticky z `main` přes GitHub Actions workflow `Deploy - hotel.hcasc.cz`.
+- Kopie na serveru v `/opt/kajovo-hotel-monorepo` je pouze deploy workspace, ne autoritativní zdroj pravdy.
 
-## 2) What a developer needs to know
+## 2. Co musí vývojář znát
 
 - Design governance SSOT: `docs/Kajovo_Design_Governance_Standard_SSOT.md`
-- Brand assets and implementation details: `ManifestDesignKájovo.md`
-- Information architecture: `apps/kajovo-hotel/ux/ia.json`
-- RBAC rules: `docs/rbac.md`
 - Runtime truth SSOT: `docs/forensics/runtime-truth-ssot-2026-03-15.md`
-- Working forensic chronology: `docs/forensics/finalization-log.md`
-- Forensic parity matrix: `docs/feature-parity-matrix.csv`
+- Inventář bootstrapu a simulací: `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md`
+- Informační architektura: `apps/kajovo-hotel/ux/ia.json`
+- RBAC pravidla: `docs/rbac.md`
+- Forenzní parity matrix: `docs/feature-parity-matrix.csv`
+- Pracovní chronologie: `docs/forensics/finalization-log.md`
 
-## 3) Local run
+## 3. Lokální spuštění
 
-Use `pnpm` workspaces from the repo root.
+Používej `pnpm` workspaces z rootu repozitáře.
 
 ```bash
 pnpm install
@@ -34,21 +34,21 @@ python -m pip install -e .[dev]
 uvicorn app.main:app --reload --port 8000
 ```
 
-Admin app:
+Admin aplikace:
 
 ```bash
 cd apps/kajovo-hotel-admin
 pnpm dev
 ```
 
-Portal web app:
+Portálový web:
 
 ```bash
 cd apps/kajovo-hotel-web
 pnpm dev
 ```
 
-## 4) Required checks before push
+## 4. Povinné kontroly před push
 
 ```bash
 pnpm lint
@@ -57,25 +57,26 @@ pnpm unit
 pnpm ci:gates
 ```
 
-When a change touches UI, brand, runtime truth, or forensic documentation, also review:
+Když změna sahá do UI, runtime pravdivosti, forenzních dokumentů nebo bootstrap/test helperů, zkontroluj navíc:
 
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md`
 - `docs/forensics/runtime-truth-ssot-2026-03-15.md`
+- `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md`
 
-## 5) GitHub pipelines
+## 5. GitHub pipeline
 
-A push to `main` runs:
+Push do `main` spouští:
 
 - `CI Gates - KajovoHotel`
 - `CI Full - Kajovo Hotel`
 - `CI Release - Kajovo Hotel`
-- after successful authoritative CI gate: `Deploy - hotel.hcasc.cz`
+- po úspěšné autoritativní CI gate: `Deploy - hotel.hcasc.cz`
 
-## 6) GitHub Secrets / Variables for production deploy
+## 6. GitHub secrets a variables pro produkční deploy
 
-Authoritative checklist: `docs/github-settings-checklist.md`
+Autoritativní checklist: `docs/github-settings-checklist.md`
 
-Deploy and CI workflows use these keys (prefer `Secrets` for secret values and `Variables` for non-secret values):
+Deploy a CI workflow používají tyto klíče:
 
 - `HOTEL_DEPLOY_HOST`
 - `HOTEL_DEPLOY_PORT`
@@ -84,22 +85,22 @@ Deploy and CI workflows use these keys (prefer `Secrets` for secret values and `
 - `HOTEL_ADMIN_EMAIL`
 - `HOTEL_ADMIN_PASSWORD`
 
-Admin username is the same value as the admin email, so `HOTEL_ADMIN_EMAIL` is both login email and username.
+Admin username je stejná hodnota jako admin e-mail, takže `HOTEL_ADMIN_EMAIL` funguje jako login e-mail i username.
 
-Optional aliases:
+Volitelné aliasy:
 
 - `KAJOVO_API_ADMIN_EMAIL`
 - `KAJOVO_API_ADMIN_PASSWORD`
 
-If aliases are present, they must match `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. CI, deploy, and post-deploy verify all enforce that rule and no GitHub workflow uses a hardcoded fallback admin account.
+Pokud jsou aliasy přítomné, musí se shodovat s `HOTEL_ADMIN_EMAIL` a `HOTEL_ADMIN_PASSWORD`. CI, deploy i post-deploy verify to vynucují a žádný GitHub workflow nepoužívá hardcoded fallback admin účet.
 
-Credentials are never committed to the repository or documentation. Production compose blocks API startup if the resolved admin credentials are missing.
+Credentials se nikdy necommitují do repozitáře ani dokumentace. Produkční compose blokuje start API, pokud výsledné admin credentials chybí.
 
-## 7) Post-deploy smoke check
+## 7. Post-deploy smoke check
 
-The production deploy workflow blocks unless all of these succeed:
+Produkční deploy workflow blokuje release, pokud neprojdou všechny tyto kontroly:
 
 - `GET https://hotel.hcasc.cz/`
 - `GET https://hotel.hcasc.cz/admin/login`
 - `GET https://hotel.hcasc.cz/api/health`
-- live admin login using the GitHub admin email/username and password
+- live admin login přes GitHub admin e-mail nebo username a heslo
