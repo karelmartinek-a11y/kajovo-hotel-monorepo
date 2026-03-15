@@ -664,17 +664,16 @@ function Dashboard(): JSX.Element {
 function BreakfastList(): JSX.Element {
     const auth = useAuth();
   const actorRole = auth?.activeRole ?? auth?.role ?? null;
-  const roles = (auth?.roles ?? []).map((role) => normalizeRole(role));
   const breakfastRole = normalizeRole('snidane');
   const isAdmin = actorRole === 'admin';
-  const isRecepce = isAdmin || actorRole === 'recepce' || roles.includes('recepce');
-  const isBreakfast = isAdmin || actorRole === breakfastRole || roles.includes(breakfastRole);
+  const isRecepce = isAdmin || actorRole === 'recepce';
+  const isBreakfast = isAdmin || actorRole === breakfastRole;
   const isServingView = actorRole === breakfastRole && !isRecepce && !isAdmin;
   const canImport = isRecepce || isAdmin;
   const canReactivate = isRecepce || isAdmin;
   const canEditDiet = isRecepce || isAdmin;
-  const canServe = isBreakfast;
-  const canClearDay = isRecepce || isAdmin;
+  const canServe = isBreakfast || isRecepce;
+  const canClearDay = isAdmin;
 
   const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
@@ -940,7 +939,7 @@ function BreakfastList(): JSX.Element {
       <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} />
       {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label="Import PDF" onChange={(event) => handleImportFile(event.target.files?.[0] ?? null)} /> : null}
       {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
-      {canReactivate ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
+      {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
       {canClearDay ? <button className="k-button secondary" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
     </div>
   );
@@ -1809,13 +1808,16 @@ function IssuesList(): JSX.Element {
         <StateView title="Prázdný stav" description={isMaintenance ? 'Žádná otevřená závada.' : 'Zatím nejsou evidované žádné závady.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link> : undefined} />
       ) : isMaintenance ? (
         <DataTable
-          headers={['Pokoj', 'Popis', 'Vznik', 'Otevřeno', 'Akce']}
+          headers={['Miniatura', 'Pokoj', 'Popis', 'Zadáno', 'Hodin', 'Akce']}
           rows={items.map((item) => [
+            item.photos && item.photos.length > 0
+              ? <img key={`issue-thumb-${item.id}`} src={`/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb`} alt="Miniatura závady" className="k-photo-thumb" />
+              : '-',
             item.room_number ?? '-',
             item.description ?? item.title,
-            formatShortDateTime(item.created_at),
+            formatDateTime(item.created_at),
             hoursOpenSince(item.created_at),
-            <div className="k-inline-links" key={`issue-actions-${item.id}`}><Link className="k-nav-link" to={`/zavady/${item.id}`}>Detail</Link><button className="k-button" type="button" onClick={() => void markResolved(item.id)}>Odstraněno</button></div>,
+            <button className="k-button" type="button" key={`issue-actions-${item.id}`} onClick={() => void markResolved(item.id)}>Opraveno</button>,
           ])}
         />
       ) : (
@@ -2231,7 +2233,10 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function InventoryDetail(): JSX.Element {
+    const auth = useAuth();
     const { id } = useParams();
+  const activeRole = auth?.activeRole ?? auth?.role ?? null;
+  const isAdmin = activeRole === 'admin';
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -2273,13 +2278,13 @@ function InventoryDetail(): JSX.Element {
           <div className="k-card">
             <div className="k-toolbar">
               <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
-              <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
+              {isAdmin ? <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link> : null}
             </div>
             <div className="k-inventory-detail-hero">
               <InventoryThumb item={item} size="detail" />
               <div>
                 <h2>{item.name}</h2>
-                <p className="k-subtle">Aktuální množství a historie pohybů zůstávají dostupné jen adminovi.</p>
+                <p className="k-subtle">{isAdmin ? 'Admin může položku upravit a mazat pohyby.' : 'Karta položky a její pohyby jsou dostupné jen ke čtení.'}</p>
               </div>
             </div>
             <DataTable
@@ -2290,17 +2295,17 @@ function InventoryDetail(): JSX.Element {
           <div className="k-card">
             <h2>Pohyby</h2>
             <DataTable
-              headers={['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka', 'Akce']}
-              rows={item.movements.map((movement) => [
-                movement.document_number ?? '-',
-                formatDateTime(movement.document_date ?? movement.created_at),
-                inventoryMovementLabel(movement.movement_type),
-                movement.quantity,
-                movement.document_reference ?? '-',
-                movement.note ?? '-',
-                <button className="k-button secondary" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>,
-              ])}
-            />
+               headers={isAdmin ? ['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka', 'Akce'] : ['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka']}
+               rows={item.movements.map((movement) => [
+                 movement.document_number ?? '-',
+                 formatDateTime(movement.document_date ?? movement.created_at),
+                 inventoryMovementLabel(movement.movement_type),
+                 movement.quantity,
+                 movement.document_reference ?? '-',
+                 movement.note ?? '-',
+                 ...(isAdmin ? [<button className="k-button secondary" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>] : []),
+               ])}
+             />
           </div>
         </>
       ) : (

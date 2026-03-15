@@ -144,6 +144,28 @@ function HeaderRoleSwitcher({
   );
 }
 
+function ReceptionHubPage(): JSX.Element {
+  return (
+    <main className="k-page" data-testid="reception-hub-page">
+      <h1>Recepce</h1>
+      <div className="k-grid cards-2">
+        <StateView
+          title="Zpracování nálezů"
+          description="Zobrazí jen čekající nálezy. Po označení jako zpracované ze seznamu zmizí."
+          stateKey="empty"
+          action={<Link className="k-button" to="/ztraty-a-nalezy">Otevřít nálezy</Link>}
+        />
+        <StateView
+          title="Import a správa snídaní"
+          description="Import PDF, správa diet a vrácení jednotlivé spotřebované snídaně."
+          stateKey="empty"
+          action={<Link className="k-button" to="/snidane">Otevřít snídaně</Link>}
+        />
+      </div>
+    </main>
+  );
+}
+
 function AccessDeniedPage({ moduleLabel, roleLabel, userId, copy }: AccessDeniedProps): JSX.Element {
   const title = copy.accessDeniedTitle ?? 'Přístup odepřen';
   const description = copy.accessDeniedModule
@@ -302,7 +324,7 @@ export function PortalRoutes({
     return !roleModuleKeys.includes(module.key);
   });
   const navigationModules = [...allowedModules, ...extraModules];
-  const primaryRoute = allowedModules[0]?.route ?? '/';
+  const primaryRoute = activeRole === 'recepce' ? '/recepce' : (allowedModules[0]?.route ?? '/');
   const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
 
   if (allowedModules.length === 0) {
@@ -360,6 +382,7 @@ export function PortalRoutes({
           path="/"
           element={primaryRoute !== '/' ? <Navigate to={`${primaryRoute}${currentSearch}`} replace /> : <deps.Dashboard />}
         />
+        <Route path="/recepce" element={activeRole === 'recepce' ? <ReceptionHubPage /> : <Navigate to={`${primaryRoute}${currentSearch}`} replace />} />
         <Route path="/profil" element={<deps.PortalProfilePage />} />
         <Route path="/pokojska" element={isAllowed('housekeeping') ? <deps.HousekeepingForm /> : renderAccessDenied('housekeeping')} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <deps.BreakfastList /> : renderAccessDenied('breakfast')} />
@@ -376,7 +399,7 @@ export function PortalRoutes({
         <Route path="/zavady/:id/edit" element={isAllowed('issues') ? <deps.IssuesForm mode="edit" /> : renderAccessDenied('issues')} />
         <Route path="/sklad" element={isAllowed('inventory') ? <deps.InventoryList /> : renderAccessDenied('inventory')} />
         <Route path="/sklad/nova" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="create" /> : renderAccessDenied('inventory')} />
-        <Route path="/sklad/:id" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryDetail /> : renderAccessDenied('inventory')} />
+        <Route path="/sklad/:id" element={isAllowed('inventory') ? <deps.InventoryDetail /> : renderAccessDenied('inventory')} />
         <Route path="/sklad/:id/edit" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="edit" /> : renderAccessDenied('inventory')} />
         <Route path="/hlaseni" element={isAllowed('reports') ? <deps.ReportsList /> : renderAccessDenied('reports')} />
         <Route path="/hlaseni/nove" element={isAllowed('reports') ? <deps.ReportsForm mode="create" /> : renderAccessDenied('reports')} />
