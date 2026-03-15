@@ -9,7 +9,7 @@ export function PortalLoginPage(): JSX.Element {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('portal', lang);
   }, []);
-  const { copy, roleLabels } = bundle;
+  const { copy } = bundle;
 
   React.useEffect(() => {
     if (typeof document === 'undefined') {
@@ -19,17 +19,10 @@ export function PortalLoginPage(): JSX.Element {
     document.title = bundle.copy.eyebrow;
   }, [bundle.copy.eyebrow, bundle.locale]);
 
-  const roleLabel = React.useCallback((role: string) => roleLabels[role] ?? role, [roleLabels]);
-  const continueAs = React.useCallback(
-    (label: string) => (copy.continueAs ? copy.continueAs(label) : `Pokračovat jako ${label}`),
-    [copy]
-  );
-
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [info, setInfo] = React.useState<string | null>(null);
-  const [roleOptions, setRoleOptions] = React.useState<string[] | null>(null);
 
   async function login(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -48,11 +41,6 @@ export function PortalLoginPage(): JSX.Element {
     });
     if (!response.ok) {
       setError(copy.loginError ?? 'Neplatné přihlašovací údaje.');
-      return;
-    }
-    const payload = (await response.json()) as { active_role?: string | null; roles?: string[] };
-    if (!payload.active_role && Array.isArray(payload.roles) && payload.roles.length > 1) {
-      setRoleOptions(payload.roles);
       return;
     }
     navigate('/');
@@ -77,28 +65,6 @@ export function PortalLoginPage(): JSX.Element {
       return;
     }
     setInfo(copy.forgotInfo);
-  }
-
-  async function selectRole(role: string): Promise<void> {
-    const csrfToken =
-      document.cookie
-        .split('; ')
-        .find((item) => item.startsWith('kajovo_csrf='))
-        ?.split('=')[1] ?? '';
-    const response = await fetch('/api/auth/select-role', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify({ role }),
-    });
-    if (!response.ok) {
-      setError(copy.roleSelectError ?? 'Výběr role selhal.');
-      return;
-    }
-    navigate('/');
   }
 
   return (
@@ -151,20 +117,6 @@ export function PortalLoginPage(): JSX.Element {
             </p>
           ) : null}
           {info ? <p className="k-login-copy">{info}</p> : null}
-          {roleOptions ? (
-            <div className="k-toolbar">
-              {roleOptions.map((role) => (
-                <button
-                  key={role}
-                  className="k-button secondary"
-                  type="button"
-                  onClick={() => void selectRole(role)}
-                >
-                  {continueAs(roleLabel(role))}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </form>
       </section>
       <KajovoSign href="/" />
