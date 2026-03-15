@@ -90,6 +90,38 @@ wait_for_container_health() {
   return 1
 }
 
+reconcile_runtime_schema() {
+  local sql
+  # Dorovname stary produkcni schema drift u SMTP tabulky i v pripade,
+  # kdy byla databaze drive adoptovana pomoci `alembic stamp head`.
+  sql="$(cat <<'SQL'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'portal_smtp_settings'
+  ) THEN
+    ALTER TABLE public.portal_smtp_settings
+      ADD COLUMN IF NOT EXISTS last_tested_at TIMESTAMPTZ NULL,
+      ADD COLUMN IF NOT EXISTS last_test_connected BOOLEAN NULL,
+      ADD COLUMN IF NOT EXISTS last_test_send_attempted BOOLEAN NULL,
+      ADD COLUMN IF NOT EXISTS last_test_success BOOLEAN NULL,
+      ADD COLUMN IF NOT EXISTS last_test_recipient VARCHAR(255) NULL,
+      ADD COLUMN IF NOT EXISTS last_test_error TEXT NULL;
+  END IF;
+END
+$$;
+SQL
+)"
+
+  echo "Dorovnavam kompatibilni runtime schema drift..."
+  PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+    compose_cmd exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
+}
+
 http_check() {
   local url="$1"
   local label="$2"
@@ -269,6 +301,8 @@ if [[ "$migration_ok" -ne 1 ]]; then
   echo "Aplikace Alembic migraci selhala." >&2
   exit 1
 fi
+
+reconcile_runtime_schema
 
 compose_cmd up -d --force-recreate postgres
 
