@@ -178,9 +178,10 @@ type PortalRole = 'pokojská' | 'údržba' | 'recepce' | 'snídaně' | 'sklad';
 const portalRoleOptions: PortalRole[] = ['pokojská', 'údržba', 'recepce', 'snídaně', 'sklad'];
 const HOUSEKEEPING_ROOMS = [
   '101', '102', '103', '104', '105', '106', '107', '108', '109',
-  '201', '202', '203', '204', '205', '206', '207', '208', '209', '210',
-  '221', '222', '223', '224',
+  '203', '204', '205', '206', '207', '208',
   '301', '302', '303', '304', '305', '306', '307', '308', '309', '310',
+  '201', '202', '209', '210',
+  '221', '222', '223', '224',
   '321', '322', '323', '324',
 ];
 
@@ -1847,17 +1848,40 @@ function HousekeepingAdmin(): JSX.Element {
       
       {(
         <div className="k-card k-card--compact">
-          <div className="k-toolbar" role="group" aria-label="Typ zápisu pokojské">
-            <button className={mode === 'issue' ? 'k-button' : 'k-button secondary'} type="button" onClick={() => setMode('issue')} aria-pressed={mode === 'issue'}>Závada</button>
-            <button className={mode === 'lost_found' ? 'k-button' : 'k-button secondary'} type="button" onClick={() => setMode('lost_found')} aria-pressed={mode === 'lost_found'}>Nález</button>
+          <div className="k-housekeeping-toggle" role="group" aria-label="Typ zápisu pokojské">
+            <button
+              className={`k-housekeeping-toggle__button${mode === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`}
+              type="button"
+              onClick={() => setMode('lost_found')}
+              aria-pressed={mode === 'lost_found'}
+            >
+              Nález
+            </button>
+            <button
+              className={`k-housekeeping-toggle__button${mode === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`}
+              type="button"
+              onClick={() => setMode('issue')}
+              aria-pressed={mode === 'issue'}
+            >
+              Závada
+            </button>
           </div>
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">
             <FormField id="housekeeping_room" label="Pokoj">
-              <select id="housekeeping_room" className="k-select" value={selectedRoom} onChange={(event) => setSelectedRoom(event.target.value)}>
-                <option value="">Vyberte pokoj</option>
-                {HOUSEKEEPING_ROOMS.map((room) => <option key={room} value={room}>{room}</option>)}
-              </select>
+              <div className="k-housekeeping-room-grid" role="group" aria-label="Výběr pokoje">
+                {HOUSEKEEPING_ROOMS.map((room) => (
+                  <button
+                    key={room}
+                    className={`k-housekeeping-room-grid__button${selectedRoom === room ? ' k-housekeeping-room-grid__button--active' : ''}`}
+                    type="button"
+                    onClick={() => setSelectedRoom(room)}
+                    aria-pressed={selectedRoom === room}
+                  >
+                    {room}
+                  </button>
+                ))}
+              </div>
             </FormField>
             <FormField id="housekeeping_description" label={mode === 'issue' ? 'Krátký popis závady' : 'Krátký popis nálezu'}>
               <input id="housekeeping_description" className="k-input" maxLength={160} value={description} onChange={(event) => setDescription(event.target.value)} />
