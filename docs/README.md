@@ -15,6 +15,7 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md` - jediný závazný dokument pro značku, UI, ergonomii a pravidla finálnosti výstupu
 - `docs/forensics/runtime-truth-ssot-2026-03-15.md` - jediný aktivní forenzní audit runtime pravdivosti, simulací, bootstrap vrstev a otevřených nálezů
 - `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md` - autoritativní inventář test-only simulací, compat vrstev a legitimních bootstrap domén
+- `docs/forensics/live-proof-backlog-2026-03-15.md` - autoritativní backlog k položkám parity matrix, které ještě nemají live runtime důkaz
 - `docs/feature-parity-matrix.csv` - maticové srovnání legacy vs. monorepo a rozsahu reálně doložené parity
 - `docs/forensics/finalization-log.md` - chronologický pracovní log; není autoritativní verdict
 

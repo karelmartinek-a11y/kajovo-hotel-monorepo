@@ -13,6 +13,7 @@ Pro zavazna pravidla znacky, UI, ergonomie, povinnych stavu view a zakazu nehoto
 
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md`
 - `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md`
+- `docs/forensics/live-proof-backlog-2026-03-15.md`
 
 Stare closeout dokumenty s prehnane finalnim jazykem byly z repozitare odstranene a nesmi byt znovu vytvarene jako paralelni autorita.
 
