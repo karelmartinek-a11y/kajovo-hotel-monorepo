@@ -69,6 +69,28 @@ class SmtpDeliveryError(RuntimeError):
         self.send_attempted = send_attempted
 
 
+def validate_smtp_security_mode(*, port: int, use_tls: bool, use_ssl: bool) -> None:
+    if use_tls and use_ssl:
+        raise ValueError("SMTP nemuze soucasne pouzivat TLS i SSL. Zvolte pouze jeden rezim.")
+
+    if port == 465 and use_tls and not use_ssl:
+        raise ValueError("Port 465 obvykle vyzaduje SSL. Vypnete TLS a zapnete SSL.")
+
+    if port == 587 and use_ssl and not use_tls:
+        raise ValueError("Port 587 obvykle pouziva TLS/STARTTLS. Vypnete SSL a zapnete TLS.")
+
+
+def describe_smtp_transport_error(message: str, *, port: int, use_tls: bool, use_ssl: bool) -> str:
+    upper_message = message.upper()
+    if "WRONG_VERSION_NUMBER" in upper_message:
+        if use_ssl:
+            return "SMTP server odmitl implicitni SSL handshake. Pro port 587 vypnete SSL a zapnete TLS."
+        if use_tls:
+            return "SMTP server odmitl TLS/STARTTLS handshake. Pro port 465 vypnete TLS a zapnete SSL."
+        return "SMTP server odmitl vyjednani sifrovani. Zkontrolujte, zda port pouziva TLS nebo SSL."
+    return message
+
+
 class MockSmtpTransport:
     def __init__(self) -> None:
         self.sent_messages: list[MailMessage] = []
@@ -121,6 +143,7 @@ def mask_secret(secret: str) -> str:
 
 
 def to_stored_config(payload: SmtpSettingsPayload, encryption_key: str) -> StoredSmtpConfig:
+    validate_smtp_security_mode(port=payload.port, use_tls=payload.use_tls, use_ssl=payload.use_ssl)
     return StoredSmtpConfig(
         host=payload.host.strip(),
         port=payload.port,
@@ -164,6 +187,11 @@ class SmtpEmailService:
         connected = False
         send_attempted = False
         try:
+            validate_smtp_security_mode(
+                port=self.smtp_config.port,
+                use_tls=self.smtp_config.use_tls,
+                use_ssl=self.smtp_config.use_ssl,
+            )
             smtp_password = decrypt_secret(self.smtp_config.password_encrypted, self.encryption_key)
             email = EmailMessage()
             email["From"] = self.sender
@@ -191,7 +219,12 @@ class SmtpEmailService:
                     client.send_message(email)
         except Exception as exc:
             raise SmtpDeliveryError(
-                str(exc),
+                describe_smtp_transport_error(
+                    str(exc),
+                    port=self.smtp_config.port,
+                    use_tls=self.smtp_config.use_tls,
+                    use_ssl=self.smtp_config.use_ssl,
+                ),
                 connected=connected,
                 send_attempted=send_attempted,
             ) from exc

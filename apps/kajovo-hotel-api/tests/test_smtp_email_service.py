@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
+import ssl
+import smtplib
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
@@ -187,6 +189,89 @@ def test_compat_smtp_settings_read_tolerates_malformed_legacy_record():
     assert fallback.use_tls is True
     assert fallback.use_ssl is False
     assert fallback.password_masked == ""
+
+
+def test_put_smtp_settings_rejects_conflicting_tls_and_ssl(tmp_path):
+    db_path = tmp_path / "smtp-conflict.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(bind=engine)
+
+    with Session(engine) as db:
+        with pytest.raises(Exception) as exc_info:
+            put_smtp_settings(
+                SmtpSettingsUpsert(
+                    host="smtp.conflict.local",
+                    port=587,
+                    username="mailer",
+                    password="secret",
+                    use_tls=True,
+                    use_ssl=True,
+                ),
+                db=db,
+            )
+
+    exc = exc_info.value
+    assert getattr(exc, "status_code", None) == 422
+    assert "TLS i SSL" in str(getattr(exc, "detail", exc))
+
+
+def test_put_smtp_settings_rejects_port_465_without_ssl(tmp_path):
+    db_path = tmp_path / "smtp-port-465.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(bind=engine)
+
+    with Session(engine) as db:
+        with pytest.raises(Exception) as exc_info:
+            put_smtp_settings(
+                SmtpSettingsUpsert(
+                    host="smtp.port465.local",
+                    port=465,
+                    username="mailer",
+                    password="secret",
+                    use_tls=True,
+                    use_ssl=False,
+                ),
+                db=db,
+            )
+
+    exc = exc_info.value
+    assert getattr(exc, "status_code", None) == 422
+    assert "Port 465" in str(getattr(exc, "detail", exc))
+
+
+def test_smtp_service_rewrites_wrong_version_number_to_actionable_hint(monkeypatch):
+    settings = get_settings()
+    service = SmtpEmailService(
+        sender=settings.smtp_from_email,
+        smtp_config=StoredSmtpConfig(
+            host="smtp.local",
+            port=587,
+            username="mailer",
+            password_encrypted="ZW5jcnlwdGVkIiL4fQ6q-XcJQqcvTYw9rM1tm6fRMwVlk4hzU1Gk",
+            use_tls=False,
+            use_ssl=True,
+        ),
+        encryption_key=settings.smtp_encryption_key,
+    )
+
+    class FailingSslClient:
+        def __enter__(self):
+            raise ssl.SSLError("[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1006)")
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(smtplib, "SMTP_SSL", lambda *args, **kwargs: FailingSslClient())
+    with pytest.raises(SmtpDeliveryError) as exc_info:
+        service.send(
+            SimpleNamespace(
+                recipient="admin@example.com",
+                subject="subject",
+                body="body",
+            )
+        )
+
+    assert "Vypnete SSL a zapnete TLS" in str(exc_info.value)
 
 
 def test_send_test_email_returns_502_even_when_status_persist_fails(monkeypatch, tmp_path):

@@ -26,6 +26,7 @@ from app.services.mail import (
     build_email_service,
     to_read_model,
     to_stored_config,
+    validate_smtp_security_mode,
 )
 
 router = APIRouter(
@@ -35,6 +36,16 @@ router = APIRouter(
 )
 
 logger = logging.getLogger("kajovo.api.smtp")
+
+
+def _validate_smtp_payload(payload: SmtpSettingsUpsert) -> None:
+    try:
+        validate_smtp_security_mode(port=payload.port, use_tls=payload.use_tls, use_ssl=payload.use_ssl)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 def _stored_from_record(record: PortalSmtpSettings) -> StoredSmtpConfig:
@@ -246,6 +257,7 @@ def put_smtp_settings(
     db: Session = Depends(get_db),
 ) -> SmtpSettingsRead:
     settings = get_settings()
+    _validate_smtp_payload(payload)
     row = _safe_load_smtp_row(db)
     password = (payload.password or "").strip()
     if row is None and not password:

@@ -311,6 +311,19 @@ type SmtpOperationalStatusReadModel = {
   last_test_error: string | null;
 };
 
+function smtpSecurityHint(port: number, useTls: boolean, useSsl: boolean): string {
+  if (useTls && useSsl) {
+    return 'TLS i SSL nelze pouzit soucasne. Zvolte pouze jeden rezim.';
+  }
+  if (port === 465 && !useSsl) {
+    return 'Port 465 obvykle vyzaduje SSL.';
+  }
+  if (port === 587 && !useTls) {
+    return 'Port 587 obvykle pouziva TLS/STARTTLS.';
+  }
+  return 'Bezny provoz: port 587 = TLS/STARTTLS, port 465 = SSL.';
+}
+
 function describeSmtpLastResult(status: SmtpOperationalStatusReadModel | null): string {
   if (!status) return 'Bez záznamu';
   if (status.delivery_mode !== 'smtp') {
@@ -3845,6 +3858,10 @@ function SettingsAdmin(): JSX.Element {
   }, [host, loadedConfig, password, port, useSsl, useTls, username]);
 
   async function save(): Promise<void> {
+    if (useTls && useSsl) {
+      setError('TLS i SSL nelze pouzit soucasne. Zvolte pouze jeden rezim.');
+      return;
+    }
     if (!host.trim() || !username.trim() || (!password.trim() && !status?.configured)) {
       setError('Host, uživatel a heslo jsou povinné.');
       return;
@@ -3874,8 +3891,11 @@ function SettingsAdmin(): JSX.Element {
       setMessage('SMTP nastavení bylo uloženo.');
       setPassword('');
       load({ preserveMessage: true });
-    } catch {
-      setError('SMTP nastavení se nepodařilo uložit.');
+    } catch (err) {
+      const description = err instanceof Error && err.message.trim()
+        ? err.message.trim()
+        : 'SMTP nastaveni se nepodarilo ulozit.';
+      setError(description);
     } finally {
       setSaving(false);
     }
@@ -3883,6 +3903,10 @@ function SettingsAdmin(): JSX.Element {
 
   async function sendTestEmail(): Promise<void> {
     const recipient = testRecipient.trim();
+    if (useTls && useSsl) {
+      setError('TLS i SSL nelze pouzit soucasne. Zvolte pouze jeden rezim.');
+      return;
+    }
     if (!recipient) {
       setError('Vyplňte příjemce testovacího e-mailu.');
       return;
@@ -3996,11 +4020,28 @@ function SettingsAdmin(): JSX.Element {
               <input id="smtp_password" className="k-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </FormField>
             <label className="k-role-label">
-              <input type="checkbox" checked={useTls} onChange={(e) => setUseTls(e.target.checked)} /> {'Pou\u017e\u00edt TLS'}
+              <input
+                type="checkbox"
+                checked={useTls}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setUseTls(checked);
+                  if (checked) setUseSsl(false);
+                }}
+              /> {'Pou\u017e\u00edt TLS'}
             </label>
             <label className="k-role-label">
-              <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} /> {'Pou\u017e\u00edt SSL'}
+              <input
+                type="checkbox"
+                checked={useSsl}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setUseSsl(checked);
+                  if (checked) setUseTls(false);
+                }}
+              /> {'Pou\u017e\u00edt SSL'}
             </label>
+            <p className="k-muted" role="note">{smtpSecurityHint(port, useTls, useSsl)}</p>
             <FormField id="smtp_test_recipient" label={'Testovac\u00ed p\u0159\u00edjemce'}>
               <input id="smtp_test_recipient" className="k-input" type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} />
             </FormField>
