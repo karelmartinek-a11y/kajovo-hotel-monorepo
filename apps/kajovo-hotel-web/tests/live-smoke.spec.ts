@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
@@ -16,14 +17,14 @@ test('portal bez session skonci na loginu', async ({ page }) => {
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
 });
 
-test('portal auth endpoint funguje nad realnym API a web admin surface zustava retired', async ({ page, request }) => {
+test('portal auth endpoint funguje nad realnym API a web admin surface zustava retired', async ({ page, request }, testInfo) => {
   const adminLoginResponse = await request.post('/api/auth/admin/login', {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
   expect(adminLoginResponse.ok()).toBeTruthy();
 
   const csrfHeaders = await csrfHeaderFor(request);
-  const suffix = `${Date.now()}`;
+  const suffix = `${testInfo.project.name}-${testInfo.parallelIndex}-${randomUUID()}`;
   const portalEmail = `web-live-${suffix}@kajovohotel.local`;
   const portalPassword = `WebLive-${suffix}-pass`;
 
