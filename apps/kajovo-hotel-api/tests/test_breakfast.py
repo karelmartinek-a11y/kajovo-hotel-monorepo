@@ -277,6 +277,38 @@ POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD Den BEZ STRAVY SNÍDANĚ
     assert rows[3].guest_name == "Glenda Mehrani-Mylany"
 
 
+def test_parse_breakfast_text_for_user_supplied_diet_overview_shape() -> None:
+    parsed_day, rows = parse_breakfast_text(
+        """
+Přehled stravy 6.2.2026-6.2.2026
+HOTEL CHODOV ASC
+Přehled stravy 6.2.2026
+POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD Den BEZ STRAVY SNÍDANĚ OBĚD VEČEŘE POLOPENZE PLNÁ PENZE BALÍČEK ALL INCLUSIVE
+101 KOMFORT Richard Irovský 02.02.-06.02. 5 / 5 0 2 0 0 0 0 0 0
+101 KOMFORT Tomáš Sedláček; Jiří Brejcha 06.02.-07.02. 1 / 2 0 0 0 3 3 0 0 0
+102 KOMFORT Richard Irovský 02.02.-06.02. 5 / 5 0 2 0 0 0 0 0 0
+103 KOMFORT Richard Irovský 02.02.-06.02. 5 / 5 0 1 0 0 0 0 0 0
+103 KOMFORT Tomáš Sedláček; Jiří Brejcha 06.02.-07.02. 1 / 2 0 0 0 2 2 0 0 0
+104 KOMFORT Richard Irovský 02.02.-06.02. 5 / 5 0 1 0 0 0 0 0 0
+106 KOMFORT Lukas Slovencik; Booking.com B.V. 05.02.-06.02. 2 / 2 0 2 0 0 0 0 0 0
+206 SUPERIOR Jarmila Kučová 05.02.-08.02. 2 / 4 0 1 0 0 0 0 0 0
+303 KOMFORT Sabine Reichel 05.02.-08.02. 2 / 4 0 1 0 0 0 0 0 0
+304 KOMFORT Petr Habich; Booking.com B.V. 05.02.-06.02. 2 / 2 0 2 0 0 0 0 0 0
+305 SUPERIOR Petr Habich; Booking.com B.V. 05.02.-06.02. 2 / 2 0 2 0 0 0 0 0 0
+308 KOMFORT Dan Rosa De Pauli 05.02.-06.02. 2 / 2 0 2 0 0 0 0 0 0
+Celkem: 28 16 0 54 54 0 0 0
+"""
+    )
+
+    assert parsed_day == date(2026, 2, 6)
+    assert [row.room for row in rows] == ["101", "102", "103", "104", "106", "206", "303", "304", "305", "308"]
+    assert [row.breakfast_count for row in rows] == [2, 2, 1, 1, 2, 1, 1, 2, 2, 2]
+    assert sum(row.breakfast_count for row in rows) == 16
+    assert rows[0].guest_name == "Richard Irovský"
+    assert rows[4].guest_name == "Lukas Slovencik"
+    assert all(row.room != "105" for row in rows)
+
+
 def test_import_breakfast_pdf_overwrite_and_diets(
     api_request: ApiRequest, api_base_url: str
 ) -> None:
