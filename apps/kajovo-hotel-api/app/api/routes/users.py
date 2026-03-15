@@ -9,7 +9,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
-    LogoutResponse,
     PortalUserCreate,
     PortalUserPasswordSet,
     PortalUserRead,
