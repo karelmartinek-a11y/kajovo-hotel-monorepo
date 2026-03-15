@@ -17,3 +17,11 @@ def test_admin_email_can_be_loaded_from_legacy_hotel_env_var(monkeypatch) -> Non
     settings = Settings()
 
     assert settings.admin_email == "admin@hotel.hcasc.cz"
+
+
+def test_device_bootstrap_key_requires_explicit_configuration(monkeypatch) -> None:
+    monkeypatch.delenv("KAJOVO_API_DEVICE_BOOTSTRAP_KEY", raising=False)
+
+    settings = Settings()
+
+    assert settings.device_bootstrap_key == ""

@@ -39,7 +39,7 @@ def test_device_register_challenge_verify_status(api_base_url: str) -> None:
         payload={
             "device_id": "housekeeping-01",
             "display_name": "Housekeeping tablet",
-            "bootstrap_key": "change-me-device-bootstrap-key",
+            "bootstrap_key": "test-device-bootstrap-key",
         },
     )
     assert status == 200
@@ -103,7 +103,7 @@ def test_device_verify_rejects_bad_signature(api_base_url: str) -> None:
         payload={
             "device_id": "maintenance-01",
             "display_name": "Maintenance tablet",
-            "bootstrap_key": "change-me-device-bootstrap-key",
+            "bootstrap_key": "test-device-bootstrap-key",
         },
     )
     assert status == 200

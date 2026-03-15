@@ -127,6 +127,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     env["KAJOVO_API_DATABASE_URL"] = database_url
     env["KAJOVO_API_ADMIN_EMAIL"] = admin_email()
     env["KAJOVO_API_ADMIN_PASSWORD"] = admin_password()
+    env["KAJOVO_API_DEVICE_BOOTSTRAP_KEY"] = "test-device-bootstrap-key"
     media_root = api_db_path.parent / "media"
     media_root.mkdir(parents=True, exist_ok=True)
     env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)

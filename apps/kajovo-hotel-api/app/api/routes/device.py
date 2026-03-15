@@ -106,6 +106,11 @@ def register_device(
     db: Session = Depends(get_db),
 ) -> DeviceRegisterResponse:
     settings = get_settings()
+    if not settings.device_bootstrap_key.strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Device bootstrap key is not configured",
+        )
     if not secrets.compare_digest(payload.bootstrap_key, settings.device_bootstrap_key):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid bootstrap key")
 

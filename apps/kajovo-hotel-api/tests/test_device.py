@@ -83,7 +83,7 @@ def test_known_device_can_register_and_read_status(api_base_url: str) -> None:
         payload={
             "device_id": "known-device-01",
             "display_name": "Housekeeping Phone",
-            "bootstrap_key": "change-me-device-bootstrap-key",
+            "bootstrap_key": "test-device-bootstrap-key",
         },
     )
     assert status == 200
@@ -101,6 +101,34 @@ def test_known_device_can_register_and_read_status(api_base_url: str) -> None:
     assert isinstance(status_body, dict)
     assert status_body["device_id"] == "known-device-01"
     assert status_body["status"] == "active"
+
+
+def test_device_registration_requires_configured_bootstrap_key(monkeypatch) -> None:
+    from fastapi import HTTPException
+
+    from app.api.routes.device import register_device
+    from app.api.schemas import DeviceRegisterRequest
+    from app.config import get_settings
+
+    get_settings.cache_clear()
+    monkeypatch.delenv("KAJOVO_API_DEVICE_BOOTSTRAP_KEY", raising=False)
+    monkeypatch.delenv("device_bootstrap_key", raising=False)
+
+    payload = DeviceRegisterRequest(
+        device_id="known-device-01",
+        display_name="Housekeeping Phone",
+        bootstrap_key="test-device-bootstrap-key",
+    )
+
+    try:
+        register_device(payload=payload, request=None, db=None)  # type: ignore[arg-type]
+    except HTTPException as exc:
+        assert exc.status_code == 503
+        assert exc.detail == "Device bootstrap key is not configured"
+    else:
+        raise AssertionError("Expected HTTPException for missing bootstrap key configuration")
+    finally:
+        get_settings.cache_clear()
 
 
 def test_active_device_challenge_verify_issues_token(api_base_url: str, api_db_path: Path) -> None:

@@ -105,26 +105,29 @@ Plati tyto zaveri:
 - Stav:
   Otevrene.
 
-#### 1.3 Device bootstrap key ma runtime default
-- Kategorie: `ACTIVE_RUNTIME`, `BOOTSTRAP_OR_COMPAT`
-- Soubor: [apps/kajovo-hotel-api/app/config.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/config.py)
+#### 1.3 Device bootstrap key uz nema runtime default secret
+- Kategorie: `CLEARED`, `BOOTSTRAP_OR_COMPAT`
+- Soubory:
+  - [apps/kajovo-hotel-api/app/config.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/config.py)
+  - [apps/kajovo-hotel-api/app/api/routes/device.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/api/routes/device.py)
 - Popis:
-  `device_bootstrap_key` ma default `change-me-device-bootstrap-key`.
+  `device_bootstrap_key` uz nema default `change-me-device-bootstrap-key`.
+  Pokud neni explicitne nastaveny v ENV, registrace zarizeni konci transparentni chybou `503 Device bootstrap key is not configured`.
 - Riziko:
-  Default bootstrap secret v runtime konfiguraci.
+  Bootstrap domena zustava legitimni soucasti produktu, ale uz neni kryta implicitnim default secretem.
 - Stav:
-  Otevrene.
+  Uzavreno v runtime 2026-03-15.
 
-#### 1.4 V portal routingu stale zije historicka `anonymous` vetev
-- Kategorie: `ACTIVE_RUNTIME`, `BOOTSTRAP_OR_COMPAT`
+#### 1.4 Historicka `anonymous` vetev byla odstranena z portal guardu
+- Kategorie: `CLEARED`
 - Soubor: [apps/kajovo-hotel-web/src/portal/PortalRoutes.tsx](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/src/portal/PortalRoutes.tsx)
 - Popis:
-  Guard stale explicitne pocita s `auth.userId === 'anonymous'`.
-  Dnes to vede na login, ale stale jde o zbytek stareho pseudoidentity modelu.
+  Portal guard uz explicitne nepocita s `auth.userId === 'anonymous'`.
+  Neautentizovany nebo neportalovy stav se ridi pouze skutecnym auth resultatem a `actorType`.
 - Riziko:
-  Mentalni i kodovy navrat k pseudo-user modelu.
+  Odstranen zbytek stareho pseudoidentity modelu v produkcnim routingu.
 - Stav:
-  Otevrene.
+  Uzavreno v runtime 2026-03-15.
 
 ### 2. Zavadejici UX nebo observability
 
@@ -319,8 +322,8 @@ Proto tento dokument prepisuje interpretaci stavu na:
 ### Vlna P0 - runtime pravdivost
 1. Sjednotit [apps/kajovo-hotel-web/src/admin/UsersAdmin.tsx](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/src/admin/UsersAdmin.tsx) s admin app.
 2. Opravit SMTP observability model v [apps/kajovo-hotel-api/app/api/routes/settings.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/api/routes/settings.py).
-3. Rozhodnout, zda `anonymous` branch v [apps/kajovo-hotel-web/src/portal/PortalRoutes.tsx](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/src/portal/PortalRoutes.tsx) zustane jako compat nebo bude odstranena.
-4. Vyresit default `device_bootstrap_key` v [apps/kajovo-hotel-api/app/config.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/config.py).
+3. Doplňovat dalsi dukazy pro moduly vedene v parity matrix jako `PARTIAL`, aby se runtime truth neopiral jen o cileny audit a test-only evidence.
+4. Doplňovat oddělenou evidenci legitimních bootstrap domén, aby se device provisioning nemíchal s dřívějšími runtime fallbacky.
 
 ### Vlna P1 - docs a truth source
 1. Oznacit starsi closeout docs jako historicke.

@@ -190,7 +190,7 @@ export function PortalRoutes({
     [modules, moduleLabels]
   );
 
-  if (auth.userId === 'anonymous' || auth.actorType !== 'portal') {
+  if (auth.actorType !== 'portal') {
     return <Navigate to="/login" replace />;
   }
 
