@@ -234,6 +234,20 @@ jobs:
           VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
         run: node scripts/verify_live_admin_users_smoke.mjs
 
+      - name: Dump API logs after failed live users smoke
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            cd /opt/kajovo-hotel-monorepo
+            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=200 || true
+
       - name: Upload deploy runtime artifact
         if: always()
         uses: actions/upload-artifact@v6

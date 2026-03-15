@@ -250,6 +250,22 @@ if [[ "$schema_ok" -ne 1 ]]; then
   exit 1
 fi
 
+set +e
+migration_ok=0
+for i in {1..10}; do
+  echo "Aplikuji Alembic migrace (pokus $i/10)..."
+  if compose_cmd run --rm api alembic upgrade head; then
+    migration_ok=1
+    break
+  fi
+  sleep 2
+done
+set -e
+if [[ "$migration_ok" -ne 1 ]]; then
+  echo "Aplikace Alembic migraci selhala." >&2
+  exit 1
+fi
+
 compose_cmd up -d --force-recreate postgres
 
 echo "Overuji DB po recreate postgres..."
