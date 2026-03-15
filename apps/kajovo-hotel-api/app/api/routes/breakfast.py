@@ -1,5 +1,6 @@
 ﻿import json
 import os
+import re
 from datetime import date
 from io import BytesIO
 
@@ -39,6 +40,22 @@ router = APIRouter(
     tags=["breakfast"],
     dependencies=[Depends(module_access_dependency("breakfast"))],
 )
+
+
+def _room_sort_key(room_number: str | None) -> tuple[int, int | str, str]:
+    normalized = (room_number or "").strip()
+    match = re.search(r"\d+", normalized)
+    if match:
+        return (0, int(match.group(0)), normalized.casefold())
+    return (1, normalized.casefold(), normalized.casefold())
+
+
+def _visible_breakfast_orders(orders: list[BreakfastOrder]) -> list[BreakfastOrder]:
+    visible = [order for order in orders if int(order.guest_count or 0) > 0]
+    return sorted(
+        visible,
+        key=lambda order: (order.service_date.isoformat(), *_room_sort_key(order.room_number), order.id),
+    )
 
 
 def _build_daily_summary(service_date: date, orders: list[BreakfastOrder]) -> BreakfastDailySummary:
@@ -109,7 +126,7 @@ def list_breakfast_orders(
         query = query.where(BreakfastOrder.status == status_filter.value)
 
     result = db.scalars(query)
-    return list(result)
+    return _visible_breakfast_orders(list(result))
 
 
 @router.get("/daily-summary", response_model=BreakfastDailySummary)
@@ -117,13 +134,13 @@ def get_daily_summary(
     service_date: date = Query(...),
     db: Session = Depends(get_db),
 ) -> BreakfastDailySummary:
-    orders = list(
+    orders = _visible_breakfast_orders(list(
         db.scalars(
             select(BreakfastOrder)
             .where(BreakfastOrder.service_date == service_date)
             .order_by(BreakfastOrder.id.desc())
         )
-    )
+    ))
     return _build_daily_summary(service_date, orders)
 
 
@@ -292,13 +309,13 @@ def export_breakfast_daily_pdf(
             detail="Breakfast export requires recepce/admin role",
         )
 
-    orders = list(
+    orders = _visible_breakfast_orders(list(
         db.scalars(
             select(BreakfastOrder)
             .where(BreakfastOrder.service_date == service_date)
             .order_by(BreakfastOrder.room_number.asc())
         )
-    )
+    ))
 
     pdf_bytes = build_breakfast_schedule_pdf(orders, service_date=service_date)
     filename = f"breakfast-{service_date.isoformat()}.pdf"

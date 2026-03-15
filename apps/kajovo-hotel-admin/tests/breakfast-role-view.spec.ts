@@ -40,6 +40,18 @@ test('admin breakfast role view mirrors the simple serving screen', async ({ pag
       contentType: 'application/json',
       body: JSON.stringify([
         {
+          id: 10,
+          service_date: '2026-03-13',
+          room_number: '305',
+          guest_name: 'Pozdejsi pokoj',
+          guest_count: 1,
+          status: 'pending',
+          note: null,
+          diet_no_gluten: false,
+          diet_no_milk: false,
+          diet_no_pork: false,
+        },
+        {
           id: 11,
           service_date: '2026-03-13',
           room_number: '204',
@@ -49,6 +61,18 @@ test('admin breakfast role view mirrors the simple serving screen', async ({ pag
           note: null,
           diet_no_gluten: false,
           diet_no_milk: true,
+          diet_no_pork: false,
+        },
+        {
+          id: 12,
+          service_date: '2026-03-13',
+          room_number: '099',
+          guest_name: 'Nulovy pokoj',
+          guest_count: 0,
+          status: 'pending',
+          note: null,
+          diet_no_gluten: false,
+          diet_no_milk: false,
           diet_no_pork: false,
         },
       ]),
@@ -67,23 +91,26 @@ test('admin breakfast role view mirrors the simple serving screen', async ({ pag
     });
   });
 
-  await page.goto('/admin/');
-  await page.getByLabel('Role pohledu').selectOption({ index: 4 });
   await page.goto('/admin/snidane');
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
   await expect(page.getByLabel('Datum')).toBeVisible();
-  await expect(page.getByLabel('Hledat')).toHaveCount(0);
-  await expect(page.getByLabel('Import PDF')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Vr.tit cel. den/i })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Smazat den' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Vyd/i })).toBeVisible();
+  await expect(page.getByLabel('Hledat')).toBeVisible();
+  await expect(page.getByLabel('Import PDF')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Vr.tit cel. den/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Smazat den' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Vyd/i })).toHaveCount(2);
+  await expect(page.getByRole('columnheader', { name: 'Datum' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Pokoj' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: 'Osoby' })).toBeVisible();
-  await expect(page.getByRole('columnheader', { name: /Jm/i })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Host' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Počet' })).toBeVisible();
   await expect(page.getByRole('columnheader', { name: 'Diety' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Stav' })).toBeVisible();
   await expect(page.getByText('204')).toBeVisible();
   await expect(page.getByText('Pavel Novak')).toBeVisible();
+  await expect(page.getByText('Nulovy pokoj')).toHaveCount(0);
+  await expect(page.locator('tbody tr').nth(0)).toContainText('204');
+  await expect(page.locator('tbody tr').nth(1)).toContainText('305');
 
   await page.goto('/admin/snidane/nova');
-  await expect(page.getByText(/odep/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Nová snídaně/i })).toBeVisible();
 });

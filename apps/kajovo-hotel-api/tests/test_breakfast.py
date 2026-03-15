@@ -168,6 +168,44 @@ def test_breakfast_list_filter_and_daily_summary(api_request: ApiRequest) -> Non
     assert summary["status_counts"]["served"] == 1
 
 
+def test_breakfast_daily_list_is_sorted_by_room(api_request: ApiRequest) -> None:
+    create_order(
+        api_request,
+        service_date="2026-02-23",
+        room_number="305",
+        guest_count=2,
+        status="pending",
+    )
+    create_order(
+        api_request,
+        service_date="2026-02-23",
+        room_number="101",
+        guest_count=1,
+        status="pending",
+    )
+    create_order(
+        api_request,
+        service_date="2026-02-23",
+        room_number="204",
+        guest_count=1,
+        status="served",
+    )
+    create_order(
+        api_request,
+        service_date="2026-02-23",
+        room_number="099",
+        guest_count=1,
+        status="cancelled",
+    )
+    status, data = api_request(
+        "/api/v1/breakfast",
+        params={"service_date": "2026-02-23"},
+    )
+    assert status == 200
+    assert isinstance(data, list)
+    assert [item["room_number"] for item in data] == ["099", "101", "204", "305"]
+
+
 def test_update_and_delete_breakfast_order(api_request: ApiRequest) -> None:
     created = create_order(api_request, note="Původní")
 
