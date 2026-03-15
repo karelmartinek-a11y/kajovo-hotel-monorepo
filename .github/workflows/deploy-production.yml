@@ -1,4 +1,4 @@
-﻿name: Deploy - hotel.hcasc.cz
+name: Deploy - hotel.hcasc.cz
 
 on:
   workflow_dispatch:
@@ -254,4 +254,4 @@ jobs:
         with:
           name: deploy-runtime-artifact
           path: artifacts/latest.json
-          if-no-files-found: error
+          if-no-files-found: ignore

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -234,26 +234,9 @@ compose_cmd rm -f -s api web admin
 docker_build_with_snapshot_retry
 
 set +e
-schema_ok=0
-for i in {1..10}; do
-  echo "Inicializuji DB schema z ORM modelu (pokus $i/10)..."
-  if compose_cmd run --rm api \
-     python -c "from app.db.models import Base; from app.db.session import engine; Base.metadata.create_all(bind=engine)"; then
-    schema_ok=1
-    break
-  fi
-  sleep 2
-done
-set -e
-if [[ "$schema_ok" -ne 1 ]]; then
-  echo "Inicializace DB schema selhala." >&2
-  exit 1
-fi
-
-set +e
 migration_ok=0
 for i in {1..10}; do
-  echo "Aplikuji Alembic migrace (pokus $i/10)..."
+  echo "Aplikuji Alembic migrace jako jediny zdroj DB schema (pokus $i/10)..."
   if compose_cmd run --rm api alembic upgrade head; then
     migration_ok=1
     break
