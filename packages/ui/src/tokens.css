@@ -1725,7 +1725,6 @@ body {
   color: var(--k-color-ink);
   font-weight: var(--k-weight-bold);
   white-space: nowrap;
-  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 
 .k-role-switcher__button:hover {
