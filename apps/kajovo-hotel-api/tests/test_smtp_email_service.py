@@ -84,7 +84,14 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
             db=db,
         )
         response = send_test_email(SmtpTestEmailRequest(recipient=admin_email), db=db)
-        create_user(PortalUserCreate(email="new.user@example.com", password="new-user-pass"), db=db)
+        create_user(
+            PortalUserCreate(
+                email="new.user@example.com",
+                password="new-user-pass",
+                roles=["recepce"],
+            ),
+            db=db,
+        )
         status = get_smtp_status(db=db)
 
     assert [message.subject for message in transport.sent_messages] == [

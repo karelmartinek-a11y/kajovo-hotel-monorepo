@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 const webPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? '4173');
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webPort}`;
 const previewCommand = `pnpm --filter @kajovo/kajovo-hotel-web preview --host 0.0.0.0 --port ${webPort} --strictPort`;
