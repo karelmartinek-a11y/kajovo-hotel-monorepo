@@ -75,7 +75,7 @@ Každý auditní bod v tabulce níže je popsán přesně podle požadované str
 - **Co audit tvrdil:** Zpevnit auth (RBAC, cookies, CSRF), přidat CSP/headers, pečlivě ošetřit CORS.
 - **Co bylo skutečně nalezeno v repu:** `app/security/auth.py` zajišťuje HttpOnly/SameSite/secure cookies, CSRF ověření, CSP/X-Frame-Options přidává `security_middleware`, `settings.cors_allow_origins` se používá v `CORSMiddleware`, `ensure_csrf` funguje pro všechny write requests, `apps/kajovo-hotel-api/tests/test_security_headers.py` pokrývá hlavičky a CORS. `dependencies` se aktualizovaly (pnpm lock) v rámci předchozích commitů.
 - **Stav:** HOTOVO
-- **Důkaz v kódu:** `apps/kajovo-hotel-api/app/main.py`, `apps/kajovo-hotel-api/app/security/auth.py`, `apps/kajovo-hotel-api/tests/test_security_headers.py`, `.github/workflows/*` (CI). Přidaná dokumentace `docs/audit-remediation-final.md`.
+- **Důkaz v kódu:** `apps/kajovo-hotel-api/app/main.py`, `apps/kajovo-hotel-api/app/security/auth.py`, `apps/kajovo-hotel-api/tests/test_security_headers.py`, `.github/workflows/*` (CI). Aktuální forenzní autorita: `docs/forensics/runtime-truth-ssot-2026-03-15.md`.
 - **Co chybělo / bylo nedotažené:** nic.
 - **Jaká oprava byla provedena:** Převedení RBAC/CSRF/CSP implementace do produkčního middleware + testy.
 - **Zbývající rizika / blokery:** žádné.

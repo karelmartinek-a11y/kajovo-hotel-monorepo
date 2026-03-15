@@ -10,12 +10,13 @@ This document summarizes what a developer needs to work on the portal without SS
 
 ## 2) What a developer needs to know
 
-- Design SSOT: `ManifestDesignKájovo.md`.
-- Information architecture: `apps/kajovo-hotel/ux/ia.json`.
-- RBAC rules: `docs/rbac.md`.
-- Authoritative status/scope: `docs/SSOT_SCOPE_STATUS.md`.
-- Working finalization record: `docs/forensics/finalization-log.md`.
-- Forensic parity matrix: `docs/feature-parity-matrix.csv`.
+- Design governance SSOT: `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- Brand assets and implementation details: `ManifestDesignKájovo.md`
+- Information architecture: `apps/kajovo-hotel/ux/ia.json`
+- RBAC rules: `docs/rbac.md`
+- Runtime truth SSOT: `docs/forensics/runtime-truth-ssot-2026-03-15.md`
+- Working forensic chronology: `docs/forensics/finalization-log.md`
+- Forensic parity matrix: `docs/feature-parity-matrix.csv`
 
 ## 3) Local run
 
@@ -55,6 +56,11 @@ pnpm typecheck
 pnpm unit
 pnpm ci:gates
 ```
+
+When a change touches UI, brand, runtime truth, or forensic documentation, also review:
+
+- `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- `docs/forensics/runtime-truth-ssot-2026-03-15.md`
 
 ## 5) GitHub pipelines
 

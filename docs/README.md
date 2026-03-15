@@ -1,32 +1,34 @@
 # Dokumentace KajovoHotel
 
-Tento adresar je hlavni zdroj dokumentace pro vyvoj, provoz a audit portalu `hotel.hcasc.cz`.
+Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release rozhodnutí portálu `hotel.hcasc.cz`.
 
-## Zacit zde
+## Začít zde
 
-- `docs/developer-handbook.md` - onboarding pro vyvojare bez pristupu na server
-- `docs/how-to-run.md` - lokalni spusteni API, admin a web
-- `docs/how-to-deploy.md` - produkcni deploy a fallback postup
+- `docs/developer-handbook.md` - onboarding pro vývojáře bez přístupu na server
+- `docs/how-to-run.md` - lokální spuštění API, admin a web
+- `docs/how-to-deploy.md` - produkční deploy a fallback postup
 - `docs/ci-gates.md` - popis CI gate kontrol
 - `docs/release-checklist.md` - release checklist
 
-## Aktualni auditni source of truth
+## Aktivní závazné dokumenty
 
-- `docs/SSOT_SCOPE_STATUS.md` — jediný autoritativní status/scope dokument.
-- `docs/forensics/finalization-log.md` — průběžný pracovní forenzní log finalizace.
-- `docs/feature-parity-matrix.csv` — maticové srovnání legacy vs. monorepo.
-- `docs/forensics/` — důkazní implementační a closure dokumenty.
+- `docs/Kajovo_Design_Governance_Standard_SSOT.md` - jediný závazný dokument pro značku, UI, ergonomii a pravidla finálnosti výstupu
+- `docs/forensics/runtime-truth-ssot-2026-03-15.md` - jediný aktivní forenzní audit runtime pravdivosti, simulací, bootstrap vrstev a otevřených nálezů
+- `docs/feature-parity-matrix.csv` - maticové srovnání legacy vs. monorepo a rozsahu reálně doložené parity
+- `docs/forensics/finalization-log.md` - chronologický pracovní log; není autoritativní verdict
 
-## Historicke auditni dokumenty
+## Historické auditní dokumenty
 
-Tyto soubory jsou dulezite jako casova stopa, ale nejsou current-state SSOT:
+Tyto soubory jsou důležité jako časová stopa, ale nejsou current-state SSOT:
 
 - `docs/forensic-audit-2026-03-11-deep.md`
 - `docs/remediation-plan-2026-03-11-by-module.md`
 - `docs/remediation-task-breakdown-2026-03-11.md`
-- starsi unorne a breznove auditni reporty
+- starší únorové a březnové auditní reporty
 
-## Provozni dokumentace
+Staré closeout dokumenty byly z repozitáře odstraněné, aby nevytvářely falešný dojem uzavřeného stavu.
+
+## Provozní dokumentace
 
 - `docs/cutover-plan.md`
 - `docs/cutover-runbook.md`
@@ -34,6 +36,7 @@ Tyto soubory jsou dulezite jako casova stopa, ale nejsou current-state SSOT:
 - `docs/observability.md`
 - `docs/test-accounts.md`
 
-## Zavazna design pravidla
+## Závazná design pravidla
 
-- root soubor `ManifestDesignKajovo.md` je SSOT a je kontrolovany CI gate
+- `docs/Kajovo_Design_Governance_Standard_SSOT.md` je závazná norma pro brand, UI, ergonomii a release blokace
+- `ManifestDesignKájovo.md` je podřízený technický a assetový dokument, nikoliv nadřazené governance SSOT

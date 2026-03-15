@@ -1,7 +1,7 @@
 # Forenzni audit repozitare - hluboky stav k 2026-03-11
 
 > Historical document. This file captures the pre-remediation forensic baseline.
-> For the current state after P0/P1 remediation and test/docs hardening, use `docs/forensic-audit-2026-03-11-current-state.md`.
+> For the current forensic truth and remaining open findings, use `docs/forensics/runtime-truth-ssot-2026-03-15.md`.
 
 ## Exekutivni verdict
 

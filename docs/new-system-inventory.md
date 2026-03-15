@@ -2,7 +2,7 @@
 
 This document is a structural inventory of the current monorepo. For the forensic verdict and parity status, use:
 
-- `docs/forensic-audit-2026-03-11-current-state.md`
+- `docs/forensics/runtime-truth-ssot-2026-03-15.md`
 - `docs/feature-parity-matrix.csv`
 
 ## API inventory (`apps/kajovo-hotel-api`)

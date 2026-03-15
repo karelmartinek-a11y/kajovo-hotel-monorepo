@@ -1,7 +1,7 @@
 # Remediation plan po modulech a souborech - stav k 2026-03-11
 
 > Historical planning document. The P0/P1 items described here were the implementation backlog at audit time.
-> For the current delivered state and remaining open findings, use `docs/forensic-audit-2026-03-11-current-state.md`.
+> For the current delivered state and remaining open findings, use `docs/forensics/runtime-truth-ssot-2026-03-15.md`.
 
 Navazuje na:
 

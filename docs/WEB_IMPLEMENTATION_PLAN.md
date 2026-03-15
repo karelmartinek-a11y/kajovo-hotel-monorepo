@@ -6,6 +6,7 @@ This file is not authoritative and must not be used as a source of truth for imp
 
 Use these active sources instead:
 - `ManifestDesignKájovo.md`
-- `docs/SSOT_SCOPE_STATUS.md`
+- `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- `docs/forensics/runtime-truth-ssot-2026-03-15.md`
 - `docs/forensics/finalization-log.md`
 - current source code, tests, build/deploy workflows, and release-gate artifacts

@@ -12,7 +12,7 @@ Zajistit determinismus brand kompozice v shellu (max 2 brand elementy na view) a
 - `apps/kajovo-hotel-admin/src/main.tsx`: odstraněn duplikátní plovoucí sign, wordmark opatřen `data-brand-element="true"`.
 - `apps/kajovo-hotel-admin/src/dateDefaults.ts`: nový soubor s utilitou `toLocalDateInputValue()`.
 - `apps/kajovo-hotel-admin/tests/ci-gates.spec.ts`: rozšíření Playwright testů o timezone-aware aserce výchozích dat a počtu brand elementů.
-- `docs/forensic-closure-ssot.md`: SSOT dokument mapující nálezy → soubory → testy → done-criteria.
+- `docs/forensics/runtime-truth-ssot-2026-03-15.md`: aktivní forenzní SSOT dokument mapující otevřené nálezy, rizika a důkazní stav.
 
 # D) Ověření
 - Spustit `pnpm --filter @kajovo/kajovo-hotel-admin lint` a ověřit, že nevznikají chyby.

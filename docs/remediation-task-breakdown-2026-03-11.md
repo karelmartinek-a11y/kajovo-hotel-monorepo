@@ -807,4 +807,4 @@ Cil:
 - existuje minimalni real API smoke sada,
 - dokumentace odpovida skutecnemu kodu.
 > Historical backlog document. It records the implementation task breakdown before execution.
-> For current-state truth, current verification evidence and remaining open items, use `docs/forensic-audit-2026-03-11-current-state.md`.
+> For current-state truth, current verification evidence and remaining open items, use `docs/forensics/runtime-truth-ssot-2026-03-15.md`.
