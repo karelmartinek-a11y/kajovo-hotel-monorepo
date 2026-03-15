@@ -4674,8 +4674,6 @@ function AppRoutes(): JSX.Element {
   const roleViewLabel = roleSwitcherLabels[effectiveRoleView] ?? effectiveRoleView;
   const canManageBreakfast = effectiveRoleView === 'admin' || effectiveRoleView === 'recepce';
   const canManageInventory = effectiveRoleView === 'admin';
-  const headerLeadingControls = null;
-
   return (
     <AuthContext.Provider value={effectiveAuth}>
       <AppShell
@@ -4684,7 +4682,6 @@ function AppRoutes(): JSX.Element {
         navigationSections={ia.navigation.sections}
         currentPath={adminCurrentPath}
         panelLayout={panelLayout}
-        headerLeadingControls={headerLeadingControls}
       >
         <Routes>
         <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="P\u0159ehled" role={roleViewLabel} userId={auth.userId} />} />

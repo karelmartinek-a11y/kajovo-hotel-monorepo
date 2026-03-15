@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
-import { AppShell, SkeletonPage, StateView } from '@kajovo/ui';
+import { AppShell, RoleSwitcher, SkeletonPage, StateView } from '@kajovo/ui';
 import { canReadModule, normalizeRole, ROLE_MODULES, type AuthProfile, type Role } from '../rbac';
 import { getAuthBundle, type AuthBundle } from '@kajovo/shared';
 
@@ -106,41 +106,6 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
       {error ? <StateView title={copy.accessDeniedTitle ?? 'Přístup odepřen'} description={error} stateKey="error" /> : null}
       {busy ? <SkeletonPage /> : null}
     </main>
-  );
-}
-
-function HeaderRoleSwitcher({
-  roles,
-  activeRole,
-  busy,
-  onSelect,
-  roleLabel,
-}: {
-  roles: string[];
-  activeRole: string;
-  busy: boolean;
-  onSelect: (role: string) => void;
-  roleLabel: (role: string) => string;
-}): JSX.Element | null {
-  const alternativeRoles = roles.filter((role) => role !== activeRole);
-  if (alternativeRoles.length === 0) {
-    return null;
-  }
-  return (
-    <div className="k-role-switcher" aria-label="Přepínač rolí">
-      <span className="k-role-switcher__active">{roleLabel(activeRole)}</span>
-      {alternativeRoles.map((role) => (
-        <button
-          key={role}
-          className="k-role-switcher__button"
-          type="button"
-          disabled={busy}
-          onClick={() => onSelect(role)}
-        >
-          {roleLabel(role)}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -366,14 +331,14 @@ export function PortalRoutes({
       navigationRules={navigationRules}
       navigationSections={navigationSections}
       currentPath={currentPath}
-      headerLeadingControls={null}
       headerControls={(
-        <HeaderRoleSwitcher
-          roles={auth.roles}
-          activeRole={activeRole}
+        <RoleSwitcher
+          activeLabel={localizedRoleLabel(activeRole)}
+          alternatives={auth.roles
+            .filter((role) => role !== activeRole)
+            .map((role) => ({ key: role, label: localizedRoleLabel(role) }))}
           busy={switchBusy}
           onSelect={(role) => void switchRoleFromHeader(role)}
-          roleLabel={localizedRoleLabel}
         />
       )}
     >
