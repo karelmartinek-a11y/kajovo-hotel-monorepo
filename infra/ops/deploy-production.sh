@@ -237,6 +237,27 @@ set +e
 migration_ok=0
 for i in {1..10}; do
   echo "Aplikuji Alembic migrace jako jediny zdroj DB schema (pokus $i/10)..."
+  has_alembic_version="$(
+    PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+      compose_cmd exec -T postgres \
+      psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
+      "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'alembic_version');" \
+      2>/dev/null | tr -d '[:space:]'
+  )"
+  existing_app_tables="$(
+    PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+      compose_cmd exec -T postgres \
+      psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
+      "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name <> 'alembic_version';" \
+      2>/dev/null | tr -d '[:space:]'
+  )"
+  if [[ "$has_alembic_version" != "t" && "${existing_app_tables:-0}" =~ ^[0-9]+$ && "${existing_app_tables:-0}" -gt 0 ]]; then
+    echo "Detekovano existujici schema bez alembic_version -> adoptuji schema pomoci alembic stamp head."
+    if ! compose_cmd run --rm api alembic stamp head; then
+      sleep 2
+      continue
+    fi
+  fi
   if compose_cmd run --rm api alembic upgrade head; then
     migration_ok=1
     break
