@@ -1,10 +1,10 @@
 from pathlib import Path
 
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect
 
 from alembic import command
-from alembic.config import Config
-from alembic.script import ScriptDirectory
 from app.config import get_settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
