@@ -212,7 +212,7 @@ export function PortalRoutes({
     return <Navigate to="/login" replace />;
   }
 
-  const activeRole = auth.roles.length === 1 ? (auth.activeRole ?? auth.roles[0]) : null;
+  const activeRole = auth.activeRole ?? (auth.roles.length === 1 ? auth.roles[0] : null);
   if (!activeRole) {
     return <RoleSelectPage roles={auth.roles} copy={copy} roleLabel={localizedRoleLabel} />;
   }
