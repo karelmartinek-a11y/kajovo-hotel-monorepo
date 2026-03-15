@@ -17,6 +17,45 @@ function uniqueSuffix(projectName: string, parallelIndex: number) {
   return `${projectName}-${parallelIndex}-${uuid}`;
 }
 
+test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, request }, testInfo) => {
+  const adminLoginResponse = await request.post('/api/auth/admin/login', {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  expect(adminLoginResponse.ok()).toBeTruthy();
+
+  const csrfHeaders = await csrfHeaderFor(request);
+  const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
+  const portalEmail = `web-breakfast-${suffix}@kajovohotel.local`;
+  const portalPassword = `WebBreakfast-${suffix}-pass`;
+
+  const createUserResponse = await request.post('/api/v1/users', {
+    data: {
+      email: portalEmail,
+      password: portalPassword,
+      first_name: 'Recepce',
+      last_name: 'Import',
+      roles: ['recepce'],
+    },
+    headers: csrfHeaders,
+  });
+  expect(createUserResponse.status()).toBe(201);
+
+  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.getByLabel(/email/i).fill(portalEmail);
+  await page.getByLabel(/heslo/i).fill(portalPassword);
+  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+
+  await expect(page).toHaveURL(/\/recepce$/);
+  await page.getByRole('link', { name: /otevrit snidane|otevřít snídaně/i }).click();
+  await expect(page).toHaveURL(/\/snidane$/);
+
+  const samplePdfPath = '../../docs/breakfast/breakfast-sample.pdf';
+  await page.getByLabel(/import pdf/i).setInputFiles(samplePdfPath);
+
+  await expect(page.getByText(/kontrola importu/i)).toBeVisible();
+  await expect(page.getByRole('cell', { name: '101' }).first()).toBeVisible();
+});
+
 test('portal bez session skonci na loginu', async ({ page }) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login$/);

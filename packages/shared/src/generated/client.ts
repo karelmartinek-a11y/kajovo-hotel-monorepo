@@ -639,6 +639,9 @@ export const apiClient = {
   async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
     return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
   },
+  async deleteBreakfastOrdersForPeriodApiV1BreakfastPeriodDeleteDelete(query: { "date_from": string; "date_to": string; }): Promise<void> {
+    return request<void>('DELETE', `/api/v1/breakfast/period/delete`, query, undefined);
+  },
   async reactivateAllBreakfastOrdersApiV1BreakfastReactivateAllPost(query: { "service_date": string; }): Promise<void> {
     return request<void>('POST', `/api/v1/breakfast/reactivate-all`, query, undefined);
   },

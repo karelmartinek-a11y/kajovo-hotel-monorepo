@@ -4662,6 +4662,52 @@
         ]
       }
     },
+    "/api/v1/breakfast/period/delete": {
+      "delete": {
+        "operationId": "delete_breakfast_orders_for_period_api_v1_breakfast_period_delete_delete",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date_from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date_to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Breakfast Orders For Period",
+        "tags": [
+          "breakfast"
+        ]
+      }
+    },
     "/api/v1/breakfast/reactivate-all": {
       "post": {
         "operationId": "reactivate_all_breakfast_orders_api_v1_breakfast_reactivate_all_post",

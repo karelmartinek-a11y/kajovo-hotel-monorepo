@@ -366,6 +366,7 @@ export function PortalRoutes({
       navigationRules={navigationRules}
       navigationSections={navigationSections}
       currentPath={currentPath}
+      headerLeadingControls={null}
       headerControls={(
         <HeaderRoleSwitcher
           roles={auth.roles}

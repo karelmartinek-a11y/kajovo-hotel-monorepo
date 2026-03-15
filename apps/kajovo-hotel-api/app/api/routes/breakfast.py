@@ -296,6 +296,32 @@ def delete_breakfast_orders_for_day(
     db.commit()
 
 
+@router.delete("/period/delete", status_code=status.HTTP_204_NO_CONTENT)
+def delete_breakfast_orders_for_period(
+    request: Request,
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    db: Session = Depends(get_db),
+) -> None:
+    actor_role = _actor_role(request)
+    if actor_role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Breakfast period deletion requires admin role",
+        )
+    if date_from > date_to:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date from must be before or equal to date to",
+        )
+
+    db.query(BreakfastOrder).filter(
+        BreakfastOrder.service_date >= date_from,
+        BreakfastOrder.service_date <= date_to,
+    ).delete(synchronize_session=False)
+    db.commit()
+
+
 @router.get("/export/daily")
 def export_breakfast_daily_pdf(
     request: Request,

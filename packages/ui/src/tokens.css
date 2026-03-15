@@ -151,6 +151,10 @@ body {
   z-index: var(--k-z-base);
 }
 
+.k-app-shell[data-panel-layout='portal'] .k-shell-header-leading {
+  display: none;
+}
+
 .k-shell-inner {
   max-width: var(--k-shell-max-width);
   margin: 0 auto;

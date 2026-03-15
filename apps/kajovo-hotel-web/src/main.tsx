@@ -686,6 +686,11 @@ function BreakfastList(): JSX.Element {
   const [importInfo, setImportInfo] = React.useState<string | null>(null);
   const [importError, setImportError] = React.useState<string | null>(null);
   const [importBusy, setImportBusy] = React.useState(false);
+  const [drafts, setDrafts] = React.useState<Record<number, Partial<BreakfastPayload>>>({});
+  const [saveBusy, setSaveBusy] = React.useState(false);
+  const [saveInfo, setSaveInfo] = React.useState<string | null>(null);
+  const [rangeDeleteFrom, setRangeDeleteFrom] = React.useState(serviceDate);
+  const [rangeDeleteTo, setRangeDeleteTo] = React.useState(serviceDate);
 
   const loadDay = React.useCallback((targetDate: string) => {
     let active = true;
@@ -699,6 +704,8 @@ function BreakfastList(): JSX.Element {
         }
         setItems(orders);
         setSummary(dailySummary);
+        setDrafts({});
+        setSaveInfo(null);
         setError(null);
       })
       .catch(() => {
@@ -720,13 +727,29 @@ function BreakfastList(): JSX.Element {
   }, [loadDay, serviceDate]);
 
   const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
+  const editedRowsCount = Object.keys(drafts).length;
+
+  const mergeOrderWithDraft = React.useCallback((order: BreakfastOrder): BreakfastOrder => {
+    const draft = drafts[order.id];
+    if (!draft) {
+      return order;
+    }
+    return {
+      ...order,
+      status: draft.status ?? order.status,
+      diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
+      diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
+      diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
+    };
+  }, [drafts]);
 
   const filteredItems = visibleItems.filter((item) => {
+    const effectiveItem = mergeOrderWithDraft(item);
     const term = search.trim().toLowerCase();
     if (!term || isServingView) {
       return true;
     }
-    return item.room_number.toLowerCase().includes(term) || (item.guest_name ?? '').toLowerCase().includes(term);
+    return effectiveItem.room_number.toLowerCase().includes(term) || (effectiveItem.guest_name ?? '').toLowerCase().includes(term);
   });
 
   const updateOrder = async (order: BreakfastOrder, updates: Partial<BreakfastPayload>): Promise<void> => {
@@ -750,29 +773,84 @@ function BreakfastList(): JSX.Element {
     setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
   };
 
+  const queueOrderDraft = React.useCallback((order: BreakfastOrder, updates: Partial<BreakfastPayload>): void => {
+    setDrafts((prev) => {
+      const base = prev[order.id] ?? {};
+      const nextDraft: Partial<BreakfastPayload> = {
+        ...base,
+        ...updates,
+      };
+      const effective = {
+        status: nextDraft.status ?? order.status,
+        diet_no_gluten: nextDraft.diet_no_gluten ?? order.diet_no_gluten ?? false,
+        diet_no_milk: nextDraft.diet_no_milk ?? order.diet_no_milk ?? false,
+        diet_no_pork: nextDraft.diet_no_pork ?? order.diet_no_pork ?? false,
+      };
+      if (
+        effective.status === order.status &&
+        effective.diet_no_gluten === (order.diet_no_gluten ?? false) &&
+        effective.diet_no_milk === (order.diet_no_milk ?? false) &&
+        effective.diet_no_pork === (order.diet_no_pork ?? false)
+      ) {
+        const cleaned = { ...prev };
+        delete cleaned[order.id];
+        return cleaned;
+      }
+      return {
+        ...prev,
+        [order.id]: nextDraft,
+      };
+    });
+    setSaveInfo(null);
+  }, []);
+
   const toggleDiet = (order: BreakfastOrder, key: DietKey): void => {
     if (!canEditDiet) {
       return;
     }
+    const effectiveOrder = mergeOrderWithDraft(order);
     const updates: Partial<BreakfastPayload> = {};
-    if (key === 'diet_no_gluten') updates.diet_no_gluten = !order.diet_no_gluten;
-    if (key === 'diet_no_milk') updates.diet_no_milk = !order.diet_no_milk;
-    if (key === 'diet_no_pork') updates.diet_no_pork = !order.diet_no_pork;
-    void updateOrder(order, updates);
+    if (key === 'diet_no_gluten') updates.diet_no_gluten = !effectiveOrder.diet_no_gluten;
+    if (key === 'diet_no_milk') updates.diet_no_milk = !effectiveOrder.diet_no_milk;
+    if (key === 'diet_no_pork') updates.diet_no_pork = !effectiveOrder.diet_no_pork;
+    queueOrderDraft(order, updates);
   };
 
   const markServed = (order: BreakfastOrder): void => {
-    if (!canServe || order.status === 'served') {
+    const effectiveOrder = mergeOrderWithDraft(order);
+    if (!canServe || effectiveOrder.status === 'served') {
       return;
     }
-    void updateOrder(order, { status: 'served' });
+    queueOrderDraft(order, { status: 'served' });
   };
 
   const reactivate = (order: BreakfastOrder): void => {
-    if (!canReactivate || order.status !== 'served') {
+    const effectiveOrder = mergeOrderWithDraft(order);
+    if (!canReactivate || effectiveOrder.status !== 'served') {
       return;
     }
-    void updateOrder(order, { status: 'pending' });
+    queueOrderDraft(order, { status: 'pending' });
+  };
+
+  const saveDraftChanges = async (): Promise<void> => {
+    const entries = visibleItems.filter((item) => drafts[item.id]);
+    if (entries.length === 0) {
+      return;
+    }
+    setSaveBusy(true);
+    setError(null);
+    try {
+      for (const order of entries) {
+        await updateOrder(order, drafts[order.id] ?? {});
+      }
+      setDrafts({});
+      setSaveInfo(`Uloženo ${entries.length} změn pro ${serviceDate}.`);
+      loadDay(serviceDate);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Uložení změn snídaní selhalo.');
+    } finally {
+      setSaveBusy(false);
+    }
   };
 
   const reactivateAll = async (): Promise<void> => {
@@ -805,6 +883,30 @@ function BreakfastList(): JSX.Element {
     });
   };
 
+  const clearPeriod = async (): Promise<void> => {
+    if (!isAdmin) {
+      return;
+    }
+    const csrf = readCsrfToken();
+    await fetchJson<void>(`/api/v1/breakfast/period/delete?date_from=${encodeURIComponent(rangeDeleteFrom)}&date_to=${encodeURIComponent(rangeDeleteTo)}`, {
+      method: 'DELETE',
+      headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+    });
+    setSaveInfo(`Smazáno období ${rangeDeleteFrom} až ${rangeDeleteTo}.`);
+    if (serviceDate >= rangeDeleteFrom && serviceDate <= rangeDeleteTo) {
+      setItems([]);
+      setSummary({
+        service_date: serviceDate,
+        total_orders: 0,
+        total_guests: 0,
+        status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 },
+      });
+      setDrafts({});
+      return;
+    }
+    loadDay(serviceDate);
+  };
+
   const renderDietToggles = (
     data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean },
     onToggle: (key: DietKey) => void,
@@ -828,6 +930,7 @@ function BreakfastList(): JSX.Element {
     setImportError(null);
     setImportInfo(null);
     setImportPreview(null);
+    setImportDate(null);
     try {
       const data = new FormData();
       data.append('file', file);
@@ -839,8 +942,13 @@ function BreakfastList(): JSX.Element {
       });
       setImportPreview(result.items);
       setImportDate(result.date);
-    } catch {
-      setImportError('Validace PDF selhala.');
+      if (result.items.length === 0) {
+        setImportInfo(`Soubor ${file.name} neobsahuje žádné snídaně k importu.`);
+      } else {
+        setImportInfo(`Náhled připraven: ${result.items.length} pokojů pro ${result.date}.`);
+      }
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Validace PDF selhala.');
     } finally {
       setImportBusy(false);
     }
@@ -903,8 +1011,15 @@ function BreakfastList(): JSX.Element {
     <div className="k-card">
       <div className="k-toolbar">
         <strong>Kontrola importu</strong>
-        <span className="k-subtle">{importDate ?? '-'}</span>
+        <span className="k-subtle">{importFile?.name ?? importDate ?? '-'}</span>
       </div>
+      {importPreview.length === 0 ? (
+        <StateView
+          title="Žádné snídaně v PDF"
+          description="Vybraný soubor neobsahuje žádné řádky se snídaní pro import."
+          stateKey="empty"
+        />
+      ) : null}
       <DataTable
         headers={['Pokoj', 'Host', 'Počet', 'Diety']}
         rows={importPreview.map((item, index) => [
@@ -923,7 +1038,7 @@ function BreakfastList(): JSX.Element {
         ])}
       />
       <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy}>Potvrdit import</button>
+        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy || importPreview.length === 0}>Potvrdit import</button>
         <button className="k-button secondary" type="button" onClick={() => setImportPreview(null)}>Zavřít náhled</button>
       </div>
     </div>
@@ -937,10 +1052,14 @@ function BreakfastList(): JSX.Element {
     <div className="k-toolbar">
       <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
       <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} />
-      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label="Import PDF" onChange={(event) => handleImportFile(event.target.files?.[0] ?? null)} /> : null}
+      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label="Import PDF" onChange={(event) => {
+        handleImportFile(event.target.files?.[0] ?? null);
+        event.currentTarget.value = '';
+      }} /> : null}
       {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
       {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
       {canClearDay ? <button className="k-button secondary" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
+      {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
     </div>
   );
 
@@ -959,7 +1078,16 @@ function BreakfastList(): JSX.Element {
             <Card title="Čekající"><strong>{getSummaryCount(summary, 'pending')}</strong></Card>
           </div>
           {breakfastToolbar}
+          {isAdmin ? (
+            <div className="k-toolbar">
+              <input className="k-input" type="date" aria-label="Smazat období od" value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
+              <input className="k-input" type="date" aria-label="Smazat období do" value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
+              <button className="k-button secondary" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
+            </div>
+          ) : null}
+          {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
           {canImport && (importError || importInfo) ? <p className={importError ? 'k-text-error' : 'k-text-success'}>{importError ?? importInfo}</p> : null}
+          {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
           {importPreviewTable}
           {listItems.length === 0 ? (
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
@@ -967,8 +1095,10 @@ function BreakfastList(): JSX.Element {
             <DataTable
               headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Datum', 'Pokoj', 'Host', 'Počet', 'Diety', 'Stav', 'Akce']}
               rows={listItems.map((item) => {
-                const rowClass = item.status === 'served' ? 'k-row-muted' : '';
-                const action = item.status === 'served'
+                const effectiveItem = mergeOrderWithDraft(item);
+                const isDirty = Boolean(drafts[item.id]);
+                const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
+                const action = effectiveItem.status === 'served'
                   ? canReactivate
                     ? <button className="k-button secondary" type="button" onClick={() => reactivate(item)}>Vrátit</button>
                     : <span className="k-text-muted">Vydáno</span>
@@ -978,21 +1108,21 @@ function BreakfastList(): JSX.Element {
 
                 if (isServingView) {
                   return [
-                    <span className={rowClass}>{item.room_number}</span>,
-                    <span className={rowClass}>{item.guest_count}</span>,
-                    <span className={rowClass}>{item.guest_name ?? `Pokoj ${item.room_number}`}</span>,
-                    <span className={rowClass}>{renderDietToggles(item, (key) => toggleDiet(item, key), true)}</span>,
+                    <span className={rowClass}>{effectiveItem.room_number}</span>,
+                    <span className={rowClass}>{effectiveItem.guest_count}</span>,
+                    <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
+                    <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), true)}</span>,
                     action,
                   ];
                 }
 
                 return [
-                  <span className={rowClass}>{item.service_date}</span>,
-                  <span className={rowClass}>{item.room_number}</span>,
-                  <span className={rowClass}>{item.guest_name ?? '-'}</span>,
-                  <span className={rowClass}>{item.guest_count}</span>,
-                  <span className={rowClass}>{renderDietToggles(item, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
-                  <span className={rowClass}>{breakfastStatusLabel(item.status)}</span>,
+                  <span className={rowClass}>{effectiveItem.service_date}</span>,
+                  <span className={rowClass}>{effectiveItem.room_number}</span>,
+                  <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
+                  <span className={rowClass}>{effectiveItem.guest_count}</span>,
+                  <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
+                  <span className={rowClass}>{breakfastStatusLabel(effectiveItem.status)}{isDirty ? ' *' : ''}</span>,
                   action,
                 ];
               })}

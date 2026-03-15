@@ -538,3 +538,47 @@ def test_breakfast_delete_day_requires_recepce_or_admin(api_base_url: str, api_r
     )
     assert status == 200
     assert data == []
+
+
+def test_breakfast_delete_period_requires_admin(api_base_url: str, api_request: ApiRequest) -> None:
+    create_order(api_request, service_date="2026-03-13", room_number="401", status="pending")
+    create_order(api_request, service_date="2026-03-14", room_number="402", status="served")
+    create_order(api_request, service_date="2026-03-15", room_number="403", status="pending")
+
+    recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
+    status, data = recepce_request(
+        "/api/v1/breakfast/period/delete",
+        method="DELETE",
+        params={"date_from": "2026-03-13", "date_to": "2026-03-14"},
+    )
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast period deletion requires admin role"
+
+    status, data = api_request(
+        "/api/v1/breakfast/period/delete",
+        method="DELETE",
+        params={"date_from": "2026-03-15", "date_to": "2026-03-14"},
+    )
+    assert status == 400
+    assert isinstance(data, dict)
+    assert data["detail"] == "Date from must be before or equal to date to"
+
+    status, _ = api_request(
+        "/api/v1/breakfast/period/delete",
+        method="DELETE",
+        params={"date_from": "2026-03-13", "date_to": "2026-03-14"},
+    )
+    assert status == 204
+
+    status, first_day = api_request("/api/v1/breakfast", params={"service_date": "2026-03-13"})
+    assert status == 200
+    assert first_day == []
+
+    status, second_day = api_request("/api/v1/breakfast", params={"service_date": "2026-03-14"})
+    assert status == 200
+    assert second_day == []
+
+    status, third_day = api_request("/api/v1/breakfast", params={"service_date": "2026-03-15"})
+    assert status == 200
+    assert len(third_day) == 1
