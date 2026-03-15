@@ -54,37 +54,37 @@ def upgrade() -> None:
     op.create_index(op.f("ix_inventory_card_items_card_id"), "inventory_card_items", ["card_id"], unique=False)
     op.create_index(op.f("ix_inventory_card_items_ingredient_id"), "inventory_card_items", ["ingredient_id"], unique=False)
 
-    op.add_column("inventory_movements", sa.Column("card_id", sa.Integer(), nullable=True))
-    op.add_column("inventory_movements", sa.Column("card_item_id", sa.Integer(), nullable=True))
-    op.add_column("inventory_movements", sa.Column("quantity_pieces", sa.Integer(), nullable=False, server_default="0"))
-    op.create_index(op.f("ix_inventory_movements_card_id"), "inventory_movements", ["card_id"], unique=False)
-    op.create_index(op.f("ix_inventory_movements_card_item_id"), "inventory_movements", ["card_item_id"], unique=False)
-    op.create_foreign_key(
-        "fk_inventory_movements_card_id_inventory_cards",
-        "inventory_movements",
-        "inventory_cards",
-        ["card_id"],
-        ["id"],
-        ondelete="SET NULL",
-    )
-    op.create_foreign_key(
-        "fk_inventory_movements_card_item_id_inventory_card_items",
-        "inventory_movements",
-        "inventory_card_items",
-        ["card_item_id"],
-        ["id"],
-        ondelete="SET NULL",
-    )
+    with op.batch_alter_table("inventory_movements") as batch_op:
+        batch_op.add_column(sa.Column("card_id", sa.Integer(), nullable=True))
+        batch_op.add_column(sa.Column("card_item_id", sa.Integer(), nullable=True))
+        batch_op.add_column(sa.Column("quantity_pieces", sa.Integer(), nullable=False, server_default="0"))
+        batch_op.create_index(op.f("ix_inventory_movements_card_id"), ["card_id"], unique=False)
+        batch_op.create_index(op.f("ix_inventory_movements_card_item_id"), ["card_item_id"], unique=False)
+        batch_op.create_foreign_key(
+            "fk_inventory_movements_card_id_inventory_cards",
+            "inventory_cards",
+            ["card_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
+        batch_op.create_foreign_key(
+            "fk_inventory_movements_card_item_id_inventory_card_items",
+            "inventory_card_items",
+            ["card_item_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
 
 
 def downgrade() -> None:
-    op.drop_constraint("fk_inventory_movements_card_item_id_inventory_card_items", "inventory_movements", type_="foreignkey")
-    op.drop_constraint("fk_inventory_movements_card_id_inventory_cards", "inventory_movements", type_="foreignkey")
-    op.drop_index(op.f("ix_inventory_movements_card_item_id"), table_name="inventory_movements")
-    op.drop_index(op.f("ix_inventory_movements_card_id"), table_name="inventory_movements")
-    op.drop_column("inventory_movements", "quantity_pieces")
-    op.drop_column("inventory_movements", "card_item_id")
-    op.drop_column("inventory_movements", "card_id")
+    with op.batch_alter_table("inventory_movements") as batch_op:
+        batch_op.drop_constraint("fk_inventory_movements_card_item_id_inventory_card_items", type_="foreignkey")
+        batch_op.drop_constraint("fk_inventory_movements_card_id_inventory_cards", type_="foreignkey")
+        batch_op.drop_index(op.f("ix_inventory_movements_card_item_id"))
+        batch_op.drop_index(op.f("ix_inventory_movements_card_id"))
+        batch_op.drop_column("quantity_pieces")
+        batch_op.drop_column("card_item_id")
+        batch_op.drop_column("card_id")
 
     op.drop_index(op.f("ix_inventory_card_items_ingredient_id"), table_name="inventory_card_items")
     op.drop_index(op.f("ix_inventory_card_items_card_id"), table_name="inventory_card_items")

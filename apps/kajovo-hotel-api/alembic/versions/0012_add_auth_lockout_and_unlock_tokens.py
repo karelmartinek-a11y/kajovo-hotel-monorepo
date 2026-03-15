@@ -31,11 +31,11 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("actor_type", "principal", name="uq_auth_lockout_actor_principal"),
     )
     op.create_index(op.f("ix_auth_lockout_states_id"), "auth_lockout_states", ["id"], unique=False)
     op.create_index(op.f("ix_auth_lockout_states_actor_type"), "auth_lockout_states", ["actor_type"], unique=False)
     op.create_index(op.f("ix_auth_lockout_states_principal"), "auth_lockout_states", ["principal"], unique=False)
-    op.create_unique_constraint("uq_auth_lockout_actor_principal", "auth_lockout_states", ["actor_type", "principal"])
 
     op.create_table(
         "auth_unlock_tokens",
@@ -63,7 +63,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_auth_unlock_tokens_id"), table_name="auth_unlock_tokens")
     op.drop_table("auth_unlock_tokens")
 
-    op.drop_constraint("uq_auth_lockout_actor_principal", "auth_lockout_states", type_="unique")
     op.drop_index(op.f("ix_auth_lockout_states_principal"), table_name="auth_lockout_states")
     op.drop_index(op.f("ix_auth_lockout_states_actor_type"), table_name="auth_lockout_states")
     op.drop_index(op.f("ix_auth_lockout_states_id"), table_name="auth_lockout_states")

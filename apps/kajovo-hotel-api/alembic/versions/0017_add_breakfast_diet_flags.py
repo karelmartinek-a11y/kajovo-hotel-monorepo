@@ -30,9 +30,10 @@ def upgrade() -> None:
         sa.Column("diet_no_pork", sa.Boolean(), nullable=False, server_default=sa.text("0")),
     )
 
-    op.alter_column("breakfast_orders", "diet_no_gluten", server_default=None)
-    op.alter_column("breakfast_orders", "diet_no_milk", server_default=None)
-    op.alter_column("breakfast_orders", "diet_no_pork", server_default=None)
+    with op.batch_alter_table("breakfast_orders") as batch_op:
+        batch_op.alter_column("diet_no_gluten", server_default=None)
+        batch_op.alter_column("diet_no_milk", server_default=None)
+        batch_op.alter_column("diet_no_pork", server_default=None)
 
 
 def downgrade() -> None:

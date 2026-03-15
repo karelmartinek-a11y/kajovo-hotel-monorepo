@@ -29,8 +29,9 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_audit_trail_actor_id"), "audit_trail", ["actor_id"], unique=False)
     op.create_index(op.f("ix_audit_trail_actor_role"), "audit_trail", ["actor_role"], unique=False)
-    op.alter_column("audit_trail", "actor_id", server_default=None)
-    op.alter_column("audit_trail", "actor_role", server_default=None)
+    with op.batch_alter_table("audit_trail") as batch_op:
+        batch_op.alter_column("actor_id", server_default=None)
+        batch_op.alter_column("actor_role", server_default=None)
 
 
 def downgrade() -> None:

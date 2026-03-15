@@ -54,8 +54,9 @@ def upgrade() -> None:
             {"id": user_id, "first_name": local[:120] or "User", "last_name": "User"},
         )
 
-    op.alter_column("portal_users", "first_name", existing_type=sa.String(length=120), nullable=False)
-    op.alter_column("portal_users", "last_name", existing_type=sa.String(length=120), nullable=False)
+    with op.batch_alter_table("portal_users") as batch_op:
+        batch_op.alter_column("first_name", existing_type=sa.String(length=120), nullable=False)
+        batch_op.alter_column("last_name", existing_type=sa.String(length=120), nullable=False)
 
     op.create_table(
         "portal_user_roles",
@@ -97,7 +98,8 @@ def downgrade() -> None:
             {"id": user_id, "role": role},
         )
 
-    op.alter_column("portal_users", "role", existing_type=sa.String(length=64), nullable=False)
+    with op.batch_alter_table("portal_users") as batch_op:
+        batch_op.alter_column("role", existing_type=sa.String(length=64), nullable=False)
     op.create_index(op.f("ix_portal_users_role"), "portal_users", ["role"], unique=False)
 
     op.drop_index(op.f("ix_portal_user_roles_role"), table_name="portal_user_roles")
