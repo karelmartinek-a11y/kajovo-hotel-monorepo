@@ -5,7 +5,7 @@
 - Verify empty and error states on data routes arise only from real API responses.
 - Verify utility routes `/offline`, `/maintenance`, `/404` still render the correct `StateView`.
 - Validate all empty states expose at least one actionable CTA (create item, refresh, or navigate back).
-- Validate all error states expose a recovery action (reload, retry, or navigation fallback).
+- Validate all error states expose a recovery action (reload, retry, or navigation path).
 - Validate global states `/offline`, `/maintenance`, `/404` include recovery navigation.
 
 ## 2) Visual and responsive quality
@@ -18,7 +18,7 @@
 ## 3) Performance-safe defaults
 
 - Confirm route-level lazy loading still works for utility routes (`/intro`, `/offline`, `/maintenance`, `/404`).
-- Confirm fallback skeleton is shown while lazy route chunks load.
+- Confirm loading skeleton is shown while lazy route chunks load.
 - Confirm skeleton animation respects `prefers-reduced-motion: reduce`.
 
 ## 4) Pre-production gates

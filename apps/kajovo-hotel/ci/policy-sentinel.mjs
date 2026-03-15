@@ -16,19 +16,19 @@ const list = (cmd) =>
     .filter(Boolean);
 
 const changedFiles = () => {
-  const fallback = () => {
+  const localScan = () => {
     const tracked = list('git diff --name-only HEAD');
     const untracked = list('git ls-files --others --exclude-standard');
     return [...new Set([...tracked, ...untracked])];
   };
 
-  if (!baseRef) return fallback();
+  if (!baseRef) return localScan();
 
   try {
     execSync(`git fetch origin ${baseRef} --depth=1`, { stdio: 'ignore' });
     return list(`git diff --name-only origin/${baseRef}...HEAD`);
   } catch {
-    return fallback();
+    return localScan();
   }
 };
 

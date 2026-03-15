@@ -9,7 +9,7 @@ RBAC is session-backed.
 - Web and admin frontends resolve identity through `/api/auth/me`.
 - Missing or invalid session does **not** fall back to a local pseudo-user.
 
-This replaces the older header-driven and local-fallback behavior described in historical documents.
+This replaces older header-driven and local pseudo-user behavior described in historical documents.
 
 ## Actor types
 

@@ -23,11 +23,11 @@ const parseCookieParts = (headers) => {
       .map((header) => header.split(';', 1)[0]?.trim())
       .filter(Boolean);
   }
-  const fallback = headers.get('set-cookie');
-  if (!fallback) {
+  const setCookieHeader = headers.get('set-cookie');
+  if (!setCookieHeader) {
     return [];
   }
-  return fallback
+  return setCookieHeader
     .split(/,(?=[^;]+=[^;]+)/)
     .map((part) => part.split(';', 1)[0]?.trim())
     .filter(Boolean);

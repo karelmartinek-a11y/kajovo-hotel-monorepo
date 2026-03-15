@@ -111,12 +111,6 @@ def iter_text_files() -> list[Path]:
         path = REPO_ROOT / relative_path
         if path.exists():
             files.append(path)
-    for path in (REPO_ROOT / "docs" / "forensics").rglob("*"):
-        if path.is_dir():
-            continue
-        if path.suffix.lower() not in TEXT_EXTENSIONS:
-            continue
-        files.append(path)
     return sorted(set(files))
 
 

@@ -414,12 +414,12 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
   if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
 
-  const fallbackResponse = await fetch(path + url.search, {
+  const directResponse = await fetch(path + url.search, {
     ...init,
     credentials: 'include',
   });
-  if (!fallbackResponse.ok) {
-    const raw = await fallbackResponse.text();
+  if (!directResponse.ok) {
+    const raw = await directResponse.text();
     try {
       const parsed = JSON.parse(raw) as { detail?: unknown };
       if (typeof parsed.detail === 'string') {
@@ -438,12 +438,12 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
         throw error;
       }
     }
-    throw new Error(raw || `HTTP ${fallbackResponse.status}`);
+    throw new Error(raw || `HTTP ${directResponse.status}`);
   }
-  if (fallbackResponse.status === 204) {
+  if (directResponse.status === 204) {
     return undefined as T;
   }
-  return (await fallbackResponse.json()) as T;
+  return (await directResponse.json()) as T;
 }
 
 
@@ -502,7 +502,7 @@ function InventoryThumb({
       {src ? (
         <img src={src} alt={alt ?? `Miniatura položky ${item.name}`} />
       ) : (
-        <span className="k-inventory-thumb-fallback">{item.name.slice(0, 1).toUpperCase()}</span>
+        <span className="k-inventory-thumb-letter">{item.name.slice(0, 1).toUpperCase()}</span>
       )}
     </div>
   );
@@ -2649,4 +2649,3 @@ createRoot(document.getElementById('root')!).render(
     </ClientErrorBoundary>
   </React.StrictMode>,
 );
-

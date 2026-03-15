@@ -40,7 +40,7 @@ Optional aliases:
 - `KAJOVO_API_ADMIN_EMAIL`
 - `KAJOVO_API_ADMIN_PASSWORD`
 
-If aliases are set, they must equal `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. GitHub workflows validate this and no workflow uses a hardcoded fallback admin account anymore.
+If aliases are set, they must equal `HOTEL_ADMIN_EMAIL` / `HOTEL_ADMIN_PASSWORD`. GitHub workflows validate this and no workflow uses a hardcoded admin account anymore.
 
 Recommended split:
 

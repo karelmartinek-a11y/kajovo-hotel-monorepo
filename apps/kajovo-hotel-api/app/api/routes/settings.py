@@ -177,7 +177,7 @@ def _persist_smtp_test_result(
     db.commit()
 
 
-def _fallback_smtp_settings_read(record: PortalSmtpSettings | None) -> SmtpSettingsRead:
+def _compat_smtp_settings_read(record: PortalSmtpSettings | None) -> SmtpSettingsRead:
     if record is None:
         return _default_smtp_settings_read()
 
@@ -215,7 +215,7 @@ def get_smtp_settings(db: Session = Depends(get_db)) -> SmtpSettingsRead:
         return SmtpSettingsRead(**read_model.__dict__)
     except Exception:
         # Keep the form editable even if the stored secret or legacy row is malformed.
-        return _fallback_smtp_settings_read(SimpleNamespace(**row))
+        return _compat_smtp_settings_read(SimpleNamespace(**row))
 
 
 @router.get("/smtp/status", response_model=SmtpOperationalStatusRead)
@@ -294,7 +294,7 @@ def put_smtp_settings(
         read_model = to_read_model(stored, settings.smtp_encryption_key)
         return SmtpSettingsRead(**read_model.__dict__)
     except Exception:
-        return _fallback_smtp_settings_read(SimpleNamespace(**stored.__dict__))
+        return _compat_smtp_settings_read(SimpleNamespace(**stored.__dict__))
 
 
 @router.post("/smtp/test-email", response_model=SmtpTestEmailResponse)

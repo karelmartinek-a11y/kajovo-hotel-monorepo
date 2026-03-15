@@ -13,10 +13,8 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 ## Aktivní závazné dokumenty
 
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md`
-- `docs/forensics/runtime-truth-ssot-2026-03-15.md`
-- `docs/forensics/bootstrap-and-simulation-inventory-2026-03-15.md`
-- `docs/forensics/live-proof-backlog-2026-03-15.md`
-- `docs/feature-parity-matrix.csv`
+- `docs/release-checklist.md`
+- `docs/rbac.md`
 
 ## Provozní dokumentace
 
@@ -28,4 +26,4 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 
 ## Pravidlo autority
 
-Za current-state zdroj se považují pouze aktivní SSOT dokumenty uvedené výše. Historické closeout, mock-normalizační a verifikační dokumenty byly z aktivní dokumentace odstraněny.
+Za current-state zdroj se považují pouze aktivní dokumenty uvedené výše. Historické auditní, mock-normalizační a verifikační dokumenty byly z repozitáře odstraněny.

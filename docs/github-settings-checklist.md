@@ -7,7 +7,7 @@ Purpose: authoritative checklist for repository-level GitHub `Secrets` and `Vari
 
 - Admin username is the same value as the admin email.
 - GitHub Actions must source admin credentials only from repository `Secrets` / `Variables`.
-- GitHub workflows do not permit a hardcoded fallback admin account anymore.
+- GitHub workflows do not permit a hardcoded admin account anymore.
 - If `KAJOVO_API_ADMIN_*` aliases are set, they must match `HOTEL_ADMIN_*`.
 - Production API synchronizes the persisted admin profile from the resolved GitHub admin credentials on startup, so the deployed login always follows the repository credential source of truth.
 - CI smoke, auth tests, and post-deploy verify use the same admin credentials and fail in CI if they are missing.

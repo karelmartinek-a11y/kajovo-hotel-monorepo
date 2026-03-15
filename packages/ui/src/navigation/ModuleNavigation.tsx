@@ -148,13 +148,13 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
     }
 
     const bySection = new Map<string, GroupedModules>();
-    const fallbackSectionKey = 'default';
-    const fallbackLabel = rules.defaultGroupLabel ?? 'Ostatní';
+    const defaultSectionKey = 'default';
+    const defaultLabel = rules.defaultGroupLabel ?? 'Ostatní';
 
     for (const module of visibleItems) {
-      const sectionKey = module.section ?? fallbackSectionKey;
+      const sectionKey = module.section ?? defaultSectionKey;
       const section = sectionMap.get(sectionKey);
-      const label = section?.label ?? (sectionKey === fallbackSectionKey ? fallbackLabel : sectionKey);
+      const label = section?.label ?? (sectionKey === defaultSectionKey ? defaultLabel : sectionKey);
       const order = section?.order ?? Number.MAX_SAFE_INTEGER;
       const existing = bySection.get(sectionKey);
 

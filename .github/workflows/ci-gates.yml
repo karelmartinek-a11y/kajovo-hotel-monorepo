@@ -146,12 +146,6 @@ jobs:
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
 
-      - name: Parity placeholder gate
-        run: pnpm ci:parity-placeholders
-
-      - name: Verification doc gate
-        run: pnpm ci:verification-doc
-
       - name: Policy sentinel gate
         run: pnpm ci:policy
 

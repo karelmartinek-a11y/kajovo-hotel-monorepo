@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     breakfast_imap_subject_contains: str = "prehled stravy"
     breakfast_runtime_artifact_dir: str = "/app/data/runtime-artifacts"
     device_bootstrap_key: str = ""
-    inventory_seed_enabled: bool = False
     device_challenge_ttl_seconds: int = 300
     device_token_ttl_seconds: int = 86400
     trusted_hosts: list[str] = Field(

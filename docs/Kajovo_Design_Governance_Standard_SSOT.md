@@ -191,12 +191,8 @@ Release je blokovaný, pokud platí alespoň jedna z těchto podmínek:
 - výstup je generický, nedokončený nebo maskovaný jako finální řešení,
 - AI nebo člověk předává placeholder, fake implementaci nebo rozpadlý layout jako hotový výstup.
 
-## Vazba na ostatní SSOT
+## Vazba na zbytek repozitare
 
-Tento dokument je závazný pro brand, UI, ergonomii a finálnost výstupu.
+Tento dokument je zavazny pro brand, UI, ergonomii i pravdivost finalniho vystupu.
 
-Pro runtime pravdivost, simulace, bootstrap a forenzní stav repozitáře je závazný:
-
-- `docs/forensics/runtime-truth-ssot-2026-03-15.md`
-
-Tyto dva dokumenty se doplňují a nesmějí si odporovat.
+Repo nesmi obsahovat aktivni runtime, testy, CI ani dokumentaci, ktere predstiraji realitu pomoci mocku, fallbacku, placeholderu nebo bootstrap obchazek.

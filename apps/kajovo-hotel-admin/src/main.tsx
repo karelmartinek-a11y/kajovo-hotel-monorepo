@@ -900,25 +900,25 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   }
 
-  const fallbackHeaders = normalizeHeaders(init?.headers);
+  const directHeaders = normalizeHeaders(init?.headers);
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     const csrf = readCsrfToken();
     if (csrf) {
-      fallbackHeaders['x-csrf-token'] = csrf;
+      directHeaders['x-csrf-token'] = csrf;
     }
   }
-  const fallbackResponse = await fetch(path + url.search, {
+  const directResponse = await fetch(path + url.search, {
     ...init,
     credentials: 'include',
-    headers: fallbackHeaders,
+    headers: directHeaders,
   });
-  if (!fallbackResponse.ok) {
-    throw await buildHttpError(fallbackResponse);
+  if (!directResponse.ok) {
+    throw await buildHttpError(directResponse);
   }
-  if (fallbackResponse.status === 204) {
+  if (directResponse.status === 204) {
     return undefined as T;
   }
-  return (await fallbackResponse.json()) as T;
+  return (await directResponse.json()) as T;
 }
 
 function formatDateTime(value: string | null): string {
@@ -976,7 +976,7 @@ function InventoryThumb({
       {src ? (
         <img src={src} alt={alt ?? `Miniatura položky ${item.name}`} />
       ) : (
-        <span className="k-inventory-thumb-fallback">{item.name.slice(0, 1).toUpperCase()}</span>
+        <span className="k-inventory-thumb-letter">{item.name.slice(0, 1).toUpperCase()}</span>
       )}
     </div>
   );
@@ -4307,7 +4307,7 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
       method: 'POST',
       body: JSON.stringify({ email }),
     });
-    setHintStatus(copy.hintInfo ?? 'Pokud účet existuje, byl odeslán odkaz pro odblokování.');
+    setHintStatus(copy.hintInfo ?? 'Pokyn byl zpracován.');
   }
 
   return (

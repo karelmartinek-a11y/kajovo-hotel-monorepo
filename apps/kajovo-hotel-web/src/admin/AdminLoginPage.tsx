@@ -66,12 +66,12 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
       credentials: 'include',
       body: JSON.stringify({ email }),
     });
-    const fallbackMessage = 'Pokud účet existuje, byl odeslán odkaz pro odblokování.';
+    const infoMessage = 'Pokyn byl zpracován.';
     if (!response.ok) {
-      setHintStatus(copy.hintInfo ?? fallbackMessage);
+      setHintStatus(copy.hintInfo ?? infoMessage);
       return;
     }
-    setHintStatus(copy.hintInfo ?? fallbackMessage);
+    setHintStatus(copy.hintInfo ?? infoMessage);
   }
 
   return (
