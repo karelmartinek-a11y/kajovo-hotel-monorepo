@@ -1711,3 +1711,38 @@ body {
   row-gap: var(--k-spacing-2);
   max-width: 100%;
 }
+
+.k-role-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--k-spacing-2);
+  flex-wrap: wrap;
+}
+
+.k-role-switcher__active {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--k-spacing-3);
+  border-radius: var(--k-radius-pill);
+  background: var(--k-color-brand-red);
+  color: var(--k-color-brand-white);
+  font-weight: var(--k-weight-bold);
+  white-space: nowrap;
+}
+
+.k-role-switcher__button {
+  min-height: 40px;
+  padding: 0 var(--k-spacing-3);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-pill);
+  background: var(--k-color-surface);
+  color: var(--k-color-ink);
+  font-weight: var(--k-weight-bold);
+  white-space: nowrap;
+}
+
+.k-role-switcher__button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

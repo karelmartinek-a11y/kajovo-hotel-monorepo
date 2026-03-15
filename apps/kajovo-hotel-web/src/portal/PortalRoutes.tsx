@@ -33,6 +33,31 @@ type RoleSelectPageProps = {
   roleLabel: (role: string) => string;
 };
 
+async function requestRoleSelection(role: string): Promise<{ ok: true } | { ok: false; detail?: string }> {
+  const csrfToken = readCsrfToken();
+  const response = await fetch('/api/auth/select-role', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
+    },
+    credentials: 'include',
+    body: JSON.stringify({ role }),
+  });
+  if (response.ok) {
+    return { ok: true };
+  }
+  try {
+    const body = await response.json();
+    return {
+      ok: false,
+      detail: body && typeof body.detail === 'string' ? body.detail : undefined,
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
 function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -45,29 +70,10 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
     setError(null);
     setBusy(true);
     try {
-      const csrfToken = readCsrfToken();
-      const response = await fetch('/api/auth/select-role', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
-        },
-        credentials: 'include',
-        body: JSON.stringify({ role }),
-      });
-      if (!response.ok) {
-        let detail: string | undefined;
-        try {
-          const body = await response.json();
-          if (body && typeof body.detail === 'string') {
-            detail = body.detail;
-          }
-        } catch {
-          // ignore parse errors, fall back to generic copy
-        }
-        console.error('Role select failed', response.status, detail);
+      const result = await requestRoleSelection(role);
+      if (!result.ok) {
         setBusy(false);
-        setError(detail ?? copy.roleSelectError ?? 'Výběr role selhal.');
+        setError(result.detail ?? copy.roleSelectError ?? 'Výběr role selhal.');
         return;
       }
       window.location.assign('/');
@@ -100,6 +106,41 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
       {error ? <StateView title={copy.accessDeniedTitle ?? 'Přístup odepřen'} description={error} stateKey="error" /> : null}
       {busy ? <SkeletonPage /> : null}
     </main>
+  );
+}
+
+function HeaderRoleSwitcher({
+  roles,
+  activeRole,
+  busy,
+  onSelect,
+  roleLabel,
+}: {
+  roles: string[];
+  activeRole: string;
+  busy: boolean;
+  onSelect: (role: string) => void;
+  roleLabel: (role: string) => string;
+}): JSX.Element | null {
+  const alternativeRoles = roles.filter((role) => role !== activeRole);
+  if (alternativeRoles.length === 0) {
+    return null;
+  }
+  return (
+    <div className="k-role-switcher" aria-label="Přepínač rolí">
+      <span className="k-role-switcher__active">{roleLabel(activeRole)}</span>
+      {alternativeRoles.map((role) => (
+        <button
+          key={role}
+          className="k-role-switcher__button"
+          type="button"
+          disabled={busy}
+          onClick={() => onSelect(role)}
+        >
+          {roleLabel(role)}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -207,6 +248,8 @@ export function PortalRoutes({
       })),
     [modules, moduleLabels]
   );
+  const [switchError, setSwitchError] = React.useState<string | null>(null);
+  const [switchBusy, setSwitchBusy] = React.useState(false);
 
   if (auth.actorType !== 'portal') {
     return <Navigate to="/login" replace />;
@@ -217,6 +260,22 @@ export function PortalRoutes({
     return <RoleSelectPage roles={auth.roles} copy={copy} roleLabel={localizedRoleLabel} />;
   }
   const activeRoleLabel = localizedRoleLabel(activeRole);
+  const switchRoleFromHeader = React.useCallback(async (role: string) => {
+    setSwitchError(null);
+    setSwitchBusy(true);
+    try {
+      const result = await requestRoleSelection(role);
+      if (!result.ok) {
+        setSwitchBusy(false);
+        setSwitchError(result.detail ?? copy.roleSelectError ?? 'Výběr role selhal.');
+        return;
+      }
+      window.location.assign('/');
+    } catch (err) {
+      setSwitchBusy(false);
+      setSwitchError(err instanceof Error && err.message ? err.message : (copy.roleSelectError ?? 'Výběr role selhal.'));
+    }
+  }, [copy.roleSelectError]);
 
   const roleModuleKeys = roleModules(activeRole);
   const moduleByKey = new Map(localizedModules.map((module) => [module.key, module]));
@@ -285,7 +344,17 @@ export function PortalRoutes({
       navigationRules={navigationRules}
       navigationSections={navigationSections}
       currentPath={currentPath}
+      headerControls={(
+        <HeaderRoleSwitcher
+          roles={auth.roles}
+          activeRole={activeRole}
+          busy={switchBusy}
+          onSelect={(role) => void switchRoleFromHeader(role)}
+          roleLabel={localizedRoleLabel}
+        />
+      )}
     >
+      {switchError ? <div className="k-shell-inner"><StateView title={copy.accessDeniedTitle ?? 'Přístup odepřen'} description={switchError} stateKey="error" /></div> : null}
       <Routes>
         <Route
           path="/"

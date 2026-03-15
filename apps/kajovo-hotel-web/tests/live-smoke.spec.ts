@@ -58,3 +58,39 @@ test('portal auth endpoint funguje nad realnym API a web admin surface zustava r
   await page.goto('/admin/uzivatele', { waitUntil: 'networkidle' });
   await expect(page.getByTestId('admin-surface-retired-page')).toBeVisible();
 });
+
+test('multirolni portal uzivatel vidi po vyberu role prepinac ostatnich roli v zahlavi', async ({ page, request }, testInfo) => {
+  const adminLoginResponse = await request.post('/api/auth/admin/login', {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  expect(adminLoginResponse.ok()).toBeTruthy();
+
+  const csrfHeaders = await csrfHeaderFor(request);
+  const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
+  const portalEmail = `web-multirole-${suffix}@kajovohotel.local`;
+  const portalPassword = `WebMulti-${suffix}-pass`;
+
+  const createUserResponse = await request.post('/api/v1/users', {
+    data: {
+      email: portalEmail,
+      password: portalPassword,
+      first_name: 'Multi',
+      last_name: 'Role',
+      roles: ['recepce', 'pokojská'],
+    },
+    headers: csrfHeaders,
+  });
+  expect(createUserResponse.status()).toBe(201);
+
+  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.getByLabel(/email/i).fill(portalEmail);
+  await page.getByLabel(/heslo/i).fill(portalPassword);
+  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+
+  await expect(page.getByTestId('role-select-page')).toBeVisible();
+  await page.getByRole('button', { name: /pokračovat jako pokojská/i }).click();
+
+  await expect(page).toHaveURL(/\/pokojska$/);
+  await expect(page.locator('.k-role-switcher__active')).toHaveText(/pokojská/i);
+  await expect(page.getByRole('button', { name: /recepce/i })).toBeVisible();
+});
