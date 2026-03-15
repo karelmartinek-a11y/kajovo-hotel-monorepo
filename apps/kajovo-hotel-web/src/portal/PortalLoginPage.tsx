@@ -1,10 +1,8 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 export function PortalLoginPage(): JSX.Element {
-  const navigate = useNavigate();
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('portal', lang);
@@ -43,7 +41,7 @@ export function PortalLoginPage(): JSX.Element {
       setError(copy.loginError ?? 'Neplatné přihlašovací údaje.');
       return;
     }
-    navigate('/');
+    window.location.assign('/');
   }
 
   async function sendForgotPassword(): Promise<void> {
