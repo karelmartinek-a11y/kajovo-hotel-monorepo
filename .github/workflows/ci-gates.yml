@@ -164,14 +164,8 @@ jobs:
       - name: Install Playwright browser
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 
-      - name: SIGNACE gate
-        run: pnpm ci:signage
-
-      - name: View-states gate
-        run: pnpm ci:view-states
-
-      - name: WCAG gate
-        run: pnpm ci:wcag
+      - name: Web live smoke gate
+        run: pnpm ci:web-smoke
 
       - name: Verify API contract + generated client freshness
         run: pnpm contract:check

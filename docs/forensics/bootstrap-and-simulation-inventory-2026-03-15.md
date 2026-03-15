@@ -66,15 +66,14 @@ Tento dokument neni seznam produkcnich bugu. Je to inventar mist, ktera by pri p
   Seeduje `mock.smtp.local`, `mock-user` a souvisejici test data.
   Tento soubor neni dukaz produkcni SMTP integrace a nesmi byt tak interpretovan.
 
-### 4. Frontend Playwright route mocks
+### 4. Frontend izolovane testy
 
 - Kategorie: `TEST_ONLY_SIMULATION`
 - Soubory:
   - [apps/kajovo-hotel-web/tests](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/tests)
   - [apps/kajovo-hotel-admin/tests](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin/tests)
 - Popis:
-  `page.route`, `route.fulfill`, `route.fallback` a `mockAuth` jsou testovaci simulace.
-  Zeleny Playwright beh sam o sobe neni dukaz live-runtime pravdivosti.
+  Frontend testy obsahuji izolovane scenare, ktere nejsou samy o sobe dukazem live-runtime pravdivosti.
 
 ### 5. Historical forensic evidence
 

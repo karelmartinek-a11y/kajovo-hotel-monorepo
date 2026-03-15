@@ -161,19 +161,19 @@ Plati tyto zaveri:
 - Stav:
   Otevrene.
 
-### 3. Test-only simulace
+### 3. Izolovane testovaci scenare
 
-#### 3.1 MockAuth a route.fulfill jsou rozsahle napric frontend testy
+#### 3.1 Frontend test coverage neni totozna s live proof
 - Kategorie: `TEST_SIMULATION`
 - Soubory:
   - [apps/kajovo-hotel-web/tests](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/tests)
   - [apps/kajovo-hotel-admin/tests](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin/tests)
 - Popis:
-  Velka cast Playwright pokryti je stale zalozena na simulovanem auth a API.
+  Cast test coverage je izolovana od produkcniho provozu a slouzi jen jako lokalni nebo CI verifikace.
 - Riziko:
   Zeleny test suite sam o sobe neznamena live-runtime pravdivost.
 - Stav:
-  Otevrene, ale ocekavane.
+  Otevrene, ale evidovane oddelene od runtime truth.
 
 
 ### 4. Bootstrap, seed a compat vrstvy
@@ -231,13 +231,12 @@ Plati tyto zaveri:
 - Kategorie: `DOC_DRIFT`
 - Soubory:
   - `docs/audit-remediation-final.md` - odstraneno z repozitare 2026-03-15
-  - [docs/audit-gap-analysis.md](/C:/GitHub/kajovo-hotel-monorepo/docs/audit-gap-analysis.md)
 - Popis:
   Jazyk closeout dokumentu je silnejsi nez aktualni evidence.
 - Riziko:
   Auditor nebo vyvojar bez kontextu usoudi, ze repo je zavrene.
 - Stav:
-  Castecne uzavreno odstraneni mylnych closeout dokumentu; `audit-gap-analysis.md` zustava historicky analyzni material.
+  Uzavreno odstraneni mylnych closeout dokumentu.
 
 #### 5.3 Parity matrix sama priznava `PARTIAL` runtime proof
 - Kategorie: `DOC_DRIFT`

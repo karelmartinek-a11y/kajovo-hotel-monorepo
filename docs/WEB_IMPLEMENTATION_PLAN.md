@@ -8,5 +8,4 @@ Use these active sources instead:
 - `ManifestDesignKájovo.md`
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md`
 - `docs/forensics/runtime-truth-ssot-2026-03-15.md`
-- `docs/forensics/finalization-log.md`
 - current source code, tests, build/deploy workflows, and release-gate artifacts

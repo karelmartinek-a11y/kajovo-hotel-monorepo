@@ -1,54 +1,25 @@
-# CI gates pro Kájovo Hotel
+# CI gates pro Kajovo Hotel
 
-Tento dokument popisuje **blokující** CI gate pravidla pro PR i `main` větev.
+Tento dokument popisuje blokující CI kontroly pro `main`.
 
 ## Přehled gate kroků
 
-1. **Token-only lint (`pnpm ci:tokens`)**
-   - Ověřuje SSOT konzistenci v:
-     - `apps/kajovo-hotel/ui-tokens/tokens.json`
-     - `apps/kajovo-hotel/palette/palette.json`
-     - `apps/kajovo-hotel/ui-motion/motion.json`
-   - Failne build, pokud se mimo token usage objeví ad-hoc hodnoty pro:
-     - color
-     - spacing
-     - radius
-     - shadow
-     - z-index
-     - motion
-   - Kontroluje závazné SIGNACE hodnoty (`KÁJOVO`, `#FF0000`, `#FFFFFF`, fixed-left-bottom, visible on scroll).
-
-2. **Brand assets lint (`pnpm ci:brand-assets`)**
-   - Ověřuje SSOT soubor `ManifestDesignKájovo.md`.
-   - Kontroluje povinnou strukturu assetů:
-     - `/signace/signace.(svg|pdf|png)`
-     - `apps/kajovo-hotel/logo/sources/logo_master.svg`
-     - `apps/kajovo-hotel/logo/exports/{full,mark,wordmark,signace}/{svg,pdf,png}`
-   - Validuje technický standard SVG (bez `<text>`, bez efektů, bez opacity < 1, bez stroke).
-   - Hlídá povinné barvy a názvosloví exportů včetně PNG velikostí.
-
-3. **SIGNACE gate (`pnpm ci:signage`)**
-   - Playwright test přes IA routes:
-     - SIGNACE existuje na každé route (mimo PopUp kontext),
-     - má text `KÁJOVO`,
-     - je viditelná i při scrollu,
-     - není occluded jiným prvkem.
-   - Konvenční limit brand elementů: max 2 na view (`[data-brand-element="true"]`) na klíčových stránkách.
-
-4. **View-states gate (`pnpm ci:view-states`)**
-   - Playwright test, který pro každou route z `apps/kajovo-hotel/ux/ia.json` (module views) ověří dostupnost stavů přes test ID:
-     - `loading`
-     - `empty`
-     - `error`
-     - `offline`
-     - `404`
-
-5. **WCAG gate (`pnpm ci:wcag`)**
-   - Playwright + axe-core kontrola WCAG 2.2 AA (tagy `wcag2*`, `wcag21*`, `wcag22aa`) na IA routách.
+1. `pnpm ci:tokens`
+   - kontrola SSOT tokenů, barev a brand pravidel
+2. `pnpm ci:brand-assets`
+   - kontrola povinných brand assetů a SVG standardu
+3. `pnpm ci:text-integrity`
+   - kontrola rozbitých textů a kódování
+4. `pnpm ci:frontend-manifest`
+   - kontrola frontend manifest guardů
+5. `pnpm ci:runtime-integrity`
+   - grep gate na zakázané runtime tokeny a test hooky v produkčním kódu
+6. `pnpm ci:web-smoke`
+   - živý web smoke nad reálným API přes `apps/kajovo-hotel-web/tests/live-smoke.spec.ts`
 
 ## Lokální spuštění
 
-Kompletní gate run:
+Kompletní gate:
 
 ```bash
 pnpm ci:gates
@@ -59,46 +30,37 @@ Samostatně:
 ```bash
 pnpm ci:tokens
 pnpm ci:brand-assets
-pnpm ci:signage
-pnpm ci:view-states
-pnpm ci:wcag
+pnpm ci:text-integrity
+pnpm ci:frontend-manifest
+pnpm ci:runtime-integrity
+pnpm ci:web-smoke
 ```
-
-Doporučené před prvním během Playwright gate:
-
-```bash
-pnpm exec playwright install --with-deps
-```
-
-Pozn.: `@kajovo/kajovo-hotel-web` i `@kajovo/kajovo-hotel-admin` mají v `pretest` kroku `playwright install chromium`, takže při spuštění `pnpm test` se browser binárky automaticky doinstalují, pokud v prostředí chybí.
 
 ## CI workflow
 
-Workflow je v `.github/workflows/ci-gates.yml`.
+Workflow je v `/.github/workflows/ci-gates.yml`.
 
-Pipeline je blokující v PR i pro push do `main` a obsahuje:
+Blokující pipeline obsahuje:
 
-1. dependency install
-2. playwright browser install
-3. `pnpm lint`
-4. `pnpm ci:tokens`
-5. `pnpm ci:brand-assets`
-6. `pnpm ci:signage`
-7. `pnpm ci:view-states`
-8. `pnpm ci:wcag`
+1. install závislostí
+2. lint
+3. `pnpm ci:tokens`
+4. `pnpm ci:brand-assets`
+5. `pnpm ci:text-integrity`
+6. `pnpm ci:frontend-manifest`
+7. `pnpm ci:runtime-integrity`
+8. `pnpm ci:web-smoke`
 
+## Playwright smoke
 
-## Lokální Playwright sweep (smoke + SIGNACE + snapshoty)
-
-Pro kompletní vizuální sweep (IA smoke navigace, SIGNACE, view-states a screenshot baseline):
+Web smoke:
 
 ```bash
-pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --project=desktop tests/ci-gates.spec.ts
-pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --update-snapshots tests/visual.spec.ts
+pnpm --filter @kajovo/kajovo-hotel-web test:smoke
 ```
 
-Tip: pokud měníte pouze subset modulů, můžete spustit jen cílený grep:
+Admin smoke:
 
 ```bash
-pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --update-snapshots --grep "breakfast|inventory|reports|issues|lost found" tests/visual.spec.ts
+pnpm --filter @kajovo/kajovo-hotel-admin test:smoke
 ```

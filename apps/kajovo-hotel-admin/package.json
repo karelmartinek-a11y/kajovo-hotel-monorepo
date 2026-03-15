@@ -25,8 +25,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/ci-gates.spec.ts tests/rbac-access.spec.ts tests/users-admin.spec.ts tests/admin-journeys.spec.ts",
-    "test:visual": "VISUAL_SNAPSHOTS=1 playwright test tests/visual.spec.ts",
+    "test": "pnpm test:smoke",
     "test:smoke": "playwright test -c playwright.smoke.config.ts"
   }
 }

@@ -204,6 +204,6 @@ jobs:
           KAJOVO_API_DATABASE_URL: sqlite:///./apps/kajovo-hotel-api/data/e2e-smoke.db
           KAJOVO_API_SMTP_ENABLED: 'false'
         run: |
-          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
-          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
-          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke-auth
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke
+          pnpm --filter @kajovo/kajovo-hotel-admin test:smoke
