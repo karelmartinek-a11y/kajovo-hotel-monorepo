@@ -1,211 +1,87 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { getAdminCredentials } from '../test-admin-credentials';
 
-const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
-
-type PortalUser = {
-  id: number;
-  first_name: string;
-  last_name: string;
+type AuthPayload = {
   email: string;
-  roles: string[];
   role: string;
-  phone: string | null;
-  note: string | null;
-  is_active: boolean;
-  created_at: string | null;
-  updated_at: string | null;
-  last_login_at: string | null;
+  permissions: string[];
+  actor_type: 'admin' | 'portal';
+  roles?: string[];
+  active_role?: string | null;
+  user_id?: string;
 };
 
-test.describe('admin smoke flows', () => {
-  const adminIdentity = {
-    email: ADMIN_EMAIL,
-    role: 'admin',
-    permissions: [
-      'users:read',
-      'users:write',
-      'admin:read',
-      'admin:write',
-    ],
-    actor_type: 'admin' as const,
-  };
+async function mockAuth(page: Page, status: number, payload: Record<string, unknown>): Promise<void> {
+  await page.route('**/api/auth/me', async (route: Route) => {
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: JSON.stringify(payload),
+    });
+  });
+}
 
-  const unauthorizedIdentity = {
+async function mockPortalAuth(page: Page, payload: AuthPayload): Promise<void> {
+  await mockAuth(page, 200, {
+    user_id: payload.user_id ?? payload.email,
+    roles: payload.roles ?? [payload.role],
+    active_role: payload.active_role ?? payload.role,
+    ...payload,
+  });
+}
+
+test('bez session jde portal na login a neotevre modul', async ({ page }) => {
+  await mockAuth(page, 401, { detail: 'Not authenticated' });
+
+  await page.goto('/snidane', { waitUntil: 'domcontentloaded' });
+
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByTestId('portal-login-page')).toBeVisible();
+});
+
+test('recepce vidi jen povolene moduly a prime otevreni skladu skonci access denied', async ({ page }) => {
+  await mockPortalAuth(page, {
     email: 'recepce@example.com',
     role: 'recepce',
     permissions: ['breakfast:read', 'lost_found:read'],
-    actor_type: 'portal' as const,
-  };
-
-  const seedUsers: PortalUser[] = [
-    {
-      id: 1,
-      first_name: 'Karel',
-      last_name: 'Novák',
-      email: 'karel.novak@example.com',
-      roles: ['recepce'],
-      role: 'recepce',
-      phone: '+420777111222',
-      note: null,
-      is_active: true,
-      created_at: null,
-      updated_at: null,
-      last_login_at: null,
-    },
-    {
-      id: 2,
-      first_name: 'Jana',
-      last_name: 'Veselá',
-      email: 'jana.vesela@example.com',
-      roles: ['sklad'],
-      role: 'sklad',
-      phone: null,
-      note: null,
-      is_active: true,
-      created_at: null,
-      updated_at: null,
-      last_login_at: null,
-    },
-  ];
-
-  async function autorouteAuth(page: Page, identity: typeof adminIdentity | typeof unauthorizedIdentity) {
-    await page.route('**/api/auth/me', async (route: Route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(identity),
-      });
-    });
-  }
-
-  async function gotoWithAbortRetry(page: Page, url: string) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        await page.goto(url);
-        return;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const isNavigationRace =
-          message.includes('net::ERR_ABORTED') ||
-          message.includes('interrupted by another navigation');
-        if (!isNavigationRace || attempt === 2) {
-          throw error;
-        }
-        await page.waitForTimeout(150);
-      }
-    }
-  }
-
-  test('admin login and user lifecycle works', async ({ page }) => {
-    let users = [...seedUsers];
-    let nextId = users.length + 1;
-
-    await page.route('**/api/auth/admin/login', async (route) => {
-      await route.fulfill({ status: 200 });
-    });
-
-    await autorouteAuth(page, adminIdentity);
-
-    await page.route('**/api/v1/users', async (route: Route) => {
-      const method = route.request().method();
-      if (method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(users),
-        });
-        return;
-      }
-      if (method === 'POST') {
-        const payload = route.request().postDataJSON() as Record<string, unknown>;
-        const roles = Array.isArray(payload.roles) ? payload.roles.map(String) : ['recepce'];
-        const user: PortalUser = {
-          id: nextId++,
-          first_name: String(payload.first_name ?? 'Novy'),
-          last_name: String(payload.last_name ?? 'Uzivatel'),
-          email: String(payload.email ?? `generated${nextId}@kajovo.local`),
-          roles,
-          role: roles[0] ?? 'recepce',
-          phone: (payload.phone as string) ?? null,
-          note: (payload.note as string) ?? null,
-          is_active: true,
-          created_at: null,
-          updated_at: null,
-          last_login_at: null,
-        };
-        users = [...users, user];
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify(user),
-        });
-        return;
-      }
-      await route.continue();
-    });
-
-    await page.route('**/api/v1/users/*', async (route: Route) => {
-      if (route.request().method() === 'DELETE') {
-        const id = Number(route.request().url().split('/').pop() ?? '0');
-        users = users.filter((item) => item.id !== id);
-        await route.fulfill({ status: 204 });
-        return;
-      }
-      await route.continue();
-    });
-
-    await page.goto('/admin/login');
-    await page.getByLabel(/email/i).fill(ADMIN_EMAIL);
-    await page.getByLabel(/heslo/i).fill(ADMIN_PASSWORD);
-    await page.getByRole('button', { name: /přihlásit/i }).click();
-    await page.waitForURL('**/admin/**');
-
-    await gotoWithAbortRetry(page, '/admin/uzivatele');
-    await expect(page.getByText('karel.novak@example.com')).toBeVisible();
-
-    const createForm = page.locator('#users-create');
-    await createForm.getByLabel(/Jméno/i).fill('Nova');
-    await createForm.getByLabel(/Příjmení/i).fill('Testova');
-    await createForm.getByLabel(/Email/i).fill('nova.testova@example.com');
-    await createForm.getByLabel(/Dočasné heslo/i).fill('TempPass123');
-    await createForm.getByLabel(/Telefon/i).fill('601123456');
-    await createForm.getByLabel(/Recepce/i).check();
-    await page.getByRole('button', { name: /Vytvořit uživatele/i }).click();
-
-    await expect(page.getByText('Uživatel byl vytvořen.')).toBeVisible();
-    await expect(page.getByText('nova.testova@example.com')).toBeVisible();
-
-    const createdRow = page.getByRole('button', { name: 'Nova' });
-    await createdRow.evaluate((node) => node.scrollIntoView({ block: 'center' }));
-    await createdRow.click({ force: true });
-
-    const deleteButton = page.locator('#users-detail').getByRole('button', { name: /Smazat/i });
-    await expect(deleteButton).toBeVisible();
-    await deleteButton.evaluate((node) => node.scrollIntoView({ block: 'center' }));
-    await page.evaluate(() => window.scrollBy(0, 120));
-    await deleteButton.evaluate((node: HTMLButtonElement) => node.click());
-
-    const dialog = page.getByTestId('confirm-delete-card');
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: /Smazat/i }).click({ force: true });
-
-    await expect(page.getByText('Uživatel byl smazán.')).toBeVisible();
-    await expect(page.getByText('nova.testova@example.com')).toHaveCount(0);
+    actor_type: 'portal',
+  });
+  await page.route('**/api/v1/lost-found**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
   });
 
-  test('portal user sees blocked message in users admin', async ({ page }) => {
-    await autorouteAuth(page, unauthorizedIdentity);
+  await page.goto('/');
 
-    await page.route('**/api/v1/users', async (route) => {
-      await route.fulfill({
-        status: 403,
-        contentType: 'application/json',
-        body: JSON.stringify({ detail: 'Missing permission: users:read' }),
-      });
-    });
+  const viewport = page.viewportSize();
+  const isPhone = (viewport?.width ?? 0) <= 767;
 
-    await page.goto('/admin/uzivatele');
-    await expect(page.getByText(/Nemáte oprávnění/)).toBeVisible();
+  if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
+    await phoneNav.getByRole('button', { name: /menu/i }).click();
+    await expect(phoneNav.getByRole('menuitem', { name: /snídaně/i })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: /ztráty a nálezy/i })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: /skladové hospodářství/i })).toHaveCount(0);
+  } else {
+    await expect(page.getByRole('link', { name: /snídaně/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /ztráty a nálezy/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /skladové hospodářství/i })).toHaveCount(0);
+  }
+
+  await page.goto('/sklad');
+  await expect(page.getByTestId('access-denied-page')).toBeVisible();
+  await expect(page.getByText('Přístup odepřen')).toBeVisible();
+});
+
+test('web admin surface je retired page i pro admin session', async ({ page }) => {
+  await mockPortalAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['users:read', 'users:write', 'admin:read', 'admin:write'],
+    actor_type: 'admin',
   });
+
+  await page.goto('/admin/uzivatele');
+
+  await expect(page.getByTestId('admin-surface-retired-page')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Otevrit admin aplikaci' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Portal login' })).toBeVisible();
 });
