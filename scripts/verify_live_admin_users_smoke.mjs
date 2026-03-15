@@ -114,7 +114,11 @@ const requestJson = async (session, path, { method = 'GET', payload } = {}) => {
   const raw = await response.text();
   let parsed = null;
   if (raw) {
-    parsed = JSON.parse(raw);
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = { raw };
+    }
   }
   return { response, payload: parsed };
 };
