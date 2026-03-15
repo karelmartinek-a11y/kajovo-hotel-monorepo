@@ -27,8 +27,7 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
   });
 }
 
-
-test('admin login shows structured error dialog for invalid and locked credentials', async ({ page }) => {
+test('admin login zobrazuje strukturovaný dialog chyb pro neplatné i uzamčené přihlášení', async ({ page }) => {
   await page.route('**/api/auth/admin/login', async (route) => {
     const payload = route.request().postDataJSON() as { password?: string };
     if (payload.password === 'locked-pass') {
@@ -61,7 +60,7 @@ test('admin login shows structured error dialog for invalid and locked credentia
   await expect(dialog).toContainText(/Účet je dočasně uzamčen/i);
 });
 
-test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) => {
+test('správa uživatelů validuje e-mail po blur, prefixuje +420 a umožní vytvořit účet i bez dočasného hesla', async ({ page }) => {
   await page.addInitScript(() => {
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
@@ -109,19 +108,22 @@ test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) =>
 
   await page.goto(adminPath('/uzivatele'));
 
+  await page.getByRole('button', { name: 'Vytvořit uživatele' }).click();
+  await expect(page.getByText('Vyplňte jméno i příjmení.')).toBeVisible();
+
   await page.locator('#create_email').fill('neplatny-email');
-  await expect(page.getByText('Neplatný email.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Vytvořit uživatele' })).toBeDisabled();
+  await page.locator('#create_email').press('Tab');
+  await expect(page.getByText('Zadejte platný e-mail.')).toBeVisible();
 
   await page.locator('#create_first_name').fill('Eva');
   await page.locator('#create_last_name').fill('Nová');
   await page.locator('#create_email').fill('eva.nova@example.com');
-  await page.locator('#create_password').fill('TempPass123');
+  await page.locator('#create_email').press('Tab');
   await page.locator('#create_phone').fill('777888999');
 
   await expect(page.locator('#create_phone')).toHaveValue('+420777888999');
   await page.getByLabel('Recepce').check();
-  await page.getByLabel('Sklad').check();
+  await page.locator('#users-create').getByLabel('Sklad').check();
 
   const createButton = page.getByRole('button', { name: 'Vytvořit uživatele' });
   await expect(createButton).toBeEnabled();
@@ -132,7 +134,84 @@ test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) =>
     roles: ['recepce', 'sklad'],
     phone: '+420777888999',
   });
+  expect(createdPayload).not.toHaveProperty('password');
   expect(csrfHeader).toBe('test-token');
+  await expect(page.getByText('Uživatel eva.nova@example.com byl vytvořen bez dočasného hesla.')).toBeVisible();
+});
+
+test('uložení úprav zobrazí výsledkovou zprávu s e-mailem uživatele', async ({ page }) => {
+  await page.addInitScript(() => {
+    document.cookie = 'kajovo_csrf=test-token; path=/';
+  });
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['users:read', 'users:write'],
+    actor_type: 'admin',
+  });
+
+  await page.route('**/api/v1/users', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 12,
+          first_name: 'Karel',
+          last_name: 'Novák',
+          email: 'karel.novak@example.com',
+          role: 'recepce',
+          roles: ['recepce'],
+          phone: null,
+          note: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
+          last_login_at: null,
+        },
+      ]),
+    });
+  });
+
+  await page.route('**/api/v1/users/12', async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: 12,
+        first_name: 'Karel',
+        last_name: 'Novák',
+        email: 'karel.novak@example.com',
+        role: 'recepce',
+        roles: ['recepce', 'sklad'],
+        phone: '+420777888999',
+        note: 'Poznámka',
+        is_active: true,
+        created_at: null,
+        updated_at: null,
+        last_login_at: null,
+      }),
+    });
+  });
+
+  await page.goto(adminPath('/uzivatele'));
+  await page.getByRole('button', { name: 'Karel' }).click();
+  await page.locator('#edit_phone').fill('777888999');
+  await page.locator('#edit_note').fill('Poznámka');
+  const skladCheckbox = page.locator('#users-detail').getByLabel('Sklad');
+  await skladCheckbox.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+  await skladCheckbox.check({ force: true });
+  await page.getByRole('button', { name: 'Uložit změny' }).click();
+
+  await expect(page.getByText('Uživatel karel.novak@example.com byl upraven.')).toBeVisible();
 });
 
 test('sessionStorage role override už nemění mazání uživatelů', async ({ page }) => {
@@ -258,7 +337,7 @@ test('seznam uživatelů lze filtrovat podle jména, emailu i role', async ({ pa
   await expect(listTable).toContainText('karel.skladnik@example.com');
 });
 
-test('admin smaže uživatele přes potvrzovací dialog', async ({ page }) => {
+test('admin smaže uživatele přes potvrzovací dialog a zobrazí výsledkovou zprávu', async ({ page }) => {
   await page.addInitScript(() => {
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
@@ -370,7 +449,7 @@ test('admin smaže uživatele přes potvrzovací dialog', async ({ page }) => {
   await confirmCard.getByRole('button', { name: 'Smazat' }).click({ force: true });
 
   await expect(confirmCard).toHaveCount(0);
-  await expect(page.getByText('Uživatel byl smazán.')).toBeVisible();
+  await expect(page.getByText('Uživatel karel.novak@example.com byl smazán.')).toBeVisible();
 
   const table = page.getByTestId('users-admin-page').locator('table').first();
   await expect(table).not.toContainText('karel.novak@example.com');

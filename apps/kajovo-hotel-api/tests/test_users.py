@@ -63,7 +63,7 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "new.user@example.com", "password": "new-user-pass", "roles": ["recepce"]},
+        payload={"email": "new.user@example.com", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -296,6 +296,26 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         "/api/v1/users",
         method="POST",
         payload={"email": "neplatny-email", "password": "valid-pass-123", "roles": ["recepce"]},
+        headers=csrf_header(jar),
+    )
+    assert status == 422
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={"email": "", "roles": ["recepce"]},
+        headers=csrf_header(jar),
+    )
+    assert status == 422
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={"email": "kratke.heslo@example.com", "password": "kratke", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 422

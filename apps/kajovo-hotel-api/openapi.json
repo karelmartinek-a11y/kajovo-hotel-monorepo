@@ -3037,10 +3037,16 @@
             "title": "Note"
           },
           "password": {
-            "maxLength": 255,
-            "minLength": 8,
-            "title": "Password",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
           },
           "phone": {
             "anyOf": [
@@ -3065,8 +3071,7 @@
         },
         "required": [
           "email",
-          "roles",
-          "password"
+          "roles"
         ],
         "title": "PortalUserCreate",
         "type": "object"

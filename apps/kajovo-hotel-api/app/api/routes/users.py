@@ -1,6 +1,7 @@
 import hashlib
 import json
 import secrets
+import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -132,13 +133,14 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     existing = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+    password = payload.password or secrets.token_urlsafe(24)
     user = PortalUser(
         first_name=payload.first_name,
         last_name=payload.last_name,
         email=email,
         phone=payload.phone,
         note=payload.note,
-        password_hash=hash_password(payload.password),
+        password_hash=hash_password(password),
         is_active=True,
         roles=[PortalUserRole(role=role) for role in payload.roles],
     )

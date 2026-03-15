@@ -272,7 +272,7 @@ type PortalUserUpsertPayload = {
 };
 
 type PortalUserCreatePayload = PortalUserUpsertPayload & {
-  password: string;
+  password?: string;
 };
 
 type SmtpSettingsReadModel = {
@@ -3138,6 +3138,7 @@ function UsersAdmin(): JSX.Element {
   const [createRoles, setCreateRoles] = React.useState<ManagedPortalRole[]>([]);
   const [createPhone, setCreatePhone] = React.useState('');
   const [createNote, setCreateNote] = React.useState('');
+  const [createEmailTouched, setCreateEmailTouched] = React.useState(false);
 
   const [pendingDelete, setPendingDelete] = React.useState<PortalUser | null>(null);
   const deleteTriggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -3149,6 +3150,7 @@ function UsersAdmin(): JSX.Element {
   const [editRoles, setEditRoles] = React.useState<ManagedPortalRole[]>([]);
   const [editPhone, setEditPhone] = React.useState('');
   const [editNote, setEditNote] = React.useState('');
+  const [editEmailTouched, setEditEmailTouched] = React.useState(false);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const e164Regex = /^\+[1-9]\d{1,14}$/;
@@ -3162,7 +3164,7 @@ function UsersAdmin(): JSX.Element {
     createFirstName.trim().length > 0
     && createLastName.trim().length > 0
     && createEmailValid
-    && createPassword.length >= 8
+    && (createPassword.trim().length === 0 || createPassword.length >= 8)
     && createRoles.length > 0
     && createPhoneValid;
 
@@ -3173,6 +3175,39 @@ function UsersAdmin(): JSX.Element {
     && editRoles.length > 0
     && editPhoneValid;
 
+  const createValidationMessage =
+    !createFirstName.trim() || !createLastName.trim()
+      ? 'Vyplňte jméno i příjmení.'
+      : !createEmail.trim()
+        ? 'E-mail je povinný.'
+        : !createEmailValid
+          ? 'Zadejte platný e-mail.'
+          : createPassword.trim().length > 0 && createPassword.length < 8
+            ? 'Dočasné heslo musí mít alespoň 8 znaků.'
+            : createRoles.length === 0
+              ? 'Vyberte alespoň jednu roli.'
+              : !createPhoneValid
+                ? 'Telefon musí být ve formátu E.164 nebo prázdný.'
+                : null;
+
+  const createEmailError =
+    createEmailTouched
+      ? !createEmail.trim()
+        ? 'E-mail je povinný.'
+        : !createEmailValid
+          ? 'Zadejte platný e-mail.'
+          : null
+      : null;
+
+  const editEmailError =
+    editEmailTouched
+      ? !editEmail.trim()
+        ? 'E-mail je povinný.'
+        : !editEmailValid
+          ? 'Zadejte platný e-mail.'
+          : null
+      : null;
+
   function syncEdit(user: PortalUser | null): void {
     if (!user) {
       setEditFirstName('');
@@ -3181,6 +3216,7 @@ function UsersAdmin(): JSX.Element {
       setEditRoles([]);
       setEditPhone('');
       setEditNote('');
+      setEditEmailTouched(false);
       return;
     }
     setEditFirstName(user.first_name);
@@ -3189,6 +3225,7 @@ function UsersAdmin(): JSX.Element {
     setEditRoles(user.roles);
     setEditPhone(user.phone ?? '');
     setEditNote(user.note ?? '');
+    setEditEmailTouched(false);
   }
 
   const load = React.useCallback(() => {
@@ -3208,7 +3245,12 @@ function UsersAdmin(): JSX.Element {
   }, [load]);
 
   async function createUser(): Promise<void> {
-    if (!createValid) return;
+    if (!createValid) {
+      setMessage(null);
+      setCreateEmailTouched(true);
+      setError(createValidationMessage ?? 'Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+      return;
+    }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -3217,8 +3259,8 @@ function UsersAdmin(): JSX.Element {
         first_name: createFirstName.trim(),
         last_name: createLastName.trim(),
         email: createEmail.trim().toLowerCase(),
-        password: createPassword,
         roles: createRoles,
+        ...(createPassword.trim() ? { password: createPassword } : {}),
         ...(createPhone.trim() ? { phone: createPhone.trim() } : {}),
         ...(createNote.trim() ? { note: createNote.trim() } : {}),
       };
@@ -3233,7 +3275,12 @@ function UsersAdmin(): JSX.Element {
       setCreateRoles([]);
       setCreatePhone('');
       setCreateNote('');
-      setMessage('Uživatel byl vytvořen.');
+      setCreateEmailTouched(false);
+      setMessage(
+        createPassword.trim()
+          ? `Uživatel ${created.email} byl vytvořen.`
+          : `Uživatel ${created.email} byl vytvořen bez dočasného hesla.`
+      );
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 409) {
@@ -3254,7 +3301,13 @@ function UsersAdmin(): JSX.Element {
   }
 
   async function saveSelectedUser(): Promise<void> {
-    if (!selected || !editValid) return;
+    if (!selected) return;
+    if (!editValid) {
+      setMessage(null);
+      setEditEmailTouched(true);
+      setError('Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+      return;
+    }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -3271,7 +3324,7 @@ function UsersAdmin(): JSX.Element {
       setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? null);
       setSelected(updated);
       syncEdit(updated);
-      setMessage('Uživatel byl upraven.');
+      setMessage(`Uživatel ${updated.email} byl upraven.`);
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 409) {
@@ -3411,7 +3464,7 @@ function UsersAdmin(): JSX.Element {
       await fetchJson<void>(`/api/v1/users/${targetId}`, {
         method: 'DELETE',
       });
-      setMessage('Uživatel byl smazán.');
+      setMessage(`Uživatel ${pendingDelete.email} byl smazán.`);
       setPendingDelete(null);
       setSelected((prev) => (prev && prev.id === targetId ? null : prev));
       syncEdit(null);
@@ -3516,37 +3569,56 @@ function UsersAdmin(): JSX.Element {
             <Card title="Detail / Úprava">
               {!selected ? <p>Vyberte uživatele.</p> : (
                 <div className="k-form-grid">
-                  <FormField id="edit_first_name" label="Jméno">
-                    <input id="edit_first_name" className="k-input" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
-                  </FormField>
-                  <FormField id="edit_last_name" label="Příjmení">
-                    <input id="edit_last_name" className="k-input" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
-                  </FormField>
-                  <FormField id="edit_email" label="Email">
-                    <input id="edit_email" className="k-input" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-                  </FormField>
-                {!editEmailValid ? <small>Neplatný email.</small> : null}
-                  <FormField id="edit_phone" label="Telefon (E.164, volitelné)">
-                    <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
-                  </FormField>
-                  <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
-                  {!editPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
-                  <FormField id="edit_last_login" label="Poslední přihlášení">
-                    <input id="edit_last_login" className="k-input" value={formatDateTime(selected.last_login_at)} readOnly />
-                  </FormField>
-                  <FormField id="edit_note" label="Poznámka (volitelné)">
-                    <textarea id="edit_note" className="k-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
-                  </FormField>
-                  <fieldset className="k-card"><legend>Role</legend>
-                    {managedPortalRoleOptions.map((role) => (
-                      <label key={`edit-role-${role}`} className="k-role-label">
-                        <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {managedPortalRoleLabels[role]}
-                      </label>
-                    ))}
+                  <fieldset className="k-card">
+                    <legend>Povinné údaje</legend>
+                    <div className="k-form-grid">
+                      <FormField id="edit_first_name" label="Jméno">
+                        <input id="edit_first_name" className="k-input" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+                      </FormField>
+                      <FormField id="edit_last_name" label="Příjmení">
+                        <input id="edit_last_name" className="k-input" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+                      </FormField>
+                      <FormField id="edit_email" label="E-mail">
+                        <input
+                          id="edit_email"
+                          className="k-input"
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          onBlur={() => setEditEmailTouched(true)}
+                          aria-invalid={editEmailError ? 'true' : 'false'}
+                        />
+                      </FormField>
+                      {editEmailError ? <small>{editEmailError}</small> : null}
+                      <fieldset className="k-card">
+                        <legend>Role</legend>
+                        {managedPortalRoleOptions.map((role) => (
+                          <label key={`edit-role-${role}`} className="k-role-label">
+                            <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {managedPortalRoleLabels[role]}
+                          </label>
+                        ))}
+                      </fieldset>
+                      <small>Role administrátora se spravuje stejně jako ostatní role uživatele.</small>
+                    </div>
                   </fieldset>
-                  <small>Role administratora je spravovana stejne jako ostatni role uzivatele.</small>
+                  <fieldset className="k-card">
+                    <legend>Volitelné údaje</legend>
+                    <div className="k-form-grid">
+                      <FormField id="edit_phone" label="Telefon">
+                        <input id="edit_phone" className="k-input" value={editPhone} onChange={(e) => setEditPhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
+                      </FormField>
+                      <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
+                      {!editPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+                      <FormField id="edit_note" label="Poznámka">
+                        <textarea id="edit_note" className="k-input" value={editNote} onChange={(e) => setEditNote(e.target.value)} />
+                      </FormField>
+                      <FormField id="edit_last_login" label="Poslední přihlášení">
+                        <input id="edit_last_login" className="k-input" value={formatDateTime(selected.last_login_at)} readOnly />
+                      </FormField>
+                    </div>
+                  </fieldset>
                   <div className="k-toolbar">
-                    <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={!editValid || saving}>Upravit</button>
+                    <button className="k-button" type="button" onClick={() => void saveSelectedUser()} disabled={saving}>Uložit změny</button>
                     <button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>
                       {selected.is_active ? 'Zakázat' : 'Povolit'}
                     </button>
@@ -3568,38 +3640,60 @@ function UsersAdmin(): JSX.Element {
 
           <div id="users-create">
             <Card title="Vytvořit uživatele">
-              <div className="k-form-grid">
-                <FormField id="create_first_name" label="Jméno">
-                  <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
-                </FormField>
-                <FormField id="create_last_name" label="Příjmení">
-                  <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
-                </FormField>
-                <FormField id="create_email" label="Email">
-                  <input id="create_email" className="k-input" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
-                </FormField>
-                {!createEmailValid && createEmail.trim() ? <small>Neplatný email.</small> : null}
-                <FormField id="create_password" label="Dočasné heslo">
-                  <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
-                </FormField>
-                <FormField id="create_phone" label="Telefon (E.164, volitelné)">
-                  <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
-                </FormField>
-                <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
-                {!createPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
-                <FormField id="create_note" label="Poznámka (volitelné)">
-                  <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
-                </FormField>
-                <fieldset className="k-card"><legend>Role</legend>
-                    {managedPortalRoleOptions.map((role) => (
-                    <label key={`create-role-${role}`} className="k-role-label">
-                      <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {managedPortalRoleLabels[role]}
-                    </label>
-                  ))}
+              <form className="k-form-grid" onSubmit={(event) => { event.preventDefault(); void createUser(); }}>
+                <fieldset className="k-card">
+                  <legend>Povinné údaje</legend>
+                  <div className="k-form-grid">
+                    <FormField id="create_first_name" label="Jméno">
+                      <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
+                    </FormField>
+                    <FormField id="create_last_name" label="Příjmení">
+                      <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
+                    </FormField>
+                    <FormField id="create_email" label="E-mail">
+                      <input
+                        id="create_email"
+                        className="k-input"
+                        type="email"
+                        value={createEmail}
+                        onChange={(e) => setCreateEmail(e.target.value)}
+                        onBlur={() => setCreateEmailTouched(true)}
+                        aria-invalid={createEmailError ? 'true' : 'false'}
+                      />
+                    </FormField>
+                    {createEmailError ? <small>{createEmailError}</small> : null}
+                    <fieldset className="k-card">
+                      <legend>Role</legend>
+                      {managedPortalRoleOptions.map((role) => (
+                        <label key={`create-role-${role}`} className="k-role-label">
+                          <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {managedPortalRoleLabels[role]}
+                        </label>
+                      ))}
+                    </fieldset>
+                    {createRoles.length === 0 ? <small>Vyberte alespoň jednu roli.</small> : null}
+                    <small>Role administrátora se spravuje stejně jako ostatní role uživatele.</small>
+                  </div>
                 </fieldset>
-                <small>Role administratora je spravovana stejne jako ostatni role uzivatele.</small>
-                <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>Vytvořit uživatele</button>
-              </div>
+                <fieldset className="k-card">
+                  <legend>Volitelné údaje</legend>
+                  <div className="k-form-grid">
+                    <FormField id="create_password" label="Dočasné heslo">
+                      <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
+                    </FormField>
+                    <small>Pokud pole necháte prázdné, účet se vytvoří bez dočasného hesla.</small>
+                    {createPassword.trim().length > 0 && createPassword.length < 8 ? <small>Dočasné heslo musí mít alespoň 8 znaků.</small> : null}
+                    <FormField id="create_phone" label="Telefon">
+                      <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
+                    </FormField>
+                    <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
+                    {!createPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+                    <FormField id="create_note" label="Poznámka">
+                      <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
+                    </FormField>
+                  </div>
+                </fieldset>
+                <button className="k-button" type="submit" disabled={saving}>Vytvořit uživatele</button>
+              </form>
             </Card>
           </div>
         </div>
