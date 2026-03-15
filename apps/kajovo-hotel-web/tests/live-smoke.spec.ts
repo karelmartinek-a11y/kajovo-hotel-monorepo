@@ -1,5 +1,4 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
-import { randomUUID } from 'node:crypto';
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
@@ -9,6 +8,13 @@ async function csrfHeaderFor(context: APIRequestContext) {
   const csrf = state.cookies.find((cookie: { name: string; value: string }) => cookie.name === 'kajovo_csrf')?.value;
   expect(csrf, 'Expected CSRF cookie after admin login').toBeTruthy();
   return { 'x-csrf-token': csrf! };
+}
+
+function uniqueSuffix(projectName: string, parallelIndex: number) {
+  const uuid =
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${parallelIndex}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${projectName}-${parallelIndex}-${uuid}`;
 }
 
 test('portal bez session skonci na loginu', async ({ page }) => {
@@ -24,7 +30,7 @@ test('portal auth endpoint funguje nad realnym API a web admin surface zustava r
   expect(adminLoginResponse.ok()).toBeTruthy();
 
   const csrfHeaders = await csrfHeaderFor(request);
-  const suffix = `${testInfo.project.name}-${testInfo.parallelIndex}-${randomUUID()}`;
+  const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
   const portalEmail = `web-live-${suffix}@kajovohotel.local`;
   const portalPassword = `WebLive-${suffix}-pass`;
 
