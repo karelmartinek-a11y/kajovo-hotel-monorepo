@@ -1,8 +1,8 @@
+import smtplib
+import ssl
 from types import SimpleNamespace
 
 import pytest
-import ssl
-import smtplib
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
