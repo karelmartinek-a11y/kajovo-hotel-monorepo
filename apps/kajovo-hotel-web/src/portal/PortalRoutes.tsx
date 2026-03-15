@@ -44,22 +44,29 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
   const selectRole = React.useCallback(async (role: string) => {
     setError(null);
     setBusy(true);
-    const csrfToken = readCsrfToken();
-    const response = await fetch('/api/auth/select-role', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
-      },
-      credentials: 'include',
-      body: JSON.stringify({ role }),
-    });
-    if (!response.ok) {
+    try {
+      const csrfToken = readCsrfToken();
+      const response = await fetch('/api/auth/select-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'x-csrf-token': decodeURIComponent(csrfToken) } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ role }),
+      });
+      if (!response.ok) {
+        setBusy(false);
+        setError(copy.roleSelectError ?? 'Výběr role selhal.');
+        return;
+      }
+      window.location.assign('/');
+    } catch (err) {
       setBusy(false);
-      setError(copy.roleSelectError ?? 'Výběr role selhal.');
-      return;
+      const message =
+        err instanceof Error && err.message ? `${err.message}` : (copy.roleSelectError ?? 'Výběr role selhal.');
+      setError(message);
     }
-    window.location.assign('/');
   }, [copy]);
 
   React.useEffect(() => {
