@@ -109,8 +109,9 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
         method="POST",
         headers=csrf_header(jar),
     )
-    assert status == 200
-    assert reset_link == {"ok": True}
+    assert status == 503
+    assert isinstance(reset_link, dict)
+    assert "SMTP" in str(reset_link.get("detail"))
 
     status, disabled = api_request(
         opener,

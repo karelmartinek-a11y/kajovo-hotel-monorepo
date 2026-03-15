@@ -3370,17 +3370,20 @@ function UsersAdmin(): JSX.Element {
   async function sendPasswordResetLink(user: PortalUser): Promise<void> {
     try {
       const csrf = readCsrfToken();
-      await fetchJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, {
+      const response = await fetchJson<{ ok: boolean; connected: boolean; send_attempted: boolean; message: string }>(`/api/v1/users/${user.id}/password/reset-link`, {
         method: 'POST',
         headers: csrf ? { 'x-csrf-token': csrf } : undefined,
       });
-      setMessage('Pokud účet existuje a je dostupný e-mail, byl odeslán token pro reset hesla.');
+      setError(null);
+      setMessage(response.message);
     } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 403) {
           setError('Nemáte oprávnění odeslat resetovací token.');
         } else if (err.status === 404) {
           setError('Uživatel nebyl nalezen.');
+        } else if (err.status === 503) {
+          setError(err.message);
         } else {
           setError('Odeslání resetovacího tokenu se nezdařilo.');
         }

@@ -1,7 +1,6 @@
 import hashlib
 import json
 import secrets
-import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
 
@@ -16,6 +15,7 @@ from app.api.schemas import (
     PortalUserRead,
     PortalUserStatusUpdate,
     PortalUserUpdate,
+    UserPasswordResetLinkResponse,
 )
 from app.config import get_settings
 from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
@@ -29,6 +29,7 @@ from app.security.rbac import (
     require_actor_type,
 )
 from app.services.mail import (
+    SmtpNotConfiguredError,
     StoredSmtpConfig,
     build_email_service,
     send_portal_onboarding,
@@ -257,12 +258,12 @@ def reset_user_password(
     return _to_read_model(user)
 
 
-@router.post("/{user_id}/password/reset-link", response_model=LogoutResponse)
+@router.post("/{user_id}/password/reset-link", response_model=UserPasswordResetLinkResponse)
 def send_user_reset_link(
     user_id: int,
     request: Request,
     db: Session = Depends(get_db),
-) -> LogoutResponse:
+) -> UserPasswordResetLinkResponse:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -275,11 +276,25 @@ def send_user_reset_link(
     try:
         service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
         send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+        db.commit()
+        return UserPasswordResetLinkResponse(
+            ok=True,
+            connected=True,
+            send_attempted=True,
+            message=f"Resetovací odkaz byl reálně odeslán na {user.email}.",
+        )
+    except SmtpNotConfiguredError:
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="SMTP není aktivní. Resetovací token byl vytvořen, ale e-mail nebyl odeslán.",
+        )
     except Exception:
-        # Reset flow must remain deterministic even when SMTP transport is unavailable.
-        pass
-    db.commit()
-    return LogoutResponse()
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="SMTP je aktivní, ale odeslání resetovacího odkazu selhalo.",
+        )
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

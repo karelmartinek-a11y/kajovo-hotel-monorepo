@@ -3673,6 +3673,34 @@
         "title": "SmtpTestEmailResponse",
         "type": "object"
       },
+      "UserPasswordResetLinkResponse": {
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "send_attempted": {
+            "title": "Send Attempted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "connected",
+          "send_attempted",
+          "message"
+        ],
+        "title": "UserPasswordResetLinkResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -7206,7 +7234,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LogoutResponse"
+                  "$ref": "#/components/schemas/UserPasswordResetLinkResponse"
                 }
               }
             },

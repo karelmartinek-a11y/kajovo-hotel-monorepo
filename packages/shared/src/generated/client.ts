@@ -509,6 +509,12 @@ export type SmtpTestEmailResponse = {
   "ok"?: boolean;
   "send_attempted": boolean;
 };
+export type UserPasswordResetLinkResponse = {
+  "connected": boolean;
+  "message": string;
+  "ok": boolean;
+  "send_attempted": boolean;
+};
 export type ValidationError = {
   "loc": Array<string | number>;
   "msg": string;
@@ -801,8 +807,8 @@ export const apiClient = {
   async resetUserPasswordApiV1UsersUserIdPasswordResetPost(user_id: number, body: PortalUserPasswordSet): Promise<PortalUserRead> {
     return request<PortalUserRead>('POST', `/api/v1/users/${user_id}/password/reset`, undefined, body);
   },
-  async sendUserResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<LogoutResponse> {
-    return request<LogoutResponse>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);
+  async sendUserResetLinkApiV1UsersUserIdPasswordResetLinkPost(user_id: number): Promise<UserPasswordResetLinkResponse> {
+    return request<UserPasswordResetLinkResponse>('POST', `/api/v1/users/${user_id}/password/reset-link`, undefined, undefined);
   },
   async healthHealthGet(): Promise<Record<string, unknown>> {
     return request<Record<string, unknown>>('GET', `/health`, undefined, undefined);

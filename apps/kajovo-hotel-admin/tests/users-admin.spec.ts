@@ -214,6 +214,64 @@ test('uložení úprav zobrazí výsledkovou zprávu s e-mailem uživatele', asy
   await expect(page.getByText('Uživatel karel.novak@example.com byl upraven.')).toBeVisible();
 });
 
+test('odeslání resetovacího tokenu zobrazí adminovi potvrzení jen při skutečném odeslání', async ({ page }) => {
+  await page.addInitScript(() => {
+    document.cookie = 'kajovo_csrf=test-token; path=/';
+  });
+  await mockAuth(page, {
+    email: 'admin@example.com',
+    role: 'admin',
+    permissions: ['users:read', 'users:write'],
+    actor_type: 'admin',
+  });
+
+  await page.route('**/api/v1/users', async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.fulfill({ status: 405, contentType: 'application/json', body: '{}' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          id: 12,
+          first_name: 'Karel',
+          last_name: 'Novák',
+          email: 'karel.novak@example.com',
+          role: 'recepce',
+          roles: ['recepce'],
+          phone: null,
+          note: null,
+          is_active: true,
+          created_at: null,
+          updated_at: null,
+          last_login_at: null,
+        },
+      ]),
+    });
+  });
+
+  await page.route('**/api/v1/users/12/password/reset-link', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        connected: true,
+        send_attempted: true,
+        message: 'Resetovací odkaz byl reálně odeslán na karel.novak@example.com.',
+      }),
+    });
+  });
+
+  await page.goto(adminPath('/uzivatele'));
+  await page.getByRole('button', { name: 'Karel' }).click();
+  await page.getByRole('button', { name: 'Odeslat token pro reset hesla' }).click();
+
+  await expect(page.getByText('Resetovací odkaz byl reálně odeslán na karel.novak@example.com.')).toBeVisible();
+});
+
 test('sessionStorage role override už nemění mazání uživatelů', async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('kajovo_admin_role_view', 'sklad');

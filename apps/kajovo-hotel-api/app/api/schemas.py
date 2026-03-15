@@ -709,3 +709,10 @@ class SmtpTestEmailResponse(BaseModel):
     message: str
 
 
+class UserPasswordResetLinkResponse(BaseModel):
+    ok: bool
+    connected: bool
+    send_attempted: bool
+    message: str
+
+
