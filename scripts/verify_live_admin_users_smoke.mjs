@@ -18,10 +18,10 @@ const origin = normalizeBaseUrl(baseUrl);
 const smokeId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const testEmail = `deploy.users.${smokeId}@kajovohotel.local`;
 
-const assertStatus = async (response, expected, label) => {
-  if (response.status !== expected) {
-    const body = await response.text();
-    throw new Error(`${label} failed with ${response.status}, expected ${expected}: ${body.slice(0, 500)}`);
+const assertStatus = (result, expected, label) => {
+  if (result.response.status !== expected) {
+    const body = typeof result.raw === 'string' ? result.raw : JSON.stringify(result.payload);
+    throw new Error(`${label} failed with ${result.response.status}, expected ${expected}: ${body.slice(0, 500)}`);
   }
 };
 
@@ -120,7 +120,7 @@ const requestJson = async (session, path, { method = 'GET', payload } = {}) => {
       parsed = { raw };
     }
   }
-  return { response, payload: parsed };
+  return { response, payload: parsed, raw };
 };
 
 let createdUserId = null;
@@ -142,14 +142,14 @@ try {
     method: 'POST',
     payload: createPayload,
   });
-  await assertStatus(created.response, 201, 'POST /api/v1/users');
+  assertStatus(created, 201, 'POST /api/v1/users');
   if (!created.payload || created.payload.email !== testEmail) {
     throw new Error(`Unexpected create user payload: ${JSON.stringify(created.payload)}`);
   }
   createdUserId = created.payload.id;
 
   const detail = await requestJson(session, `/api/v1/users/${createdUserId}`);
-  await assertStatus(detail.response, 200, 'GET /api/v1/users/{id}');
+  assertStatus(detail, 200, 'GET /api/v1/users/{id}');
   if (!detail.payload || detail.payload.email !== testEmail) {
     throw new Error(`Unexpected detail payload: ${JSON.stringify(detail.payload)}`);
   }
@@ -165,7 +165,7 @@ try {
       note: `live-users-smoke update sha=${deploySha} run=${runId}`,
     },
   });
-  await assertStatus(updated.response, 200, 'PATCH /api/v1/users/{id}');
+  assertStatus(updated, 200, 'PATCH /api/v1/users/{id}');
   if (!updated.payload?.roles?.includes('recepce') || !updated.payload?.roles?.includes('snídaně')) {
     throw new Error(`Updated user does not contain expected roles: ${JSON.stringify(updated.payload)}`);
   }
@@ -190,7 +190,7 @@ try {
     method: 'PATCH',
     payload: { is_active: false },
   });
-  await assertStatus(disabled.response, 200, 'PATCH /api/v1/users/{id}/active false');
+  assertStatus(disabled, 200, 'PATCH /api/v1/users/{id}/active false');
   if (disabled.payload?.is_active !== false) {
     throw new Error(`User was not deactivated: ${JSON.stringify(disabled.payload)}`);
   }
@@ -199,7 +199,7 @@ try {
     method: 'PATCH',
     payload: { is_active: true },
   });
-  await assertStatus(reactivated.response, 200, 'PATCH /api/v1/users/{id}/active true');
+  assertStatus(reactivated, 200, 'PATCH /api/v1/users/{id}/active true');
   if (reactivated.payload?.is_active !== true) {
     throw new Error(`User was not reactivated: ${JSON.stringify(reactivated.payload)}`);
   }
@@ -212,11 +212,11 @@ try {
       'user-agent': 'kajovo-live-users-smoke/1.0',
     },
   });
-  await assertStatus(deleted, 204, 'DELETE /api/v1/users/{id}');
+  assertStatus({ response: deleted, payload: null, raw: '' }, 204, 'DELETE /api/v1/users/{id}');
   createdUserId = null;
 
   const afterDelete = await requestJson(session, `/api/v1/users/${detail.payload.id}`);
-  await assertStatus(afterDelete.response, 404, 'GET /api/v1/users/{id} after delete');
+  assertStatus(afterDelete, 404, 'GET /api/v1/users/{id} after delete');
 
   console.log(JSON.stringify({
     ok: true,
