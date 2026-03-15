@@ -1,10 +1,11 @@
 from pathlib import Path
 
+from sqlalchemy import create_engine, inspect
+
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, inspect
-
+from app.config import get_settings
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,8 +26,12 @@ def test_alembic_upgrade_head_on_clean_sqlite(
 ) -> None:
     db_path = tmp_path / "alembic-head.db"
     monkeypatch.setenv("KAJOVO_API_DATABASE_URL", f"sqlite:///{db_path}")
+    get_settings.cache_clear()
 
-    command.upgrade(_alembic_config(), "head")
+    try:
+        command.upgrade(_alembic_config(), "head")
+    finally:
+        get_settings.cache_clear()
 
     inspector = inspect(create_engine(f"sqlite:///{db_path}"))
     tables = set(inspector.get_table_names())
