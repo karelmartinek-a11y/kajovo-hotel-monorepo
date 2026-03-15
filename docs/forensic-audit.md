@@ -96,5 +96,5 @@ Top parity risk clusters:
 
 ## Decision signal
 
-The codebase has a sound modular API/web foundation for core operational modules, but parity with legacy admin/identity/automation features is incomplete. See `docs/parity-verdict.md` for continue vs regenerate recommendation and remediation ordering.
+The codebase has a sound modular API/web foundation for core operational modules, but parity with legacy admin/identity/automation features is incomplete. Historical parity verdict was removed together with mock-normalizing closeout evidence.
 

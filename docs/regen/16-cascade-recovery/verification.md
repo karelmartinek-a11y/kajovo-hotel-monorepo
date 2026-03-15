@@ -22,7 +22,6 @@
    - Výsledek: FAIL (`RuntimeError: API did not start in time` ve fixture bootstrapu).
 
 ## Co se změnilo
-- Přidán audit prompt kaskády: `docs/regen/16-cascade-recovery/prompt-cascade-assessment.md`.
 - Přidána verifikace kroku: `docs/regen/16-cascade-recovery/verification.md`.
 
 ## Rizika / known limits

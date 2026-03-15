@@ -151,8 +151,8 @@ modules:
       legacy:
         - "legacy/hotel-backend/app/security/admin_auth.py"
       docs:
-        - "docs/regen/07-auth/verification.md"
         - "docs/regen/07-auth/security-notes.md"
+        - "docs/forensics/runtime-truth-ssot-2026-03-15.md"
     status: DONE
     target_location:
       - "apps/kajovo-hotel-api/app/api/routes/auth.py"
@@ -160,7 +160,7 @@ modules:
       - "apps/kajovo-hotel-api/tests/test_auth_constraints.py"
       - "apps/kajovo-hotel-admin/src/main.tsx"
     links:
-      - "docs/regen/07-auth/verification.md"
+      - "docs/forensics/runtime-truth-ssot-2026-03-15.md"
 
   - module: rbac_hardening_admin_endpoints
     required_behavior: "Server-side RBAC checks + actor-type guard na admin endpointy; UI unauthorized handling + deny matrix evidence"
@@ -206,8 +206,8 @@ modules:
       legacy:
         - "legacy/hotel-backend/app/db/models.py: portal_smtp_settings"
       docs:
-        - "docs/regen/10-smtp/verification.md"
         - "docs/regen/10-smtp/security-notes.md"
+        - "docs/forensics/runtime-truth-ssot-2026-03-15.md"
     status: DONE
     target_location:
       - "apps/kajovo-hotel-api/app/services/mail.py"
@@ -217,9 +217,8 @@ modules:
       - "apps/kajovo-hotel-api/tests/test_smtp_email_service.py"
       - "apps/kajovo-hotel-api/openapi.json"
       - "packages/shared/src/generated/client.ts"
-      - "docs/regen/10-smtp/verification.md"
     links:
-      - "docs/regen/10-smtp/verification.md"
+      - "docs/forensics/runtime-truth-ssot-2026-03-15.md"
 
 
   - module: ci_e2e_smoke_stabilization
@@ -228,7 +227,6 @@ modules:
       legacy:
         - "N/A"
       docs:
-        - "docs/regen/13-ci-tests/verification.md"
         - "docs/regen/13-ci-tests/flake-notes.md"
         - ".github/workflows/ci-gates.yml"
         - ".github/workflows/ci-full.yml"
@@ -240,9 +238,6 @@ modules:
       - ".github/workflows/ci-full.yml"
       - "apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts"
       - "apps/kajovo-hotel-admin/playwright.smoke.config.ts"
-      - "docs/regen/13-ci-tests/verification.md"
-    links:
-      - "docs/regen/13-ci-tests/verification.md"
 
   - module: device
     required_behavior: "Device provisioning/pairing/challenge/verify + Entity ID flow"
@@ -540,40 +535,6 @@ modules:
       - "apps/kajovo-hotel-api/app/api/routes/inventory.py"
       - "packages/shared/src/generated/client.ts"
 
-  - module: web_view_states_auth_fallback_permissions
-    required_behavior: "View-states smoke route nezkončí na AccessDenied při neúspěšném /api/auth/me; read fallback je deterministický"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-view-states-auth-fallback-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/rbac.ts"
-
-  - module: web_view_states_auth_catch_fallback
-    required_behavior: "AppRoutes auth bootstrap catch používá read fallback permissions místo prázdné sady"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-view-states-auth-catch-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/src/main.tsx"
-      - "apps/kajovo-hotel-web/src/rbac.ts"
-
-  - module: web_ci_view_states_auth_me_mock
-    required_behavior: "CI gate view-states má deterministický auth/me mock a neselhává na bootstrap auth endpointu"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/15-view-states-auth-me-mock-fix/verification.md"
-    status: DONE
-    target_location:
-      - "apps/kajovo-hotel-web/tests/ci-gates.spec.ts"
-
   - module: delivery_tracker
     required_behavior: "Jednoznačný SSOT tracker pro ORF prompty 00–15 včetně mapování fix větví"
     evidence:
@@ -636,21 +597,3 @@ modules:
     links:
       - "docs/regen/08-rbac/verification.md"
 
-
-  - module: ci_e2e_smoke_auth_stabilization
-    required_behavior: "CI má deterministický Playwright smoke pro admin login, admin hint flow a user-create+portal-login včetně browser provisioning, service orchestrace a validní verification.md sekcí A-F a stabilní webServer URL readiness bez timeoutu včetně CI-friendly startup režimu: prebuild v workflow + preview-only webServer pro admin/portal smoke"
-    evidence:
-      legacy:
-        - "N/A"
-      docs:
-        - "docs/regen/13-ci-tests/verification.md"
-    status: IN_PROGRESS
-    target_location:
-      - ".github/workflows/ci-gates.yml"
-      - "apps/kajovo-hotel-web/tests/e2e-smoke.config.ts"
-      - "apps/kajovo-hotel-web/tests/e2e-smoke/auth-smoke.spec.ts"
-      - "apps/kajovo-hotel-api/scripts/init_e2e_smoke_db.py"
-      - "apps/kajovo-hotel-admin/vite.config.ts"
-      - "apps/kajovo-hotel-web/vite.config.ts"
-    links:
-      - "docs/regen/13-ci-tests/verification.md"

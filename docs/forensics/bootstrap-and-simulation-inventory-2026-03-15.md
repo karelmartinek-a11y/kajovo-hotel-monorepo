@@ -66,16 +66,7 @@ Tento dokument neni seznam produkcnich bugu. Je to inventar mist, ktera by pri p
   Seeduje `mock.smtp.local`, `mock-user` a souvisejici test data.
   Tento soubor neni dukaz produkcni SMTP integrace a nesmi byt tak interpretovan.
 
-### 4. Breakfast runtime smoke
-
-- Kategorie: `TEST_ONLY_SIMULATION`
-- Soubor:
-  - [scripts/run_breakfast_runtime_smoke.py](/C:/GitHub/kajovo-hotel-monorepo/scripts/run_breakfast_runtime_smoke.py)
-- Popis:
-  Pouziva `_FakeImapClient` a synteticky PDF payload.
-  Script overuje scheduler pipeline a artefakty, ne realne mailbox spojeni.
-
-### 5. Frontend Playwright route mocks
+### 4. Frontend Playwright route mocks
 
 - Kategorie: `TEST_ONLY_SIMULATION`
 - Soubory:
@@ -85,15 +76,13 @@ Tento dokument neni seznam produkcnich bugu. Je to inventar mist, ktera by pri p
   `page.route`, `route.fulfill`, `route.fallback` a `mockAuth` jsou testovaci simulace.
   Zeleny Playwright beh sam o sobe neni dukaz live-runtime pravdivosti.
 
-### 6. Historical forensic evidence
+### 5. Historical forensic evidence
 
 - Kategorie: `HISTORICAL_EVIDENCE`
-- Soubory:
-  - [docs/forensic-audit-2026-03-11-deep.md](/C:/GitHub/kajovo-hotel-monorepo/docs/forensic-audit-2026-03-11-deep.md)
-  - [docs/remediation-plan-2026-03-11-by-module.md](/C:/GitHub/kajovo-hotel-monorepo/docs/remediation-plan-2026-03-11-by-module.md)
-  - [docs/remediation-task-breakdown-2026-03-11.md](/C:/GitHub/kajovo-hotel-monorepo/docs/remediation-task-breakdown-2026-03-11.md)
 - Popis:
-  Tyto dokumenty slouzi jako historicka evidence a casova stopa.
+  Historicke forensic a remediation dokumenty, ktere legitimizovaly mock nebo fallback vrstvy, byly z repozitare odstranene.
+- Dulezite:
+  Tyto dokumenty slouzily jako historicka evidence a casova stopa.
   Nejsou autoritativnim current-state zdrojem.
 
 ## Pravidla interpretace

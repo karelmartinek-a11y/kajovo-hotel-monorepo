@@ -78,8 +78,8 @@ Plati tyto zaveri:
 - Repo neni v rezimu "desitky aktivnich produkcnich fake funkci".
 - Repo stale neni ve stavu "forenzne plne docistene a pravdive uzavrene".
 - Existuji aktivni produkcni nesoulady a nepresnosti.
-- Test/tooling vrstva je stale ve velkem simulační.
-- Klicove casti dokumentace stale preceňuji uroven uzavreni remediation.
+- Test/tooling vrstva je stale ve velkem simulacni.
+- Klicove casti dokumentace stale precenuji uroven uzavreni remediation.
 
 ## Potvrzene nalezy
 
@@ -175,25 +175,6 @@ Plati tyto zaveri:
 - Stav:
   Otevrene, ale ocekavane.
 
-#### 3.2 Auth smoke explicitne pracuje s mock transport mode
-- Kategorie: `TEST_SIMULATION`
-- Soubor: [apps/kajovo-hotel-admin/tests/auth-smoke.spec.ts](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin/tests/auth-smoke.spec.ts)
-- Popis:
-  Soubor obsahuje scenar `hint email flow returns stable response in mock transport mode`.
-- Riziko:
-  Test evidence nelze zaměňovat za dukaz realneho SMTP transportu.
-- Stav:
-  Otevrene, ale test-only.
-
-#### 3.3 Breakfast runtime smoke pouziva fake IMAP klient
-- Kategorie: `TEST_SIMULATION`
-- Soubor: [scripts/run_breakfast_runtime_smoke.py](/C:/GitHub/kajovo-hotel-monorepo/scripts/run_breakfast_runtime_smoke.py)
-- Popis:
-  `_FakeImapClient` vraci synteticky e-mail s fake PDF.
-- Riziko:
-  Script nesmi byt interpretovan jako dukaz provozu nad realnou mailbox integraci.
-- Stav:
-  Otevrene, ale test-only.
 
 ### 4. Bootstrap, seed a compat vrstvy
 
@@ -220,11 +201,11 @@ Plati tyto zaveri:
 - Stav:
   Otevrene, legitimni compat vrstva.
 
-#### 4.3 E2E seed tool stale generuje mock SMTP data
+#### 4.3 E2E seed tool stale generuje test SMTP data
 - Kategorie: `BOOTSTRAP_OR_COMPAT`, `TEST_SIMULATION`
 - Soubor: [apps/kajovo-hotel-api/app/tools/e2e_seed.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/tools/e2e_seed.py)
 - Popis:
-  Seeduje `mock.smtp.local`, `mock-user` a related hodnoty.
+  Seeduje testovaci SMTP host a testovaciho uzivatele pro seed a e2e pripravu.
 - Riziko:
   Musi byt v dokumentaci explicitne vedeno jako seed/test-only helper.
 - Stav:
@@ -315,7 +296,7 @@ Nejvetsi rozpor proti drivejsim tvrzenim je tento:
 - Drivejsi komunikace a cast closeout docs tvrdily nebo implikovaly, ze remediation je v zasade uzavrena.
 - Aktualni evidence ukazuje:
   - aktivni produkcni drift stale existuje,
-  - test evidencni vrstva je stale silne simulační,
+  - test evidencni vrstva je stale silne simulacni,
   - docs nejsou srovnane s realitou.
 
 Proto tento dokument prepisuje interpretaci stavu na:
@@ -327,8 +308,8 @@ Proto tento dokument prepisuje interpretaci stavu na:
 ### Vlna P0 - runtime pravdivost
 1. Sjednotit [apps/kajovo-hotel-web/src/admin/UsersAdmin.tsx](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/src/admin/UsersAdmin.tsx) s admin app.
 2. Opravit SMTP observability model v [apps/kajovo-hotel-api/app/api/routes/settings.py](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-api/app/api/routes/settings.py).
-3. Doplňovat dalsi dukazy pro moduly vedene v parity matrix jako `PARTIAL`, aby se runtime truth neopiral jen o cileny audit a test-only evidence.
-4. Doplňovat oddělenou evidenci legitimních bootstrap domén, aby se device provisioning nemíchal s dřívějšími runtime fallbacky.
+3. Doplnovat dalsi dukazy pro moduly vedene v parity matrix jako `PARTIAL`, aby se runtime truth neopiral jen o cileny audit a test-only evidence.
+4. Doplnovat oddelenou evidenci legitimnich bootstrap domen, aby se device provisioning nemichal s drivejsimi runtime fallbacky.
 
 ### Vlna P1 - docs a truth source
 1. Oznacit starsi closeout docs jako historicke.
@@ -337,7 +318,6 @@ Proto tento dokument prepisuje interpretaci stavu na:
 
 ### Vlna P2 - test realism
 1. Rozdelit dokazni vrstvy na:
-   - `mocked integration`
    - `API-backed smoke`
    - `live runtime proof`
 2. Kriticke operace mit minimalne ve dvou vrstvach:
@@ -370,3 +350,4 @@ Tento SSOT ma byt pouzit jako zaklad pro:
 - aktualizaci parity matrix,
 - oznaceni historickych closeout docs,
 - pripadnou CI gate na nepravdive auditni formulace.
+

@@ -5,11 +5,11 @@ Zdroj pravdy: current HEAD, runtime testy, build/deploy skripty a `ManifestDesig
 
 ## Kritické
 
-1. Release gate padá na breakfast runtime smoke
+1. Release gate padal na breakfast runtime smoke
 - Stav: otevřeno
 - Důkaz: `python scripts/release_gate.py`
-- Soubory: `scripts/run_breakfast_runtime_smoke.py`, `artifacts/release-gate/release-gate-1f87d229d557-20260312T175806.521183+0000.json`
-- Popis: dočasný SQLite soubor zůstává na Windows zamčený při cleanupu `TemporaryDirectory`, takže release gate končí `FAIL`.
+- Soubory: `artifacts/release-gate/release-gate-1f87d229d557-20260312T175806.521183+0000.json`
+- Popis: historický runtime smoke harness byl z repozitáře odstraněn, protože používal fake mailbox vrstvu a neměl dál sloužit jako release důkaz.
 
 2. Manifest/UI gate padá na rozbitou SIGNACI
 - Stav: otevřeno

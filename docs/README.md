@@ -21,14 +21,8 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 
 ## Historické auditní dokumenty
 
-Tyto soubory jsou důležité jako časová stopa, ale nejsou current-state SSOT:
-
-- `docs/forensic-audit-2026-03-11-deep.md`
-- `docs/remediation-plan-2026-03-11-by-module.md`
-- `docs/remediation-task-breakdown-2026-03-11.md`
-- starší únorové a březnové auditní reporty
-
-Staré closeout dokumenty byly z repozitáře odstraněné, aby nevytvářely falešný dojem uzavřeného stavu.
+Historické closeout a remediation dokumenty, které normalizovaly mock nebo fallback režimy jako přijatelnou evidenci, byly z repozitáře odstraněné.
+Za current-state zdroj se považují pouze aktivní SSOT dokumenty uvedené výše.
 
 ## Provozní dokumentace
 

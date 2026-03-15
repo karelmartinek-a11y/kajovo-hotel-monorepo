@@ -2,7 +2,6 @@
 
 ## Gate 0: Documentation completeness
 - [x] Primární cutover runbook existuje: `docs/runbook/cutover.md`.
-- [x] Closeout parity verdict existuje: `docs/regen/15-closeout/parity-verdict.md`.
 - [x] Verification evidence existuje: `docs/regen/15-closeout/verification.md`.
 
 ## Gate 1: Quality gates
@@ -13,7 +12,7 @@
 ## Gate 2: Parity governance
 - [x] `docs/regen/parity/parity-map.yaml` má pro každý modul stav `DONE` nebo `BLOCKED`.
 - [x] Každý modul obsahuje `links` s ověřovacím odkazem.
-- [x] BLOCKED položky jsou explicitně uvedené v parity verdictu.
+- [x] BLOCKED položky jsou explicitně uvedené v parity mapě nebo navazující verification dokumentaci.
 
 ## Gate 3: Cutover readiness
 - [x] Rollback příkazy jsou dostupné pro každý kritický krok runbooku.

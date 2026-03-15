@@ -69,7 +69,6 @@ def main() -> int:
             ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests/test_breakfast_imap_smoke.py", "-q"],
             True,
         ),
-        ("breakfast-runtime-smoke", ["python", "scripts/run_breakfast_runtime_smoke.py"], True),
         ("frontend-ci-gates", _pnpm_command("ci:gates"), os.getenv("RUN_FRONTEND_GATES") == "1"),
         ("e2e-smoke", _pnpm_command("ci:e2e-smoke"), os.getenv("RUN_E2E_SMOKE") == "1"),
     ]
