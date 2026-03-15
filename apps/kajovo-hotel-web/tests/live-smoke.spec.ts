@@ -49,7 +49,7 @@ test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, reques
   await page.getByRole('link', { name: /otevrit snidane|otevřít snídaně/i }).click();
   await expect(page).toHaveURL(/\/snidane$/);
 
-  const samplePdfPath = `${testInfo.config.rootDir}/../../docs/breakfast/breakfast-sample.pdf`;
+  const samplePdfPath = `${testInfo.config.rootDir}/../../../docs/breakfast/breakfast-sample.pdf`;
   await page.getByLabel(/import pdf/i).setInputFiles(samplePdfPath);
 
   await expect(page.getByText(/kontrola importu/i)).toBeVisible();
