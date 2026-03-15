@@ -43,7 +43,7 @@ Tento dokument nenahrazuje runtime truth SSOT. Je to operacni backlog pro uzavir
 - Chybejici dukaz:
   Live API-backed smoke pro create, update, disable, delete a reset-link flow nad skutecnym API kontraktem po deploy.
 - Dalsi krok:
-  Pridat post-deploy nebo release smoke scenar svazany s testovacim admin uctem a pomocnym test user lifecycle.
+  Zavest post-deploy smoke scenar svazany s testovacim admin uctem a pomocnym test user lifecycle.
 
 #### Settings / SMTP settings management
 - Stav v parity matrix: `NO`

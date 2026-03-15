@@ -226,6 +226,14 @@ jobs:
           VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
         run: node scripts/verify_live_admin_login.mjs
 
+      - name: Verify live admin user-management smoke
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL != '' && env.KAJOVO_API_ADMIN_EMAIL || env.HOTEL_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
+          VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+        run: node scripts/verify_live_admin_users_smoke.mjs
+
       - name: Upload deploy runtime artifact
         if: always()
         uses: actions/upload-artifact@v6
