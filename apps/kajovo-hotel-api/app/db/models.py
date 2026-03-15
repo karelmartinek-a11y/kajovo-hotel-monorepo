@@ -514,6 +514,8 @@ class PortalSmtpSettings(Base):
     use_tls: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     use_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_test_connected: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_test_send_attempted: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     last_test_success: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     last_test_recipient: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_test_error: Mapped[str | None] = mapped_column(Text, nullable=True)

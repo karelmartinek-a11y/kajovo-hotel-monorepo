@@ -311,6 +311,26 @@ type SmtpOperationalStatusReadModel = {
   last_test_error: string | null;
 };
 
+function describeSmtpLastResult(status: SmtpOperationalStatusReadModel | null): string {
+  if (!status) return 'Bez záznamu';
+  if (status.delivery_mode !== 'smtp') {
+    return status.delivery_mode === 'disabled' ? 'SMTP není aktivní' : 'Nenakonfigurováno';
+  }
+  if (status.last_test_success === true && status.last_test_connected && status.last_test_send_attempted) {
+    return 'SMTP aktivní, zpráva skutečně odeslána';
+  }
+  if (status.last_test_success === false && status.last_test_connected && status.last_test_send_attempted) {
+    return 'SMTP aktivní, test selhal';
+  }
+  if (status.last_test_connected === true && status.last_test_send_attempted === false) {
+    return 'SMTP aktivní, připojení proběhlo, ale k odeslání nedošlo';
+  }
+  if (status.last_test_success == null) {
+    return 'Bez záznamu';
+  }
+  return 'SMTP aktivní, bez potvrzeného odeslání';
+}
+
 type AdminProfileReadModel = {
   email: string;
   display_name: string;
@@ -3953,8 +3973,10 @@ function SettingsAdmin(): JSX.Element {
               ['Re\u017eim doru\u010den\u00ed', status?.delivery_mode === 'smtp' ? 'Re\u00e1ln\u00e9 SMTP' : status?.delivery_mode === 'disabled' ? 'SMTP nen\u00ed aktivn\u00ed' : 'Nenakonfigurov\u00e1no'],
               ['Re\u00e1ln\u00e9 odesl\u00e1n\u00ed mo\u017en\u00e9', status?.can_send_real_email ? 'Ano' : 'Ne'],
               ['Posledn\u00ed test', status?.last_tested_at ? formatDateTime(status.last_tested_at) : 'Je\u0161t\u011b neb\u011bhl'],
+              ['Poslední připojení', status?.last_test_connected == null ? 'Bez záznamu' : status.last_test_connected ? 'Ano' : 'Ne'],
+              ['Poslední pokus o odeslání', status?.last_test_send_attempted == null ? 'Bez záznamu' : status.last_test_send_attempted ? 'Ano' : 'Ne'],
               ['Posledn\u00ed p\u0159\u00edjemce', status?.last_test_recipient ?? '-'],
-              ['Posledn\u00ed v\u00fdsledek', status?.last_test_success == null ? 'Bez z\u00e1znamu' : status.last_test_success ? '\u00dasp\u011bch' : 'Selh\u00e1n\u00ed'],
+              ['Posledn\u00ed v\u00fdsledek', describeSmtpLastResult(status)],
               ['Posledn\u00ed chyba', status?.last_test_error ?? '-'],
             ]}
           />

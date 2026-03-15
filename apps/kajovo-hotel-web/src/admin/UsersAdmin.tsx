@@ -189,6 +189,19 @@ export function UsersAdmin(): JSX.Element {
     editRoles.length > 0 &&
     editPhoneValid;
 
+  const createValidationMessage =
+    createFirstName.trim().length === 0 || createLastName.trim().length === 0
+      ? 'Vyplňte jméno i příjmení.'
+      : !createEmailValid
+        ? 'Zadejte platný e-mail.'
+        : createPassword.length < 8
+          ? 'Dočasné heslo musí mít alespoň 8 znaků.'
+          : createRoles.length === 0
+            ? 'Vyberte alespoň jednu roli.'
+            : !createPhoneValid
+              ? 'Telefon musí být ve formátu E.164 nebo prázdný.'
+              : null;
+
   const normalizedFilter = normalizeSearchValue(filterQuery);
 
   const filteredUsers = React.useMemo(() => {
@@ -274,7 +287,11 @@ export function UsersAdmin(): JSX.Element {
   }, [load]);
 
   async function createUser(): Promise<void> {
-    if (!createValid) return;
+    if (!createValid) {
+      setMessage(null);
+      setError(createValidationMessage ?? 'Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+      return;
+    }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -396,12 +413,16 @@ export function UsersAdmin(): JSX.Element {
   }
 
   async function sendPasswordResetLink(user: PortalUser): Promise<void> {
-    try {
-      await requestJson<{ ok: boolean }>(`/api/v1/users/${user.id}/password/reset-link`, {
-        method: 'POST',
-      });
-      setMessage('Pokud účet existuje a je dostupný e-mail, byl odeslán token pro reset hesla.');
-    } catch (err) {
+      try {
+        const response = await requestJson<{ ok: boolean; connected: boolean; send_attempted: boolean; message: string }>(`/api/v1/users/${user.id}/password/reset-link`, {
+          method: 'POST',
+        });
+        if (!response.connected || !response.send_attempted) {
+          setError('Resetovací odkaz nebyl reálně odeslán.');
+          return;
+        }
+        setMessage(response.message);
+      } catch (err) {
       if (err instanceof HttpError) {
         if (err.status === 403) {
           setError('Nemáte oprávnění odeslat resetovací token.');
@@ -668,7 +689,7 @@ export function UsersAdmin(): JSX.Element {
 
           <div id="users-create">
             <Card title="Vytvořit uživatele">
-              <div className="k-form-grid">
+              <form className="k-form-grid" onSubmit={(event) => { event.preventDefault(); void createUser(); }}>
                 <FormField id="create_first_name" label="Jméno">
                   <input
                     id="create_first_name"
@@ -698,6 +719,7 @@ export function UsersAdmin(): JSX.Element {
                     onChange={(e) => setCreatePassword(e.target.value)}
                   />
                 </FormField>
+                {createPassword.length > 0 && createPassword.length < 8 ? <small>Dočasné heslo musí mít alespoň 8 znaků.</small> : null}
                 <FormField id="create_phone" label="Telefon (E.164, volitelný)">
                   <input
                     id="create_phone"
@@ -728,11 +750,12 @@ export function UsersAdmin(): JSX.Element {
                     </label>
                   ))}
                 </fieldset>
+                {createRoles.length === 0 ? <small>Vyberte alespoň jednu roli.</small> : null}
                 <small id={createNoteHintId}>Admin přístup se nastavuje mimo role portálu.</small>
-                <button className="k-button" type="button" onClick={() => void createUser()} disabled={!createValid || saving}>
+                <button className="k-button" type="submit" disabled={saving}>
                   Vytvořit uživatele
                 </button>
-              </div>
+              </form>
             </Card>
           </div>
         </div>

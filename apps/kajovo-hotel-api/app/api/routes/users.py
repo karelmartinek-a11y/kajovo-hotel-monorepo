@@ -28,6 +28,7 @@ from app.security.rbac import (
     require_actor_type,
 )
 from app.services.mail import (
+    SmtpDeliveryError,
     SmtpNotConfiguredError,
     StoredSmtpConfig,
     build_email_service,
@@ -274,12 +275,12 @@ def send_user_reset_link(
     )
     try:
         service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
-        send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+        result = send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
         db.commit()
         return UserPasswordResetLinkResponse(
             ok=True,
-            connected=True,
-            send_attempted=True,
+            connected=result.connected,
+            send_attempted=result.send_attempted,
             message=f"Resetovací odkaz byl reálně odeslán na {user.email}.",
         )
     except SmtpNotConfiguredError:
@@ -288,6 +289,18 @@ def send_user_reset_link(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="SMTP není aktivní. Resetovací token byl vytvořen, ale e-mail nebyl odeslán.",
         )
+    except SmtpDeliveryError as exc:
+        db.commit()
+        if exc.connected and exc.send_attempted:
+            detail = "SMTP je aktivní, proběhl reálný pokus o odeslání, ale resetovací odkaz se nepodařilo doručit."
+        elif exc.connected:
+            detail = "SMTP spojení proběhlo, ale k odeslání resetovacího odkazu nedošlo."
+        else:
+            detail = "SMTP se nepodařilo připojit, resetovací odkaz nebyl odeslán."
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=detail,
+        ) from exc
     except Exception:
         db.commit()
         raise HTTPException(

@@ -48,12 +48,25 @@ class SmtpConfigRead:
     password_masked: str
 
 
+@dataclass(frozen=True)
+class MailDeliveryResult:
+    connected: bool
+    send_attempted: bool
+
+
 class EmailService(Protocol):
-    def send(self, message: MailMessage) -> None: ...
+    def send(self, message: MailMessage) -> MailDeliveryResult: ...
 
 
 class SmtpNotConfiguredError(RuntimeError):
     pass
+
+
+class SmtpDeliveryError(RuntimeError):
+    def __init__(self, message: str, *, connected: bool, send_attempted: bool) -> None:
+        super().__init__(message)
+        self.connected = connected
+        self.send_attempted = send_attempted
 
 
 class MockSmtpTransport:
@@ -66,10 +79,11 @@ class MockSmtpTransport:
         sender: str,
         message: MailMessage,
         smtp: StoredSmtpConfig,
-    ) -> None:
+    ) -> MailDeliveryResult:
         _ = sender
         _ = smtp
         self.sent_messages.append(message)
+        return MailDeliveryResult(connected=True, send_attempted=True)
 
 
 def _derive_key(secret: str) -> bytes:
@@ -143,36 +157,49 @@ class SmtpEmailService:
         self.encryption_key = encryption_key
         self.transport = transport
 
-    def send(self, message: MailMessage) -> None:
+    def send(self, message: MailMessage) -> MailDeliveryResult:
         if self.transport is not None:
-            self.transport.send(sender=self.sender, message=message, smtp=self.smtp_config)
-            return
+            return self.transport.send(sender=self.sender, message=message, smtp=self.smtp_config)
 
-        smtp_password = decrypt_secret(self.smtp_config.password_encrypted, self.encryption_key)
-        email = EmailMessage()
-        email["From"] = self.sender
-        email["To"] = message.recipient
-        email["Subject"] = message.subject
-        email.set_content(message.body)
+        connected = False
+        send_attempted = False
+        try:
+            smtp_password = decrypt_secret(self.smtp_config.password_encrypted, self.encryption_key)
+            email = EmailMessage()
+            email["From"] = self.sender
+            email["To"] = message.recipient
+            email["Subject"] = message.subject
+            email.set_content(message.body)
 
-        if self.smtp_config.use_ssl:
-            with smtplib.SMTP_SSL(
-                self.smtp_config.host,
-                self.smtp_config.port,
-                timeout=10,
-            ) as client:
-                client.login(self.smtp_config.username, smtp_password)
-                client.send_message(email)
-        else:
-            with smtplib.SMTP(self.smtp_config.host, self.smtp_config.port, timeout=10) as client:
-                if self.smtp_config.use_tls:
-                    client.starttls()
-                client.login(self.smtp_config.username, smtp_password)
-                client.send_message(email)
+            if self.smtp_config.use_ssl:
+                with smtplib.SMTP_SSL(
+                    self.smtp_config.host,
+                    self.smtp_config.port,
+                    timeout=10,
+                ) as client:
+                    connected = True
+                    client.login(self.smtp_config.username, smtp_password)
+                    send_attempted = True
+                    client.send_message(email)
+            else:
+                with smtplib.SMTP(self.smtp_config.host, self.smtp_config.port, timeout=10) as client:
+                    connected = True
+                    if self.smtp_config.use_tls:
+                        client.starttls()
+                    client.login(self.smtp_config.username, smtp_password)
+                    send_attempted = True
+                    client.send_message(email)
+        except Exception as exc:
+            raise SmtpDeliveryError(
+                str(exc),
+                connected=connected,
+                send_attempted=send_attempted,
+            ) from exc
+        return MailDeliveryResult(connected=connected, send_attempted=send_attempted)
 
 
-def send_portal_onboarding(*, service: EmailService, recipient: str) -> None:
-    service.send(
+def send_portal_onboarding(*, service: EmailService, recipient: str) -> MailDeliveryResult:
+    return service.send(
         MailMessage(
             recipient=recipient,
             subject="KájovoHotel onboarding",
@@ -181,8 +208,8 @@ def send_portal_onboarding(*, service: EmailService, recipient: str) -> None:
     )
 
 
-def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> None:
-    service.send(
+def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> MailDeliveryResult:
+    return service.send(
         MailMessage(
             recipient=recipient,
             subject="KájovoHotel odblokování admin účtu",
@@ -191,8 +218,8 @@ def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link
     )
 
 
-def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> None:
-    service.send(
+def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> MailDeliveryResult:
+    return service.send(
         MailMessage(
             recipient=recipient,
             subject="KájovoHotel unlock účtu",
@@ -203,8 +230,8 @@ def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link:
 
 def send_user_password_reset_link(
     *, service: EmailService, recipient: str, reset_link: str
-) -> None:
-    service.send(
+) -> MailDeliveryResult:
+    return service.send(
         MailMessage(
             recipient=recipient,
             subject="KájovoHotel reset hesla",

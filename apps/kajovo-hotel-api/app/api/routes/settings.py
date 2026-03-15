@@ -19,6 +19,7 @@ from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
 from app.services.mail import (
     MailMessage,
+    SmtpDeliveryError,
     SmtpNotConfiguredError,
     SmtpSettingsPayload,
     StoredSmtpConfig,
@@ -91,6 +92,8 @@ def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
         "use_tls",
         "use_ssl",
         "last_tested_at",
+        "last_test_connected",
+        "last_test_send_attempted",
         "last_test_success",
         "last_test_recipient",
         "last_test_error",
@@ -159,10 +162,14 @@ def _persist_smtp_test_result(
     record: PortalSmtpSettings,
     *,
     recipient: str,
+    connected: bool | None,
+    send_attempted: bool | None,
     success: bool,
     error: str | None,
 ) -> None:
     record.last_tested_at = datetime.now(timezone.utc)
+    record.last_test_connected = connected
+    record.last_test_send_attempted = send_attempted
     record.last_test_success = success
     record.last_test_recipient = recipient
     record.last_test_error = error
@@ -224,8 +231,8 @@ def get_smtp_status(db: Session = Depends(get_db)) -> SmtpOperationalStatusRead:
         smtp_enabled=settings.smtp_enabled,
         delivery_mode=_delivery_mode(smtp_enabled=settings.smtp_enabled, configured=configured),
         can_send_real_email=bool(configured and settings.smtp_enabled),
-        last_test_connected=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
-        last_test_send_attempted=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
+        last_test_connected=bool(row["last_test_connected"]) if isinstance(row, dict) and row.get("last_test_connected") is not None else None,
+        last_test_send_attempted=bool(row["last_test_send_attempted"]) if isinstance(row, dict) and row.get("last_test_send_attempted") is not None else None,
         last_tested_at=last_tested_at,
         last_test_success=bool(row["last_test_success"]) if isinstance(row, dict) and row.get("last_test_success") is not None else None,
         last_test_recipient=str(row["last_test_recipient"]) if isinstance(row, dict) and row.get("last_test_recipient") is not None else None,
@@ -319,7 +326,7 @@ def test_smtp_email(
     )
     try:
         service = build_email_service(settings, stored)
-        service.send(
+        result = service.send(
             MailMessage(
                 recipient=payload.recipient,
                 subject="KájovoHotel SMTP test",
@@ -335,12 +342,36 @@ def test_smtp_email(
                     db,
                     record,
                     recipient=payload.recipient,
+                    connected=result.connected,
+                    send_attempted=result.send_attempted,
                     success=True,
                     error=None,
                 )
             except Exception:
                 db.rollback()
                 logger.exception("smtp.test_email.persist_success_failed")
+    except SmtpDeliveryError as exc:
+        record = _safe_load_smtp_record(db)
+        if record is None:
+            logger.warning("smtp.test_email.skip_persist_failure")
+        else:
+            try:
+                _persist_smtp_test_result(
+                    db,
+                    record,
+                    recipient=payload.recipient,
+                    connected=exc.connected,
+                    send_attempted=exc.send_attempted,
+                    success=False,
+                    error=str(exc),
+                )
+            except Exception:
+                db.rollback()
+                logger.exception("smtp.test_email.persist_failure_failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"SMTP test delivery failed: {exc}",
+        ) from exc
     except (SmtpNotConfiguredError, Exception) as exc:
         record = _safe_load_smtp_record(db)
         if record is None:
@@ -351,6 +382,8 @@ def test_smtp_email(
                     db,
                     record,
                     recipient=payload.recipient,
+                    connected=False,
+                    send_attempted=False,
                     success=False,
                     error=str(exc),
                 )
@@ -366,7 +399,7 @@ def test_smtp_email(
     return SmtpTestEmailResponse(
         ok=True,
         delivery_mode=delivery_mode,
-        connected=True,
-        send_attempted=True,
+        connected=result.connected,
+        send_attempted=result.send_attempted,
         message=message,
     )

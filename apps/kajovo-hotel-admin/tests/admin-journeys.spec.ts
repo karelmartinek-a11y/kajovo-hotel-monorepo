@@ -102,7 +102,16 @@ test('admin covers users CRUD, active toggle, reset link and delete confirmation
   await page.route('**/api/v1/users/*/password/reset-link', async (route) => {
     lastResetUserId = Number(route.request().url().split('/').slice(-3)[0]);
     expect(route.request().headers()['x-csrf-token']).toBe('test-token');
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        connected: true,
+        send_attempted: true,
+        message: 'Resetovací odkaz byl reálně odeslán na jana.recepcni@example.com.',
+      }),
+    });
   });
 
   await page.route('**/api/v1/users/*/active', async (route) => {
@@ -155,6 +164,7 @@ test('admin covers users CRUD, active toggle, reset link and delete confirmation
   await page.getByRole('button', { name: /zakázat/i }).click();
   await page.getByRole('button', { name: /odeslat token pro reset hesla/i }).click();
   expect(lastResetUserId).not.toBeNull();
+  await expect(page.getByText(/resetovací odkaz byl reálně odeslán/i)).toBeVisible();
 
   await page.getByRole('button', { name: 'Eva' }).click();
   const detailDeleteButton = page.locator('#users-detail').getByRole('button', { name: /^Smaz/i });
@@ -189,10 +199,12 @@ test('admin settings and profile workflows save data, send test mail and logout 
       contentType: 'application/json',
       body: JSON.stringify({
         configured: true,
-        env_enabled: true,
-        mode: 'configured',
+        smtp_enabled: true,
+        delivery_mode: 'smtp',
         can_send_real_email: true,
-        last_test_at: '2026-03-10T09:00:00Z',
+        last_test_connected: true,
+        last_test_send_attempted: true,
+        last_tested_at: '2026-03-10T09:00:00Z',
         last_test_recipient: 'qa@example.com',
         last_test_success: true,
       }),

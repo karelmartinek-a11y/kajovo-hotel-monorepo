@@ -17,7 +17,12 @@ from app.api.routes.users import create_user
 from app.api.schemas import PortalUserCreate, SmtpSettingsUpsert
 from app.config import get_settings
 from app.db.models import Base, PortalSmtpSettings, PortalUser, PortalUserRole
-from app.services.mail import MockSmtpTransport, SmtpEmailService, StoredSmtpConfig
+from app.services.mail import (
+    MockSmtpTransport,
+    SmtpDeliveryError,
+    SmtpEmailService,
+    StoredSmtpConfig,
+)
 
 
 def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tmp_path):
@@ -103,6 +108,8 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
     assert status.configured is True
     assert status.smtp_enabled is True
     assert status.can_send_real_email is True
+    assert status.last_test_connected is True
+    assert status.last_test_send_attempted is True
     assert status.last_test_success is True
     assert status.last_test_recipient == admin_email
 
@@ -258,10 +265,56 @@ def test_smtp_settings_routes_tolerate_legacy_table_without_status_columns(tmp_p
     assert settings.port == 587
     assert settings.username == "mailer"
     assert status.configured is True
+    assert status.last_test_connected is None
+    assert status.last_test_send_attempted is None
     assert status.last_tested_at is None
     assert status.last_test_success is None
     assert status.last_test_recipient is None
     assert status.last_test_error is None
+
+
+def test_send_test_email_persists_partial_delivery_flags(monkeypatch, tmp_path):
+    db_path = tmp_path / "smtp-partial-flags.db"
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(bind=engine)
+
+    monkeypatch.setenv("KAJOVO_API_SMTP_ENABLED", "true")
+    get_settings.cache_clear()
+
+    class FailingService:
+        def send(self, _message):
+            raise SmtpDeliveryError(
+                "simulated login failure",
+                connected=True,
+                send_attempted=False,
+            )
+
+    with Session(engine) as db:
+        db.add(
+            PortalSmtpSettings(
+                id=1,
+                host="smtp.local",
+                port=1025,
+                username="mailer",
+                password_encrypted="bad",
+                use_tls=False,
+                use_ssl=False,
+            )
+        )
+        db.commit()
+
+        monkeypatch.setattr("app.api.routes.settings.build_email_service", lambda *_args, **_kwargs: FailingService())
+
+        with pytest.raises(Exception) as exc_info:
+            send_test_email(SmtpTestEmailRequest(recipient="admin@example.com"), db=db)
+
+        status = get_smtp_status(db=db)
+
+    exc = exc_info.value
+    assert getattr(exc, "status_code", None) == 502
+    assert status.last_test_connected is True
+    assert status.last_test_send_attempted is False
+    assert status.last_test_success is False
 
 
 def test_smtp_test_email_tolerates_legacy_table_without_status_columns(monkeypatch, tmp_path):
