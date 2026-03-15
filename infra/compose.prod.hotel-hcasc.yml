@@ -1,6 +1,9 @@
 services:
   api:
     environment:
+      # Produkcni hotel.hcasc.cz ma mit realne SMTP povolene.
+      # Skutecne odeslani stale vyzaduje ulozenou SMTP konfiguraci v adminu.
+      KAJOVO_API_SMTP_ENABLED: ${KAJOVO_API_SMTP_ENABLED:-true}
       KAJOVO_API_SKIP_MIGRATIONS: "1"
     ports:
       - "${API_PORT:-8202}:8000"
