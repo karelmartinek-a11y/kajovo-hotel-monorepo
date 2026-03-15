@@ -56,8 +56,18 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
         body: JSON.stringify({ role }),
       });
       if (!response.ok) {
+        let detail: string | undefined;
+        try {
+          const body = await response.json();
+          if (body && typeof body.detail === 'string') {
+            detail = body.detail;
+          }
+        } catch {
+          // ignore parse errors, fall back to generic copy
+        }
+        console.error('Role select failed', response.status, detail);
         setBusy(false);
-        setError(copy.roleSelectError ?? 'Výběr role selhal.');
+        setError(detail ?? copy.roleSelectError ?? 'Výběr role selhal.');
         return;
       }
       window.location.assign('/');
@@ -65,6 +75,7 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
       setBusy(false);
       const message =
         err instanceof Error && err.message ? `${err.message}` : (copy.roleSelectError ?? 'Výběr role selhal.');
+      console.error('Role select network error', err);
       setError(message);
     }
   }, [copy]);
