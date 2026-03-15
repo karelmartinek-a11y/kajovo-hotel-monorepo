@@ -5,6 +5,7 @@ const { spawn, spawnSync } = require("child_process");
 const { once } = require("events");
 const fs = require("fs");
 const http = require("http");
+const net = require("net");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -97,7 +98,30 @@ async function waitForHealthy(url, timeoutMs = 30000) {
   });
 }
 
-function startBackend(envOverrides = {}) {
+async function reservePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        server.close(() => reject(new Error("Failed to reserve a TCP port.")));
+        return;
+      }
+      const { port } = address;
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(port);
+      });
+    });
+  });
+}
+
+function startBackend(port, envOverrides = {}) {
   const adminCredentials = resolveAdminCredentials();
   const dbPath = uniqueTmpPath("playwright-api") + ".db";
   const mediaRoot = uniqueTmpPath("media");
@@ -111,6 +135,7 @@ function startBackend(envOverrides = {}) {
     KAJOVO_API_ADMIN_PASSWORD: adminCredentials.password,
     KAJOVO_API_ADMIN_EMAIL: adminCredentials.email,
     KAJOVO_API_ENVIRONMENT: "test",
+    PLAYWRIGHT_API_PORT: String(port),
     ...envOverrides,
   };
 
@@ -163,7 +188,7 @@ with sqlite3.connect(db_path) as connection:
   }
   const backend = spawn(
     pythonCmd,
-    ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000", "--no-access-log"],
+    ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(port), "--no-access-log"],
     {
       cwd: API_DIR,
       env,
@@ -180,7 +205,7 @@ with sqlite3.connect(db_path) as connection:
   return backend;
 }
 
-async function runPlaywright(appDir, tests, playwrightArgs = []) {
+async function runPlaywright(appDir, tests, playwrightArgs = [], envOverrides = {}) {
   const binName = "playwright";
   const playwrightPathRaw = path.join(appDir, "node_modules", ".bin", binName);
   const isWindows = process.platform === "win32";
@@ -191,6 +216,10 @@ async function runPlaywright(appDir, tests, playwrightArgs = []) {
   return new Promise((resolve, reject) => {
     const runner = spawn(runnerCmd, runnerArgs, {
       cwd: appDir,
+      env: {
+        ...process.env,
+        ...envOverrides,
+      },
       stdio: "inherit",
     });
     runner.on("exit", (code) => {
@@ -215,7 +244,9 @@ async function main() {
     throw new Error(`Application folder not found: ${appDir}`);
   }
   ensureTmp();
-  const backend = startBackend();
+  const apiPort = await reservePort();
+  const webPort = await reservePort();
+  const backend = startBackend(apiPort);
   const exitHandler = async () => {
     if (!backend.killed) {
       backend.kill("SIGTERM");
@@ -231,8 +262,12 @@ async function main() {
   });
 
   try {
-    await waitForHealthy("http://127.0.0.1:8000/health", 30000);
-    await runPlaywright(appDir, tests, playwrightArgs);
+    await waitForHealthy(`http://127.0.0.1:${apiPort}/health`, 30000);
+    await runPlaywright(appDir, tests, playwrightArgs, {
+      PLAYWRIGHT_API_PORT: String(apiPort),
+      PLAYWRIGHT_WEB_PORT: String(webPort),
+      PLAYWRIGHT_BASE_URL: `http://127.0.0.1:${webPort}`,
+    });
   } finally {
     await exitHandler();
   }

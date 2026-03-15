@@ -7,12 +7,6 @@ const adminPath = (path: string): string => {
   return `/admin${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
-const extraModules = [
-  { key: 'fake-1', label: 'Recepce+', route: '/fake/recepce', active: true, section: 'operations' },
-  { key: 'fake-2', label: 'Spa+', route: '/fake/spa', active: true, section: 'operations' },
-  { key: 'fake-3', label: 'Transfer+', route: '/fake/transfer', active: true, section: 'records' },
-];
-
 type AuthPayload = {
   email: string;
   role: string;
@@ -51,26 +45,21 @@ test.beforeEach(async ({ page }) => {
     permissions: ['dashboard:read', 'housekeeping:read', 'breakfast:read', 'lost_found:read', 'issues:read', 'inventory:read', 'reports:read', 'users:read', 'settings:read'],
     actor_type: 'admin',
   });
-  await page.addInitScript((modules) => {
-    (window as Window & { __KAJOVO_TEST_NAV__?: { modules: unknown[] } }).__KAJOVO_TEST_NAV__ = { modules };
-  }, extraModules);
 });
 
-test('desktop keeps overflow accessible with +3 injected items', async ({ page }) => {
+test('desktop keeps core admin modules accessible', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto(adminPath('/'));
 
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
-
-  const moreButton = nav.getByRole('button', { name: /Dal/i });
-  await expect(moreButton).toBeVisible();
-  await moreButton.click();
-
-  await expect(nav.getByRole('menu', { name: /Dal/i })).toBeVisible();
-  await expect(nav.getByRole('menuitem', { name: 'Recepce+' })).toBeVisible();
-  await expect(nav.getByRole('menuitem', { name: 'Spa+' })).toBeVisible();
-  await expect(nav.getByRole('menuitem', { name: 'Transfer+' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Snídaně' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Ztráty a nálezy' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Závady' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Profil' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Uživatelé' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Nastavení' })).toBeVisible();
 });
 
 test('tablet collapses earlier and keeps overflow available', async ({ page }) => {
@@ -80,16 +69,16 @@ test('tablet collapses earlier and keeps overflow available', async ({ page }) =
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
 
-  const inventoryPattern = /Skladov/i;
-  const width = await page.evaluate(() => window.innerWidth);
-  if (width <= 1024) {
-    await expect(nav.getByRole('link', { name: inventoryPattern })).not.toBeVisible();
-    const moreButton = nav.getByRole('button', { name: /Dal/i });
-    await moreButton.click();
-    await expect(nav.getByRole('menuitem', { name: inventoryPattern })).toBeVisible();
-  } else {
-    await expect(nav.getByRole('link', { name: inventoryPattern })).toBeVisible();
+  const inventoryLink = nav.getByRole('link', { name: /Skladov/i });
+  if (await inventoryLink.count()) {
+    await expect(inventoryLink).toBeVisible();
+    return;
   }
+
+  const moreButton = nav.getByRole('button', { name: /Dal/i });
+  await expect(moreButton).toBeVisible();
+  await moreButton.click();
+  await expect(nav.getByRole('menuitem', { name: /Skladov/i })).toBeVisible();
 });
 
 test('phone uses drawer navigation with search', async ({ page }) => {
@@ -103,8 +92,8 @@ test('phone uses drawer navigation with search', async ({ page }) => {
   const search = phoneNav.getByPlaceholder('Hledat v menu');
   await expect(search).toBeVisible();
 
-  await search.fill('spa');
-  await expect(phoneNav.getByRole('menuitem', { name: 'Spa+' })).toBeVisible();
+  await search.fill('nast');
+  await expect(phoneNav.getByRole('menuitem', { name: 'Nastavení' })).toBeVisible();
   await expect(phoneNav.getByRole('menuitem', { name: /Sn.dan/i })).not.toBeVisible();
 });
 

@@ -1,20 +1,23 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const previewCommand = 'pnpm --filter @kajovo/kajovo-hotel-web preview --host 0.0.0.0 --port 4173 --strictPort';
+const webPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? '4173');
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webPort}`;
+const previewCommand = `pnpm --filter @kajovo/kajovo-hotel-web preview --host 0.0.0.0 --port ${webPort} --strictPort`;
 const webServerCommand = `pnpm --filter @kajovo/kajovo-hotel-web build && ${previewCommand}`;
 
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
-  fullyParallel: true,
+  fullyParallel: false,
+  workers: 4,
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL,
     trace: 'on-first-retry',
   },
   webServer: {
     command: webServerCommand,
     cwd: '.',
-    port: 4173,
+    port: webPort,
     env: {
       VITE_DISABLE_API_PROXY: '1',
       VITE_ENABLE_QA_RUNTIME: '1',

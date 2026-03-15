@@ -24,7 +24,6 @@ async function mockAuth(page: Page): Promise<void> {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
 });

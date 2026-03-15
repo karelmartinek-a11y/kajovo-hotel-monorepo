@@ -5,16 +5,16 @@
 1. **Denní seznam** (`/snidane`): recepce nebo kuchyň zobrazí objednávky pro konkrétní den, vidí počet hostů a rozpad stavů.
 2. **Detail objednávky** (`/snidane/:id`): personál otevře detail záznamu (pokoj, host, počet, stav, poznámka).
 3. **Vytvoření objednávky** (`/snidane/nova`): rychlé zadání nové snídaně při check-inu nebo telefonické objednávce.
-4. **Editace objednávky** (`/snidane/:id/edit`): změna počtu hostů, poznámky nebo posun stavu (čeká → připravuje se → vydáno / zrušeno).
+4. **Editace objednávky** (`/snidane/:id/edit`): změna počtu hostů, poznámky nebo posun stavu (`pending` -> `preparing` -> `served` nebo `cancelled`).
 
 ## API routy
 
-- `GET /api/v1/breakfast` — seznam objednávek, volitelné filtry `service_date` a `status`.
-- `GET /api/v1/breakfast/daily-summary?service_date=YYYY-MM-DD` — denní souhrn (objednávky, hosté, stavy).
-- `GET /api/v1/breakfast/{order_id}` — detail objednávky.
-- `POST /api/v1/breakfast` — vytvoření objednávky.
-- `PUT /api/v1/breakfast/{order_id}` — editace objednávky.
-- `DELETE /api/v1/breakfast/{order_id}` — smazání objednávky.
+- `GET /api/v1/breakfast` - seznam objednávek, volitelné filtry `service_date` a `status`.
+- `GET /api/v1/breakfast/daily-summary?service_date=YYYY-MM-DD` - denní souhrn (objednávky, hosté, stavy).
+- `GET /api/v1/breakfast/{order_id}` - detail objednávky.
+- `POST /api/v1/breakfast` - vytvoření objednávky.
+- `PUT /api/v1/breakfast/{order_id}` - editace objednávky.
+- `DELETE /api/v1/breakfast/{order_id}` - smazání objednávky.
 
 ## Datový model
 
@@ -31,13 +31,10 @@
 
 ## Stavové scénáře view
 
-Každá route modulu podporuje finální stavy:
+UI modulu je odvozené jen z reálného runtime:
 
-- `loading`
-- `empty`
-- `error`
-- `offline`
-- `maintenance`
-- `404`
+- `loading` vzniká jen po skutečném načítání dat z API
+- `empty` vzniká jen když API vrátí prázdný seznam nebo nulový denní souhrn
+- `error` vzniká jen při skutečné chybě API
 
-Přepínání stavů je dostupné přes query parametr `?state=<stav>` pro rychlou validaci v UI a Playwright.
+Globální utility stavy `offline`, `maintenance` a `404` zůstávají samostatné route mimo query parametr simulace.

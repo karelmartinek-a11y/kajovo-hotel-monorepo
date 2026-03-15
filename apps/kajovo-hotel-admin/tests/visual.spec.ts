@@ -524,35 +524,6 @@ test.describe('visual states', () => {
 
 
 
-  test.describe('states sweep snapshots', () => {
-    const states = ['loading', 'empty', 'error', 'offline'] as const;
-    const keyRoutes = [
-      { key: 'breakfast-list', route: '/snidane', marker: 'breakfast-list-page' },
-      { key: 'lost-found-list', route: '/ztraty-a-nalezy', marker: 'lost-found-list-page' },
-      { key: 'issues-list', route: '/zavady', marker: 'issues-list-page' },
-      { key: 'inventory-list', route: '/sklad', marker: 'inventory-list-page' },
-      { key: 'reports-list', route: '/hlaseni', marker: 'reports-list-page' },
-    ] as const;
-
-    for (const viewport of [
-      { name: 'phone', size: { width: 390, height: 844 } },
-      { name: 'tablet', size: { width: 820, height: 1180 } },
-      { name: 'desktop', size: { width: 1440, height: 900 } },
-    ] as const) {
-      for (const view of keyRoutes) {
-        for (const state of states) {
-          test(`${view.key} ${state} state snapshot ${viewport.name}`, async ({ page }, testInfo) => {
-            if (testInfo.project.name !== viewport.name) return;
-            await page.setViewportSize(viewport.size);
-            await page.goto(adminPath(`${view.route}?state=${state}`));
-            await expect(page.getByTestId(view.marker)).toBeVisible();
-            await expect(page.getByTestId(`state-view-${state}`)).toBeVisible();
-            await expect(page).toHaveScreenshot(`state-sweep-${view.key}-${state}-${viewport.name}.png`, { fullPage: true });
-          });
-        }
-      }
-    }
-  });
   test('signage stays visible while scrolling', async ({ page }) => {
     await page.goto(adminPath('/ztraty-a-nalezy'));
     const sign = page.getByTestId('kajovo-sign');

@@ -3065,6 +3065,7 @@
         },
         "required": [
           "email",
+          "roles",
           "password"
         ],
         "title": "PortalUserCreate",
@@ -3154,8 +3155,15 @@
             "title": "Phone"
           },
           "role": {
-            "title": "Role",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           },
           "roles": {
             "items": {

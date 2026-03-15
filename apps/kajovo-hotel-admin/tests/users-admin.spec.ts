@@ -63,7 +63,6 @@ test('admin login shows structured error dialog for invalid and locked credentia
 
 test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) => {
   await page.addInitScript(() => {
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
   await mockAuth(page, {
@@ -136,7 +135,7 @@ test('správa uživatelů validuje vstupy a prefixuje +420', async ({ page }) =>
   expect(csrfHeader).toBe('test-token');
 });
 
-test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) => {
+test('sessionStorage role override už nemění mazání uživatelů', async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('kajovo_admin_role_view', 'sklad');
     document.cookie = 'kajovo_csrf=test-token; path=/';
@@ -180,13 +179,12 @@ test('mazání uživatelů je dostupné pouze v admin view', async ({ page }) =>
   await rowActivator.evaluate((node) => node.scrollIntoView({ block: 'center' }));
   await rowActivator.click({ force: true });
 
-  await expect(page.getByText('Smazání je dostupné pouze pro admina.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Smazat' })).toHaveCount(0);
+  await expect(page.getByText('Smazání je dostupné pouze pro admina.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Smazat' })).toBeVisible();
 });
 
 test('seznam uživatelů lze filtrovat podle jména, emailu i role', async ({ page }) => {
   await page.addInitScript(() => {
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
   await mockAuth(page, {
@@ -262,7 +260,6 @@ test('seznam uživatelů lze filtrovat podle jména, emailu i role', async ({ pa
 
 test('admin smaže uživatele přes potvrzovací dialog', async ({ page }) => {
   await page.addInitScript(() => {
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
   await mockAuth(page, {

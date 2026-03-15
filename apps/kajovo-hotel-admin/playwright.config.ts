@@ -1,17 +1,21 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const webPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? '4173');
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webPort}`;
+
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
-  fullyParallel: true,
+  fullyParallel: false,
+  workers: 4,
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL,
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'corepack pnpm build && corepack pnpm preview --host 127.0.0.1 --port 4173',
+    command: `corepack pnpm build && corepack pnpm preview --host 127.0.0.1 --port ${webPort}`,
     cwd: '.',
-    port: 4173,
+    port: webPort,
     env: {
       VITE_ENABLE_QA_RUNTIME: '1',
       VITE_QA_SERVICE_DATE: '2026-02-19',

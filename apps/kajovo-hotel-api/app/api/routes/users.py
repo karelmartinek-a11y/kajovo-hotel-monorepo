@@ -61,7 +61,7 @@ def _stored_smtp_config(record: PortalSmtpSettings | None) -> StoredSmtpConfig |
 
 def _to_read_model(user: PortalUser) -> PortalUserRead:
     roles = [role.role for role in user.roles]
-    primary_role = roles[0] if roles else "recepce"
+    primary_role = roles[0] if roles else None
     return PortalUserRead(
         id=user.id,
         first_name=user.first_name,

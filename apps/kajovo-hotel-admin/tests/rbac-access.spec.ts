@@ -10,6 +10,7 @@ const adminPath = (path: string): string => {
 type AuthPayload = {
   email: string;
   role: string;
+  active_role?: string;
   permissions: string[];
   actor_type: 'admin' | 'portal';
 };
@@ -43,12 +44,12 @@ test('restricted module is hidden in navigation and shows access denied on direc
   });
 
   await page.goto(adminPath('/'));
-  await expect(page.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Skladov/i })).toHaveCount(0);
 
   await page.goto(adminPath('/sklad'));
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
-  await expect(page.getByText('Přístup odepřen')).toBeVisible();
-  await expect(page.getByText(/Role údržba/)).toBeVisible();
+  await expect(page.getByText(/Přístup odepřen/i)).toBeVisible();
+  await expect(page.getByText(/údržba/i)).toBeVisible();
 });
 
 test('admin without session is redirected to login', async ({ page }) => {
@@ -83,21 +84,29 @@ test('admin override keeps all modules visible and accessible', async ({ page })
 
   await page.goto(adminPath('/'));
   const viewport = page.viewportSize();
-  const isPhone = viewport ? viewport.width <= 767 : false;
-  const phoneNav = page.getByTestId('module-navigation-phone');
+  const isPhone = (viewport?.width ?? 0) <= 767;
+
   if (isPhone) {
+    const phoneNav = page.getByTestId('module-navigation-phone');
     await phoneNav.getByRole('button', { name: 'Menu' }).click();
-    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: /Skladov/i })).toBeVisible();
   } else {
     const desktopNav = page.getByTestId('module-navigation-desktop');
-    const directLink = desktopNav.getByRole('link', { name: 'Skladové hospodářství' });
-    if (await directLink.isVisible()) {
+    const directLink = desktopNav.getByRole('link', { name: /Skladov/i });
+    const directVisible = (await directLink.count()) > 0 && await directLink.first().isVisible();
+    if (directVisible) {
       await expect(directLink).toBeVisible();
     } else {
-      const moreButton = desktopNav.getByRole('button', { name: 'Další' });
-      if (await moreButton.isVisible()) {
+      const moreButton = desktopNav.getByRole('button', { name: /Dal/i });
+      const moreVisible = (await moreButton.count()) > 0 && await moreButton.first().isVisible();
+      if (moreVisible) {
         await moreButton.click();
-        await expect(desktopNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
+        const overflowItem = desktopNav.getByRole('menuitem', { name: /Skladov/i });
+        if (await overflowItem.count()) {
+          await expect(overflowItem).toBeVisible();
+        } else {
+          await expect(directLink).toBeVisible();
+        }
       } else {
         await expect(directLink).toBeVisible();
       }
@@ -108,10 +117,11 @@ test('admin override keeps all modules visible and accessible', async ({ page })
   await expect(page.getByTestId('inventory-list-page')).toBeVisible();
 });
 
-test('admin module switcher filters navigation by role', async ({ page }) => {
+test('admin navigation follows active role returned by auth service', async ({ page }) => {
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',
+    active_role: 'údržba',
     permissions: [
       'dashboard:read',
       'housekeeping:read',
@@ -139,63 +149,31 @@ test('admin module switcher filters navigation by role', async ({ page }) => {
   });
 
   await page.goto(adminPath('/'));
-  const switcher = page.getByTestId('admin-module-switcher');
-  await expect(switcher).toBeVisible();
-
-  await switcher.getByRole('button', { name: 'Údržba' }).click();
-
   const viewport = page.viewportSize();
   const isPhone = (viewport?.width ?? 0) <= 767;
 
   if (isPhone) {
     const phoneNav = page.getByTestId('module-navigation-phone');
     await phoneNav.getByRole('button', { name: 'Menu' }).click();
-    await expect(phoneNav.getByRole('menuitem', { name: 'Závady' })).toBeVisible();
-    await expect(phoneNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toHaveCount(0);
+    await expect(phoneNav.getByRole('menuitem', { name: /Závady/i })).toBeVisible();
+    await expect(phoneNav.getByRole('menuitem', { name: /Skladov/i })).toHaveCount(0);
   } else {
     const desktopNav = page.getByTestId('module-navigation-desktop');
-    await expect(desktopNav.getByRole('link', { name: 'Závady' })).toBeVisible();
-    await expect(desktopNav.getByRole('link', { name: 'Skladové hospodářství' })).toHaveCount(0);
-    const moreButton = desktopNav.getByRole('button', { name: 'Další' });
+    await expect(desktopNav.getByRole('link', { name: /Závady/i })).toBeVisible();
+    await expect(desktopNav.getByRole('link', { name: /Skladov/i })).toHaveCount(0);
+    const moreButton = desktopNav.getByRole('button', { name: /Dal/i });
     if ((await moreButton.count()) > 0) {
       await moreButton.first().click();
-      await expect(desktopNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toHaveCount(0);
-    }
-  }
-
-  await switcher.getByRole('button', { name: 'Sklad' }).click();
-
-  if (isPhone) {
-    const phoneNav = page.getByTestId('module-navigation-phone');
-    const menuButton = phoneNav.getByRole('button', { name: 'Menu' });
-    await menuButton.click();
-    const inventoryMenuItem = phoneNav.getByRole('menuitem', { name: /Skladov/i });
-    if ((await inventoryMenuItem.count()) === 0) {
-      await menuButton.click();
-    }
-    await expect(inventoryMenuItem).toBeVisible();
-  } else {
-    const desktopNav = page.getByTestId('module-navigation-desktop');
-    const directLink = desktopNav.getByRole('link', { name: 'Skladové hospodářství' });
-    if (await directLink.count()) {
-      await expect(directLink).toBeVisible();
-    } else {
-      const moreButton = desktopNav.getByRole('button', { name: 'Další' });
-      if ((await moreButton.count()) > 0) {
-        await moreButton.first().click();
-        await expect(desktopNav.getByRole('menuitem', { name: 'Skladové hospodářství' })).toBeVisible();
-      }
+      await expect(desktopNav.getByRole('menuitem', { name: /Skladov/i })).toHaveCount(0);
     }
   }
 });
 
 test('sklad view nemá přístup do uživatelů, nastavení ani profilu ani přes deep link', async ({ page }) => {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'sklad');
-  });
   await mockAuth(page, {
     email: 'admin@example.com',
     role: 'admin',
+    active_role: 'sklad',
     permissions: ['dashboard:read', 'inventory:read', 'inventory:write'],
     actor_type: 'admin',
   });

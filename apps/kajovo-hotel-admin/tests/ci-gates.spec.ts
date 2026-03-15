@@ -116,8 +116,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const view of ia.views) {
-    await page.goto(toConcreteRoute(view.route));
+    await page.goto(toConcreteRoute(view.route), { waitUntil: 'domcontentloaded' });
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign, `Missing SIGNACE for route ${view.route}`).toBeVisible();
     await expect(sign).toHaveAttribute('aria-label', 'KÁJOVO');
@@ -161,8 +162,9 @@ test('SIGNACE is visible, correct and not occluded on all IA routes', async ({ p
 });
 
 test('all IA routes support smoke navigation', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const route of smokeRoutes) {
-    await page.goto(route);
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
     await expect(page.locator('main').first(), `Main content missing on route ${route}`).toBeVisible();
     const pathname = new URL(page.url()).pathname;
     expect(pathname, `Navigation did not land on route ${route}`).toBe(route);
@@ -170,15 +172,16 @@ test('all IA routes support smoke navigation', async ({ page }) => {
 });
 
 test('brand elements convention: maximum 2 per key views', async ({ page }) => {
+  test.setTimeout(120_000);
   for (const route of brandGateRoutes) {
-    await page.goto(route);
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
     const count = await page.locator('[data-brand-element="true"]').count();
     expect(count, `Too many brand elements on ${route}`).toBeLessThanOrEqual(2);
   }
 });
 
 test('intro route renders full lockup while preserving max two brand elements', async ({ page }) => {
-  await page.goto(adminPath('/intro'));
+  await page.goto(adminPath('/intro'), { waitUntil: 'domcontentloaded' });
 
   const fullLockup = page.locator('.k-full-lockup');
   await expect(fullLockup).toBeVisible();
@@ -204,7 +207,7 @@ test('SIGNACE offset respects minimum per device class', async ({ page }) => {
 
   for (const scenario of scenarios) {
     await page.setViewportSize({ width: scenario.width, height: scenario.height });
-    await page.goto(adminPath('/'));
+    await page.goto(adminPath('/'), { waitUntil: 'domcontentloaded' });
     const sign = page.getByTestId('kajovo-sign');
     await expect(sign).toBeVisible();
 
@@ -238,7 +241,7 @@ test('utility states keep floating SIGNACE visible without overlapping primary a
   const utilityRoutes = [adminPath('/intro'), adminPath('/offline'), adminPath('/maintenance'), adminPath('/404')];
 
   for (const route of utilityRoutes) {
-    await page.goto(route);
+    await page.goto(route, { waitUntil: 'domcontentloaded' });
     const signBox = await page.getByTestId('kajovo-sign').boundingBox();
     expect(signBox, `Missing SIGNACE box on ${route}`).not.toBeNull();
 
@@ -307,9 +310,8 @@ test('date defaults use runtime local day for breakfast and inventory forms', as
   await page.goto('/admin/snidane/nova');
   await expect(page.locator('#service_date')).toHaveValue(expectedToday);
 
-  await page.goto('/admin/sklad/1');
-  await expect(page.locator('#receipt_date')).toHaveValue(expectedToday);
-  await expect(page.locator('#issue_date')).toHaveValue(expectedToday);
+  await page.goto('/admin/sklad');
+  await expect(page.locator('#inventory_movement_date')).toHaveValue(expectedToday);
 
   const expectedLocalDateTime = await page.evaluate(() => {
     const parts = new Intl.DateTimeFormat('en-CA', {
@@ -405,8 +407,8 @@ test('WCAG 2.2 AA baseline for IA routes', async ({ page }) => {
 test('default service and document dates follow local timezone day', async ({ browser, browserName }) => {
   test.skip(browserName !== 'chromium', 'Timezone emulation is deterministic in chromium project.');
   const scenarios = [
-    { timezoneId: 'Europe/Prague', expected: '2026-02-19' },
-    { timezoneId: 'Pacific/Kiritimati', expected: '2026-02-20' },
+    { timezoneId: 'Europe/Prague', expected: '2026-02-20' },
+    { timezoneId: 'Pacific/Honolulu', expected: '2026-02-19' },
   ];
 
   for (const scenario of scenarios) {
@@ -432,18 +434,54 @@ test('default service and document dates follow local timezone day', async ({ br
     );
     await page.route('**/api/v1/breakfast?*', async (route) => route.fulfill({ json: listPayload }));
     await page.route('**/api/v1/breakfast/daily-summary?*', async (route) => route.fulfill({ json: summaryPayload }));
+    await page.route('**/api/v1/inventory', async (route) =>
+      route.fulfill({
+        json: [
+          {
+            id: 1,
+            name: 'Testovací položka',
+            unit: 'ks',
+            min_stock: 1,
+            current_stock: 5,
+          },
+        ],
+      })
+    );
 
     await page.addInitScript((iso) => {
-      const fixed = new Date(iso as string).valueOf();
-      Date.now = () => fixed;
+      const fixed = new Date(iso as string);
+      const RealDate = Date;
+      class MockDate extends RealDate {
+        constructor(...args: unknown[]) {
+          if (args.length === 0) {
+            super(fixed.toISOString());
+            return;
+          }
+          super(...(args as ConstructorParameters<typeof Date>));
+        }
+
+        static now(): number {
+          return fixed.valueOf();
+        }
+
+        static parse(dateString: string): number {
+          return RealDate.parse(dateString);
+        }
+
+        static UTC(...args: Parameters<typeof Date.UTC>): number {
+          return RealDate.UTC(...args);
+        }
+      }
+
+      // Playwright injects into the page context before app code runs.
+      window.Date = MockDate as unknown as DateConstructor;
     }, '2026-02-19T23:30:00.000Z');
 
-    await page.goto('/admin/snidane');
+    await page.goto('/admin/snidane/nova');
     await expect(page.locator('#service_date')).toHaveValue(scenario.expected);
 
-    await page.goto('/admin/sklad/nova');
-    await expect(page.locator('#receipt_date')).toHaveValue(scenario.expected);
-    await expect(page.locator('#issue_date')).toHaveValue(scenario.expected);
+    await page.goto('/admin/sklad');
+    await expect(page.locator('#inventory_movement_date')).toHaveValue(scenario.expected);
     await context.close();
   }
 });

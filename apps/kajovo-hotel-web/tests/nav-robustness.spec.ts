@@ -1,11 +1,5 @@
 ﻿import { expect, test } from '@playwright/test';
 
-const extraModules = [
-  { key: 'fake-1', label: 'Recepce+', route: '/fake/recepce', active: true, section: 'operations' },
-  { key: 'fake-2', label: 'Spa+', route: '/fake/spa', active: true, section: 'operations' },
-  { key: 'fake-3', label: 'Transfer+', route: '/fake/transfer', active: true, section: 'records' },
-];
-
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/auth/me', async (route) => {
     await route.fulfill({
@@ -23,34 +17,19 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/lost-found**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
   await page.route('**/api/v1/issues**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
   await page.route('**/api/v1/reports**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
-
-  await page.addInitScript((modules) => {
-    (window as Window & { __KAJOVO_TEST_NAV__?: { modules: unknown[] } }).__KAJOVO_TEST_NAV__ = { modules };
-  }, extraModules);
 });
 
-test('desktop keeps overflow accessible with +3 injected items', async ({ page }) => {
+test('desktop keeps core portal modules accessible', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto('/');
 
   const nav = page.getByTestId('module-navigation-desktop');
   await expect(nav).toBeVisible();
-
-  const moreButton = nav.getByRole('button', { name: 'Další' });
-  const hasOverflow = (await moreButton.count()) > 0;
-  if (hasOverflow) {
-    await moreButton.click();
-    await expect(nav.getByRole('menu', { name: 'Další' })).toBeVisible();
-  }
-
-  const injectedLabels = ['Recepce+', 'Spa+', 'Transfer+'];
-  for (const label of injectedLabels) {
-    const link = nav.getByRole('link', { name: label });
-    const menuItem = nav.getByRole('menuitem', { name: label });
-    const linkVisible = (await link.count()) > 0 && await link.first().isVisible();
-    const menuVisible = (await menuItem.count()) > 0 && await menuItem.first().isVisible();
-    expect(linkVisible || menuVisible).toBeTruthy();
-  }
+  await expect(nav.getByRole('link', { name: 'Pokojská' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Snídaně' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Ztráty a nálezy' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Závady' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Skladové hospodářství' })).toBeVisible();
 });
 
 test('tablet collapses earlier and keeps overflow available', async ({ page }) => {
@@ -81,8 +60,8 @@ test('phone uses drawer navigation with search', async ({ page }) => {
   const search = phoneNav.getByPlaceholder('Hledat v menu');
   await expect(search).toBeVisible();
 
-  await search.fill('spa');
-  await expect(phoneNav.getByRole('menuitem', { name: 'Spa+' })).toBeVisible();
+  await search.fill('ztr');
+  await expect(phoneNav.getByRole('menuitem', { name: 'Ztráty a nálezy' })).toBeVisible();
   await expect(phoneNav.getByRole('menuitem', { name: 'Snídaně' })).not.toBeVisible();
 });
 

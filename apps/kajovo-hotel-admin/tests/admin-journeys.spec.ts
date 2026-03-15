@@ -26,7 +26,6 @@ async function mockAuth(page: Page, payload: AuthPayload): Promise<void> {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
     document.cookie = 'kajovo_csrf=test-token; path=/';
   });
 });
@@ -221,7 +220,11 @@ test('admin settings and profile workflows save data, send test mail and logout 
   });
   await page.route('**/api/v1/admin/settings/smtp/test-email', async (route) => {
     testMailSent = true;
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, connected: true, send_attempted: true }),
+    });
   });
   await page.route('**/api/v1/admin/profile', async (route) => {
     if (route.request().method() === 'GET') {

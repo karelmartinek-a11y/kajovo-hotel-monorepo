@@ -419,7 +419,7 @@ export type PortalUserCreate = {
   "note"?: string | null;
   "password": string;
   "phone"?: string | null;
-  "roles"?: Array<string>;
+  "roles": Array<string>;
 };
 export type PortalUserPasswordSet = {
   "password": string;
@@ -434,7 +434,7 @@ export type PortalUserRead = {
   "last_name": string;
   "note": string | null;
   "phone": string | null;
-  "role": string;
+  "role": string | null;
   "roles": Array<string>;
   "updated_at": string | null;
 };

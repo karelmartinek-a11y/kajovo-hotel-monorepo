@@ -10,7 +10,6 @@ const adminPath = (path: string): string => {
 test('admin profil pouziva self-service endpoint a umi ulozit zmenu i heslo', async ({ page }) => {
   await page.addInitScript(() => {
     document.cookie = 'kajovo_csrf=test-token; path=/';
-    window.sessionStorage.setItem('kajovo_admin_role_view', 'admin');
   });
 
   let loggedOut = false;
@@ -111,4 +110,3 @@ test('admin profil pouziva self-service endpoint a umi ulozit zmenu i heslo', as
   await expect(page).toHaveURL(/\/admin\/login$/);
   await expect(page.getByTestId('admin-login-page')).toBeVisible();
 });
-

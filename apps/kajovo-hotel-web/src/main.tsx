@@ -43,7 +43,6 @@ import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
 import { PortalRoutes } from './portal/PortalRoutes';
 
-type ViewState = 'default' | 'loading' | 'empty' | 'error' | 'offline' | 'maintenance' | '404';
 type LostFoundType = LostFoundItemType;
 
 type BreakfastOrder = BreakfastOrderRead & {
@@ -357,81 +356,16 @@ function prepareBreakfastListItems(items: BreakfastOrder[]): BreakfastOrder[] {
     .filter((item) => item.guest_count > 0)
     .sort((left, right) => compareRoomNumbers(left.room_number, right.room_number));
 }
-function useViewState(): ViewState {
-  return 'default';
-}
-
-function stateViewForRoute(state: ViewState, title: string, fallbackRoute: string): JSX.Element | null {
-  switch (state) {
-    case 'loading':
-      return <SkeletonPage />;
-    case 'empty':
-      return (
-        <StateView
-          title="Prázdný stav"
-          description={`Pro modul ${title} zatím nejsou dostupná data.`}
-          stateKey="empty"
-          action={<Link className="k-button secondary" to={fallbackRoute}>Obnovit data</Link>}
-        />
-      );
-    case 'error':
-      return (
-        <StateView
-          title="Chyba"
-          description="Nepodařilo se načíst data. Zkuste stránku obnovit."
-          stateKey="error"
-          action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
-        />
-      );
-    case 'offline':
-      return (
-        <StateView
-          title="Offline"
-          description="Aplikace je dočasně bez připojení."
-          stateKey="offline"
-          action={<Link className="k-button secondary" to="/offline">Diagnostika připojení</Link>}
-        />
-      );
-    case 'maintenance':
-      return (
-        <StateView
-          title="Údržba"
-          description="Modul je dočasně v režimu údržby."
-          stateKey="maintenance"
-          action={<Link className="k-button secondary" to="/maintenance">Zobrazit status</Link>}
-        />
-      );
-    case '404':
-      return (
-        <StateView
-          title="404"
-          description="Požadovaný obsah nebyl nalezen."
-          stateKey="404"
-          action={
-            <Link className="k-nav-link" to={fallbackRoute}>
-              Zpět
-            </Link>
-          }
-        />
-      );
-    default:
-      return null;
-  }
-}
-
-function StateSwitcher(): JSX.Element {
-  return <></>;
-}
-
-function StateMarker({ state }: { state: ViewState }): JSX.Element | null {
-  return null;
-}
-
 function readCsrfToken(): string {
   return document.cookie
     .split('; ')
     .find((item) => item.startsWith('kajovo_csrf='))
     ?.split('=')[1] ?? '';
+}
+
+function normalizePhoneInput(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
@@ -650,10 +584,7 @@ function DietIconPork(): JSX.Element {
 }
 
 function Dashboard(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Přehled', '/');
-  const stateMarker = <StateMarker state={state} />;
-  const [todayCount, setTodayCount] = React.useState<number | null>(null);
+    const [todayCount, setTodayCount] = React.useState<number | null>(null);
   const [tomorrowCount, setTomorrowCount] = React.useState<number | null>(null);
   const [unresolvedIssuesCount, setUnresolvedIssuesCount] = React.useState<number | null>(null);
   const [unprocessedLostFoundCount, setUnprocessedLostFoundCount] = React.useState<number | null>(null);
@@ -661,9 +592,6 @@ function Dashboard(): JSX.Element {
   const [stockItemCount, setStockItemCount] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    if (state !== 'default') {
-      return;
-    }
 
     const today = currentDateForTimeZone();
     const tomorrowDate = new Date();
@@ -704,14 +632,12 @@ function Dashboard(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [state]);
+  }, []);
 
   return (
     <main className="k-page" data-testid="dashboard-page">
-      {stateMarker}
       <h1>Přehled</h1>
-      <StateSwitcher />
-      {stateUI ?? (
+      {(
         <div className="k-grid cards-4 k-dashboard-cards">
           <Card title="Snídaně dnes a zítra">
             <strong>{metricValue(todayCount)}</strong>
@@ -736,11 +662,8 @@ function Dashboard(): JSX.Element {
 }
 
 function BreakfastList(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
-  const stateMarker = <StateMarker state={state} />;
-  const auth = useAuth();
-  const actorRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'recepce');
+    const auth = useAuth();
+  const actorRole = auth?.activeRole ?? auth?.role ?? null;
   const roles = (auth?.roles ?? []).map((role) => normalizeRole(role));
   const breakfastRole = normalizeRole('snidane');
   const isAdmin = actorRole === 'admin';
@@ -766,9 +689,6 @@ function BreakfastList(): JSX.Element {
   const [importBusy, setImportBusy] = React.useState(false);
 
   const loadDay = React.useCallback((targetDate: string) => {
-    if (state !== 'default') {
-      return;
-    }
     let active = true;
     Promise.all([
       fetchJson<BreakfastOrder[]>(`/api/v1/breakfast?service_date=${targetDate}`),
@@ -791,7 +711,7 @@ function BreakfastList(): JSX.Element {
     return () => {
       active = false;
     };
-  }, [state]);
+  }, []);
 
   React.useEffect(() => {
     const cleanup = loadDay(serviceDate);
@@ -1029,10 +949,8 @@ function BreakfastList(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
-      {stateMarker}
       <h1>Snídaně</h1>
-      <StateSwitcher />
-      {stateUI ? stateUI : error ? (
+      {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <>
@@ -1088,10 +1006,7 @@ function BreakfastList(): JSX.Element {
 }
 
 function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
-  const stateMarker = <StateMarker state={state} />;
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const { id } = useParams();
   const [payload, setPayload] = React.useState<BreakfastPayload>({
     service_date: defaultServiceDate,
@@ -1104,7 +1019,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (mode !== 'edit' || state !== 'default' || !id) {
+    if (mode !== 'edit' || !id) {
       return;
     }
 
@@ -1122,7 +1037,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       .catch(() => {
         setError('Objednávku se nepodařilo načíst.');
       });
-  }, [id, mode, state]);
+  }, [id, mode]);
 
   const save = async (): Promise<void> => {
     setError(null);
@@ -1151,12 +1066,8 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'breakfast-create-page' : 'breakfast-edit-page'}>
-      {stateMarker}
       <h1>{mode === 'create' ? 'Nová snídaně' : 'Upravit snídani'}</h1>
-      <StateSwitcher />
-      {stateUI ? (
-        stateUI
-      ) : error ? (
+      {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <div className="k-card">
@@ -1238,16 +1149,13 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function BreakfastDetail(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Snídaně', '/snidane');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const [item, setItem] = React.useState<BreakfastOrder | null>(null);
   const [notFound, setNotFound] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (state !== 'default' || !id) {
+    if (!id) {
       return;
     }
 
@@ -1260,16 +1168,12 @@ function BreakfastDetail(): JSX.Element {
         setNotFound(true);
         setError('Objednávka nebyla nalezena.');
       });
-  }, [id, state]);
+  }, [id]);
 
   return (
     <main className="k-page" data-testid="breakfast-detail-page">
-      {stateMarker}
       <h1>Detail snídaně</h1>
-      <StateSwitcher />
-      {stateUI ? (
-        stateUI
-      ) : notFound ? (
+      {notFound ? (
         <StateView title="404" description={error ?? 'Objednávka neexistuje.'} stateKey="404" action={<Link className="k-button secondary" to="/snidane">Zpět na seznam</Link>} />
       ) : item ? (
         <div className="k-card">
@@ -1301,10 +1205,7 @@ function BreakfastDetail(): JSX.Element {
 }
 
 function HousekeepingForm(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Pokojská', '/pokojska');
-  const stateMarker = <StateMarker state={state} />;
-  const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
+    const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
   const [selectedRoom, setSelectedRoom] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [photos, setPhotos] = React.useState<File[]>([]);
@@ -1331,7 +1232,6 @@ function HousekeepingForm(): JSX.Element {
   };
 
   const submit = async (): Promise<void> => {
-    if (state !== 'default') return;
     const shortDescription = description.trim();
     const roomValue = selectedRoom.trim();
     if (!roomValue) {
@@ -1415,9 +1315,8 @@ function HousekeepingForm(): JSX.Element {
   if (success) {
     return (
       <main className="k-page" data-testid="housekeeping-form-page">
-        {stateMarker}
-        <h1>Pokojská</h1>
-        {stateUI ? stateUI : (
+          <h1>Pokojská</h1>
+        {(
           <StateView
             title="Hotovo"
             description={success}
@@ -1431,10 +1330,8 @@ function HousekeepingForm(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="housekeeping-form-page">
-      {stateMarker}
       <h1>Pokojská</h1>
-      <StateSwitcher />
-      {stateUI ? stateUI : (
+      {(
         <div className="k-card k-card--compact">
           <div className="k-toolbar" role="group" aria-label="Typ zápisu pokojské">
             <button className={mode === 'issue' ? 'k-button' : 'k-button secondary'} type="button" onClick={() => setMode('issue')} aria-pressed={mode === 'issue'}>
@@ -1479,11 +1376,8 @@ function HousekeepingForm(): JSX.Element {
 }
 
 function LostFoundList(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Ztráty a nálezy', '/ztraty-a-nalezy');
-  const stateMarker = <StateMarker state={state} />;
-  const auth = useAuth();
-  const activeRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'recepce');
+    const auth = useAuth();
+  const activeRole = auth?.activeRole ?? auth?.role ?? null;
   const isReception = activeRole === 'recepce';
   const isAdmin = activeRole === 'admin';
   const [items, setItems] = React.useState<LostFoundItem[]>([]);
@@ -1507,11 +1401,8 @@ function LostFoundList(): JSX.Element {
   }, [isReception, statusFilter]);
 
   React.useEffect(() => {
-    if (state !== 'default') {
-      return;
-    }
     loadItems();
-  }, [loadItems, state]);
+  }, [loadItems]);
 
   const markProcessed = async (itemId: number): Promise<void> => {
     try {
@@ -1528,10 +1419,8 @@ function LostFoundList(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="lost-found-list-page">
-      {stateMarker}
       <h1>{isReception ? 'Nálezy pro recepci' : 'Ztráty a nálezy'}</h1>
-      <StateSwitcher />
-      {stateUI ? stateUI : error ? (
+      {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} />
       ) : items.length === 0 ? (
         <StateView title={isReception ? 'Čekající nálezy' : 'Prázdný stav'} description={isReception ? 'Žádný čekající nález pro recepci.' : 'Žádný evidovaný nález.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/ztraty-a-nalezy/novy">Přidat záznam</Link> : undefined} />
@@ -1572,10 +1461,7 @@ function LostFoundList(): JSX.Element {
 }
 
 function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Ztráty a nálezy', '/ztraty-a-nalezy');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const navigate = useNavigate();
   const [payload, setPayload] = React.useState<LostFoundPayload>({
     item_type: 'found',
@@ -1595,7 +1481,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (mode !== 'edit' || state !== 'default' || !id) {
+    if (mode !== 'edit' || !id) {
       return;
     }
 
@@ -1611,7 +1497,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         });
       })
       .catch(() => setError('Položku se nepodařilo načíst.'));
-  }, [id, mode, state]);
+  }, [id, mode]);
 
   const save = async (): Promise<void> => {
     const body: LostFoundPayload = {
@@ -1639,12 +1525,8 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'lost-found-create-page' : 'lost-found-edit-page'}>
-      {stateMarker}
       <h1>{mode === 'create' ? 'Nová položka' : 'Upravit položku'}</h1>
-      <StateSwitcher />
-      {stateUI ? (
-        stateUI
-      ) : error ? (
+      {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <div className="k-card">
@@ -1785,14 +1667,11 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function LostFoundDetail(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Ztráty a nálezy', '/ztraty-a-nalezy');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const [item, setItem] = React.useState<LostFoundItem | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const auth = useAuth();
-  const activeRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'recepce');
+  const activeRole = auth?.activeRole ?? auth?.role ?? null;
   const canProcess = activeRole === 'recepce';
   const canAdmin = activeRole === 'admin';
 
@@ -1809,11 +1688,8 @@ function LostFoundDetail(): JSX.Element {
   }, [id]);
 
   React.useEffect(() => {
-    if (state !== 'default') {
-      return;
-    }
     loadItem();
-  }, [loadItem, state]);
+  }, [loadItem]);
 
   const setWorkflowStatus = async (status: LostFoundStatus): Promise<void> => {
     if (!id) return;
@@ -1844,10 +1720,8 @@ function LostFoundDetail(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="lost-found-detail-page">
-      {stateMarker}
       <h1>Detail nálezu</h1>
-      <StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} /> : item ? (
+      {error ? <StateView title="404" description={error} /> : item ? (
         <div className="k-card">
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/ztraty-a-nalezy">Zpět na seznam</Link>
@@ -1874,11 +1748,8 @@ function LostFoundDetail(): JSX.Element {
 
 
 function IssuesList(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
-  const stateMarker = <StateMarker state={state} />;
-  const auth = useAuth();
-  const activeRole = auth?.activeRole ?? auth?.role ?? 'recepce';
+    const auth = useAuth();
+  const activeRole = auth?.activeRole ?? auth?.role ?? null;
   const isMaintenance = normalizeRole(activeRole) === normalizeRole('udrzba');
   const isAdmin = activeRole === 'admin';
   const [items, setItems] = React.useState<Issue[]>([]);
@@ -1900,9 +1771,8 @@ function IssuesList(): JSX.Element {
   }, [isMaintenance, statusFilter]);
 
   React.useEffect(() => {
-    if (state !== 'default') return;
     loadItems();
-  }, [loadItems, state]);
+  }, [loadItems]);
 
   const markResolved = async (issueId: number): Promise<void> => {
     try {
@@ -1919,10 +1789,8 @@ function IssuesList(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="issues-list-page">
-      {stateMarker}
       <h1>{isMaintenance ? 'Závady pro údržbu' : 'Závady'}</h1>
-      <StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} /> : items.length === 0 ? (
+      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} /> : items.length === 0 ? (
         <StateView title="Prázdný stav" description={isMaintenance ? 'Žádná otevřená závada.' : 'Zatím nejsou evidované žádné závady.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link> : undefined} />
       ) : isMaintenance ? (
         <DataTable
@@ -1956,10 +1824,7 @@ function IssuesList(): JSX.Element {
 }
 
 function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const navigate = useNavigate();
   const [payload, setPayload] = React.useState<IssuePayload>({
     title: '', description: '', location: '', room_number: '', priority: 'medium', status: 'new', assignee: '',
@@ -1967,11 +1832,11 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (mode !== 'edit' || state !== 'default' || !id) return;
+    if (mode !== 'edit' || !id) return;
     fetchJson<Issue>(`/api/v1/issues/${id}`).then((item) => setPayload({
       title: item.title, description: item.description ?? '', location: item.location, room_number: item.room_number ?? '', priority: item.priority, status: item.status, assignee: item.assignee ?? '',
     })).catch(() => setError('Závadu se nepodařilo načíst.'));
-  }, [id, mode, state]);
+  }, [id, mode]);
 
   const save = async (): Promise<void> => {
     try {
@@ -1984,7 +1849,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     } catch { setError('Závadu se nepodařilo uložit.'); }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
+  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}><h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
 <FormField id="issue_title" label="Název"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
 <FormField id="issue_location" label="Lokalita"><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
 <FormField id="issue_room_number" label="Pokoj (volitelné)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
@@ -1996,15 +1861,12 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function IssuesDetail(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Závady', '/zavady');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const [item, setItem] = React.useState<Issue | null>(null);
   const [photos, setPhotos] = React.useState<MediaPhoto[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const auth = useAuth();
-  const activeRole = auth?.activeRole ?? auth?.role ?? 'recepce';
+  const activeRole = auth?.activeRole ?? auth?.role ?? null;
   const canDelete = activeRole === 'admin';
   const canResolve = normalizeRole(activeRole) === normalizeRole('udrzba');
   const canReopen = activeRole === 'admin';
@@ -2022,9 +1884,8 @@ function IssuesDetail(): JSX.Element {
   }, [id]);
 
   React.useEffect(() => {
-    if (state !== 'default') return;
     loadIssue();
-  }, [loadIssue, state]);
+  }, [loadIssue]);
 
   const updateStatus = async (status: IssueStatus): Promise<void> => {
     if (!id) return;
@@ -2061,20 +1922,16 @@ function IssuesDetail(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="issues-detail-page">
-      {stateMarker}
-      <h1>Detail závady</h1><StateSwitcher />
-      {stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Odstraněno</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+      <h1>Detail závady</h1>
+      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Odstraněno</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
 
 
 function InventoryList(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
-  const stateMarker = <StateMarker state={state} />;
-  const auth = useAuth();
-  const actorRole = normalizeRole(auth?.activeRole ?? auth?.role ?? 'recepce');
+    const auth = useAuth();
+  const actorRole = auth?.activeRole ?? auth?.role ?? null;
   const isAdmin = actorRole === 'admin';
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -2096,9 +1953,8 @@ function InventoryList(): JSX.Element {
   }, []);
 
   React.useEffect(() => {
-    if (state !== 'default') return;
     loadItems();
-  }, [loadItems, state]);
+  }, [loadItems]);
 
   React.useEffect(() => {
     if (!movementItemId && items.length > 0) {
@@ -2185,12 +2041,8 @@ function InventoryList(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="inventory-list-page">
-      {stateMarker}
       <h1>Skladové hospodářství</h1>
-      <StateSwitcher />
-      {stateUI ? (
-        stateUI
-      ) : error ? (
+      {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : items.length === 0 ? (
         <StateView
@@ -2241,10 +2093,7 @@ function InventoryList(): JSX.Element {
 }
 
 function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const navigate = useNavigate();
   const [payload, setPayload] = React.useState<InventoryItemPayload>({
     name: '',
@@ -2258,7 +2107,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
   const [pictogramPreview, setPictogramPreview] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (mode !== 'edit' || state !== 'default' || !id) return;
+    if (mode !== 'edit' || !id) return;
     fetchJson<InventoryDetail>(`/api/v1/inventory/${id}`)
       .then((item) =>
         setPayload({
@@ -2272,7 +2121,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         })
       )
       .catch((err) => setError(err instanceof Error ? err.message : 'Položku se nepodařilo načíst.'));
-  }, [id, mode, state]);
+  }, [id, mode]);
 
   React.useEffect(() => {
     if (!pictogramFile) {
@@ -2323,10 +2172,8 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}>
-      {stateMarker}
       <h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1>
-      <StateSwitcher />
-      {stateUI ? stateUI : error ? (
+      {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <div className="k-card">
@@ -2369,10 +2216,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function InventoryDetail(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Skladové hospodářství', '/sklad');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const [item, setItem] = React.useState<InventoryDetail | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -2387,9 +2231,8 @@ function InventoryDetail(): JSX.Element {
   }, [id]);
 
   React.useEffect(() => {
-    if (state !== 'default') return;
     loadDetail();
-  }, [loadDetail, state]);
+  }, [loadDetail]);
 
   const deleteMovement = async (movementId: number): Promise<void> => {
     if (!id) return;
@@ -2407,12 +2250,8 @@ function InventoryDetail(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="inventory-detail-page">
-      {stateMarker}
       <h1>Detail skladové položky</h1>
-      <StateSwitcher />
-      {stateUI ? (
-        stateUI
-      ) : error ? (
+      {error ? (
         <StateView title={error.includes('Missing role') || error.includes('Missing actor type') ? 'Přístup odepřen' : '404'} description={error} stateKey={error.includes('Missing role') || error.includes('Missing actor type') ? 'error' : '404'} action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>} />
       ) : item ? (
         <>
@@ -2457,41 +2296,32 @@ function InventoryDetail(): JSX.Element {
 }
 
 function ReportsList(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
-  const stateMarker = <StateMarker state={state} />;
-  const [items, setItems] = React.useState<Report[]>([]);
+    const [items, setItems] = React.useState<Report[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (state !== 'default') {
-      return;
-    }
     fetchJson<Report[]>('/api/v1/reports')
       .then(setItems)
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
-  }, [state]);
+  }, []);
 
-  return <main className="k-page" data-testid="reports-list-page">{stateMarker}<h1>Hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const navigate = useNavigate();
   const [error, setError] = React.useState<string | null>(null);
   const [payload, setPayload] = React.useState<ReportPayload>({ title: '', description: '', status: 'open' });
 
   React.useEffect(() => {
-    if (mode !== 'edit' || state !== 'default' || !id) {
+    if (mode !== 'edit' || !id) {
       return;
     }
     fetchJson<Report>(`/api/v1/reports/${id}`)
       .then((item) => setPayload({ title: item.title, description: item.description, status: item.status }))
       .catch(() => setError('Detail hlášení se nepodařilo načíst.'));
-  }, [id, mode, state]);
+  }, [id, mode]);
 
   async function save(): Promise<void> {
     try {
@@ -2506,30 +2336,28 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     }
   }
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}>{stateMarker}<h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
+  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
 }
 
 function ReportsDetail(): JSX.Element {
-  const state = useViewState();
-  const stateUI = stateViewForRoute(state, 'Hlášení', '/hlaseni');
-  const stateMarker = <StateMarker state={state} />;
-  const { id } = useParams();
+    const { id } = useParams();
   const [item, setItem] = React.useState<Report | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (state !== 'default' || !id) {
+    if (!id) {
       return;
     }
     fetchJson<Report>(`/api/v1/reports/${id}`)
       .then(setItem)
       .catch(() => setError('Hlášení nebylo nalezeno.'));
-  }, [id, state]);
+  }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page">{stateMarker}<h1>Detail hlášení</h1><StateSwitcher />{stateUI ? stateUI : error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
 function PortalProfilePage(): JSX.Element {
+  const navigate = useNavigate();
   const [profile, setProfile] = React.useState<{
     email: string;
     first_name: string;
@@ -2539,40 +2367,188 @@ function PortalProfilePage(): JSX.Element {
     roles: string[];
   } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [info, setInfo] = React.useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = React.useState(false);
+  const [changingPassword, setChangingPassword] = React.useState(false);
+  const [profileForm, setProfileForm] = React.useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    note: '',
+  });
+  const [passwordForm, setPasswordForm] = React.useState({
+    current_password: '',
+    new_password: '',
+  });
 
   React.useEffect(() => {
     fetchJson('/api/auth/profile')
       .then((response) => {
-        setProfile(response as {
+        const nextProfile = response as {
           email: string;
           first_name: string;
           last_name: string;
           phone: string | null;
           note: string | null;
           roles: string[];
+        };
+        setProfile(nextProfile);
+        setProfileForm({
+          first_name: nextProfile.first_name,
+          last_name: nextProfile.last_name,
+          phone: nextProfile.phone ?? '',
+          note: nextProfile.note ?? '',
         });
         setError(null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Profil se nepodařilo načíst.'));
   }, []);
 
+  const saveProfile = async (): Promise<void> => {
+    setSavingProfile(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const nextProfile = await fetchJson<{
+        email: string;
+        first_name: string;
+        last_name: string;
+        phone: string | null;
+        note: string | null;
+        roles: string[];
+      }>('/api/auth/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': readCsrfToken(),
+        },
+        body: JSON.stringify({
+          first_name: profileForm.first_name.trim(),
+          last_name: profileForm.last_name.trim(),
+          phone: normalizePhoneInput(profileForm.phone),
+          note: profileForm.note.trim() || null,
+        }),
+      });
+      setProfile(nextProfile);
+      setProfileForm({
+        first_name: nextProfile.first_name,
+        last_name: nextProfile.last_name,
+        phone: nextProfile.phone ?? '',
+        note: nextProfile.note ?? '',
+      });
+      setInfo('Profil byl ulozen.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Profil se nepodařilo uložit.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const changePassword = async (): Promise<void> => {
+    setChangingPassword(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await fetchJson('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': readCsrfToken(),
+        },
+        body: JSON.stringify({
+          old_password: passwordForm.current_password,
+          new_password: passwordForm.new_password,
+        }),
+      });
+      await navigate('/login');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Heslo se nepodařilo změnit.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   return (
     <main className="k-page" data-testid="portal-profile-page">
       <h1>Profil</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+      {info ? <p className="k-text-success">{info}</p> : null}
       {profile ? (
-        <div className="k-card">
-          <DataTable
-            headers={['Položka', 'Hodnota']}
-            rows={[
-              ['E-mail', profile.email],
-              ['Jméno', `${profile.first_name} ${profile.last_name}`.trim()],
-              ['Telefon', profile.phone ?? '-'],
-              ['Poznámka', profile.note ?? '-'],
-              ['Role', profile.roles.join(', ') || '-'],
-            ]}
-          />
-        </div>
+        <>
+          <div className="k-card">
+            <div className="k-toolbar">
+              <strong>{profile.email}</strong>
+              <span className="k-text-muted">{profile.roles.join(', ') || '-'}</span>
+            </div>
+            <div className="k-form-grid">
+              <FormField id="portal_profile_first_name" label="Jméno">
+                <input
+                  id="portal_profile_first_name"
+                  className="k-input"
+                  value={profileForm.first_name}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, first_name: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="portal_profile_last_name" label="Příjmení">
+                <input
+                  id="portal_profile_last_name"
+                  className="k-input"
+                  value={profileForm.last_name}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, last_name: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="portal_profile_phone" label="Telefon">
+                <input
+                  id="portal_profile_phone"
+                  className="k-input"
+                  value={profileForm.phone}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="portal_profile_note" label="Poznámka">
+                <textarea
+                  id="portal_profile_note"
+                  className="k-input"
+                  value={profileForm.note}
+                  onChange={(event) => setProfileForm((prev) => ({ ...prev, note: event.target.value }))}
+                />
+              </FormField>
+            </div>
+            <div className="k-toolbar">
+              <button className="k-button" type="button" disabled={savingProfile} onClick={() => void saveProfile()}>
+                Ulozit profil
+              </button>
+            </div>
+          </div>
+          <div className="k-card">
+            <h2>Změna hesla</h2>
+            <div className="k-form-grid">
+              <FormField id="portal_profile_current_password" label="Současné heslo">
+                <input
+                  id="portal_profile_current_password"
+                  className="k-input"
+                  type="password"
+                  value={passwordForm.current_password}
+                  onChange={(event) => setPasswordForm((prev) => ({ ...prev, current_password: event.target.value }))}
+                />
+              </FormField>
+              <FormField id="portal_profile_new_password" label="Nové heslo">
+                <input
+                  id="portal_profile_new_password"
+                  className="k-input"
+                  type="password"
+                  value={passwordForm.new_password}
+                  onChange={(event) => setPasswordForm((prev) => ({ ...prev, new_password: event.target.value }))}
+                />
+              </FormField>
+            </div>
+            <div className="k-toolbar">
+              <button className="k-button" type="button" disabled={changingPassword} onClick={() => void changePassword()}>
+                Zmenit heslo
+              </button>
+            </div>
+          </div>
+        </>
       ) : !error ? <SkeletonPage /> : null}
     </main>
   );

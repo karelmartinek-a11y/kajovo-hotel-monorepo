@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
 import { AppShell, SkeletonPage, StateView } from '@kajovo/ui';

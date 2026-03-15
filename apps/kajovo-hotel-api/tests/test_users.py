@@ -63,7 +63,7 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "new.user@example.com", "password": "new-user-pass"},
+        payload={"email": "new.user@example.com", "password": "new-user-pass", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -295,7 +295,7 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "neplatny-email", "password": "valid-pass-123"},
+        payload={"email": "neplatny-email", "password": "valid-pass-123", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 422
@@ -308,6 +308,7 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         payload={
             "email": "valid@example.com",
             "password": "valid-pass-123",
+            "roles": ["recepce"],
             "phone": "12345",
         },
         headers=csrf_header(jar),
@@ -333,7 +334,7 @@ def test_portal_user_cannot_delete_users(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "portal.delete@example.com", "password": "portal-pass-123"},
+        payload={"email": "portal.delete@example.com", "password": "portal-pass-123", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -379,7 +380,7 @@ def test_admin_can_delete_user(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "delete.me@example.com", "password": "delete-user-pass"},
+        payload={"email": "delete.me@example.com", "password": "delete-user-pass", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -636,7 +637,7 @@ def test_password_not_logged_in_audit_detail(
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "audit.user@example.com", "password": "audit-user-pass"},
+        payload={"email": "audit.user@example.com", "password": "audit-user-pass", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
