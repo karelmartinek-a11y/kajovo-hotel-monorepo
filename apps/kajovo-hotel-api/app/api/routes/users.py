@@ -8,9 +8,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.schemas import PortalUserCreate, PortalUserRead, PortalUserStatusUpdate, PortalUserUpdate, UserPasswordResetLinkResponse
+from app.api.schemas import (
+    PortalUserCreate,
+    PortalUserRead,
+    PortalUserStatusUpdate,
+    PortalUserUpdate,
+    UserPasswordResetLinkResponse,
+)
 from app.config import get_settings
-from app.db.models import AuthLockoutState, AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
+from app.db.models import (
+    AuthLockoutState,
+    AuthUnlockToken,
+    PortalSmtpSettings,
+    PortalUser,
+    PortalUserRole,
+)
 from app.db.session import get_db
 from app.security.auth import revoke_sessions_for_portal_user
 from app.security.passwords import hash_password

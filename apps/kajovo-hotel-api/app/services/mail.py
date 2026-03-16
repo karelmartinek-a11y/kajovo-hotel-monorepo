@@ -4,10 +4,10 @@ import base64
 import hashlib
 import hmac
 import json
-from pathlib import Path
 import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
+from pathlib import Path
 from typing import Protocol
 
 from app.config import Settings

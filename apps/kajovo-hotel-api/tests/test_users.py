@@ -141,7 +141,7 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     status, admin_reset = api_request(
         opener,
         api_base_url,
-        f"/api/v1/users/1/password/reset-link",
+        "/api/v1/users/1/password/reset-link",
         method="POST",
         headers=csrf_header(jar),
     )
