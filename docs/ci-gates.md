@@ -10,6 +10,7 @@ Autoritativní zdroje:
 - [`docs/forenzni-plan-implementace-kdgs-2026-03-16.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/forenzni-plan-implementace-kdgs-2026-03-16.md)
 - [`/.github/workflows/ci-gates.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/ci-gates.yml)
 - [`/.github/workflows/ci-full.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/ci-full.yml)
+- [`/.github/workflows/release.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/release.yml)
 - [`/.github/workflows/deploy-production.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/deploy-production.yml)
 
 Pokud se tento dokument rozchází s workflow soubory, platí workflow soubory.
@@ -57,7 +58,6 @@ Aktuálně spouští:
 - build adminu
 - `python -m pytest apps/kajovo-hotel-api/tests -q`
 - `pnpm ci:gates`
-- `pnpm ci:visual`
 - `pnpm ci:e2e-smoke`
 
 ### `e2e-smoke`
@@ -106,7 +106,21 @@ Aktuálně obsahuje:
 
 Tento workflow je důkazní a regresní vrstva navíc nad `CI Gates - KajovoHotel`.
 
-## 5. Produkční deploy gate
+## 5. GitHub workflow `CI Release - Kajovo Hotel`
+
+Workflow: [`release.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/release.yml)
+
+Aktuálně obsahuje:
+
+- `pnpm lint`
+- `pnpm unit`
+- build webu
+- build adminu
+- web smoke Playwright běh
+
+Tento workflow není autoritativní blokující gate pro deploy, ale je další release-validační vrstva pro `main`.
+
+## 6. Produkční deploy gate
 
 Workflow: [`deploy-production.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/deploy-production.yml)
 
@@ -124,7 +138,7 @@ Po deployi blokují release ještě tyto kontroly:
 - live admin login
 - live smoke správy uživatelů
 
-## 6. Vztah ke KDGS
+## 7. Vztah ke KDGS
 
 KDGS vyžaduje, aby release blokoval minimálně:
 
@@ -143,7 +157,7 @@ Aktuální stav:
 - vykonávaný KDGS geometrický a vizuální důkaz je zapojený přes `ci:visual` pro web i admin, ale jen pro current-state reprezentativní set rout a kritických interakcí,
 - deklarace povinných stavů pro všechna view je samostatně hlídaná IA scaffold guardem, nikoli plným runtime vykreslením každé varianty.
 
-## 7. Doporučené lokální minimum před push
+## 8. Doporučené lokální minimum před push
 
 ```bash
 pnpm typecheck
