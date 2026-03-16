@@ -74,6 +74,25 @@ def test_rbac_denies_lost_found_for_sklad(api_base_url: str) -> None:
     assert data["detail"] == "Missing permission: lost_found:read"
 
 
+def test_rbac_denies_breakfast_for_sklad(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "sklad@example.com", "password": "sklad-pass"},
+    )
+    assert status == 200
+
+    status, data = api_request(opener, api_base_url, "/api/v1/breakfast")
+
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Missing permission: breakfast:read"
+
+
 def test_rbac_write_denied_is_audited_with_actor_identity(
     api_base_url: str, api_db_path: Path
 ) -> None:

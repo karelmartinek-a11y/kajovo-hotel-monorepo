@@ -100,4 +100,4 @@ Produkční deploy workflow blokuje release, pokud neprojdou všechny tyto kontr
 - `GET https://hotel.hcasc.cz/`
 - `GET https://hotel.hcasc.cz/admin/login`
 - `GET https://hotel.hcasc.cz/api/health`
-- live admin login přes GitHub admin e-mail nebo username a heslo
+- live admin login přes kanonický admin e-mail a heslo z nasazeného runtime

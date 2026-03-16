@@ -373,8 +373,11 @@ def admin_hint(
 ) -> LogoutResponse:
     _ = request
     profile = db.get(AdminProfile, 1)
-    principal = profile.email.strip().lower() if profile is not None else get_settings().admin_email.strip().lower()
-    if payload.email.strip().lower() != principal:
+    requested_email = payload.email.strip().lower()
+    default_principal = profile.email.strip().lower() if profile is not None else get_settings().admin_email.strip().lower()
+    admin_user = _find_admin_user(db, requested_email)
+    principal = requested_email if admin_user is not None else default_principal
+    if requested_email != principal:
         return LogoutResponse()
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     now = _utc_now()
@@ -653,6 +656,11 @@ def change_own_password(
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
     _, user = _current_user_from_session(request, db)
+    if _is_admin_user(user):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Admin account password reminder is handled only via admin login hint",
+        )
     if not verify_password(payload.old_password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid credentials")
     user.password_hash = hash_password(payload.new_password)

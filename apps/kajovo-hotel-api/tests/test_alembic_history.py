@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0023_merge_runtime_heads"]
+    assert script.get_heads() == ["0024_add_auth_token_purpose"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(

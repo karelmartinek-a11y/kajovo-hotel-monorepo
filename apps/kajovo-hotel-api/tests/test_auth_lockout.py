@@ -146,6 +146,80 @@ def test_admin_hint_rate_limited_to_once_per_hour(api_base_url: str) -> None:
     assert body == {"ok": True}
 
 
+def test_admin_hint_supports_admin_role_user_email(api_base_url: str, api_mail_capture_path: Path) -> None:
+    admin_jar = CookieJar()
+    admin_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(admin_jar))
+
+    status, _ = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/auth/admin/login",
+        method="POST",
+        payload=admin_login_payload(),
+    )
+    assert status == 200
+
+    token = next((cookie.value for cookie in admin_jar if cookie.name == "kajovo_csrf"), "")
+    headers = {"x-csrf-token": token} if token else {}
+
+    created_status, created_body = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "first_name": "Admin",
+            "last_name": "Role",
+            "email": "admin.role@example.com",
+            "password": "AdminRole123",
+            "roles": ["admin"],
+        },
+        headers=headers,
+    )
+    assert created_status == 201
+    assert isinstance(created_body, dict)
+    user_id = int(created_body["id"])
+
+    before_messages = [
+        json.loads(line)
+        for line in api_mail_capture_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    status, body = api_request(
+        admin_opener,
+        api_base_url,
+        "/api/auth/admin/hint",
+        method="POST",
+        payload={"email": "admin.role@example.com"},
+        headers=headers,
+    )
+    assert status == 200
+    assert body == {"ok": True}
+
+    after_messages = [
+        json.loads(line)
+        for line in api_mail_capture_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    new_messages = after_messages[len(before_messages):]
+    assert any(
+        message.get("recipient") == "admin.role@example.com"
+        and "připomenutí admin hesla" in str(message.get("subject", "")).lower()
+        for message in new_messages
+    )
+
+    deleted_status, deleted_body = api_request(
+        admin_opener,
+        api_base_url,
+        f"/api/v1/users/{user_id}",
+        method="DELETE",
+        headers=headers,
+    )
+    assert deleted_status == 204
+    assert deleted_body is None
+
+
 def test_failed_admin_logins_issue_unlock_token(api_base_url: str, api_db_path: Path, api_mail_capture_path: Path) -> None:
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
 

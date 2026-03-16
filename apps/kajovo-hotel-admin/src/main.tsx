@@ -901,22 +901,6 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     if (!response.ok) throw new Error(await response.text());
     return (await response.json()) as T;
   }
-  if (path === '/api/v1/admin/profile/password' && method === 'POST') {
-    const csrf = readCsrfToken();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (csrf) {
-      headers['x-csrf-token'] = csrf;
-    }
-    const response = await fetch(path, {
-      method: 'POST',
-      credentials: 'include',
-      headers,
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(await response.text());
-    return (await response.json()) as T;
-  }
-
   const directHeaders = normalizeHeaders(init?.headers);
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     const csrf = readCsrfToken();
@@ -4289,9 +4273,6 @@ function SettingsAdmin(): JSX.Element {
 function AuthSelfServiceProfilePage(): JSX.Element {
   const [profile, setProfile] = React.useState<AdminProfileReadModel | null>(null);
   const [displayName, setDisplayName] = React.useState('');
-  const [oldPassword, setOldPassword] = React.useState('');
-  const [newPassword, setNewPassword] = React.useState('');
-  const [confirmPassword, setConfirmPassword] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -4336,36 +4317,6 @@ function AuthSelfServiceProfilePage(): JSX.Element {
     }
   }
 
-  async function changePassword(): Promise<void> {
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      setError('Vyplňte aktuální i nové heslo.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('Nové heslo a potvrzení se musí shodovat.');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError('Nové heslo musí mít alespoň 8 znaků.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-    try {
-      await fetchJson<{ ok: boolean }>('/api/v1/admin/profile/password', {
-        method: 'POST',
-        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
-      });
-      await fetchJson<{ ok: boolean }>('/api/auth/admin/logout', { method: 'POST' });
-      window.location.assign('/admin/login');
-    } catch {
-      setError('Změna hesla se nepodařila. Zkontrolujte aktuální heslo.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <main className="k-page" data-testid="admin-profile-page">
       <h1>Profil administrátora</h1>
@@ -4381,7 +4332,7 @@ function AuthSelfServiceProfilePage(): JSX.Element {
       {loading || !profile ? (
         <SkeletonPage />
       ) : (
-        <div className="k-grid cards-2">
+        <div className="k-grid cards-1">
           <Card title="Identita">
             <div className="k-form-grid">
               <FormField id="admin_profile_email" label="Admin email">
@@ -4398,42 +4349,6 @@ function AuthSelfServiceProfilePage(): JSX.Element {
               <div className="k-toolbar">
                 <button className="k-button" type="button" onClick={() => void saveProfile()} disabled={saving}>
                   Uložit profil
-                </button>
-              </div>
-            </div>
-          </Card>
-          <Card title="Změna hesla">
-            <div className="k-form-grid">
-              <FormField id="admin_profile_old_password" label="Aktuální heslo">
-                <input
-                  id="admin_profile_old_password"
-                  className="k-input"
-                  type="password"
-                  value={oldPassword}
-                  onChange={(event) => setOldPassword(event.target.value)}
-                />
-              </FormField>
-              <FormField id="admin_profile_new_password" label="Nové heslo">
-                <input
-                  id="admin_profile_new_password"
-                  className="k-input"
-                  type="password"
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                />
-              </FormField>
-              <FormField id="admin_profile_confirm_password" label="Potvrzení nového hesla">
-                <input
-                  id="admin_profile_confirm_password"
-                  className="k-input"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                />
-              </FormField>
-              <div className="k-toolbar">
-                <button className="k-button" type="button" onClick={() => void changePassword()} disabled={saving}>
-                  Změnit heslo
                 </button>
               </div>
             </div>

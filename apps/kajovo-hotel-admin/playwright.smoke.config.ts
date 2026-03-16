@@ -3,6 +3,7 @@ import path from 'path';
 import { getAdminCredentials } from './test-admin-credentials';
 
 const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:18000';
+const appBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:4174';
 const smokeDbPath = process.env.SMOKE_DB_PATH ?? '/tmp/kajovo-smoke-e2e.db';
 const isWin = process.platform === 'win32';
 const { email: adminEmail, password: adminPassword } = getAdminCredentials();
@@ -37,6 +38,10 @@ const apiCommand = isWin
   ? `powershell -NoLogo -NoProfile -Command \"${apiEnvWin}; python -m uvicorn app.main:app --host 127.0.0.1 --port 18000\"`
   : `${apiEnv} uvicorn app.main:app --host 127.0.0.1 --port 18000`;
 
+const appCommand = isWin
+  ? `powershell -NoLogo -NoProfile -Command \"$env:PLAYWRIGHT_API_PORT='18000'; corepack pnpm dev --host 127.0.0.1 --port 4174\"`
+  : `PLAYWRIGHT_API_PORT=18000 corepack pnpm dev --host 127.0.0.1 --port 4174`;
+
 export default defineConfig({
   testDir: './tests',
   testMatch: 'e2e-smoke.spec.ts',
@@ -44,14 +49,23 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   use: {
-    baseURL: apiBaseUrl,
+    baseURL: appBaseUrl,
     trace: 'retain-on-failure',
   },
-  webServer: {
-    command: `${initDbCommand} && ${apiCommand}`,
-    cwd: path.resolve('.'),
-    url: `${apiBaseUrl}/health`,
-    timeout: 120_000,
-    reuseExistingServer: false,
-  },
+  webServer: [
+    {
+      command: `${initDbCommand} && ${apiCommand}`,
+      cwd: path.resolve('.'),
+      url: `${apiBaseUrl}/health`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+    },
+    {
+      command: appCommand,
+      cwd: path.resolve('.'),
+      url: `${appBaseUrl}/admin/`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+    },
+  ],
 });

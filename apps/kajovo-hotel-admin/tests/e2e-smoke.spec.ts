@@ -59,4 +59,22 @@ test.describe('CI smoke auth flows', () => {
       actor_type: 'portal',
     });
   });
+
+  test('admin profil uz nenabizi zmenu hesla', async ({ page, request }) => {
+    const adminLoginResponse = await request.post('/api/auth/admin/login', {
+      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    expect(adminLoginResponse.ok()).toBeTruthy();
+
+    const storageState = await request.storageState();
+    await page.context().addCookies(storageState.cookies);
+
+    await page.goto('/admin/', { waitUntil: 'networkidle' });
+    await page.getByRole('link', { name: /profil/i }).click();
+    await expect(page.getByTestId('admin-profile-page')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /profil administrátora/i })).toBeVisible();
+    await expect(page.getByText(/admin účet nemá reset hesla/i)).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /změna hesla/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /změnit heslo/i })).toHaveCount(0);
+  });
 });

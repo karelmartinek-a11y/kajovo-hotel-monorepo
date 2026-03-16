@@ -1,4 +1,5 @@
 HISTORICAL DOCUMENT - superseded by docs/SSOT_SCOPE_STATUS.md (2026-03-12).
+HISTORICAL NOTE - auth/reset tvrzení níže už nejsou aktuální; aktuální runtime pravda je v docs/forensic-self-service-reset-hesla-2026-03-16.md.
 
 # Forenzní audit 2026-03-01 (legacy vs kajovo-hotel-monorepo)
 
@@ -31,7 +32,7 @@ HISTORICAL DOCUMENT - superseded by docs/SSOT_SCOPE_STATUS.md (2026-03-12).
   - user login: `/api/auth/login`
 - Admin lockout je maskovaný stejnou odpovědí `401 Invalid credentials`.
 - Unlock token flow a throttle pro admin hint jsou implementovány.
-- User lockout + forgot-password je implementován.
+- User lockout byl v době auditu spojen s tehdejším forgot-password flow. Toto tvrzení už není aktuální.
 - Multi-role session vyžaduje `active_role` před přístupem k modulům.
 
 ### Evidence
@@ -50,7 +51,7 @@ HISTORICAL DOCUMENT - superseded by docs/SSOT_SCOPE_STATUS.md (2026-03-12).
 - Signace zůstává v shellu a je zachována i po změnách.
 - Brand assety pro admin i web jsou sjednocené v public cestách (wordmark + postavy), takže login i interní obrazovky renderují logo/Káju bez závislosti na panel PNG.
 - Na login obrazovkách (user i admin) je renderovaná i signace jako samostatný brand element.
-- User login má doplněný flow „zapomenuté heslo“ volající `/api/auth/forgot-password` s generickou odpovědí.
+- Historická poznámka: tehdejší user login flow používal `/api/auth/forgot-password`. Aktuální kontrakt už tento endpoint nepoužívá a reset hesla je adminem řízený proces popsaný v `docs/forensic-self-service-reset-hesla-2026-03-16.md`.
 
 ### Evidence
 

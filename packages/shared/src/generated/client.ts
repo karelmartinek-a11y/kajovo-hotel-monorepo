@@ -5,10 +5,6 @@ export type AdminLoginRequest = {
   "email": string;
   "password": string;
 };
-export type AdminPasswordChangeRequest = {
-  "new_password": string;
-  "old_password": string;
-};
 export type AdminProfileRead = {
   "display_name": string;
   "email": string;
@@ -606,9 +602,6 @@ export const apiClient = {
   },
   async updateAdminProfileApiV1AdminProfilePut(body: AdminProfileUpdate): Promise<AdminProfileRead> {
     return request<AdminProfileRead>('PUT', `/api/v1/admin/profile`, undefined, body);
-  },
-  async changeAdminPasswordApiV1AdminProfilePasswordPost(body: AdminPasswordChangeRequest): Promise<LogoutResponse> {
-    return request<LogoutResponse>('POST', `/api/v1/admin/profile/password`, undefined, body);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);

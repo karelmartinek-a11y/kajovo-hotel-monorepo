@@ -18,6 +18,9 @@
 | Public + auth | `/`, `/admin`, `/admin/login`, `/login`, `/login/forgot`, `/login/reset`, `/portal`, `/logout`, `/admin/logout` | `legacy/hotel-backend/app/web/routes.py` |
 | Reports admin | `/admin/reports`, `/admin/reports/findings`, `/admin/reports/issues`, `/admin/reports/{report_id}`, `/admin/reports/{report_id}/done`, `/admin/reports/{report_id}/reopen`, `/admin/reports/{report_id}/delete`, `/admin/media/{photo_id}/{kind}` | `legacy/hotel-backend/app/web/routes.py` |
 | Users/settings/profile | `/admin/users`, `/admin/users/create`, `/admin/users/{user_id}/send-reset`, `/admin/settings`, `/admin/settings/smtp`, `/admin/profile`, `/admin/profile/password` | `legacy/hotel-backend/app/web/routes.py` |
+
+Poznámka k migraci:
+- route `/admin/profile/password` existovala v legacy SSR administraci, ale v aktuální SPA/API implementaci je záměrně odstraněná. Současný kontrakt používá pouze připomenutí přes `/api/auth/admin/hint`.
 | Breakfast admin | `/admin/breakfast`, `/admin/breakfast/day`, `/admin/breakfast/check`, `/admin/breakfast/note`, `/admin/breakfast/import`, `/admin/breakfast/save`, `/admin/breakfast/upload`, `/admin/breakfast/test` | `legacy/hotel-backend/app/web/routes_admin.py` |
 | Inventory admin | `/admin/inventory`, `/admin/inventory/ingredients`, `/admin/inventory/stock`, `/admin/inventory/movements`, plus ingredient/card CRUD + pictogram upload/media | `legacy/hotel-backend/app/web/routes_inventory.py` |
 

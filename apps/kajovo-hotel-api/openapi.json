@@ -19,28 +19,6 @@
         "title": "AdminLoginRequest",
         "type": "object"
       },
-      "AdminPasswordChangeRequest": {
-        "properties": {
-          "new_password": {
-            "maxLength": 255,
-            "minLength": 8,
-            "title": "New Password",
-            "type": "string"
-          },
-          "old_password": {
-            "maxLength": 255,
-            "minLength": 8,
-            "title": "Old Password",
-            "type": "string"
-          }
-        },
-        "required": [
-          "old_password",
-          "new_password"
-        ],
-        "title": "AdminPasswordChangeRequest",
-        "type": "object"
-      },
       "AdminProfileRead": {
         "properties": {
           "display_name": {
@@ -4245,47 +4223,6 @@
           }
         },
         "summary": "Update Admin Profile",
-        "tags": [
-          "profile"
-        ]
-      }
-    },
-    "/api/v1/admin/profile/password": {
-      "post": {
-        "operationId": "change_admin_password_api_v1_admin_profile_password_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminPasswordChangeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LogoutResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Change Admin Password",
         "tags": [
           "profile"
         ]

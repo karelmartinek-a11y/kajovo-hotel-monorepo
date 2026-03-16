@@ -66,7 +66,7 @@ Reason: these pieces encode old coupling and duplicate concerns that conflict wi
 - [ ] Breakfast workflow: import/check/note/day endpoints + scheduler smoke test.
 - [ ] Inventory workflow: ingredient CRUD, stock card IN/OUT, recalculation correctness.
 - [ ] Device auth flow: register/status/challenge/verify anti-replay behavior.
-- [ ] Auth/session: admin login/logout, portal login/reset, CSRF rejection/acceptance matrix.
+- [x] Auth/session: admin login/logout, portal login/reset, CSRF rejection/acceptance matrix.
 
 ## Database/migrations
 - [ ] Fresh database migrate to head.

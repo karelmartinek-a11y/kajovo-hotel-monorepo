@@ -544,6 +544,7 @@ class AdminProfile(Base):
 
 class AuthLockoutState(Base):
     __tablename__ = "auth_lockout_states"
+    __mapper_args__ = {"confirm_deleted_rows": False}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     actor_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)

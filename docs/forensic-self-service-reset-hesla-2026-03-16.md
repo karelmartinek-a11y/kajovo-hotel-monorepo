@@ -14,16 +14,30 @@ Doložit skutečný end-to-end průchod nového auth kontraktu:
 
 ## Runtime pravda
 
+- admin identita má dnes dva runtime tvary:
+  - dedikovaný admin účet z `admin_profile`
+  - aktivní uživatelský účet s rolí `admin`, který se může přihlásit do admin surface přes `/api/auth/admin/login`
+- pro oba tvary platí stejné recovery pravidlo:
+  - admin heslo se samo nemění ani neresetuje
+  - `POST /api/auth/admin/hint` posílá pouze připomenutí, kde heslo hledat
+  - lockout se řeší unlock tokenem nebo ručním odblokováním z users správy
+
 - `POST /api/v1/users/{user_id}/password/reset-link`
   - vytvoří token `purpose = "password_reset"`
   - funguje jen pro ne-admin portálové účty
   - odkaz míří na `/login/reset?token=...`
+- `POST /api/auth/change-password`
+  - funguje jen pro ne-admin portálové účty
+  - admin-role účet dostane `409 Admin account password reminder is handled only via admin login hint`
 - `POST /api/auth/reset-password`
   - spotřebuje pouze nepoužitý a neexpirovaný token `purpose = "password_reset"`
   - změní heslo, zneplatní aktivní session a zapíše audit
 - `POST /api/auth/admin/hint`
   - neposílá unlock link
   - posílá jen připomenutí, kde admin heslo najde
+  - funguje pro dedikovaný admin účet i pro aktivní účet uživatele s admin rolí
+- `POST /api/v1/admin/profile/password`
+  - endpoint už neexistuje
 - `GET /api/auth/unlock`
   - slouží výhradně pro tokeny `purpose = "unlock"`
 - `POST /api/v1/users/{user_id}/unlock`
@@ -62,10 +76,13 @@ pnpm typecheck
   - token je jednorázový a audit neuniká heslo
 - `apps/kajovo-hotel-api/tests/test_auth_lockout.py`
   - opakované chybné admin loginy vytvoří unlock token a odešlou unlock e-mail
+  - admin hint funguje i pro účet uživatele s admin rolí
 - `apps/kajovo-hotel-api/tests/test_users.py`
   - users API vrací stav blokace
   - admin reset link pro admin účet vrací konflikt
   - ruční odblokování zapisuje auditní stopu
+- `apps/kajovo-hotel-api/tests/test_self_service_profile.py`
+  - admin-role účet se může přihlásit do admin surface a upravit profil, ale vlastní změna hesla je blokovaná
 
 ## Dotčené soubory
 

@@ -669,11 +669,6 @@ class AdminProfileUpdate(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
 
 
-class AdminPasswordChangeRequest(BaseModel):
-    old_password: str = Field(min_length=8, max_length=255)
-    new_password: str = Field(min_length=8, max_length=255)
-
-
 class SmtpSettingsUpsert(BaseModel):
     host: str = Field(min_length=1, max_length=255)
     port: int = Field(ge=1, le=65535)

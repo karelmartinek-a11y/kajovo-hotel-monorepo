@@ -56,7 +56,7 @@ def login(base_url: str, email: str, password: str, *, admin: bool) -> tuple[url
     return opener, jar
 
 
-def test_admin_self_service_profile_and_password_change(
+def test_admin_role_user_can_access_admin_surface_but_cannot_change_password(
     api_request: ApiRequest, api_base_url: str
 ) -> None:
     admin_email = "profile.admin@example.com"
@@ -109,16 +109,11 @@ def test_admin_self_service_profile_and_password_change(
         payload={"old_password": admin_password, "new_password": "ProfileAdmin456"},
         headers=csrf_header(jar),
     )
-    assert status == 200
-    assert body == {"ok": True}
+    assert status == 409
+    assert isinstance(body, dict)
+    assert body["detail"] == "Admin account password reminder is handled only via admin login hint"
 
-    status, denied = raw_request(opener, api_base_url, "/api/auth/me")
-    assert status == 401
-    assert isinstance(denied, dict)
-    assert denied["detail"] == "Authentication required"
-
-    new_opener, _ = login(api_base_url, admin_email, "ProfileAdmin456", admin=True)
-    status, me = raw_request(new_opener, api_base_url, "/api/auth/me")
+    status, me = raw_request(opener, api_base_url, "/api/auth/me")
     assert status == 200
     assert isinstance(me, dict)
     assert me["email"] == admin_email
