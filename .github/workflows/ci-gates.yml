@@ -161,6 +161,12 @@ jobs:
       - name: Web live smoke gate
         run: pnpm ci:web-smoke
 
+      - name: KDGS signage declaration gate
+        run: pnpm ci:signage
+
+      - name: KDGS visual geometry gate
+        run: pnpm ci:visual
+
       - name: Verify API contract + generated client freshness
         run: pnpm contract:check
 

@@ -26,6 +26,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts",
-    "test:smoke": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts"
+    "test:smoke": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts",
+    "test:visual": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/visual.spec.ts"
   }
 }

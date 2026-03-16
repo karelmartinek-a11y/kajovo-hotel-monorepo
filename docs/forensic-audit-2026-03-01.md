@@ -1,5 +1,6 @@
-HISTORICAL DOCUMENT - superseded by docs/SSOT_SCOPE_STATUS.md (2026-03-12).
-HISTORICAL NOTE - auth/reset tvrzení níže už nejsou aktuální; aktuální runtime pravda je v docs/forensic-self-service-reset-hesla-2026-03-16.md.
+HISTORICAL DOCUMENT - není autoritativní pro current-state rozhodování.
+HISTORICAL NOTE - aktuální autoritativní zdroj je `docs/Kajovo_Design_Governance_Standard_SSOT.md`.
+HISTORICAL NOTE - auth/reset tvrzení níže už nejsou aktuální; aktuální runtime pravda je v `docs/forensic-self-service-reset-hesla-2026-03-16.md`.
 
 # Forenzní audit 2026-03-01 (legacy vs kajovo-hotel-monorepo)
 

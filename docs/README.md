@@ -13,6 +13,7 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 ## Aktivní závazné dokumenty
 
 - `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- `docs/forenzni-plan-implementace-kdgs-2026-03-16.md`
 - `docs/release-checklist.md`
 - `docs/rbac.md`
 
@@ -26,4 +27,6 @@ Tento adresář je hlavní zdroj dokumentace pro vývoj, provoz, audit a release
 
 ## Pravidlo autority
 
-Za current-state zdroj se považují pouze aktivní dokumenty uvedené výše. Historické auditní, mock-normalizační a verifikační dokumenty byly z repozitáře odstraněny.
+Za current-state zdroj se považují pouze aktivní závazné dokumenty uvedené výše.
+
+Historické auditní a forenzní dokumenty mohou v repozitáři zůstat jako evidence, ale nejsou autoritativní pro current-state rozhodování, pokud samy výslovně nepatří mezi aktivní závazné dokumenty.
