@@ -1,23 +1,16 @@
 import hashlib
 import json
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.schemas import (
-    PortalUserCreate,
-    PortalUserPasswordSet,
-    PortalUserRead,
-    PortalUserStatusUpdate,
-    PortalUserUpdate,
-    UserPasswordResetLinkResponse,
-)
+from app.api.schemas import PortalUserCreate, PortalUserRead, PortalUserStatusUpdate, PortalUserUpdate, UserPasswordResetLinkResponse
 from app.config import get_settings
-from app.db.models import AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
+from app.db.models import AuthLockoutState, AuthUnlockToken, PortalSmtpSettings, PortalUser, PortalUserRole
 from app.db.session import get_db
 from app.security.auth import revoke_sessions_for_portal_user
 from app.security.passwords import hash_password
@@ -48,6 +41,19 @@ def _normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _is_locked_until(value: datetime | None) -> bool:
+    locked_until = _as_utc(value)
+    return locked_until is not None and locked_until > utc_now()
+
+
 def _stored_smtp_config(record: PortalSmtpSettings | None) -> StoredSmtpConfig | None:
     if record is None:
         return None
@@ -61,9 +67,54 @@ def _stored_smtp_config(record: PortalSmtpSettings | None) -> StoredSmtpConfig |
     )
 
 
-def _to_read_model(user: PortalUser) -> PortalUserRead:
+def _lockout_map_for_users(db: Session, emails: list[str]) -> dict[tuple[str, str], datetime | None]:
+    principals = [_normalize_email(email) for email in emails if email.strip()]
+    if not principals:
+        return {}
+    rows = db.execute(
+        select(AuthLockoutState).where(AuthLockoutState.principal.in_(principals))
+    ).scalars().all()
+    lockouts: dict[tuple[str, str], datetime | None] = {}
+    for row in rows:
+        key = (row.actor_type, _normalize_email(row.principal))
+        candidate = _as_utc(row.locked_until)
+        current = lockouts.get(key)
+        if current is None or (candidate is not None and candidate > current):
+            lockouts[key] = candidate
+    return lockouts
+
+
+def _lockout_map_for_user(db: Session, email: str) -> dict[tuple[str, str], datetime | None]:
+    return _lockout_map_for_users(db, [email])
+
+
+def _reset_lockout(db: Session, *, actor_type: str, principal: str) -> None:
+    records = db.execute(
+        select(AuthLockoutState).where(
+            AuthLockoutState.actor_type == actor_type,
+            AuthLockoutState.principal == principal,
+        )
+    ).scalars().all()
+    now = utc_now()
+    for record in records:
+        record.failed_attempts = 0
+        record.first_failed_at = None
+        record.last_failed_at = None
+        record.locked_until = None
+        record.updated_at = now
+        db.add(record)
+
+
+def _to_read_model(
+    user: PortalUser,
+    lockouts: dict[tuple[str, str], datetime | None] | None = None,
+) -> PortalUserRead:
     roles = [role.role for role in user.roles]
     primary_role = roles[0] if roles else None
+    email = _normalize_email(user.email)
+    lockout_map = lockouts or {}
+    portal_locked_until = lockout_map.get(("portal", email))
+    admin_locked_until = lockout_map.get(("admin", email)) if _is_admin_user(user) else None
     return PortalUserRead(
         id=user.id,
         first_name=user.first_name,
@@ -77,6 +128,9 @@ def _to_read_model(user: PortalUser) -> PortalUserRead:
         created_at=user.created_at,
         updated_at=user.updated_at,
         last_login_at=user.last_login_at,
+        portal_locked_until=portal_locked_until,
+        admin_locked_until=admin_locked_until,
+        is_locked=_is_locked_until(portal_locked_until) or _is_locked_until(admin_locked_until),
     )
 
 
@@ -107,6 +161,7 @@ def _issue_portal_reset_token(db: Session, principal: str) -> str:
         AuthUnlockToken(
             actor_type="portal",
             principal=principal,
+            purpose="password_reset",
             token_hash=token_hash,
             expires_at=now + timedelta(hours=24),
         )
@@ -117,7 +172,8 @@ def _issue_portal_reset_token(db: Session, principal: str) -> str:
 @router.get("", response_model=list[PortalUserRead])
 def list_users(db: Session = Depends(get_db)) -> list[PortalUserRead]:
     users = db.execute(select(PortalUser).order_by(PortalUser.email.asc())).scalars().all()
-    return [_to_read_model(user) for user in users]
+    lockouts = _lockout_map_for_users(db, [user.email for user in users])
+    return [_to_read_model(user, lockouts) for user in users]
 
 
 @router.get("/{user_id}", response_model=PortalUserRead)
@@ -125,7 +181,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return _to_read_model(user)
+    return _to_read_model(user, _lockout_map_for_user(db, user.email))
 
 
 @router.post("", response_model=PortalUserRead, status_code=status.HTTP_201_CREATED)
@@ -148,7 +204,7 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     db.add(user)
     db.commit()
     db.refresh(user)
-    response_model = _to_read_model(user)
+    response_model = _to_read_model(user, _lockout_map_for_user(db, user.email))
     settings = get_settings()
     try:
         service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
@@ -192,7 +248,7 @@ def update_user(
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _to_read_model(user)
+    return _to_read_model(user, _lockout_map_for_user(db, user.email))
 
 
 @router.patch("/{user_id}/active", response_model=PortalUserRead)
@@ -214,49 +270,7 @@ def set_user_active(
     db.add(user)
     db.commit()
     db.refresh(user)
-    return _to_read_model(user)
-
-
-@router.post("/{user_id}/password", response_model=PortalUserRead)
-def set_user_password(
-    user_id: int,
-    payload: PortalUserPasswordSet,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> PortalUserRead:
-    user = db.get(PortalUser, user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    user.password_hash = hash_password(payload.password)
-    user.updated_at = utc_now()
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    request.state.audit_detail_override = json.dumps(
-        {"password_action": "set", "user_id": user_id}
-    )
-    return _to_read_model(user)
-
-
-@router.post("/{user_id}/password/reset", response_model=PortalUserRead)
-def reset_user_password(
-    user_id: int,
-    payload: PortalUserPasswordSet,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> PortalUserRead:
-    user = db.get(PortalUser, user_id)
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    user.password_hash = hash_password(payload.password)
-    user.updated_at = utc_now()
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    request.state.audit_detail_override = json.dumps(
-        {"password_action": "reset", "user_id": user_id}
-    )
-    return _to_read_model(user)
+    return _to_read_model(user, _lockout_map_for_user(db, user.email))
 
 
 @router.post("/{user_id}/password/reset-link", response_model=UserPasswordResetLinkResponse)
@@ -268,11 +282,16 @@ def send_user_reset_link(
     user = db.get(PortalUser, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if _is_admin_user(user):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Admin account password reminder is handled only via admin login hint",
+        )
     settings = get_settings()
-    token = _issue_portal_reset_token(db, user.email)
+    token = _issue_portal_reset_token(db, _normalize_email(user.email))
     reset_link = (
-        f"{str(request.base_url).rstrip('/')}/api/auth/unlock?"
-        f"{urlencode({'token': token, 'actor_type': 'portal'})}"
+        f"{str(request.base_url).rstrip('/')}/login/reset?"
+        f"{urlencode({'token': token})}"
     )
     try:
         service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
@@ -308,6 +327,25 @@ def send_user_reset_link(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="SMTP je aktivní, ale odeslání resetovacího odkazu selhalo.",
         )
+
+
+@router.post("/{user_id}/unlock", response_model=PortalUserRead)
+def unlock_user_account(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> PortalUserRead:
+    user = db.get(PortalUser, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    principal = _normalize_email(user.email)
+    _reset_lockout(db, actor_type="portal", principal=principal)
+    if _is_admin_user(user):
+        _reset_lockout(db, actor_type="admin", principal=principal)
+    db.commit()
+    db.refresh(user)
+    request.state.audit_detail_override = json.dumps({"lockout_action": "unlock", "user_id": user_id})
+    return _to_read_model(user, _lockout_map_for_user(db, user.email))
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

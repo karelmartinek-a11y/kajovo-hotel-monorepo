@@ -3,6 +3,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
+from pathlib import Path
 import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
@@ -231,6 +233,23 @@ class SmtpEmailService:
         return MailDeliveryResult(connected=connected, send_attempted=send_attempted)
 
 
+class FileEmailService:
+    def __init__(self, *, capture_path: str) -> None:
+        self.capture_path = Path(capture_path)
+
+    def send(self, message: MailMessage) -> MailDeliveryResult:
+        self.capture_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "recipient": message.recipient,
+            "subject": message.subject,
+            "body": message.body,
+        }
+        with self.capture_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False))
+            handle.write("\n")
+        return MailDeliveryResult(connected=True, send_attempted=True)
+
+
 def send_portal_onboarding(*, service: EmailService, recipient: str) -> MailDeliveryResult:
     return service.send(
         MailMessage(
@@ -247,6 +266,19 @@ def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link
             recipient=recipient,
             subject="KájovoHotel odblokování admin účtu",
             body=f"Pro odblokování admin účtu použijte odkaz: {unlock_link}",
+        )
+    )
+
+
+def send_admin_password_hint(*, service: EmailService, recipient: str) -> MailDeliveryResult:
+    return service.send(
+        MailMessage(
+            recipient=recipient,
+            subject="KájovoHotel připomenutí admin hesla",
+            body=(
+                "Zapomenuté admin heslo se neresetuje. "
+                "Heslo najdete v provozním správci hesel nebo v bezpečně uložené provozní dokumentaci."
+            ),
         )
     )
 
@@ -278,6 +310,8 @@ def build_email_service(
     smtp_config: StoredSmtpConfig | None,
     transport: MockSmtpTransport | None = None,
 ) -> EmailService:
+    if settings.smtp_capture_path.strip():
+        return FileEmailService(capture_path=settings.smtp_capture_path.strip())
     if not settings.smtp_enabled or smtp_config is None:
         raise SmtpNotConfiguredError("Real SMTP is not configured")
     return SmtpEmailService(

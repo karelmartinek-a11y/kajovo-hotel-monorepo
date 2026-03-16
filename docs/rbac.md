@@ -1,45 +1,44 @@
 # RBAC
 
-## Current auth source
+## Zdroj pravdy
 
-RBAC is session-backed.
+Autorizační kontrakt je session-based a kanonický zdroj pravdy je backend:
 
-- Browser clients authenticate through `/api/auth/login` or `/api/auth/admin/login`.
-- API identity is loaded from the server-side session store via `require_session`.
-- Web and admin frontends resolve identity through `/api/auth/me`.
-- Missing or invalid session does **not** fall back to a local pseudo-user.
+- runtime pravidla: `apps/kajovo-hotel-api/app/security/rbac.py`
+- session validace a výběr aktivní role: `apps/kajovo-hotel-api/app/security/auth.py`
+- frontend mirror pro navigaci a lokální fallbacky: `packages/shared/src/rbac.ts`
 
-This replaces older header-driven and local pseudo-user behavior described in historical documents.
+Web i admin načítají identitu přes `/api/auth/me`. Neplatná nebo chybějící session nepadá do lokální pseudo-identity.
 
-## Actor types
+## Typy aktérů
 
-There are two actor types:
+Systém rozlišuje dva typy session:
 
 - `admin`
 - `portal`
 
-`admin` sessions always operate as role `admin`.
+`admin` session vždy běží jako role `admin`.
 
-`portal` sessions may carry multiple roles. If more than one role is assigned, the user must select an active role before guarded module access is allowed.
+`portal` session může nést více rolí. Pokud má uživatel přiřazeno více portálových rolí, musí před přístupem do hlídaných modulů zvolit `active_role`.
 
-## Canonical roles
+## Kanonické role
 
-Canonical backend roles are:
+Kanonické názvy rolí jsou:
 
 - `admin`
-- `pokojska`
-- `udrzba`
+- `pokojská`
+- `údržba`
 - `recepce`
-- `snidane`
+- `snídaně`
 - `sklad`
 
-Aliases such as `housekeeping`, `maintenance`, `reception`, `breakfast` and `warehouse` are normalized to the canonical Czech role set in backend and frontend helpers.
+Aliasy jako `housekeeping`, `maintenance`, `reception`, `breakfast`, `warehouse`, `pokojska`, `udrzba` nebo `snidane` se při načtení normalizují na tuto českou sadu.
 
-## Permission matrix
+## Permission matice
 
-Permissions use `<module>:<action>` and are defined in `apps/kajovo-hotel-api/app/security/rbac.py`.
+Permission používají formát `<modul>:<akce>`, kde akce je `read` nebo `write`.
 
-### admin
+### `admin`
 
 - `dashboard:read`
 - `housekeeping:read`
@@ -51,84 +50,122 @@ Permissions use `<module>:<action>` and are defined in `apps/kajovo-hotel-api/ap
 - `users:read`, `users:write`
 - `settings:read`, `settings:write`
 
-### pokojska
+### `pokojská`
 
 - `housekeeping:read`
-- `breakfast:read`, `breakfast:write`
-- `issues:read`, `issues:write`
-- `inventory:read`, `inventory:write`
-- `lost_found:read`, `lost_found:write`
+- `issues:write`
+- `lost_found:write`
 
-### udrzba
+### `údržba`
 
 - `issues:read`, `issues:write`
 
-### recepce
+### `recepce`
 
 - `breakfast:read`, `breakfast:write`
 - `lost_found:read`, `lost_found:write`
 
-### snidane
+### `snídaně`
 
 - `breakfast:read`, `breakfast:write`
+
+### `sklad`
+
 - `inventory:read`, `inventory:write`
-- `issues:read`, `issues:write`
 
-### sklad
+## Odvozená module mapa ve frontendu
 
-- `breakfast:read`, `breakfast:write`
-- `inventory:read`, `inventory:write`
-- `issues:read`, `issues:write`
+`packages/shared/src/rbac.ts` odvozuje `ROLE_MODULES` přímo z `ROLE_PERMISSIONS` jen přes `:read` permission. To znamená:
 
-## API enforcement
+- `admin` vidí moduly `dashboard`, `housekeeping`, `breakfast`, `lost_found`, `issues`, `inventory`, `reports`, `users`, `settings`
+- `pokojská` vidí pouze `housekeeping`
+- `údržba` vidí pouze `issues`
+- `recepce` vidí `breakfast` a `lost_found`
+- `snídaně` vidí pouze `breakfast`
+- `sklad` vidí pouze `inventory`
 
-- Module routers use `require_permission`, `require_module_access`, or `require_actor_type`.
-- Read requests map to `:read`.
-- `POST`, `PUT`, `PATCH`, `DELETE` map to `:write`.
-- Missing permission returns `403` with `Missing permission: <module>:<action>`.
-- Missing active role on a multi-role portal session returns `403` with `Active role must be selected`.
+Write-only schopnost bez `:read` permission neopravňuje sama o sobě k zobrazení modulu v navigaci.
 
-## Session lifecycle and revocation
+## Vynucení na API
 
-RBAC depends on the session store in `auth_sessions`.
+Základní guardy:
 
-- Login creates a server-side session record.
-- Logout revokes the current session.
-- Disable user, role changes, email changes, password changes and password reset flows revoke active user sessions.
-- Session validation also checks that the backing user still exists, is active, and still has the required admin role when the actor type is `admin`.
+- `require_permission`
+- `require_module_access`
+- `require_role`
+- `require_actor_type`
 
-## Audit identity
+Mapování HTTP metod:
 
-Write requests under guarded routes are audited with normalized actor identity.
+- `GET` -> `:read`
+- `POST`, `PUT`, `PATCH`, `DELETE` -> `:write`
 
-- actor id: session email
-- actor role: normalized active role or base role
-- actor type: `admin` or `portal`
+Chybové odpovědi:
 
-For legacy-compatible exports, audit serialization maps canonical Czech roles to English labels:
+- chybějící permission vrací `403` s `Missing permission: <module>:<action>`
+- multi-role `portal` session bez `active_role` vrací `403` s `Active role must be selected`
+- neplatná nebo chybějící session vrací `401` s `Authentication required`
 
-- `pokojska` -> `housekeeping`
-- `udrzba` -> `maintenance`
+## Důležité runtime výjimky nad rámec matice
+
+Samotná module-level permission nestačí na všechny endpointy. Backend má ještě jemnější omezení:
+
+- `breakfast`
+  - plánování, mazání, import/export a reaktivace jsou jen pro `admin` nebo `recepce`
+  - role `snídaně` smí zapisovat jen omezeně, typicky označit objednávku jako `served`
+- `inventory`
+  - role `sklad` má modulový přístup k seznamům a pohybům skladu
+  - create/update/delete položek, detail položky, mazání pohybů, práce s kartami a export inventury jsou omezené na `admin`
+- `issues`
+  - `pokojská` může zakládat závady a nahrávat fotky
+  - `údržba` může měnit jen stav a jen povoleným směrem
+  - mazání je jen pro `admin`
+- `users` a `settings`
+  - přístup je vázaný na actor type `admin`, nestačí pouze role z portálu
+
+Při změně RBAC proto nestačí upravit jen permission matici. Je nutné zkontrolovat i route-level guardy.
+
+## Životní cyklus session
+
+RBAC stojí nad tabulkou `auth_sessions`.
+
+- login vytváří server-side session
+- logout ruší aktuální session
+- změna rolí, deaktivace uživatele, změna emailu, změna hesla i reset hesla ruší aktivní session uživatele
+- validace session zároveň kontroluje, že uživatel stále existuje, je aktivní a u `admin` session má dál roli `admin`
+
+## Audit identita
+
+Audit pracuje s normalizovanou identitou:
+
+- `actor_id`: email ze session
+- `actor_role`: `active_role`, případně základní role session
+- `actor_type`: `admin` nebo `portal`
+
+Pro legacy exporty se české role převádějí na anglické štítky:
+
+- `pokojská` -> `housekeeping`
+- `údržba` -> `maintenance`
 - `recepce` -> `reception`
-- `snidane` -> `breakfast`
+- `snídaně` -> `breakfast`
 - `sklad` -> `warehouse`
 
-## Frontend behavior
+## Chování frontendů
 
-Both frontends now use the same high-level auth-state contract:
+Oba frontendy používají stejný vysokourovňový auth stav:
 
 - `authenticated`
 - `unauthenticated`
 - `error`
 
-Behavior:
+Pravidla:
 
-- `401` or `403` from `/api/auth/me` becomes `unauthenticated`
-- other failures become explicit auth error state
-- protected routes redirect to login instead of fabricating access
+- `401` a `403` z `/api/auth/me` se mapují na `unauthenticated`
+- ostatní chyby se ukazují jako explicitní auth error
+- chráněné route přesměrovávají na login místo lokálního fake přístupu
 
-## Test-only QA behavior
+## QA-only utility stavy
 
-Some CI gate tests still validate utility states such as `loading`, `empty`, `error`, `offline`, `maintenance` and `404`.
+CI a Playwright stále ověřují utility stavy `loading`, `empty`, `error`, `offline`, `maintenance` a `404`.
 
-That forcing is no longer part of the normal production runtime. It is available only when the QA runtime flag is explicitly enabled for the Playwright test build.
+Tyto vynucené stavy nejsou součástí běžného produkčního RBAC runtime. Jsou dostupné jen v QA buildu se zapnutým testovacím flagem.

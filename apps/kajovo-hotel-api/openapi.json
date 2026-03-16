@@ -977,21 +977,6 @@
         "title": "DeviceVerifyResponse",
         "type": "object"
       },
-      "ForgotPasswordRequest": {
-        "properties": {
-          "email": {
-            "maxLength": 255,
-            "minLength": 3,
-            "title": "Email",
-            "type": "string"
-          }
-        },
-        "required": [
-          "email"
-        ],
-        "title": "ForgotPasswordRequest",
-        "type": "object"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3002,6 +2987,28 @@
         "title": "PortalPasswordChangeRequest",
         "type": "object"
       },
+      "PortalPasswordResetRequest": {
+        "properties": {
+          "new_password": {
+            "maxLength": 255,
+            "minLength": 8,
+            "title": "New Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 255,
+            "minLength": 16,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "PortalPasswordResetRequest",
+        "type": "object"
+      },
       "PortalUserCreate": {
         "properties": {
           "email": {
@@ -3076,23 +3083,20 @@
         "title": "PortalUserCreate",
         "type": "object"
       },
-      "PortalUserPasswordSet": {
-        "properties": {
-          "password": {
-            "maxLength": 255,
-            "minLength": 8,
-            "title": "Password",
-            "type": "string"
-          }
-        },
-        "required": [
-          "password"
-        ],
-        "title": "PortalUserPasswordSet",
-        "type": "object"
-      },
       "PortalUserRead": {
         "properties": {
+          "admin_locked_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin Locked Until"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -3119,6 +3123,11 @@
           },
           "is_active": {
             "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_locked": {
+            "default": false,
+            "title": "Is Locked",
             "type": "boolean"
           },
           "last_login_at": {
@@ -3158,6 +3167,18 @@
               }
             ],
             "title": "Phone"
+          },
+          "portal_locked_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portal Locked Until"
           },
           "role": {
             "anyOf": [
@@ -3886,47 +3907,6 @@
         ]
       }
     },
-    "/api/auth/forgot-password": {
-      "post": {
-        "operationId": "forgot_password_api_auth_forgot_password_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ForgotPasswordRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LogoutResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Forgot Password",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/api/auth/login": {
       "post": {
         "operationId": "portal_login_api_auth_login_post",
@@ -4065,6 +4045,47 @@
           }
         },
         "summary": "Update Auth Profile",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "operationId": "reset_password_api_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalPasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password",
         "tags": [
           "auth"
         ]
@@ -7157,110 +7178,6 @@
         ]
       }
     },
-    "/api/v1/users/{user_id}/password": {
-      "post": {
-        "operationId": "set_user_password_api_v1_users__user_id__password_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PortalUserPasswordSet"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PortalUserRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Set User Password",
-        "tags": [
-          "users"
-        ]
-      }
-    },
-    "/api/v1/users/{user_id}/password/reset": {
-      "post": {
-        "operationId": "reset_user_password_api_v1_users__user_id__password_reset_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PortalUserPasswordSet"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PortalUserRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Reset User Password",
-        "tags": [
-          "users"
-        ]
-      }
-    },
     "/api/v1/users/{user_id}/password/reset-link": {
       "post": {
         "operationId": "send_user_reset_link_api_v1_users__user_id__password_reset_link_post",
@@ -7298,6 +7215,48 @@
           }
         },
         "summary": "Send User Reset Link",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/unlock": {
+      "post": {
+        "operationId": "unlock_user_account_api_v1_users__user_id__unlock_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortalUserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unlock User Account",
         "tags": [
           "users"
         ]

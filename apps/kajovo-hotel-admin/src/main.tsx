@@ -261,6 +261,9 @@ type PortalUser = {
   created_at: string | null;
   updated_at: string | null;
   last_login_at: string | null;
+  portal_locked_until: string | null;
+  admin_locked_until: string | null;
+  is_locked: boolean;
 };
 
 type PortalUserUpsertPayload = {
@@ -940,6 +943,24 @@ function formatDateTime(value: string | null): string {
     return '-';
   }
   return new Date(value).toLocaleString('cs-CZ');
+}
+
+function describeLockState(user: PortalUser): string {
+  if (!user.is_locked) {
+    return 'Odemčeno';
+  }
+  const parts: string[] = [];
+  if (user.portal_locked_until) {
+    parts.push(`portál do ${formatDateTime(user.portal_locked_until)}`);
+  }
+  if (user.admin_locked_until) {
+    parts.push(`admin do ${formatDateTime(user.admin_locked_until)}`);
+  }
+  return parts.length > 0 ? `Blokováno: ${parts.join(', ')}` : 'Blokováno';
+}
+
+function isAdminAccount(user: PortalUser): boolean {
+  return user.roles.includes('admin');
 }
 
 function formatShortDateTime(value: string | null): string {
@@ -3569,6 +3590,8 @@ function UsersAdmin(): JSX.Element {
           setError('Nemáte oprávnění odeslat resetovací token.');
         } else if (err.status === 404) {
           setError('Uživatel nebyl nalezen.');
+        } else if (err.status === 409) {
+          setError('Admin účet nemá reset hesla. Použijte pouze připomenutí z admin přihlášení.');
         } else if (err.status === 503) {
           setError(err.message);
         } else {
@@ -3577,6 +3600,23 @@ function UsersAdmin(): JSX.Element {
       } else {
         setError('Odeslání resetovacího tokenu se nezdařilo.');
       }
+    }
+  }
+
+  async function unlockAccount(user: PortalUser): Promise<void> {
+    try {
+      const updated = await fetchJson<PortalUser>(`/api/v1/users/${user.id}/unlock`, { method: 'POST' });
+      setUsers((prev) => prev?.map((item) => (item.id === updated.id ? updated : item)) ?? null);
+      setSelected(updated);
+      syncEdit(updated);
+      setError(null);
+      setMessage('Účet byl odblokován.');
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 404) {
+        setError('Uživatel nebyl nalezen.');
+        return;
+      }
+      setError('Odblokování účtu se nezdařilo.');
     }
   }
 
@@ -3741,7 +3781,7 @@ function UsersAdmin(): JSX.Element {
               <StateView title="Nenalezeno" description="Filtru neodpovídá žádný uživatel." stateKey="empty" />
             ) : (
               <DataTable
-                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Poslední přihlášení', 'Stav', 'Akce']}
+                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Poslední přihlášení', 'Přístup', 'Blokace', 'Akce']}
                 rows={filteredUsers.map((u) => [
                   <button key={u.id} className="k-nav-link" type="button" onClick={() => selectUser(u)}>{u.first_name}</button>,
                   u.last_name,
@@ -3749,6 +3789,7 @@ function UsersAdmin(): JSX.Element {
                   u.roles.map(roleLabel).join(', '),
                   formatDateTime(u.last_login_at),
                   u.is_active ? 'Aktivní' : 'Neaktivní',
+                  describeLockState(u),
                   <button key={`edit-${u.id}`} className="k-button secondary" type="button" onClick={() => selectUser(u)}>Upravit</button>,
                 ])}
               />
@@ -3805,6 +3846,9 @@ function UsersAdmin(): JSX.Element {
                       <FormField id="edit_last_login" label="Poslední přihlášení">
                         <input id="edit_last_login" className="k-input" value={formatDateTime(selected.last_login_at)} readOnly />
                       </FormField>
+                      <FormField id="edit_lock_state" label="Stav blokace">
+                        <input id="edit_lock_state" className="k-input" value={describeLockState(selected)} readOnly />
+                      </FormField>
                     </div>
                   </fieldset>
                   <div className="k-toolbar">
@@ -3812,9 +3856,16 @@ function UsersAdmin(): JSX.Element {
                     <button className="k-button secondary" type="button" onClick={() => void toggleActive(selected)}>
                       {selected.is_active ? 'Zakázat' : 'Povolit'}
                     </button>
-                    <button className="k-button secondary" type="button" onClick={() => void sendPasswordResetLink(selected)}>
-                      Odeslat token pro reset hesla
-                    </button>
+                    {!isAdminAccount(selected) ? (
+                      <button className="k-button secondary" type="button" onClick={() => void sendPasswordResetLink(selected)}>
+                        Odeslat token pro reset hesla
+                      </button>
+                    ) : null}
+                    {selected.is_locked ? (
+                      <button className="k-button secondary" type="button" onClick={() => void unlockAccount(selected)}>
+                        Odblokovat účet
+                      </button>
+                    ) : null}
                     {canDelete ? (
                       <button className="k-button secondary" type="button" onClick={(event) => requestDelete(event, selected)}>
                         Smazat

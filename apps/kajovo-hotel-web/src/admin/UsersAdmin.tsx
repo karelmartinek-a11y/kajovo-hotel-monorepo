@@ -3,8 +3,10 @@ import { Card, DataTable, FormField, SkeletonPage, StateView } from '@kajovo/ui'
 
 const portalRoleOptions = ['pokojská', 'údržba', 'recepce', 'snídaně', 'sklad'] as const;
 type PortalRole = (typeof portalRoleOptions)[number];
+type ManagedPortalRole = PortalRole | 'admin';
 
-const portalRoleLabels: Record<PortalRole, string> = {
+const portalRoleLabels: Record<ManagedPortalRole, string> = {
+  admin: 'Administrátor',
   'pokojská': 'Pokojská',
   'údržba': 'Údržba',
   recepce: 'Recepce',
@@ -17,7 +19,7 @@ type PortalUser = {
   first_name: string;
   last_name: string;
   email: string;
-  roles: PortalRole[];
+  roles: ManagedPortalRole[];
   role: string;
   phone: string | null;
   note: string | null;
@@ -25,13 +27,16 @@ type PortalUser = {
   created_at: string | null;
   updated_at: string | null;
   last_login_at: string | null;
+  portal_locked_until: string | null;
+  admin_locked_until: string | null;
+  is_locked: boolean;
 };
 
 type PortalUserUpsertPayload = {
   first_name: string;
   last_name: string;
   email: string;
-  roles: PortalRole[];
+  roles: ManagedPortalRole[];
   phone?: string;
   note?: string;
 };
@@ -110,6 +115,24 @@ function formatDateTime(value: string | null): string {
     return '-';
   }
   return new Date(value).toLocaleString('cs-CZ');
+}
+
+function describeLockState(user: PortalUser): string {
+  if (!user.is_locked) {
+    return 'Odemčeno';
+  }
+  const parts: string[] = [];
+  if (user.portal_locked_until) {
+    parts.push(`portál do ${formatDateTime(user.portal_locked_until)}`);
+  }
+  if (user.admin_locked_until) {
+    parts.push(`admin do ${formatDateTime(user.admin_locked_until)}`);
+  }
+  return parts.length > 0 ? `Blokováno: ${parts.join(', ')}` : 'Blokováno';
+}
+
+function isAdminAccount(user: PortalUser): boolean {
+  return user.roles.includes('admin' as PortalRole);
 }
 
 function normalizeSearchValue(value: string): string {
@@ -256,7 +279,7 @@ export function UsersAdmin(): JSX.Element {
     setEditFirstName(user.first_name);
     setEditLastName(user.last_name);
     setEditEmail(user.email);
-    setEditRoles(user.roles);
+    setEditRoles(user.roles.filter((role): role is PortalRole => role !== 'admin'));
     setEditPhone(user.phone ?? '');
     setEditNote(user.note ?? '');
   }, []);
@@ -436,6 +459,24 @@ export function UsersAdmin(): JSX.Element {
       } else {
         setError('Odeslání resetovacího tokenu se nezdařilo.');
       }
+    }
+  }
+
+  async function unlockAccount(user: PortalUser): Promise<void> {
+    try {
+      const updated = await requestJson<PortalUser>(`/api/v1/users/${user.id}/unlock`, {
+        method: 'POST',
+      });
+      setUsers((prev) => (prev ? prev.map((item) => (item.id === updated.id ? updated : item)) : null));
+      setSelected(updated);
+      syncEdit(updated);
+      setMessage('Účet byl odblokován.');
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 404) {
+        setError('Uživatel nebyl nalezen.');
+        return;
+      }
+      setError('Odblokování účtu se nezdařilo.');
     }
   }
 

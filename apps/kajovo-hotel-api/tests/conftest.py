@@ -131,6 +131,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     media_root = api_db_path.parent / "media"
     media_root.mkdir(parents=True, exist_ok=True)
     env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)
+    env["KAJOVO_API_SMTP_CAPTURE_PATH"] = str(api_db_path.parent / "smtp-capture.jsonl")
 
     api_app_dir = Path(__file__).resolve().parents[1]
 
@@ -173,6 +174,11 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def api_mail_capture_path(api_db_path: Path) -> Path:
+    return api_db_path.parent / "smtp-capture.jsonl"
 
 
 @pytest.fixture

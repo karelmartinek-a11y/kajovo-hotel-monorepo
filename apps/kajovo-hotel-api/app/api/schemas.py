@@ -534,6 +534,9 @@ class PortalUserRead(BaseModel):
     created_at: datetime | None
     updated_at: datetime | None
     last_login_at: datetime | None
+    portal_locked_until: datetime | None = None
+    admin_locked_until: datetime | None = None
+    is_locked: bool = False
 
 
 class AdminLoginRequest(BaseModel):
@@ -556,6 +559,11 @@ class ForgotPasswordRequest(BaseModel):
 
 class PortalPasswordChangeRequest(BaseModel):
     old_password: str = Field(min_length=8, max_length=255)
+    new_password: str = Field(min_length=8, max_length=255)
+
+
+class PortalPasswordResetRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=255)
     new_password: str = Field(min_length=8, max_length=255)
 
 

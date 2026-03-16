@@ -146,51 +146,40 @@ def test_admin_hint_rate_limited_to_once_per_hour(api_base_url: str) -> None:
     assert body == {"ok": True}
 
 
-def test_unlock_token_endpoint_clears_admin_lockout(api_base_url: str, api_db_path: Path) -> None:
-    jar = CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+def test_failed_admin_logins_issue_unlock_token(api_base_url: str, api_db_path: Path, api_mail_capture_path: Path) -> None:
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
 
-    status, _ = api_request(
-        opener,
-        api_base_url,
-        "/api/auth/admin/login",
-        method="POST",
-        payload=admin_login_payload(),
-    )
-    assert status == 200
+    with sqlite3.connect(api_db_path) as connection:
+        connection.execute("DELETE FROM auth_unlock_tokens")
+        connection.execute("DELETE FROM auth_lockout_states")
+        connection.commit()
 
-    token = next((cookie.value for cookie in jar if cookie.name == "kajovo_csrf"), "")
-    headers = {"x-csrf-token": token} if token else {}
-    status, _ = api_request(
-        opener,
-        api_base_url,
-        "/api/auth/admin/hint",
-        method="POST",
-        payload={"email": ADMIN_EMAIL},
-        headers=headers,
-    )
-    assert status == 200
+    for _ in range(3):
+        status, _ = api_request(
+            opener,
+            api_base_url,
+            "/api/auth/admin/login",
+            method="POST",
+            payload={"email": ADMIN_EMAIL, "password": "wrong-pass"},
+        )
+    assert status == 401
 
     with sqlite3.connect(api_db_path) as connection:
         row = connection.execute(
-            "SELECT token_hash FROM auth_unlock_tokens WHERE actor_type = 'admin' ORDER BY id DESC LIMIT 1"
+            "SELECT token_hash, purpose FROM auth_unlock_tokens WHERE actor_type = 'admin' ORDER BY id DESC LIMIT 1"
         ).fetchone()
         assert row is not None
+        assert row[1] == "unlock"
 
-    # Token hash exists only in DB; endpoint rejects unknown token.
+    messages = [
+        json.loads(line)
+        for line in api_mail_capture_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert any(message.get("recipient") == ADMIN_EMAIL and "odblok" in str(message.get("body", "")).lower() for message in messages)
+
     bad_status, _ = api_request(opener, api_base_url, "/api/auth/unlock?token=bad-token")
     assert bad_status == 400
-
-    status, body = api_request(
-        opener,
-        api_base_url,
-        "/api/auth/admin/hint",
-        method="POST",
-        payload={"email": ADMIN_EMAIL},
-        headers=headers,
-    )
-    assert status == 200
-    assert body == {"ok": True}
 
 
 def test_duplicate_lockout_rows_are_collapsed_during_auth(api_base_url: str, api_db_path: Path) -> None:

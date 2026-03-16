@@ -16,6 +16,12 @@ from app.time_utils import utc_now
 
 logger = logging.getLogger("kajovo.api")
 
+AUTH_AUDIT_PATHS = {
+    "/api/auth/change-password",
+    "/api/auth/reset-password",
+    "/api/auth/profile",
+}
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -59,9 +65,16 @@ def _module_from_path(path: str) -> str:
 def _should_audit(request: Request, status_code: int) -> bool:
     return (
         request.method in {"POST", "PUT", "PATCH", "DELETE"}
-        and request.url.path.startswith("/api/v1/")
+        and (request.url.path.startswith("/api/v1/") or request.url.path in AUTH_AUDIT_PATHS)
         and status_code < 500
     )
+
+
+def _audit_detail(request: Request, default: str | None) -> str | None:
+    scoped = request.scope.get("audit_detail_override")
+    if isinstance(scoped, str):
+        return scoped
+    return getattr(request.state, "audit_detail_override", default)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -120,7 +133,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                         action=request.method,
                         resource=request.url.path,
                         status_code=response.status_code,
-                        detail=getattr(request.state, "audit_detail_override", request_body),
+                        detail=_audit_detail(request, request_body),
                     )
                 )
                 db.commit()

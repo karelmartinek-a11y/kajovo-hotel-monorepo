@@ -14,10 +14,10 @@ from app.api.schemas import (
     AuthIdentityResponse,
     AuthProfileRead,
     AuthProfileUpdate,
-    ForgotPasswordRequest,
     LogoutResponse,
     PortalLoginRequest,
     PortalPasswordChangeRequest,
+    PortalPasswordResetRequest,
     SelectRoleRequest,
 )
 from app.config import get_settings
@@ -48,6 +48,7 @@ from app.services.admin_credentials import ensure_admin_profile
 from app.services.mail import (
     StoredSmtpConfig,
     build_email_service,
+    send_admin_password_hint,
     send_admin_unlock_link,
     send_user_unlock_link,
 )
@@ -59,6 +60,8 @@ PORTAL_LOCKOUT_DURATION = timedelta(hours=1)
 ADMIN_LOCKOUT_DURATION = timedelta(days=36500)
 UNLOCK_TOKEN_TTL = timedelta(hours=24)
 FORGOT_THROTTLE = timedelta(hours=1)
+TOKEN_PURPOSE_UNLOCK = "unlock"
+TOKEN_PURPOSE_PASSWORD_RESET = "password_reset"
 
 
 class HintRequest(BaseModel):
@@ -172,6 +175,7 @@ def _issue_unlock_token(
     actor_type: str,
     principal: str,
     now: datetime,
+    purpose: str = TOKEN_PURPOSE_UNLOCK,
 ) -> str:
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
@@ -179,6 +183,7 @@ def _issue_unlock_token(
         AuthUnlockToken(
             actor_type=actor_type,
             principal=principal,
+            purpose=purpose,
             token_hash=token_hash,
             expires_at=now + UNLOCK_TOKEN_TTL,
         )
@@ -201,7 +206,13 @@ def _send_unlock_email(
     principal: str,
 ) -> None:
     settings = get_settings()
-    token = _issue_unlock_token(db, actor_type=actor_type, principal=principal, now=_utc_now())
+    token = _issue_unlock_token(
+        db,
+        actor_type=actor_type,
+        principal=principal,
+        now=_utc_now(),
+        purpose=TOKEN_PURPOSE_UNLOCK,
+    )
     unlock_link = _build_unlock_link(request=request, token=token, actor_type=actor_type)
     try:
         service = build_email_service(settings, _stored_smtp_config(db))
@@ -360,6 +371,7 @@ def admin_hint(
     request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ) -> LogoutResponse:
+    _ = request
     profile = db.get(AdminProfile, 1)
     principal = profile.email.strip().lower() if profile is not None else get_settings().admin_email.strip().lower()
     if payload.email.strip().lower() != principal:
@@ -368,7 +380,11 @@ def admin_hint(
     now = _utc_now()
     last_sent_at = _as_utc(state.last_forgot_sent_at)
     if last_sent_at is None or now - last_sent_at >= FORGOT_THROTTLE:
-        _send_unlock_email(db, request=request, actor_type="admin", principal=principal)
+        try:
+            service = build_email_service(get_settings(), _stored_smtp_config(db))
+            send_admin_password_hint(service=service, recipient=principal)
+        except Exception:
+            pass
         state.last_forgot_sent_at = now
     db.add(state)
     db.commit()
@@ -464,29 +480,6 @@ def portal_login(
     )
 
 
-@router.post("/forgot-password", response_model=LogoutResponse)
-def forgot_password(
-    payload: ForgotPasswordRequest,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> LogoutResponse:
-    email = payload.email.strip().lower()
-    state = _get_lockout_state(db, actor_type="portal", principal=email)
-    now = _utc_now()
-    if _is_locked(state, now):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account locked")
-    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
-    last_sent_at = _as_utc(state.last_forgot_sent_at)
-    if user is not None and user.is_active and (
-        last_sent_at is None or now - last_sent_at >= FORGOT_THROTTLE
-    ):
-        _send_unlock_email(db, request=request, actor_type="portal", principal=email)
-        state.last_forgot_sent_at = now
-    db.add(state)
-    db.commit()
-    return LogoutResponse()
-
-
 @router.post("/logout", response_model=LogoutResponse)
 def portal_logout(
     request: Request,
@@ -516,6 +509,7 @@ def unlock_account(
     record = db.execute(
         select(AuthUnlockToken).where(
             AuthUnlockToken.actor_type == actor_type,
+            AuthUnlockToken.purpose == TOKEN_PURPOSE_UNLOCK,
             AuthUnlockToken.token_hash == token_hash,
             AuthUnlockToken.used_at.is_(None),
         )
@@ -530,6 +524,44 @@ def unlock_account(
         db.add(state)
     db.add(record)
     db.commit()
+    return LogoutResponse()
+
+
+@router.post("/reset-password", response_model=LogoutResponse)
+def reset_password(
+    payload: PortalPasswordResetRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    token_hash = hashlib.sha256(payload.token.strip().encode("utf-8")).hexdigest()
+    now = _utc_now()
+    record = db.execute(
+        select(AuthUnlockToken).where(
+            AuthUnlockToken.actor_type == "portal",
+            AuthUnlockToken.purpose == TOKEN_PURPOSE_PASSWORD_RESET,
+            AuthUnlockToken.token_hash == token_hash,
+            AuthUnlockToken.used_at.is_(None),
+        )
+    ).scalar_one_or_none()
+    if record is None or (_as_utc(record.expires_at) or now) <= now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+
+    user = db.execute(select(PortalUser).where(PortalUser.email == record.principal)).scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+
+    user.password_hash = hash_password(payload.new_password)
+    user.updated_at = now
+    revoke_sessions_for_portal_user(db, user.id)
+    _reset_lock_state(_get_lockout_state(db, actor_type="portal", principal=record.principal, create=False))
+    record.used_at = now
+    db.add(record)
+    db.add(user)
+    db.commit()
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    response.delete_cookie(CSRF_COOKIE_NAME, path="/")
+    request.state.audit_detail_override = json.dumps({"password_action": "admin_link_reset", "user_id": user.id})
     return LogoutResponse()
 
 

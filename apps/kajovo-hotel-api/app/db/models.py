@@ -611,6 +611,7 @@ class AuthUnlockToken(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     actor_type: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     principal: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="unlock", index=True)
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, index=True

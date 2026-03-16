@@ -41,6 +41,7 @@ import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTim
 import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
+import { PortalResetPasswordPage } from './portal/PortalResetPasswordPage';
 import { PortalRoutes } from './portal/PortalRoutes';
 
 type LostFoundType = LostFoundItemType;
@@ -2737,6 +2738,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
         <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="/login/reset" element={<PortalResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -2751,6 +2753,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
         <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="/login/reset" element={<PortalResetPasswordPage />} />
         <Route
           path="*"
           element={

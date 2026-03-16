@@ -285,7 +285,7 @@ def ensure_csrf(request: Request) -> None:
         return
     if request.url.path.startswith("/api/auth/") and request.url.path.endswith("/login"):
         return
-    if request.url.path in {"/api/auth/admin/hint", "/api/auth/forgot-password"}:
+    if request.url.path in {"/api/auth/admin/hint", "/api/auth/reset-password"}:
         return
     cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
     header_token = request.headers.get(CSRF_HEADER_NAME)

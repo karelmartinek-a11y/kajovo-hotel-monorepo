@@ -109,9 +109,12 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
         method="POST",
         headers=csrf_header(jar),
     )
-    assert status == 503
+    assert status == 200
     assert isinstance(reset_link, dict)
-    assert "SMTP" in str(reset_link.get("detail"))
+    assert reset_link.get("ok") is True
+    assert updated["is_locked"] is False
+    assert updated["portal_locked_until"] is None
+    assert updated["admin_locked_until"] is None
 
     status, disabled = api_request(
         opener,
@@ -135,28 +138,16 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     )
     assert status == 200
 
-    status, _ = api_request(
+    status, admin_reset = api_request(
         opener,
         api_base_url,
-        f"/api/v1/users/{user_id}/password/reset",
+        f"/api/v1/users/1/password/reset-link",
         method="POST",
-        payload={"password": "reset-user-pass"},
         headers=csrf_header(jar),
     )
-    assert status == 200
-
-    portal_jar = CookieJar()
-    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
-    status, identity = api_request(
-        portal_opener,
-        api_base_url,
-        "/api/auth/login",
-        method="POST",
-        payload={"email": "new.user@example.com", "password": "reset-user-pass"},
-    )
-    assert status == 200
-    assert isinstance(identity, dict)
-    assert identity["email"] == "new.user@example.com"
+    assert status == 409
+    assert isinstance(admin_reset, dict)
+    assert admin_reset.get("detail") == "Admin account password reminder is handled only via admin login hint"
 
 
 def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None:
@@ -665,12 +656,21 @@ def test_password_not_logged_in_audit_detail(
     assert isinstance(created, dict)
     user_id = int(created["id"])
 
+    with sqlite3.connect(api_db_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO auth_lockout_states (actor_type, principal, failed_attempts, locked_until)
+            VALUES ('portal', ?, 3, datetime('now', '+1 hour'))
+            """,
+            ("audit.user@example.com",),
+        )
+        connection.commit()
+
     status, _ = api_request(
         opener,
         api_base_url,
-        f"/api/v1/users/{user_id}/password",
+        f"/api/v1/users/{user_id}/unlock",
         method="POST",
-        payload={"password": "audit-user-new-pass"},
         headers=csrf_header(jar),
     )
     assert status == 200
@@ -685,9 +685,8 @@ def test_password_not_logged_in_audit_detail(
             ORDER BY id DESC
             LIMIT 1
             """,
-            (f"/api/v1/users/{user_id}/password",),
+            (f"/api/v1/users/{user_id}/unlock",),
         ).fetchone()
 
     assert row is not None
-    assert "audit-user-new-pass" not in row[0]
-    assert '"password_action": "set"' in row[0]
+    assert '"lockout_action": "unlock"' in row[0]

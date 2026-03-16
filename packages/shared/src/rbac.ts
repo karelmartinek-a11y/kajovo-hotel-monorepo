@@ -13,6 +13,18 @@ export type ModuleKey =
 
 export type Permission = `${ModuleKey}:${'read' | 'write'}`;
 
+const MODULE_READ_ORDER: ModuleKey[] = [
+  'dashboard',
+  'housekeeping',
+  'breakfast',
+  'lost_found',
+  'issues',
+  'inventory',
+  'reports',
+  'users',
+  'settings',
+];
+
 export const ROLE_ALIASES: Record<string, Role> = {
   admin: 'admin',
   recepce: 'recepce',
@@ -28,15 +40,6 @@ export const ROLE_ALIASES: Record<string, Role> = {
   breakfast: 'snídaně',
   sklad: 'sklad',
   warehouse: 'sklad',
-};
-
-export const ROLE_MODULES: Record<Role, ModuleKey[]> = {
-  admin: ['dashboard', 'breakfast', 'housekeeping', 'lost_found', 'issues', 'inventory', 'reports'],
-  recepce: ['lost_found', 'breakfast'],
-  pokojská: ['housekeeping'],
-  údržba: ['issues'],
-  snídaně: ['breakfast', 'inventory'],
-  sklad: ['inventory'],
 };
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -61,9 +64,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   recepce: ['breakfast:read', 'breakfast:write', 'lost_found:read', 'lost_found:write'],
   pokojská: ['housekeeping:read', 'issues:write', 'lost_found:write'],
   údržba: ['issues:read', 'issues:write'],
-  snídaně: ['breakfast:read', 'breakfast:write', 'inventory:read', 'inventory:write'],
+  snídaně: ['breakfast:read', 'breakfast:write'],
   sklad: ['inventory:read', 'inventory:write'],
 };
+
+export const ROLE_MODULES: Record<Role, ModuleKey[]> = Object.fromEntries(
+  (Object.keys(ROLE_PERMISSIONS) as Role[]).map((role) => [
+    role,
+    MODULE_READ_ORDER.filter((moduleKey) =>
+      ROLE_PERMISSIONS[role].includes(`${moduleKey}:read` as Permission)
+    ),
+  ])
+) as Record<Role, ModuleKey[]>;
 
 export const ADMIN_SWITCHABLE_ROLES: Role[] = ['recepce', 'pokojská', 'údržba', 'snídaně', 'sklad'];
 

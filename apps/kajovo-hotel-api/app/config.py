@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
+    smtp_capture_path: str = ""
     media_root: str = "/app/data/media"
     breakfast_scheduler_enabled: bool = False
     breakfast_scheduler_interval_seconds: int = 300

@@ -102,7 +102,7 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         status = get_smtp_status(db=db)
 
     assert [message.subject for message in transport.sent_messages] == [
-        "KájovoHotel odblokování admin účtu",
+        "KájovoHotel připomenutí admin hesla",
         "KájovoHotel SMTP test",
         "KájovoHotel onboarding",
     ]

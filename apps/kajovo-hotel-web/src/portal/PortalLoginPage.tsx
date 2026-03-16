@@ -20,12 +20,10 @@ export function PortalLoginPage(): JSX.Element {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const [info, setInfo] = React.useState<string | null>(null);
 
   async function login(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError(null);
-    setInfo(null);
     const principal = email.trim();
     if (!principal || !password) {
       setError(copy.credentialsRequired ?? copy.loginError ?? 'Neplatné přihlašovací údaje.');
@@ -42,27 +40,6 @@ export function PortalLoginPage(): JSX.Element {
       return;
     }
     window.location.assign('/');
-  }
-
-  async function sendForgotPassword(): Promise<void> {
-    setError(null);
-    setInfo(null);
-    const principal = email.trim();
-    if (!principal) {
-      setError(copy.emailRequired ?? 'Vyplňte email.');
-      return;
-    }
-    const response = await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email: principal }),
-    });
-    if (response.status === 403) {
-      setInfo(copy.forgotLockedInfo ?? copy.forgotInfo);
-      return;
-    }
-    setInfo(copy.forgotInfo);
   }
 
   return (
@@ -101,20 +78,12 @@ export function PortalLoginPage(): JSX.Element {
           <button className="k-button" type="submit">
             {copy.loginAction}
           </button>
-          <button
-            className="k-button secondary"
-            type="button"
-            onClick={() => void sendForgotPassword()}
-            disabled={!email.trim()}
-          >
-            {copy.forgotAction}
-          </button>
           {error ? (
             <p className="k-login-copy" role="alert">
               {error}
             </p>
           ) : null}
-          {info ? <p className="k-login-copy">{info}</p> : null}
+          <p className="k-login-copy">Reset hesla odesílá pouze administrátor ze správy uživatelů.</p>
         </form>
       </section>
       <KajovoSign href="/" />
