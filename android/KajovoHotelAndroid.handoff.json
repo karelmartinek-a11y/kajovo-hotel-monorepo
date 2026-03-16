@@ -1,0 +1,15 @@
+{
+  "status": "proposal_complete",
+  "createdFiles": [
+    "android/KajovoHotelAndroid.audit.md",
+    "android/KajovoHotelAndroid.md",
+    "android/KajovoHotelAndroid.build-matrix.json",
+    "android/KajovoHotelAndroid.handoff.json"
+  ],
+  "mainDeliverable": "android/KajovoHotelAndroid.md",
+  "blockers": [],
+  "openQuestions": [],
+  "nextStep": "review_and_signoff",
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}

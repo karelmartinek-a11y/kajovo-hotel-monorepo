@@ -1,0 +1,382 @@
+{
+  "generatedAt": "2026-03-16",
+  "status": "proposal_complete",
+  "baseline": {
+    "androidStudio": "Panda 2 | 2025.3.2",
+    "jdk": "17",
+    "gradle": "8.13",
+    "agp": "8.12.2",
+    "kotlin": "2.2.20",
+    "composeCompilerPlugin": "2.2.20",
+    "compileSdk": "35",
+    "targetSdk": "35",
+    "minSdk": "26"
+  },
+  "entries": [
+    {
+      "key": "androidStudio",
+      "name": "Android Studio",
+      "version": "Panda 2 | 2025.3.2",
+      "compatibleWith": [
+        "AGP 8.12.2",
+        "Gradle 8.13",
+        "JDK 17"
+      ],
+      "status": "verified",
+      "rationale": "Stabilní IDE baseline s oficiální compat tabulkou pro novější AGP řady.",
+      "aggressiveAlternativeRisk": "Canary nebo starší IDE mohou rozbíjet sync a DSL podporu."
+    },
+    {
+      "key": "jdk",
+      "name": "JDK",
+      "version": "17",
+      "compatibleWith": [
+        "AGP 8.12.2",
+        "Gradle 8.13"
+      ],
+      "status": "verified",
+      "rationale": "AGP 8.x JDK 17 vyžaduje; je to nejbezpečnější společný jmenovatel.",
+      "aggressiveAlternativeRisk": "JDK 21 zvyšuje rozdíly mezi lokálem a CI, JDK 11 je nekompatibilní."
+    },
+    {
+      "key": "gradle",
+      "name": "Gradle Wrapper",
+      "version": "8.13",
+      "compatibleWith": [
+        "AGP 8.12.2",
+        "JDK 17"
+      ],
+      "status": "verified",
+      "rationale": "Oficiálně odpovídá AGP 8.12 linii.",
+      "aggressiveAlternativeRisk": "Nižší nebo vyšší neověřená verze zvyšuje riziko pluginových chyb."
+    },
+    {
+      "key": "agp",
+      "name": "Android Gradle Plugin",
+      "version": "8.12.2",
+      "compatibleWith": [
+        "Gradle 8.13",
+        "JDK 17",
+        "compileSdk 35"
+      ],
+      "status": "verified",
+      "rationale": "Konzervativní stabilní řada, dostatečná i pro novější API support bez zbytečné migrace.",
+      "aggressiveAlternativeRisk": "AGP 8.13/9.x přinese více migračního churnu bez business přínosu."
+    },
+    {
+      "key": "kotlin",
+      "name": "Kotlin",
+      "version": "2.2.20",
+      "compatibleWith": [
+        "Compose compiler plugin 2.2.20",
+        "KSP 2.2.20-2.0.4",
+        "Dagger 2.57.2"
+      ],
+      "status": "conservative",
+      "rationale": "Stabilní 2.2 linie bez přechodu na agresivnější 2.3 větev.",
+      "aggressiveAlternativeRisk": "Kotlin 2.3.x by táhl další kompatibilitní změny v KSP a lint ekosystému."
+    },
+    {
+      "key": "composeCompilerPlugin",
+      "name": "Compose compiler plugin",
+      "version": "2.2.20",
+      "compatibleWith": [
+        "Kotlin 2.2.20",
+        "Compose BOM 2026.02.01"
+      ],
+      "status": "verified",
+      "rationale": "Od Kotlin 2.x má být stejné verze jako Kotlin plugin.",
+      "aggressiveAlternativeRisk": "Mismatch proti Kotlin pluginu vede k build chybám a nekonzistenci Compose."
+    },
+    {
+      "key": "composeBom",
+      "name": "Compose BOM",
+      "version": "2026.02.01",
+      "compatibleWith": [
+        "Compose UI stack",
+        "Compose UI Test"
+      ],
+      "status": "conservative",
+      "rationale": "Drží Compose artefakty ve vzájemně kompatibilní sadě.",
+      "aggressiveAlternativeRisk": "Ruční mix Compose verzí je zbytečný zdroj ABI problémů."
+    },
+    {
+      "key": "compileSdk",
+      "name": "compileSdk",
+      "version": "35",
+      "compatibleWith": [
+        "AGP 8.12.2",
+        "targetSdk 35"
+      ],
+      "status": "conservative",
+      "rationale": "Konzervativní enterprise baseline pro v1 scope.",
+      "aggressiveAlternativeRisk": "compileSdk 36 by přidal platform churn bez doložené potřeby."
+    },
+    {
+      "key": "targetSdk",
+      "name": "targetSdk",
+      "version": "35",
+      "compatibleWith": [
+        "compileSdk 35"
+      ],
+      "status": "conservative",
+      "rationale": "Rozumný současný cíl bez zbytečné behavior změny navíc.",
+      "aggressiveAlternativeRisk": "Vyšší target bez QA rozšíří systémové behavior změny."
+    },
+    {
+      "key": "minSdk",
+      "name": "minSdk",
+      "version": "26",
+      "compatibleWith": [
+        "Compose",
+        "OkHttp 5.x",
+        "Keystore strategy"
+      ],
+      "status": "conservative",
+      "rationale": "Snižuje QA matici a stále pokrývá moderní provozní zařízení.",
+      "aggressiveAlternativeRisk": "Nižší minSdk zdraží storage, picker a auth edge case support."
+    },
+    {
+      "key": "ksp",
+      "name": "KSP",
+      "version": "2.2.20-2.0.4",
+      "compatibleWith": [
+        "Kotlin 2.2.20",
+        "Room 2.8.1",
+        "Moshi codegen 1.15.2",
+        "Hilt KSP"
+      ],
+      "status": "conservative",
+      "rationale": "Pin odpovídající Kotlin 2.2.20 bez přeskoku na novější generaci.",
+      "aggressiveAlternativeRisk": "Novější KSP by vynutil další toolchain migraci, KSP1 je na ústupu."
+    },
+    {
+      "key": "hiltDagger",
+      "name": "Hilt / Dagger",
+      "version": "2.57.2",
+      "compatibleWith": [
+        "Kotlin 2.2.x",
+        "KSP",
+        "AndroidX Hilt 1.3.0"
+      ],
+      "status": "conservative",
+      "rationale": "Stabilní verze s explicitně řešenou Kotlin 2.2 podporou.",
+      "aggressiveAlternativeRisk": "Příliš čerstvý pin bez lokálního ověření může přinést plugin drift."
+    },
+    {
+      "key": "androidxHilt",
+      "name": "AndroidX Hilt Compose",
+      "version": "1.3.0",
+      "compatibleWith": [
+        "Hilt 2.57.2",
+        "Compose"
+      ],
+      "status": "verified",
+      "rationale": "Aktuální stabilní AndroidX vrstva pro Hilt + Compose integraci.",
+      "aggressiveAlternativeRisk": "Starší verze mají starší API a horší ergonomii v Compose."
+    },
+    {
+      "key": "room",
+      "name": "Room",
+      "version": "2.8.1",
+      "compatibleWith": [
+        "KSP",
+        "Kotlin 2.2.20"
+      ],
+      "status": "conservative",
+      "rationale": "Stabilní vrstva pro read-through cache a schema export.",
+      "aggressiveAlternativeRisk": "Starší Room zvyšuje cenu migrací a KSP integrace."
+    },
+    {
+      "key": "coroutines",
+      "name": "Kotlin Coroutines",
+      "version": "1.10.2",
+      "compatibleWith": [
+        "Kotlin 2.2.20",
+        "Lifecycle 2.10.0"
+      ],
+      "status": "conservative",
+      "rationale": "Stabilní základ pro async a structured concurrency.",
+      "aggressiveAlternativeRisk": "Starší coroutines zhorší testy a moderní Flow patterns."
+    },
+    {
+      "key": "lifecycle",
+      "name": "AndroidX Lifecycle",
+      "version": "2.10.0",
+      "compatibleWith": [
+        "Compose",
+        "Activity Compose 1.12.4"
+      ],
+      "status": "verified",
+      "rationale": "Stabilní lifecycle stack pro Compose state holders.",
+      "aggressiveAlternativeRisk": "Starší verze zvyšují potřebu workaroundů."
+    },
+    {
+      "key": "activityCompose",
+      "name": "Activity Compose",
+      "version": "1.12.4",
+      "compatibleWith": [
+        "Compose 1.10.x",
+        "Lifecycle 2.10.0",
+        "Navigation 2.9.7"
+      ],
+      "status": "conservative",
+      "rationale": "Bezpečný activity bridge bez přechodu na novější 1.13 řadu.",
+      "aggressiveAlternativeRisk": "Novější řada může přidat další behavioral changes bez nutnosti."
+    },
+    {
+      "key": "navigationCompose",
+      "name": "Navigation Compose",
+      "version": "2.9.7",
+      "compatibleWith": [
+        "Activity Compose 1.12.4",
+        "Compose 1.10.x"
+      ],
+      "status": "verified",
+      "rationale": "Stabilní navigační vrstva pro single-activity, role-driven app shell.",
+      "aggressiveAlternativeRisk": "Starší navigace hůře obslouží moderní Compose nav patterns."
+    },
+    {
+      "key": "retrofit",
+      "name": "Retrofit",
+      "version": "3.0.0",
+      "compatibleWith": [
+        "OkHttp 5.3.0",
+        "converter-moshi 3.0.0"
+      ],
+      "status": "conservative",
+      "rationale": "Typed HTTP client s forward binární kompatibilitou z 2.x linie.",
+      "aggressiveAlternativeRisk": "Ruční HTTP vrstva by zhoršila testovatelnost a DTO disciplínu."
+    },
+    {
+      "key": "okhttpBom",
+      "name": "OkHttp BOM",
+      "version": "5.3.0",
+      "compatibleWith": [
+        "Retrofit 3.0.0",
+        "MockWebServer 5.3.0"
+      ],
+      "status": "conservative",
+      "rationale": "Jedna BOM drží runtime i test server ve stejné řadě.",
+      "aggressiveAlternativeRisk": "Mix 4.x a 5.x artefaktů by vedl k zbytečným runtime odchylkám."
+    },
+    {
+      "key": "moshi",
+      "name": "Moshi",
+      "version": "1.15.2",
+      "compatibleWith": [
+        "Retrofit converter Moshi 3.0.0",
+        "KSP codegen 1.15.2"
+      ],
+      "status": "conservative",
+      "rationale": "Ověřený JSON stack s codegen podporou pro Kotlin DTO.",
+      "aggressiveAlternativeRisk": "Bez jasné serializační strategie roste riziko runtime mapovacích chyb a R8 problémů."
+    },
+    {
+      "key": "workManager",
+      "name": "WorkManager",
+      "version": "2.11.1",
+      "compatibleWith": [
+        "compileSdk 35",
+        "minSdk 26"
+      ],
+      "status": "verified",
+      "rationale": "Vhodný pro neurgentní housekeeping úlohy, ne pro business write queue.",
+      "aggressiveAlternativeRisk": "Starší verze mají méně oprav a slabší moderní compat support."
+    },
+    {
+      "key": "dataStore",
+      "name": "DataStore",
+      "version": "1.2.0",
+      "compatibleWith": [
+        "Coroutines 1.10.2",
+        "minSdk 26"
+      ],
+      "status": "conservative",
+      "rationale": "Bezpečná preference storage vrstva pro ne-citlivé app preference.",
+      "aggressiveAlternativeRisk": "SharedPreferences by byly slabší a hůře testovatelné."
+    },
+    {
+      "key": "secureStorage",
+      "name": "Secure storage",
+      "version": "Android Keystore API 26+",
+      "compatibleWith": [
+        "minSdk 26",
+        "DataStore 1.2.0"
+      ],
+      "status": "conservative",
+      "rationale": "Citlivé cookies a session metadata mají být chráněné platformně, ne nešifrovaně.",
+      "aggressiveAlternativeRisk": "Nešifrovaný cookie store by byl bezpečnostně nepřijatelný."
+    },
+    {
+      "key": "coil",
+      "name": "Coil",
+      "version": "3.3.0",
+      "compatibleWith": [
+        "Compose",
+        "OkHttp 5.3.0"
+      ],
+      "status": "conservative",
+      "rationale": "Stabilní image stack pro thumbnaily a backend media reference.",
+      "aggressiveAlternativeRisk": "Příliš nová verze může měnit chování bez nutnosti, ruční loader zhorší UX."
+    },
+    {
+      "key": "junit",
+      "name": "JUnit",
+      "version": "4.13.2",
+      "compatibleWith": [
+        "Android unit tests",
+        "MockWebServer 5.3.0"
+      ],
+      "status": "conservative",
+      "rationale": "Široce kompatibilní baseline pro lokální testy.",
+      "aggressiveAlternativeRisk": "Přechod na JUnit5 by přidal další konfigurační vrstvu bez kritické potřeby."
+    },
+    {
+      "key": "androidxTest",
+      "name": "AndroidX Test Core/Runner/Rules/Ext JUnit",
+      "version": "1.7.0 / 1.7.0 / 1.7.0 / 1.3.0",
+      "compatibleWith": [
+        "API 21+",
+        "Compose UI tests"
+      ],
+      "status": "verified",
+      "rationale": "Stabilní instrumentační baseline pro Android testy.",
+      "aggressiveAlternativeRisk": "Starší test stack snižuje spolehlivost UI a emulator testů."
+    },
+    {
+      "key": "composeUiTest",
+      "name": "Compose UI Test",
+      "version": "via Compose BOM 2026.02.01",
+      "compatibleWith": [
+        "Compose 1.10.x"
+      ],
+      "status": "verified",
+      "rationale": "UI test knihovny zůstávají v jedné Compose verzi.",
+      "aggressiveAlternativeRisk": "Ruční pin mimo BOM zvyšuje riziko mismatch."
+    },
+    {
+      "key": "mockWebServer",
+      "name": "MockWebServer",
+      "version": "5.3.0",
+      "compatibleWith": [
+        "OkHttp BOM 5.3.0",
+        "JUnit 4.13.2"
+      ],
+      "status": "conservative",
+      "rationale": "Klíčový nástroj pro auth, cookie a CSRF integrace.",
+      "aggressiveAlternativeRisk": "Nesjednocené verze s OkHttp zhorší test runtime."
+    },
+    {
+      "key": "androidLint",
+      "name": "Android Lint",
+      "version": "bundled with AGP 8.12.2",
+      "compatibleWith": [
+        "AGP 8.12.2"
+      ],
+      "status": "verified",
+      "rationale": "Baseline quality gate bez extra pluginového driftu.",
+      "aggressiveAlternativeRisk": "Přeskočení lintu jde proti release gate kultuře repa."
+    }
+  ]
+}
