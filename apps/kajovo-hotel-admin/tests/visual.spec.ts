@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
@@ -18,6 +18,12 @@ const publicViews: ViewCheck[] = [
 
 const adminViews: ViewCheck[] = [
   { name: 'dashboard', path: '/admin/', readyTestId: 'dashboard-page' },
+  { name: 'snídaně', path: '/admin/snidane', readyTestId: 'breakfast-list-page' },
+  { name: 'pokojská', path: '/admin/pokojska', readyTestId: 'housekeeping-admin-page' },
+  { name: 'ztráty a nálezy', path: '/admin/ztraty-a-nalezy', readyTestId: 'lost-found-list-page' },
+  { name: 'závady', path: '/admin/zavady', readyTestId: 'issues-list-page' },
+  { name: 'sklad', path: '/admin/sklad', readyTestId: 'inventory-list-page' },
+  { name: 'hlášení', path: '/admin/hlaseni', readyTestId: 'reports-list-page' },
   { name: 'uživatelé', path: '/admin/uzivatele', readyTestId: 'users-admin-page' },
   { name: 'nastavení', path: '/admin/nastaveni', readyTestId: 'settings-admin-page' },
   { name: 'profil', path: '/admin/profil', readyTestId: 'admin-profile-page' },
@@ -51,6 +57,36 @@ async function visibleBrandCount(page: Page): Promise<number> {
   );
 }
 
+async function interactiveCandidates(page: Page): Promise<Locator[]> {
+  const selectors = ['main .k-button:visible', 'main .k-nav-link:visible', 'main select:visible'];
+  const locators: Locator[] = [];
+  for (const selector of selectors) {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+    for (let i = 0; i < Math.min(count, 1); i += 1) {
+      locators.push(locator.nth(i));
+    }
+  }
+  return locators;
+}
+
+async function expectElementUnobscured(locator: Locator) {
+  await locator.evaluate((element) => {
+    element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+  });
+  const box = await locator.boundingBox();
+  if (!box) {
+    return;
+  }
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const unobscured = await locator.evaluate((element, point) => {
+    const hit = document.elementFromPoint(point.x, point.y);
+    return Boolean(hit && (hit === element || element.contains(hit) || hit.contains(element)));
+  }, { x, y });
+  expect(unobscured).toBeTruthy();
+}
+
 async function assertKdgsGeometry(page: Page, viewName: string) {
   const brandCount = await visibleBrandCount(page);
   expect.soft(brandCount, `${viewName}: počet brand prvků musí být 1 až 2`).toBeGreaterThanOrEqual(1);
@@ -74,8 +110,10 @@ async function assertKdgsGeometry(page: Page, viewName: string) {
     `${viewName}: body nesmí mít horizontální overflow`
   ).toBeTruthy();
 
-  // Admin telefon obsahuje dlouhé editory a tabulkové akce; jako blokující KDGS guard
-  // zde držíme brand, overflow a průchod view napříč breakpointy bez flaky hit-test heuristiky.
+  const candidates = await interactiveCandidates(page);
+  for (const locator of candidates) {
+    await expectElementUnobscured(locator);
+  }
 }
 
 test.describe('KDGS vizuální a geometrická kontrola adminu', () => {

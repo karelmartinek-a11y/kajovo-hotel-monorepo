@@ -2,7 +2,7 @@
   "meta": {
     "app": "KájovoHotel",
     "version": "1.0.0",
-    "ssot": "ManifestDesignKájovo.md",
+    "ssot": "docs/Kajovo_Design_Governance_Standard_SSOT.md",
     "notes": "Brand red (#FF0000) is reserved for SIGNACE and must not be reused as a general UI primary."
   },
   "brand": {

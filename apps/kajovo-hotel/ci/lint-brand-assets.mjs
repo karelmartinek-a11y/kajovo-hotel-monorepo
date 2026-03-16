@@ -6,14 +6,10 @@ const repoRoot = process.cwd();
 const errors = [];
 const appSlug = 'kajovo-hotel';
 
-const requiredManifest = resolve(repoRoot, 'ManifestDesignKájovo.md');
-const forbiddenManifest = resolve(repoRoot, 'Manifest.md');
+const requiredSsot = resolve(repoRoot, 'docs', 'Kajovo_Design_Governance_Standard_SSOT.md');
 
-if (!existsSync(requiredManifest)) {
-  errors.push('Missing ManifestDesignKájovo.md at repo root');
-}
-if (existsSync(forbiddenManifest)) {
-  errors.push('Manifest.md must not exist (SSOT is ManifestDesignKájovo.md)');
+if (!existsSync(requiredSsot)) {
+  errors.push('Missing docs/Kajovo_Design_Governance_Standard_SSOT.md');
 }
 
 const signaceDir = resolve(repoRoot, 'signace');
@@ -277,11 +273,8 @@ if (existsSync(donePath)) {
 
 if (existsSync(voicePath)) {
   const voice = readFileSync(voicePath, 'utf8');
-  if (/Manifest\.md/.test(voice)) {
-    errors.push('ux/voice.json must reference ManifestDesignKájovo.md (not Manifest.md)');
-  }
-  if (!/ManifestDesignKájovo\.md/.test(voice)) {
-    errors.push('ux/voice.json must reference ManifestDesignKájovo.md');
+  if (!/docs\/Kajovo_Design_Governance_Standard_SSOT\.md/.test(voice)) {
+    errors.push('ux/voice.json must reference docs/Kajovo_Design_Governance_Standard_SSOT.md');
   }
 }
 

@@ -1,6 +1,6 @@
 {
   "definitionOfDone": {
-    "note": "Kontrolní seznam pro kvalitu generování a gate. Nesmí měnit pravidla značky (ManifestDesignKájovo.md je SSOT).",
+    "note": "Kontrolní seznam pro kvalitu generování a gate. Nesmí měnit pravidla značky (docs/Kajovo_Design_Governance_Standard_SSOT.md je SSOT).",
     "requiredStates": [
       "loading",
       "empty",
@@ -16,8 +16,7 @@
     ],
     "requirements": [
       "tokenOnlyStyling",
-      "signagePresentOutsidePopup",
-      "signageVisibleOnScroll",
+      "brandElementPresentWhenViewRequiresIt",
       "maxTwoBrandElementsPerView",
       "noGlobalHorizontalScrollExceptTableContainers",
       "keyboardFocusVisible",

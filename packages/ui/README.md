@@ -5,4 +5,4 @@ Design system pro KájovoHotel. Implementace používá tokeny z:
 - `apps/kajovo-hotel/palette/palette.json`
 - `apps/kajovo-hotel/ui-motion/motion.json`
 
-SSOT pravidla: `ManifestDesignKájovo.md`.
+SSOT pravidla: `docs/Kajovo_Design_Governance_Standard_SSOT.md`.

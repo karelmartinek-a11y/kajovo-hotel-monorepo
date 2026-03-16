@@ -115,7 +115,8 @@ Guard blokuje:
 
 - chybějící nebo nadbytečné brand prvky mimo povolený rozsah
 - horizontální overflow na `html` a `body`
-- průchod povinných utility a autentizovaných view napříč breakpointy
+- nezakryté základní interaktivní prvky na kritických view
+- průchod reprezentativního current-state setu utility a autentizovaných view napříč breakpointy a rolemi
 
 ### Visual baseline snapshoty
 
@@ -174,4 +175,10 @@ KDGS nepožaduje jen běh testů, ale důkaz:
 - reduced-motion souladu,
 - UTF-8 bez BOM.
 
-Aktuální testovací sada tyto požadavky kryje přes token guardy, signage guard, runtime guardy, smoke testy a vykonávaný `ci:visual`.
+Aktuální testovací sada tyto požadavky kryje jen částečně:
+
+- tokeny, signage, text integrity a runtime guardy jsou blokující
+- `ci:visual` vykonávaně dokazuje geometrii, brand limit a základní interaktivní průchod pro current-state utility a reprezentativní autentizovaná view webu i adminu
+- scaffold `apps/kajovo-hotel/ci/test-view-states.mjs` dál dokazuje jen deklaraci povinných stavů v IA, ne kompletní runtime vykreslení každé varianty
+
+Pokud se důkazní rozsah rozšíří nebo zúží, musí se tento dokument změnit společně s Playwright guardy.

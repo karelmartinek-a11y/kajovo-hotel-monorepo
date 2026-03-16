@@ -2,7 +2,7 @@
   "meta": {
     "app": "KájovoHotel",
     "version": "1.2.0",
-    "ssot": "ManifestDesignKájovo.md"
+    "ssot": "docs/Kajovo_Design_Governance_Standard_SSOT.md"
   },
   "navigation": {
     "rules": {
@@ -39,10 +39,7 @@
     "signage": {
       "text": "KÁJOVO",
       "background": "#FF0000",
-      "textColor": "#FFFFFF",
-      "requiredOutsidePopUp": true,
-      "position": "fixed-left-bottom",
-      "alwaysVisibleOnScroll": true
+      "textColor": "#FFFFFF"
     },
     "maxBrandElementsPerView": 2
   },
@@ -168,7 +165,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -189,7 +186,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -210,7 +207,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -231,7 +228,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -252,7 +249,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -273,7 +270,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -294,7 +291,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -315,7 +312,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -336,7 +333,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -357,7 +354,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -378,7 +375,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -399,7 +396,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -420,7 +417,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -441,7 +438,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -462,7 +459,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -483,7 +480,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -504,7 +501,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -525,7 +522,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -546,7 +543,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -567,7 +564,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -588,7 +585,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -609,7 +606,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -630,7 +627,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -651,7 +648,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     },
     {
@@ -672,7 +669,7 @@
         "tablet",
         "desktop"
       ],
-      "signageRequired": true,
+      "brandElementRequired": true,
       "maxBrandElements": 2
     }
   ],

@@ -15,8 +15,6 @@ if (!signage) {
   if (signage.text !== 'KÁJOVO') errors.push('brandPolicy.signage.text must be KÁJOVO');
   if (signage.background !== '#FF0000') errors.push('brandPolicy.signage.background must be #FF0000');
   if (signage.textColor !== '#FFFFFF') errors.push('brandPolicy.signage.textColor must be #FFFFFF');
-  if (signage.position !== 'fixed-left-bottom') errors.push('brandPolicy.signage.position must be fixed-left-bottom');
-  if (signage.alwaysVisibleOnScroll !== true) errors.push('brandPolicy.signage.alwaysVisibleOnScroll must be true');
 }
 
 if (ia.brandPolicy?.maxBrandElementsPerView !== 2) {
@@ -24,8 +22,8 @@ if (ia.brandPolicy?.maxBrandElementsPerView !== 2) {
 }
 
 for (const view of ia.views ?? []) {
-  if (view.signageRequired !== true) {
-    errors.push(`view ${view.key} must declare signageRequired=true (outside PopUp)`);
+  if (view.brandElementRequired !== true) {
+    errors.push(`view ${view.key} must declare brandElementRequired=true`);
   }
   if (view.maxBrandElements > 2) {
     errors.push(`view ${view.key} exceeds max brand elements (2)`);

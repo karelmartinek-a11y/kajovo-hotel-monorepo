@@ -9,6 +9,13 @@ type ViewCheck = {
   readyTestId?: string;
 };
 
+type PortalScenario = {
+  name: string;
+  roles: string[];
+  landingPath: RegExp;
+  views: ViewCheck[];
+};
+
 const utilityViews: ViewCheck[] = [
   { name: 'login', path: '/login', readyTestId: 'portal-login-page' },
   { name: 'intro', path: '/intro' },
@@ -17,11 +24,57 @@ const utilityViews: ViewCheck[] = [
   { name: '404', path: '/404' },
 ];
 
-const portalViews: ViewCheck[] = [
-  { name: 'recepce', path: '/recepce', readyTestId: 'reception-hub-page' },
-  { name: 'snídaně', path: '/snidane', readyTestId: 'breakfast-list-page' },
-  { name: 'ztráty a nálezy', path: '/ztraty-a-nalezy', readyTestId: 'lost-found-list-page' },
-  { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+const portalScenarios: PortalScenario[] = [
+  {
+    name: 'recepce',
+    roles: ['recepce'],
+    landingPath: /\/recepce$/,
+    views: [
+      { name: 'recepce', path: '/recepce', readyTestId: 'reception-hub-page' },
+      { name: 'snídaně seznam', path: '/snidane', readyTestId: 'breakfast-list-page' },
+      { name: 'snídaně formulář', path: '/snidane/nova', readyTestId: 'breakfast-create-page' },
+      { name: 'ztráty a nálezy seznam', path: '/ztraty-a-nalezy', readyTestId: 'lost-found-list-page' },
+      { name: 'ztráty a nálezy formulář', path: '/ztraty-a-nalezy/novy', readyTestId: 'lost-found-create-page' },
+      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    ],
+  },
+  {
+    name: 'pokojská',
+    roles: ['pokojská'],
+    landingPath: /\/pokojska$/,
+    views: [
+      { name: 'pokojská', path: '/pokojska', readyTestId: 'housekeeping-form-page' },
+      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    ],
+  },
+  {
+    name: 'údržba',
+    roles: ['údržba'],
+    landingPath: /\/zavady$/,
+    views: [
+      { name: 'závady seznam', path: '/zavady', readyTestId: 'issues-list-page' },
+      { name: 'závady formulář', path: '/zavady/nova', readyTestId: 'issues-create-page' },
+      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    ],
+  },
+  {
+    name: 'snídaně',
+    roles: ['snídaně'],
+    landingPath: /\/snidane$/,
+    views: [
+      { name: 'snídaně seznam', path: '/snidane', readyTestId: 'breakfast-list-page' },
+      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    ],
+  },
+  {
+    name: 'sklad',
+    roles: ['sklad'],
+    landingPath: /\/sklad$/,
+    views: [
+      { name: 'sklad seznam', path: '/sklad', readyTestId: 'inventory-list-page' },
+      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    ],
+  },
 ];
 
 async function csrfHeaderFor(context: APIRequestContext) {
@@ -68,16 +121,16 @@ async function createPortalUser(
   return { email, password };
 }
 
-async function loginPortal(page: Page, email: string, password: string) {
+async function loginPortal(page: Page, email: string, password: string, landingPath: RegExp, roleName: string) {
   await page.goto('/login', { waitUntil: 'networkidle' });
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
-  await expect(page).toHaveURL(/\/recepce$|\/$|\/role/);
+  await expect(page).toHaveURL(landingPath);
   const roleSelect = page.getByTestId('role-select-page');
   if (await roleSelect.isVisible().catch(() => false)) {
-    await page.getByRole('button', { name: /pokračovat jako recepce/i }).click();
-    await expect(page).toHaveURL(/\/recepce$/);
+    await page.getByRole('button', { name: new RegExp(`pokračovat jako ${roleName}`, 'i') }).click();
+    await expect(page).toHaveURL(landingPath);
   }
 }
 
@@ -106,19 +159,21 @@ async function interactiveCandidates(page: Page): Promise<Locator[]> {
     'main button:visible',
     'main a[href]:visible',
     'main select:visible',
+    'main input:visible',
+    'main textarea:visible',
   ];
   const locators: Locator[] = [];
   for (const selector of selectors) {
     const locator = page.locator(selector);
     const count = await locator.count();
-    for (let i = 0; i < Math.min(count, 8); i += 1) {
+    for (let i = 0; i < Math.min(count, 6); i += 1) {
       locators.push(locator.nth(i));
     }
   }
   return locators;
 }
 
-async function expectElementUnobscured(page: Page, locator: Locator) {
+async function expectElementUnobscured(locator: Locator) {
   await locator.evaluate((element) => {
     element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
   });
@@ -160,7 +215,7 @@ async function assertKdgsGeometry(page: Page, viewName: string) {
 
   const candidates = await interactiveCandidates(page);
   for (const locator of candidates) {
-    await expectElementUnobscured(page, locator);
+    await expectElementUnobscured(locator);
   }
 }
 
@@ -172,13 +227,15 @@ test.describe('KDGS vizuální a geometrická kontrola portálu', () => {
     });
   }
 
-  test('autentizované portálové view drží brand a geometrii', async ({ page, request }, testInfo) => {
-    const user = await createPortalUser(request, testInfo, ['recepce']);
-    await loginPortal(page, user.email, user.password);
+  for (const scenario of portalScenarios) {
+    test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
+      const user = await createPortalUser(request, testInfo, scenario.roles);
+      await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
 
-    for (const view of portalViews) {
-      await waitForView(page, view);
-      await assertKdgsGeometry(page, view.name);
-    }
-  });
+      for (const view of scenario.views) {
+        await waitForView(page, view);
+        await assertKdgsGeometry(page, `${scenario.name} / ${view.name}`);
+      }
+    });
+  }
 });

@@ -31,7 +31,7 @@ const tokens = readJson('ui-tokens/tokens.json');
 const palette = readJson('palette/palette.json');
 const motion = readJson('ui-motion/motion.json');
 
-const ssotFile = 'ManifestDesignKájovo.md';
+const ssotFile = 'docs/Kajovo_Design_Governance_Standard_SSOT.md';
 
 const normalizeHex = (value) => (typeof value === 'string' ? value.toUpperCase() : value);
 const expectHex = (actual, expected, label) => {
@@ -43,8 +43,7 @@ const expectHex = (actual, expected, label) => {
 const requiredSignage = {
   text: 'KÁJOVO',
   bg: '#FF0000',
-  fg: '#FFFFFF',
-  position: 'fixed-left-bottom'
+  fg: '#FFFFFF'
 };
 
 if (tokens.meta?.ssot !== ssotFile) {
@@ -65,12 +64,6 @@ if (tokens.signage?.colors?.background !== requiredSignage.bg) {
 }
 if (tokens.signage?.colors?.text !== requiredSignage.fg) {
   errors.push(`signage.colors.text must be ${requiredSignage.fg}`);
-}
-if (tokens.signage?.position !== requiredSignage.position) {
-  errors.push(`signage.position must be ${requiredSignage.position}`);
-}
-if (tokens.signage?.alwaysVisibleOnScroll !== true) {
-  errors.push('signage.alwaysVisibleOnScroll must be true');
 }
 const minThicknessDesktop = 12;
 const minThicknessMobile = 4.8;

@@ -2,7 +2,7 @@
   "meta": {
     "app": "KájovoHotel",
     "version": "1.0.0",
-    "ssot": "ManifestDesignKájovo.md",
+    "ssot": "docs/Kajovo_Design_Governance_Standard_SSOT.md",
     "notes": "All motion must reference these tokens. Respect prefers-reduced-motion."
   },
   "durationsMs": {

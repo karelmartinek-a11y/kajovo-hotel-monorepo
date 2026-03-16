@@ -140,7 +140,8 @@ Aktuální stav:
 - text integrity a runtime integrity jsou v gate zapojené,
 - smoke testy jsou v gate zapojené,
 - contract freshness je v gate zapojená,
-- vykonávaný KDGS geometrický a vizuální důkaz je zapojený přes `ci:visual` pro web i admin.
+- vykonávaný KDGS geometrický a vizuální důkaz je zapojený přes `ci:visual` pro web i admin, ale jen pro current-state reprezentativní set rout a kritických interakcí,
+- deklarace povinných stavů pro všechna view je samostatně hlídaná IA scaffold guardem, nikoli plným runtime vykreslením každé varianty.
 
 ## 7. Doporučené lokální minimum před push
 
