@@ -47,14 +47,11 @@ fun AuthenticatedIdentity.canOpenDestination(route: String): Boolean {
 
 fun PortalDestination.isAccessibleBy(identity: AuthenticatedIdentity): Boolean {
     val currentRole = identity.activeRole ?: return false
-    if (!allowedRoles.contains(currentRole)) {
-        return false
-    }
-    return module == null || identity.canAccess(module)
+    return allowedRoles.contains(currentRole)
 }
 
 fun AuthenticatedIdentity.accessibleRoles(): List<PortalRole> {
-    return roles.filter { role ->
-        copy(activeRole = role).canOpenDestination(role.homeRoute())
+    return roles.distinct().filter { role ->
+        PortalDestinations.any { destination -> destination.allowedRoles.contains(role) }
     }
 }

@@ -38,4 +38,25 @@ class PermissionGuardTest {
         assertFalse(identity.canAccess(HotelModule.INVENTORY))
         assertFalse(identity.canOpenDestination(PortalRoutes.Inventory))
     }
+
+    @Test
+    fun assignedPortalRolesStayVisibleEvenWithoutModuleReadPermission() {
+        val identity = AuthenticatedIdentity(
+            email = "karel.martinek@post.cz",
+            actorType = ActorType.PORTAL,
+            roleLabel = "recepce",
+            roles = listOf(
+                PortalRole.HOUSEKEEPING,
+                PortalRole.MAINTENANCE,
+                PortalRole.RECEPTION,
+                PortalRole.BREAKFAST,
+                PortalRole.INVENTORY,
+            ),
+            activeRole = PortalRole.HOUSEKEEPING,
+            permissions = setOf("breakfast:write", "lost_found:write"),
+        )
+
+        assertTrue(identity.accessibleRoles().containsAll(identity.roles))
+        assertTrue(identity.canOpenDestination(PortalRoutes.Housekeeping))
+    }
 }
