@@ -78,6 +78,39 @@
         "title": "AdminProfileUpdate",
         "type": "object"
       },
+      "AndroidAppReleaseRead": {
+        "properties": {
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "required": {
+            "default": false,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "download_url",
+          "title",
+          "message"
+        ],
+        "title": "AndroidAppReleaseRead",
+        "type": "object"
+      },
       "AuthIdentityResponse": {
         "properties": {
           "active_role": {
@@ -2962,6 +2995,11 @@
           "password": {
             "title": "Password",
             "type": "string"
+          },
+          "remember_me": {
+            "default": false,
+            "title": "Remember Me",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3781,6 +3819,27 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/app/android-release": {
+      "get": {
+        "operationId": "get_android_release_api_app_android_release_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidAppReleaseRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Android Release",
+        "tags": [
+          "app"
+        ]
+      }
+    },
     "/api/auth/admin/hint": {
       "post": {
         "operationId": "admin_hint_api_auth_admin_hint_post",

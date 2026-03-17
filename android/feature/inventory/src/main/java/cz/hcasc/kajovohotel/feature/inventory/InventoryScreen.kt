@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.InventoryMovementType
+import cz.hcasc.kajovohotel.feature.inventory.presentation.InventoryUiState
 import cz.hcasc.kajovohotel.feature.inventory.presentation.InventoryViewModel
 
 @Composable
@@ -31,36 +32,11 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         item { Text(text = "Sklad", style = MaterialTheme.typography.headlineMedium) }
         when {
-            state.isLoading -> item { FeatureCard(title = "Načítám sklad", subtitle = "Načítá se user-scope list položek bez admin detailu a exportů.") }
+            state.isLoading -> item { FeatureCard(title = "Načítám sklad", subtitle = "Načítá se seznam i detail skladových položek z user-scope portálu.") }
             state.errorMessage != null -> item { FeatureCard(title = "Chyba modulu", subtitle = state.errorMessage ?: "") }
             state.items.isEmpty() -> item { FeatureCard(title = "Žádné položky", subtitle = "Ve verified non-admin scope není k dispozici žádná položka skladu.") }
             else -> {
-                item {
-                    FeatureCard(
-                        title = state.selectedItem?.name ?: "Vyberte položku",
-                        subtitle = state.successMessage ?: "Non-admin scope: list + create movement přímo ze seznamu. Bez detail/create/edit/delete itemu.",
-                    )
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-                        val draft = state.draft
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                            items(InventoryMovementType.entries) { type ->
-                                FilterChip(
-                                    selected = draft.movementType == type,
-                                    onClick = { viewModel.updateDraft { current -> current.copy(movementType = type) } },
-                                    label = { Text(type.label) },
-                                )
-                            }
-                        }
-                        OutlinedTextField(value = draft.quantity, onValueChange = { viewModel.updateDraft { current -> current.copy(quantity = it.filter(Char::isDigit)) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Množství") })
-                        OutlinedTextField(value = draft.quantityPieces, onValueChange = { viewModel.updateDraft { current -> current.copy(quantityPieces = it.filter(Char::isDigit)) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Počet kusů") })
-                        OutlinedTextField(value = draft.documentDate, onValueChange = { viewModel.updateDraft { current -> current.copy(documentDate = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Datum dokladu") })
-                        OutlinedTextField(value = draft.documentReference, onValueChange = { viewModel.updateDraft { current -> current.copy(documentReference = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Reference") })
-                        OutlinedTextField(value = draft.note, onValueChange = { viewModel.updateDraft { current -> current.copy(note = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Poznámka") })
-                        Button(onClick = viewModel::submitMovement, enabled = !state.isSaving && draft.isValid()) { Text("Založit pohyb") }
-                    }
-                }
+                item { DetailCard(state = state, onDraftChange = viewModel::updateDraft, onSubmitMovement = viewModel::submitMovement) }
                 items(state.items, key = { it.id }) { item ->
                     FeatureCard(
                         title = item.name,
@@ -69,6 +45,79 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DetailCard(
+    state: InventoryUiState,
+    onDraftChange: ((cz.hcasc.kajovohotel.feature.inventory.domain.InventoryMovementDraft) -> cz.hcasc.kajovohotel.feature.inventory.domain.InventoryMovementDraft) -> Unit,
+    onSubmitMovement: () -> Unit,
+) {
+    val detail = state.selectedDetail
+    val draft = state.draft
+
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+        FeatureCard(
+            title = detail?.name ?: "Vyberte položku",
+            subtitle = state.successMessage
+                ?: detail?.let { "Detail skladu dostupný stejně jako na portálu. Stav ${it.currentStock} ${it.unit}." }
+                ?: "Načítám detail vybrané položky.",
+        )
+        if (detail != null) {
+            Text(text = "Minimum ${detail.minStock} ${detail.unit} · základ na kus ${detail.amountPerPieceBase}")
+            if (detail.movements.isNotEmpty()) {
+                Text(text = "Poslední pohyby")
+                detail.movements.take(5).forEach { movement ->
+                    Text(
+                        text = "${movement.documentDate} · ${movement.documentNumber} · ${movement.movementType.label} ${movement.quantity}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            items(InventoryMovementType.entries) { type ->
+                FilterChip(
+                    selected = draft.movementType == type,
+                    onClick = { onDraftChange { current -> current.copy(movementType = type) } },
+                    label = { Text(type.label) },
+                )
+            }
+        }
+        OutlinedTextField(
+            value = draft.quantity,
+            onValueChange = { onDraftChange { current -> current.copy(quantity = it.filter(Char::isDigit)) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Množství") },
+        )
+        OutlinedTextField(
+            value = draft.quantityPieces,
+            onValueChange = { onDraftChange { current -> current.copy(quantityPieces = it.filter(Char::isDigit)) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Počet kusů") },
+        )
+        OutlinedTextField(
+            value = draft.documentDate,
+            onValueChange = { onDraftChange { current -> current.copy(documentDate = it) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Datum dokladu") },
+        )
+        OutlinedTextField(
+            value = draft.documentReference,
+            onValueChange = { onDraftChange { current -> current.copy(documentReference = it) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Reference") },
+        )
+        OutlinedTextField(
+            value = draft.note,
+            onValueChange = { onDraftChange { current -> current.copy(note = it) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Poznámka") },
+        )
+        Button(onClick = onSubmitMovement, enabled = detail != null && !state.isSaving && draft.isValid()) {
+            Text("Založit pohyb")
         }
     }
 }

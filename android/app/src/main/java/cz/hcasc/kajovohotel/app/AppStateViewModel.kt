@@ -8,6 +8,9 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.core.model.SessionState
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEvent
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEventStore
+import cz.hcasc.kajovohotel.core.network.api.AuthApi
+import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetRequest
+import cz.hcasc.kajovohotel.core.network.readableMessage
 import cz.hcasc.kajovohotel.core.session.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,6 +23,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class AppStateViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
+    private val authApi: AuthApi,
     networkEventStore: AuthNetworkEventStore,
 ) : ViewModel() {
     val sessionState = sessionRepository.sessionState
@@ -29,6 +33,9 @@ class AppStateViewModel @Inject constructor(
 
     private val mutableMessage = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = mutableMessage.asStateFlow()
+
+    private val mutableAppUpdateState = MutableStateFlow(AppUpdateState())
+    val appUpdateState: StateFlow<AppUpdateState> = mutableAppUpdateState.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -45,15 +52,16 @@ class AppStateViewModel @Inject constructor(
     fun restoreSession() {
         viewModelScope.launch {
             mutableMessage.value = null
+            checkForAppUpdate()
             sessionRepository.restoreSession()
             refreshProfileIfAuthenticated()
         }
     }
 
-    fun signIn(email: String, password: String) {
+    fun signIn(email: String, password: String, rememberMe: Boolean) {
         viewModelScope.launch {
             mutableMessage.value = null
-            sessionRepository.signIn(email, password)
+            sessionRepository.signIn(email, password, rememberMe)
             refreshProfileIfAuthenticated()
             if (sessionState.value is SessionState.Unauthenticated) {
                 mutableProfile.value = null
@@ -75,6 +83,10 @@ class AppStateViewModel @Inject constructor(
             mutableProfile.value = null
             mutableMessage.value = null
         }
+    }
+
+    fun dismissAppUpdate() {
+        mutableAppUpdateState.value = mutableAppUpdateState.value.copy(wasDismissed = true)
     }
 
     fun saveProfile(firstName: String, lastName: String, phone: String, note: String) {
@@ -101,6 +113,26 @@ class AppStateViewModel @Inject constructor(
         }
     }
 
+    fun completePasswordReset(token: String, newPassword: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            mutableMessage.value = null
+            runCatching {
+                authApi.resetPassword(
+                    PortalPasswordResetRequest(
+                        token = token,
+                        new_password = newPassword,
+                    ),
+                )
+            }.onSuccess {
+                mutableProfile.value = null
+                mutableMessage.value = "Heslo bylo nastaveno. Přihlaste se novým heslem."
+                onSuccess()
+            }.onFailure { throwable ->
+                mutableMessage.value = throwable.readableMessage("Reset hesla se nepodařilo dokončit.")
+            }
+        }
+    }
+
     private suspend fun refreshProfileIfAuthenticated() {
         when (sessionState.value) {
             is SessionState.Authenticated -> {
@@ -113,5 +145,21 @@ class AppStateViewModel @Inject constructor(
             is SessionState.Failure -> mutableProfile.value = null
             SessionState.Unauthenticated -> mutableProfile.value = null
         }
+    }
+
+    private suspend fun checkForAppUpdate() {
+        mutableAppUpdateState.value = mutableAppUpdateState.value.copy(isChecking = true)
+        runCatching { authApi.androidRelease() }
+            .onSuccess { dto ->
+                val updateInfo = dto.toAppUpdateInfo(BuildConfig.VERSION_NAME)
+                mutableAppUpdateState.value = mutableAppUpdateState.value.copy(
+                    isChecking = false,
+                    availableUpdate = if (isRemoteVersionNewer(BuildConfig.VERSION_NAME, dto.version)) updateInfo else null,
+                    wasDismissed = false,
+                )
+            }
+            .onFailure {
+                mutableAppUpdateState.value = mutableAppUpdateState.value.copy(isChecking = false, availableUpdate = null)
+            }
     }
 }

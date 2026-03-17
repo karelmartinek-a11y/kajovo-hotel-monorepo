@@ -47,9 +47,17 @@ class DefaultSessionRepository(
             }
     }
 
-    override suspend fun signIn(email: String, password: String) {
+    override suspend fun signIn(email: String, password: String, rememberMe: Boolean) {
         mutableSessionState.value = SessionState.Checking
-        runCatching { authApi.login(PortalLoginRequest(email = email, password = password)) }
+        runCatching {
+            authApi.login(
+                PortalLoginRequest(
+                    email = email,
+                    password = password,
+                    remember_me = rememberMe,
+                ),
+            )
+        }
             .onSuccess { loginDto ->
                 metadataStore.saveIdentitySnapshot(loginDto.toSnapshot())
                 runCatching { authApi.me() }

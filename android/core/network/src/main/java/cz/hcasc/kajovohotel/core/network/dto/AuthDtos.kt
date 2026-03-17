@@ -9,7 +9,19 @@ data class AuthIdentityDto(
     val actor_type: String,
 )
 
-data class PortalLoginRequest(val email: String, val password: String)
+data class AndroidReleaseDto(
+    val version: String,
+    val download_url: String,
+    val title: String,
+    val message: String,
+    val required: Boolean = false,
+)
+
+data class PortalLoginRequest(
+    val email: String,
+    val password: String,
+    val remember_me: Boolean = false,
+)
 data class SelectRoleRequest(val role: String)
 
 data class AuthProfileDto(
@@ -30,3 +42,4 @@ data class AuthProfileUpdateRequest(
 )
 
 data class PortalPasswordChangeRequest(val old_password: String, val new_password: String)
+data class PortalPasswordResetRequest(val token: String, val new_password: String)

@@ -453,6 +453,11 @@ def portal_login(
 ) -> AuthIdentityResponse:
     settings = get_settings()
     email = payload.email.strip().lower()
+    session_max_age_seconds = (
+        settings.session_remember_me_max_age_seconds
+        if payload.remember_me
+        else settings.session_max_age_seconds
+    )
     now = _utc_now()
     state = _get_lockout_state(db, actor_type="portal", principal=email)
     user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
@@ -491,7 +496,7 @@ def portal_login(
         roles=roles,
         active_role=active_role,
         portal_user_id=user.id,
-        max_age_seconds=settings.session_max_age_seconds,
+        max_age_seconds=session_max_age_seconds,
     )
     db.commit()
     user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
@@ -499,18 +504,18 @@ def portal_login(
     roles = _portal_roles_for_user(user)
     permissions = get_permissions(active_role) if active_role else []
     csrf_token = secrets.token_urlsafe(32)
-    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
+    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=session_max_age_seconds)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         create_session_cookie(
             session_record.session_id,
-            max_age_seconds=settings.session_max_age_seconds,
+            max_age_seconds=session_max_age_seconds,
         ),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
         path="/",
-        max_age=settings.session_max_age_seconds,
+        max_age=session_max_age_seconds,
         expires=session_expiry,
     )
     response.set_cookie(
@@ -520,7 +525,7 @@ def portal_login(
         samesite="lax",
         secure=cookie_secure(),
         path="/",
-        max_age=settings.session_max_age_seconds,
+        max_age=session_max_age_seconds,
         expires=session_expiry,
     )
     return AuthIdentityResponse(

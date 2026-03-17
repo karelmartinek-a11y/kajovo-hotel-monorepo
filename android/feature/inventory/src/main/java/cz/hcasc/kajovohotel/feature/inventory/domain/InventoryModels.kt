@@ -10,6 +10,26 @@ data class InventoryItemSummary(
     val minStock: Int,
 )
 
+data class InventoryMovementRecord(
+    val id: Int,
+    val documentNumber: String,
+    val documentDate: String,
+    val movementType: InventoryMovementType,
+    val quantity: Int,
+    val quantityPieces: Int,
+    val note: String,
+)
+
+data class InventoryItemDetail(
+    val id: Int,
+    val name: String,
+    val unit: String,
+    val currentStock: Int,
+    val minStock: Int,
+    val amountPerPieceBase: Int,
+    val movements: List<InventoryMovementRecord>,
+)
+
 data class InventoryMovementDraft(
     val movementType: InventoryMovementType = InventoryMovementType.OUT,
     val quantity: String = "",

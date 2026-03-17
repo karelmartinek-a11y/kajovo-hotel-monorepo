@@ -9,10 +9,12 @@ import cz.hcasc.kajovohotel.core.model.SessionState
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEvent
 import cz.hcasc.kajovohotel.core.network.api.AuthApi
 import cz.hcasc.kajovohotel.core.network.dto.AuthIdentityDto
+import cz.hcasc.kajovohotel.core.network.dto.AndroidReleaseDto
 import cz.hcasc.kajovohotel.core.network.dto.AuthProfileDto
 import cz.hcasc.kajovohotel.core.network.dto.AuthProfileUpdateRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalLoginRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordChangeRequest
+import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetRequest
 import cz.hcasc.kajovohotel.core.network.dto.SelectRoleRequest
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -26,6 +28,34 @@ import retrofit2.HttpException
 import retrofit2.Response
 
 class DefaultSessionRepositoryTest {
+    @Test
+    fun `sign in forwards remember me flag to login request`() = runTest {
+        val authApi = FakeAuthApi(
+            meResult = Result.success(
+                AuthIdentityDto(
+                    email = "recepce@example.com",
+                    role = "recepce",
+                    roles = listOf("recepce"),
+                    active_role = "recepce",
+                    permissions = listOf("breakfast:read"),
+                    actor_type = "portal",
+                ),
+            ),
+        )
+        val repository = DefaultSessionRepository(
+            authApi = authApi,
+            cookieStore = FakeCookieStore(),
+            metadataStore = FakeMetadataStore(),
+            moduleSnapshotDao = FakeModuleSnapshotDao(),
+            logger = AppLogger(),
+        )
+
+        repository.signIn("recepce@example.com", "recepce-pass", rememberMe = true)
+
+        assertNotNull(authApi.lastLoginRequest)
+        assertTrue(authApi.lastLoginRequest?.remember_me == true)
+    }
+
     @Test
     fun `restore session keeps authenticated state with role selection pending`() = runTest {
         val authApi = FakeAuthApi(
@@ -176,13 +206,28 @@ class DefaultSessionRepositoryTest {
         private val updateProfileResult: Result<AuthProfileDto> = profileResult,
         private val changePasswordResult: Result<Response<Unit>> = Result.success(Response.success(Unit)),
     ) : AuthApi {
-        override suspend fun login(request: PortalLoginRequest): AuthIdentityDto = loginResult.getOrThrow()
+        var lastLoginRequest: PortalLoginRequest? = null
+
+        override suspend fun androidRelease(): AndroidReleaseDto = AndroidReleaseDto(
+            version = "0.1.0",
+            download_url = "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk",
+            title = "Update",
+            message = "Update",
+            required = false,
+        )
+
+        override suspend fun login(request: PortalLoginRequest): AuthIdentityDto {
+            lastLoginRequest = request
+            return loginResult.getOrThrow()
+        }
+
         override suspend fun me(): AuthIdentityDto = meResult.getOrThrow()
         override suspend fun selectRole(request: SelectRoleRequest): AuthIdentityDto = selectRoleResult.getOrThrow()
         override suspend fun logout(): Response<Unit> = logoutResult.getOrThrow()
         override suspend fun profile(): AuthProfileDto = profileResult.getOrThrow()
         override suspend fun updateProfile(request: AuthProfileUpdateRequest): AuthProfileDto = updateProfileResult.getOrThrow()
         override suspend fun changePassword(request: PortalPasswordChangeRequest): Response<Unit> = changePasswordResult.getOrThrow()
+        override suspend fun resetPassword(request: PortalPasswordResetRequest): Response<Unit> = Response.success(Unit)
     }
 
     private class FakeCookieStore : SessionCookieStore {

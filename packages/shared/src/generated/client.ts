@@ -14,6 +14,13 @@ export type AdminProfileRead = {
 export type AdminProfileUpdate = {
   "display_name": string;
 };
+export type AndroidAppReleaseRead = {
+  "download_url": string;
+  "message": string;
+  "required"?: boolean;
+  "title": string;
+  "version": string;
+};
 export type AuthIdentityResponse = {
   "active_role"?: string | null;
   "actor_type": string;
@@ -406,6 +413,7 @@ export type MediaPhotoRead = {
 export type PortalLoginRequest = {
   "email": string;
   "password": string;
+  "remember_me"?: boolean;
 };
 export type PortalPasswordChangeRequest = {
   "new_password": string;
@@ -569,6 +577,9 @@ async function request<T>(method: string, path: string, query?: Record<string, Q
 }
 
 export const apiClient = {
+  async getAndroidReleaseApiAppAndroidReleaseGet(): Promise<AndroidAppReleaseRead> {
+    return request<AndroidAppReleaseRead>('GET', `/api/app/android-release`, undefined, undefined);
+  },
   async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<MailDispatchResponse> {
     return request<MailDispatchResponse>('POST', `/api/auth/admin/hint`, undefined, body);
   },

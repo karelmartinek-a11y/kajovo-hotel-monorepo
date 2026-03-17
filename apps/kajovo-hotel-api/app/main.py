@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
 from app.api.routes.device import router as device_router
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
         return response
 
     app.include_router(auth_router)
+    app.include_router(app_meta_router)
     app.include_router(health_router)
     app.include_router(reports_router)
     app.include_router(breakfast_router)

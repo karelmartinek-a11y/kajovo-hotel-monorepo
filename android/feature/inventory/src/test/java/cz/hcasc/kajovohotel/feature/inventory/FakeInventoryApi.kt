@@ -11,6 +11,25 @@ internal class FakeInventoryApi : InventoryApi {
         InventoryItemDto(id = 9, name = "Káva", unit = "kg", current_stock = 8, min_stock = 2),
     )
 
+    override suspend fun detail(itemId: Int): InventoryItemDetailDto = InventoryItemDetailDto(
+        id = itemId,
+        name = "Káva",
+        unit = "kg",
+        current_stock = 8,
+        min_stock = 2,
+        movements = listOf(
+            InventoryMovementDto(
+                id = 41,
+                item_id = itemId,
+                movement_type = "out",
+                document_number = "DOC-41",
+                document_date = "2026-03-16",
+                quantity = 2,
+                quantity_pieces = 0,
+            ),
+        ),
+    )
+
     override suspend fun addMovement(itemId: Int, request: InventoryMovementCreateDto): InventoryItemDetailDto = InventoryItemDetailDto(
         id = itemId,
         name = "Káva",

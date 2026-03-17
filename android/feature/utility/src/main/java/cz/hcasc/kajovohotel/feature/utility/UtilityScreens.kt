@@ -2,10 +2,13 @@ package cz.hcasc.kajovohotel.feature.utility
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.StatePane
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
@@ -16,6 +19,35 @@ import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 @Composable fun NotFoundScreen(onBack: () -> Unit) = StatePane(title = "Stránka nenalezena", body = "Tato route není součástí ověřeného non-admin scope.", actionLabel = "Zpět", onAction = onBack)
 @Composable fun AccessDeniedScreen(onBack: () -> Unit) = StatePane(title = "Přístup odepřen", body = "Aktivní role nebo serverová permission neumožňuje tuto akci.", actionLabel = "Zpět", onAction = onBack)
 @Composable fun GlobalBlockingErrorScreen(onRetry: () -> Unit) = StatePane(title = "Blokující chyba", body = "Aplikace zachytila stav, který vyžaduje nové ověření session.", actionLabel = "Zkusit znovu", onAction = onRetry)
+
+@Composable
+fun AppUpdatePromptScreen(
+    title: String,
+    message: String,
+    latestVersion: String,
+    onUpdateClick: () -> Unit,
+    onContinueClick: (() -> Unit)? = null,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)
+    ) {
+        StatePane(
+            title = title,
+            body = "$message\n\nNová verze: $latestVersion",
+            actionLabel = "Stáhnout aktualizaci",
+            onAction = onUpdateClick
+        )
+        if (onContinueClick != null) {
+            Button(
+                onClick = onContinueClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Pokračovat bez aktualizace")
+            }
+        }
+    }
+}
 
 @Composable fun FeatureLoadingCard(title: String, subtitle: String) { Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) { FeatureCard(title = title, subtitle = subtitle); CircularProgressIndicator() } }
 @Composable fun FeatureEmptyCard(title: String, body: String) { FeatureCard(title = title, subtitle = body) }

@@ -25,6 +25,14 @@ class ApiErrorEnvelope(BaseModel):
     error: ApiErrorDetail
 
 
+class AndroidAppReleaseRead(BaseModel):
+    version: str
+    download_url: str
+    title: str
+    message: str
+    required: bool = False
+
+
 class ReportCreate(BaseModel):
     title: str = Field(min_length=3, max_length=255)
     description: str | None = Field(default=None, max_length=4000)
@@ -547,6 +555,7 @@ class AdminLoginRequest(BaseModel):
 class PortalLoginRequest(BaseModel):
     email: str
     password: str
+    remember_me: bool = False
 
 
 class LogoutResponse(BaseModel):

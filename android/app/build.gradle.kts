@@ -13,8 +13,8 @@ android {
         applicationId = "cz.hcasc.kajovohotel.app"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "HOTEL_BASE_URL", "\"${providers.gradleProperty("kajovoHotelBaseUrl").orElse("https://hotel.hcasc.cz").get()}\"")
@@ -57,6 +57,7 @@ dependencies {
     implementation(project(":feature:inventory"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

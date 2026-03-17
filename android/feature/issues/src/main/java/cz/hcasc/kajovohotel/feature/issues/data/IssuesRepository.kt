@@ -7,8 +7,10 @@ import cz.hcasc.kajovohotel.core.model.IssuePriority
 import cz.hcasc.kajovohotel.core.model.IssueStatus
 import cz.hcasc.kajovohotel.core.model.MediaPhoto
 import cz.hcasc.kajovohotel.core.network.api.IssuesApi
+import cz.hcasc.kajovohotel.core.network.dto.IssueCreateDto
 import cz.hcasc.kajovohotel.core.network.dto.IssueUpdateDto
 import cz.hcasc.kajovohotel.core.network.readableMessage
+import cz.hcasc.kajovohotel.feature.issues.domain.IssueDraft
 import cz.hcasc.kajovohotel.feature.issues.domain.IssueFilters
 import cz.hcasc.kajovohotel.feature.issues.domain.MaintenanceIssue
 import javax.inject.Inject
@@ -30,6 +32,43 @@ class IssuesRepository @Inject constructor(
             )
         } catch (throwable: Throwable) {
             AppResult.Error(throwable.readableMessage("Nepodařilo se načíst závady."), throwable)
+        }
+    }
+
+    suspend fun create(draft: IssueDraft): AppResult<MaintenanceIssue> {
+        return try {
+            AppResult.Success(
+                api.create(
+                    IssueCreateDto(
+                        title = draft.title.trim(),
+                        location = draft.location.trim(),
+                        description = draft.description.trim().ifBlank { null },
+                        room_number = draft.roomNumber.trim().ifBlank { null },
+                        priority = draft.priority.wireValue,
+                    ),
+                ).toDomain(baseUrlConfig),
+            )
+        } catch (throwable: Throwable) {
+            AppResult.Error(throwable.readableMessage("Nepodařilo se založit závadu."), throwable)
+        }
+    }
+
+    suspend fun update(issueId: Int, draft: IssueDraft): AppResult<MaintenanceIssue> {
+        return try {
+            AppResult.Success(
+                api.update(
+                    issueId,
+                    IssueUpdateDto(
+                        title = draft.title.trim(),
+                        location = draft.location.trim(),
+                        description = draft.description.trim().ifBlank { null },
+                        room_number = draft.roomNumber.trim().ifBlank { null },
+                        priority = draft.priority.wireValue,
+                    ),
+                ).toDomain(baseUrlConfig),
+            )
+        } catch (throwable: Throwable) {
+            AppResult.Error(throwable.readableMessage("Nepodařilo se upravit závadu."), throwable)
         }
     }
 

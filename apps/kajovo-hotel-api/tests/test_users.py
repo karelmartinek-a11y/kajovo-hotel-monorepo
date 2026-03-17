@@ -2,6 +2,7 @@ import json
 import sqlite3
 import urllib.error
 import urllib.request
+from datetime import datetime
 from http.cookiejar import CookieJar
 from pathlib import Path
 
@@ -211,6 +212,57 @@ def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None
     assert status == 401
     assert isinstance(denied, dict)
     assert denied.get("detail") == "Authentication required"
+
+
+def test_portal_login_remember_me_extends_session_lifetime(api_base_url: str, api_db_path: Path) -> None:
+    default_jar = CookieJar()
+    default_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(default_jar))
+    status, _ = api_request(
+        default_opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "recepce@example.com", "password": "recepce-pass"},
+    )
+    assert status == 200
+
+    remember_jar = CookieJar()
+    remember_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(remember_jar))
+    status, _ = api_request(
+        remember_opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={
+            "email": "recepce@example.com",
+            "password": "recepce-pass",
+            "remember_me": True,
+        },
+    )
+    assert status == 200
+
+    default_cookie = next(cookie for cookie in default_jar if cookie.name == "kajovo_session")
+    remember_cookie = next(cookie for cookie in remember_jar if cookie.name == "kajovo_session")
+    assert default_cookie.expires is not None
+    assert remember_cookie.expires is not None
+    assert remember_cookie.expires - default_cookie.expires > 20 * 24 * 60 * 60
+
+    with sqlite3.connect(api_db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT expires_at
+            FROM auth_sessions
+            WHERE principal = ?
+            ORDER BY id DESC
+            LIMIT 2
+            """,
+            ("recepce@example.com",),
+        ).fetchall()
+
+    assert len(rows) == 2
+    remember_expiry = datetime.fromisoformat(str(rows[0][0]).replace("Z", "+00:00"))
+    default_expiry = datetime.fromisoformat(str(rows[1][0]).replace("Z", "+00:00"))
+    assert (remember_expiry - default_expiry).total_seconds() > 20 * 24 * 60 * 60
 
 
 def test_disabling_user_revokes_existing_portal_sessions(api_base_url: str) -> None:

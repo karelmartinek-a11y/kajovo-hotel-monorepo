@@ -1,6 +1,7 @@
 package cz.hcasc.kajovohotel.feature.breakfast
 
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDraft
+import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

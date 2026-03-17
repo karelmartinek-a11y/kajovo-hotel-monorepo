@@ -11,5 +11,6 @@ import retrofit2.http.Query
 
 interface InventoryApi {
     @GET("/api/v1/inventory") suspend fun list(@Query("low_stock") lowStock: Boolean = false): List<InventoryItemDto>
+    @GET("/api/v1/inventory/{itemId}") suspend fun detail(@Path("itemId") itemId: Int): InventoryItemDetailDto
     @POST("/api/v1/inventory/{itemId}/movements") suspend fun addMovement(@Path("itemId") itemId: Int, @Body request: InventoryMovementCreateDto): InventoryItemDetailDto
 }
