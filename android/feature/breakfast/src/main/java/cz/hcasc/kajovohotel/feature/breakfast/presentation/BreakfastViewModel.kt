@@ -30,14 +30,17 @@ class BreakfastViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(role = role, serviceDate = serviceDate, isLoading = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.load(serviceDate)) {
-                is AppResult.Success -> mutableState.value = mutableState.value.copy(
-                    isLoading = false,
-                    orders = result.value.first,
-                    summary = result.value.second,
-                    selectedOrder = result.value.first.firstOrNull(),
-                    draft = result.value.first.firstOrNull()?.toDraft() ?: BreakfastDraft(serviceDate = serviceDate),
-                    errorMessage = null,
-                )
+                is AppResult.Success -> {
+                    val selectedOrder = if (role == PortalRole.RECEPTION) result.value.first.firstOrNull() else null
+                    mutableState.value = mutableState.value.copy(
+                        isLoading = false,
+                        orders = result.value.first,
+                        summary = result.value.second,
+                        selectedOrder = selectedOrder,
+                        draft = selectedOrder?.toDraft() ?: BreakfastDraft(serviceDate = serviceDate),
+                        errorMessage = null,
+                    )
+                }
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isLoading = false, errorMessage = result.message)
             }
         }
@@ -48,6 +51,9 @@ class BreakfastViewModel @Inject constructor(
     }
 
     fun selectOrder(order: BreakfastOrder) {
+        if (mutableState.value.role != PortalRole.RECEPTION) {
+            return
+        }
         mutableState.value = mutableState.value.copy(selectedOrder = order, draft = order.toDraft(), importPreview = null, exportMessage = null)
     }
 
@@ -57,6 +63,10 @@ class BreakfastViewModel @Inject constructor(
 
     fun createOrUpdate() {
         val current = mutableState.value
+        if (current.role != PortalRole.RECEPTION) {
+            mutableState.value = current.copy(errorMessage = "Snídaňový servis může objednávky jen zobrazovat a vydávat.")
+            return
+        }
         if (!current.draft.isValidForSubmit()) {
             mutableState.value = current.copy(errorMessage = "Vyplňte datum, pokoj, hosta a počet.")
             return
@@ -93,6 +103,10 @@ class BreakfastViewModel @Inject constructor(
     }
 
     fun importPreview(file: BinaryPayload) {
+        if (mutableState.value.role != PortalRole.RECEPTION) {
+            mutableState.value = mutableState.value.copy(errorMessage = "Import snídaní je dostupný jen pro recepci.")
+            return
+        }
         mutableState.value = mutableState.value.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.importPreview(file, save = false)) {
@@ -107,6 +121,10 @@ class BreakfastViewModel @Inject constructor(
     }
 
     fun confirmImport(file: BinaryPayload) {
+        if (mutableState.value.role != PortalRole.RECEPTION) {
+            mutableState.value = mutableState.value.copy(errorMessage = "Import snídaní je dostupný jen pro recepci.")
+            return
+        }
         mutableState.value = mutableState.value.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.importPreview(file, save = true)) {
@@ -125,6 +143,10 @@ class BreakfastViewModel @Inject constructor(
 
     fun triggerExport() {
         val serviceDate = mutableState.value.serviceDate
+        if (mutableState.value.role != PortalRole.RECEPTION) {
+            mutableState.value = mutableState.value.copy(errorMessage = "Export snídaní je dostupný jen pro recepci.")
+            return
+        }
         if (serviceDate.isBlank()) {
             mutableState.value = mutableState.value.copy(errorMessage = "Pro export vyplňte datum služby.")
             return
