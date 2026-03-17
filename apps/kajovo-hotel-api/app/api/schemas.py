@@ -670,6 +670,7 @@ class AdminProfileUpdate(BaseModel):
 
 
 class SmtpSettingsUpsert(BaseModel):
+    from_email: str = Field(min_length=3, max_length=255)
     host: str = Field(min_length=1, max_length=255)
     port: int = Field(ge=1, le=65535)
     username: str = Field(min_length=1, max_length=255)
@@ -677,8 +678,19 @@ class SmtpSettingsUpsert(BaseModel):
     use_tls: bool = True
     use_ssl: bool = False
 
+    @field_validator("from_email")
+    @classmethod
+    def validate_from_email(cls, value: str) -> str:
+        email = value.strip().lower()
+        import re
+
+        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+            raise ValueError("From email must be valid")
+        return email
+
 
 class SmtpSettingsRead(BaseModel):
+    from_email: str
     host: str
     port: int
     username: str
@@ -712,10 +724,15 @@ class SmtpTestEmailResponse(BaseModel):
     message: str
 
 
-class UserPasswordResetLinkResponse(BaseModel):
+class MailDispatchResponse(BaseModel):
     ok: bool
     connected: bool
     send_attempted: bool
     message: str
 
 
+class UserPasswordResetLinkResponse(BaseModel):
+    ok: bool
+    connected: bool
+    send_attempted: bool
+    message: str

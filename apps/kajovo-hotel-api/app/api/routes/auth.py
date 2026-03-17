@@ -6,12 +6,13 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     AdminLoginRequest,
     AuthIdentityResponse,
+    MailDispatchResponse,
     AuthProfileRead,
     AuthProfileUpdate,
     LogoutResponse,
@@ -25,7 +26,6 @@ from app.db.models import (
     AdminProfile,
     AuthLockoutState,
     AuthUnlockToken,
-    PortalSmtpSettings,
     PortalUser,
 )
 from app.db.session import get_db
@@ -46,6 +46,8 @@ from app.security.passwords import hash_password, verify_password
 from app.security.rbac import normalize_role
 from app.services.admin_credentials import ensure_admin_profile
 from app.services.mail import (
+    SmtpDeliveryError,
+    SmtpNotConfiguredError,
     StoredSmtpConfig,
     build_email_service,
     send_admin_password_hint,
@@ -156,16 +158,36 @@ def _record_failed_login(
 
 
 def _stored_smtp_config(db: Session) -> StoredSmtpConfig | None:
-    record = db.get(PortalSmtpSettings, 1)
-    if record is None:
+    bind = db.get_bind()
+    inspector = inspect(bind)
+    try:
+        columns = {str(column["name"]) for column in inspector.get_columns("portal_smtp_settings")}
+    except Exception:
+        db.rollback()
+        return None
+    if not columns:
+        return None
+    selected_columns = [
+        column
+        for column in ["from_email", "host", "port", "username", "password_encrypted", "use_tls", "use_ssl"]
+        if column in columns
+    ]
+    if not selected_columns:
+        return None
+    row = db.execute(
+        text(f"SELECT {', '.join(selected_columns)} FROM portal_smtp_settings WHERE id = :id"),
+        {"id": 1},
+    ).mappings().first()
+    if row is None:
         return None
     return StoredSmtpConfig(
-        host=record.host,
-        port=record.port,
-        username=record.username,
-        use_tls=record.use_tls,
-        use_ssl=record.use_ssl,
-        password_encrypted=record.password_encrypted,
+        from_email=str(row.get("from_email") or "").strip().lower(),
+        host=str(row.get("host") or ""),
+        port=int(row.get("port") or 587),
+        username=str(row.get("username") or ""),
+        use_tls=bool(True if row.get("use_tls") is None else row.get("use_tls")),
+        use_ssl=bool(False if row.get("use_ssl") is None else row.get("use_ssl")),
+        password_encrypted=str(row.get("password_encrypted") or ""),
     )
 
 
@@ -365,12 +387,12 @@ def admin_logout(
     return LogoutResponse()
 
 
-@router.post("/admin/hint", response_model=LogoutResponse)
+@router.post("/admin/hint", response_model=MailDispatchResponse)
 def admin_hint(
     payload: HintRequest,
     request: Request = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
-) -> LogoutResponse:
+) -> MailDispatchResponse:
     _ = request
     profile = db.get(AdminProfile, 1)
     requested_email = payload.email.strip().lower()
@@ -378,20 +400,48 @@ def admin_hint(
     admin_user = _find_admin_user(db, requested_email)
     principal = requested_email if admin_user is not None else default_principal
     if requested_email != principal:
-        return LogoutResponse()
+        return MailDispatchResponse(
+            ok=True,
+            connected=False,
+            send_attempted=False,
+            message="Pokyn byl zpracován bez potvrzeného odeslání e-mailu.",
+        )
     state = _get_lockout_state(db, actor_type="admin", principal=principal)
     now = _utc_now()
     last_sent_at = _as_utc(state.last_forgot_sent_at)
-    if last_sent_at is None or now - last_sent_at >= FORGOT_THROTTLE:
-        try:
-            service = build_email_service(get_settings(), _stored_smtp_config(db))
-            send_admin_password_hint(service=service, recipient=principal)
-        except Exception:
-            pass
-        state.last_forgot_sent_at = now
+    if last_sent_at is not None and now - last_sent_at < FORGOT_THROTTLE:
+        db.add(state)
+        db.commit()
+        return MailDispatchResponse(
+            ok=True,
+            connected=False,
+            send_attempted=False,
+            message="Připomenutí už bylo nedávno odesláno. Další pokus zatím neproběhl.",
+        )
+
+    try:
+        service = build_email_service(get_settings(), _stored_smtp_config(db))
+        result = send_admin_password_hint(service=service, recipient=principal)
+    except SmtpNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"SMTP není aktivní. Připomenutí se nepodařilo odeslat: {exc}",
+        ) from exc
+    except SmtpDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Připomenutí hesla se nepodařilo doručit: {exc}",
+        ) from exc
+
+    state.last_forgot_sent_at = now
     db.add(state)
     db.commit()
-    return LogoutResponse()
+    return MailDispatchResponse(
+        ok=True,
+        connected=result.connected,
+        send_attempted=result.send_attempted,
+        message=f"Připomenutí bylo odesláno na {principal}.",
+    )
 
 
 @router.post("/login", response_model=AuthIdentityResponse)

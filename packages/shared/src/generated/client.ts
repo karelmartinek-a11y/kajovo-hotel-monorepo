@@ -388,6 +388,12 @@ export type LostFoundItemUpdate = {
   "tags"?: Array<string> | null;
 };
 export type LostFoundStatus = "new" | "stored" | "disposed" | "claimed" | "returned";
+export type MailDispatchResponse = {
+  "connected": boolean;
+  "message": string;
+  "ok": boolean;
+  "send_attempted": boolean;
+};
 export type MediaPhotoRead = {
   "created_at": string | null;
   "file_path": string;
@@ -481,6 +487,7 @@ export type SmtpOperationalStatusRead = {
   "smtp_enabled": boolean;
 };
 export type SmtpSettingsRead = {
+  "from_email": string;
   "host": string;
   "password_masked": string;
   "port": number;
@@ -489,6 +496,7 @@ export type SmtpSettingsRead = {
   "username": string;
 };
 export type SmtpSettingsUpsert = {
+  "from_email": string;
   "host": string;
   "password"?: string | null;
   "port": number;
@@ -561,8 +569,8 @@ async function request<T>(method: string, path: string, query?: Record<string, Q
 }
 
 export const apiClient = {
-  async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<LogoutResponse> {
-    return request<LogoutResponse>('POST', `/api/auth/admin/hint`, undefined, body);
+  async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<MailDispatchResponse> {
+    return request<MailDispatchResponse>('POST', `/api/auth/admin/hint`, undefined, body);
   },
   async adminLoginApiAuthAdminLoginPost(body: AdminLoginRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/admin/login`, undefined, body);

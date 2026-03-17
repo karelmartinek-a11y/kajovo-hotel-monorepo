@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -19,7 +19,6 @@ from app.config import get_settings
 from app.db.models import (
     AuthLockoutState,
     AuthUnlockToken,
-    PortalSmtpSettings,
     PortalUser,
     PortalUserRole,
 )
@@ -66,16 +65,37 @@ def _is_locked_until(value: datetime | None) -> bool:
     return locked_until is not None and locked_until > utc_now()
 
 
-def _stored_smtp_config(record: PortalSmtpSettings | None) -> StoredSmtpConfig | None:
-    if record is None:
+def _stored_smtp_config(db: Session) -> StoredSmtpConfig | None:
+    bind = db.get_bind()
+    inspector = inspect(bind)
+    try:
+        columns = {str(column["name"]) for column in inspector.get_columns("portal_smtp_settings")}
+    except Exception:
+        db.rollback()
+        return None
+    if not columns:
+        return None
+    selected_columns = [
+        column
+        for column in ["from_email", "host", "port", "username", "password_encrypted", "use_tls", "use_ssl"]
+        if column in columns
+    ]
+    if not selected_columns:
+        return None
+    row = db.execute(
+        text(f"SELECT {', '.join(selected_columns)} FROM portal_smtp_settings WHERE id = :id"),
+        {"id": 1},
+    ).mappings().first()
+    if row is None:
         return None
     return StoredSmtpConfig(
-        host=record.host,
-        port=record.port,
-        username=record.username,
-        use_tls=record.use_tls,
-        use_ssl=record.use_ssl,
-        password_encrypted=record.password_encrypted,
+        from_email=str(row.get("from_email") or "").strip().lower(),
+        host=str(row.get("host") or ""),
+        port=int(row.get("port") or 587),
+        username=str(row.get("username") or ""),
+        use_tls=bool(True if row.get("use_tls") is None else row.get("use_tls")),
+        use_ssl=bool(False if row.get("use_ssl") is None else row.get("use_ssl")),
+        password_encrypted=str(row.get("password_encrypted") or ""),
     )
 
 
@@ -219,7 +239,7 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     response_model = _to_read_model(user, _lockout_map_for_user(db, user.email))
     settings = get_settings()
     try:
-        service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
+        service = build_email_service(settings, _stored_smtp_config(db))
         send_portal_onboarding(service=service, recipient=user.email)
     except Exception:
         # CRUD uzivatele nesmi spadnout na volitelnem onboarding e-mailu.
@@ -306,7 +326,7 @@ def send_user_reset_link(
         f"{urlencode({'token': token})}"
     )
     try:
-        service = build_email_service(settings, _stored_smtp_config(db.get(PortalSmtpSettings, 1)))
+        service = build_email_service(settings, _stored_smtp_config(db))
         result = send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
         db.commit()
         return UserPasswordResetLinkResponse(

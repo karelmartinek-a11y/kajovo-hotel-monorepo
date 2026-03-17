@@ -2874,6 +2874,34 @@
         "title": "LostFoundStatus",
         "type": "string"
       },
+      "MailDispatchResponse": {
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "send_attempted": {
+            "title": "Send Attempted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "connected",
+          "send_attempted",
+          "message"
+        ],
+        "title": "MailDispatchResponse",
+        "type": "object"
+      },
       "MediaPhotoRead": {
         "properties": {
           "created_at": {
@@ -3537,6 +3565,10 @@
       },
       "SmtpSettingsRead": {
         "properties": {
+          "from_email": {
+            "title": "From Email",
+            "type": "string"
+          },
           "host": {
             "title": "Host",
             "type": "string"
@@ -3563,6 +3595,7 @@
           }
         },
         "required": [
+          "from_email",
           "host",
           "port",
           "username",
@@ -3575,6 +3608,12 @@
       },
       "SmtpSettingsUpsert": {
         "properties": {
+          "from_email": {
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "From Email",
+            "type": "string"
+          },
           "host": {
             "maxLength": 255,
             "minLength": 1,
@@ -3617,6 +3656,7 @@
           }
         },
         "required": [
+          "from_email",
           "host",
           "port",
           "username"
@@ -3759,7 +3799,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LogoutResponse"
+                  "$ref": "#/components/schemas/MailDispatchResponse"
                 }
               }
             },

@@ -143,7 +143,28 @@ def test_admin_hint_rate_limited_to_once_per_hour(api_base_url: str) -> None:
         headers=headers,
     )
     assert status == 200
-    assert body == {"ok": True}
+    assert body == {
+        "ok": True,
+        "connected": True,
+        "send_attempted": True,
+        "message": f"Připomenutí bylo odesláno na {ADMIN_EMAIL}.",
+    }
+
+    throttled_status, throttled_body = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/admin/hint",
+        method="POST",
+        payload={"email": ADMIN_EMAIL},
+        headers=headers,
+    )
+    assert throttled_status == 200
+    assert throttled_body == {
+        "ok": True,
+        "connected": False,
+        "send_attempted": False,
+        "message": "Připomenutí už bylo nedávno odesláno. Další pokus zatím neproběhl.",
+    }
 
 
 def test_admin_hint_supports_admin_role_user_email(api_base_url: str, api_mail_capture_path: Path) -> None:
@@ -195,7 +216,12 @@ def test_admin_hint_supports_admin_role_user_email(api_base_url: str, api_mail_c
         headers=headers,
     )
     assert status == 200
-    assert body == {"ok": True}
+    assert body == {
+        "ok": True,
+        "connected": True,
+        "send_attempted": True,
+        "message": "Připomenutí bylo odesláno na admin.role@example.com.",
+    }
 
     after_messages = [
         json.loads(line)

@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0024_add_auth_token_purpose"]
+    assert script.get_heads() == ["0025_add_smtp_from_email"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -45,5 +45,6 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "inventory_card_items" in tables
 
     smtp_columns = {column["name"] for column in inspector.get_columns("portal_smtp_settings")}
+    assert "from_email" in smtp_columns
     assert "last_test_connected" in smtp_columns
     assert "last_test_send_attempted" in smtp_columns

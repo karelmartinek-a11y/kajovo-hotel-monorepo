@@ -280,6 +280,7 @@ type PortalUserCreatePayload = PortalUserUpsertPayload & {
 };
 
 type SmtpSettingsReadModel = {
+  from_email: string;
   host: string;
   port: number;
   username: string;
@@ -289,6 +290,7 @@ type SmtpSettingsReadModel = {
 };
 
 type SmtpSettingsSnapshot = {
+  fromEmail: string;
   host: string;
   port: number;
   username: string;
@@ -296,10 +298,11 @@ type SmtpSettingsSnapshot = {
   useSsl: boolean;
 };
 
-type SmtpTestDialogState = {
+type MailActionDialogState = {
   phase: 'saving' | 'sending' | 'success' | 'error';
   title: string;
   description: string;
+  progressLabel?: string;
 };
 
 type SmtpOperationalStatusReadModel = {
@@ -346,6 +349,46 @@ function describeSmtpLastResult(status: SmtpOperationalStatusReadModel | null): 
     return 'Bez záznamu';
   }
   return 'SMTP aktivní, bez potvrzeného odeslání';
+}
+
+function MailActionDialog({
+  dialog,
+  onClose,
+  idBase,
+}: {
+  dialog: MailActionDialogState | null;
+  onClose: () => void;
+  idBase: string;
+}): JSX.Element | null {
+  if (!dialog) {
+    return null;
+  }
+  const titleId = `${idBase}-title`;
+  const descriptionId = `${idBase}-description`;
+  return (
+    <div className="k-modal-backdrop" role="presentation">
+      <div
+        className="k-modal-card"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+      >
+        <h2 id={titleId}>{dialog.title}</h2>
+        <p id={descriptionId}>{dialog.description}</p>
+        {dialog.phase === 'saving' || dialog.phase === 'sending' ? (
+          <div className="k-modal-progress" aria-live="polite">
+            <span className="k-modal-spinner" aria-hidden="true" />
+            <span>{dialog.progressLabel ?? 'Probíhá odesílání…'}</span>
+          </div>
+        ) : (
+          <div className="k-toolbar">
+            <button className="k-button" type="button" onClick={onClose}>Zavřít</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 type AdminProfileReadModel = {
@@ -836,7 +879,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
       headers,
       body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(await response.text());
+    if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
 
@@ -3320,8 +3363,10 @@ function UsersAdmin(): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [mailDialog, setMailDialog] = React.useState<MailActionDialogState | null>(null);
   const [filterQuery, setFilterQuery] = React.useState('');
   const canDelete = true;
+  const selectedUserIdRef = React.useRef<number | null>(null);
 
   const [createFirstName, setCreateFirstName] = React.useState('');
   const [createLastName, setCreateLastName] = React.useState('');
@@ -3420,17 +3465,23 @@ function UsersAdmin(): JSX.Element {
     setEditEmailTouched(false);
   }
 
+  React.useEffect(() => {
+    selectedUserIdRef.current = selected?.id ?? null;
+    syncEdit(selected);
+  }, [selected]);
+
   const load = React.useCallback(() => {
     setError(null);
     void fetchJson<PortalUser[]>('/api/v1/users')
       .then((items) => {
         setUsers(items);
-        const nextSelected = selected ? items.find((item) => item.id === selected.id) ?? items[0] ?? null : items[0] ?? null;
+        const nextSelected = selectedUserIdRef.current != null
+          ? items.find((item) => item.id === selectedUserIdRef.current) ?? items[0] ?? null
+          : items[0] ?? null;
         setSelected(nextSelected);
-        syncEdit(nextSelected);
       })
       .catch(() => setError('Nepodařilo se načíst uživatele.'));
-  }, [selected]);
+  }, []);
 
   React.useEffect(() => {
     load();
@@ -3560,30 +3611,48 @@ function UsersAdmin(): JSX.Element {
   }
 
   async function sendPasswordResetLink(user: PortalUser): Promise<void> {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    setMailDialog({
+      phase: 'sending',
+      title: 'Odesílám resetovací token',
+      description: `Probíhá odeslání resetovacího odkazu na ${user.email}.`,
+      progressLabel: 'Čekám na potvrzení odeslání e-mailu…',
+    });
     try {
       const csrf = readCsrfToken();
       const response = await fetchJson<{ ok: boolean; connected: boolean; send_attempted: boolean; message: string }>(`/api/v1/users/${user.id}/password/reset-link`, {
         method: 'POST',
         headers: csrf ? { 'x-csrf-token': csrf } : undefined,
       });
-      setError(null);
       setMessage(response.message);
+      setMailDialog({
+        phase: 'success',
+        title: 'Resetovací token byl odeslán',
+        description: response.message,
+      });
     } catch (err) {
+      let nextError = 'Odeslání resetovacího tokenu se nezdařilo.';
       if (err instanceof HttpError) {
         if (err.status === 403) {
-          setError('Nemáte oprávnění odeslat resetovací token.');
+          nextError = 'Nemáte oprávnění odeslat resetovací token.';
         } else if (err.status === 404) {
-          setError('Uživatel nebyl nalezen.');
+          nextError = 'Uživatel nebyl nalezen.';
         } else if (err.status === 409) {
-          setError('Admin účet nemá reset hesla. Použijte pouze připomenutí z admin přihlášení.');
+          nextError = 'Admin účet nemá reset hesla. Použijte pouze připomenutí z admin přihlášení.';
         } else if (err.status === 503) {
-          setError(err.message);
-        } else {
-          setError('Odeslání resetovacího tokenu se nezdařilo.');
+          nextError = err.message;
         }
-      } else {
-        setError('Odeslání resetovacího tokenu se nezdařilo.');
       }
+      setError(nextError);
+      setMailDialog({
+        phase: 'error',
+        title: 'Odeslání resetovacího tokenu selhalo',
+        description: nextError,
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -3923,6 +3992,7 @@ function UsersAdmin(): JSX.Element {
           </div>
         </div>
       )}
+      <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="user-mail-dialog" />
       {pendingDelete ? (
         <div
           className="k-card"
@@ -3958,6 +4028,7 @@ function UsersAdmin(): JSX.Element {
 }
 
 function SettingsAdmin(): JSX.Element {
+  const [fromEmail, setFromEmail] = React.useState('');
   const [host, setHost] = React.useState('');
   const [port, setPort] = React.useState(587);
   const [username, setUsername] = React.useState('');
@@ -3971,7 +4042,7 @@ function SettingsAdmin(): JSX.Element {
   const [message, setMessage] = React.useState<string | null>(null);
   const [loadedConfig, setLoadedConfig] = React.useState<SmtpSettingsSnapshot | null>(null);
   const [status, setStatus] = React.useState<SmtpOperationalStatusReadModel | null>(null);
-  const [testDialog, setTestDialog] = React.useState<SmtpTestDialogState | null>(null);
+  const [mailDialog, setMailDialog] = React.useState<MailActionDialogState | null>(null);
 
   const load = React.useCallback((options?: { preserveMessage?: boolean }) => {
     setLoading(true);
@@ -3992,6 +4063,7 @@ function SettingsAdmin(): JSX.Element {
         }
         if (settingsResult.status === 'fulfilled') {
           const data = settingsResult.value;
+          setFromEmail(data.from_email);
           setHost(data.host);
           setPort(data.port);
           setUsername(data.username);
@@ -3999,6 +4071,7 @@ function SettingsAdmin(): JSX.Element {
           setUseSsl(data.use_ssl);
           setTestRecipient(data.username);
           setLoadedConfig({
+            fromEmail: data.from_email,
             host: data.host,
             port: data.port,
             username: data.username,
@@ -4011,6 +4084,7 @@ function SettingsAdmin(): JSX.Element {
         const settingsHttpStatus = settingsError instanceof HttpError ? settingsError.status : null;
         const settingsMessage = settingsError instanceof Error ? settingsError.message : '';
         if (settingsMessage.includes('SMTP settings not configured') || (settingsHttpStatus === 404 && smtpStatus?.configured === false)) {
+          setFromEmail('');
           setHost('');
           setPort(587);
           setUsername('');
@@ -4035,24 +4109,26 @@ function SettingsAdmin(): JSX.Element {
       return true;
     }
     if (!loadedConfig) {
-      return Boolean(host.trim() || username.trim() || port || useTls || useSsl);
+      return Boolean(fromEmail.trim() || host.trim() || username.trim() || port || useTls || useSsl);
     }
     return (
+      fromEmail.trim().toLowerCase() !== loadedConfig.fromEmail
+      || 
       host.trim() !== loadedConfig.host
       || Number(port) !== loadedConfig.port
       || username.trim() !== loadedConfig.username
       || useTls !== loadedConfig.useTls
       || useSsl !== loadedConfig.useSsl
     );
-  }, [host, loadedConfig, password, port, useSsl, useTls, username]);
+  }, [fromEmail, host, loadedConfig, password, port, useSsl, useTls, username]);
 
   async function save(): Promise<void> {
     if (useTls && useSsl) {
       setError('TLS i SSL nelze pouzit soucasne. Zvolte pouze jeden rezim.');
       return;
     }
-    if (!host.trim() || !username.trim() || (!password.trim() && !status?.configured)) {
-      setError('Host, uživatel a heslo jsou povinné.');
+    if (!fromEmail.trim() || !host.trim() || !username.trim() || (!password.trim() && !status?.configured)) {
+      setError('Odesílatel, host, uživatel a heslo jsou povinné.');
       return;
     }
     setSaving(true);
@@ -4062,6 +4138,7 @@ function SettingsAdmin(): JSX.Element {
       await fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp', {
         method: 'PUT',
         body: JSON.stringify({
+          from_email: fromEmail.trim().toLowerCase(),
           host: host.trim(),
           port: Number(port),
           username: username.trim(),
@@ -4071,6 +4148,7 @@ function SettingsAdmin(): JSX.Element {
         }),
       });
       setLoadedConfig({
+        fromEmail: fromEmail.trim().toLowerCase(),
         host: host.trim(),
         port: Number(port),
         username: username.trim(),
@@ -4100,25 +4178,27 @@ function SettingsAdmin(): JSX.Element {
       setError('Vyplňte příjemce testovacího e-mailu.');
       return;
     }
-    if (hasUnsavedSmtpChanges && (!host.trim() || !username.trim() || (!password.trim() && !status?.configured))) {
-      setError('Před testem doplňte host, uživatele a heslo, aby bylo možné uložit aktuální SMTP konfiguraci.');
+    if (hasUnsavedSmtpChanges && (!fromEmail.trim() || !host.trim() || !username.trim() || (!password.trim() && !status?.configured))) {
+      setError('Před testem doplňte odesílatele, host, uživatele a heslo, aby bylo možné uložit aktuální SMTP konfiguraci.');
       return;
     }
     setSaving(true);
     setError(null);
     setMessage(null);
-    setTestDialog({
+    setMailDialog({
       phase: hasUnsavedSmtpChanges ? 'saving' : 'sending',
       title: hasUnsavedSmtpChanges ? 'Ukládám SMTP konfiguraci' : 'Odesílám testovací e-mail',
       description: hasUnsavedSmtpChanges
         ? 'Nejdřív uložíme aktuálně zadané SMTP údaje, aby test běžel nad správnou konfigurací.'
         : `Probíhá odeslání testovací zprávy na ${recipient}.`,
+      progressLabel: hasUnsavedSmtpChanges ? 'Ukládám konfiguraci…' : 'Čekám na potvrzení odeslání e-mailu…',
     });
     try {
       if (hasUnsavedSmtpChanges) {
         await fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp', {
           method: 'PUT',
           body: JSON.stringify({
+            from_email: fromEmail.trim().toLowerCase(),
             host: host.trim(),
             port: Number(port),
             username: username.trim(),
@@ -4128,6 +4208,7 @@ function SettingsAdmin(): JSX.Element {
           }),
         });
         setLoadedConfig({
+          fromEmail: fromEmail.trim().toLowerCase(),
           host: host.trim(),
           port: Number(port),
           username: username.trim(),
@@ -4136,10 +4217,11 @@ function SettingsAdmin(): JSX.Element {
         });
         setPassword('');
       }
-      setTestDialog({
+      setMailDialog({
         phase: 'sending',
         title: 'Odesílám testovací e-mail',
         description: `Probíhá odeslání testovací zprávy na ${recipient}.`,
+        progressLabel: 'Čekám na potvrzení odeslání e-mailu…',
       });
       const response = await fetchJson<{ ok: boolean; connected: boolean; send_attempted: boolean }>('/api/v1/admin/settings/smtp/test-email', {
         method: 'POST',
@@ -4150,7 +4232,7 @@ function SettingsAdmin(): JSX.Element {
       }
       load({ preserveMessage: true });
       setMessage('Testovací e-mail byl odeslán.');
-      setTestDialog({
+      setMailDialog({
         phase: 'success',
         title: 'Test SMTP proběhl úspěšně',
         description: `Testovací e-mail byl odeslán na ${recipient}.`,
@@ -4159,8 +4241,8 @@ function SettingsAdmin(): JSX.Element {
       const description = err instanceof Error && err.message.trim()
         ? err.message.trim()
         : 'Testovací e-mail se nepodařilo odeslat.';
-      setError('Testovací e-mail se nepodařilo odeslat.');
-      setTestDialog({
+      setError(description);
+      setMailDialog({
         phase: 'error',
         title: 'Test SMTP selhal',
         description,
@@ -4196,6 +4278,9 @@ function SettingsAdmin(): JSX.Element {
         </Card>
         <Card title={'E-mailov\u00e1 konfigurace'}>
           <div className="k-form-grid">
+            <FormField id="smtp_from_email" label="SMTP odesílatel">
+              <input id="smtp_from_email" className="k-input" type="email" value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} />
+            </FormField>
             <FormField id="smtp_host" label="SMTP host">
               <input id="smtp_host" className="k-input" value={host} onChange={(e) => setHost(e.target.value)} />
             </FormField>
@@ -4242,7 +4327,8 @@ function SettingsAdmin(): JSX.Element {
         </Card>
         </>
       )}
-      {testDialog ? (
+      <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="smtp-mail-dialog" />
+      {false ? (
         <div className="k-modal-backdrop" role="presentation">
           <div
             className="k-modal-card"
@@ -4251,16 +4337,16 @@ function SettingsAdmin(): JSX.Element {
             aria-labelledby="smtp-test-dialog-title"
             aria-describedby="smtp-test-dialog-description"
           >
-            <h2 id="smtp-test-dialog-title">{testDialog.title}</h2>
-            <p id="smtp-test-dialog-description">{testDialog.description}</p>
-            {testDialog.phase === 'saving' || testDialog.phase === 'sending' ? (
+            <h2 id="smtp-test-dialog-title">{mailDialog?.title}</h2>
+            <p id="smtp-test-dialog-description">{mailDialog?.description}</p>
+            {mailDialog?.phase === 'saving' || mailDialog?.phase === 'sending' ? (
               <div className="k-modal-progress" aria-live="polite">
                 <span className="k-modal-spinner" aria-hidden="true" />
                 <span>Probíhá testování…</span>
               </div>
             ) : (
               <div className="k-toolbar">
-                <button className="k-button" type="button" onClick={() => setTestDialog(null)}>{'Zav\u0159\u00edt'}</button>
+                <button className="k-button" type="button" onClick={() => setMailDialog(null)}>{'Zav\u0159\u00edt'}</button>
               </div>
             )}
           </div>
@@ -4425,6 +4511,7 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
   const [password, setPassword] = React.useState('');
   const [loginError, setLoginError] = React.useState<LoginErrorState | null>(null);
   const [hintStatus, setHintStatus] = React.useState<string | null>(null);
+  const [mailDialog, setMailDialog] = React.useState<MailActionDialogState | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -4464,11 +4551,45 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
 
   async function sendPasswordHint(): Promise<void> {
     setHintStatus(null);
-    await fetchJson('/api/auth/admin/hint', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
+    if (!email.trim()) {
+      setMailDialog({
+        phase: 'error',
+        title: 'Chybí e-mail',
+        description: 'Vyplňte admin e-mail, na který se má odeslat připomenutí.',
+      });
+      return;
+    }
+    setMailDialog({
+      phase: 'sending',
+      title: 'Odesílám připomenutí hesla',
+      description: `Probíhá odeslání připomenutí na ${email.trim()}.`,
+      progressLabel: 'Čekám na potvrzení odeslání e-mailu…',
     });
-    setHintStatus(copy.hintInfo ?? 'Pokyn byl zpracován.');
+    try {
+      const response = await fetchJson<{ ok: boolean; connected: boolean; send_attempted: boolean; message: string }>('/api/auth/admin/hint', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+      if (!response.connected || !response.send_attempted) {
+        throw new Error(response.message || 'Připomenutí nebylo potvrzeně odesláno.');
+      }
+      const nextStatus = response.message || copy.hintInfo || 'Pokyn byl zpracován.';
+      setHintStatus(nextStatus);
+      setMailDialog({
+        phase: 'success',
+        title: 'Připomenutí bylo odesláno',
+        description: nextStatus,
+      });
+    } catch (error) {
+      const description = error instanceof Error && error.message.trim()
+        ? error.message.trim()
+        : 'Připomenutí hesla se nepodařilo odeslat.';
+      setMailDialog({
+        phase: 'error',
+        title: 'Odeslání připomenutí selhalo',
+        description,
+      });
+    }
   }
 
   return (
@@ -4510,7 +4631,7 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
           </form>
         </Card>
       </section>
-
+      <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="admin-hint-dialog" />
     </main>
   );
 }

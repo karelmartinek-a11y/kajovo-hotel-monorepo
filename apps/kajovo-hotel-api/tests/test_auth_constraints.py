@@ -84,4 +84,9 @@ def test_admin_hint_endpoint_is_stable(api_base_url: str) -> None:
         headers=csrf_header(jar),
     )
     assert status == 200
-    assert body == {"ok": True}
+    assert body == {
+        "ok": True,
+        "connected": True,
+        "send_attempted": True,
+        "message": f"Připomenutí bylo odesláno na {ADMIN_EMAIL}.",
+    }

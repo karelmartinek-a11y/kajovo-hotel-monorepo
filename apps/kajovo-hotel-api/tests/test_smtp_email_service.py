@@ -24,6 +24,7 @@ from app.services.mail import (
     SmtpDeliveryError,
     SmtpEmailService,
     StoredSmtpConfig,
+    build_email_service,
 )
 
 
@@ -43,6 +44,7 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         db.add(
             PortalSmtpSettings(
                 id=1,
+                from_email="mailer@example.com",
                 host="smtp.local",
                 port=1025,
                 username="mailer",
@@ -68,8 +70,9 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         def _service_factory(*_args, **_kwargs):
             settings = get_settings()
             return SmtpEmailService(
-                sender=settings.smtp_from_email,
+                sender="mailer@example.com",
                 smtp_config=StoredSmtpConfig(
+                    from_email="mailer@example.com",
                     host="smtp.local",
                     port=1025,
                     username="mailer",
@@ -125,6 +128,7 @@ def test_get_smtp_settings_returns_blank_defaults_when_unconfigured(tmp_path):
       settings = get_smtp_settings(db=db)
 
     assert settings.host == ""
+    assert settings.from_email == ""
     assert settings.port == 587
     assert settings.username == ""
     assert settings.use_tls is True
@@ -140,6 +144,7 @@ def test_put_smtp_settings_preserves_existing_password_when_blank(tmp_path):
     with Session(engine) as db:
         initial = put_smtp_settings(
             SmtpSettingsUpsert(
+                from_email="noreply@example.com",
                 host="smtp.initial.local",
                 port=587,
                 username="mailer",
@@ -151,6 +156,7 @@ def test_put_smtp_settings_preserves_existing_password_when_blank(tmp_path):
         )
         updated = put_smtp_settings(
             SmtpSettingsUpsert(
+                from_email="noreply-updated@example.com",
                 host="smtp.changed.local",
                 port=2525,
                 username="mailer-updated",
@@ -163,6 +169,7 @@ def test_put_smtp_settings_preserves_existing_password_when_blank(tmp_path):
         stored = db.get(PortalSmtpSettings, 1)
 
     assert initial.password_masked
+    assert updated.from_email == "noreply-updated@example.com"
     assert updated.host == "smtp.changed.local"
     assert updated.port == 2525
     assert updated.username == "mailer-updated"
@@ -175,6 +182,7 @@ def test_put_smtp_settings_preserves_existing_password_when_blank(tmp_path):
 def test_compat_smtp_settings_read_tolerates_malformed_legacy_record():
     record = SimpleNamespace(
         host=None,
+        from_email=None,
         port="not-a-number",
         username=None,
         use_tls=None,
@@ -184,6 +192,7 @@ def test_compat_smtp_settings_read_tolerates_malformed_legacy_record():
     fallback = _compat_smtp_settings_read(record)
 
     assert fallback.host == ""
+    assert fallback.from_email == ""
     assert fallback.port == 587
     assert fallback.username == ""
     assert fallback.use_tls is True
@@ -200,6 +209,7 @@ def test_put_smtp_settings_rejects_conflicting_tls_and_ssl(tmp_path):
         with pytest.raises(Exception) as exc_info:
             put_smtp_settings(
                 SmtpSettingsUpsert(
+                    from_email="conflict@example.com",
                     host="smtp.conflict.local",
                     port=587,
                     username="mailer",
@@ -224,6 +234,7 @@ def test_put_smtp_settings_rejects_port_465_without_ssl(tmp_path):
         with pytest.raises(Exception) as exc_info:
             put_smtp_settings(
                 SmtpSettingsUpsert(
+                    from_email="port465@example.com",
                     host="smtp.port465.local",
                     port=465,
                     username="mailer",
@@ -242,8 +253,9 @@ def test_put_smtp_settings_rejects_port_465_without_ssl(tmp_path):
 def test_smtp_service_rewrites_wrong_version_number_to_actionable_hint(monkeypatch):
     settings = get_settings()
     service = SmtpEmailService(
-        sender=settings.smtp_from_email,
+        sender="mailer@example.com",
         smtp_config=StoredSmtpConfig(
+            from_email="mailer@example.com",
             host="smtp.local",
             port=587,
             username="mailer",
@@ -286,6 +298,7 @@ def test_send_test_email_returns_502_even_when_status_persist_fails(monkeypatch,
         db.add(
             PortalSmtpSettings(
                 id=1,
+                from_email="mailer@example.com",
                 host="smtp.local",
                 port=1025,
                 username="mailer",
@@ -325,6 +338,7 @@ def test_smtp_settings_routes_tolerate_legacy_table_without_status_columns(tmp_p
         conn.execute(text("""
             CREATE TABLE portal_smtp_settings (
               id INTEGER PRIMARY KEY,
+              from_email VARCHAR(255),
               host VARCHAR(255) NOT NULL,
               port INTEGER NOT NULL,
               username VARCHAR(255) NOT NULL,
@@ -336,9 +350,9 @@ def test_smtp_settings_routes_tolerate_legacy_table_without_status_columns(tmp_p
         conn.execute(
             text("""
                 INSERT INTO portal_smtp_settings
-                  (id, host, port, username, password_encrypted, use_tls, use_ssl)
+                  (id, from_email, host, port, username, password_encrypted, use_tls, use_ssl)
                 VALUES
-                  (1, 'smtp.legacy.local', 587, 'mailer', 'bad', 1, 0)
+                  (1, NULL, 'smtp.legacy.local', 587, 'mailer', 'bad', 1, 0)
             """)
         )
 
@@ -347,6 +361,7 @@ def test_smtp_settings_routes_tolerate_legacy_table_without_status_columns(tmp_p
         status = get_smtp_status(db=db)
 
     assert settings.host == "smtp.legacy.local"
+    assert settings.from_email == ""
     assert settings.port == 587
     assert settings.username == "mailer"
     assert status.configured is True
@@ -378,6 +393,7 @@ def test_send_test_email_persists_partial_delivery_flags(monkeypatch, tmp_path):
         db.add(
             PortalSmtpSettings(
                 id=1,
+                from_email="mailer@example.com",
                 host="smtp.local",
                 port=1025,
                 username="mailer",
@@ -413,6 +429,7 @@ def test_smtp_test_email_tolerates_legacy_table_without_status_columns(monkeypat
         conn.execute(text("""
             CREATE TABLE portal_smtp_settings (
               id INTEGER PRIMARY KEY,
+              from_email VARCHAR(255),
               host VARCHAR(255) NOT NULL,
               port INTEGER NOT NULL,
               username VARCHAR(255) NOT NULL,
@@ -424,9 +441,9 @@ def test_smtp_test_email_tolerates_legacy_table_without_status_columns(monkeypat
         conn.execute(
             text("""
                 INSERT INTO portal_smtp_settings
-                  (id, host, port, username, password_encrypted, use_tls, use_ssl)
+                  (id, from_email, host, port, username, password_encrypted, use_tls, use_ssl)
                 VALUES
-                  (1, 'smtp.legacy.local', 587, 'mailer', 'bad', 1, 0)
+                  (1, NULL, 'smtp.legacy.local', 587, 'mailer', 'bad', 1, 0)
             """)
         )
 
@@ -446,6 +463,7 @@ def test_put_smtp_settings_tolerates_legacy_table_without_status_columns(tmp_pat
         conn.execute(text("""
             CREATE TABLE portal_smtp_settings (
               id INTEGER PRIMARY KEY,
+              from_email VARCHAR(255),
               host VARCHAR(255) NOT NULL,
               port INTEGER NOT NULL,
               username VARCHAR(255) NOT NULL,
@@ -457,15 +475,16 @@ def test_put_smtp_settings_tolerates_legacy_table_without_status_columns(tmp_pat
         conn.execute(
             text("""
                 INSERT INTO portal_smtp_settings
-                  (id, host, port, username, password_encrypted, use_tls, use_ssl)
+                  (id, from_email, host, port, username, password_encrypted, use_tls, use_ssl)
                 VALUES
-                  (1, 'smtp.legacy.local', 587, 'mailer', 'legacy-secret', 1, 0)
+                  (1, NULL, 'smtp.legacy.local', 587, 'mailer', 'legacy-secret', 1, 0)
             """)
         )
 
     with Session(engine) as db:
         updated = put_smtp_settings(
             SmtpSettingsUpsert(
+                from_email="legacy-updated@example.com",
                 host="smtp.updated.local",
                 port=2525,
                 username="mailer-updated",
@@ -483,6 +502,7 @@ def test_put_smtp_settings_tolerates_legacy_table_without_status_columns(tmp_pat
             """)
         ).mappings().first()
 
+    assert updated.from_email == "legacy-updated@example.com"
     assert updated.host == "smtp.updated.local"
     assert updated.port == 2525
     assert updated.username == "mailer-updated"
@@ -495,3 +515,49 @@ def test_put_smtp_settings_tolerates_legacy_table_without_status_columns(tmp_pat
     assert stored_row["password_encrypted"] == "legacy-secret"
     assert bool(stored_row["use_tls"]) is False
     assert bool(stored_row["use_ssl"]) is True
+
+
+def test_build_email_service_prefers_stored_from_email(monkeypatch):
+    monkeypatch.setenv("KAJOVO_API_SMTP_ENABLED", "true")
+    monkeypatch.setenv("KAJOVO_API_SMTP_FROM_EMAIL", "noreply@kajovohotel.local")
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    service = build_email_service(
+        settings,
+        StoredSmtpConfig(
+            from_email="real-sender@example.com",
+            host="smtp.local",
+            port=587,
+            username="mailer",
+            password_encrypted="ZW5jcnlwdGVkIiL4fQ6q-XcJQqcvTYw9rM1tm6fRMwVlk4hzU1Gk",
+            use_tls=True,
+            use_ssl=False,
+        ),
+    )
+
+    assert isinstance(service, SmtpEmailService)
+    assert service.sender == "real-sender@example.com"
+
+
+def test_build_email_service_falls_back_to_username_when_sender_missing(monkeypatch):
+    monkeypatch.setenv("KAJOVO_API_SMTP_ENABLED", "true")
+    monkeypatch.setenv("KAJOVO_API_SMTP_FROM_EMAIL", "noreply@kajovohotel.local")
+    get_settings.cache_clear()
+    settings = get_settings()
+
+    service = build_email_service(
+        settings,
+        StoredSmtpConfig(
+            from_email="",
+            host="smtp.local",
+            port=587,
+            username="mailer@example.com",
+            password_encrypted="ZW5jcnlwdGVkIiL4fQ6q-XcJQqcvTYw9rM1tm6fRMwVlk4hzU1Gk",
+            use_tls=True,
+            use_ssl=False,
+        ),
+    )
+
+    assert isinstance(service, SmtpEmailService)
+    assert service.sender == "mailer@example.com"

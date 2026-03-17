@@ -29,6 +29,10 @@ test.describe('CI smoke auth flows', () => {
       headers: csrfHeaders,
     });
     expect(hintResponse.ok()).toBeTruthy();
+    const hintBody = await hintResponse.json();
+    expect(hintBody.ok).toBeTruthy();
+    expect(typeof hintBody.connected).toBe('boolean');
+    expect(typeof hintBody.send_attempted).toBe('boolean');
 
     const suffix = `${Date.now()}`;
     const userEmail = `smoke+${suffix}@kajovohotel.local`;
@@ -76,5 +80,15 @@ test.describe('CI smoke auth flows', () => {
     await expect(page.getByText(/admin účet nemá reset hesla/i)).toHaveCount(0);
     await expect(page.getByRole('heading', { name: /změna hesla/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /změnit heslo/i })).toHaveCount(0);
+  });
+
+  test('admin login hint zobrazi blokujici dialog az do potvrzeni odeslani', async ({ page }) => {
+    await page.goto('/admin/login', { waitUntil: 'networkidle' });
+    await page.getByLabel(/admin email/i).fill(ADMIN_EMAIL);
+    await page.getByRole('button', { name: /zapomenuté heslo/i }).click();
+
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText(/připomenutí bylo odesláno|odeslání připomenutí selhalo/i);
   });
 });

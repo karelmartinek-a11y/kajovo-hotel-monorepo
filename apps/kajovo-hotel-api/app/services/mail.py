@@ -22,6 +22,7 @@ class MailMessage:
 
 @dataclass(frozen=True)
 class SmtpSettingsPayload:
+    from_email: str
     host: str
     port: int
     username: str
@@ -32,6 +33,7 @@ class SmtpSettingsPayload:
 
 @dataclass(frozen=True)
 class StoredSmtpConfig:
+    from_email: str
     host: str
     port: int
     username: str
@@ -42,6 +44,7 @@ class StoredSmtpConfig:
 
 @dataclass(frozen=True)
 class SmtpConfigRead:
+    from_email: str
     host: str
     port: int
     username: str
@@ -147,6 +150,7 @@ def mask_secret(secret: str) -> str:
 def to_stored_config(payload: SmtpSettingsPayload, encryption_key: str) -> StoredSmtpConfig:
     validate_smtp_security_mode(port=payload.port, use_tls=payload.use_tls, use_ssl=payload.use_ssl)
     return StoredSmtpConfig(
+        from_email=payload.from_email.strip().lower(),
         host=payload.host.strip(),
         port=payload.port,
         username=payload.username.strip(),
@@ -159,6 +163,7 @@ def to_stored_config(payload: SmtpSettingsPayload, encryption_key: str) -> Store
 def to_read_model(config: StoredSmtpConfig, encryption_key: str) -> SmtpConfigRead:
     password = decrypt_secret(config.password_encrypted, encryption_key)
     return SmtpConfigRead(
+        from_email=config.from_email,
         host=config.host,
         port=config.port,
         username=config.username,
@@ -314,8 +319,15 @@ def build_email_service(
         return FileEmailService(capture_path=settings.smtp_capture_path.strip())
     if not settings.smtp_enabled or smtp_config is None:
         raise SmtpNotConfiguredError("Real SMTP is not configured")
+    sender = smtp_config.from_email.strip()
+    if not sender:
+        username = smtp_config.username.strip()
+        if "@" in username:
+            sender = username
+        else:
+            sender = settings.smtp_from_email
     return SmtpEmailService(
-        sender=settings.smtp_from_email,
+        sender=sender,
         smtp_config=smtp_config,
         encryption_key=settings.smtp_encryption_key,
         transport=transport,

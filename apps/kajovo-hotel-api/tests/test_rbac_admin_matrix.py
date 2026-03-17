@@ -137,6 +137,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
 
         if case.path == "/api/v1/admin/settings/smtp":
             payload = {
+                "from_email": "mailer@example.com",
                 "host": "smtp.test",
                 "port": 587,
                 "username": "mailer",
@@ -159,7 +160,6 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         assert status == 403
         assert isinstance(data, dict)
         assert data["detail"] == case.expected_permission
-
 
 
 

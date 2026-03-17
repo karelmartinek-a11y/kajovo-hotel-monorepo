@@ -50,6 +50,7 @@ def _validate_smtp_payload(payload: SmtpSettingsUpsert) -> None:
 
 def _stored_from_record(record: PortalSmtpSettings) -> StoredSmtpConfig:
     return StoredSmtpConfig(
+        from_email=(record.from_email or "").strip().lower(),
         host=record.host,
         port=record.port,
         username=record.username,
@@ -69,6 +70,7 @@ def _delivery_mode(*, smtp_enabled: bool, configured: bool) -> str:
 
 def _default_smtp_settings_read() -> SmtpSettingsRead:
     return SmtpSettingsRead(
+        from_email="",
         host="",
         port=587,
         username="",
@@ -96,6 +98,7 @@ def _safe_load_smtp_row(db: Session) -> dict[str, object] | None:
 
     wanted_columns = [
         "id",
+        "from_email",
         "host",
         "port",
         "username",
@@ -127,6 +130,7 @@ def _upsert_smtp_row(db: Session, stored: StoredSmtpConfig) -> None:
 
     values = {
         "id": 1,
+        "from_email": stored.from_email,
         "host": stored.host,
         "port": stored.port,
         "username": stored.username,
@@ -198,6 +202,7 @@ def _compat_smtp_settings_read(record: PortalSmtpSettings | None) -> SmtpSetting
         port = 587
 
     return SmtpSettingsRead(
+        from_email=(getattr(record, "from_email", "") or "").strip().lower(),
         host=(record.host or "").strip(),
         port=port,
         username=(record.username or "").strip(),
@@ -215,6 +220,7 @@ def get_smtp_settings(db: Session = Depends(get_db)) -> SmtpSettingsRead:
         return _default_smtp_settings_read()
     try:
         stored = StoredSmtpConfig(
+            from_email=str(row.get("from_email") or "").strip().lower(),
             host=str(row.get("host") or ""),
             port=int(row.get("port") or 587),
             username=str(row.get("username") or ""),
@@ -268,6 +274,7 @@ def put_smtp_settings(
     if row is None:
         stored = to_stored_config(
             SmtpSettingsPayload(
+                from_email=payload.from_email,
                 host=payload.host,
                 port=payload.port,
                 username=payload.username,
@@ -282,6 +289,7 @@ def put_smtp_settings(
         if password:
             password_encrypted = to_stored_config(
                 SmtpSettingsPayload(
+                    from_email=payload.from_email,
                     host=payload.host,
                     port=payload.port,
                     username=payload.username,
@@ -292,6 +300,7 @@ def put_smtp_settings(
                 settings.smtp_encryption_key,
             ).password_encrypted
         stored = StoredSmtpConfig(
+            from_email=payload.from_email.strip().lower(),
             host=payload.host.strip(),
             port=payload.port,
             username=payload.username.strip(),
@@ -329,6 +338,7 @@ def test_smtp_email(
             detail="SMTP is disabled in this environment",
         )
     stored = StoredSmtpConfig(
+        from_email=str(row.get("from_email") or "").strip().lower(),
         host=str(row.get("host") or ""),
         port=int(row.get("port") or 587),
         username=str(row.get("username") or ""),

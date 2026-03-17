@@ -507,6 +507,7 @@ class PortalSmtpSettings(Base):
     __tablename__ = "portal_smtp_settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    from_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     port: Mapped[int] = mapped_column(Integer, nullable=False)
     username: Mapped[str] = mapped_column(String(255), nullable=False)

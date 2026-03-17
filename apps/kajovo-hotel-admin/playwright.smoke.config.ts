@@ -5,6 +5,7 @@ import { getAdminCredentials } from './test-admin-credentials';
 const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:18000';
 const appBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:4174';
 const smokeDbPath = process.env.SMOKE_DB_PATH ?? '/tmp/kajovo-smoke-e2e.db';
+const smokeSmtpCapturePath = process.env.SMOKE_SMTP_CAPTURE_PATH ?? '/tmp/kajovo-smoke-e2e-smtp.jsonl';
 const isWin = process.platform === 'win32';
 const { email: adminEmail, password: adminPassword } = getAdminCredentials();
 
@@ -20,6 +21,7 @@ const apiEnv = [
   `PYTHONPATH=../kajovo-hotel-api`,
   `KAJOVO_API_DATABASE_URL=sqlite:///${dbPathNormalized}`,
   `KAJOVO_API_SMTP_ENABLED=false`,
+  `KAJOVO_API_SMTP_CAPTURE_PATH=${shellQuote(smokeSmtpCapturePath)}`,
   `KAJOVO_API_ENVIRONMENT=test`,
   `KAJOVO_API_ADMIN_EMAIL=${shellQuote(adminEmail)}`,
   `KAJOVO_API_ADMIN_PASSWORD=${shellQuote(adminPassword)}`,
@@ -29,6 +31,7 @@ const apiEnvWin = [
   `$env:PYTHONPATH='..\\\\kajovo-hotel-api'`,
   `$env:KAJOVO_API_DATABASE_URL='sqlite:///${dbPathNormalized}'`,
   `$env:KAJOVO_API_SMTP_ENABLED='false'`,
+  `$env:KAJOVO_API_SMTP_CAPTURE_PATH=${powerShellQuote(smokeSmtpCapturePath)}`,
   `$env:KAJOVO_API_ENVIRONMENT='test'`,
   `$env:KAJOVO_API_ADMIN_EMAIL=${powerShellQuote(adminEmail)}`,
   `$env:KAJOVO_API_ADMIN_PASSWORD=${powerShellQuote(adminPassword)}`,
