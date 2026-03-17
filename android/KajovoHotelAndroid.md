@@ -879,6 +879,10 @@ Samostatný Android workflow v `.github/workflows/` má spouštět minimálně:
 
 ## 20.2 Release gates pro Android
 Android release nesmí projít, pokud:
+- nebyl zvednut `versionCode` a `versionName` v `android/app/build.gradle.kts`,
+- nebyla zvednuta backend metadata verze v `apps/kajovo-hotel-api/app/config.py`,
+- veřejná APK `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk` neodpovídá právě vydané verzi,
+- produkční endpoint `/api/app/android-release` nehlásí stejnou verzi jako produkční APK,
 - chybí brand prvek na view,
 - chybí utility state coverage,
 - je nalezen horizontální overflow nebo cut-off CTA,
@@ -894,6 +898,7 @@ Feature je hotová jen pokud:
 - je role-guarded podle runtime permissions,
 - má loading/empty/error/offline/404 variantu podle potřeby,
 - má unit testy a minimálně jeden integration nebo UI test,
+- u release kandidáta je zvednutá Android verze, backend metadata verze a publikovaná veřejná APK ve stejném releasu,
 - nepřidává admin scope,
 - respektuje KDGS brand, spacing, typography a ergonomii,
 - nevyžaduje WebView nebo hybrid fallback.

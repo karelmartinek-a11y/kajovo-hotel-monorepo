@@ -43,6 +43,21 @@ Override bez zásahu do zdrojových souborů:
 
 Projekt neobsahuje žádná tajemství ani produkční credentials.
 
+## Standard verzování Android appky
+
+Každá uživatelsky viditelná změna Android aplikace musí být vydaná jako nová verze. Nestačí push zdrojových kódů.
+
+Povinný release postup:
+
+1. Zvednout `versionCode` a `versionName` v `android/app/build.gradle.kts`.
+2. Zvednout `android_app_version` v `apps/kajovo-hotel-api/app/config.py`.
+3. Upravit související testy a očekávání verze, minimálně `apps/kajovo-hotel-api/tests/test_android_release.py`.
+4. Sestavit novou APK.
+5. Nahradit veřejný soubor `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`.
+6. Ověřit po deploy, že `https://hotel.hcasc.cz/api/app/android-release` vrací stejnou verzi jako produkční APK na `https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk`.
+
+Auto-update v aplikaci je navázaný na backend metadata a veřejnou APK na produkci. Pokud se nezvedne verze i veřejná APK současně, změna se uživatelům nepropíše.
+
 ## Scope, který je záměrně mimo projekt
 
 - Admin scope.
