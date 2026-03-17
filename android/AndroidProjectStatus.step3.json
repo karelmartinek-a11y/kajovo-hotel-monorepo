@@ -1,0 +1,108 @@
+{
+  "status": "step3_feature_scope_complete_partial_verification",
+  "step": 3,
+  "implementedFeatures": [
+    "reception hub for breakfast and lost_found entry points",
+    "breakfast role-aware list, summary, detail, reception create/edit, import preview+confirm and export trigger",
+    "lost_found list, filters, detail, create, edit and up to 3 photo upload with thumbnail/detail rendering",
+    "housekeeping quick capture for issue/lost_found with room, short description, photo picker and success state",
+    "issues list, filters, detail, photos and backend-guarded maintenance status transitions",
+    "inventory list and create movement from list without non-admin item detail or admin flows",
+    "feature-level repositories, domain mappers, Hilt viewmodels and JVM tests for scope guards and repository flows"
+  ],
+  "omittedOutOfScopeFeatures": [
+    "admin scope screens and endpoints",
+    "reports and dashboard screens",
+    "non-admin inventory detail/create/edit/delete item flows",
+    "maintenance role issue create flow",
+    "admin inventory export and stocktake pdf UI"
+  ],
+  "createdFiles": [
+    "android/feature/breakfast/src/main/java/cz/hcasc/kajovohotel/feature/breakfast/domain/BreakfastModels.kt",
+    "android/feature/breakfast/src/main/java/cz/hcasc/kajovohotel/feature/breakfast/data/BreakfastRepository.kt",
+    "android/feature/breakfast/src/main/java/cz/hcasc/kajovohotel/feature/breakfast/presentation/BreakfastViewModel.kt",
+    "android/feature/breakfast/src/test/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastDraftTest.kt",
+    "android/feature/breakfast/src/test/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastRolePolicyTest.kt",
+    "android/feature/lostfound/src/main/java/cz/hcasc/kajovohotel/feature/lostfound/domain/LostFoundModels.kt",
+    "android/feature/lostfound/src/main/java/cz/hcasc/kajovohotel/feature/lostfound/data/LostFoundRepository.kt",
+    "android/feature/lostfound/src/main/java/cz/hcasc/kajovohotel/feature/lostfound/presentation/LostFoundViewModel.kt",
+    "android/feature/lostfound/src/test/java/cz/hcasc/kajovohotel/feature/lostfound/LostFoundDraftTest.kt",
+    "android/feature/issues/src/main/java/cz/hcasc/kajovohotel/feature/issues/domain/IssueModels.kt",
+    "android/feature/issues/src/main/java/cz/hcasc/kajovohotel/feature/issues/data/IssuesRepository.kt",
+    "android/feature/issues/src/main/java/cz/hcasc/kajovohotel/feature/issues/presentation/IssuesViewModel.kt",
+    "android/feature/issues/src/test/java/cz/hcasc/kajovohotel/feature/issues/IssueGuardTest.kt",
+    "android/feature/inventory/src/main/java/cz/hcasc/kajovohotel/feature/inventory/domain/InventoryModels.kt",
+    "android/feature/inventory/src/main/java/cz/hcasc/kajovohotel/feature/inventory/data/InventoryRepository.kt",
+    "android/feature/inventory/src/main/java/cz/hcasc/kajovohotel/feature/inventory/presentation/InventoryViewModel.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/InventoryMovementDraftTest.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/FakeInventoryApi.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/InventoryRepositoryTest.kt",
+    "android/feature/housekeeping/src/main/java/cz/hcasc/kajovohotel/feature/housekeeping/domain/HousekeepingModels.kt",
+    "android/feature/housekeeping/src/main/java/cz/hcasc/kajovohotel/feature/housekeeping/data/HousekeepingCaptureRepository.kt",
+    "android/feature/housekeeping/src/main/java/cz/hcasc/kajovohotel/feature/housekeeping/presentation/HousekeepingViewModel.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/FakeApis.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingCaptureDraftTest.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingCaptureRepositoryTest.kt",
+    "android/app/src/test/java/cz/hcasc/kajovohotel/app/PermissionGuardTest.kt",
+    "android/BuildVerification.step3.md",
+    "android/AndroidProjectStatus.step3.json"
+  ],
+  "updatedFiles": [
+    "android/app/src/main/java/cz/hcasc/kajovohotel/app/KajovoHotelApp.kt",
+    "android/feature/breakfast/build.gradle.kts",
+    "android/feature/breakfast/src/main/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastScreen.kt",
+    "android/feature/lostfound/build.gradle.kts",
+    "android/feature/lostfound/src/main/java/cz/hcasc/kajovohotel/feature/lostfound/LostFoundScreen.kt",
+    "android/feature/issues/build.gradle.kts",
+    "android/feature/issues/src/main/java/cz/hcasc/kajovohotel/feature/issues/IssuesScreen.kt",
+    "android/feature/inventory/build.gradle.kts",
+    "android/feature/inventory/src/main/java/cz/hcasc/kajovohotel/feature/inventory/InventoryScreen.kt",
+    "android/feature/housekeeping/build.gradle.kts",
+    "android/feature/housekeeping/src/main/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingScreen.kt"
+  ],
+  "buildCommandsAttempted": [
+    "bash -n android/gradlew",
+    "python static required file verification for step 3",
+    "python settings.gradle.kts include verification",
+    "python feature build.gradle.kts Hilt/KSP/network wiring verification",
+    "grep -RInE 'placeholder_markers' android/app android/core android/feature",
+    "python UTF-8 without BOM verification for updated files",
+    "cd android && chmod +x gradlew && ./gradlew tasks"
+  ],
+  "buildCommandsPassed": [
+    "bash -n android/gradlew",
+    "python static required file verification for step 3",
+    "python settings.gradle.kts include verification",
+    "python feature build.gradle.kts Hilt/KSP/network wiring verification",
+    "grep -RInE 'placeholder_markers' android/app android/core android/feature",
+    "python UTF-8 without BOM verification for updated files"
+  ],
+  "buildCommandsFailed": [
+    {
+      "command": "cd android && chmod +x gradlew && ./gradlew tasks",
+      "reason": "Offline container could not resolve services.gradle.org to bootstrap Gradle; Android SDK is also unavailable in the container."
+    }
+  ],
+  "testsAdded": [
+    "android/app/src/test/java/cz/hcasc/kajovohotel/app/PermissionGuardTest.kt",
+    "android/feature/breakfast/src/test/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastDraftTest.kt",
+    "android/feature/breakfast/src/test/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastRolePolicyTest.kt",
+    "android/feature/lostfound/src/test/java/cz/hcasc/kajovohotel/feature/lostfound/LostFoundDraftTest.kt",
+    "android/feature/issues/src/test/java/cz/hcasc/kajovohotel/feature/issues/IssueGuardTest.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/InventoryMovementDraftTest.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/InventoryRepositoryTest.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingCaptureDraftTest.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingCaptureRepositoryTest.kt"
+  ],
+  "remainingScopeForNextStep": [
+    "Run real Gradle sync, unit tests and assembleDebug in an environment with Android SDK and network access.",
+    "Finish final hardening pass for copy polish, image picker/device validation and connected tests.",
+    "Optionally add richer Compose/instrumentation smoke coverage once SDK-backed CI is available."
+  ],
+  "blockers": [
+    "The container could not perform an executable Android build because Gradle distribution bootstrap requires network access and Android SDK is unavailable."
+  ],
+  "zipMode": "zip_in_zip_out",
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}

@@ -1,0 +1,107 @@
+{
+  "status": "final_hardening_complete_partial_runtime_verification",
+  "step": "final",
+  "projectReadyForAndroidStudio": true,
+  "createdFiles": [
+    "android/BuildVerification.final.md",
+    "android/AndroidProjectStatus.final.json",
+    "android/KajovoHotelAndroidProject.handoff.json"
+  ],
+  "updatedFiles": [
+    "android/README_ANDROID.md",
+    "android/build.gradle.kts",
+    "android/app/build.gradle.kts",
+    "android/core/common/build.gradle.kts",
+    "android/core/database/build.gradle.kts",
+    "android/core/designsystem-tokens/build.gradle.kts",
+    "android/core/designsystem/build.gradle.kts",
+    "android/core/model/build.gradle.kts",
+    "android/core/network/build.gradle.kts",
+    "android/core/session/build.gradle.kts",
+    "android/core/testing/build.gradle.kts",
+    "android/feature/auth/login/build.gradle.kts",
+    "android/feature/auth/roles/build.gradle.kts",
+    "android/feature/profile/build.gradle.kts",
+    "android/feature/utility/build.gradle.kts",
+    "android/feature/reception/build.gradle.kts",
+    "android/feature/housekeeping/build.gradle.kts",
+    "android/feature/breakfast/build.gradle.kts",
+    "android/feature/lostfound/build.gradle.kts",
+    "android/feature/issues/build.gradle.kts",
+    "android/feature/inventory/build.gradle.kts",
+    "android/core/network/src/main/java/cz/hcasc/kajovohotel/core/network/ApiFailure.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionMetadataStore.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionPreferencesStore.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/DefaultSessionRepository.kt",
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/DefaultSessionRepositoryTest.kt",
+    "android/feature/lostfound/src/main/java/cz/hcasc/kajovohotel/feature/lostfound/LostFoundScreen.kt",
+    "android/feature/issues/src/main/java/cz/hcasc/kajovohotel/feature/issues/IssuesScreen.kt",
+    "android/feature/housekeeping/src/main/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingScreen.kt",
+    "android/BuildVerification.step1.md",
+    "android/BuildVerification.step2.md",
+    "android/BuildVerification.step3.md",
+    "android/AndroidProjectStatus.step1.json",
+    "android/AndroidProjectStatus.step2.json",
+    "android/AndroidProjectStatus.step3.json"
+  ],
+  "buildCommandsAttempted": [
+    "bash -n android/gradlew",
+    "python static module include + dependency graph + namespace validation",
+    "python UTF-8 without BOM validation for android text files",
+    "python shell/scope guard static validation",
+    "rg -n forbidden marker scan in android subtree",
+    "cd android && chmod +x gradlew && ./gradlew help",
+    "cd android && ./gradlew assembleDebug",
+    "cd android && ./gradlew testDebugUnitTest",
+    "cd android && ./gradlew lintDebug"
+  ],
+  "buildCommandsPassed": [
+    "bash -n android/gradlew",
+    "python static module include + dependency graph + namespace validation",
+    "python UTF-8 without BOM validation for android text files",
+    "python shell/scope guard static validation",
+    "rg -n forbidden marker scan in android subtree"
+  ],
+  "buildCommandsFailed": [
+    {
+      "command": "cd android && chmod +x gradlew && ./gradlew help",
+      "reason": "Offline container could not resolve services.gradle.org, so the Gradle 8.13 distribution bootstrap did not start."
+    },
+    {
+      "command": "cd android && ./gradlew assembleDebug",
+      "reason": "Wrapper bootstrap failed before dependency resolution because services.gradle.org was unreachable; Android SDK is also unavailable in the container."
+    },
+    {
+      "command": "cd android && ./gradlew testDebugUnitTest",
+      "reason": "Wrapper bootstrap failed before Gradle task execution because services.gradle.org was unreachable; Android SDK is also unavailable in the container."
+    },
+    {
+      "command": "cd android && ./gradlew lintDebug",
+      "reason": "Wrapper bootstrap failed before Gradle task execution because services.gradle.org was unreachable; Android SDK is also unavailable in the container."
+    }
+  ],
+  "testsPresent": [
+    "android/app/src/test/java/cz/hcasc/kajovohotel/app/PermissionGuardTest.kt",
+    "android/app/src/test/java/cz/hcasc/kajovohotel/app/RootDestinationResolverTest.kt",
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/DefaultSessionRepositoryTest.kt",
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/SessionErrorMapperTest.kt",
+    "android/feature/breakfast/src/test/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastDraftTest.kt",
+    "android/feature/breakfast/src/test/java/cz/hcasc/kajovohotel/feature/breakfast/BreakfastRolePolicyTest.kt",
+    "android/feature/lostfound/src/test/java/cz/hcasc/kajovohotel/feature/lostfound/LostFoundDraftTest.kt",
+    "android/feature/issues/src/test/java/cz/hcasc/kajovohotel/feature/issues/IssueGuardTest.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/InventoryMovementDraftTest.kt",
+    "android/feature/inventory/src/test/java/cz/hcasc/kajovohotel/feature/inventory/InventoryRepositoryTest.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingCaptureDraftTest.kt",
+    "android/feature/housekeeping/src/test/java/cz/hcasc/kajovohotel/feature/housekeeping/HousekeepingCaptureRepositoryTest.kt"
+  ],
+  "lintStatus": "not_executed_wrapper_bootstrap_blocked_by_offline_environment",
+  "remainingKnownLimitations": [
+    "No executable Android build was completed in this container because Gradle distribution bootstrap requires network access and the Android SDK is unavailable.",
+    "Instrumented tests and Compose UI tests still need to be run on an emulator or device in Android Studio or CI with Android SDK.",
+    "Runtime verification against the live backend remains required for cookie/CSRF behavior and media/document picker flows."
+  ],
+  "blockers": [],
+  "zipMode": "zip_in_zip_out",
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}

@@ -1,0 +1,42 @@
+#!/usr/bin/env sh
+set -eu
+
+APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROPERTIES_FILE="$APP_HOME/gradle/wrapper/gradle-wrapper.properties"
+DISTRIBUTION_URL=$(grep '^distributionUrl=' "$PROPERTIES_FILE" | cut -d= -f2- | sed 's#\\##g')
+DIST_NAME=$(basename "$DISTRIBUTION_URL" .zip)
+DIST_DIR="$APP_HOME/.gradle-dist/$DIST_NAME"
+GRADLE_BIN="$DIST_DIR/bin/gradle"
+ZIP_PATH="$APP_HOME/.gradle-dist/$DIST_NAME.zip"
+
+mkdir -p "$APP_HOME/.gradle-dist"
+
+if [ ! -x "$GRADLE_BIN" ]; then
+  echo "Bootstrapping Gradle distribution: $DISTRIBUTION_URL"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$DISTRIBUTION_URL" -o "$ZIP_PATH"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - "$DISTRIBUTION_URL" "$ZIP_PATH" <<'PY'
+import sys, urllib.request
+urllib.request.urlretrieve(sys.argv[1], sys.argv[2])
+PY
+  else
+    echo "Missing downloader. Install curl or python3." >&2
+    exit 1
+  fi
+
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -oq "$ZIP_PATH" -d "$APP_HOME/.gradle-dist"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - "$ZIP_PATH" "$APP_HOME/.gradle-dist" <<'PY'
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as zf:
+    zf.extractall(sys.argv[2])
+PY
+  else
+    echo "Missing unzip support. Install unzip or python3." >&2
+    exit 1
+  fi
+fi
+
+exec "$GRADLE_BIN" -p "$APP_HOME" "$@"

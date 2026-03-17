@@ -1,0 +1,82 @@
+{
+  "status": "step2_core_shell_complete_partial_verification",
+  "step": 2,
+  "implementedScopes": [
+    "login with authoritative me bootstrap",
+    "session restore",
+    "cookie and CSRF handling",
+    "role selection",
+    "logout cleanup",
+    "profile load and update",
+    "change password with forced re-login",
+    "utility state routing",
+    "access denied flow",
+    "role-aware navigation guards",
+    "auth/session event interceptors",
+    "baseline JVM tests for auth/session and shell routing"
+  ],
+  "createdFiles": [
+    "android/core/network/src/main/java/cz/hcasc/kajovohotel/core/network/AuthNetworkEvents.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionMetadataStore.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionCookieStore.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionErrorMapper.kt",
+    "android/app/src/main/java/cz/hcasc/kajovohotel/app/RootDestinationResolver.kt",
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/SessionErrorMapperTest.kt",
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/DefaultSessionRepositoryTest.kt",
+    "android/app/src/test/java/cz/hcasc/kajovohotel/app/RootDestinationResolverTest.kt",
+    "android/BuildVerification.step2.md",
+    "android/AndroidProjectStatus.step2.json"
+  ],
+  "updatedFiles": [
+    "android/core/model/src/main/java/cz/hcasc/kajovohotel/core/model/AuthModels.kt",
+    "android/core/common/src/main/java/cz/hcasc/kajovohotel/core/common/Logger.kt",
+    "android/core/network/src/main/java/cz/hcasc/kajovohotel/core/network/RequestInterceptors.kt",
+    "android/core/session/build.gradle.kts",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionRepository.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/SessionPreferencesStore.kt",
+    "android/core/session/src/main/java/cz/hcasc/kajovohotel/core/session/DefaultSessionRepository.kt",
+    "android/app/build.gradle.kts",
+    "android/app/src/main/java/cz/hcasc/kajovohotel/app/AppModules.kt",
+    "android/app/src/main/java/cz/hcasc/kajovohotel/app/AppStateViewModel.kt",
+    "android/app/src/main/java/cz/hcasc/kajovohotel/app/KajovoHotelApp.kt",
+    "android/feature/auth/login/src/main/java/cz/hcasc/kajovohotel/feature/auth/login/LoginScreen.kt",
+    "android/feature/profile/src/main/java/cz/hcasc/kajovohotel/feature/profile/ProfileScreens.kt",
+    "android/gradlew"
+  ],
+  "buildCommandsAttempted": [
+    "bash -n android/gradlew",
+    "python static required file verification for step 2",
+    "python static placeholder scan for placeholder markerů",
+    "python UTF-8 without BOM verification",
+    "cd android && ./gradlew --version"
+  ],
+  "buildCommandsPassed": [
+    "bash -n android/gradlew",
+    "python static required file verification for step 2",
+    "python static placeholder scan for placeholder markerů",
+    "python UTF-8 without BOM verification"
+  ],
+  "buildCommandsFailed": [
+    {
+      "command": "cd android && ./gradlew --version",
+      "reason": "Offline container could not resolve services.gradle.org and therefore could not bootstrap Gradle 8.13; Android SDK is also unavailable in the container."
+    }
+  ],
+  "testsAdded": [
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/SessionErrorMapperTest.kt",
+    "android/core/session/src/test/java/cz/hcasc/kajovohotel/core/session/DefaultSessionRepositoryTest.kt",
+    "android/app/src/test/java/cz/hcasc/kajovohotel/app/RootDestinationResolverTest.kt"
+  ],
+  "remainingScopeForNextStep": [
+    "Implement repositories and real domain logic for breakfast, lost_found, issues, inventory, housekeeping and reception flows.",
+    "Napojit feature moduly na jejich endpointy a DTO mapování mimo auth/profile shell.",
+    "Doplnit feature-level unit and Compose tests a spustit je v prostředí s Android SDK.",
+    "Ověřit assembleDebug, testDebugUnitTest a případně connected check v síťově otevřeném Android build prostředí."
+  ],
+  "blockers": [
+    "V tomto kontejneru nebylo možné exekučním buildem ověřit Gradle sync ani Android build kvůli chybějící síti a Android SDK."
+  ],
+  "zipMode": "zip_in_zip_out",
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}

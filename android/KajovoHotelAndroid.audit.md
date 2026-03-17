@@ -3,10 +3,12 @@
 KájovoHotel Android forenzní audit repo a KDGS
 
 Datum auditu: 2026-03-16
+Datum posledního ověření proti aktuální repo revizi: 2026-03-16
 
 # 2. Auditované vstupy
 
-- ZIP repozitáře: `kajovo-hotel-monorepo-main (1).zip`, rozbalený do pracovního repozitářového rootu.
+- ZIP repozitáře: `kajovo-hotel-monorepo-main (5).zip`, rozbalený do pracovního repozitářového rootu.
+- Kontrolní porovnání s předchozí dodávkou podkladů: `kajovo-hotel-monorepo-main_android-docs-updated.zip`.
 - Root a workspace: `README.md`, `package.json`, `pnpm-workspace.yaml`, `.github/workflows/*`, `apps/*`, `packages/*`, `docs/*`, `scripts/*`.
 - Závazný current-state standard: `docs/Kajovo_Design_Governance_Standard_SSOT.md`.
 - Aktivní current-state docs: `docs/README.md`, `docs/release-checklist.md`, `docs/rbac.md`.

@@ -4,10 +4,10 @@
 
 Status dokumentu: `proposal_complete`  
 Datum: `2026-03-16`  
-Revize: `repo delta po odstranění auth/reset blockeru`  
+Revize: `ověřeno proti aktuální čisté repo revizi`  
 Typ dokumentu: návrh architektury a delivery plánu, nikoli implementace.
 
-Tento dokument navazuje na `android/KajovoHotelAndroid.audit.md` a používá jen scope, role, endpointy a design omezení, které byly skutečně dohledané v rozbaleném repozitáři a v KDGS. Tato revize už započítává nově doložený admin-init reset hesla (`/login/reset` + `POST /api/auth/reset-password`) i následné sjednocení RBAC kontraktu pro roli `sklad`. Kde repo nebo audit neposkytují plný důkaz, je to výslovně označeno jako `PŘEDPOKLAD`, `RISK`, `GAP` nebo `BACKEND PREREQUISITE`.
+Tento dokument navazuje na `android/KajovoHotelAndroid.audit.md` a používá jen scope, role, endpointy a design omezení, které byly skutečně dohledané v rozbaleném repozitáři a v KDGS. Tato revize je znovu ověřená proti aktuálnímu ZIP vstupu `kajovo-hotel-monorepo-main (5).zip`; potvrzuje admin-init reset hesla (`/login/reset` + `POST /api/auth/reset-password`) i sjednocený RBAC kontrakt pro roli `sklad`. Kde repo nebo audit neposkytují plný důkaz, je to výslovně označeno jako `PŘEDPOKLAD`, `RISK`, `GAP` nebo `BACKEND PREREQUISITE`.
 
 # 2. Executive summary
 

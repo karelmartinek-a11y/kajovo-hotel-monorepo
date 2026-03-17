@@ -1,5 +1,5 @@
 {
-  "status": "proposal_complete",
+  "status": "ready_for_zip_out",
   "createdFiles": [
     "android/KajovoHotelAndroid.audit.md",
     "android/KajovoHotelAndroid.md",
@@ -9,7 +9,9 @@
   "mainDeliverable": "android/KajovoHotelAndroid.md",
   "blockers": [],
   "openQuestions": [],
-  "nextStep": "review_and_signoff",
+  "nextStep": "return_zip",
   "encoding": "UTF-8",
-  "lineEndings": "LF"
+  "lineEndings": "LF",
+  "zipMode": "zip_in_zip_out",
+  "outputZipShouldContainRepoRoot": true
 }

@@ -1,0 +1,55 @@
+{
+  "status": "finalized_for_android_studio_import",
+  "mainDeliverable": "android/",
+  "androidProjectRoot": "android",
+  "importantDocs": [
+    "android/README_ANDROID.md",
+    "android/KajovoHotelAndroid.md",
+    "android/KajovoHotelAndroid.audit.md",
+    "android/KajovoHotelAndroid.build-matrix.json",
+    "android/BuildVerification.final.md",
+    "android/AndroidProjectStatus.final.json"
+  ],
+  "buildBaseline": {
+    "jdk": "17",
+    "gradle": "8.13",
+    "agp": "8.12.2",
+    "kotlin": "2.2.20",
+    "compileSdk": "35",
+    "targetSdk": "35",
+    "minSdk": "26"
+  },
+  "verifiedUserScope": [
+    "login",
+    "session restore via /api/auth/me",
+    "role selection",
+    "logout",
+    "profile and change-password",
+    "utility states and access-denied",
+    "reception hub",
+    "breakfast non-admin flows",
+    "lost-found non-admin flows",
+    "housekeeping quick capture",
+    "issues non-admin list/detail/status update",
+    "inventory list and movement create from list"
+  ],
+  "outOfScope": [
+    "admin scope",
+    "reports",
+    "dashboard screens",
+    "webview or hybrid shell",
+    "non-admin inventory detail/create/edit/delete item flows",
+    "maintenance issue create flow",
+    "admin inventory export"
+  ],
+  "blockers": [],
+  "knownLimitations": [
+    "Gradle bootstrap, assembleDebug, unit test tasks and lint could not be executed in the offline container with no Android SDK.",
+    "Device/emulator verification is still required for media pickers, document picker and backend-integrated auth/session flows."
+  ],
+  "nextStep": "Open android/ in Android Studio with JDK 17, let the wrapper download Gradle 8.13, then run assembleDebug, testDebugUnitTest and lintDebug.",
+  "zipMode": "zip_in_zip_out",
+  "outputZipShouldContainRepoRoot": true,
+  "encoding": "UTF-8",
+  "lineEndings": "LF"
+}
