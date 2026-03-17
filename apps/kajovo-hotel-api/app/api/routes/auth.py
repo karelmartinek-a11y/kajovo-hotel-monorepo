@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 from app.api.schemas import (
     AdminLoginRequest,
     AuthIdentityResponse,
-    MailDispatchResponse,
     AuthProfileRead,
     AuthProfileUpdate,
     LogoutResponse,
+    MailDispatchResponse,
     PortalLoginRequest,
     PortalPasswordChangeRequest,
     PortalPasswordResetRequest,
