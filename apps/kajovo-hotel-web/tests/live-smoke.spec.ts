@@ -60,6 +60,7 @@ test('portal bez session skonci na loginu', async ({ page }) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Stáhnout APK' })).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
 });
 
 test('portal auth endpoint funguje nad realnym API a web admin surface zustava retired', async ({ page, request }, testInfo) => {

@@ -40,6 +40,29 @@
   gap: var(--k-spacing-3);
 }
 
+.k-login-download {
+  margin-top: var(--k-spacing-5);
+  padding-top: var(--k-spacing-4);
+  border-top: 1px solid var(--k-color-border);
+  display: grid;
+  gap: var(--k-spacing-3);
+}
+
+.k-login-download__title {
+  margin: 0;
+  font-size: var(--k-font-size-lg);
+  color: var(--k-color-ink);
+}
+
+.k-login-download__copy {
+  margin: 0;
+  color: var(--k-color-ink-secondary);
+}
+
+.k-login-download__action {
+  justify-self: start;
+}
+
 .k-login-feedback {
   margin: 0;
   border: 1px solid var(--k-color-error);

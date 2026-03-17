@@ -85,6 +85,21 @@ export function PortalLoginPage(): JSX.Element {
           ) : null}
           <p className="k-login-copy">Reset hesla odesílá pouze administrátor ze správy uživatelů.</p>
         </form>
+        <section className="k-login-download" aria-labelledby="portal-download-title">
+          <h2 id="portal-download-title" className="k-login-download__title">
+            Stáhnout Android aplikaci
+          </h2>
+          <p className="k-login-download__copy">
+            Pro přihlášení z telefonu nebo tabletu si můžeš stáhnout instalační APK balíček.
+          </p>
+          <a
+            className="k-button k-login-download__action"
+            href="/downloads/kajovo-hotel-android.apk"
+            download="kajovo-hotel-android.apk"
+          >
+            Stáhnout APK
+          </a>
+        </section>
       </section>
       <KajovoSign href="/" />
     </main>
