@@ -1,6 +1,7 @@
 package cz.hcasc.kajovohotel.feature.lostfound
 
 import cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundDraft
+import cz.hcasc.kajovohotel.feature.lostfound.domain.isValidForSubmit
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

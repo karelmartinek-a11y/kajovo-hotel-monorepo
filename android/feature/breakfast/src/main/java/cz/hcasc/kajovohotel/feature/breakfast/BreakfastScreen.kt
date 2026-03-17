@@ -11,31 +11,35 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Grass
+import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
@@ -48,6 +52,7 @@ import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.breakfastScreenTitle
 import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
+import cz.hcasc.kajovohotel.feature.breakfast.domain.serviceStats
 import cz.hcasc.kajovohotel.feature.breakfast.presentation.BreakfastUiState
 import cz.hcasc.kajovohotel.feature.breakfast.presentation.BreakfastViewModel
 import java.time.LocalDate
@@ -82,7 +87,7 @@ fun BreakfastScreen(
             BreakfastToolbar(
                 state = state,
                 onDateChange = viewModel::setServiceDate,
-                onRefresh = { viewModel.load(activeRole, state.serviceDate) },
+                onRefresh = { date -> viewModel.load(activeRole, date) },
                 onPickImport = { pdfLauncher.launch(arrayOf("application/pdf")) },
                 onExport = viewModel::triggerExport,
             )
@@ -96,6 +101,7 @@ fun BreakfastScreen(
                 items(state.orders, key = { it.id }) { order ->
                     BreakfastOrderCard(
                         order = order,
+                        showCompactLayout = activeRole == PortalRole.BREAKFAST,
                         isSelected = state.selectedOrder?.id == order.id,
                         isSubmitting = state.isSubmitting,
                         onSelect = { viewModel.selectOrder(order) },
@@ -132,7 +138,7 @@ fun BreakfastScreen(
 private fun BreakfastToolbar(
     state: BreakfastUiState,
     onDateChange: (String) -> Unit,
-    onRefresh: () -> Unit,
+    onRefresh: (String) -> Unit,
     onPickImport: () -> Unit,
     onExport: () -> Unit,
 ) {
@@ -160,7 +166,7 @@ private fun BreakfastToolbar(
 private fun BreakfastDateSelector(
     serviceDate: String,
     onDateChange: (String) -> Unit,
-    onRefresh: () -> Unit,
+    onRefresh: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val parsedDate = runCatching { LocalDate.parse(serviceDate) }.getOrElse { LocalDate.now() }
@@ -169,7 +175,7 @@ private fun BreakfastDateSelector(
         { _, year, month, day ->
             val picked = LocalDate.of(year, month + 1, day).toString()
             onDateChange(picked)
-            onRefresh()
+            onRefresh(picked)
         },
         parsedDate.year,
         parsedDate.monthValue - 1,
@@ -193,23 +199,26 @@ private fun BreakfastDateSelector(
                     }
                 },
             )
-            Button(onClick = onRefresh) { Text("Načíst") }
+            Button(onClick = { onRefresh(serviceDate) }) { Text("Načíst") }
         }
     }
 }
 
 @Composable
 private fun BreakfastSummaryCard(state: BreakfastUiState) {
-    val summary = state.summary
+    val stats = state.orders.serviceStats(state.summary)
+    val summaryDate = state.summary?.serviceDate ?: state.serviceDate
+
     FeatureCard(
-        title = summary?.let { "Denní souhrn ${it.serviceDate}" } ?: "Denní souhrn",
-        subtitle = summary?.let { "Objednávky ${it.totalOrders} · hosté ${it.totalGuests} · stavy ${it.statusCounts}" } ?: "Souhrn se načítá.",
+        title = "Denní souhrn $summaryDate",
+        subtitle = "Snídaně ${stats.totalBreakfasts} · vydáno ${stats.servedBreakfasts} · zbývá ${stats.remainingBreakfasts}\nPokoje ${stats.totalRooms} · vydáno ${stats.servedRooms} · zbývá ${stats.remainingRooms}",
     )
 }
 
 @Composable
 private fun BreakfastOrderCard(
     order: BreakfastOrder,
+    showCompactLayout: Boolean,
     isSelected: Boolean,
     isSubmitting: Boolean,
     onSelect: () -> Unit,
@@ -220,38 +229,37 @@ private fun BreakfastOrderCard(
             .fillMaxWidth()
             .clickable { onSelect() },
         shape = RoundedCornerShape(KajovoRadiusTokens.R12),
-        colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+        ),
     ) {
         Column(
             modifier = Modifier.padding(KajovoSpacingTokens.S4),
-            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
         ) {
             Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Pokoj ${order.roomNumber}",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = order.roomNumber,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
-                Text(
-                    text = order.status.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                if (!showCompactLayout) {
+                    Text(text = order.status.label, style = MaterialTheme.typography.bodyMedium)
+                }
             }
-            Text(text = order.guestName, style = MaterialTheme.typography.bodyLarge)
+            Text(text = order.guestName, style = MaterialTheme.typography.titleMedium)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
-                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(imageVector = Icons.Outlined.People, contentDescription = "Počet osob")
                 Text(text = "${order.guestCount} osob", style = MaterialTheme.typography.bodyMedium)
-                if (order.note.isNotBlank()) {
-                    Text(text = "· ${order.note}", style = MaterialTheme.typography.bodyMedium)
-                }
             }
-            DietBadges(
+            DietIcons(
                 noMilk = order.noMilk,
                 noGluten = order.noGluten,
                 noPork = order.noPork,
@@ -262,10 +270,10 @@ private fun BreakfastOrderCard(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.CheckCircle,
-                    contentDescription = "Označit jako vydané",
+                    contentDescription = "Označit jako vydáno",
                 )
                 Text(
-                    text = if (order.status == BreakfastStatus.SERVED) "Vydáno" else "Označit jako vydané",
+                    text = if (order.status == BreakfastStatus.SERVED) "Vydáno" else "Vydat",
                     modifier = Modifier.padding(start = KajovoSpacingTokens.S2),
                 )
             }
@@ -274,32 +282,42 @@ private fun BreakfastOrderCard(
 }
 
 @Composable
-private fun DietBadges(
+private fun DietIcons(
     noMilk: Boolean,
     noGluten: Boolean,
     noPork: Boolean,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-        if (noMilk) {
-            item { DietChip(label = "Bez laktózy") }
-        }
+    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         if (noGluten) {
-            item { DietChip(label = "Bez lepku") }
+            DietIconBadge(icon = Icons.Outlined.Grass, label = "Bez lepku")
+        }
+        if (noMilk) {
+            DietIconBadge(icon = Icons.Outlined.LocalDrink, label = "Bez laktózy")
         }
         if (noPork) {
-            item { DietChip(label = "Bez vepřového") }
+            DietIconBadge(icon = Icons.Outlined.Pets, label = "Bez vepřového")
         }
     }
 }
 
 @Composable
-private fun DietChip(label: String) {
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        label = { Text(text = label) },
-        leadingIcon = { Icon(imageVector = Icons.Outlined.Block, contentDescription = label) },
-    )
+private fun DietIconBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(text = label, style = MaterialTheme.typography.labelMedium)
+        }
+    }
 }
 
 @Composable
@@ -344,28 +362,27 @@ private fun ManagerEditor(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Poznámka") },
         )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-            item {
-                FilterChip(
-                    selected = draft.noGluten,
-                    onClick = { onDraftChange { current -> current.copy(noGluten = !current.noGluten) } },
-                    label = { Text("Bez lepku") },
-                )
-            }
-            item {
-                FilterChip(
-                    selected = draft.noMilk,
-                    onClick = { onDraftChange { current -> current.copy(noMilk = !current.noMilk) } },
-                    label = { Text("Bez mléka") },
-                )
-            }
-            item {
-                FilterChip(
-                    selected = draft.noPork,
-                    onClick = { onDraftChange { current -> current.copy(noPork = !current.noPork) } },
-                    label = { Text("Bez vepřového") },
-                )
-            }
+        DietIcons(
+            noMilk = draft.noMilk,
+            noGluten = draft.noGluten,
+            noPork = draft.noPork,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            AssistChip(
+                onClick = { onDraftChange { current -> current.copy(noGluten = !current.noGluten) } },
+                label = { Text("Bez lepku") },
+                leadingIcon = { Icon(Icons.Outlined.Grass, contentDescription = null) },
+            )
+            AssistChip(
+                onClick = { onDraftChange { current -> current.copy(noMilk = !current.noMilk) } },
+                label = { Text("Bez laktózy") },
+                leadingIcon = { Icon(Icons.Outlined.LocalDrink, contentDescription = null) },
+            )
+            AssistChip(
+                onClick = { onDraftChange { current -> current.copy(noPork = !current.noPork) } },
+                label = { Text("Bez vepřového") },
+                leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
+            )
         }
         Button(onClick = onSubmit, enabled = !isBusy && draft.isValidForSubmit()) { Text("Uložit objednávku") }
     }
@@ -383,7 +400,7 @@ private fun ImportPreviewCard(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = "Import náhled ${preview.serviceDate}",
-            subtitle = "Zdroj ${preview.sourceFileName} · položky ${preview.items.size}",
+            subtitle = "Položky ${preview.items.size}",
         )
         preview.items.take(5).forEach { item ->
             Text(text = "Pokoj ${item.room} · ${item.count} hosté · ${item.guestName}")
@@ -398,7 +415,7 @@ private fun ImportPreviewCard(
             Text("Potvrdit import PDF")
         }
         Text(
-            text = "Potvrzení znovu vyžádá stejný PDF soubor a uloží import na backendu. Tím se drží auditovatelný server-side workflow.",
+            text = "Potvrzení znovu vyžádá stejný PDF soubor a uloží import na backendu.",
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = KajovoSpacingTokens.S2),
         )

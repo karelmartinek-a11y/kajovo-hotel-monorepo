@@ -23,6 +23,15 @@ data class BreakfastSummary(
     val statusCounts: Map<String, Int>,
 )
 
+data class BreakfastServiceStats(
+    val totalBreakfasts: Int,
+    val servedBreakfasts: Int,
+    val remainingBreakfasts: Int,
+    val totalRooms: Int,
+    val servedRooms: Int,
+    val remainingRooms: Int,
+)
+
 data class BreakfastImportPreview(
     val sourceFileName: String,
     val serviceDate: String,
@@ -93,4 +102,30 @@ fun PortalRole.breakfastScreenTitle(): String = when (this) {
     PortalRole.RECEPTION -> "Snídaně / recepce"
     PortalRole.BREAKFAST -> "Snídaňový servis"
     else -> "Snídaně"
+}
+
+fun List<BreakfastOrder>.sortedForService(): List<BreakfastOrder> {
+    return filter { it.guestCount > 0 }
+        .sortedWith(compareBy<BreakfastOrder> { roomSortGroup(it.roomNumber) }.thenBy { roomSortNumber(it.roomNumber) }.thenBy { it.roomNumber })
+}
+
+fun List<BreakfastOrder>.serviceStats(summary: BreakfastSummary?): BreakfastServiceStats {
+    val totalBreakfasts = summary?.totalGuests ?: sumOf { it.guestCount }
+    val servedBreakfasts = filter { it.status == BreakfastStatus.SERVED }.sumOf { it.guestCount }
+    val totalRooms = size
+    val servedRooms = count { it.status == BreakfastStatus.SERVED }
+    return BreakfastServiceStats(
+        totalBreakfasts = totalBreakfasts,
+        servedBreakfasts = servedBreakfasts,
+        remainingBreakfasts = (totalBreakfasts - servedBreakfasts).coerceAtLeast(0),
+        totalRooms = totalRooms,
+        servedRooms = servedRooms,
+        remainingRooms = (totalRooms - servedRooms).coerceAtLeast(0),
+    )
+}
+
+private fun roomSortGroup(roomNumber: String): Int = if (roomSortNumber(roomNumber) != Int.MAX_VALUE) 0 else 1
+
+private fun roomSortNumber(roomNumber: String): Int {
+    return Regex("""\d+""").find(roomNumber)?.value?.toIntOrNull() ?: Int.MAX_VALUE
 }

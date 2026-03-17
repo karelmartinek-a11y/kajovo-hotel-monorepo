@@ -7,20 +7,26 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
@@ -29,7 +35,9 @@ import cz.hcasc.kajovohotel.core.designsystem.StatePane
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.HousekeepingCaptureMode
 import cz.hcasc.kajovohotel.core.model.PortalRole
+import cz.hcasc.kajovohotel.feature.housekeeping.domain.housekeepingRooms
 import cz.hcasc.kajovohotel.feature.housekeeping.presentation.HousekeepingViewModel
+import java.io.File
 
 @Composable
 fun HousekeepingScreen(
@@ -39,8 +47,20 @@ fun HousekeepingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems = 3)) { uris ->
-        viewModel.setPendingPhotos(uris.mapNotNull { readBinaryPayload(context, it) })
+        viewModel.appendPendingPhotos(uris.mapNotNull { readBinaryPayload(context, it) })
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            pendingCameraUri?.let { uri ->
+                readBinaryPayload(context, uri)?.let { payload ->
+                    viewModel.appendPendingPhotos(listOf(payload))
+                }
+            }
+        }
+        pendingCameraUri = null
     }
 
     LaunchedEffect(role, permissions) {
@@ -48,44 +68,51 @@ fun HousekeepingScreen(
     }
 
     if (state.successReference != null) {
-        StatePane(title = "Quick capture uložen", body = "Úspěšně byl odeslán záznam ${state.successReference}.")
+        StatePane(title = "Zápis odeslán", body = "Úspěšně byl odeslán záznam ${state.successReference}.")
         return
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item { Text(text = "Pokojská quick capture", style = MaterialTheme.typography.headlineMedium) }
+        item { Text(text = "Pokojská", style = MaterialTheme.typography.headlineMedium) }
         item {
             FeatureCard(
-                title = "Závada / nález v jednom formuláři",
-                subtitle = "Housekeeping může rychle založit issue nebo lost-found záznam, vybrat pokoj, doplnit krátký popis a až 3 fotky.",
+                title = "Rychlé zadání závady nebo nálezu",
+                subtitle = "Vyberte typ zápisu, pokoj, krátký text a přiložte až 3 fotografie.",
             )
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                FilterChip(
-                    selected = state.draft.mode == HousekeepingCaptureMode.ISSUE,
-                    onClick = { viewModel.updateDraft { current -> current.copy(mode = HousekeepingCaptureMode.ISSUE) } },
-                    enabled = state.canCreateIssue,
-                    label = { Text("Závada") },
-                )
+            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                 FilterChip(
                     selected = state.draft.mode == HousekeepingCaptureMode.LOST_FOUND,
                     onClick = { viewModel.updateDraft { current -> current.copy(mode = HousekeepingCaptureMode.LOST_FOUND) } },
                     enabled = state.canCreateLostFound,
                     label = { Text("Nález") },
                 )
+                FilterChip(
+                    selected = state.draft.mode == HousekeepingCaptureMode.ISSUE,
+                    onClick = { viewModel.updateDraft { current -> current.copy(mode = HousekeepingCaptureMode.ISSUE) } },
+                    enabled = state.canCreateIssue,
+                    label = { Text("Závada") },
+                )
             }
         }
         item {
-            OutlinedTextField(value = state.draft.roomNumber, onValueChange = { viewModel.updateDraft { current -> current.copy(roomNumber = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Pokoj") })
+            RoomPicker(
+                selectedRoom = state.draft.roomNumber,
+                onSelectRoom = { room -> viewModel.updateDraft { current -> current.copy(roomNumber = room) } },
+            )
         }
         item {
-            OutlinedTextField(value = state.draft.location, onValueChange = { viewModel.updateDraft { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Místo") })
-        }
-        item {
-            OutlinedTextField(value = state.draft.description, onValueChange = { viewModel.updateDraft { current -> current.copy(description = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Krátký popis") })
+            OutlinedTextField(
+                value = state.draft.description,
+                onValueChange = { value -> viewModel.updateDraft { current -> current.copy(description = value) } },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(if (state.draft.mode == HousekeepingCaptureMode.ISSUE) "Krátký popis závady" else "Krátký popis nálezu") },
+                singleLine = true,
+            )
         }
         if (state.pendingPhotos.isNotEmpty()) {
+            item { Text(text = "Vybrané fotografie: ${state.pendingPhotos.size}/3", style = MaterialTheme.typography.bodyMedium) }
             items(state.pendingPhotos) { payload ->
                 FeatureCard(title = payload.fileName, subtitle = payload.mimeType)
             }
@@ -93,18 +120,66 @@ fun HousekeepingScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                 Button(
-                    onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onClick = {
+                        val file = File.createTempFile("housekeeping_", ".jpg", File(context.cacheDir, "images").apply { mkdirs() })
+                        val captureUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                        pendingCameraUri = captureUri
+                        cameraLauncher.launch(captureUri)
+                    },
+                    enabled = state.pendingPhotos.size < 3,
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Vybrat až 3 fotky") }
+                ) {
+                    Text("Vyfotit")
+                }
+                OutlinedButton(
+                    onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    enabled = state.pendingPhotos.size < 3,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Přidat z galerie")
+                }
+                if (state.pendingPhotos.isNotEmpty()) {
+                    OutlinedButton(
+                        onClick = viewModel::clearPendingPhotos,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Vyčistit fotografie")
+                    }
+                }
                 Button(
                     onClick = viewModel::submit,
                     enabled = !state.isSubmitting && state.draft.isValid(),
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Odeslat") }
+                ) {
+                    Text("Odeslat")
+                }
             }
         }
         state.errorMessage?.let { message ->
-            item { FeatureCard(title = "Chyba quick capture", subtitle = message) }
+            item { FeatureCard(title = "Chyba zápisu pokojské", subtitle = message) }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RoomPicker(
+    selectedRoom: String,
+    onSelectRoom: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        Text(text = "Pokoj", style = MaterialTheme.typography.labelLarge)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+        ) {
+            housekeepingRooms.forEach { room ->
+                FilterChip(
+                    selected = selectedRoom == room,
+                    onClick = { onSelectRoom(room) },
+                    label = { Text(room) },
+                )
+            }
         }
     }
 }

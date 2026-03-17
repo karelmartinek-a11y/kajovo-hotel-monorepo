@@ -12,7 +12,7 @@ class HousekeepingCaptureRepositoryTest {
     @Test
     fun submitIssueReturnsSuccessReference() = runTest {
         val repository = HousekeepingCaptureRepository(FakeIssuesApi(), FakeLostFoundApi())
-        val result = repository.submit(HousekeepingCaptureDraft(roomNumber = "101", description = "Žárovka", location = "Pokoj"), emptyList())
+        val result = repository.submit(HousekeepingCaptureDraft(roomNumber = "101", description = "Žárovka"), emptyList())
         assertTrue(result is AppResult.Success)
         assertEquals("Závada #11", (result as AppResult.Success).value)
     }

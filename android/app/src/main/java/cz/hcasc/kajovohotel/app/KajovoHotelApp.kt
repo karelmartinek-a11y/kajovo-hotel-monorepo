@@ -90,7 +90,7 @@ fun KajovoHotelApp(
             is SessionState.Authenticated -> {
                 if (state.identity.requiresRoleSelection()) {
                     RoleSelectionScreen(
-                        roles = state.identity.roles,
+                        roles = state.identity.accessibleRoles().ifEmpty { state.identity.roles },
                         isBusy = false,
                         onConfirm = viewModel::selectRole,
                     )
@@ -121,6 +121,7 @@ private fun PortalAppShell(
     onLogout: () -> Unit,
 ) {
     val startRoute = resolveAuthenticatedRoute(identity)
+    val availableRoles = identity.accessibleRoles()
 
     key(identity.email, identity.activeRole, identity.permissions.sorted().joinToString()) {
         val navController = rememberNavController()
@@ -136,6 +137,7 @@ private fun PortalAppShell(
                     onLogout = onLogout,
                     onRoleChange = onRoleChange,
                     title = "Recepce",
+                    availableRoles = availableRoles,
                 ) {
                     ReceptionHubScreen(
                         onBreakfastClick = { navController.navigate(PortalRoutes.Breakfast) },
@@ -151,6 +153,7 @@ private fun PortalAppShell(
                     onLogout = onLogout,
                     onRoleChange = onRoleChange,
                     title = "Pokojská",
+                    availableRoles = availableRoles,
                 ) {
                     HousekeepingScreen(role = identity.activeRole ?: PortalRole.HOUSEKEEPING, permissions = identity.permissions)
                 }
@@ -163,6 +166,7 @@ private fun PortalAppShell(
                     onLogout = onLogout,
                     onRoleChange = onRoleChange,
                     title = "Snídaně",
+                    availableRoles = availableRoles,
                 ) {
                     BreakfastScreen(activeRole = identity.activeRole ?: PortalRole.BREAKFAST)
                 }
@@ -175,8 +179,9 @@ private fun PortalAppShell(
                     onLogout = onLogout,
                     onRoleChange = onRoleChange,
                     title = "Ztráty a nálezy",
+                    availableRoles = availableRoles,
                 ) {
-                    LostFoundScreen()
+                    LostFoundScreen(activeRole = identity.activeRole ?: PortalRole.RECEPTION)
                 }
             }
             composable(PortalRoutes.Issues) {
@@ -187,6 +192,7 @@ private fun PortalAppShell(
                     onLogout = onLogout,
                     onRoleChange = onRoleChange,
                     title = "Závady",
+                    availableRoles = availableRoles,
                 ) {
                     IssuesScreen()
                 }
@@ -199,6 +205,7 @@ private fun PortalAppShell(
                     onLogout = onLogout,
                     onRoleChange = onRoleChange,
                     title = "Sklad",
+                    availableRoles = availableRoles,
                 ) {
                     InventoryScreen()
                 }
@@ -210,7 +217,7 @@ private fun PortalAppShell(
                     onProfileClick = {},
                     onLogoutClick = onLogout,
                     onBackClick = navController.backActionOrNull(),
-                    availableRoles = identity.roles,
+                    availableRoles = availableRoles,
                     activeRole = identity.activeRole,
                     onRoleSelected = onRoleChange,
                 ) {
@@ -229,7 +236,7 @@ private fun PortalAppShell(
                     onProfileClick = { navController.navigate(PortalRoutes.Profile) },
                     onLogoutClick = onLogout,
                     onBackClick = navController.backActionOrNull(),
-                    availableRoles = identity.roles,
+                    availableRoles = availableRoles,
                     activeRole = identity.activeRole,
                     onRoleSelected = onRoleChange,
                 ) {
@@ -252,6 +259,7 @@ private fun GuardedRoute(
     onLogout: () -> Unit,
     onRoleChange: (PortalRole) -> Unit,
     title: String,
+    availableRoles: List<PortalRole>,
     content: @Composable () -> Unit,
 ) {
     if (!identity.canOpenDestination(route)) {
@@ -264,7 +272,7 @@ private fun GuardedRoute(
         onProfileClick = { navController.navigate(PortalRoutes.Profile) },
         onLogoutClick = onLogout,
         onBackClick = navController.backActionOrNull(),
-        availableRoles = identity.roles,
+        availableRoles = availableRoles,
         activeRole = identity.activeRole,
         onRoleSelected = onRoleChange,
         content = content,

@@ -2,15 +2,17 @@ package cz.hcasc.kajovohotel.app
 
 import cz.hcasc.kajovohotel.core.model.ActorType
 import cz.hcasc.kajovohotel.core.model.AuthenticatedIdentity
+import cz.hcasc.kajovohotel.core.model.BlockingUtilityState
+import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.core.model.SessionState
 
 fun resolveRootRoute(sessionState: SessionState): String = when (sessionState) {
     SessionState.Checking -> PortalRoutes.Intro
     SessionState.Unauthenticated -> PortalRoutes.Login
     is SessionState.Failure -> when (sessionState.utilityState) {
-        cz.hcasc.kajovohotel.core.model.BlockingUtilityState.OFFLINE -> PortalRoutes.Offline
-        cz.hcasc.kajovohotel.core.model.BlockingUtilityState.MAINTENANCE -> PortalRoutes.Maintenance
-        cz.hcasc.kajovohotel.core.model.BlockingUtilityState.GLOBAL_BLOCKING_ERROR -> PortalRoutes.GlobalError
+        BlockingUtilityState.OFFLINE -> PortalRoutes.Offline
+        BlockingUtilityState.MAINTENANCE -> PortalRoutes.Maintenance
+        BlockingUtilityState.GLOBAL_BLOCKING_ERROR -> PortalRoutes.GlobalError
     }
     is SessionState.Authenticated -> resolveAuthenticatedRoute(sessionState.identity)
 }
@@ -49,4 +51,10 @@ fun PortalDestination.isAccessibleBy(identity: AuthenticatedIdentity): Boolean {
         return false
     }
     return module == null || identity.canAccess(module)
+}
+
+fun AuthenticatedIdentity.accessibleRoles(): List<PortalRole> {
+    return roles.filter { role ->
+        copy(activeRole = role).canOpenDestination(role.homeRoute())
+    }
 }

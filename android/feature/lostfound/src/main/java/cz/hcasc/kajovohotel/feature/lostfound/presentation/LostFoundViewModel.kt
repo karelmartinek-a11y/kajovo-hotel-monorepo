@@ -4,15 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.hcasc.kajovohotel.core.common.AppResult
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
-import cz.hcasc.kajovohotel.core.model.LostFoundItemType
 import cz.hcasc.kajovohotel.core.model.LostFoundStatus
+import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.feature.lostfound.data.LostFoundRepository
 import cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundDraft
 import cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundFilters
 import cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundRecord
-import dagger.hilt.android.lifecycle.HiltViewModel
 import cz.hcasc.kajovohotel.feature.lostfound.domain.isValidForSubmit
 import cz.hcasc.kajovohotel.feature.lostfound.domain.toDraft
+import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,17 +26,35 @@ class LostFoundViewModel @Inject constructor(
     private val mutableState = MutableStateFlow(LostFoundUiState())
     val state: StateFlow<LostFoundUiState> = mutableState.asStateFlow()
 
+    fun configure(role: PortalRole) {
+        mutableState.value = mutableState.value.copy(
+            isReceptionView = role == PortalRole.RECEPTION,
+            filters = if (role == PortalRole.RECEPTION) {
+                mutableState.value.filters.copy(status = LostFoundStatus.NEW)
+            } else {
+                mutableState.value.filters
+            },
+        )
+    }
+
     fun load() {
         val current = mutableState.value
         mutableState.value = current.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.list(current.filters)) {
-                is AppResult.Success -> mutableState.value = mutableState.value.copy(
-                    isLoading = false,
-                    records = result.value,
-                    selected = result.value.firstOrNull(),
-                    draft = result.value.firstOrNull()?.toDraft() ?: LostFoundDraft(),
-                )
+                is AppResult.Success -> {
+                    val records = if (current.isReceptionView) {
+                        result.value.filter { it.status == LostFoundStatus.NEW }
+                    } else {
+                        result.value
+                    }
+                    mutableState.value = mutableState.value.copy(
+                        isLoading = false,
+                        records = records,
+                        selected = records.firstOrNull(),
+                        draft = records.firstOrNull()?.toDraft() ?: LostFoundDraft(),
+                    )
+                }
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isLoading = false, errorMessage = result.message)
             }
         }
@@ -62,6 +80,23 @@ class LostFoundViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(pendingPhotos = photos.take(3))
     }
 
+    fun markProcessed(record: LostFoundRecord) {
+        mutableState.value = mutableState.value.copy(isSaving = true, errorMessage = null)
+        viewModelScope.launch {
+            when (val result = repository.markProcessed(record)) {
+                is AppResult.Success -> {
+                    mutableState.value = mutableState.value.copy(
+                        isSaving = false,
+                        records = mutableState.value.records.filterNot { it.id == record.id },
+                        selected = mutableState.value.selected?.takeIf { it.id != record.id },
+                        successMessage = "Nález byl označen jako zpracovaný.",
+                    )
+                }
+                is AppResult.Error -> mutableState.value = mutableState.value.copy(isSaving = false, errorMessage = result.message)
+            }
+        }
+    }
+
     fun save() {
         val current = mutableState.value
         if (!current.draft.isValidForSubmit()) {
@@ -74,7 +109,13 @@ class LostFoundViewModel @Inject constructor(
                 ?: repository.create(current.draft, current.pendingPhotos)
             when (result) {
                 is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(isSaving = false, selected = result.value, draft = result.value.toDraft(), pendingPhotos = emptyList(), successMessage = "Záznam byl uložen.")
+                    mutableState.value = mutableState.value.copy(
+                        isSaving = false,
+                        selected = result.value,
+                        draft = result.value.toDraft(),
+                        pendingPhotos = emptyList(),
+                        successMessage = "Záznam byl uložen.",
+                    )
                     load()
                 }
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSaving = false, errorMessage = result.message)
@@ -86,6 +127,7 @@ class LostFoundViewModel @Inject constructor(
 data class LostFoundUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val isReceptionView: Boolean = false,
     val filters: LostFoundFilters = LostFoundFilters(),
     val records: List<LostFoundRecord> = emptyList(),
     val selected: LostFoundRecord? = null,

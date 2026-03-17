@@ -20,6 +20,8 @@ import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.AuthProfile
 
+private val phoneRegex = Regex("""^\+[1-9]\d{1,14}$""")
+
 @Composable
 fun ProfileScreen(
     profile: AuthProfile?,
@@ -30,7 +32,9 @@ fun ProfileScreen(
     var firstName by remember(profile?.firstName) { mutableStateOf(profile?.firstName.orEmpty()) }
     var lastName by remember(profile?.lastName) { mutableStateOf(profile?.lastName.orEmpty()) }
     var phone by remember(profile?.phone) { mutableStateOf(profile?.phone.orEmpty()) }
-    var note by remember(profile?.note) { mutableStateOf(profile?.note.orEmpty()) }
+
+    val normalizedPhone = normalizePhoneInput(phone)
+    val isPhoneValid = normalizedPhone.isNullOrBlank() || phoneRegex.matches(normalizedPhone)
 
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Můj profil", style = MaterialTheme.typography.headlineMedium)
@@ -52,22 +56,23 @@ fun ProfileScreen(
         )
         OutlinedTextField(
             value = phone,
-            onValueChange = { phone = it },
+            onValueChange = { phone = normalizePhoneInput(it).orEmpty() },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Telefon") },
-        )
-        OutlinedTextField(
-            value = note,
-            onValueChange = { note = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Poznámka") },
+            label = { Text("Telefon (E.164, volitelný)") },
+            supportingText = {
+                if (!isPhoneValid) {
+                    Text("Telefon musí být ve formátu E.164.")
+                }
+            },
+            isError = !isPhoneValid,
+            singleLine = true,
         )
         if (!message.isNullOrBlank()) {
             Text(text = message)
         }
         Button(
-            onClick = { onSave(firstName.trim(), lastName.trim(), phone.trim(), note.trim()) },
-            enabled = firstName.isNotBlank() && lastName.isNotBlank(),
+            onClick = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), "") },
+            enabled = firstName.isNotBlank() && lastName.isNotBlank() && isPhoneValid,
         ) {
             Text(text = "Uložit profil")
         }
@@ -160,4 +165,25 @@ fun ResetPasswordScreen(
             Text(text = "Zpět na přihlášení")
         }
     }
+}
+
+private fun normalizePhoneInput(value: String): String? {
+    val trimmed = value.trim()
+    if (trimmed.isBlank()) {
+        return null
+    }
+    if (trimmed.startsWith("+")) {
+        return trimmed
+    }
+    if (trimmed.startsWith("00")) {
+        return "+${trimmed.drop(2)}"
+    }
+    if (trimmed.all(Char::isDigit)) {
+        return if (trimmed.startsWith("420")) {
+            "+$trimmed"
+        } else {
+            "+420$trimmed"
+        }
+    }
+    return trimmed
 }
