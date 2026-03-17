@@ -11,6 +11,7 @@ import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportItem
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportPreview
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastSummary
+import cz.hcasc.kajovohotel.feature.breakfast.domain.sortedForService
 import cz.hcasc.kajovohotel.feature.breakfast.domain.toCreateRequest
 import cz.hcasc.kajovohotel.feature.breakfast.domain.toUpdateRequest
 import javax.inject.Inject
@@ -26,7 +27,7 @@ class BreakfastRepository @Inject constructor(
 ) {
     suspend fun load(serviceDate: String): AppResult<Pair<List<BreakfastOrder>, BreakfastSummary>> {
         return try {
-            val orders = api.list(serviceDate = serviceDate).map { it.toDomain() }
+            val orders = api.list(serviceDate = serviceDate).map { it.toDomain() }.sortedForService()
             val summary = api.dailySummary(serviceDate).toDomain()
             AppResult.Success(orders to summary)
         } catch (throwable: Throwable) {

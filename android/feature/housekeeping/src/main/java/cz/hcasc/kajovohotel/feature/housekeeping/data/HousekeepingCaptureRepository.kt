@@ -21,12 +21,13 @@ class HousekeepingCaptureRepository @Inject constructor(
 ) {
     suspend fun submit(draft: HousekeepingCaptureDraft, photos: List<BinaryPayload>): AppResult<String> {
         return try {
+            val roomLocation = "Pokoj ${draft.roomNumber}"
             when (draft.mode) {
                 HousekeepingCaptureMode.ISSUE -> {
                     val issue = issuesApi.create(
                         IssueCreateDto(
-                            title = "Pokoj ${draft.roomNumber}",
-                            location = draft.location,
+                            title = draft.description,
+                            location = roomLocation,
                             description = draft.description,
                             room_number = draft.roomNumber,
                         ),
@@ -40,9 +41,9 @@ class HousekeepingCaptureRepository @Inject constructor(
                     val item = lostFoundApi.create(
                         cz.hcasc.kajovohotel.core.network.dto.LostFoundItemCreateDto(
                             description = draft.description,
-                            category = "Housekeeping",
-                            location = draft.location,
-                            event_at = java.time.LocalDate.now().toString(),
+                            category = "Nález",
+                            location = roomLocation,
+                            event_at = java.time.Instant.now().toString(),
                             room_number = draft.roomNumber,
                         ),
                     )
@@ -53,7 +54,7 @@ class HousekeepingCaptureRepository @Inject constructor(
                 }
             }
         } catch (throwable: Throwable) {
-            AppResult.Error(throwable.readableMessage("Nepodařilo se odeslat housekeeping quick capture."), throwable)
+            AppResult.Error(throwable.readableMessage("Nepodařilo se odeslat housekeeping zápis."), throwable)
         }
     }
 }

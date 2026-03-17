@@ -2,6 +2,7 @@ package cz.hcasc.kajovohotel.core.designsystem
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,7 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens
+import cz.hcasc.kajovohotel.core.common.Branding
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoRadiusTokens
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.PortalRole
@@ -114,12 +115,16 @@ fun PortalChrome(
                 .padding(paddingValues)
                 .padding(KajovoSpacingTokens.S4),
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = if (onBackClick != null) 72.dp else 0.dp),
+                verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4),
             ) {
-                content()
+                Box(modifier = Modifier.weight(1f, fill = true)) {
+                    content()
+                }
+                BrandFooter()
             }
             if (onBackClick != null) {
                 ExtendedFloatingActionButton(
@@ -142,13 +147,18 @@ fun PortalChrome(
 fun SignageBadge() {
     Box(
         modifier = Modifier
-            .background(KajovoColorTokens.SignRed, RoundedCornerShape(KajovoRadiusTokens.R8))
+            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(KajovoRadiusTokens.R8))
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(KajovoRadiusTokens.R8),
+            )
             .padding(horizontal = KajovoSpacingTokens.S4, vertical = KajovoSpacingTokens.S2),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             painter = painterResource(R.drawable.kajovo_mark_logo),
-            contentDescription = "Kájovo Hotel",
+            contentDescription = Branding.APP_NAME,
             modifier = Modifier.height(56.dp),
             contentScale = ContentScale.Fit,
         )
@@ -194,6 +204,7 @@ fun StatePane(
         if (actionLabel != null && onAction != null) {
             TextButton(onClick = onAction) { Text(text = actionLabel) }
         }
+        BrandFooter()
     }
 }
 
@@ -203,4 +214,13 @@ fun BulletLine(label: String, value: String) {
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
     }
+}
+
+@Composable
+fun BrandFooter() {
+    Text(
+        text = Branding.COPYRIGHT,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }

@@ -10,11 +10,11 @@ import org.junit.Test
 
 class InventoryRepositoryTest {
     @Test
-    fun detailReturnsMovementHistory() = runTest {
+    fun listReturnsInventoryItems() = runTest {
         val repository = InventoryRepository(FakeInventoryApi())
-        val result = repository.detail(9)
+        val result = repository.list()
         assertTrue(result is AppResult.Success)
-        assertEquals("DOC-41", (result as AppResult.Success).value.movements.first().documentNumber)
+        assertEquals("Káva", (result as AppResult.Success).value.first().name)
     }
 
     @Test
@@ -22,6 +22,6 @@ class InventoryRepositoryTest {
         val repository = InventoryRepository(FakeInventoryApi())
         val result = repository.submitMovement(9, InventoryMovementDraft(quantity = "4", documentDate = "2026-03-17"))
         assertTrue(result is AppResult.Success)
-        assertEquals("DOC-42", (result as AppResult.Success).value.movements.first().documentNumber)
+        assertEquals("DOC-42", (result as AppResult.Success).value?.documentNumber)
     }
 }

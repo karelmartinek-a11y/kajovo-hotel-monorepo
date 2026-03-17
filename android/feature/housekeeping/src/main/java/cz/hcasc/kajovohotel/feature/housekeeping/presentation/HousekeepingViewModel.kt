@@ -35,8 +35,15 @@ class HousekeepingViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(draft = transform(mutableState.value.draft), successReference = null)
     }
 
-    fun setPendingPhotos(photos: List<BinaryPayload>) {
-        mutableState.value = mutableState.value.copy(pendingPhotos = photos.take(3))
+    fun appendPendingPhotos(photos: List<BinaryPayload>) {
+        if (photos.isEmpty()) return
+        mutableState.value = mutableState.value.copy(
+            pendingPhotos = (mutableState.value.pendingPhotos + photos).distinctBy { it.fileName + it.bytes.size }.take(3),
+        )
+    }
+
+    fun clearPendingPhotos() {
+        mutableState.value = mutableState.value.copy(pendingPhotos = emptyList())
     }
 
     fun submit() {
@@ -46,11 +53,11 @@ class HousekeepingViewModel @Inject constructor(
             return
         }
         if (current.draft.mode == HousekeepingCaptureMode.ISSUE && !current.canCreateIssue) {
-            mutableState.value = current.copy(errorMessage = "Aktivní role nemá permission pro založení závady.")
+            mutableState.value = current.copy(errorMessage = "Aktivní role nemá oprávnění pro založení závady.")
             return
         }
         if (current.draft.mode == HousekeepingCaptureMode.LOST_FOUND && !current.canCreateLostFound) {
-            mutableState.value = current.copy(errorMessage = "Aktivní role nemá permission pro založení nálezu.")
+            mutableState.value = current.copy(errorMessage = "Aktivní role nemá oprávnění pro založení nálezu.")
             return
         }
         mutableState.value = current.copy(isSubmitting = true, errorMessage = null)

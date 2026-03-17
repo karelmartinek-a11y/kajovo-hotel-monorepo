@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import cz.hcasc.kajovohotel.core.common.Branding
+import cz.hcasc.kajovohotel.core.designsystem.BrandFooter
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.SignageBadge
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
@@ -38,7 +40,7 @@ fun LoginScreen(
     ) {
         SignageBadge()
         Text(
-            text = "Přihlášení do hotelového portálu",
+            text = "Přihlášení do ${Branding.APP_NAME}",
             style = MaterialTheme.typography.headlineMedium,
         )
         FeatureCard(
@@ -88,7 +90,7 @@ fun LoginScreen(
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = "Pokud volbu zapnete, aplikace může ponechat přihlášení aktivní i několik dní.",
+                    text = "Pokud volbu zapnete, aplikace může ponechat přihlášení aktivní i několik dnů.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -97,5 +99,6 @@ fun LoginScreen(
         if (!errorMessage.isNullOrBlank()) {
             Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
         }
+        BrandFooter()
     }
 }

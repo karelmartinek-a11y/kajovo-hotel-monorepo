@@ -13,6 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import cz.hcasc.kajovohotel.core.designsystem.BrandFooter
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.PortalRole
@@ -20,11 +22,15 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 @Composable
 fun RoleSelectionScreen(roles: List<PortalRole>, isBusy: Boolean, onConfirm: (PortalRole) -> Unit) {
     var selectedRole by remember(roles) { mutableStateOf(roles.firstOrNull()) }
+
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Vyber aktivní roli", style = MaterialTheme.typography.headlineMedium)
-        FeatureCard(title = "Role-driven shell", subtitle = "Aplikace zpřístupní jen moduly potvrzené pro zvolenou neadmin roli.")
+        FeatureCard(
+            title = "Role-driven shell",
+            subtitle = "Aplikace zpřístupní jen moduly potvrzené pro zvolenou neadmin roli.",
+        )
         roles.forEach { role ->
-            Row(modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 RadioButton(selected = selectedRole == role, onClick = { selectedRole = role })
                 Text(text = role.displayName)
             }
@@ -32,5 +38,6 @@ fun RoleSelectionScreen(roles: List<PortalRole>, isBusy: Boolean, onConfirm: (Po
         Button(onClick = { selectedRole?.let(onConfirm) }, enabled = !isBusy && selectedRole != null) {
             Text(text = if (isBusy) "Ukládám volbu" else "Potvrdit roli")
         }
+        BrandFooter()
     }
 }

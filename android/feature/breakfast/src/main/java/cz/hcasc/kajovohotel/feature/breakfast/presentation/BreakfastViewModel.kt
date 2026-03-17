@@ -10,9 +10,9 @@ import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportPreview
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastSummary
-import dagger.hilt.android.lifecycle.HiltViewModel
 import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
 import cz.hcasc.kajovohotel.feature.breakfast.domain.toDraft
+import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,7 +58,7 @@ class BreakfastViewModel @Inject constructor(
     fun createOrUpdate() {
         val current = mutableState.value
         if (!current.draft.isValidForSubmit()) {
-            mutableState.value = current.copy(errorMessage = "Vyplňte datum, pokoj, hosta a počet." )
+            mutableState.value = current.copy(errorMessage = "Vyplňte datum, pokoj, hosta a počet.")
             return
         }
         mutableState.value = current.copy(isSubmitting = true, errorMessage = null)
@@ -66,7 +66,12 @@ class BreakfastViewModel @Inject constructor(
             val result = current.selectedOrder?.let { repository.update(it.id, current.draft, it.status) } ?: repository.create(current.draft)
             when (result) {
                 is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(isSubmitting = false, selectedOrder = result.value, draft = result.value.toDraft(), successMessage = "Objednávka byla uložena.")
+                    mutableState.value = mutableState.value.copy(
+                        isSubmitting = false,
+                        selectedOrder = result.value,
+                        draft = result.value.toDraft(),
+                        successMessage = "Objednávka byla uložena.",
+                    )
                     load(mutableState.value.role, mutableState.value.serviceDate)
                 }
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
@@ -91,7 +96,11 @@ class BreakfastViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.importPreview(file, save = false)) {
-                is AppResult.Success -> mutableState.value = mutableState.value.copy(isSubmitting = false, importPreview = result.value, successMessage = "Import byl analyzován." )
+                is AppResult.Success -> mutableState.value = mutableState.value.copy(
+                    isSubmitting = false,
+                    importPreview = result.value,
+                    successMessage = "Import byl analyzován.",
+                )
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
@@ -102,7 +111,11 @@ class BreakfastViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = repository.importPreview(file, save = true)) {
                 is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(isSubmitting = false, importPreview = result.value, successMessage = "Import byl potvrzen a uložen.")
+                    mutableState.value = mutableState.value.copy(
+                        isSubmitting = false,
+                        importPreview = result.value,
+                        successMessage = "Import byl potvrzen a uložen.",
+                    )
                     load(mutableState.value.role, result.value.serviceDate)
                 }
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
@@ -119,14 +132,13 @@ class BreakfastViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(isSubmitting = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.exportDaily(serviceDate)) {
-                is AppResult.Success -> mutableState.value = mutableState.value.copy(isSubmitting = false, exportMessage = "Export PDF byl spuštěn na serveru.")
+                is AppResult.Success -> mutableState.value = mutableState.value.copy(
+                    isSubmitting = false,
+                    exportMessage = "Export PDF byl spuštěn na serveru.",
+                )
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
-    }
-
-    fun clearTransientMessage() {
-        mutableState.value = mutableState.value.copy(errorMessage = null, successMessage = null, exportMessage = null)
     }
 
     private fun defaultServiceDate(): String = java.time.LocalDate.now().toString()

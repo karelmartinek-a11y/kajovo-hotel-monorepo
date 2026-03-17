@@ -2,13 +2,13 @@
     <item android:drawable="@android:color/white" />
     <item>
         <inset
-            android:insetLeft="72dp"
+            android:insetLeft="40dp"
             android:insetTop="72dp"
-            android:insetRight="72dp"
+            android:insetRight="40dp"
             android:insetBottom="72dp">
             <bitmap
                 android:gravity="center"
-                android:src="@drawable/kajovo_mark_logo" />
+                android:src="@drawable/kajovo_full_logo" />
         </inset>
     </item>
 </layer-list>

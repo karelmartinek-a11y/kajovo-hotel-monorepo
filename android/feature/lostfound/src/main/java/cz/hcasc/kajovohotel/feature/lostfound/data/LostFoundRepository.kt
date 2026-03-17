@@ -62,6 +62,18 @@ class LostFoundRepository @Inject constructor(
             AppResult.Error(throwable.readableMessage("Záznam se nepodařilo uložit."), throwable)
         }
     }
+
+    suspend fun markProcessed(record: LostFoundRecord): AppResult<LostFoundRecord> {
+        return try {
+            api.update(
+                record.id,
+                record.toProcessedRequest(),
+            )
+            AppResult.Success(api.detail(record.id).toDomain(baseUrlConfig))
+        } catch (throwable: Throwable) {
+            AppResult.Error(throwable.readableMessage("Nepodařilo se označit nález jako zpracovaný."), throwable)
+        }
+    }
 }
 
 private fun BinaryPayload.toPart(index: Int): MultipartBody.Part = MultipartBody.Part.createFormData(
@@ -92,4 +104,18 @@ private fun cz.hcasc.kajovohotel.core.network.dto.LostFoundItemDto.toDomain(base
             sizeBytes = photo.size_bytes,
         )
     },
+)
+
+private fun LostFoundRecord.toProcessedRequest() = cz.hcasc.kajovohotel.core.network.dto.LostFoundItemUpdateDto(
+    description = description,
+    category = category,
+    location = location,
+    event_at = eventAt,
+    item_type = itemType.wireValue,
+    status = LostFoundStatus.CLAIMED.wireValue,
+    room_number = roomNumber.ifBlank { null },
+    claimant_name = claimantName.ifBlank { null },
+    claimant_contact = claimantContact.ifBlank { null },
+    handover_note = handoverNote.ifBlank { null },
+    tags = tags,
 )
