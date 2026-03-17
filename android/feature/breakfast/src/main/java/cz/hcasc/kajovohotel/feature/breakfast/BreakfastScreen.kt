@@ -63,6 +63,8 @@ fun BreakfastScreen(
     viewModel: BreakfastViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val isReceptionMode = activeRole == PortalRole.RECEPTION && state.role == PortalRole.RECEPTION
+    val isBreakfastMode = activeRole == PortalRole.BREAKFAST && state.role == PortalRole.BREAKFAST
     val context = LocalContext.current
     val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { picked ->
@@ -101,14 +103,14 @@ fun BreakfastScreen(
                 items(state.orders, key = { it.id }) { order ->
                     BreakfastOrderCard(
                         order = order,
-                        showCompactLayout = activeRole == PortalRole.BREAKFAST,
-                        isSelected = state.selectedOrder?.id == order.id,
+                        showCompactLayout = isBreakfastMode,
+                        isSelected = !isBreakfastMode && state.selectedOrder?.id == order.id,
                         isSubmitting = state.isSubmitting,
                         onSelect = { viewModel.selectOrder(order) },
                         onMarkServed = { viewModel.markServed(order.id) },
                     )
                 }
-                if (activeRole == PortalRole.RECEPTION) {
+                if (isReceptionMode) {
                     item {
                         ManagerEditor(
                             draft = state.draft,
@@ -118,7 +120,7 @@ fun BreakfastScreen(
                         )
                     }
                 }
-                if (state.importPreview != null) {
+                if (isReceptionMode && state.importPreview != null) {
                     item {
                         ImportPreviewCard(
                             state = state,
@@ -224,10 +226,15 @@ private fun BreakfastOrderCard(
     onSelect: () -> Unit,
     onMarkServed: () -> Unit,
 ) {
-    Card(
-        modifier = Modifier
+    val cardModifier = if (showCompactLayout) {
+        Modifier.fillMaxWidth()
+    } else {
+        Modifier
             .fillMaxWidth()
-            .clickable { onSelect() },
+            .clickable { onSelect() }
+    }
+    Card(
+        modifier = cardModifier,
         shape = RoundedCornerShape(KajovoRadiusTokens.R12),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
@@ -263,6 +270,7 @@ private fun BreakfastOrderCard(
                 noMilk = order.noMilk,
                 noGluten = order.noGluten,
                 noPork = order.noPork,
+                showLabels = !showCompactLayout,
             )
             Button(
                 onClick = onMarkServed,
@@ -286,17 +294,12 @@ private fun DietIcons(
     noMilk: Boolean,
     noGluten: Boolean,
     noPork: Boolean,
+    showLabels: Boolean = true,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-        if (noGluten) {
-            DietIconBadge(icon = Icons.Outlined.Grass, label = "Bez lepku")
-        }
-        if (noMilk) {
-            DietIconBadge(icon = Icons.Outlined.LocalDrink, label = "Bez laktózy")
-        }
-        if (noPork) {
-            DietIconBadge(icon = Icons.Outlined.Pets, label = "Bez vepřového")
-        }
+        DietIconBadge(icon = Icons.Outlined.Grass, label = "Bez lepku", isActive = noGluten, showLabel = showLabels)
+        DietIconBadge(icon = Icons.Outlined.LocalDrink, label = "Bez laktózy", isActive = noMilk, showLabel = showLabels)
+        DietIconBadge(icon = Icons.Outlined.Pets, label = "Bez vepřového", isActive = noPork, showLabel = showLabels)
     }
 }
 
@@ -304,18 +307,30 @@ private fun DietIcons(
 private fun DietIconBadge(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    isActive: Boolean = true,
+    showLabel: Boolean = true,
 ) {
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = if (isActive) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-            Text(text = label, style = MaterialTheme.typography.labelMedium)
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (showLabel) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

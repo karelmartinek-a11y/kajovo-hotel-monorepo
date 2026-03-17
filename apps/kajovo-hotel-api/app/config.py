@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "KajovoHotel API"
     app_version: str = "0.1.0"
-    android_app_version: str = "0.1.2"
+    android_app_version: str = "0.1.3"
     android_app_download_url: str = "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk"
     android_app_update_title: str = "Je dostupná nová verze aplikace"
     android_app_update_message: str = "Na serveru je připravená novější verze Android aplikace. Doporučujeme ji nainstalovat ještě před přihlášením."
