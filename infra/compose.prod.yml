@@ -22,8 +22,8 @@ services:
 
   api:
     build:
-      context: ../apps/kajovo-hotel-api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/kajovo-hotel-api/Dockerfile
     restart: unless-stopped
     environment:
       KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-KájovoHotel API}

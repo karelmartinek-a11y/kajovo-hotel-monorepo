@@ -20,9 +20,10 @@ RUN pip install --no-cache-dir \
     pypdf==5.9.0 \
     pillow==11.3.0
 
-COPY app /app/app
-COPY alembic /app/alembic
-COPY alembic.ini /app/alembic.ini
+COPY apps/kajovo-hotel-api/app /app/app
+COPY apps/kajovo-hotel-api/alembic /app/alembic
+COPY apps/kajovo-hotel-api/alembic.ini /app/alembic.ini
+COPY android/release/android-release.json /app/android/release/android-release.json
 
 RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app

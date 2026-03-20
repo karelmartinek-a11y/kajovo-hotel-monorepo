@@ -19,7 +19,16 @@ class AndroidReleaseManifest:
 
 
 def _manifest_path() -> Path:
-    return Path(__file__).resolve().parents[3] / "android" / "release" / "android-release.json"
+    current = Path(__file__).resolve()
+    candidates = [
+        current.parents[3] / "android" / "release" / "android-release.json",
+        current.parents[1] / "android" / "release" / "android-release.json",
+        Path.cwd() / "android" / "release" / "android-release.json",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError("Android release manifest nebyl nalezen v zadne podporovane lokaci.")
 
 
 @lru_cache
