@@ -20,11 +20,13 @@ class AndroidReleaseManifest:
 
 def _manifest_path() -> Path:
     current = Path(__file__).resolve()
-    candidates = [
-        current.parents[3] / "android" / "release" / "android-release.json",
-        current.parents[1] / "android" / "release" / "android-release.json",
-        Path.cwd() / "android" / "release" / "android-release.json",
-    ]
+    parents = list(current.parents)
+    candidates: list[Path] = []
+    if len(parents) > 3:
+        candidates.append(parents[3] / "android" / "release" / "android-release.json")
+    if len(parents) > 1:
+        candidates.append(parents[1] / "android" / "release" / "android-release.json")
+    candidates.append(Path.cwd() / "android" / "release" / "android-release.json")
     for candidate in candidates:
         if candidate.exists():
             return candidate
