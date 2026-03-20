@@ -2,9 +2,9 @@ package cz.hcasc.kajovohotel.core.model
 
 enum class PortalRole(val wireValue: String, val displayName: String) {
     RECEPTION("recepce", "Recepce"),
-    HOUSEKEEPING("pokojská", "Pokojská"),
-    MAINTENANCE("údržba", "Údržba"),
-    BREAKFAST("snídaně", "Snídaně"),
+    HOUSEKEEPING("pokojsk\u00E1", "Pokojsk\u00E1"),
+    MAINTENANCE("\u00FAdr\u017Eba", "\u00DAdr\u017Eba"),
+    BREAKFAST("sn\u00EDdan\u011B", "Sn\u00EDdan\u011B"),
     INVENTORY("sklad", "Sklad");
 
     companion object {
@@ -12,13 +12,13 @@ enum class PortalRole(val wireValue: String, val displayName: String) {
             "recepce" to RECEPTION,
             "reception" to RECEPTION,
             "pokojska" to HOUSEKEEPING,
-            "pokojská" to HOUSEKEEPING,
+            "pokojsk\u00E1" to HOUSEKEEPING,
             "housekeeping" to HOUSEKEEPING,
             "udrzba" to MAINTENANCE,
-            "údržba" to MAINTENANCE,
+            "\u00FAdr\u017Eba" to MAINTENANCE,
             "maintenance" to MAINTENANCE,
             "snidane" to BREAKFAST,
-            "snídaně" to BREAKFAST,
+            "sn\u00EDdan\u011B" to BREAKFAST,
             "breakfast" to BREAKFAST,
             "sklad" to INVENTORY,
             "warehouse" to INVENTORY,
