@@ -130,8 +130,16 @@ export const ROLE_LABELS_EN: Record<Role, string> = {
   sklad: 'Inventory',
 };
 
+function normalizeRoleToken(raw?: string | null): string {
+  return (raw ?? '')
+    .trim()
+    .toLocaleLowerCase('cs-CZ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 export function parseRole(raw?: string | null): Role | null {
-  const normalized = (raw ?? '').trim().toLowerCase();
+  const normalized = normalizeRoleToken(raw);
   return ROLE_ALIASES[normalized] ?? null;
 }
 
