@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.api.schemas import AndroidAppReleaseRead
 from app.android_release import get_android_release_manifest
+from app.api.schemas import AndroidAppReleaseRead
 
 router = APIRouter(tags=["app"])
 

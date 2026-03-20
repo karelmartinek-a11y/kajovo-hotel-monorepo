@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.android_release import get_android_release_manifest
 from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
@@ -18,7 +19,6 @@ from app.api.routes.profile import router as profile_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
-from app.android_release import get_android_release_manifest
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
