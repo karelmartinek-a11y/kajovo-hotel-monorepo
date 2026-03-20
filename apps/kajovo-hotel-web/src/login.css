@@ -159,4 +159,13 @@
   .k-housekeeping-room-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .k-issue-list-thumb-mobile {
+    width: 36px;
+    height: 36px;
+    max-width: 36px;
+    border-radius: var(--k-radius-2);
+    object-fit: cover;
+    display: block;
+  }
 }

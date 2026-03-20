@@ -1967,7 +1967,7 @@ function IssuesList(): JSX.Element {
           headers={['Miniatura', 'Pokoj', 'Popis', 'Zadáno', 'Hodin', 'Akce']}
           rows={items.map((item) => [
             item.photos && item.photos.length > 0
-              ? <img key={`issue-thumb-${item.id}`} src={`/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb`} alt="Miniatura závady" className="k-photo-thumb" />
+              ? <img key={`issue-thumb-${item.id}`} src={`/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb`} alt="Miniatura závady" className="k-photo-thumb k-issue-list-thumb-mobile" />
               : '-',
             item.room_number ?? '-',
             item.description ?? item.title,
