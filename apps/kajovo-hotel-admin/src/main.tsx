@@ -1927,6 +1927,8 @@ function HousekeepingAdmin(): JSX.Element {
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const resetForm = React.useCallback(() => {
     setSelectedRoom('');
@@ -1936,14 +1938,26 @@ function HousekeepingAdmin(): JSX.Element {
     setSuccess(null);
   }, []);
 
-  const onFileChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length > 3) {
-      setError('Lze připojit nejvýše 3 fotografie.');
-      setPhotos(files.slice(0, 3));
-      return;
-    }
-    setPhotos(files);
+  const updatePhotos = React.useCallback((files: File[], append: boolean): void => {
+    setPhotos((current) => {
+      const merged = append ? [...current, ...files] : files;
+      if (merged.length > 3) {
+        setError('Lze připojit nejvýše 3 fotografie.');
+        return merged.slice(0, 3);
+      }
+      setError((previous) => (previous === 'Lze připojit nejvýše 3 fotografie.' ? null : previous));
+      return merged;
+    });
+  }, []);
+
+  const onGalleryChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    updatePhotos(Array.from(event.target.files ?? []), true);
+    event.target.value = '';
+  };
+
+  const onCameraChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    updatePhotos(Array.from(event.target.files ?? []), true);
+    event.target.value = '';
   };
 
   const submit = async (): Promise<void> => {
@@ -2065,7 +2079,14 @@ function HousekeepingAdmin(): JSX.Element {
               <input id="housekeeping_description" className="k-input" maxLength={160} value={description} onChange={(event) => setDescription(event.target.value)} />
             </FormField>
             <FormField id="housekeeping_photos" label="Fotografie (max. 3)">
-              <input id="housekeeping_photos" type="file" className="k-input" multiple accept="image/*" capture="environment" onChange={onFileChange} />
+              <>
+                <input ref={galleryInputRef} id="housekeeping_photos" type="file" className="k-input" multiple accept="image/*" onChange={onGalleryChange} hidden />
+                <input ref={cameraInputRef} id="housekeeping_camera" type="file" className="k-input" accept="image/*" capture="environment" onChange={onCameraChange} hidden />
+                <div className="k-toolbar">
+                  <button className="k-button secondary" type="button" onClick={() => galleryInputRef.current?.click()} disabled={photos.length >= 3 || saving}>Vybrat fotografie</button>
+                  <button className="k-button secondary" type="button" onClick={() => cameraInputRef.current?.click()} disabled={photos.length >= 3 || saving}>Vyfotit</button>
+                </div>
+              </>
             </FormField>
             {photos.length > 0 ? <p className="k-subtle">Vybráno fotografií: {photos.length}</p> : null}
           </div>

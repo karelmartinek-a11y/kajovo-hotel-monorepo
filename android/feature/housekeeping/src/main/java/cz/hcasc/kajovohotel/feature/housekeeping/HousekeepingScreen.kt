@@ -1,7 +1,12 @@
 package cz.hcasc.kajovohotel.feature.housekeeping
 
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,6 +43,9 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.feature.housekeeping.domain.housekeepingRooms
 import cz.hcasc.kajovohotel.feature.housekeeping.presentation.HousekeepingViewModel
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun HousekeepingScreen(
@@ -55,10 +63,13 @@ fun HousekeepingScreen(
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             pendingCameraUri?.let { uri ->
+                finalizeHousekeepingCaptureUri(context, uri)
                 readBinaryPayload(context, uri)?.let { payload ->
                     viewModel.appendPendingPhotos(listOf(payload))
                 }
             }
+        } else {
+            pendingCameraUri?.let { uri -> deleteHousekeepingCaptureUri(context, uri) }
         }
         pendingCameraUri = null
     }
@@ -121,10 +132,10 @@ fun HousekeepingScreen(
             Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                 Button(
                     onClick = {
-                        val file = File.createTempFile("housekeeping_", ".jpg", File(context.cacheDir, "images").apply { mkdirs() })
-                        val captureUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-                        pendingCameraUri = captureUri
-                        cameraLauncher.launch(captureUri)
+                        createHousekeepingCaptureUri(context)?.let { captureUri ->
+                            pendingCameraUri = captureUri
+                            cameraLauncher.launch(captureUri)
+                        }
                     },
                     enabled = state.pendingPhotos.size < 3,
                     modifier = Modifier.fillMaxWidth(),
@@ -186,7 +197,44 @@ private fun RoomPicker(
 
 private fun readBinaryPayload(context: Context, uri: Uri): BinaryPayload? {
     val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-    val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "capture.jpg"
+    val fileName = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (nameColumn >= 0 && cursor.moveToFirst()) cursor.getString(nameColumn) else null
+    } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "capture.jpg"
     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
     return BinaryPayload(fileName = fileName, mimeType = mimeType, bytes = bytes)
+}
+
+private fun createHousekeepingCaptureUri(context: Context): Uri? {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val fileName = housekeepingCaptureFileName()
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Kajovo Hotel")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        return context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+    }
+
+    val directory = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "KajovoHotel").apply { mkdirs() }
+    val file = File(directory, housekeepingCaptureFileName())
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+}
+
+private fun housekeepingCaptureFileName(): String {
+    val formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").withZone(ZoneId.systemDefault())
+    return "kajovo_housekeeping_${formatter.format(Instant.now())}.jpg"
+}
+
+private fun finalizeHousekeepingCaptureUri(context: Context, uri: Uri) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+    val values = ContentValues().apply {
+        put(MediaStore.Images.Media.IS_PENDING, 0)
+    }
+    context.contentResolver.update(uri, values, null, null)
+}
+
+private fun deleteHousekeepingCaptureUri(context: Context, uri: Uri) {
+    context.contentResolver.delete(uri, null, null)
 }
