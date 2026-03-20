@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { KajovoSign } from '@kajovo/ui';
+import { KajovoFullLockup, KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -88,12 +88,7 @@ export function PortalResetPasswordPage(): JSX.Element {
   return (
     <main className="k-login-page" data-testid="portal-reset-password-page">
       <section className="k-login-card" aria-labelledby="portal-reset-title">
-        <img
-          className="k-login-wordmark"
-          src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
-          alt="KájovoHotel wordmark"
-          loading="lazy"
-        />
+        <KajovoFullLockup href="/" title="KájovoHotel" subtitle="Obnova přístupu" />
         <p className="k-login-eyebrow">{bundle.copy.eyebrow}</p>
         <h1 id="portal-reset-title">Nastavení nového hesla</h1>
         <p className="k-login-copy">

@@ -71,7 +71,7 @@ def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
 
 
 def _guard_issue_create(actor_role: str) -> None:
-    if _is_admin(actor_role) or _is_housekeeping(actor_role):
+    if _is_admin(actor_role) or _is_housekeeping(actor_role) or _is_maintenance(actor_role):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -80,7 +80,7 @@ def _guard_issue_create(actor_role: str) -> None:
 
 
 def _guard_issue_photo_upload(actor_role: str) -> None:
-    if _is_admin(actor_role) or _is_housekeeping(actor_role):
+    if _is_admin(actor_role) or _is_housekeeping(actor_role) or _is_maintenance(actor_role):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -89,33 +89,8 @@ def _guard_issue_photo_upload(actor_role: str) -> None:
 
 
 def _guard_issue_update(actor_role: str, issue: Issue, updates: dict[str, object]) -> dict[str, object]:
-    if _is_admin(actor_role):
+    if _is_admin(actor_role) or _is_maintenance(actor_role):
         return updates
-
-    if _is_maintenance(actor_role):
-        disallowed = set(updates) - {"status"}
-        if disallowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Maintenance can only change issue status",
-            )
-        next_status = updates.get("status")
-        if next_status is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Maintenance can only change issue status",
-            )
-        if next_status not in {IssueStatus.IN_PROGRESS.value, IssueStatus.RESOLVED.value}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Maintenance can only move issues to in_progress or resolved",
-            )
-        if issue.status in {IssueStatus.RESOLVED.value, IssueStatus.CLOSED.value}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Maintenance cannot reopen completed issues",
-            )
-        return {"status": next_status}
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,

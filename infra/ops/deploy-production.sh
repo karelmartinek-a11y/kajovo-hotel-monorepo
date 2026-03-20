@@ -358,6 +358,42 @@ http_check "http://127.0.0.1:${API_PORT:-8202}/api/health" "API health"
 http_check "http://127.0.0.1:${WEB_PORT:-8080}/healthz" "Web health"
 http_check "http://127.0.0.1:${ADMIN_PORT:-8083}/healthz" "Admin health"
 
+android_release_json="$ROOT_DIR/android/release/android-release.json"
+android_release_apk="$ROOT_DIR/apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk"
+if [[ ! -f "$android_release_json" ]]; then
+  echo "Chybi Android release manifest: $android_release_json" >&2
+  exit 1
+fi
+if [[ ! -f "$android_release_apk" ]]; then
+  echo "Chybi produkcni Android APK: $android_release_apk" >&2
+  exit 1
+fi
+
+android_release_runtime_json="$(
+  python3 - <<'PY' "$android_release_json" "$android_release_apk"
+from hashlib import sha256
+from pathlib import Path
+import json
+import sys
+
+manifest_path = Path(sys.argv[1])
+apk_path = Path(sys.argv[2])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+apk_hash = sha256(apk_path.read_bytes()).hexdigest().lower()
+expected_hash = str(manifest["sha256"]).lower()
+if apk_hash != expected_hash:
+    raise SystemExit(f"Android APK hash mismatch: expected {expected_hash}, got {apk_hash}")
+print(json.dumps({
+    "version_code": int(manifest["version_code"]),
+    "version": str(manifest["version_name"]),
+    "download_url": str(manifest["download_url"]),
+    "sha256": expected_hash,
+    "required": bool(manifest["required"]),
+    "apk_path": str(apk_path),
+}))
+PY
+)"
+
 deploy_artifact_dir="$ROOT_DIR/artifacts/deploy-runtime"
 mkdir -p "$deploy_artifact_dir"
 cat > "$deploy_artifact_dir/latest.json" <<JSON
@@ -372,7 +408,8 @@ cat > "$deploy_artifact_dir/latest.json" <<JSON
     "api_health": "200",
     "web_healthz": "200",
     "admin_healthz": "200"
-  }
+  },
+  "android_release": $android_release_runtime_json
 }
 JSON
 

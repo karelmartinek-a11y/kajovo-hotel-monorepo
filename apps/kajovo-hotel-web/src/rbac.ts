@@ -2,14 +2,17 @@ import {
   ADMIN_SWITCHABLE_ROLES,
   ROLE_MODULES,
   canReadModule as sharedCanReadModule,
+  canWriteModule as sharedCanWriteModule,
   parseRole,
   normalizeRole,
+  resolveActiveRoleForPermissions,
   rolePermissionSet,
+  visibleRolesForPermissions,
   type Role,
 } from '@kajovo/shared';
 
 export type { Role };
-export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole };
+export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole, resolveActiveRoleForPermissions, visibleRolesForPermissions };
 
 export type AuthProfile = {
   userId: string;
@@ -82,18 +85,19 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
     if (payload.active_role && !activeRole) {
       return { status: 'error', message: 'Auth service returned an invalid active role.' };
     }
+    const permissions = Array.isArray(payload.permissions) && payload.permissions.length > 0
+      ? new Set(payload.permissions)
+      : new Set(rolePermissions(activeRole ?? role));
+    const visibleRoles = visibleRolesForPermissions(roles, permissions);
+    const resolvedActiveRole = resolveActiveRoleForPermissions(roles, activeRole, permissions);
     return {
       status: 'authenticated',
       profile: {
         userId: payload.email,
         role,
-        roles,
-        activeRole,
-        permissions: Array.isArray(payload.permissions) && payload.permissions.length > 0
-          ? new Set(payload.permissions)
-          : activeRole
-            ? rolePermissions(activeRole)
-            : new Set(),
+        roles: visibleRoles,
+        activeRole: resolvedActiveRole,
+        permissions,
         actorType: payload.actor_type,
       },
     };
@@ -109,4 +113,8 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
 
 export function canReadModule(permissions: Set<string>, moduleKey: string): boolean {
   return sharedCanReadModule(permissions, moduleKey);
+}
+
+export function canWriteModule(permissions: Set<string>, moduleKey: string): boolean {
+  return sharedCanWriteModule(permissions, moduleKey);
 }

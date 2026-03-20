@@ -11,7 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { Badge, Card, DataTable, FormField, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   type BreakfastDailySummary,
@@ -36,7 +36,7 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
-import { normalizeRole, resolveAuthProfile, type AuthProfile } from './rbac';
+import { canWriteModule, normalizeRole, resolveAuthProfile, type AuthProfile } from './rbac';
 import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
 import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
@@ -116,6 +116,8 @@ type MediaPhoto = {
   created_at: string | null;
 };
 
+type HousekeepingDraftMode = 'issue' | 'lost_found';
+
 
 const HOUSEKEEPING_ROOMS = [
   '101',
@@ -156,6 +158,26 @@ const HOUSEKEEPING_ROOMS = [
   '323',
   '324',
 ];
+
+type HousekeepingDraftPhoto = {
+  name: string;
+  type: string;
+  lastModified: number;
+  bytes: ArrayBuffer;
+};
+
+type HousekeepingDraftStorage = {
+  key: string;
+  mode: HousekeepingDraftMode;
+  selectedRoom: string;
+  description: string;
+  photos: HousekeepingDraftPhoto[];
+  updatedAt: string;
+};
+
+const HOUSEKEEPING_DRAFT_DB = 'kajovo-hotel-housekeeping';
+const HOUSEKEEPING_DRAFT_STORE = 'housekeeping-drafts';
+const HOUSEKEEPING_DRAFT_STORAGE_KEY = 'kajovo.housekeeping.quick-capture.v4';
 
 const AuthContext = React.createContext<AuthProfile | null>(null);
 
@@ -367,6 +389,140 @@ function readCsrfToken(): string {
 function normalizePhoneInput(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+async function normalizeHousekeepingPhoto(file: File): Promise<File> {
+  if (!file.type.startsWith('image/')) {
+    return file;
+  }
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error('Fotografii se nepodařilo připravit.'));
+      element.src = objectUrl;
+    });
+    const maxEdge = 1600;
+    const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return file;
+    }
+    context.drawImage(image, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.86);
+    });
+    if (!blob) {
+      return file;
+    }
+    const outputName = file.name.replace(/\.[^.]+$/, '') || 'housekeeping-photo';
+    return new File([blob], `${outputName}.jpg`, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function canUseHousekeepingDraftStorage(): boolean {
+  return typeof window !== 'undefined' && 'indexedDB' in window;
+}
+
+function openHousekeepingDraftDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (!canUseHousekeepingDraftStorage()) {
+      reject(new Error('IndexedDB není dostupné.'));
+      return;
+    }
+    const request = window.indexedDB.open(HOUSEKEEPING_DRAFT_DB, 1);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(HOUSEKEEPING_DRAFT_STORE)) {
+        database.createObjectStore(HOUSEKEEPING_DRAFT_STORE, { keyPath: 'key' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error('Lokální úložiště pokojské se nepodařilo otevřít.'));
+  });
+}
+
+async function readHousekeepingDraft(): Promise<HousekeepingDraftStorage | null> {
+  if (!canUseHousekeepingDraftStorage()) {
+    return null;
+  }
+  const database = await openHousekeepingDraftDatabase();
+  return await new Promise((resolve, reject) => {
+    const transaction = database.transaction(HOUSEKEEPING_DRAFT_STORE, 'readonly');
+    const request = transaction.objectStore(HOUSEKEEPING_DRAFT_STORE).get(HOUSEKEEPING_DRAFT_STORAGE_KEY);
+    request.onsuccess = () => {
+      resolve((request.result as HousekeepingDraftStorage | undefined) ?? null);
+      database.close();
+    };
+    request.onerror = () => {
+      reject(request.error ?? new Error('Lokální koncept pokojské se nepodařilo načíst.'));
+      database.close();
+    };
+  });
+}
+
+async function writeHousekeepingDraft(draft: HousekeepingDraftStorage): Promise<void> {
+  if (!canUseHousekeepingDraftStorage()) {
+    return;
+  }
+  const database = await openHousekeepingDraftDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(HOUSEKEEPING_DRAFT_STORE, 'readwrite');
+    transaction.oncomplete = () => {
+      resolve();
+      database.close();
+    };
+    transaction.onerror = () => {
+      reject(transaction.error ?? new Error('Lokální koncept pokojské se nepodařilo uložit.'));
+      database.close();
+    };
+    transaction.objectStore(HOUSEKEEPING_DRAFT_STORE).put(draft);
+  });
+}
+
+async function filesToHousekeepingDraftPhotos(files: File[]): Promise<HousekeepingDraftPhoto[]> {
+  return await Promise.all(files.map(async (file) => ({
+    name: file.name,
+    type: file.type || 'image/jpeg',
+    lastModified: file.lastModified,
+    bytes: await file.arrayBuffer(),
+  })));
+}
+
+function draftPhotoToFile(photo: HousekeepingDraftPhoto): File {
+  return new File([photo.bytes], photo.name, {
+    type: photo.type || 'image/jpeg',
+    lastModified: photo.lastModified,
+  });
+}
+
+function clearHousekeepingDraft(): void {
+  if (!canUseHousekeepingDraftStorage()) {
+    return;
+  }
+  void openHousekeepingDraftDatabase()
+    .then((database) => {
+      const transaction = database.transaction(HOUSEKEEPING_DRAFT_STORE, 'readwrite');
+      transaction.objectStore(HOUSEKEEPING_DRAFT_STORE).delete(HOUSEKEEPING_DRAFT_STORAGE_KEY);
+      transaction.oncomplete = () => database.close();
+      transaction.onerror = () => database.close();
+    })
+    .catch(() => {
+      console.warn('housekeeping.draft_clear_failed');
+    });
 }
 
 async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
@@ -1339,23 +1495,54 @@ function HousekeepingForm(): JSX.Element {
   const [selectedRoom, setSelectedRoom] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [photos, setPhotos] = React.useState<File[]>([]);
+  const [draftNotice, setDraftNotice] = React.useState<string>('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.');
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [cameraOpen, setCameraOpen] = React.useState(false);
+  const [cameraError, setCameraError] = React.useState<string | null>(null);
+  const [cameraReady, setCameraReady] = React.useState(false);
   const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
   const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
+  const cameraVideoRef = React.useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = React.useRef<MediaStream | null>(null);
+  const restoredDraftRef = React.useRef(false);
+  const photoPreviews = React.useMemo(
+    () => photos.map((photo) => ({ name: photo.name, url: URL.createObjectURL(photo) })),
+    [photos],
+  );
 
-  const resetForm = React.useCallback(() => {
+  const clearDraftForm = React.useCallback(() => {
     setSelectedRoom('');
     setDescription('');
     setPhotos([]);
     setError(null);
-    setSuccess(null);
+    setCameraError(null);
+    setCameraReady(false);
+    clearHousekeepingDraft();
+    setDraftNotice('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.');
   }, []);
 
-  const updatePhotos = React.useCallback((files: File[], append: boolean): void => {
+  const stopCamera = React.useCallback((): void => {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+    setCameraReady(false);
+    setCameraOpen(false);
+  }, []);
+
+  const resetForm = React.useCallback(() => {
+    stopCamera();
+    clearDraftForm();
+    setSuccess(null);
+  }, [clearDraftForm, stopCamera]);
+
+  const updatePhotos = React.useCallback(async (files: File[], append: boolean): Promise<void> => {
+    const normalized = await Promise.all(files.map((file) => normalizeHousekeepingPhoto(file)));
     setPhotos((current) => {
-      const merged = append ? [...current, ...files] : files;
+      const merged = append ? [...current, ...normalized] : normalized;
       if (merged.length > 3) {
         setError('Lze připojit nejvýše 3 fotografie.');
         return merged.slice(0, 3);
@@ -1365,15 +1552,155 @@ function HousekeepingForm(): JSX.Element {
     });
   }, []);
 
-  const onGalleryChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    updatePhotos(Array.from(event.target.files ?? []), true);
+  const onGalleryChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    await updatePhotos(Array.from(event.target.files ?? []), true);
     event.target.value = '';
   };
 
-  const onCameraChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
-    updatePhotos(Array.from(event.target.files ?? []), true);
+  const onCameraChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    await updatePhotos(Array.from(event.target.files ?? []), true);
     event.target.value = '';
   };
+
+  const removePhoto = React.useCallback((index: number): void => {
+    setPhotos((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    setError((previous) => (previous === 'Lze připojit nejvýše 3 fotografie.' ? null : previous));
+  }, []);
+
+  const openNativeCamera = React.useCallback(async (): Promise<void> => {
+    if (photos.length >= 3 || saving) {
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Tento prohlížeč nepodporuje přímý kamerový náhled. Použijte systémové vyfocení.');
+      cameraInputRef.current?.click();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+        },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      setCameraError(null);
+      setCameraOpen(true);
+    } catch {
+      setCameraError('Kamera není dostupná. Zkontrolujte oprávnění a zkuste to znovu.');
+      cameraInputRef.current?.click();
+    }
+  }, [photos.length, saving]);
+
+  const capturePhoto = React.useCallback(async (): Promise<void> => {
+    const video = cameraVideoRef.current;
+    if (!video) {
+      setCameraError('Náhled kamery ještě není připravený.');
+      return;
+    }
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      setCameraError('Snímek z kamery se nepodařilo zpracovat.');
+      return;
+    }
+    context.drawImage(video, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.9);
+    });
+    if (!blob) {
+      setCameraError('Snímek z kamery se nepodařilo uložit.');
+      return;
+    }
+    const file = new File([blob], `housekeeping-${Date.now()}.jpg`, {
+      type: 'image/jpeg',
+      lastModified: Date.now(),
+    });
+    await updatePhotos([file], true);
+    stopCamera();
+  }, [stopCamera, updatePhotos]);
+
+  React.useEffect(() => {
+    if (!cameraOpen || !cameraStreamRef.current || !cameraVideoRef.current) {
+      return;
+    }
+    cameraVideoRef.current.srcObject = cameraStreamRef.current;
+    void cameraVideoRef.current.play()
+      .then(() => setCameraReady(true))
+      .catch(() => setCameraError('Náhled kamery se nepodařilo spustit.'));
+  }, [cameraOpen]);
+
+  React.useEffect(() => {
+    if (restoredDraftRef.current) {
+      return;
+    }
+    restoredDraftRef.current = true;
+    void readHousekeepingDraft()
+      .then((draft) => {
+        if (!draft) {
+          return;
+        }
+        setMode(draft.mode === 'lost_found' ? 'lost_found' : 'issue');
+        setSelectedRoom(typeof draft.selectedRoom === 'string' ? draft.selectedRoom : '');
+        setDescription(typeof draft.description === 'string' ? draft.description : '');
+        if (Array.isArray(draft.photos) && draft.photos.length > 0) {
+          setPhotos(draft.photos.slice(0, 3).map(draftPhotoToFile));
+        }
+        if (draft.updatedAt) {
+          setDraftNotice(`Obnoven lokální koncept z ${formatDateTime(draft.updatedAt)}.`);
+        }
+      })
+      .catch(() => {
+        clearHousekeepingDraft();
+      });
+  }, []);
+
+  React.useEffect(() => {
+    const isEmpty = mode === 'issue' && selectedRoom === '' && description.trim() === '' && photos.length === 0;
+    if (isEmpty) {
+      clearHousekeepingDraft();
+      setDraftNotice('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.');
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const draftPhotos = await filesToHousekeepingDraftPhotos(photos);
+        if (cancelled) {
+          return;
+        }
+        const payload: HousekeepingDraftStorage = {
+          key: HOUSEKEEPING_DRAFT_STORAGE_KEY,
+          mode,
+          selectedRoom,
+          description,
+          photos: draftPhotos,
+          updatedAt: new Date().toISOString(),
+        };
+        await writeHousekeepingDraft(payload);
+        if (!cancelled) {
+          setDraftNotice('Rozpracovaný záznam je uložený lokálně v tomto zařízení, včetně pořízených fotek.');
+        }
+      } catch {
+        console.warn('housekeeping.draft_persist_failed');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [description, mode, photos, selectedRoom]);
+
+  React.useEffect(() => () => {
+    stopCamera();
+  }, [stopCamera]);
+
+  React.useEffect(() => () => {
+    photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+  }, [photoPreviews]);
 
   const submit = async (): Promise<void> => {
     const shortDescription = description.trim();
@@ -1445,10 +1772,11 @@ function HousekeepingForm(): JSX.Element {
           if (!response.ok) {
             throw new Error('Fotografie nálezu se nepodařilo nahrát.');
           }
-        }
       }
+      }
+      stopCamera();
+      clearDraftForm();
       setSuccess(mode === 'issue' ? 'Závada byla odeslána.' : 'Nález byl odeslán.');
-      resetForm();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Uložení záznamu selhalo.');
     } finally {
@@ -1523,13 +1851,50 @@ function HousekeepingForm(): JSX.Element {
                   <button className="k-button secondary" type="button" onClick={() => galleryInputRef.current?.click()} disabled={photos.length >= 3 || saving}>
                     Vybrat fotografie
                   </button>
+                  <button className="k-button secondary" type="button" onClick={() => void openNativeCamera()} disabled={photos.length >= 3 || saving}>
+                    Otevřít kameru
+                  </button>
                   <button className="k-button secondary" type="button" onClick={() => cameraInputRef.current?.click()} disabled={photos.length >= 3 || saving}>
-                    Vyfotit
+                    Vyfotit systémově
                   </button>
                 </div>
+                <p className="k-subtle">{draftNotice}</p>
+                {cameraError ? <p className="k-text-error">{cameraError}</p> : null}
               </>
             </FormField>
-            {photos.length > 0 ? <p className="k-subtle">Vybráno fotografií: {photos.length}</p> : null}
+            {cameraOpen ? (
+              <div className="k-housekeeping-camera">
+                <div className="k-housekeeping-camera__preview">
+                  <video ref={cameraVideoRef} autoPlay playsInline muted />
+                </div>
+                <div className="k-toolbar">
+                  <button className="k-button" type="button" onClick={() => void capturePhoto()} disabled={!cameraReady || saving}>
+                    Pořídit snímek
+                  </button>
+                  <button className="k-button secondary" type="button" onClick={stopCamera} disabled={saving}>
+                    Zavřít kameru
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {photos.length > 0 ? (
+              <div className="k-housekeeping-photos">
+                <p className="k-subtle">Vybráno fotografií: {photos.length}</p>
+                <div className="k-housekeeping-photos__grid">
+                  {photoPreviews.map((photo, index) => (
+                    <figure key={`${photo.name}-${index}`} className="k-housekeeping-photo-card">
+                      <img src={photo.url} alt={`Fotografie záznamu ${index + 1}`} className="k-housekeeping-photo-card__image" />
+                      <figcaption className="k-housekeeping-photo-card__caption">
+                        <span>{photo.name || `Fotografie ${index + 1}`}</span>
+                        <button className="k-button secondary" type="button" onClick={() => removePhoto(index)} disabled={saving}>
+                          Odebrat
+                        </button>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="k-toolbar">
             <button className="k-button" type="button" onClick={() => void submit()} disabled={saving}>
@@ -2472,7 +2837,9 @@ function InventoryDetail(): JSX.Element {
 }
 
 function ReportsList(): JSX.Element {
-    const [items, setItems] = React.useState<Report[]>([]);
+  const auth = useAuth();
+  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
+  const [items, setItems] = React.useState<Report[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -2481,7 +2848,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : undefined} /> : <><div className="k-toolbar">{canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : null}</div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -2516,7 +2883,9 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function ReportsDetail(): JSX.Element {
-    const { id } = useParams();
+  const auth = useAuth();
+  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
+  const { id } = useParams();
   const [item, setItem] = React.useState<Report | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -2529,7 +2898,7 @@ function ReportsDetail(): JSX.Element {
       .catch(() => setError('Hlášení nebylo nalezeno.'));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link>{canManageReports ? <Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
 function PortalProfilePage(): JSX.Element {
@@ -2754,7 +3123,14 @@ function AppRoutes(): JSX.Element {
   }, []);
 
   if (authState.status === 'loading') {
-    return <SkeletonPage />;
+    return (
+      <KajovoStartupSplash
+        href="/"
+        eyebrow="KájovoHotel"
+        title="Spouštím provozní portál"
+        description="Ověřuji přihlášení, dostupné role a navazuji na poslední bezpečnou relaci."
+      />
+    );
   }
 
   if (authState.status !== 'authenticated') {

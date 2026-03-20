@@ -18,8 +18,10 @@ export type AndroidAppReleaseRead = {
   "download_url": string;
   "message": string;
   "required"?: boolean;
+  "sha256": string;
   "title": string;
   "version": string;
+  "version_code": number;
 };
 export type AuthIdentityResponse = {
   "active_role"?: string | null;

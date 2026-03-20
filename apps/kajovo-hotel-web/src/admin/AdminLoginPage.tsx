@@ -1,5 +1,5 @@
 import React from 'react';
-import { KajovoSign, StateView } from '@kajovo/ui';
+import { KajovoFullLockup, KajovoSign, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 type LoginErrorState = {
@@ -77,16 +77,11 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
   return (
     <main className="k-login-page" data-testid="admin-login-page">
       <section className="k-login-card" aria-labelledby="admin-login-title">
-        <img
-          className="k-login-wordmark"
-          src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
-          alt="KájovoHotel wordmark"
-          loading="lazy"
-        />
+        <KajovoFullLockup href="/admin/" title="KájovoHotel" subtitle="Administrace" />
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
-        <h1 id="admin-login-title">{copy.title}</h1>
+        <h1 id="admin-login-title">Vítejte v administraci KájovoHotel</h1>
         <p className="k-login-copy" id="admin-login-description">
-          {copy.description}
+          Přihlaste se do administrace a pokračujte do správy provozu, účtů a nastavení bez přepínání mezi odlišnými vstupy.
         </p>
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="admin-email">
@@ -146,6 +141,7 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
               {hintStatus}
             </p>
           ) : null}
+          {authError ? <StateView title="Ověření přihlášení selhalo" description={authError} stateKey="error" /> : null}
         </form>
       </section>
       <KajovoSign href="/admin/" />

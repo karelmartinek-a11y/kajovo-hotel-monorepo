@@ -3,7 +3,6 @@ package cz.hcasc.kajovohotel.feature.issues.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.hcasc.kajovohotel.core.common.AppResult
-import cz.hcasc.kajovohotel.core.model.IssuePriority
 import cz.hcasc.kajovohotel.core.model.IssueStatus
 import cz.hcasc.kajovohotel.core.model.allowedMaintenanceTransitions
 import cz.hcasc.kajovohotel.feature.issues.data.IssuesRepository
@@ -40,6 +39,7 @@ class IssuesViewModel @Inject constructor(
                         draft = draftOverride ?: selected?.toDraft() ?: IssueDraft(),
                     )
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isLoading = false, errorMessage = result.message)
             }
         }
@@ -80,6 +80,7 @@ class IssuesViewModel @Inject constructor(
                     )
                     load(result.value.id, result.value.toDraft())
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSaving = false, errorMessage = result.message)
             }
         }
@@ -88,16 +89,22 @@ class IssuesViewModel @Inject constructor(
     fun advanceStatus(target: IssueStatus) {
         val selected = mutableState.value.selected ?: return
         if (target !in allowedMaintenanceTransitions(selected.status)) {
-            mutableState.value = mutableState.value.copy(errorMessage = "Backend guard nepovoluje přechod ${selected.status.label} → ${target.label}.")
+            mutableState.value = mutableState.value.copy(errorMessage = "Pro tuto závadu není přechod do stavu ${target.label} povolen.")
             return
         }
         mutableState.value = mutableState.value.copy(isSaving = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.updateStatus(selected.id, target)) {
                 is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(isSaving = false, selected = result.value, draft = result.value.toDraft(), successMessage = "Stav závady byl změněn.")
+                    mutableState.value = mutableState.value.copy(
+                        isSaving = false,
+                        selected = result.value,
+                        draft = result.value.toDraft(),
+                        successMessage = "Stav závady byl změněn.",
+                    )
                     load(result.value.id, result.value.toDraft())
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSaving = false, errorMessage = result.message)
             }
         }

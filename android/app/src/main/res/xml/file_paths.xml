@@ -3,6 +3,9 @@
     <cache-path
         name="captured_images"
         path="images/" />
+    <cache-path
+        name="update_packages"
+        path="updates/" />
     <external-files-path
         name="captured_pictures"
         path="Pictures/" />

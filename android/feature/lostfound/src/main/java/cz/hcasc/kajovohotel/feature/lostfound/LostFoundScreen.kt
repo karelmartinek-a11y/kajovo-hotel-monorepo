@@ -23,11 +23,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
@@ -41,13 +44,24 @@ import cz.hcasc.kajovohotel.feature.lostfound.domain.isValidForSubmit
 import cz.hcasc.kajovohotel.feature.lostfound.presentation.LostFoundUiState
 import cz.hcasc.kajovohotel.feature.lostfound.presentation.LostFoundViewModel
 
+enum class LostFoundSection {
+    LIST,
+    DETAIL,
+    CREATE,
+    EDIT,
+}
+
 @Composable
 fun LostFoundScreen(
     activeRole: PortalRole,
+    initialSection: LostFoundSection = LostFoundSection.LIST,
+    selectedRecordId: Int? = null,
+    onNavigate: ((LostFoundSection, Int?) -> Unit)? = null,
     viewModel: LostFoundViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var section by remember(activeRole, initialSection) { mutableStateOf(initialSection) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems = 3)) { uris ->
         viewModel.setPendingPhotos(uris.mapNotNull { readBinaryPayload(context, it) })
     }
@@ -55,6 +69,22 @@ fun LostFoundScreen(
     LaunchedEffect(activeRole) {
         viewModel.configure(activeRole)
         viewModel.load()
+    }
+    LaunchedEffect(initialSection) {
+        section = initialSection
+    }
+    LaunchedEffect(initialSection, selectedRecordId, state.records) {
+        when (initialSection) {
+            LostFoundSection.CREATE -> viewModel.startCreate()
+            LostFoundSection.DETAIL,
+            LostFoundSection.EDIT -> viewModel.selectById(selectedRecordId)
+            LostFoundSection.LIST -> Unit
+        }
+    }
+    LaunchedEffect(state.successMessage, state.selected?.id) {
+        if (state.successMessage != null && state.selected != null) {
+            if (onNavigate != null) onNavigate(LostFoundSection.DETAIL, state.selected?.id) else section = LostFoundSection.DETAIL
+        }
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
@@ -64,55 +94,123 @@ fun LostFoundScreen(
                 style = MaterialTheme.typography.headlineMedium,
             )
         }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST }, modifier = Modifier.weight(1f)) { Text("Seznam") }
+                if (state.selected != null) {
+                    OutlinedButton(onClick = {
+                        val id = state.selected?.id
+                        if (onNavigate != null && id != null) onNavigate(LostFoundSection.DETAIL, id) else section = LostFoundSection.DETAIL
+                    }, modifier = Modifier.weight(1f)) { Text("Detail") }
+                }
+                if (!state.isReceptionView) {
+                    OutlinedButton(onClick = {
+                        viewModel.startCreate()
+                        if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
+                    }, modifier = Modifier.weight(1f)) { Text("Nový") }
+                    if (state.selected != null) {
+                        OutlinedButton(onClick = {
+                            val id = state.selected?.id
+                            if (onNavigate != null && id != null) onNavigate(LostFoundSection.EDIT, id) else section = LostFoundSection.EDIT
+                        }, modifier = Modifier.weight(1f)) { Text("Upravit") }
+                    }
+                }
+            }
+        }
         when {
-            state.isLoading -> item { FeatureCard(title = "Načítám nálezy", subtitle = "Synchronizuji seznam a detail.") }
-            state.errorMessage != null -> item { FeatureCard(title = "Chyba modulu", subtitle = state.errorMessage ?: "") }
-            state.records.isEmpty() -> item {
+            state.isLoading -> item {
                 FeatureCard(
-                    title = if (state.isReceptionView) "Čekající nálezy" else "Žádný záznam",
-                    subtitle = if (state.isReceptionView) "Žádný čekající nález pro recepci." else "Ve zvoleném filtru není žádná položka.",
+                    title = "Načítám záznamy",
+                    subtitle = "Připravuji seznam, detail a návazné akce pro zvolený provozní tok.",
                 )
             }
+
+            state.errorMessage != null -> item {
+                FeatureCard(title = "Modul ztrát a nálezů není dostupný", subtitle = state.errorMessage ?: "")
+            }
+
+            state.records.isEmpty() -> item {
+                FeatureCard(
+                    title = if (state.isReceptionView) "Čekající nálezy" else "Zatím není žádný záznam",
+                    subtitle = if (state.isReceptionView) {
+                        "Recepce teď nemá žádný nový předmět k převzetí."
+                    } else {
+                        "Upravte filtry nebo založte nový záznam."
+                    },
+                )
+            }
+
             else -> {
                 if (state.isReceptionView) {
-                    item {
-                        state.selected?.let { selected ->
+                    if (section == LostFoundSection.DETAIL) {
+                        item {
                             ReceptionDetailCard(
                                 state = state,
-                                onMarkProcessed = { viewModel.markProcessed(selected) },
+                                onMarkProcessed = { state.selected?.let(viewModel::markProcessed) },
+                                onBackToList = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST },
                             )
                         }
                     }
                 } else {
-                    item {
-                        FiltersCard(
-                            state = state,
-                            onRefresh = viewModel::load,
-                            onStartCreate = viewModel::startCreate,
-                            onFiltersChange = viewModel::updateFilters,
-                        )
+                    if (section == LostFoundSection.LIST) {
+                        item {
+                            FiltersCard(
+                                state = state,
+                                onRefresh = viewModel::load,
+                                onStartCreate = {
+                                    viewModel.startCreate()
+                                    if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
+                                },
+                                onFiltersChange = viewModel::updateFilters,
+                            )
+                        }
                     }
-                    item {
-                        EditorCard(
-                            state = state,
-                            onDraftChange = viewModel::updateDraft,
-                            onPickPhotos = {
-                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            },
-                            onSave = viewModel::save,
-                        )
+                    if (section == LostFoundSection.DETAIL) {
+                        item {
+                            DetailCard(
+                                state = state,
+                                onBackToList = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST },
+                                onStartEdit = {
+                                    val id = state.selected?.id
+                                    if (onNavigate != null && id != null) onNavigate(LostFoundSection.EDIT, id) else section = LostFoundSection.EDIT
+                                },
+                            )
+                        }
+                    }
+                    if (section == LostFoundSection.CREATE || section == LostFoundSection.EDIT) {
+                        item {
+                            EditorCard(
+                                state = state,
+                                onDraftChange = viewModel::updateDraft,
+                                onPickPhotos = {
+                                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                },
+                                onSave = viewModel::save,
+                                onCancel = {
+                                    if (state.selected != null) {
+                                        val id = state.selected?.id
+                                        if (onNavigate != null && id != null) onNavigate(LostFoundSection.DETAIL, id) else section = LostFoundSection.DETAIL
+                                    } else if (onNavigate != null) {
+                                        onNavigate(LostFoundSection.LIST, null)
+                                    } else {
+                                        section = LostFoundSection.LIST
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
-                items(state.records, key = { it.id }) { record ->
-                    FeatureCard(
-                        title = "${record.roomNumber.ifBlank { "-" }} · ${record.description}",
-                        subtitle = if (state.isReceptionView) {
-                            "Vznik ${record.eventAt}"
-                        } else {
-                            "${record.location} · ${record.status.label}"
-                        },
-                        modifier = Modifier.clickable { viewModel.select(record) },
-                    )
+                if (section == LostFoundSection.LIST) {
+                    items(state.records, key = { it.id }) { record ->
+                        FeatureCard(
+                            title = "${record.category} · ${record.status.label}",
+                            subtitle = "${record.location} · ${record.description}",
+                            modifier = Modifier.clickable {
+                                viewModel.select(record)
+                                if (onNavigate != null) onNavigate(LostFoundSection.DETAIL, record.id) else section = LostFoundSection.DETAIL
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -123,12 +221,19 @@ fun LostFoundScreen(
 private fun ReceptionDetailCard(
     state: LostFoundUiState,
     onMarkProcessed: () -> Unit,
+    onBackToList: () -> Unit,
 ) {
-    val selected = state.selected ?: return
+    val selected = state.selected ?: run {
+        FeatureCard(
+            title = "Vyberte nález",
+            subtitle = "Klepnutím na řádek otevřete detail a potvrďte převzetí na recepci.",
+        )
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = "Pokoj ${selected.roomNumber.ifBlank { "-" }}",
-            subtitle = selected.description,
+            subtitle = "${selected.description} · ${selected.category}",
         )
         selected.photos.firstOrNull()?.let { photo ->
             AsyncImage(
@@ -140,13 +245,17 @@ private fun ReceptionDetailCard(
                 contentScale = ContentScale.Crop,
             )
         }
-        Text(text = "Vznik: ${selected.eventAt}", style = MaterialTheme.typography.bodyMedium)
+        Text(text = "Místo: ${selected.location}")
+        Text(text = "Vznik: ${selected.eventAt}")
         Button(
             onClick = onMarkProcessed,
             enabled = !state.isSaving,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Zpracováno")
+            Text("Označit jako převzaté")
+        }
+        OutlinedButton(onClick = onBackToList, modifier = Modifier.fillMaxWidth()) {
+            Text("Zpět na seznam")
         }
         state.successMessage?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
     }
@@ -160,7 +269,10 @@ private fun FiltersCard(
     onFiltersChange: ((cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundFilters) -> cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundFilters) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(title = "Filtry a detail", subtitle = "Rozsah mimo recepci zachovává create a edit workflow.")
+        FeatureCard(
+            title = "Filtry a seznam",
+            subtitle = "Nejprve vyfiltrujte záznamy a otevřete seznam. Detail a editor jsou oddělené kroky stejně jako na webu.",
+        )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             item {
                 FilterChip(
@@ -176,11 +288,13 @@ private fun FiltersCard(
                     label = { Text("Ztraceno") },
                 )
             }
-            item {
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            items(LostFoundStatus.entries) { status ->
                 FilterChip(
-                    selected = state.filters.status == LostFoundStatus.CLAIMED,
-                    onClick = { onFiltersChange { current -> current.copy(status = if (current.status == LostFoundStatus.CLAIMED) null else LostFoundStatus.CLAIMED) } },
-                    label = { Text("Zpracováno") },
+                    selected = state.filters.status == status,
+                    onClick = { onFiltersChange { current -> current.copy(status = if (current.status == status) null else status) } },
+                    label = { Text(status.label) },
                 )
             }
         }
@@ -198,29 +312,104 @@ private fun FiltersCard(
 }
 
 @Composable
+private fun DetailCard(
+    state: LostFoundUiState,
+    onBackToList: () -> Unit,
+    onStartEdit: () -> Unit,
+) {
+    val selected = state.selected
+    if (selected == null) {
+        FeatureCard(
+            title = "Vyberte záznam",
+            subtitle = "Po výběru se zobrazí samostatný detail předmětu. Úprava je oddělený další krok.",
+        )
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+        FeatureCard(
+            title = "Detail #${selected.id}",
+            subtitle = "${selected.itemType.label} · ${selected.status.label}",
+        )
+        Text(text = "Kategorie: ${selected.category}")
+        Text(text = "Místo: ${selected.location}")
+        Text(text = "Událost: ${selected.eventAt}")
+        if (selected.roomNumber.isNotBlank()) {
+            Text(text = "Pokoj: ${selected.roomNumber}")
+        }
+        if (selected.claimantName.isNotBlank()) {
+            Text(text = "Přebírající: ${selected.claimantName}")
+        }
+        if (selected.claimantContact.isNotBlank()) {
+            Text(text = "Kontakt: ${selected.claimantContact}")
+        }
+        if (selected.handoverNote.isNotBlank()) {
+            Text(text = "Předávací záznam: ${selected.handoverNote}")
+        }
+        if (selected.tags.isNotEmpty()) {
+            Text(text = "Tagy: ${selected.tags.joinToString()}")
+        }
+        selected.photos.take(3).forEach { photo ->
+            AsyncImage(
+                model = photo.thumbUrl,
+                contentDescription = "Fotografie nálezu",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
+            OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
+        }
+    }
+}
+
+@Composable
 private fun EditorCard(
     state: LostFoundUiState,
     onDraftChange: ((LostFoundDraft) -> LostFoundDraft) -> Unit,
     onPickPhotos: () -> Unit,
     onSave: () -> Unit,
+    onCancel: () -> Unit,
 ) {
+    val draft = state.draft
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
-            title = state.selected?.let { "Detail #${it.id}" } ?: "Nový záznam",
-            subtitle = state.successMessage ?: "Záznam lze založit, upravit a doplnit až 3 fotografie.",
+            title = state.selected?.let { "Upravit záznam #${it.id}" } ?: "Nový záznam",
+            subtitle = state.successMessage ?: "Editor záznamu je oddělený od seznamu a detailu stejně jako na webu.",
         )
-        val draft = state.draft
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            items(LostFoundItemType.entries) { itemType ->
+                FilterChip(
+                    selected = draft.itemType == itemType,
+                    onClick = { onDraftChange { current -> current.copy(itemType = itemType) } },
+                    label = { Text(itemType.label) },
+                )
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            items(LostFoundStatus.entries) { status ->
+                FilterChip(
+                    selected = draft.status == status,
+                    onClick = { onDraftChange { current -> current.copy(status = status) } },
+                    label = { Text(status.label) },
+                )
+            }
+        }
         OutlinedTextField(value = draft.category, onValueChange = { onDraftChange { current -> current.copy(category = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kategorie") })
         OutlinedTextField(value = draft.description, onValueChange = { onDraftChange { current -> current.copy(description = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Popis") })
-        OutlinedTextField(value = draft.location, onValueChange = { onDraftChange { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Místo") })
+        OutlinedTextField(value = draft.location, onValueChange = { onDraftChange { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Místo nálezu nebo ztráty") })
         OutlinedTextField(value = draft.eventAt, onValueChange = { onDraftChange { current -> current.copy(eventAt = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Datum události") })
         OutlinedTextField(value = draft.roomNumber, onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Pokoj") })
-        OutlinedTextField(value = draft.claimantName, onValueChange = { onDraftChange { current -> current.copy(claimantName = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Přebírající") })
+        OutlinedTextField(value = draft.claimantName, onValueChange = { onDraftChange { current -> current.copy(claimantName = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Jméno přebírajícího") })
         OutlinedTextField(value = draft.claimantContact, onValueChange = { onDraftChange { current -> current.copy(claimantContact = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kontakt") })
-        OutlinedTextField(value = draft.handoverNote, onValueChange = { onDraftChange { current -> current.copy(handoverNote = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Poznámka k předání") })
+        OutlinedTextField(value = draft.handoverNote, onValueChange = { onDraftChange { current -> current.copy(handoverNote = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Předávací záznam") })
+        OutlinedTextField(value = draft.tags, onValueChange = { onDraftChange { current -> current.copy(tags = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Tagy oddělené čárkou") })
         Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             Button(onClick = onPickPhotos, modifier = Modifier.fillMaxWidth()) { Text("Vybrat až 3 fotky") }
             Button(onClick = onSave, enabled = !state.isSaving && draft.isValidForSubmit(), modifier = Modifier.fillMaxWidth()) { Text("Uložit záznam") }
+            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Zrušit") }
         }
         if (state.pendingPhotos.isNotEmpty()) {
             Text(text = "Vybráno ${state.pendingPhotos.size} nové fotografie")

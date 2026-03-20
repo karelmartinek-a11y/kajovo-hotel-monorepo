@@ -11,7 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   getAuthBundle,
@@ -42,6 +42,7 @@ import {
   ADMIN_SWITCHABLE_ROLES,
   ROLE_MODULES,
   canReadModule,
+  canWriteModule,
   normalizeRole,
   rolePermissions,
   resolveAuthProfile,
@@ -3318,6 +3319,8 @@ function InventoryWorkbench(): JSX.Element {
 }
 
 function ReportsList(): JSX.Element {
+  const auth = useAuth();
+  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
   const [items, setItems] = React.useState<Report[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -3327,7 +3330,7 @@ function ReportsList(): JSX.Element {
       .catch(() => setError('Hlášení se nepodařilo načíst.'));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={<Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link>} /> : <><div className="k-toolbar"><Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link></div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : undefined} /> : <><div className="k-toolbar">{canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : null}</div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -3362,6 +3365,8 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 }
 
 function ReportsDetail(): JSX.Element {
+  const auth = useAuth();
+  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
   const { id } = useParams();
   const [item, setItem] = React.useState<Report | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -3375,7 +3380,7 @@ function ReportsDetail(): JSX.Element {
       .catch(() => setError('Hlášení nebylo nalezeno.'));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link>{canManageReports ? <Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
 function UsersAdmin(): JSX.Element {
@@ -4682,7 +4687,14 @@ function AppRoutes(): JSX.Element {
   const auth = authState.status === 'authenticated' ? authState.profile : null;
 
   if (authState.status === 'loading') {
-    return <SkeletonPage />;
+    return (
+      <KajovoStartupSplash
+        href="/admin/"
+        eyebrow="KájovoHotel"
+        title="Spouštím administraci"
+        description="Ověřuji administrátorskou relaci, role view a připravuji jednotný vstup do celé webové aplikace."
+      />
+    );
   }
 
   if (location.pathname === '/login') {
@@ -4781,7 +4793,8 @@ function AppRoutes(): JSX.Element {
   const adminCurrentPath = toAdminNavRoute(location.pathname || '/');
   const roleViewLabel = roleSwitcherLabels[effectiveRoleView] ?? effectiveRoleView;
   const canManageBreakfast = effectiveRoleView === 'admin' || effectiveRoleView === 'recepce';
-  const canManageInventory = effectiveRoleView === 'admin';
+  const canManageInventory = effectiveRoleView === 'admin' || effectiveRoleView === 'sklad';
+  const canManageReports = effectiveRoleView === 'admin' || canWriteModule(roleScopedPermissions, 'reports');
   return (
     <AuthContext.Provider value={effectiveAuth}>
       <AppShell
@@ -4811,9 +4824,9 @@ function AppRoutes(): JSX.Element {
         <Route path="/sklad/:id" element={isAllowed('inventory') && canManageInventory ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/sklad/:id/edit" element={isAllowed('inventory') && canManageInventory ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/hlaseni/nove" element={isAllowed('reports') && canManageReports ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
+        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') && canManageReports ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="Nastavení" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/profil" element={<AdminProfilePage />} />

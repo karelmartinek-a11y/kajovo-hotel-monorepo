@@ -13,7 +13,10 @@ import cz.hcasc.kajovohotel.core.common.BaseUrlConfig
 import cz.hcasc.kajovohotel.core.database.KajovoDatabase
 import cz.hcasc.kajovohotel.core.database.ModuleSnapshotDao
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEventStore
+import cz.hcasc.kajovohotel.core.network.AndroidReleaseHeaderInterceptor
+import cz.hcasc.kajovohotel.core.network.AndroidReleaseSignalStore
 import cz.hcasc.kajovohotel.core.network.CsrfTokenInterceptor
+import cz.hcasc.kajovohotel.core.network.InMemoryAndroidReleaseSignalStore
 import cz.hcasc.kajovohotel.core.network.InMemoryAuthNetworkEventStore
 import cz.hcasc.kajovohotel.core.network.RequestIdInterceptor
 import cz.hcasc.kajovohotel.core.network.SessionGuardInterceptor
@@ -22,6 +25,7 @@ import cz.hcasc.kajovohotel.core.network.api.BreakfastApi
 import cz.hcasc.kajovohotel.core.network.api.InventoryApi
 import cz.hcasc.kajovohotel.core.network.api.IssuesApi
 import cz.hcasc.kajovohotel.core.network.api.LostFoundApi
+import cz.hcasc.kajovohotel.core.network.api.ReportsApi
 import cz.hcasc.kajovohotel.core.network.cookie.CookieVault
 import cz.hcasc.kajovohotel.core.network.cookie.PersistingCookieJar
 import cz.hcasc.kajovohotel.core.session.CookieBackedSessionCookieStore
@@ -85,9 +89,14 @@ object AppModules {
 
     @Provides
     @Singleton
+    fun provideAndroidReleaseSignalStore(): AndroidReleaseSignalStore = InMemoryAndroidReleaseSignalStore()
+
+    @Provides
+    @Singleton
     fun provideOkHttpClient(
         cookieJar: PersistingCookieJar,
         eventStore: AuthNetworkEventStore,
+        androidReleaseSignalStore: AndroidReleaseSignalStore,
     ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
         return OkHttpClient.Builder()
@@ -95,6 +104,7 @@ object AppModules {
             .addInterceptor(RequestIdInterceptor())
             .addInterceptor(CsrfTokenInterceptor(cookieJar))
             .addInterceptor(SessionGuardInterceptor(eventStore))
+            .addInterceptor(AndroidReleaseHeaderInterceptor(androidReleaseSignalStore))
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -135,6 +145,10 @@ object AppModules {
     @Provides
     @Singleton
     fun provideInventoryApi(retrofit: Retrofit): InventoryApi = retrofit.create(InventoryApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideReportsApi(retrofit: Retrofit): ReportsApi = retrofit.create(ReportsApi::class.java)
 
     @Provides
     @Singleton

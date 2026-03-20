@@ -140,7 +140,7 @@ def test_admin_can_reopen_and_delete_issue(api_request: ApiRequest) -> None:
     assert delete_status == 204
 
 
-def test_maintenance_can_list_and_mark_issue_done(api_base_url: str, api_request: ApiRequest) -> None:
+def test_maintenance_can_list_create_and_edit_issue(api_base_url: str, api_request: ApiRequest) -> None:
     created = create_issue(api_request, room_number="204", location="Pokoj 204")
     maintenance_request = portal_request(api_base_url, "udrzba@example.com", "udrzba-pass")
 
@@ -149,14 +149,30 @@ def test_maintenance_can_list_and_mark_issue_done(api_base_url: str, api_request
     assert isinstance(listed, list)
     assert any(item["id"] == created["id"] for item in listed)
 
+    create_status, created_by_maintenance = maintenance_request(
+        "/api/v1/issues",
+        method="POST",
+        payload={
+            "title": "Nefunkcni radiator",
+            "description": "Pokoj 221",
+            "status": "new",
+            "priority": "high",
+            "location": "Pokoj 221",
+            "room_number": "221",
+        },
+    )
+    assert create_status == 201
+    assert isinstance(created_by_maintenance, dict)
+
     update_status, updated = maintenance_request(
         f"/api/v1/issues/{created['id']}",
         method="PUT",
-        payload={"status": "resolved"},
+        payload={"status": "resolved", "title": "Opraveno dnes"},
     )
     assert update_status == 200
     assert isinstance(updated, dict)
     assert updated["status"] == "resolved"
+    assert updated["title"] == "Opraveno dnes"
     assert updated["resolved_at"] is not None
 
     list_status, listed = maintenance_request("/api/v1/issues")
@@ -165,7 +181,7 @@ def test_maintenance_can_list_and_mark_issue_done(api_base_url: str, api_request
     assert all(item["id"] != created["id"] for item in listed)
 
 
-def test_maintenance_cannot_edit_or_reopen_completed_issue(
+def test_maintenance_can_reopen_and_edit_completed_issue(
     api_base_url: str, api_request: ApiRequest
 ) -> None:
     created = create_issue(api_request, status="resolved")
@@ -176,18 +192,18 @@ def test_maintenance_cannot_edit_or_reopen_completed_issue(
         method="PUT",
         payload={"title": "Tamper"},
     )
-    assert status == 403
+    assert status == 200
     assert isinstance(data, dict)
-    assert data["detail"] == "Maintenance can only change issue status"
+    assert data["title"] == "Tamper"
 
     status, data = maintenance_request(
         f"/api/v1/issues/{created['id']}",
         method="PUT",
         payload={"status": "new"},
     )
-    assert status == 403
+    assert status == 200
     assert isinstance(data, dict)
-    assert data["detail"] == "Maintenance can only move issues to in_progress or resolved"
+    assert data["status"] == "new"
 
 
 def test_housekeeping_can_create_issue_and_upload_photos(
@@ -274,39 +290,16 @@ def test_issue_delete_requires_admin(api_request: ApiRequest, api_base_url: str)
     assert delete_status == 204
 
 
-def test_maintenance_can_only_resolve_open_issues(api_request: ApiRequest, api_base_url: str) -> None:
+def test_maintenance_can_upload_issue_photos(api_request: ApiRequest, api_base_url: str) -> None:
     created = create_issue(api_request, title="Pokoj 224", room_number="224", location="Pokoj 224")
     opener, jar = portal_login(api_base_url, "udrzba@example.com", "udrzba-pass")
-
-    list_request = urllib.request.Request(url=f"{api_base_url}/api/v1/issues", method="GET")
-    with opener.open(list_request, timeout=10) as response:
-        listed = json.loads(response.read().decode("utf-8"))
-    assert any(item["id"] == created["id"] for item in listed)
-
-    bad_payload = json.dumps({"description": "Nesmí přepisovat popis"}).encode("utf-8")
-    bad_request = urllib.request.Request(
-        url=f"{api_base_url}/api/v1/issues/{created['id']}",
-        data=bad_payload,
-        headers={"Content-Type": "application/json", **csrf_header(jar)},
-        method="PUT",
+    url = f"{api_base_url}/api/v1/issues/{created['id']}/photos"
+    photo_status, photo_data = upload_photos(
+        opener,
+        url,
+        jar,
+        [("photos", "photo-1.jpg", b"one")],
     )
-    try:
-        opener.open(bad_request, timeout=10)
-        assert False, "Expected 403 when maintenance edits non-status fields"
-    except urllib.error.HTTPError as exc:
-        assert exc.code == 403
-
-    resolve_payload = json.dumps({"status": "resolved"}).encode("utf-8")
-    resolve_request = urllib.request.Request(
-        url=f"{api_base_url}/api/v1/issues/{created['id']}",
-        data=resolve_payload,
-        headers={"Content-Type": "application/json", **csrf_header(jar)},
-        method="PUT",
-    )
-    with opener.open(resolve_request, timeout=10) as response:
-        resolved = json.loads(response.read().decode("utf-8"))
-    assert resolved["status"] == "resolved"
-
-    with opener.open(list_request, timeout=10) as response:
-        listed_after = json.loads(response.read().decode("utf-8"))
-    assert all(item["id"] != created["id"] for item in listed_after)
+    assert photo_status == 200
+    assert isinstance(photo_data, list)
+    assert len(photo_data) == 1

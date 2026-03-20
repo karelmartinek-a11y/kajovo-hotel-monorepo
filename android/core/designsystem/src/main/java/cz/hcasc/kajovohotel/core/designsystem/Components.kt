@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -49,7 +51,6 @@ fun PortalChrome(
     title: String,
     roleLabel: String,
     onProfileClick: () -> Unit,
-    onLogoutClick: () -> Unit,
     onBackClick: (() -> Unit)? = null,
     availableRoles: List<PortalRole> = emptyList(),
     activeRole: PortalRole? = null,
@@ -104,7 +105,6 @@ fun PortalChrome(
                         }
                     }
                     TextButton(onClick = onProfileClick) { Text(text = "Profil") }
-                    TextButton(onClick = onLogoutClick) { Text(text = "Odhlásit") }
                 },
             )
         },
@@ -160,6 +160,25 @@ fun SignageBadge() {
             painter = painterResource(R.drawable.kajovo_mark_logo),
             contentDescription = Branding.APP_NAME,
             modifier = Modifier.height(56.dp),
+            contentScale = ContentScale.Fit,
+        )
+    }
+}
+
+@Composable
+fun FullBrandLockup() {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.kajovo_full_logo),
+            contentDescription = Branding.APP_NAME,
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 420.dp)
+                .wrapContentHeight()
+                .padding(horizontal = KajovoSpacingTokens.S2),
             contentScale = ContentScale.Fit,
         )
     }

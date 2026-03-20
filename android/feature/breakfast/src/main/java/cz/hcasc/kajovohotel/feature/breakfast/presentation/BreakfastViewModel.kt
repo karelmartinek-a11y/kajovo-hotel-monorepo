@@ -31,16 +31,26 @@ class BreakfastViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = repository.load(serviceDate)) {
                 is AppResult.Success -> {
-                    val selectedOrder = if (role == PortalRole.RECEPTION) result.value.first.firstOrNull() else null
+                    val selectedOrder = if (role == PortalRole.RECEPTION) {
+                        mutableState.value.selectedOrder?.let { selected -> result.value.first.firstOrNull { it.id == selected.id } }
+                            ?: result.value.first.firstOrNull()
+                    } else {
+                        null
+                    }
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
                         orders = result.value.first,
                         summary = result.value.second,
                         selectedOrder = selectedOrder,
-                        draft = selectedOrder?.toDraft() ?: BreakfastDraft(serviceDate = serviceDate),
+                        draft = if (mutableState.value.isCreatingNew) {
+                            BreakfastDraft(serviceDate = serviceDate)
+                        } else {
+                            selectedOrder?.toDraft() ?: BreakfastDraft(serviceDate = serviceDate)
+                        },
                         errorMessage = null,
                     )
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isLoading = false, errorMessage = result.message)
             }
         }
@@ -54,7 +64,35 @@ class BreakfastViewModel @Inject constructor(
         if (mutableState.value.role != PortalRole.RECEPTION) {
             return
         }
-        mutableState.value = mutableState.value.copy(selectedOrder = order, draft = order.toDraft(), importPreview = null, exportMessage = null)
+        mutableState.value = mutableState.value.copy(
+            selectedOrder = order,
+            draft = order.toDraft(),
+            importPreview = null,
+            pendingImportFile = null,
+            exportMessage = null,
+            isCreatingNew = false,
+        )
+    }
+
+    fun selectOrderById(orderId: Int?) {
+        if (mutableState.value.role != PortalRole.RECEPTION || orderId == null) {
+            return
+        }
+        mutableState.value.orders.firstOrNull { it.id == orderId }?.let(::selectOrder)
+    }
+
+    fun startCreate() {
+        val serviceDate = mutableState.value.serviceDate.ifBlank { defaultServiceDate() }
+        mutableState.value = mutableState.value.copy(
+            selectedOrder = null,
+            draft = BreakfastDraft(serviceDate = serviceDate),
+            importPreview = null,
+            pendingImportFile = null,
+            exportMessage = null,
+            successMessage = null,
+            errorMessage = null,
+            isCreatingNew = true,
+        )
     }
 
     fun updateDraft(transform: (BreakfastDraft) -> BreakfastDraft) {
@@ -81,9 +119,11 @@ class BreakfastViewModel @Inject constructor(
                         selectedOrder = result.value,
                         draft = result.value.toDraft(),
                         successMessage = "Objednávka byla uložena.",
+                        isCreatingNew = false,
                     )
                     load(mutableState.value.role, mutableState.value.serviceDate)
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
@@ -97,6 +137,7 @@ class BreakfastViewModel @Inject constructor(
                     mutableState.value = mutableState.value.copy(isSubmitting = false, successMessage = "Objednávka byla označena jako vydaná.")
                     load(mutableState.value.role, mutableState.value.serviceDate)
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
@@ -113,14 +154,21 @@ class BreakfastViewModel @Inject constructor(
                 is AppResult.Success -> mutableState.value = mutableState.value.copy(
                     isSubmitting = false,
                     importPreview = result.value,
+                    pendingImportFile = file,
                     successMessage = "Import byl analyzován.",
                 )
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
     }
 
-    fun confirmImport(file: BinaryPayload) {
+    fun confirmImport() {
+        val file = mutableState.value.pendingImportFile
+        if (file == null) {
+            mutableState.value = mutableState.value.copy(errorMessage = "Nejprve nahrajte PDF se snídaněmi.")
+            return
+        }
         if (mutableState.value.role != PortalRole.RECEPTION) {
             mutableState.value = mutableState.value.copy(errorMessage = "Import snídaní je dostupný jen pro recepci.")
             return
@@ -132,10 +180,12 @@ class BreakfastViewModel @Inject constructor(
                     mutableState.value = mutableState.value.copy(
                         isSubmitting = false,
                         importPreview = result.value,
+                        pendingImportFile = null,
                         successMessage = "Import byl potvrzen a uložen.",
                     )
                     load(mutableState.value.role, result.value.serviceDate)
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
@@ -158,6 +208,7 @@ class BreakfastViewModel @Inject constructor(
                     isSubmitting = false,
                     exportMessage = "Export PDF byl spuštěn na serveru.",
                 )
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
             }
         }
@@ -176,7 +227,9 @@ data class BreakfastUiState(
     val selectedOrder: BreakfastOrder? = null,
     val draft: BreakfastDraft = BreakfastDraft(serviceDate = java.time.LocalDate.now().toString()),
     val importPreview: BreakfastImportPreview? = null,
+    val pendingImportFile: BinaryPayload? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val exportMessage: String? = null,
+    val isCreatingNew: Boolean = false,
 )

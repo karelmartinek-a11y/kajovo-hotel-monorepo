@@ -61,11 +61,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings:read',
     'settings:write',
   ],
-  recepce: ['breakfast:read', 'breakfast:write', 'lost_found:read', 'lost_found:write'],
+  recepce: [
+    'breakfast:read',
+    'breakfast:write',
+    'lost_found:read',
+    'lost_found:write',
+    'reports:read',
+    'reports:write',
+  ],
   pokojská: ['housekeeping:read', 'issues:write', 'lost_found:write'],
   údržba: ['issues:read', 'issues:write'],
   snídaně: ['breakfast:read', 'breakfast:write'],
-  sklad: ['inventory:read', 'inventory:write'],
+  sklad: ['inventory:read', 'inventory:write', 'reports:read'],
 };
 
 export const ROLE_MODULES: Record<Role, ModuleKey[]> = Object.fromEntries(
@@ -78,6 +85,32 @@ export const ROLE_MODULES: Record<Role, ModuleKey[]> = Object.fromEntries(
 ) as Record<Role, ModuleKey[]>;
 
 export const ADMIN_SWITCHABLE_ROLES: Role[] = ['recepce', 'pokojská', 'údržba', 'snídaně', 'sklad'];
+
+export function roleCanAccessAnyModule(role: Role, permissions: Iterable<string>): boolean {
+  const roleModules = ROLE_MODULES[role] ?? [];
+  for (const moduleKey of roleModules) {
+    if (canReadModule(permissions, moduleKey) || canWriteModule(permissions, moduleKey)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function visibleRolesForPermissions(roles: Iterable<Role>, permissions: Iterable<string>): Role[] {
+  return Array.from(new Set(roles)).filter((role) => roleCanAccessAnyModule(role, permissions));
+}
+
+export function resolveActiveRoleForPermissions(
+  roles: Iterable<Role>,
+  activeRole: Role | null | undefined,
+  permissions: Iterable<string>,
+): Role | null {
+  const visibleRoles = visibleRolesForPermissions(roles, permissions);
+  if (activeRole && visibleRoles.includes(activeRole)) {
+    return activeRole;
+  }
+  return visibleRoles.length === 1 ? visibleRoles[0] : null;
+}
 
 export const ROLE_LABELS_CS: Record<Role, string> = {
   admin: 'Administrátor',

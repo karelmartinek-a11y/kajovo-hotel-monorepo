@@ -2,6 +2,28 @@ package cz.hcasc.kajovohotel.core.network.dto
 
 data class MediaPhotoDto(val id: Int, val sort_order: Int, val mime_type: String, val size_bytes: Int, val file_path: String, val thumb_path: String, val created_at: String?)
 
+data class ReportDto(
+    val id: Int,
+    val title: String,
+    val description: String? = null,
+    val status: String = "open",
+    val created_at: String? = null,
+    val updated_at: String? = null,
+    val photos: List<MediaPhotoDto> = emptyList(),
+)
+
+data class ReportCreateDto(
+    val title: String,
+    val description: String? = null,
+    val status: String = "open",
+)
+
+data class ReportUpdateDto(
+    val title: String? = null,
+    val description: String? = null,
+    val status: String? = null,
+)
+
 data class BreakfastOrderDto(
     val id: Int,
     val service_date: String,
@@ -67,6 +89,8 @@ data class IssueCreateDto(val title: String, val location: String, val descripti
 data class IssueUpdateDto(val title: String? = null, val location: String? = null, val description: String? = null, val room_number: String? = null, val assignee: String? = null, val status: String? = null, val priority: String? = null)
 
 data class InventoryItemDto(val id: Int, val name: String, val unit: String, val current_stock: Int, val min_stock: Int, val amount_per_piece_base: Int = 1, val pictogram_path: String? = null, val pictogram_thumb_path: String? = null, val created_at: String? = null, val updated_at: String? = null)
+data class InventoryItemCreateDto(val name: String, val unit: String, val min_stock: Int, val current_stock: Int, val amount_per_piece_base: Int = 1, val pictogram_path: String? = null, val pictogram_thumb_path: String? = null)
+data class InventoryItemUpdateDto(val name: String? = null, val unit: String? = null, val min_stock: Int? = null, val current_stock: Int? = null, val amount_per_piece_base: Int? = null, val pictogram_path: String? = null, val pictogram_thumb_path: String? = null)
 data class InventoryMovementCreateDto(val movement_type: String, val quantity: Int, val quantity_pieces: Int = 0, val document_date: String, val document_reference: String? = null, val note: String? = null)
 data class InventoryMovementDto(val id: Int, val item_id: Int, val item_name: String? = null, val unit: String? = null, val card_id: Int? = null, val card_item_id: Int? = null, val card_number: String? = null, val movement_type: String, val document_number: String, val document_reference: String? = null, val document_date: String, val quantity: Int, val quantity_pieces: Int, val note: String? = null, val created_at: String? = null)
 data class InventoryItemDetailDto(val id: Int, val name: String, val unit: String, val current_stock: Int, val min_stock: Int, val amount_per_piece_base: Int = 1, val pictogram_path: String? = null, val pictogram_thumb_path: String? = null, val movements: List<InventoryMovementDto> = emptyList(), val created_at: String? = null, val updated_at: String? = null)

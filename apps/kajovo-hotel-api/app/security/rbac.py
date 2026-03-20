@@ -38,6 +38,8 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         'breakfast:write',
         'lost_found:read',
         'lost_found:write',
+        'reports:read',
+        'reports:write',
     },
     'snídaně': {
         'breakfast:read',
@@ -46,6 +48,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     'sklad': {
         'inventory:read',
         'inventory:write',
+        'reports:read',
     },
 }
 

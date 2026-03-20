@@ -14,6 +14,11 @@ data class MaintenanceIssue(
     val status: IssueStatus,
     val priority: IssuePriority,
     val photos: List<MediaPhoto>,
+    val createdAt: String,
+    val inProgressAt: String,
+    val resolvedAt: String,
+    val closedAt: String,
+    val updatedAt: String,
 )
 
 data class IssueFilters(

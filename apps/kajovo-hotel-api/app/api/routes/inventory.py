@@ -322,7 +322,6 @@ def delete_card(
 def create_item(
     payload: InventoryItemCreate,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItem:
     item = InventoryItem(**payload.model_dump())
     db.add(item)
@@ -337,7 +336,6 @@ def create_item(
 def get_item(
     item_id: int,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItemWithAuditRead:
     item = db.scalar(
         select(InventoryItem)
@@ -370,7 +368,6 @@ def update_item(
     item_id: int,
     payload: InventoryItemUpdate,
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id)
 
@@ -504,7 +501,6 @@ def upload_item_pictogram(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _admin: None = Depends(require_role("admin")),
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id)
 

@@ -51,6 +51,12 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Cache pip
         uses: actions/cache@v5
         with:
@@ -75,11 +81,46 @@ jobs:
       - name: Run backend unit tests
         run: pnpm unit
 
+      - name: Android release integrity gate
+        run: pnpm ci:android-release-integrity
+
+      - name: Materialize Android upload keystore
+        shell: bash
+        env:
+          KAJOVO_UPLOAD_STORE_FILE_B64: ${{ secrets.KAJOVO_UPLOAD_STORE_FILE_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KAJOVO_UPLOAD_STORE_FILE_B64:-}" ]; then
+            echo "Missing KAJOVO_UPLOAD_STORE_FILE_B64 secret." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/kajovo-signing"
+          printf '%s' "$KAJOVO_UPLOAD_STORE_FILE_B64" | base64 --decode > "$RUNNER_TEMP/kajovo-signing/kajovo-hotel-upload.jks"
+          echo "KAJOVO_UPLOAD_STORE_FILE=$RUNNER_TEMP/kajovo-signing/kajovo-hotel-upload.jks" >> "$GITHUB_ENV"
+          echo "KAJOVO_UPLOAD_STORE_PASSWORD=${HOTEL_ADMIN_PASSWORD}" >> "$GITHUB_ENV"
+          echo "KAJOVO_UPLOAD_KEY_ALIAS=${{ secrets.KAJOVO_UPLOAD_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "KAJOVO_UPLOAD_KEY_PASSWORD=${HOTEL_ADMIN_PASSWORD}" >> "$GITHUB_ENV"
+
+      - name: Policy rule unit tests
+        run: pnpm ci:policy-test
+
+      - name: Policy sentinel gate
+        run: pnpm ci:policy
+
       - name: Build portal client
         run: pnpm --filter @kajovo/kajovo-hotel-web build
 
       - name: Build admin client
         run: pnpm --filter @kajovo/kajovo-hotel-admin build
+
+      - name: Build signed Android release APK
+        working-directory: android
+        env:
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_STORE_FILE: ${{ env.KAJOVO_UPLOAD_STORE_FILE }}
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_STORE_PASSWORD: ${{ env.KAJOVO_UPLOAD_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_KEY_ALIAS: ${{ env.KAJOVO_UPLOAD_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_KEY_PASSWORD: ${{ env.KAJOVO_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease
 
       - name: Install Playwright browser
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium

@@ -3,7 +3,6 @@
     <style name="Theme.KajovoHotelAndroid.Starting" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_background</item>
         <item name="windowSplashScreenBackground">@android:color/white</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/kajovo_full_logo</item>
         <item name="postSplashScreenTheme">@style/Theme.KajovoHotelAndroid</item>
     </style>
 

@@ -13,6 +13,24 @@ class RequestIdInterceptor : Interceptor {
     }
 }
 
+class AndroidReleaseHeaderInterceptor(private val signalStore: AndroidReleaseSignalStore) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val response = chain.proceed(chain.request())
+        if (chain.request().url.host.equals("hotel.hcasc.cz", ignoreCase = true)) {
+            val versionCode = response.header("X-Kajovo-Android-Version-Code")?.toIntOrNull()
+            if (versionCode != null) {
+                signalStore.publish(
+                    AndroidReleaseSignal(
+                        versionCode = versionCode,
+                        required = response.header("X-Kajovo-Android-Update-Required").equals("true", ignoreCase = true),
+                    ),
+                )
+            }
+        }
+        return response
+    }
+}
+
 class CsrfTokenInterceptor(private val cookieJar: PersistingCookieJar) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val builder = chain.request().newBuilder()

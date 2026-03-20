@@ -1,18 +1,20 @@
 from fastapi import APIRouter
 
 from app.api.schemas import AndroidAppReleaseRead
-from app.config import get_settings
+from app.android_release import get_android_release_manifest
 
 router = APIRouter(tags=["app"])
 
 
 @router.get("/api/app/android-release", response_model=AndroidAppReleaseRead)
 def get_android_release() -> AndroidAppReleaseRead:
-    settings = get_settings()
+    release = get_android_release_manifest()
     return AndroidAppReleaseRead(
-        version=settings.android_app_version,
-        download_url=settings.android_app_download_url,
-        title=settings.android_app_update_title,
-        message=settings.android_app_update_message,
-        required=settings.android_app_update_required,
+        version_code=release.version_code,
+        version=release.version_name,
+        download_url=release.download_url,
+        sha256=release.sha256,
+        title=release.title,
+        message=release.message,
+        required=release.required,
     )

@@ -99,4 +99,9 @@ private fun cz.hcasc.kajovohotel.core.network.dto.IssueDto.toDomain(baseUrlConfi
             sizeBytes = photo.size_bytes,
         )
     },
+    createdAt = created_at.orEmpty(),
+    inProgressAt = in_progress_at.orEmpty(),
+    resolvedAt = resolved_at.orEmpty(),
+    closedAt = closed_at.orEmpty(),
+    updatedAt = updated_at.orEmpty(),
 )

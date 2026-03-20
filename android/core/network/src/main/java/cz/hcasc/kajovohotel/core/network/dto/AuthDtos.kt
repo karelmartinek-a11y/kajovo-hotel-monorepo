@@ -10,8 +10,10 @@ data class AuthIdentityDto(
 )
 
 data class AndroidReleaseDto(
+    val version_code: Int,
     val version: String,
     val download_url: String,
+    val sha256: String,
     val title: String,
     val message: String,
     val required: Boolean = false,

@@ -61,6 +61,9 @@ def main() -> int:
 
     checks: list[tuple[str, list[str], bool]] = [
         ("typecheck", _pnpm_command("typecheck"), True),
+        ("policy-test", _pnpm_command("ci:policy-test"), True),
+        ("policy", _pnpm_command("ci:policy"), True),
+        ("android-release-integrity", ["python", "scripts/check_android_release_integrity.py"], True),
         ("web-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "build"), True),
         ("admin-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "build"), True),
         ("api-unit-tests", ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests", "-q"], True),

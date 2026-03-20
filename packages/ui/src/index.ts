@@ -2,6 +2,7 @@ export * from './shell/AppShell';
 export * from './shell/KajovoSign';
 export * from './shell/KajovoWordmark';
 export * from './shell/KajovoFullLockup';
+export * from './shell/KajovoStartupSplash';
 export * from './navigation/ModuleNavigation';
 export * from './components/Card';
 export * from './components/DataTable';

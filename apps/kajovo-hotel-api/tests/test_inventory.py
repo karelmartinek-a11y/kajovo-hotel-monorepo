@@ -247,7 +247,7 @@ def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: 
     assert delete_status == 204
 
 
-def test_inventory_item_management_and_stocktake_require_admin(
+def test_inventory_item_management_matches_sklad_scope(
     api_request: ApiRequest, api_base_url: str
 ) -> None:
     created = create_item(api_request, name="Admin Only Item", unit="ks", amount_per_piece_base=1)
@@ -272,21 +272,15 @@ def test_inventory_item_management_and_stocktake_require_admin(
         headers={"Content-Type": "application/json", "x-csrf-token": csrf_token},
         method="POST",
     )
-    try:
-        portal_opener.open(create_request, timeout=10)
-        assert False, "Expected 403 for portal item create"
-    except urllib.error.HTTPError as exc:
-        assert exc.code == 403
+    with portal_opener.open(create_request, timeout=10) as response:
+        assert response.status == 201
 
     detail_request = urllib.request.Request(
         url=f"{api_base_url}/api/v1/inventory/{created['id']}",
         method="GET",
     )
-    try:
-        portal_opener.open(detail_request, timeout=10)
-        assert False, "Expected 403 for portal inventory detail"
-    except urllib.error.HTTPError as exc:
-        assert exc.code == 403
+    with portal_opener.open(detail_request, timeout=10) as response:
+        assert response.status == 200
 
     stocktake_request = urllib.request.Request(
         url=f"{api_base_url}/api/v1/inventory/stocktake/pdf",

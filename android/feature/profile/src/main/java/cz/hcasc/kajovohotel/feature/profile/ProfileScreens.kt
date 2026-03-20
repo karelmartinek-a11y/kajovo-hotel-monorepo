@@ -28,10 +28,12 @@ fun ProfileScreen(
     message: String?,
     onSave: (String, String, String, String) -> Unit,
     onChangePasswordClick: () -> Unit,
+    onLogoutClick: () -> Unit,
 ) {
     var firstName by remember(profile?.firstName) { mutableStateOf(profile?.firstName.orEmpty()) }
     var lastName by remember(profile?.lastName) { mutableStateOf(profile?.lastName.orEmpty()) }
     var phone by remember(profile?.phone) { mutableStateOf(profile?.phone.orEmpty()) }
+    var note by remember(profile?.note) { mutableStateOf(profile?.note.orEmpty()) }
 
     val normalizedPhone = normalizePhoneInput(phone)
     val isPhoneValid = normalizedPhone.isNullOrBlank() || phoneRegex.matches(normalizedPhone)
@@ -39,7 +41,10 @@ fun ProfileScreen(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Můj profil", style = MaterialTheme.typography.headlineMedium)
         profile?.let {
-            FeatureCard(title = it.fullName, subtitle = it.email)
+            FeatureCard(
+                title = it.fullName,
+                subtitle = "Správa kontaktních údajů a provozní poznámky k účtu ${it.email}",
+            )
             BulletLine(label = "Role", value = it.roles.joinToString { role -> role.displayName })
         }
         OutlinedTextField(
@@ -67,17 +72,27 @@ fun ProfileScreen(
             isError = !isPhoneValid,
             singleLine = true,
         )
+        OutlinedTextField(
+            value = note,
+            onValueChange = { note = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Poznámka") },
+            minLines = 3,
+        )
         if (!message.isNullOrBlank()) {
             Text(text = message)
         }
         Button(
-            onClick = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), "") },
+            onClick = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), note.trim()) },
             enabled = firstName.isNotBlank() && lastName.isNotBlank() && isPhoneValid,
         ) {
             Text(text = "Uložit profil")
         }
         Button(onClick = onChangePasswordClick) {
             Text(text = "Změnit heslo")
+        }
+        OutlinedButton(onClick = onLogoutClick) {
+            Text(text = "Odhlásit")
         }
     }
 }
@@ -90,8 +105,8 @@ fun ChangePasswordScreen(message: String?, onSubmit: (String, String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Změna hesla", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
-            title = "Session-first bezpečnost",
-            subtitle = "Po změně hesla dojde k vyžádání nového přihlášení podle serverového kontraktu.",
+            title = "Bezpečné obnovení přístupu",
+            subtitle = "Po změně hesla se účet znovu ověří a navážete novým přihlášením.",
         )
         OutlinedTextField(
             value = oldPassword,
@@ -133,7 +148,7 @@ fun ResetPasswordScreen(
         Text(text = "Dokončení resetu hesla", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
             title = "Reset z odkazu hotel.hcasc.cz",
-            subtitle = "Dokončete reset hesla z odkazu, který byl vystaven administrátorem. Po uložení se přihlásíte novým heslem.",
+            subtitle = "Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.",
         )
         OutlinedTextField(
             value = password,

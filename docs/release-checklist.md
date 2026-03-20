@@ -27,3 +27,8 @@
 - Run full Playwright suite including CI gates and navigation robustness.
 - Review changed snapshots to ensure they reflect intentional UI updates only.
 - Smoke test create/edit/detail workflows for Breakfast, Lost&Found, Issues, Inventory and Reports.
+- Každá runtime změna webu musí mít odpovídající runtime změnu Android appky a naopak. Samostatná jednostranná změna nesmí projít `ci:policy`.
+- Webová změna není hotová bez ověření desktop/tablet/mobil variant.
+- Android změna není přípustná, pokud by vedla k hybridnímu nebo WebView-first řešení.
+- Pokud se mění Android appka nebo veřejná APK, je povinné upravit `android/release/android-release.json`, nahradit `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`, přepočítat `sha256` a projít `python scripts/check_android_release_integrity.py`.
+- Produkční deploy nesmí být považovaný za hotový, dokud live `/api/app/android-release` nevrací stejnou `version`, `version_code` a `sha256` jako release manifest.

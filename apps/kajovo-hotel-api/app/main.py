@@ -18,6 +18,7 @@ from app.api.routes.profile import router as profile_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
+from app.android_release import get_android_release_manifest
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
@@ -61,6 +62,10 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Permissions-Policy", "geolocation=()")
+        android_release = get_android_release_manifest()
+        response.headers.setdefault("X-Kajovo-Android-Version", android_release.version_name)
+        response.headers.setdefault("X-Kajovo-Android-Version-Code", str(android_release.version_code))
+        response.headers.setdefault("X-Kajovo-Android-Update-Required", "true" if android_release.required else "false")
         if settings.environment.lower() == "production":
             response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
         return response

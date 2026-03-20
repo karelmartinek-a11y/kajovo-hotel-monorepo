@@ -1,5 +1,5 @@
 import React from 'react';
-import { KajovoSign } from '@kajovo/ui';
+import { KajovoFullLockup, KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 export function PortalLoginPage(): JSX.Element {
@@ -45,15 +45,12 @@ export function PortalLoginPage(): JSX.Element {
   return (
     <main className="k-login-page" data-testid="portal-login-page">
       <section className="k-login-card" aria-labelledby="portal-login-title">
-        <img
-          className="k-login-wordmark"
-          src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
-          alt="KájovoHotel wordmark"
-          loading="lazy"
-        />
+        <KajovoFullLockup href="/" title="KájovoHotel" subtitle="Provozní portál" />
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
-        <h1 id="portal-login-title">{copy.title}</h1>
-        <p className="k-login-copy">{copy.description}</p>
+        <h1 id="portal-login-title">Vítejte v KájovoHotel</h1>
+        <p className="k-login-copy">
+          Přihlaste se do provozního portálu. Po ověření účtu navážete přesně tam, kde začíná dnešní směna.
+        </p>
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">
             {copy.emailLabel}

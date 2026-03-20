@@ -209,8 +209,10 @@ class DefaultSessionRepositoryTest {
         var lastLoginRequest: PortalLoginRequest? = null
 
         override suspend fun androidRelease(): AndroidReleaseDto = AndroidReleaseDto(
+            version_code = 1,
             version = "0.1.0",
             download_url = "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk",
+            sha256 = "abc",
             title = "Update",
             message = "Update",
             required = false,

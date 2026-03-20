@@ -149,6 +149,12 @@ jobs:
       - name: Policy sentinel gate
         run: pnpm ci:policy
 
+      - name: Policy rule unit tests
+        run: pnpm ci:policy-test
+
+      - name: Android release integrity gate
+        run: pnpm ci:android-release-integrity
+
       - name: Token-only lint
         run: pnpm ci:tokens
 

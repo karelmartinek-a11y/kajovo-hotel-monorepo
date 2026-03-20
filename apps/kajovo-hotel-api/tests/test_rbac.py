@@ -93,6 +93,40 @@ def test_rbac_denies_breakfast_for_sklad(api_base_url: str) -> None:
     assert data["detail"] == "Missing permission: breakfast:read"
 
 
+def test_rbac_allows_reports_for_recepce(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "recepce@example.com", "password": "recepce-pass"},
+    )
+    assert status == 200
+
+    status, data = api_request(opener, api_base_url, "/api/v1/reports")
+    assert status == 200
+    assert isinstance(data, list)
+
+
+def test_rbac_allows_reports_read_for_sklad(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "sklad@example.com", "password": "sklad-pass"},
+    )
+    assert status == 200
+
+    status, data = api_request(opener, api_base_url, "/api/v1/reports")
+    assert status == 200
+    assert isinstance(data, list)
+
+
 def test_rbac_write_denied_is_audited_with_actor_identity(
     api_base_url: str, api_db_path: Path
 ) -> None:
@@ -139,4 +173,3 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
     assert row[3] == "POST"
     assert row[4] == "/api/v1/reports"
     assert row[5] == 403
-

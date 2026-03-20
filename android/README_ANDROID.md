@@ -43,20 +43,33 @@ Override bez zásahu do zdrojových souborů:
 
 Projekt neobsahuje žádná tajemství ani produkční credentials.
 
+## Neporušitelné pravidlo parity s webem
+
+Každá runtime změna Android aplikace musí být spojená i s adekvátní změnou webové verze a tato webová změna musí být odladěná pro desktop, tablet i mobil.
+
+Stejně tak každá runtime změna webové aplikace musí mít odpovídající změnu v Android aplikaci. Android implementace přitom musí zůstat plně nativní; wrapper nebo WebView-first model není přípustný.
+
+Toto pravidlo je blokované CI guardem `pnpm ci:policy`.
+
 ## Standard verzování Android appky
 
 Každá uživatelsky viditelná změna Android aplikace musí být vydaná jako nová verze. Nestačí push zdrojových kódů.
 
+Jediný zdroj pravdy pro Android release metadata je `android/release/android-release.json`.
+
 Povinný release postup:
 
-1. Zvednout `versionCode` a `versionName` v `android/app/build.gradle.kts`.
-2. Zvednout `android_app_version` v `apps/kajovo-hotel-api/app/config.py`.
-3. Upravit související testy a očekávání verze, minimálně `apps/kajovo-hotel-api/tests/test_android_release.py`.
-4. Sestavit novou APK.
-5. Nahradit veřejný soubor `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`.
-6. Ověřit po deploy, že `https://hotel.hcasc.cz/api/app/android-release` vrací stejnou verzi jako produkční APK na `https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk`.
+1. Upravit `android/release/android-release.json`:
+   - `version_code`
+   - `version_name`
+   - případně `title`, `message`, `required`
+2. Sestavit novou APK.
+3. Nahradit veřejný soubor `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`.
+4. Přepočítat `sha256` v `android/release/android-release.json` podle nové APK.
+5. Spustit `python scripts/check_android_release_integrity.py`.
+6. Ověřit po deploy, že `https://hotel.hcasc.cz/api/app/android-release` vrací stejnou verzi, `version_code` a `sha256` jako release manifest i produkční APK.
 
-Auto-update v aplikaci je navázaný na backend metadata a veřejnou APK na produkci. Pokud se nezvedne verze i veřejná APK současně, změna se uživatelům nepropíše.
+Auto-update v aplikaci je navázaný na backend metadata, release hlavičky na API odpovědích a veřejnou APK na produkci. Pokud se nezvedne verze, hash a veřejná APK současně, release integrity gate musí změnu zablokovat.
 
 ## Scope, který je záměrně mimo projekt
 

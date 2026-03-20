@@ -51,10 +51,13 @@ class LostFoundViewModel @Inject constructor(
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
                         records = records,
-                        selected = records.firstOrNull(),
-                        draft = records.firstOrNull()?.toDraft() ?: LostFoundDraft(),
+                        selected = current.selected?.let { selected -> records.firstOrNull { it.id == selected.id } } ?: records.firstOrNull(),
+                        draft = current.selected?.let { selected -> records.firstOrNull { it.id == selected.id }?.toDraft() }
+                            ?: records.firstOrNull()?.toDraft()
+                            ?: LostFoundDraft(),
                     )
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isLoading = false, errorMessage = result.message)
             }
         }
@@ -66,6 +69,13 @@ class LostFoundViewModel @Inject constructor(
 
     fun select(record: LostFoundRecord) {
         mutableState.value = mutableState.value.copy(selected = record, draft = record.toDraft(), successMessage = null)
+    }
+
+    fun selectById(recordId: Int?) {
+        if (recordId == null) {
+            return
+        }
+        mutableState.value.records.firstOrNull { it.id == recordId }?.let(::select)
     }
 
     fun startCreate() {
@@ -89,9 +99,10 @@ class LostFoundViewModel @Inject constructor(
                         isSaving = false,
                         records = mutableState.value.records.filterNot { it.id == record.id },
                         selected = mutableState.value.selected?.takeIf { it.id != record.id },
-                        successMessage = "Nález byl označen jako zpracovaný.",
+                        successMessage = "Nález byl označen jako převzatý.",
                     )
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSaving = false, errorMessage = result.message)
             }
         }
@@ -118,6 +129,7 @@ class LostFoundViewModel @Inject constructor(
                     )
                     load()
                 }
+
                 is AppResult.Error -> mutableState.value = mutableState.value.copy(isSaving = false, errorMessage = result.message)
             }
         }

@@ -29,7 +29,14 @@ data class AuthenticatedIdentity(
 
     fun requiresRoleSelection(): Boolean = actorType == ActorType.PORTAL && activeRole == null && roles.size > 1
 
-    fun displayRole(): String = activeRole?.displayName ?: "Vyber roli"
+    fun visibleRoles(): List<PortalRole> = roles.distinct().filter { role -> role.canBeShownBy(this) }
+
+    fun visibleActiveRole(): PortalRole? {
+        val visibleRoles = visibleRoles()
+        return activeRole?.takeIf { it in visibleRoles } ?: visibleRoles.singleOrNull()
+    }
+
+    fun displayRole(): String = visibleActiveRole()?.displayName ?: "Vyber roli"
 }
 
 data class AuthProfile(
@@ -50,6 +57,19 @@ enum class HotelModule(val permissionKey: String) {
     ISSUES("issues"),
     INVENTORY("inventory"),
     HOUSEKEEPING("housekeeping"),
+    REPORTS("reports"),
+}
+
+private fun PortalRole.canBeShownBy(identity: AuthenticatedIdentity): Boolean {
+    return visibleModules().any(identity::canAccess)
+}
+
+private fun PortalRole.visibleModules(): List<HotelModule> = when (this) {
+    PortalRole.RECEPTION -> listOf(HotelModule.BREAKFAST, HotelModule.LOST_FOUND, HotelModule.REPORTS)
+    PortalRole.HOUSEKEEPING -> listOf(HotelModule.HOUSEKEEPING, HotelModule.ISSUES, HotelModule.LOST_FOUND)
+    PortalRole.MAINTENANCE -> listOf(HotelModule.ISSUES)
+    PortalRole.BREAKFAST -> listOf(HotelModule.BREAKFAST)
+    PortalRole.INVENTORY -> listOf(HotelModule.INVENTORY, HotelModule.REPORTS)
 }
 
 sealed interface SessionState {

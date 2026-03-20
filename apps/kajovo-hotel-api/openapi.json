@@ -93,6 +93,10 @@
             "title": "Required",
             "type": "boolean"
           },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -100,11 +104,17 @@
           "version": {
             "title": "Version",
             "type": "string"
+          },
+          "version_code": {
+            "title": "Version Code",
+            "type": "integer"
           }
         },
         "required": [
+          "version_code",
           "version",
           "download_url",
+          "sha256",
           "title",
           "message"
         ],

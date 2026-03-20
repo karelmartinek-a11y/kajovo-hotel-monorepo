@@ -1,7 +1,6 @@
 name: Deploy - hotel.hcasc.cz
 
 on:
-  workflow_dispatch:
   workflow_run:
     workflows: ["CI Gates - KajovoHotel"]
     types:
@@ -17,12 +16,12 @@ permissions: {}
 
 jobs:
   deploy-production:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     environment: production
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      DEPLOY_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       DEPLOY_BASE_URL: https://hotel.hcasc.cz
       HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
       HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
@@ -72,6 +71,9 @@ jobs:
 
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
+
+      - name: Android release integrity gate
+        run: python scripts/check_android_release_integrity.py
 
       - name: Build release archive
         shell: bash
@@ -165,6 +167,13 @@ jobs:
             actual = str(payload.get("sha") or "")
             if actual not in {expected, expected[:7]}:
                 raise SystemExit(f"deploy artifact SHA mismatch: expected {expected}, got {actual}")
+            android_release = payload.get("android_release") or {}
+            if not android_release.get("version"):
+                raise SystemExit("deploy runtime artifact missing android_release.version")
+            if not android_release.get("version_code"):
+                raise SystemExit("deploy runtime artifact missing android_release.version_code")
+            if not android_release.get("sha256"):
+                raise SystemExit("deploy runtime artifact missing android_release.sha256")
             print("Deploy runtime artifact SHA on server: PASS")
             PY
 
@@ -218,6 +227,26 @@ jobs:
           check_endpoint "$DEPLOY_BASE_URL/" "public root" "200"
           check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
           check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
+
+      - name: Verify live Android release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import urllib.request
+          from pathlib import Path
+
+          manifest_path = Path("android/release/android-release.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          with urllib.request.urlopen("https://hotel.hcasc.cz/api/app/android-release", timeout=20) as response:
+              payload = json.loads(response.read().decode("utf-8"))
+          assert payload["version_code"] == manifest["version_code"], payload
+          assert payload["version"] == manifest["version_name"], payload
+          assert payload["download_url"] == manifest["download_url"], payload
+          assert payload["sha256"] == manifest["sha256"], payload
+          print("Live Android release metadata: PASS")
+          PY
 
       - name: Verify live admin login with GitHub credentials
         env:

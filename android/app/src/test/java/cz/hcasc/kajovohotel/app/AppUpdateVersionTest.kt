@@ -6,14 +6,20 @@ import org.junit.Test
 
 class AppUpdateVersionTest {
     @Test
-    fun detectsNewerSemanticVersion() {
-        assertTrue(isRemoteVersionNewer("0.1.0", "0.2.0"))
-        assertTrue(isRemoteVersionNewer("1.9.9", "1.10.0"))
+    fun detectsNewerVersionCode() {
+        assertTrue(isRemoteVersionNewer(5, 6))
+        assertTrue(isRemoteVersionNewer(100, 101))
     }
 
     @Test
-    fun ignoresSameOrOlderVersion() {
-        assertFalse(isRemoteVersionNewer("0.1.0", "0.1.0"))
-        assertFalse(isRemoteVersionNewer("0.2.0", "0.1.9"))
+    fun ignoresSameOrOlderVersionCode() {
+        assertFalse(isRemoteVersionNewer(5, 5))
+        assertFalse(isRemoteVersionNewer(6, 5))
+    }
+
+    @Test
+    fun keepsFallbackSemanticComparator() {
+        assertTrue(isRemoteVersionNameNewer("0.1.0", "0.2.0"))
+        assertFalse(isRemoteVersionNameNewer("0.2.0", "0.1.9"))
     }
 }

@@ -2,7 +2,15 @@ import React from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
 import { AppShell, RoleSwitcher, SkeletonPage, StateView } from '@kajovo/ui';
-import { canReadModule, normalizeRole, ROLE_MODULES, type AuthProfile, type Role } from '../rbac';
+import {
+  canReadModule,
+  canWriteModule,
+  ROLE_MODULES,
+  resolveActiveRoleForPermissions,
+  type AuthProfile,
+  type Role,
+  visibleRolesForPermissions,
+} from '../rbac';
 import { getAuthBundle, type AuthBundle } from '@kajovo/shared';
 
 type AuthCopy = AuthBundle['copy'];
@@ -242,9 +250,25 @@ export function PortalRoutes({
     return <Navigate to="/login" replace />;
   }
 
-  const activeRole = auth.activeRole ?? (auth.roles.length === 1 ? auth.roles[0] : null);
+  const visibleRoles = visibleRolesForPermissions(auth.roles, auth.permissions);
+  const activeRole = resolveActiveRoleForPermissions(visibleRoles, auth.activeRole, auth.permissions);
+  if (visibleRoles.length === 0) {
+    return (
+      <main className="k-page" data-testid="access-denied-page">
+        <StateView
+          title={copy.accessDeniedTitle ?? 'Přístup odepřen'}
+          description={
+            copy.accessDeniedNoModules
+              ? copy.accessDeniedNoModules(localizedRoleLabel(auth.role), auth.userId)
+              : `Uživatel ${auth.userId} nemá žádnou roli s dostupnými moduly.`
+          }
+          stateKey="error"
+        />
+      </main>
+    );
+  }
   if (!activeRole) {
-    return <RoleSelectPage roles={auth.roles} copy={copy} roleLabel={localizedRoleLabel} />;
+    return <RoleSelectPage roles={visibleRoles} copy={copy} roleLabel={localizedRoleLabel} />;
   }
   const activeRoleLabel = localizedRoleLabel(activeRole);
   const switchRoleFromHeader = React.useCallback(async (role: string) => {
@@ -310,8 +334,9 @@ export function PortalRoutes({
   }
 
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
-  const breakfastManager = ['admin', 'recepce'].includes(normalizeRole(auth.activeRole ?? auth.role));
-  const inventoryManager = normalizeRole(auth.activeRole ?? auth.role) === 'admin';
+  const breakfastManager = activeRole === 'recepce';
+  const inventoryManager = activeRole === 'sklad';
+  const reportsWriter = canWriteModule(auth.permissions, 'reports');
   const renderAccessDenied = React.useCallback(
     (moduleKey: string) => (
       <AccessDeniedPage
@@ -334,7 +359,7 @@ export function PortalRoutes({
       headerControls={(
         <RoleSwitcher
           activeLabel={localizedRoleLabel(activeRole)}
-          alternatives={auth.roles
+          alternatives={visibleRoles
             .filter((role) => role !== activeRole)
             .map((role) => ({ key: role, label: localizedRoleLabel(role) }))}
           busy={switchBusy}
@@ -368,9 +393,9 @@ export function PortalRoutes({
         <Route path="/sklad/:id" element={isAllowed('inventory') ? <deps.InventoryDetail /> : renderAccessDenied('inventory')} />
         <Route path="/sklad/:id/edit" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="edit" /> : renderAccessDenied('inventory')} />
         <Route path="/hlaseni" element={isAllowed('reports') ? <deps.ReportsList /> : renderAccessDenied('reports')} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') ? <deps.ReportsForm mode="create" /> : renderAccessDenied('reports')} />
+        <Route path="/hlaseni/nove" element={isAllowed('reports') && reportsWriter ? <deps.ReportsForm mode="create" /> : renderAccessDenied('reports')} />
         <Route path="/hlaseni/:id" element={isAllowed('reports') ? <deps.ReportsDetail /> : renderAccessDenied('reports')} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') ? <deps.ReportsForm mode="edit" /> : renderAccessDenied('reports')} />
+        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') && reportsWriter ? <deps.ReportsForm mode="edit" /> : renderAccessDenied('reports')} />
         <Route path="/intro" element={<React.Suspense fallback={<SkeletonPage />}><deps.IntroRoute /></React.Suspense>} />
         <Route path="/offline" element={<React.Suspense fallback={<SkeletonPage />}><deps.OfflineRoute /></React.Suspense>} />
         <Route path="/maintenance" element={<React.Suspense fallback={<SkeletonPage />}><deps.MaintenanceRoute /></React.Suspense>} />

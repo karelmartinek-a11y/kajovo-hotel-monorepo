@@ -26,8 +26,10 @@ class ApiErrorEnvelope(BaseModel):
 
 
 class AndroidAppReleaseRead(BaseModel):
+    version_code: int
     version: str
     download_url: str
+    sha256: str
     title: str
     message: str
     required: bool = False

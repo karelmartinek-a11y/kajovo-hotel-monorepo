@@ -33,7 +33,8 @@ fun resolveAuthenticatedRoute(identity: AuthenticatedIdentity): String {
 }
 
 fun AuthenticatedIdentity.canOpenDestination(route: String): Boolean {
-    val destination = PortalDestinations.firstOrNull { it.route == route } ?: return route in setOf(
+    val normalizedRoute = route.substringBefore('/')
+    val destination = PortalDestinations.firstOrNull { it.route == normalizedRoute } ?: return normalizedRoute in setOf(
         PortalRoutes.Profile,
         PortalRoutes.ChangePassword,
         PortalRoutes.Offline,

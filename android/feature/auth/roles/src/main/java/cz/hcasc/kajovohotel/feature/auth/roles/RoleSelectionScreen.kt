@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import cz.hcasc.kajovohotel.core.designsystem.BrandFooter
@@ -23,11 +24,17 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 fun RoleSelectionScreen(roles: List<PortalRole>, isBusy: Boolean, onConfirm: (PortalRole) -> Unit) {
     var selectedRole by remember(roles) { mutableStateOf(roles.firstOrNull()) }
 
+    LaunchedEffect(roles) {
+        if (roles.size == 1) {
+            selectedRole?.let(onConfirm)
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Vyber aktivní roli", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
-            title = "Role-driven shell",
-            subtitle = "Aplikace zpřístupní jen moduly potvrzené pro zvolenou neadmin roli.",
+            title = "Role a přístup",
+            subtitle = "Zobrazují se jen role, ke kterým má uživatel skutečně dostupné moduly.",
         )
         roles.forEach { role ->
             Row(modifier = Modifier.fillMaxWidth()) {
