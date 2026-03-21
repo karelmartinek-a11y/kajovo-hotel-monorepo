@@ -8,7 +8,9 @@ for /f "tokens=1,* delims==" %%A in (%PROPERTIES_FILE%) do (
 set DISTRIBUTION_URL=%DISTRIBUTION_URL:\=%
 for %%F in (%DISTRIBUTION_URL%) do set DIST_ZIP=%%~nxF
 set DIST_NAME=%DIST_ZIP:.zip=%
-set DIST_DIR=%APP_HOME%.gradle-dist\%DIST_NAME%
+set DIST_HOME_NAME=%DIST_NAME:-bin=%
+set DIST_HOME_NAME=%DIST_HOME_NAME:-all=%
+set DIST_DIR=%APP_HOME%.gradle-dist\%DIST_HOME_NAME%
 set GRADLE_BIN=%DIST_DIR%\bin\gradle.bat
 set ZIP_PATH=%APP_HOME%.gradle-dist\%DIST_ZIP%
 

@@ -5,7 +5,8 @@ APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PROPERTIES_FILE="$APP_HOME/gradle/wrapper/gradle-wrapper.properties"
 DISTRIBUTION_URL=$(grep '^distributionUrl=' "$PROPERTIES_FILE" | cut -d= -f2- | sed 's#\\##g')
 DIST_NAME=$(basename "$DISTRIBUTION_URL" .zip)
-DIST_DIR="$APP_HOME/.gradle-dist/$DIST_NAME"
+DIST_HOME_NAME=$(printf '%s' "$DIST_NAME" | sed -E 's/-(bin|all)$//')
+DIST_DIR="$APP_HOME/.gradle-dist/$DIST_HOME_NAME"
 GRADLE_BIN="$DIST_DIR/bin/gradle"
 ZIP_PATH="$APP_HOME/.gradle-dist/$DIST_NAME.zip"
 
