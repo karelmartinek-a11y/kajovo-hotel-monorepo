@@ -86,6 +86,9 @@ export function PortalLoginPage(): JSX.Element {
           <h2 id="portal-download-title" className="k-login-download__title">
             Stáhnout Android aplikaci
           </h2>
+          <div className="k-login-download__preview" aria-hidden="true">
+            <img src="/downloads/kajovo-hotel-android-icon.png" alt="" />
+          </div>
           <p className="k-login-download__copy">
             Pro přihlášení z telefonu nebo tabletu si můžeš stáhnout instalační APK balíček.
           </p>

@@ -59,6 +59,23 @@
   color: var(--k-color-ink-secondary);
 }
 
+.k-login-download__preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.k-login-download__preview img {
+  width: 84px;
+  height: 84px;
+  display: block;
+  border: 1px solid var(--k-color-border);
+  border-radius: 20px;
+  background: var(--k-color-white);
+  padding: 8px;
+  object-fit: contain;
+}
+
 .k-login-download__action {
   justify-self: start;
 }
