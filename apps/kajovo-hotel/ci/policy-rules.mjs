@@ -1,6 +1,7 @@
 const webRuntimePrefixes = [
   'apps/kajovo-hotel-web/src/',
   'apps/kajovo-hotel-web/index.html',
+  'apps/kajovo-hotel-web/public/downloads/',
   'packages/ui/src/',
 ];
 

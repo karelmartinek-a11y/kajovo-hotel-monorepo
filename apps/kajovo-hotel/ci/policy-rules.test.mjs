@@ -35,3 +35,17 @@ test('povoli navazanou runtime zmenu na obou platformach', () => {
 
   assert.equal(errors.length, 0);
 });
+
+test('povoli Android release fix navazany na webovy download artefakt', () => {
+  const errors = collectPolicyErrors({
+    allChangedFiles: [
+      'apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk',
+      'android/core/model/src/main/java/cz/hcasc/kajovohotel/core/model/PortalRole.kt',
+      'android/release/android-release.json',
+    ],
+    filesToScan: [],
+    readSource: () => '',
+  });
+
+  assert.equal(errors.length, 0);
+});
