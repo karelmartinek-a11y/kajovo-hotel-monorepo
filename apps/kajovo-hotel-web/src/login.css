@@ -70,9 +70,9 @@
   height: 84px;
   display: block;
   border: 1px solid var(--k-color-border);
-  border-radius: 20px;
+  border-radius: var(--k-radius-3);
   background: var(--k-color-white);
-  padding: 8px;
+  padding: var(--k-spacing-2);
   object-fit: contain;
 }
 
