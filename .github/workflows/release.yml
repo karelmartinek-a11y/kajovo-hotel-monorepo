@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -75,15 +77,6 @@ jobs:
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile --store ~/.pnpm-store
 
-      - name: Run TypeScript lint
-        run: pnpm lint
-
-      - name: Run backend unit tests
-        run: pnpm unit
-
-      - name: Android release integrity gate
-        run: pnpm ci:android-release-integrity
-
       - name: Materialize Android upload keystore
         shell: bash
         env:
@@ -101,17 +94,14 @@ jobs:
           echo "KAJOVO_UPLOAD_KEY_ALIAS=${{ secrets.KAJOVO_UPLOAD_KEY_ALIAS }}" >> "$GITHUB_ENV"
           echo "KAJOVO_UPLOAD_KEY_PASSWORD=${HOTEL_ADMIN_PASSWORD}" >> "$GITHUB_ENV"
 
-      - name: Policy rule unit tests
-        run: pnpm ci:policy-test
+      - name: Install Playwright browser
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
 
-      - name: Policy sentinel gate
-        run: pnpm ci:policy
-
-      - name: Build portal client
-        run: pnpm --filter @kajovo/kajovo-hotel-web build
-
-      - name: Build admin client
-        run: pnpm --filter @kajovo/kajovo-hotel-admin build
+      - name: Run unified release gate
+        env:
+          RUN_FRONTEND_GATES: "1"
+          RUN_E2E_SMOKE: "1"
+        run: python scripts/release_gate.py
 
       - name: Build signed Android release APK
         working-directory: android
@@ -120,10 +110,4 @@ jobs:
           ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_STORE_PASSWORD: ${{ env.KAJOVO_UPLOAD_STORE_PASSWORD }}
           ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_KEY_ALIAS: ${{ env.KAJOVO_UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_KEY_PASSWORD: ${{ env.KAJOVO_UPLOAD_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease
-
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
-
-      - name: Run smoke e2e suite
-        run: pnpm --filter @kajovo/kajovo-hotel-web test:smoke
+        run: sh ./gradlew :app:assembleRelease

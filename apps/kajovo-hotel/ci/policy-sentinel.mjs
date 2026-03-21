@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 
@@ -17,6 +17,15 @@ const list = (cmd) =>
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
+
+const hasCommit = (sha) => {
+  if (!sha) return false;
+  const completed = spawnSync('git', ['rev-parse', '--verify', '--quiet', `${sha}^{commit}`], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  return completed.status === 0 && completed.stdout.trim().length > 0;
+};
 
 const changedFiles = () => {
   const localScan = () => {
@@ -38,7 +47,7 @@ const changedFiles = () => {
     try {
       const eventPayload = JSON.parse(readFileSync(githubEventPath, 'utf8'));
       const before = String(eventPayload.before || '').trim();
-      if (before && !/^0+$/.test(before)) {
+      if (before && !/^0+$/.test(before) && hasCommit(before)) {
         return list(`git diff --name-only ${before}...HEAD`);
       }
     } catch {
