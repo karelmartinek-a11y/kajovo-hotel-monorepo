@@ -1,9 +1,9 @@
 {
-  "version_code": 202,
-  "version_name": "2.02",
+  "version_code": 203,
+  "version_name": "2.03",
   "download_url": "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk",
   "download_path": "apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk",
-  "sha256": "9be9177e72bfa111dda8a1ce30a5ae1b4c9bf5a92cd455b54c23b66fe1c426a3",
+  "sha256": "0d90a707a8af7a2a9aa8c615dcc8f87ec89f0d9c6871ef47f1c70c7042c9ef0d",
   "title": "Je dostupná nová verze aplikace",
   "message": "Na serveru je připravená novější verze Android aplikace. Doporučujeme ji nainstalovat ještě před přihlášením.",
   "required": false

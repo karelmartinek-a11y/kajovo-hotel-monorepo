@@ -13,7 +13,14 @@ class PortalRoleParsingTest {
     }
 
     @Test
-    fun `parser zachova kompatibilitu pro ascii a starsi rozbite aliasy`() {
+    fun `parser opravi rozbite role z produkcnich payloadu`() {
+        assertEquals(PortalRole.HOUSEKEEPING, PortalRole.fromWire("pokojskĂˇ"))
+        assertEquals(PortalRole.MAINTENANCE, PortalRole.fromWire("ĂşdrĹľba"))
+        assertEquals(PortalRole.BREAKFAST, PortalRole.fromWire("snĂ­danÄ›"))
+    }
+
+    @Test
+    fun `parser zachova kompatibilitu pro ascii aliasy`() {
         assertEquals(PortalRole.HOUSEKEEPING, PortalRole.fromWire("pokojska"))
         assertEquals(PortalRole.MAINTENANCE, PortalRole.fromWire("udrzba"))
         assertEquals(PortalRole.BREAKFAST, PortalRole.fromWire("snidane"))

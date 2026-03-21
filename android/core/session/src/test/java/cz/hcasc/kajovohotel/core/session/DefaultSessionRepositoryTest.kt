@@ -8,8 +8,8 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.core.model.SessionState
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEvent
 import cz.hcasc.kajovohotel.core.network.api.AuthApi
-import cz.hcasc.kajovohotel.core.network.dto.AuthIdentityDto
 import cz.hcasc.kajovohotel.core.network.dto.AndroidReleaseDto
+import cz.hcasc.kajovohotel.core.network.dto.AuthIdentityDto
 import cz.hcasc.kajovohotel.core.network.dto.AuthProfileDto
 import cz.hcasc.kajovohotel.core.network.dto.AuthProfileUpdateRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalLoginRequest
@@ -63,7 +63,7 @@ class DefaultSessionRepositoryTest {
                 AuthIdentityDto(
                     email = "recepce@example.com",
                     role = "recepce",
-                    roles = listOf("recepce", "snídaně"),
+                    roles = listOf("recepce", "snĂ­danÄ›"),
                     active_role = null,
                     permissions = emptyList(),
                     actor_type = "portal",
@@ -71,7 +71,13 @@ class DefaultSessionRepositoryTest {
             ),
         )
         val metadataStore = FakeMetadataStore()
-        val repository = DefaultSessionRepository(authApi, FakeCookieStore(), metadataStore, FakeModuleSnapshotDao(), AppLogger())
+        val repository = DefaultSessionRepository(
+            authApi,
+            FakeCookieStore(),
+            metadataStore,
+            FakeModuleSnapshotDao(),
+            AppLogger(),
+        )
 
         repository.restoreSession()
 
@@ -83,12 +89,41 @@ class DefaultSessionRepositoryTest {
     }
 
     @Test
+    fun `restore session opravi rozbitou aktivni roli z backendu`() = runTest {
+        val authApi = FakeAuthApi(
+            meResult = Result.success(
+                AuthIdentityDto(
+                    email = "snidane@example.com",
+                    role = "snĂ­danÄ›",
+                    roles = listOf("recepce", "snĂ­danÄ›"),
+                    active_role = "snĂ­danÄ›",
+                    permissions = listOf("breakfast:read", "breakfast:write"),
+                    actor_type = "portal",
+                ),
+            ),
+        )
+        val repository = DefaultSessionRepository(
+            authApi = authApi,
+            cookieStore = FakeCookieStore(),
+            metadataStore = FakeMetadataStore(),
+            moduleSnapshotDao = FakeModuleSnapshotDao(),
+            logger = AppLogger(),
+        )
+
+        repository.restoreSession()
+
+        val state = repository.sessionState.value as SessionState.Authenticated
+        assertEquals(PortalRole.BREAKFAST, state.identity.activeRole)
+        assertEquals(listOf(PortalRole.RECEPTION, PortalRole.BREAKFAST), state.identity.roles)
+    }
+
+    @Test
     fun `restore session falls back to cached identity when backend requires role selection`() = runTest {
         val metadataStore = FakeMetadataStore().apply {
             snapshot = SessionIdentitySnapshot(
                 email = "recepce@example.com",
                 actorType = "portal",
-                roles = listOf("recepce", "snídaně"),
+                roles = listOf("recepce", "snĂ­danÄ›"),
                 permissions = setOf("breakfast:read", "breakfast:write"),
             )
         }
