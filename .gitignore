@@ -21,3 +21,8 @@ kajovo_hotel.db
 artifacts/pytest/
 artifacts/breakfast-runtime-smoke/
 artifacts/kajovo-*/
+android/.gradle-dist/
+android/.gradle/
+android/.idea/
+android/.kotlin/
+android/local.properties

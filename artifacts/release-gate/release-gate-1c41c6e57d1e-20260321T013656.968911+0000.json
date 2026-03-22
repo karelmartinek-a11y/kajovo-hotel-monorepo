@@ -1,0 +1,138 @@
+{
+  "generated_at": "2026-03-21T01:36:56.968911+00:00",
+  "sha": "1c41c6e57d1e66b091ced0983139953824961c63",
+  "overall_status": "PASS",
+  "checks": [
+    {
+      "name": "typecheck",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "typecheck"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:33.574454+00:00",
+      "finished_at": "2026-03-21T01:35:44.592280+00:00"
+    },
+    {
+      "name": "policy-test",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "ci:policy-test"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:44.592305+00:00",
+      "finished_at": "2026-03-21T01:35:45.516213+00:00"
+    },
+    {
+      "name": "policy",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "ci:policy"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:45.516242+00:00",
+      "finished_at": "2026-03-21T01:35:46.596265+00:00"
+    },
+    {
+      "name": "android-release-integrity",
+      "command": [
+        "python",
+        "scripts/check_android_release_integrity.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:46.596284+00:00",
+      "finished_at": "2026-03-21T01:35:46.852604+00:00"
+    },
+    {
+      "name": "android-smoke",
+      "command": [
+        "python",
+        "scripts/run_android_smoke.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:46.852622+00:00",
+      "finished_at": "2026-03-21T01:35:49.880786+00:00"
+    },
+    {
+      "name": "web-build",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-web",
+        "build"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:49.880813+00:00",
+      "finished_at": "2026-03-21T01:35:54.037224+00:00"
+    },
+    {
+      "name": "admin-build",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-admin",
+        "build"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:54.037247+00:00",
+      "finished_at": "2026-03-21T01:35:57.464646+00:00"
+    },
+    {
+      "name": "api-unit-tests",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "apps/kajovo-hotel-api/tests",
+        "-q"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:35:57.464674+00:00",
+      "finished_at": "2026-03-21T01:36:56.902267+00:00"
+    },
+    {
+      "name": "frontend-ci-gates",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "ci:gates"
+      ],
+      "status": "SKIPPED",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:36:56.902302+00:00",
+      "finished_at": "2026-03-21T01:36:56.902309+00:00"
+    },
+    {
+      "name": "e2e-smoke",
+      "command": [
+        "cmd",
+        "/c",
+        "pnpm",
+        "ci:e2e-smoke"
+      ],
+      "status": "SKIPPED",
+      "return_code": 0,
+      "started_at": "2026-03-21T01:36:56.902319+00:00",
+      "finished_at": "2026-03-21T01:36:56.902324+00:00"
+    }
+  ]
+}
