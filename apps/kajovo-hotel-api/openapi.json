@@ -3327,6 +3327,18 @@
             ],
             "title": "Note"
           },
+          "password": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
           "phone": {
             "anyOf": [
               {

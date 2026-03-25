@@ -459,6 +459,7 @@ export type PortalUserUpdate = {
   "first_name": string;
   "last_name": string;
   "note"?: string | null;
+  "password"?: string | null;
   "phone"?: string | null;
   "roles": Array<string>;
 };
