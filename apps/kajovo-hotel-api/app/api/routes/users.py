@@ -276,6 +276,9 @@ def update_user(
     user.phone = payload.phone
     user.note = payload.note
     user.roles = [PortalUserRole(role=role) for role in new_roles]
+    if payload.password is not None:
+        user.password_hash = hash_password(payload.password)
+        revoke_sessions_for_portal_user(db, user.id)
     user.updated_at = utc_now()
     db.add(user)
     db.commit()
@@ -298,6 +301,8 @@ def set_user_active(
             detail="Cannot deactivate the last admin user",
         )
     user.is_active = payload.is_active
+    if not payload.is_active:
+        revoke_sessions_for_portal_user(db, user.id)
     user.updated_at = utc_now()
     db.add(user)
     db.commit()

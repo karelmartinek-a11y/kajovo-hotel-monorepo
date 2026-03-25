@@ -518,7 +518,19 @@ class PortalUserCreate(PortalUserBasePayload):
 
 
 class PortalUserUpdate(PortalUserBasePayload):
-    pass
+    password: str | None = Field(default=None, max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        password = value.strip()
+        if not password:
+            return None
+        if len(password) < 8:
+            raise ValueError("Password must have at least 8 characters")
+        return password
 
 
 class PortalUserPasswordSet(BaseModel):
