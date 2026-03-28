@@ -3215,8 +3215,8 @@ function AppRoutes(): JSX.Element {
       <KajovoStartupSplash
         href="/"
         eyebrow="KájovoHotel"
-        title="Spouštím provozní portál"
-        description="Ověřuji přihlášení, dostupné role a navazuji na poslední bezpečnou relaci."
+        title="Provoz hotelu bez zbytečných přepínačů"
+        description="Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a bezpečný přístup k tomu, co právě potřebují."
       />
     );
   }

@@ -3,6 +3,7 @@ import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
 const MODULE_ROOTS = ['/recepce', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni'] as const;
+const LOGIN_PRINCIPAL_LABEL = /email|uživatelské jméno/i;
 
 type RoleScenario = {
   key: string;
@@ -112,7 +113,7 @@ async function createPortalUserForRole(
 
 async function loginPortalUser(page: import('@playwright/test').Page, email: string, password: string) {
   await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/email/i).fill(email);
+  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
 }
@@ -179,7 +180,7 @@ test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, reques
   expect(createUserResponse.status()).toBe(201);
 
   await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/email/i).fill(portalEmail);
+  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(portalEmail);
   await page.getByLabel(/heslo/i).fill(portalPassword);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
 
@@ -261,7 +262,7 @@ test('multirolni portal uzivatel vidi po vyberu role prepinac ostatnich roli v z
   expect(createUserResponse.status()).toBe(201);
 
   await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/email/i).fill(portalEmail);
+  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(portalEmail);
   await page.getByLabel(/heslo/i).fill(portalPassword);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
 

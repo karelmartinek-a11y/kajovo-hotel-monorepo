@@ -9,6 +9,7 @@ BACKUP_DIR="${BACKUP_DIR:-infra/backups}"
 BACKUP_MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-24}"
 REQUIRE_BACKUP="${REQUIRE_BACKUP:-1}"
 SMOKE_SCRIPT="${SMOKE_SCRIPT:-./infra/smoke/smoke.sh}"
+TEMP_ENV_FILE=""
 
 STAGING_HOSTNAME="${STAGING_HOSTNAME:-kajovohotel-staging.hcasc.cz}"
 WEB_BASE_URL="${WEB_BASE_URL:-https://${STAGING_HOSTNAME}}"
@@ -82,7 +83,11 @@ PY
 
 main() {
   [[ -f "$COMPOSE_FILE" ]] || { echo "[VERIFY][FAIL] Missing compose file: $COMPOSE_FILE" >&2; exit 1; }
-  [[ -f "$ENV_FILE" ]] || { echo "[VERIFY][FAIL] Missing env file: $ENV_FILE" >&2; exit 1; }
+  if [[ ! -f "$ENV_FILE" ]]; then
+    TEMP_ENV_FILE="$(mktemp)"
+    ENV_FILE="$TEMP_ENV_FILE"
+    echo "[VERIFY] Missing env file -> using temporary empty env file: $ENV_FILE"
+  fi
 
   require_cmd docker
   require_cmd curl
@@ -121,5 +126,7 @@ main() {
   echo "Logy najdete zde:"
   echo "  COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME docker compose -f $COMPOSE_FILE --env-file $ENV_FILE logs --tail=200"
 }
+
+trap '[[ -n "$TEMP_ENV_FILE" && -f "$TEMP_ENV_FILE" ]] && rm -f "$TEMP_ENV_FILE"' EXIT
 
 main "$@"

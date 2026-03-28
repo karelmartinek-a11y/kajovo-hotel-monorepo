@@ -22,6 +22,10 @@ export default defineConfig({
     command: webServerCommand,
     cwd: '.',
     port: webPort,
+    env: {
+      VITE_SKIP_EMPTY_OUT_DIR: '1',
+      VITE_SKIP_LOCKED_DOWNLOADS: '1',
+    },
     reuseExistingServer: true,
   },
   projects: [

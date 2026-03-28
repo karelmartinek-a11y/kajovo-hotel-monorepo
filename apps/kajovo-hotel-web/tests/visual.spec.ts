@@ -2,6 +2,7 @@ import { expect, test, type APIRequestContext, type Locator, type Page } from '@
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
+const LOGIN_PRINCIPAL_LABEL = /email|uživatelské jméno/i;
 
 type ViewCheck = {
   name: string;
@@ -123,7 +124,7 @@ async function createPortalUser(
 
 async function loginPortal(page: Page, email: string, password: string, landingPath: RegExp, roleName: string) {
   await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/email/i).fill(email);
+  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
   await expect(page).toHaveURL(landingPath);
