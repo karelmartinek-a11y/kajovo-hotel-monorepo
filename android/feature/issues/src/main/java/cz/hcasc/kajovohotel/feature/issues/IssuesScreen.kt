@@ -140,6 +140,9 @@ fun IssuesScreen(
                             onBackToList = {
                                 if (onNavigate != null) onNavigate(IssuesSection.LIST, null) else section = IssuesSection.LIST
                             },
+                            onMarkResolved = {
+                                viewModel.advanceStatus(IssueStatus.RESOLVED)
+                            },
                             onStartEdit = {
                                 state.selected?.id?.let { id ->
                                     if (onNavigate != null) onNavigate(IssuesSection.EDIT, id) else section = IssuesSection.EDIT
@@ -178,6 +181,18 @@ fun IssuesScreen(
                                 if (onNavigate != null) onNavigate(IssuesSection.DETAIL, issue.id) else section = IssuesSection.DETAIL
                             },
                         )
+                        if (issue.status != IssueStatus.RESOLVED && issue.status != IssueStatus.CLOSED) {
+                            Button(
+                                onClick = {
+                                    viewModel.select(issue)
+                                    viewModel.advanceStatus(IssueStatus.RESOLVED)
+                                },
+                                enabled = !state.isSaving,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Označit jako odstraněné")
+                            }
+                        }
                     }
                 }
             }
@@ -238,6 +253,7 @@ private fun FiltersCard(
 private fun DetailCard(
     state: IssuesUiState,
     onBackToList: () -> Unit,
+    onMarkResolved: () -> Unit,
     onStartEdit: () -> Unit,
 ) {
     val selected = state.selected
@@ -257,6 +273,9 @@ private fun DetailCard(
         Text(text = "Místo: ${selected.location}")
         if (selected.roomNumber.isNotBlank()) {
             Text(text = "Pokoj: ${selected.roomNumber}")
+        }
+        if (selected.assignee.isNotBlank()) {
+            Text(text = "Přiřazeno: ${selected.assignee}")
         }
         if (selected.description.isNotBlank()) {
             Text(text = selected.description)
@@ -286,6 +305,9 @@ private fun DetailCard(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
+            if (selected.status != IssueStatus.RESOLVED && selected.status != IssueStatus.CLOSED) {
+                OutlinedButton(onClick = onMarkResolved, enabled = !state.isSaving) { Text("Označit jako odstraněné") }
+            }
             OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
         }
     }
@@ -326,11 +348,26 @@ private fun EditorCard(
             label = { Text("Pokoj") },
         )
         OutlinedTextField(
+            value = draft.assignee,
+            onValueChange = { onDraftChange { current -> current.copy(assignee = it) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Přiřazeno") },
+        )
+        OutlinedTextField(
             value = draft.description,
             onValueChange = { onDraftChange { current -> current.copy(description = it) } },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Popis") },
         )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            items(IssueStatus.entries) { status ->
+                FilterChip(
+                    selected = draft.status == status,
+                    onClick = { onDraftChange { current -> current.copy(status = status) } },
+                    label = { Text(status.label) },
+                )
+            }
+        }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(IssuePriority.entries) { priority ->
                 FilterChip(

@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import cz.hcasc.kajovohotel.core.designsystem.KajovoTheme
 import cz.hcasc.kajovohotel.core.designsystem.PortalChrome
+import cz.hcasc.kajovohotel.core.model.ActorType
 import cz.hcasc.kajovohotel.core.model.AuthenticatedIdentity
 import cz.hcasc.kajovohotel.core.model.AuthProfile
 import cz.hcasc.kajovohotel.core.model.BlockingUtilityState
@@ -117,11 +118,17 @@ fun KajovoHotelApp(
                 val assignedRoles = state.identity.assignedRoles()
                 val activeRole = state.identity.resolvedActiveRole()
                 if (assignedRoles.isEmpty()) {
-                    AccessDeniedScreen(onBack = viewModel::logout)
+                    AccessDeniedScreen(
+                        onBack = viewModel::logout,
+                        moduleLabel = "portál",
+                        roleLabel = state.identity.roleLabel.ifBlank { "bez aktivní role" },
+                        userId = state.identity.email,
+                    )
                 } else if (activeRole == null && assignedRoles.size > 1) {
                     RoleSelectionScreen(
                         roles = assignedRoles,
                         isBusy = false,
+                        message = message,
                         onConfirm = viewModel::selectRole,
                     )
                 } else {
@@ -154,14 +161,19 @@ private fun PortalAppShell(
     onChangePassword: (String, String) -> Unit,
     onLogout: () -> Unit,
 ) {
-    val startRoute = resolveAuthenticatedRoute(identity)
+    val startRoute = resolveAppRoute(identity)
     val availableRoles = identity.assignedRoles()
 
     key(identity.email, identity.activeRole, identity.permissions.sorted().joinToString()) {
         val navController = rememberNavController()
         NavHost(navController = navController, startDestination = startRoute) {
             composable(PortalRoutes.AccessDenied) {
-                AccessDeniedScreen(onBack = onLogout)
+                AccessDeniedScreen(
+                    onBack = onLogout,
+            moduleLabel = "portál",
+            roleLabel = identity.displayRole(),
+            userId = identity.email,
+        )
             }
             composable(PortalRoutes.Reception) {
                 GuardedRoute(
@@ -789,8 +801,18 @@ private fun PortalAppShell(
                     ChangePasswordScreen(message = message, onSubmit = onChangePassword)
                 }
             }
-            composable(PortalRoutes.Offline) { OfflineScreen(onRetry = { navController.popBackStack() }) }
-            composable(PortalRoutes.Maintenance) { MaintenanceScreen(onBack = { navController.popBackStack() }) }
+            composable(PortalRoutes.Offline) {
+                OfflineScreen(
+                    onRetry = { navController.popBackStack() },
+                    onContinueOffline = { navController.popBackStack() },
+                )
+            }
+            composable(PortalRoutes.Maintenance) {
+                MaintenanceScreen(
+                    onBack = { navController.popBackStack() },
+                    onDiagnosticsClick = { navController.navigate(PortalRoutes.Offline) },
+                )
+            }
             composable(PortalRoutes.NotFound) { NotFoundScreen(onBack = { navController.popBackStack() }) }
             composable(PortalRoutes.GlobalError) { GlobalBlockingErrorScreen(onRetry = { navController.popBackStack() }) }
         }
@@ -807,8 +829,13 @@ private fun GuardedRoute(
     availableRoles: List<PortalRole>,
     content: @Composable () -> Unit,
 ) {
-    if (!identity.canOpenDestination(route)) {
-        AccessDeniedScreen(onBack = { navController.navigate(resolveAuthenticatedRoute(identity)) })
+    if (!identity.canOpenAppDestination(route)) {
+        AccessDeniedScreen(
+            onBack = { navController.navigate(resolveAppRoute(identity)) },
+            moduleLabel = title,
+            roleLabel = identity.displayRole(),
+            userId = identity.email,
+        )
         return
     }
     PortalChrome(
@@ -829,4 +856,60 @@ private fun NavHostController.backActionOrNull(): (() -> Unit)? {
     } else {
         null
     }
+}
+
+private fun resolveAppRoute(identity: AuthenticatedIdentity): String {
+    if (identity.actorType == ActorType.ADMIN) {
+        return PortalRoutes.AccessDenied
+    }
+    if (identity.requiresRoleSelection()) {
+        return PortalRoutes.Roles
+    }
+    val activeRole = identity.resolvedActiveRole() ?: identity.assignedRoles().singleOrNull() ?: return PortalRoutes.Login
+    return if (identity.canOpenAppDestination(activeRole.homeRoute())) {
+        activeRole.homeRoute()
+    } else {
+        accessiblePortalRoute(identity) ?: PortalRoutes.Profile
+    }
+}
+
+private fun AuthenticatedIdentity.canOpenAppDestination(route: String): Boolean {
+    val normalizedRoute = route.substringBefore("/")
+    val allowedRoles = routeAllowedRoles(normalizedRoute) ?: return normalizedRoute in setOf(
+        PortalRoutes.Profile,
+        PortalRoutes.ChangePassword,
+        PortalRoutes.Offline,
+        PortalRoutes.Maintenance,
+        PortalRoutes.NotFound,
+        PortalRoutes.AccessDenied,
+        PortalRoutes.GlobalError,
+    )
+    val currentRole = resolvedActiveRole() ?: return false
+    return allowedRoles.contains(currentRole)
+}
+
+private fun accessiblePortalRoute(identity: AuthenticatedIdentity): String? {
+    val currentRole = identity.resolvedActiveRole() ?: return null
+    return listOf(
+        PortalRoutes.Reception,
+        PortalRoutes.Housekeeping,
+        PortalRoutes.Breakfast,
+        PortalRoutes.LostFound,
+        PortalRoutes.Issues,
+        PortalRoutes.Inventory,
+        PortalRoutes.Reports,
+    ).firstOrNull { route ->
+        routeAllowedRoles(route)?.contains(currentRole) == true
+    }
+}
+
+private fun routeAllowedRoles(route: String): Set<PortalRole>? = when (route) {
+    PortalRoutes.Reception -> setOf(PortalRole.RECEPTION)
+    PortalRoutes.Housekeeping -> setOf(PortalRole.HOUSEKEEPING)
+    PortalRoutes.Breakfast -> setOf(PortalRole.RECEPTION, PortalRole.BREAKFAST)
+    PortalRoutes.LostFound -> setOf(PortalRole.RECEPTION)
+    PortalRoutes.Issues -> setOf(PortalRole.MAINTENANCE)
+    PortalRoutes.Inventory -> setOf(PortalRole.INVENTORY)
+    PortalRoutes.Reports -> setOf(PortalRole.RECEPTION, PortalRole.INVENTORY)
+    else -> null
 }

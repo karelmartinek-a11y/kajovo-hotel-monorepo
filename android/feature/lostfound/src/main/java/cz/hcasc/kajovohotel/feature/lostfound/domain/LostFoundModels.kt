@@ -3,6 +3,8 @@ package cz.hcasc.kajovohotel.feature.lostfound.domain
 import cz.hcasc.kajovohotel.core.model.LostFoundItemType
 import cz.hcasc.kajovohotel.core.model.LostFoundStatus
 import cz.hcasc.kajovohotel.core.model.MediaPhoto
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 data class LostFoundRecord(
     val id: Int,
@@ -83,3 +85,45 @@ fun LostFoundRecord.toDraft() = LostFoundDraft(
     handoverNote = handoverNote,
     tags = tags.joinToString(", "),
 )
+
+val lostFoundKnownTags: List<Pair<String, String>> = listOf(
+    "kontaktova" to "Kontaktová",
+    "nezastizen" to "Nezastižen",
+    "vyzvedne" to "Vyzvedne",
+    "odesleme" to "Odešleme",
+)
+
+fun LostFoundDraft.selectedTags(): Set<String> {
+    return tags.split(',')
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .toSet()
+}
+
+fun LostFoundDraft.toggleTag(tag: String): LostFoundDraft {
+    val updated = selectedTags().toMutableSet()
+    if (tag in updated) {
+        updated.remove(tag)
+    } else {
+        updated.add(tag)
+    }
+    val ordered = lostFoundKnownTags.map { it.first }.filter(updated::contains) + updated.filterNot { current ->
+        lostFoundKnownTags.any { it.first == current }
+    }.sorted()
+    return copy(tags = ordered.joinToString(", "))
+}
+
+private val lostFoundInputFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
+private val lostFoundDisplayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("d. M. yyyy HH:mm")
+
+fun defaultLostFoundEventAt(): String = LocalDateTime.now().format(lostFoundInputFormatter)
+
+fun LostFoundDraft.eventAtForPicker(): LocalDateTime {
+    return runCatching { LocalDateTime.parse(eventAt.take(16), lostFoundInputFormatter) }
+        .getOrElse { LocalDateTime.now() }
+}
+
+fun formatLostFoundEventAtForUi(raw: String): String {
+    return runCatching { LocalDateTime.parse(raw.take(16), lostFoundInputFormatter).format(lostFoundDisplayFormatter) }
+        .getOrElse { raw }
+}

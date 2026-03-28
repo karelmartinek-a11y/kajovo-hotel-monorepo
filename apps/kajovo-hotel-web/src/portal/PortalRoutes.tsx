@@ -120,7 +120,7 @@ function ReceptionHubPage(): JSX.Element {
   return (
     <main className="k-page" data-testid="reception-hub-page">
       <h1>Recepce</h1>
-      <div className="k-grid cards-2">
+      <div className="k-grid cards-3">
         <StateView
           title="Zpracování nálezů"
           description="Zobrazí jen čekající nálezy. Po označení jako zpracované ze seznamu zmizí."
@@ -132,6 +132,12 @@ function ReceptionHubPage(): JSX.Element {
           description="Import PDF, správa diet a vrácení jednotlivé spotřebované snídaně."
           stateKey="empty"
           action={<Link className="k-button" to="/snidane">Otevřít snídaně</Link>}
+        />
+        <StateView
+          title="Přehled hlášení"
+          description="Seznam provozních hlášení s detailem a úpravami dostupnými podle oprávnění role."
+          stateKey="empty"
+          action={<Link className="k-button" to="/hlaseni">Otevřít hlášení</Link>}
         />
       </div>
     </main>

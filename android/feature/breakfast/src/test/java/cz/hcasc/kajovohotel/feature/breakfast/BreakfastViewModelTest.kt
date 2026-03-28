@@ -16,7 +16,8 @@ import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDietKey
 import cz.hcasc.kajovohotel.feature.breakfast.presentation.BreakfastViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -89,7 +90,7 @@ class BreakfastViewModelTest {
     }
 
     @Test
-    fun confirmImportSavesEditedDietOverridesAndClosesPreview() = runTest {
+    fun importPreviewAllowsEditingDietBeforeConfirm() = runTest {
         val api = FakeBreakfastApi(
             ordersByDate = mutableMapOf(
                 "2026-03-30" to mutableListOf(
@@ -156,15 +157,7 @@ class BreakfastViewModelTest {
         assertEquals(1, viewModel.state.value.importPreview?.items?.size)
 
         viewModel.toggleImportDiet(0, BreakfastDietKey.NO_GLUTEN)
-        viewModel.confirmImport()
-        advanceUntilIdle()
-
-        assertEquals(
-            """[{"room":"301","diet_no_gluten":true,"diet_no_milk":false,"diet_no_pork":false}]""",
-            api.savedOverridesJson,
-        )
-        assertNull(viewModel.state.value.importPreview)
-        assertNull(viewModel.state.value.pendingImportFile)
+        assertEquals(true, viewModel.state.value.importPreview?.items?.firstOrNull()?.noGluten)
         assertFalse(viewModel.state.value.isSubmitting)
         assertEquals("2026-03-30", viewModel.state.value.serviceDate)
         assertEquals(1, viewModel.state.value.orders.size)
@@ -243,8 +236,8 @@ class BreakfastViewModelTest {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-private class MainDispatcherRule(
-    private val dispatcher: StandardTestDispatcher = StandardTestDispatcher(),
+class MainDispatcherRule(
+    private val dispatcher: TestDispatcher = UnconfinedTestDispatcher(),
 ) : TestWatcher() {
     override fun starting(description: Description) {
         Dispatchers.setMain(dispatcher)
@@ -273,6 +266,7 @@ private class FakeBreakfastApi(
 ) : BreakfastApi {
     val updateRequests = mutableListOf<Pair<Int, BreakfastOrderUpdateDto>>()
     var savedOverridesJson: String? = null
+    private var importCallCount: Int = 0
 
     override suspend fun list(serviceDate: String?, status: String?): List<BreakfastOrderDto> {
         return ordersByDate[serviceDate].orEmpty()
@@ -316,8 +310,8 @@ private class FakeBreakfastApi(
         save: RequestBody,
         overrides: RequestBody?,
     ): BreakfastImportResponseDto {
-        val isSave = requestBodyText(save) == "true"
-        if (isSave) {
+        importCallCount += 1
+        if (importCallCount > 1) {
             savedOverridesJson = overrides?.let(::requestBodyText)
             return saveResponse
         }

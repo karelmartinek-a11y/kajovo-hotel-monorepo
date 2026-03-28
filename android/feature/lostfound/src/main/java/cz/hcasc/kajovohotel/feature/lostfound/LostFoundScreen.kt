@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.lostfound
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -40,9 +42,16 @@ import cz.hcasc.kajovohotel.core.model.LostFoundItemType
 import cz.hcasc.kajovohotel.core.model.LostFoundStatus
 import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundDraft
+import cz.hcasc.kajovohotel.feature.lostfound.domain.defaultLostFoundEventAt
+import cz.hcasc.kajovohotel.feature.lostfound.domain.eventAtForPicker
+import cz.hcasc.kajovohotel.feature.lostfound.domain.formatLostFoundEventAtForUi
 import cz.hcasc.kajovohotel.feature.lostfound.domain.isValidForSubmit
+import cz.hcasc.kajovohotel.feature.lostfound.domain.lostFoundKnownTags
+import cz.hcasc.kajovohotel.feature.lostfound.domain.selectedTags
+import cz.hcasc.kajovohotel.feature.lostfound.domain.toggleTag
 import cz.hcasc.kajovohotel.feature.lostfound.presentation.LostFoundUiState
 import cz.hcasc.kajovohotel.feature.lostfound.presentation.LostFoundViewModel
+import java.time.LocalDateTime
 
 enum class LostFoundSection {
     LIST,
@@ -103,7 +112,6 @@ fun LostFoundScreen(
                         if (onNavigate != null && id != null) onNavigate(LostFoundSection.DETAIL, id) else section = LostFoundSection.DETAIL
                     }, modifier = Modifier.weight(1f)) { Text("Detail") }
                 }
-                if (!state.isReceptionView) {
                     OutlinedButton(onClick = {
                         viewModel.startCreate()
                         if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
@@ -114,7 +122,6 @@ fun LostFoundScreen(
                             if (onNavigate != null && id != null) onNavigate(LostFoundSection.EDIT, id) else section = LostFoundSection.EDIT
                         }, modifier = Modifier.weight(1f)) { Text("Upravit") }
                     }
-                }
             }
         }
         when {
@@ -141,32 +148,28 @@ fun LostFoundScreen(
             }
 
             else -> {
-                if (state.isReceptionView) {
-                    if (section == LostFoundSection.DETAIL) {
-                        item {
+                if (section == LostFoundSection.LIST && !state.isReceptionView) {
+                    item {
+                        FiltersCard(
+                            state = state,
+                            onRefresh = viewModel::load,
+                            onStartCreate = {
+                                viewModel.startCreate()
+                                if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
+                            },
+                            onFiltersChange = viewModel::updateFilters,
+                        )
+                    }
+                }
+                if (section == LostFoundSection.DETAIL) {
+                    item {
+                        if (state.isReceptionView) {
                             ReceptionDetailCard(
                                 state = state,
                                 onMarkProcessed = { state.selected?.let(viewModel::markProcessed) },
                                 onBackToList = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST },
                             )
-                        }
-                    }
-                } else {
-                    if (section == LostFoundSection.LIST) {
-                        item {
-                            FiltersCard(
-                                state = state,
-                                onRefresh = viewModel::load,
-                                onStartCreate = {
-                                    viewModel.startCreate()
-                                    if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
-                                },
-                                onFiltersChange = viewModel::updateFilters,
-                            )
-                        }
-                    }
-                    if (section == LostFoundSection.DETAIL) {
-                        item {
+                        } else {
                             DetailCard(
                                 state = state,
                                 onBackToList = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST },
@@ -177,27 +180,27 @@ fun LostFoundScreen(
                             )
                         }
                     }
-                    if (section == LostFoundSection.CREATE || section == LostFoundSection.EDIT) {
-                        item {
-                            EditorCard(
-                                state = state,
-                                onDraftChange = viewModel::updateDraft,
-                                onPickPhotos = {
-                                    photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                },
-                                onSave = viewModel::save,
-                                onCancel = {
-                                    if (state.selected != null) {
-                                        val id = state.selected?.id
-                                        if (onNavigate != null && id != null) onNavigate(LostFoundSection.DETAIL, id) else section = LostFoundSection.DETAIL
-                                    } else if (onNavigate != null) {
-                                        onNavigate(LostFoundSection.LIST, null)
-                                    } else {
-                                        section = LostFoundSection.LIST
-                                    }
-                                },
-                            )
-                        }
+                }
+                if (section == LostFoundSection.CREATE || section == LostFoundSection.EDIT) {
+                    item {
+                        EditorCard(
+                            state = state,
+                            onDraftChange = viewModel::updateDraft,
+                            onPickPhotos = {
+                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            onSave = viewModel::save,
+                            onCancel = {
+                                if (state.selected != null) {
+                                    val id = state.selected?.id
+                                    if (onNavigate != null && id != null) onNavigate(LostFoundSection.DETAIL, id) else section = LostFoundSection.DETAIL
+                                } else if (onNavigate != null) {
+                                    onNavigate(LostFoundSection.LIST, null)
+                                } else {
+                                    section = LostFoundSection.LIST
+                                }
+                            },
+                        )
                     }
                 }
                 if (section == LostFoundSection.LIST) {
@@ -257,7 +260,7 @@ private fun ReceptionDetailCard(
             )
         }
         Text(text = "Místo: ${selected.location}")
-        Text(text = "Vznik: ${selected.eventAt}")
+        Text(text = "Vznik: ${formatLostFoundEventAtForUi(selected.eventAt)}")
         Button(
             onClick = onMarkProcessed,
             enabled = !state.isSaving,
@@ -343,7 +346,7 @@ private fun DetailCard(
         )
         Text(text = "Kategorie: ${selected.category}")
         Text(text = "Místo: ${selected.location}")
-        Text(text = "Událost: ${selected.eventAt}")
+        Text(text = "Událost: ${formatLostFoundEventAtForUi(selected.eventAt)}")
         if (selected.roomNumber.isNotBlank()) {
             Text(text = "Pokoj: ${selected.roomNumber}")
         }
@@ -385,6 +388,8 @@ private fun EditorCard(
     onCancel: () -> Unit,
 ) {
     val draft = state.draft
+    val selectedTags = draft.selectedTags()
+    val context = LocalContext.current
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = state.selected?.let { "Upravit záznam #${it.id}" } ?: "Nový záznam",
@@ -411,12 +416,30 @@ private fun EditorCard(
         OutlinedTextField(value = draft.category, onValueChange = { onDraftChange { current -> current.copy(category = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kategorie") })
         OutlinedTextField(value = draft.description, onValueChange = { onDraftChange { current -> current.copy(description = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Popis") })
         OutlinedTextField(value = draft.location, onValueChange = { onDraftChange { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Místo nálezu nebo ztráty") })
-        OutlinedTextField(value = draft.eventAt, onValueChange = { onDraftChange { current -> current.copy(eventAt = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Datum události") })
+        EventAtPickerField(
+            eventAt = draft.eventAt,
+            context = context,
+            onChange = { value -> onDraftChange { current -> current.copy(eventAt = value) } },
+        )
         OutlinedTextField(value = draft.roomNumber, onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Pokoj") })
         OutlinedTextField(value = draft.claimantName, onValueChange = { onDraftChange { current -> current.copy(claimantName = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Jméno přebírajícího") })
         OutlinedTextField(value = draft.claimantContact, onValueChange = { onDraftChange { current -> current.copy(claimantContact = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kontakt") })
         OutlinedTextField(value = draft.handoverNote, onValueChange = { onDraftChange { current -> current.copy(handoverNote = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Předávací záznam") })
-        OutlinedTextField(value = draft.tags, onValueChange = { onDraftChange { current -> current.copy(tags = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Tagy oddělené čárkou") })
+        Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            Text(text = "Tagy", style = MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                items(lostFoundKnownTags) { (tag, label) ->
+                    FilterChip(
+                        selected = tag in selectedTags,
+                        onClick = { onDraftChange { current -> current.toggleTag(tag) } },
+                        label = { Text(label) },
+                    )
+                }
+            }
+            if (selectedTags.isNotEmpty()) {
+                Text(text = "Vybráno: ${selectedTags.joinToString()}", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             Button(onClick = onPickPhotos, modifier = Modifier.fillMaxWidth()) { Text("Vybrat až 3 fotky") }
             Button(onClick = onSave, enabled = !state.isSaving && draft.isValidForSubmit(), modifier = Modifier.fillMaxWidth()) { Text("Uložit záznam") }
@@ -426,6 +449,62 @@ private fun EditorCard(
             Text(text = "Vybráno ${state.pendingPhotos.size} nové fotografie")
         }
     }
+}
+
+@Composable
+private fun EventAtPickerField(
+    eventAt: String,
+    context: Context,
+    onChange: (String) -> Unit,
+) {
+    val selectedDateTime = eventAtForPickerSafe(eventAt)
+    val openTimePicker = {
+        TimePickerDialog(
+            context,
+            { _, hour, minute ->
+                onChange(
+                    selectedDateTime
+                        .withHour(hour)
+                        .withMinute(minute)
+                        .withSecond(0)
+                        .withNano(0)
+                        .toString()
+                        .take(16),
+                )
+            },
+            selectedDateTime.hour,
+            selectedDateTime.minute,
+            true,
+        ).show()
+    }
+    val openDatePicker = {
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                val nextDateTime = selectedDateTime
+                    .withYear(year)
+                    .withMonth(month + 1)
+                    .withDayOfMonth(day)
+                onChange(nextDateTime.toString().take(16))
+                openTimePicker()
+            },
+            selectedDateTime.year,
+            selectedDateTime.monthValue - 1,
+            selectedDateTime.dayOfMonth,
+        ).show()
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        Text(text = "Datum a čas události", style = MaterialTheme.typography.labelLarge)
+        OutlinedButton(onClick = openDatePicker, modifier = Modifier.fillMaxWidth()) {
+            Text(formatLostFoundEventAtForUi(eventAt.ifBlank { defaultLostFoundEventAt() }))
+        }
+    }
+}
+
+private fun eventAtForPickerSafe(value: String): LocalDateTime {
+    return runCatching { LostFoundDraft(eventAt = value).eventAtForPicker() }
+        .getOrElse { LocalDateTime.now() }
 }
 
 private fun readBinaryPayload(context: Context, uri: Uri): BinaryPayload? {

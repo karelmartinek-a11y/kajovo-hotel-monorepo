@@ -53,7 +53,7 @@ export function PortalLoginPage(): JSX.Element {
         </p>
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">
-            {copy.emailLabel}
+            Uživatelské jméno
           </label>
           <input
             id="portal-email"
@@ -73,14 +73,14 @@ export function PortalLoginPage(): JSX.Element {
             onChange={(event) => setPassword(event.target.value)}
           />
           <button className="k-button" type="submit">
-            {copy.loginAction}
+            Přihlásit
           </button>
           {error ? (
             <p className="k-login-copy" role="alert">
               {error}
             </p>
           ) : null}
-          <p className="k-login-copy">Reset hesla odesílá pouze administrátor ze správy uživatelů.</p>
+          <p className="k-login-copy">Reset hesla je samostatný tok z odkazu správce.</p>
         </form>
         <section className="k-login-download" aria-labelledby="portal-download-title">
           <h2 id="portal-download-title" className="k-login-download__title">

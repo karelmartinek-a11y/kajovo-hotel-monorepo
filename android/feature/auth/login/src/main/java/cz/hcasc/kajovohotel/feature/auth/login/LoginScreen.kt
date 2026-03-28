@@ -42,7 +42,7 @@ fun LoginScreen(
             style = MaterialTheme.typography.headlineMedium,
         )
         FeatureCard(
-            title = "Přihlášení do provozního portálu",
+            title = "Přihlaste se do provozního portálu",
             subtitle = "Po ověření účtu navážete přesně tam, kde začíná dnešní směna.",
         )
         OutlinedTextField(
@@ -69,6 +69,11 @@ fun LoginScreen(
         ) {
             Text(text = if (isBusy) "Probíhá přihlášení" else "Přihlásit")
         }
+        Text(
+            text = "Reset hesla odesílá pouze administrátor ze správy uživatelů.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             text = "Aplikace po spuštění automaticky ověřuje dostupnost nové verze ještě před přihlášením.",
             style = MaterialTheme.typography.bodyMedium,

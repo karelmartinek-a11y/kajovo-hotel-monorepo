@@ -1,7 +1,6 @@
 package cz.hcasc.kajovohotel.feature.breakfast
 
 import android.app.DatePickerDialog
-import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -281,7 +280,7 @@ fun BreakfastScreen(
                             onCancel = {
                                 if (selectedOrder != null) {
                                     val id = selectedOrder.id
-                                    if (onNavigate != null && id != null) onNavigate(BreakfastSection.DETAIL, id) else section = BreakfastSection.DETAIL
+                                    if (onNavigate != null) onNavigate(BreakfastSection.DETAIL, id) else section = BreakfastSection.DETAIL
                                 } else if (onNavigate != null) {
                                     onNavigate(BreakfastSection.LIST, null)
                                 } else {

@@ -37,7 +37,7 @@ export function PortalResetPasswordPage(): JSX.Element {
       return;
     }
     document.documentElement.lang = bundle.locale;
-    document.title = 'KájovoHotel · Reset hesla';
+    document.title = 'KájovoHotel · Dokončení resetu hesla';
   }, [bundle.locale]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -90,9 +90,9 @@ export function PortalResetPasswordPage(): JSX.Element {
       <section className="k-login-card" aria-labelledby="portal-reset-title">
         <KajovoFullLockup href="/" title="KájovoHotel" subtitle="Obnova přístupu" />
         <p className="k-login-eyebrow">{bundle.copy.eyebrow}</p>
-        <h1 id="portal-reset-title">Nastavení nového hesla</h1>
+        <h1 id="portal-reset-title">Dokončení resetu hesla</h1>
         <p className="k-login-copy">
-          Zadejte nové heslo pro svůj pracovní účet. Resetovací odkaz je jednorázový.
+          Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.
         </p>
         <form className="k-login-form" onSubmit={(event) => void submit(event)}>
           <label className="k-login-label" htmlFor="portal-reset-password">
@@ -106,7 +106,7 @@ export function PortalResetPasswordPage(): JSX.Element {
             onChange={(event) => setPassword(event.target.value)}
           />
           <label className="k-login-label" htmlFor="portal-reset-password-confirm">
-            Potvrzení nového hesla
+            Potvrzení hesla
           </label>
           <input
             id="portal-reset-password-confirm"
@@ -116,7 +116,7 @@ export function PortalResetPasswordPage(): JSX.Element {
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
           <button className="k-button" type="submit" disabled={busy}>
-            Uložit nové heslo
+            Nastavit nové heslo
           </button>
           <Link className="k-button secondary" to="/login">
             Zpět na přihlášení

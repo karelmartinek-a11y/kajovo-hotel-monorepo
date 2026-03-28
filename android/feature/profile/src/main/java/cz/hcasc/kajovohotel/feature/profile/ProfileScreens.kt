@@ -39,7 +39,7 @@ fun ProfileScreen(
     val isPhoneValid = normalizedPhone.isNullOrBlank() || phoneRegex.matches(normalizedPhone)
 
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Můj profil", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "Profil", style = MaterialTheme.typography.headlineMedium)
         profile?.let {
             FeatureCard(
                 title = it.fullName,
@@ -145,10 +145,10 @@ fun ResetPasswordScreen(
     val passwordsMatch = password == confirmPassword
 
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Dokončení resetu hesla", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "Nastavení nového hesla", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
             title = "Reset z odkazu hotel.hcasc.cz",
-            subtitle = "Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.",
+            subtitle = "Zadejte nové heslo pro svůj pracovní účet. Resetovací odkaz je jednorázový.",
         )
         OutlinedTextField(
             value = password,
@@ -174,7 +174,7 @@ fun ResetPasswordScreen(
             onClick = { onSubmit(password, confirmPassword) },
             enabled = password.length >= 8 && confirmPassword.length >= 8 && passwordsMatch,
         ) {
-            Text(text = "Nastavit nové heslo")
+            Text(text = "Uložit nové heslo")
         }
         OutlinedButton(onClick = onBackToLogin) {
             Text(text = "Zpět na přihlášení")

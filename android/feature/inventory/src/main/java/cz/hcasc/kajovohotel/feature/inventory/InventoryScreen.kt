@@ -230,7 +230,7 @@ fun InventoryScreen(
                             )
                             FeatureCard(
                                 title = item.name,
-                                subtitle = "${item.unit} · stav ${item.currentStock} · minimum ${item.minStock}",
+                                subtitle = "${item.unit} · stav ${item.currentStock} · minimum ${item.minStock}${if (item.currentStock <= item.minStock) " · pod minimem" else " · OK"}",
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
@@ -313,6 +313,15 @@ private fun DetailCard(
                     text = "${movement.documentDate} · ${movement.movementType.label} · ${movement.quantity} ${detail.unit}" +
                         if (movement.note.isNotBlank()) " · ${movement.note}" else "",
                 )
+                if (movement.documentReference.isNotBlank()) {
+                    Text(text = "Interní číslo: ${movement.documentReference}")
+                }
+                if (movement.documentNumber.isNotBlank()) {
+                    Text(text = "Číslo dokladu: ${movement.documentNumber}")
+                }
+                if (movement.createdAt.isNotBlank()) {
+                    Text(text = "Založeno: ${movement.createdAt}")
+                }
             }
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {

@@ -84,6 +84,15 @@ class HousekeepingViewModel @Inject constructor(
         persistDraft()
     }
 
+    fun startNewEntry() {
+        val current = mutableState.value
+        mutableState.value = current.copy(
+            successReference = null,
+            errorMessage = null,
+            photoLimitMessage = null,
+        )
+    }
+
     fun submit() {
         val current = mutableState.value
         if (!current.draft.isValid()) {

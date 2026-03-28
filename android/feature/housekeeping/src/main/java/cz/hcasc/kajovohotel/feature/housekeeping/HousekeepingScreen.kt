@@ -87,7 +87,12 @@ fun HousekeepingScreen(
     }
 
     if (state.successReference != null) {
-        StatePane(title = "Zápis odeslán", body = "Úspěšně byl odeslán záznam ${state.successReference}.")
+        StatePane(
+            title = "Zápis odeslán",
+            body = "Úspěšně byl odeslán záznam ${state.successReference}.",
+            actionLabel = "Nový záznam",
+            onAction = viewModel::startNewEntry,
+        )
         return
     }
 

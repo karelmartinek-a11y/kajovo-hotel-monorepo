@@ -108,11 +108,13 @@ class InventoryRepository @Inject constructor(
             InventoryMovementRecord(
                 id = movement.id,
                 documentNumber = movement.document_number,
+                documentReference = movement.document_reference.orEmpty(),
                 documentDate = movement.document_date,
                 movementType = InventoryMovementType.fromWire(movement.movement_type),
                 quantity = movement.quantity,
                 quantityPieces = movement.quantity_pieces,
                 note = movement.note.orEmpty(),
+                createdAt = movement.created_at.orEmpty(),
             )
         },
     )

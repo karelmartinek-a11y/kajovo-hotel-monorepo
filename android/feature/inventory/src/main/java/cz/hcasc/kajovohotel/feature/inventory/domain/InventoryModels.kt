@@ -14,11 +14,13 @@ data class InventoryItemSummary(
 data class InventoryMovementRecord(
     val id: Int,
     val documentNumber: String,
+    val documentReference: String,
     val documentDate: String,
     val movementType: InventoryMovementType,
     val quantity: Int,
     val quantityPieces: Int,
     val note: String,
+    val createdAt: String,
 )
 
 data class InventoryItemDetail(

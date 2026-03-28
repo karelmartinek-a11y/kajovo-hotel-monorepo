@@ -47,6 +47,8 @@ class BreakfastViewModel @Inject constructor(
                         summary = result.value.second,
                         selectedOrder = selectedOrder,
                         queuedDrafts = emptyMap(),
+                        importPreview = null,
+                        pendingImportFile = null,
                         draft = if (mutableState.value.isCreatingNew) {
                             BreakfastDraft(serviceDate = serviceDate)
                         } else {

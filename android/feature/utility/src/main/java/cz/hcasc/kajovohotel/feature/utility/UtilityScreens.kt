@@ -21,8 +21,8 @@ import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 
 @Composable
 fun IntroScreen() = RichStatePane(
-    title = "Spouštím KájovoHotel",
-    body = "Ověřuji přihlášení, dostupné moduly a připravuji pracovní plochu pro dnešní směnu.",
+    title = "Provoz hotelu bez zbytečných přepínačů",
+    body = "Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a bezpečný přístup k tomu, co právě potřebují.",
     useFullBrandLockup = true,
     supportingContent = {
         UtilityInfoStack(
@@ -38,11 +38,16 @@ fun IntroScreen() = RichStatePane(
 )
 
 @Composable
-fun OfflineScreen(onRetry: () -> Unit) = RichStatePane(
-    title = "Aplikace je offline",
-    body = "Nepodařilo se navázat spojení se serverem hotelu. Zkontrolujte připojení a zkuste načtení znovu.",
+fun OfflineScreen(
+    onRetry: () -> Unit,
+    onContinueOffline: (() -> Unit)? = null,
+) = RichStatePane(
+    title = "Jste offline",
+    body = "Portál ztratil připojení. Zkontrolujte síť, případně pokračujte v úkolech, které nevyžadují online synchronizaci.",
     actionLabel = "Zkusit znovu",
     onAction = onRetry,
+    secondaryActionLabel = if (onContinueOffline != null) "Pracovat offline režimem" else null,
+    onSecondaryAction = onContinueOffline,
     supportingContent = {
         UtilityInfoStack(
             title = "Co zkontrolovat",
@@ -56,11 +61,16 @@ fun OfflineScreen(onRetry: () -> Unit) = RichStatePane(
 )
 
 @Composable
-fun MaintenanceScreen(onBack: () -> Unit) = RichStatePane(
-    title = "Portál je dočasně nedostupný",
-    body = "Server právě hlásí servisní odstávku. Počkejte chvíli a potom načtení opakujte.",
-    actionLabel = "Zpět",
+fun MaintenanceScreen(
+    onBack: () -> Unit,
+    onDiagnosticsClick: (() -> Unit)? = null,
+) = RichStatePane(
+    title = "Probíhá údržba",
+    body = "Portál právě dokončuje servisní zásah. Sledujte provozní diagnostiku a po obnovení navazujte tam, kde jste skončili.",
+    actionLabel = "Zpět na přehled",
     onAction = onBack,
+    secondaryActionLabel = if (onDiagnosticsClick != null) "Diagnostika provozu" else null,
+    onSecondaryAction = onDiagnosticsClick,
     supportingContent = {
         UtilityInfoStack(
             title = "Servisní režim",
@@ -75,9 +85,9 @@ fun MaintenanceScreen(onBack: () -> Unit) = RichStatePane(
 
 @Composable
 fun NotFoundScreen(onBack: () -> Unit) = RichStatePane(
-    title = "Stránka nebyla nalezena",
-    body = "Požadovaná obrazovka v aplikaci není dostupná nebo už není součástí tohoto provozního toku.",
-    actionLabel = "Zpět",
+    title = "404",
+    body = "Tuhle stránku jsme v portálu nenašli. Vraťte se na přehled nebo pokračujte do provozních modulů.",
+    actionLabel = "Zpět na přehled",
     onAction = onBack,
     supportingContent = {
         UtilityInfoStack(
@@ -92,10 +102,19 @@ fun NotFoundScreen(onBack: () -> Unit) = RichStatePane(
 )
 
 @Composable
-fun AccessDeniedScreen(onBack: () -> Unit) = RichStatePane(
+fun AccessDeniedScreen(
+    onBack: () -> Unit,
+    moduleLabel: String? = null,
+    roleLabel: String? = null,
+    userId: String? = null,
+) = RichStatePane(
     title = "Přístup odepřen",
-    body = "Aktivní role nemá k této obrazovce oprávnění. Vraťte se zpět nebo přepněte roli, pokud ji máte k dispozici.",
-    actionLabel = "Zpět",
+    body = if (!moduleLabel.isNullOrBlank() && !roleLabel.isNullOrBlank() && !userId.isNullOrBlank()) {
+        "Role $roleLabel (uživatel $userId) nemá oprávnění pro modul $moduleLabel."
+    } else {
+        "Aktivní role nemá k této obrazovce oprávnění. Vraťte se zpět nebo přepněte roli, pokud ji máte k dispozici."
+    },
+    actionLabel = "Zpět na přehled",
     onAction = onBack,
     supportingContent = {
         UtilityInfoStack(
@@ -138,7 +157,7 @@ fun AppUpdatePromptScreen(
         supportingContent = {
             UtilityInfoStack(
                 title = "Proč se doporučuje aktualizace",
-                body = "Nová verze přináší opravy provozních chyb, sjednocené značkování a bezpečnější start portálu.",
+                body = "Nová verze přináší opravy provozních chyb, sjednocené značení a bezpečnější start portálu.",
             )
         },
     )
