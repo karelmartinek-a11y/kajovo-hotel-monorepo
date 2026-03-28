@@ -1,46 +1,38 @@
-# How to run `kajovo-hotel-api`
+# Jak spustit API
 
-## 1) Install dependencies
+Detail k obecnému spuštění je v `docs/how-to-run.md`. Tento dokument drží jen API specifika.
+
+## Instalace
 
 ```bash
 cd apps/kajovo-hotel-api
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
+python -m pip install -e .[dev]
 ```
 
-## 2) Run database migrations
+## Migrace databáze
 
 ```bash
 cd apps/kajovo-hotel-api
 alembic upgrade head
 ```
 
-To use a custom database URL:
+Volitelně s vlastní databází:
 
 ```bash
 export KAJOVO_API_DATABASE_URL='sqlite:///./kajovo_hotel.db'
 alembic upgrade head
 ```
 
-## 3) Run API server
+## Start API
 
 ```bash
 cd apps/kajovo-hotel-api
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 4) Run tests and lint
+## Ověření
 
 ```bash
-cd apps/kajovo-hotel-api
-ruff check .
-pytest -q
-```
-
-## 5) Quick endpoint checks
-
-```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/api/v1/reports
+curl -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:8000/ready
 ```

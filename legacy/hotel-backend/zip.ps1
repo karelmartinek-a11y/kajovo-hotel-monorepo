@@ -1,4 +1,4 @@
-﻿$root = 'C:\\github\\hotel-backend'
+$root = 'C:\\github\\hotel-backend'
 $zip = 'C:\\github\\hotel-backend\\hotel-backend.zip'
 $exclude = @('.git', 'venv', '.venv', 'env', 'LOG', 'LOGS', 'OUT', 'OUTPUT', 'IN', '__pycache__')
 $files = Get-ChildItem -LiteralPath $root -Recurse -Force | Where-Object {

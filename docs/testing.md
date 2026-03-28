@@ -2,183 +2,81 @@
 
 Tento dokument popisuje current-state testovací vrstvy v repozitáři.
 
-## 1. Lokální příkazy
-
-### Instalace závislostí
-
-```bash
-pnpm install
-```
-
-### TypeScript a frontend kontrola
+## 1. Základní lokální sada
 
 ```bash
 pnpm typecheck
-```
-
-### Backend unit testy
-
-```bash
 pnpm unit
-```
-
-Spouští:
-
-```bash
-python -m pytest apps/kajovo-hotel-api/tests
-```
-
-### Frontend gate
-
-```bash
+pnpm contract:check
+pnpm ci:policy
+pnpm ci:policy-test
 pnpm ci:gates
+pnpm ci:e2e-smoke
 ```
 
-Obsah:
+## 2. Co jednotlivé příkazy kryjí
+
+### `pnpm typecheck`
+
+- TypeScript kontrola webu a adminu
+
+### `pnpm unit`
+
+- backend unit testy přes `pytest`
+
+### `pnpm contract:check`
+
+- regenerace OpenAPI a sdíleného klienta
+- blokace driftu mezi API a `packages/shared`
+
+### `pnpm ci:policy`
+
+- nepřerušená web-Android runtime parita
+
+### `pnpm ci:policy-test`
+
+- testy pravidel parity guardu
+
+### `pnpm ci:gates`
 
 - token guard
 - brand asset guard
 - signage guard
 - text integrity guard
 - frontend manifest guard
-- runtime integrity guard
-- web live smoke
-- KDGS visual geometry guard pro web i admin
+- policy guard test
+- Android release integrity
+- Android smoke
+- runtime integrity
+- web smoke
+- vizuální testy
 
-### Admin smoke
+### `pnpm ci:e2e-smoke`
 
-```bash
-pnpm ci:e2e-smoke
-```
+- admin smoke přes Playwright
 
-### Contract freshness
+## 3. Doporučené doplňkové běhy
 
-```bash
-pnpm contract:check
-```
-
-### API lint
+Python API lint:
 
 ```bash
 python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
 ```
 
-## 2. Playwright vrstvy
-
-### Web live smoke
-
-Script:
+Web smoke:
 
 ```bash
-pnpm --filter @kajovo/kajovo-hotel-web test
+pnpm ci:web-smoke
 ```
 
-nebo
-
-```bash
-pnpm --filter @kajovo/kajovo-hotel-web test:smoke
-```
-
-Aktuálně běží nad [`apps/kajovo-hotel-web/tests/live-smoke.spec.ts`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/tests/live-smoke.spec.ts).
-
-### Admin smoke
-
-Script:
-
-```bash
-pnpm --filter @kajovo/kajovo-hotel-admin test:smoke
-```
-
-Aktuálně běží nad [`apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts).
-
-### KDGS visual geometry
-
-Skripty:
+Visual:
 
 ```bash
 pnpm ci:visual
 ```
 
-nebo jednotlivě:
+Android integrity:
 
 ```bash
-pnpm --filter @kajovo/kajovo-hotel-web test:visual
-pnpm --filter @kajovo/kajovo-hotel-admin test:visual
+python scripts/check_android_release_integrity.py
 ```
-
-Aktuálně běží nad:
-
-- [`apps/kajovo-hotel-web/tests/visual.spec.ts`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/tests/visual.spec.ts)
-- [`apps/kajovo-hotel-admin/tests/visual.spec.ts`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin/tests/visual.spec.ts)
-
-Guard blokuje:
-
-- chybějící nebo nadbytečné brand prvky mimo povolený rozsah
-- horizontální overflow na `html` a `body`
-- nezakryté základní interaktivní prvky na kritických view
-- průchod reprezentativního current-state setu utility a autentizovaných view napříč breakpointy a rolemi
-
-### Visual baseline snapshoty
-
-Repo už obsahuje baseline snapshoty v:
-
-- [`apps/kajovo-hotel-web/tests/visual.spec.ts-snapshots`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-web/tests/visual.spec.ts-snapshots)
-- [`apps/kajovo-hotel-admin/tests/visual.spec.ts-snapshots`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin/tests/visual.spec.ts-snapshots)
-
-Snapshot adresáře v repu zůstávají jako doplňkový artefakt, ale current-state blokující důkaz je vykonávaný přes výše uvedené `visual.spec.ts`.
-
-## 3. GitHub Actions
-
-### `CI Gates - KajovoHotel`
-
-Blokuje:
-
-- release gate
-- admin `e2e-smoke`
-- policy guardrails
-- lint
-- typecheck
-- unit tests
-
-### `CI Full - Kajovo Hotel`
-
-Blokuje:
-
-- plné API testy
-- web Playwright testy
-- admin smoke
-- lint a contract freshness
-- auth smoke
-
-### `CI Release - Kajovo Hotel`
-
-Je samostatná release pipeline navázaná na `main`.
-
-### `Deploy - hotel.hcasc.cz`
-
-Po úspěšném `CI Gates - KajovoHotel` na `main` provádí:
-
-- deploy archivu na server,
-- post-deploy HTTP gate,
-- live admin login verify,
-- live users smoke verify.
-
-## 4. Vztah ke KDGS
-
-KDGS nepožaduje jen běh testů, ale důkaz:
-
-- povinných stavů,
-- brand přítomnosti,
-- token souladu,
-- absence neřízeného overflow,
-- geometrické validity,
-- reduced-motion souladu,
-- UTF-8 bez BOM.
-
-Aktuální testovací sada tyto požadavky kryje jen částečně:
-
-- tokeny, signage, text integrity a runtime guardy jsou blokující
-- `ci:visual` vykonávaně dokazuje geometrii, brand limit a základní interaktivní průchod pro current-state utility a reprezentativní autentizovaná view webu i adminu
-- scaffold `apps/kajovo-hotel/ci/test-view-states.mjs` dál dokazuje jen deklaraci povinných stavů v IA, ne kompletní runtime vykreslení každé varianty
-
-Pokud se důkazní rozsah rozšíří nebo zúží, musí se tento dokument změnit společně s Playwright guardy.

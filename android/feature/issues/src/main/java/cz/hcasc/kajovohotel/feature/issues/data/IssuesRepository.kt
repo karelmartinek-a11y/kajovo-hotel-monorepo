@@ -27,6 +27,7 @@ class IssuesRepository @Inject constructor(
                 api.list(
                     priority = filters.priority?.wireValue,
                     status = filters.status?.wireValue,
+                    location = filters.location.ifBlank { null },
                     roomNumber = filters.roomNumber.ifBlank { null },
                 ).map { it.toDomain(baseUrlConfig) },
             )
@@ -44,6 +45,8 @@ class IssuesRepository @Inject constructor(
                         location = draft.location.trim(),
                         description = draft.description.trim().ifBlank { null },
                         room_number = draft.roomNumber.trim().ifBlank { null },
+                        assignee = draft.assignee.trim().ifBlank { null },
+                        status = draft.status.wireValue,
                         priority = draft.priority.wireValue,
                     ),
                 ).toDomain(baseUrlConfig),
@@ -63,6 +66,8 @@ class IssuesRepository @Inject constructor(
                         location = draft.location.trim(),
                         description = draft.description.trim().ifBlank { null },
                         room_number = draft.roomNumber.trim().ifBlank { null },
+                        assignee = draft.assignee.trim().ifBlank { null },
+                        status = draft.status.wireValue,
                         priority = draft.priority.wireValue,
                     ),
                 ).toDomain(baseUrlConfig),

@@ -202,14 +202,25 @@ fun LostFoundScreen(
                 }
                 if (section == LostFoundSection.LIST) {
                     items(state.records, key = { it.id }) { record ->
-                        FeatureCard(
-                            title = "${record.category} · ${record.status.label}",
-                            subtitle = "${record.location} · ${record.description}",
-                            modifier = Modifier.clickable {
-                                viewModel.select(record)
-                                if (onNavigate != null) onNavigate(LostFoundSection.DETAIL, record.id) else section = LostFoundSection.DETAIL
-                            },
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                            FeatureCard(
+                                title = "${record.category} · ${record.status.label}",
+                                subtitle = "${record.location} · ${record.description}",
+                                modifier = Modifier.clickable {
+                                    viewModel.select(record)
+                                    if (onNavigate != null) onNavigate(LostFoundSection.DETAIL, record.id) else section = LostFoundSection.DETAIL
+                                },
+                            )
+                            if (state.isReceptionView) {
+                                Button(
+                                    onClick = { viewModel.markProcessed(record) },
+                                    enabled = !state.isSaving,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Označit jako převzaté")
+                                }
+                            }
+                        }
                     }
                 }
             }

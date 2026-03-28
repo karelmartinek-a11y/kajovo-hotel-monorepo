@@ -48,4 +48,6 @@ data class HousekeepingCaptureDraft(
     val description: String = "",
 ) {
     fun isValid(): Boolean = roomNumber.isNotBlank() && description.isNotBlank()
+
+    fun isEmpty(): Boolean = roomNumber.isBlank() && description.isBlank()
 }

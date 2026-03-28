@@ -114,20 +114,20 @@ fun KajovoHotelApp(
             }
 
             is SessionState.Authenticated -> {
-                val visibleRoles = state.identity.visibleRoles()
-                val activeRole = state.identity.visibleActiveRole()
-                if (visibleRoles.isEmpty()) {
+                val assignedRoles = state.identity.assignedRoles()
+                val activeRole = state.identity.resolvedActiveRole()
+                if (assignedRoles.isEmpty()) {
                     AccessDeniedScreen(onBack = viewModel::logout)
-                } else if (activeRole == null && visibleRoles.size > 1) {
+                } else if (activeRole == null && assignedRoles.size > 1) {
                     RoleSelectionScreen(
-                        roles = visibleRoles,
+                        roles = assignedRoles,
                         isBusy = false,
                         onConfirm = viewModel::selectRole,
                     )
                 } else {
                     val navigationIdentity = state.identity.copy(
-                        roles = visibleRoles,
-                        activeRole = activeRole ?: visibleRoles.singleOrNull(),
+                        roles = assignedRoles,
+                        activeRole = activeRole ?: assignedRoles.singleOrNull(),
                     )
                     PortalAppShell(
                         identity = navigationIdentity,
@@ -155,7 +155,7 @@ private fun PortalAppShell(
     onLogout: () -> Unit,
 ) {
     val startRoute = resolveAuthenticatedRoute(identity)
-    val availableRoles = identity.visibleRoles()
+    val availableRoles = identity.assignedRoles()
 
     key(identity.email, identity.activeRole, identity.permissions.sorted().joinToString()) {
         val navController = rememberNavController()

@@ -27,16 +27,18 @@ data class AuthenticatedIdentity(
         return permissions.contains("${module.permissionKey}:read") || permissions.contains("${module.permissionKey}:write")
     }
 
-    fun requiresRoleSelection(): Boolean = actorType == ActorType.PORTAL && activeRole == null && roles.size > 1
+    fun assignedRoles(): List<PortalRole> = roles.distinct()
 
-    fun visibleRoles(): List<PortalRole> = roles.distinct().filter { role -> role.canBeShownBy(this) }
+    fun requiresRoleSelection(): Boolean = actorType == ActorType.PORTAL && resolvedActiveRole() == null && assignedRoles().size > 1
 
-    fun visibleActiveRole(): PortalRole? {
-        val visibleRoles = visibleRoles()
-        return activeRole?.takeIf { it in visibleRoles } ?: visibleRoles.singleOrNull()
+    fun resolvableRolesForPermissions(): List<PortalRole> = assignedRoles().filter { role -> role.canBeShownBy(this) }
+
+    fun resolvedActiveRole(): PortalRole? {
+        val resolvableRoles = resolvableRolesForPermissions()
+        return activeRole?.takeIf { it in resolvableRoles } ?: resolvableRoles.singleOrNull()
     }
 
-    fun displayRole(): String = visibleActiveRole()?.displayName ?: "Vyber roli"
+    fun displayRole(): String = resolvedActiveRole()?.displayName ?: "Vyber roli"
 }
 
 data class AuthProfile(

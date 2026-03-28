@@ -1,32 +1,30 @@
-# Jak spustit Kájovo Hotel Web
+# Jak spustit web a admin
 
-## Požadavky
-- Node.js 20+
-- pnpm 9+
+Detail k celému lokálnímu setupu je v `docs/how-to-run.md`. Tento dokument je jen stručný přehled pro frontend.
 
-## Instalace
-```bash
-pnpm install
-```
+## Portálový web
 
-## Lokální vývoj
 ```bash
 pnpm --filter @kajovo/kajovo-hotel-web dev
 ```
 
+## Admin
+
+```bash
+pnpm --filter @kajovo/kajovo-hotel-admin dev
+```
+
 ## Build
+
 ```bash
 pnpm --filter @kajovo/kajovo-hotel-web build
+pnpm --filter @kajovo/kajovo-hotel-admin build
 ```
 
-## Lint
+## Testy
+
 ```bash
-pnpm lint
+pnpm ci:web-smoke
+pnpm ci:e2e-smoke
+pnpm ci:visual
 ```
-
-## Playwright testy
-```bash
-pnpm test
-```
-
-Testy generují snapshoty pro desktop/tablet/phone pro dashboard a modul Snídaně (seznam + detail) včetně testu viditelnosti SIGNACE.

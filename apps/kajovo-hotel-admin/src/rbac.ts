@@ -7,12 +7,11 @@ import {
   normalizeRole,
   resolveActiveRoleForPermissions,
   rolePermissionSet,
-  visibleRolesForPermissions,
   type Role,
 } from '@kajovo/shared';
 
 export type { Role };
-export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole, resolveActiveRoleForPermissions, visibleRolesForPermissions };
+export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole, resolveActiveRoleForPermissions };
 
 export type AuthProfile = {
   userId: string;
@@ -81,6 +80,7 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
     if (roles.length === 0) {
       return { status: 'error', message: 'Auth service returned no valid roles.' };
     }
+    const assignedRoles = Array.from(new Set(roles));
     const activeRole = payload.active_role ? parseRole(payload.active_role) : role;
     if (!activeRole) {
       return { status: 'error', message: 'Auth service returned an invalid active role.' };
@@ -88,14 +88,13 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
     const permissions = Array.isArray(payload.permissions) && payload.permissions.length > 0
       ? new Set(payload.permissions)
       : new Set(rolePermissions(activeRole));
-    const visibleRoles = visibleRolesForPermissions(roles, permissions);
-    const resolvedActiveRole = resolveActiveRoleForPermissions(roles, activeRole, permissions);
+    const resolvedActiveRole = resolveActiveRoleForPermissions(assignedRoles, activeRole, permissions);
     return {
       status: 'authenticated',
       profile: {
         userId: payload.email,
         role,
-        roles: visibleRoles,
+        roles: assignedRoles,
         activeRole: resolvedActiveRole,
         permissions,
         actorType: payload.actor_type,

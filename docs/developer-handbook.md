@@ -1,120 +1,70 @@
 # Developer Handbook
 
-Tento dokument shrnuje current-state minimum pro vývoj na portálu bez přímého SSH přístupu na produkční server.
+Tento dokument shrnuje current-state minimum pro vývoj v repozitáři bez přímého zásahu na produkční server.
 
-## 1. Source of truth
+## 1. Zdroje pravdy
 
-- Zdrojový kód: GitHub repozitář `karelmartinek-a11y/kajovo-hotel-monorepo`, branch `main`.
-- Produkce se nasazuje automaticky z `main` přes GitHub Actions workflow `Deploy - hotel.hcasc.cz`.
-- Kopie na serveru v `/opt/kajovo-hotel-monorepo` je pouze deploy workspace, ne autoritativní zdroj pravdy.
+- Autoritativní zdroj je tento repozitář a jeho workflow.
+- Produkční nasazení vychází z branch `main`.
+- Android release metadata mají jediný zdroj pravdy v `android/release/android-release.json`.
+- Kopie na serveru je deploy workspace, ne zdroj pravdy.
+- Historické materiály v `docs/archive/` a `legacy/` nejsou current-state autorita.
 
-## 2. Co musí vývojář znát
+## 2. Aktivní části systému
 
-- design governance SSOT: [`docs/Kajovo_Design_Governance_Standard_SSOT.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/Kajovo_Design_Governance_Standard_SSOT.md)
-- implementační plán souladu: [`docs/forenzni-plan-implementace-kdgs-2026-03-16.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/forenzni-plan-implementace-kdgs-2026-03-16.md)
-- informační architektura: [`apps/kajovo-hotel/ux/ia.json`](/C:/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel/ux/ia.json)
-- RBAC pravidla: [`docs/rbac.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/rbac.md)
-- release checklist: [`docs/release-checklist.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/release-checklist.md)
-- CI gate popis: [`docs/ci-gates.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/ci-gates.md)
+- `apps/kajovo-hotel-web`: portál pro provozní role
+- `apps/kajovo-hotel-admin`: admin panel
+- `apps/kajovo-hotel-api`: FastAPI backend
+- `packages/shared` a `packages/ui`: sdílený kontrakt, RBAC a UI
+- `android`: nativní Android aplikace
 
-## 3. Lokální spuštění
+## 3. Povinné dokumenty před změnou
 
-Používej `pnpm` workspaces z rootu repozitáře.
+- `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- `docs/rbac.md`
+- `docs/how-to-run.md`
+- `docs/how-to-deploy.md`
+- `docs/testing.md`
+- `docs/ci-gates.md`
+- `docs/release-checklist.md`
+- `android/README_ANDROID.md`, pokud změna souvisí s Androidem nebo web-Android paritou
 
-```bash
-pnpm install
-```
+## 4. Povinné technické guardy
 
-API:
-
-```bash
-cd apps/kajovo-hotel-api
-python -m pip install -e .[dev]
-uvicorn app.main:app --reload --port 8000
-```
-
-Admin aplikace:
-
-```bash
-cd apps/kajovo-hotel-admin
-pnpm dev
-```
-
-Portálový web:
-
-```bash
-cd apps/kajovo-hotel-web
-pnpm dev
-```
-
-## 4. Povinné kontroly před push
-
-Minimální current-state sada:
+Minimální current-state sada před odevzdáním podle typu změny:
 
 ```bash
 pnpm typecheck
 pnpm unit
-pnpm ci:gates
-pnpm ci:visual
-pnpm ci:e2e-smoke
 pnpm contract:check
+pnpm ci:policy
+pnpm ci:policy-test
+pnpm ci:gates
+pnpm ci:e2e-smoke
 ```
 
-Když změna sahá do API Python kódu:
+Když se mění Python API:
 
 ```bash
 python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
 ```
 
-Když změna sahá do UI, auth, role, SMTP, workflow nebo release toku, zkontroluj navíc:
+Když se mění Android release, APK nebo release metadata:
 
-- [`docs/Kajovo_Design_Governance_Standard_SSOT.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/Kajovo_Design_Governance_Standard_SSOT.md)
-- [`docs/forenzni-plan-implementace-kdgs-2026-03-16.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/forenzni-plan-implementace-kdgs-2026-03-16.md)
-- [`docs/release-checklist.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/release-checklist.md)
-- [`docs/rbac.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/rbac.md)
+```bash
+python scripts/check_android_release_integrity.py
+```
 
-## 5. GitHub pipeline
+## 5. Repo hygiena
 
-Push do `main` spouští:
+- Textové soubory držet v UTF-8 bez BOM.
+- Primární zakončení řádků je LF; výjimky jsou jen Windows skripty.
+- Build výstupy, cache, auditní exporty a jednorázové binárky nepatří do gitu.
+- Nové dokumenty patří do `docs/`; archivní evidence do `docs/archive/`.
 
-- `CI Gates - KajovoHotel`
-- `CI Full - Kajovo Hotel`
-- `CI Release - Kajovo Hotel`
+## 6. Parita web a Android
 
-Produkční deploy `Deploy - hotel.hcasc.cz` se spouští po úspěšném `CI Gates - KajovoHotel` na `main` nebo ručně.
-
-Podrobnosti a přesné blokující joby jsou v [`docs/ci-gates.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/ci-gates.md).
-
-## 6. GitHub secrets a variables pro produkční deploy
-
-Autoritativní checklist: [`docs/github-settings-checklist.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/github-settings-checklist.md)
-
-Deploy a CI workflow používají tyto klíče:
-
-- `HOTEL_DEPLOY_HOST`
-- `HOTEL_DEPLOY_PORT`
-- `HOTEL_DEPLOY_USER`
-- `HOTEL_DEPLOY_PASS`
-- `HOTEL_ADMIN_EMAIL`
-- `HOTEL_ADMIN_PASSWORD`
-
-Admin username je stejná hodnota jako admin e-mail, takže `HOTEL_ADMIN_EMAIL` funguje jako login e-mail i username.
-
-Volitelné aliasy:
-
-- `KAJOVO_API_ADMIN_EMAIL`
-- `KAJOVO_API_ADMIN_PASSWORD`
-
-Pokud jsou aliasy přítomné, musí se shodovat s `HOTEL_ADMIN_EMAIL` a `HOTEL_ADMIN_PASSWORD`. CI, deploy i post-deploy verify to vynucují a žádný GitHub workflow nepoužívá hardcoded admin účet.
-
-Credentials se nikdy necommitují do repozitáře ani dokumentace. Produkční compose blokuje start API, pokud výsledné admin credentials chybí.
-
-## 7. Post-deploy smoke check
-
-Produkční deploy workflow blokuje release, pokud neprojdou všechny tyto kontroly:
-
-- `GET https://hotel.hcasc.cz/`
-- `GET https://hotel.hcasc.cz/admin/login`
-- `GET https://hotel.hcasc.cz/api/health`
-- live admin login přes kanonický admin e-mail a heslo z nasazeného runtime
-- live smoke správy uživatelů
+- Každá runtime změna webu musí mít adekvátní runtime změnu Android appky.
+- Každá runtime změna Android appky musí mít adekvátní runtime změnu webu.
+- Web musí být ověřený pro desktop, tablet i mobil.
+- Android musí zůstat plně nativní.

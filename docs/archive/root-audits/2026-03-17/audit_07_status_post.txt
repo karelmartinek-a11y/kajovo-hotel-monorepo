@@ -1,4 +1,4 @@
-﻿git status -sb:
+git status -sb:
 ## main...origin/main
  M audit_07_status_post.txt
 

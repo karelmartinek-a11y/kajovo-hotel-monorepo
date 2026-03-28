@@ -9,7 +9,6 @@ import {
   resolveActiveRoleForPermissions,
   type AuthProfile,
   type Role,
-  visibleRolesForPermissions,
 } from '../rbac';
 import { getAuthBundle, type AuthBundle } from '@kajovo/shared';
 
@@ -250,9 +249,9 @@ export function PortalRoutes({
     return <Navigate to="/login" replace />;
   }
 
-  const visibleRoles = visibleRolesForPermissions(auth.roles, auth.permissions);
-  const activeRole = resolveActiveRoleForPermissions(visibleRoles, auth.activeRole, auth.permissions);
-  if (visibleRoles.length === 0) {
+  const assignedRoles = auth.roles;
+  const activeRole = resolveActiveRoleForPermissions(assignedRoles, auth.activeRole, auth.permissions);
+  if (assignedRoles.length === 0) {
     return (
       <main className="k-page" data-testid="access-denied-page">
         <StateView
@@ -268,7 +267,7 @@ export function PortalRoutes({
     );
   }
   if (!activeRole) {
-    return <RoleSelectPage roles={visibleRoles} copy={copy} roleLabel={localizedRoleLabel} />;
+    return <RoleSelectPage roles={assignedRoles} copy={copy} roleLabel={localizedRoleLabel} />;
   }
   const activeRoleLabel = localizedRoleLabel(activeRole);
   const switchRoleFromHeader = React.useCallback(async (role: string) => {
@@ -359,7 +358,7 @@ export function PortalRoutes({
       headerControls={(
         <RoleSwitcher
           activeLabel={localizedRoleLabel(activeRole)}
-          alternatives={visibleRoles
+          alternatives={assignedRoles
             .filter((role) => role !== activeRole)
             .map((role) => ({ key: role, label: localizedRoleLabel(role) }))}
           busy={switchBusy}

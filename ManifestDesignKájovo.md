@@ -631,4 +631,9 @@ Tyto soubory slouží k řízení generování a kontroly kvality; nesmí měnit
 
 - Pro web je vhodné implementovat signaci jako samostatnou komponentu s pevnými barvami a s testy (viz I.2).
 - Pro exporty je vhodné mít skript, který ověří A.4 (žádný `<text>`, žádné opacity, žádné zakázané elementy) a zkontroluje HEX barvy.
+# Archivní poznámka
+
+Tento dokument zůstává v repozitáři jako historický a sekundární designový podklad.
+Aktivní current-state autorita je `docs/Kajovo_Design_Governance_Standard_SSOT.md`.
+Při konfliktu má přednost current-state dokumentace a reálný kód.
 

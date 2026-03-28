@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import http.cookiejar
 import json
 import os

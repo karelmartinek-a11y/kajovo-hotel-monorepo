@@ -83,11 +83,12 @@ class PermissionGuardTest {
         )
 
         assertTrue(identity.accessibleRoles().containsAll(identity.roles))
+        assertEquals(identity.roles, identity.assignedRoles())
         assertTrue(identity.canOpenDestination(PortalRoutes.Housekeeping))
     }
 
     @Test
-    fun visibleRolesOnlyContainRolesWithAccessibleModules() {
+    fun roleSelectionKeepsAssignedRolesEvenWhenPermissionsResolveOnlyPartOfThem() {
         val identity = AuthenticatedIdentity(
             email = "karel.martinek@post.cz",
             actorType = ActorType.PORTAL,
@@ -109,14 +110,24 @@ class PermissionGuardTest {
                 PortalRole.HOUSEKEEPING,
                 PortalRole.MAINTENANCE,
                 PortalRole.BREAKFAST,
+                PortalRole.INVENTORY,
             ),
-            identity.visibleRoles(),
+            identity.assignedRoles(),
         )
-        assertEquals(null, identity.visibleActiveRole())
+        assertEquals(
+            listOf(
+                PortalRole.RECEPTION,
+                PortalRole.HOUSEKEEPING,
+                PortalRole.MAINTENANCE,
+                PortalRole.BREAKFAST,
+            ),
+            identity.resolvableRolesForPermissions(),
+        )
+        assertEquals(null, identity.resolvedActiveRole())
     }
 
     @Test
-    fun visibleActiveRoleFallsBackToTheOnlyVisibleRole() {
+    fun resolvedActiveRoleFallsBackToTheOnlyPermissionCompatibleRole() {
         val identity = AuthenticatedIdentity(
             email = "sklad@example.com",
             actorType = ActorType.PORTAL,
@@ -126,8 +137,9 @@ class PermissionGuardTest {
             permissions = setOf("inventory:read", "inventory:write"),
         )
 
-        assertEquals(listOf(PortalRole.INVENTORY), identity.visibleRoles())
-        assertEquals(PortalRole.INVENTORY, identity.visibleActiveRole())
+        assertEquals(listOf(PortalRole.RECEPTION, PortalRole.INVENTORY), identity.assignedRoles())
+        assertEquals(listOf(PortalRole.INVENTORY), identity.resolvableRolesForPermissions())
+        assertEquals(PortalRole.INVENTORY, identity.resolvedActiveRole())
         assertEquals("Sklad", identity.displayRole())
     }
 }

@@ -195,7 +195,7 @@ private fun FiltersCard(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = "Přehled závad",
-            subtitle = "Filtrujte seznam podle stavu, priority a pokoje, potom otevřete detail nebo rovnou založte nový záznam.",
+            subtitle = "Filtrujte seznam podle stavu, priority, místa a pokoje, potom otevřete detail nebo rovnou založte nový záznam.",
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(IssueStatus.entries) { status ->
@@ -215,6 +215,12 @@ private fun FiltersCard(
                 )
             }
         }
+        OutlinedTextField(
+            value = state.filters.location,
+            onValueChange = { value -> onFiltersChange { current -> current.copy(location = value) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Místo") },
+        )
         OutlinedTextField(
             value = state.filters.roomNumber,
             onValueChange = { value -> onFiltersChange { current -> current.copy(roomNumber = value) } },

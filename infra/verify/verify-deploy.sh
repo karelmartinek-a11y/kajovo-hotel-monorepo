@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-infra/compose.staging.yml}"

@@ -1,84 +1,61 @@
 # Kajovo Hotel Android
 
-Tento adresář je samostatný Android Studio projekt pro čistě nativní Android aplikaci nad verifikovaným non-admin scope portálu `hotel.hcasc.cz`.
+Tento adresář je samostatný nativní Android projekt. Aktivní current-state provozní dokumentace pro Android je právě tento soubor.
 
 ## Co projekt skutečně obsahuje
 
-- Kotlin DSL build přímo v `android/` bez závislosti na `pnpm`, `node`, `vite`, `python` nebo OpenAPI codegenu.
-- Single-activity app s Jetpack Compose a Hilt.
-- Modulární strukturu `core/*` a `feature/*` podle `KajovoHotelAndroid.md`.
-- Session-first auth vrstvu s Retrofit + OkHttp + Moshi, cookie-first session handling a CSRF header injection.
-- Room cache baseline, DataStore metadata store a Keystore-backed cookie vault.
-- Role-aware shell bez admin scope, reports a dashboardu.
-- Utility state screeny `intro`, `offline`, `maintenance`, `not-found`, `access-denied`, `global-blocking-error`.
-- Verified non-admin feature moduly pro recepci, snídaně, lost-found, housekeeping quick capture, závady a skladové pohyby.
+- Kotlin DSL build přímo v `android/`
+- single-activity aplikaci s Jetpack Compose a Hilt
+- moduly `core/*` a `feature/*`
+- session-first auth nad Retrofit + OkHttp + Moshi
+- cookie-first session handling a CSRF header injection
+- Room a DataStore pro lokální stav
+- role-aware shell bez admin scope
+- utility stavy `intro`, `offline`, `maintenance`, `not-found`, `access-denied`, `global-blocking-error`
+- feature moduly `recepce`, `pokojská`, `snídaně`, `ztráty a nálezy`, `závady`, `sklad`, `hlášení`, `profil`
+
+## Co projekt záměrně neobsahuje
+
+- admin rozhraní
+- web wrapper nebo WebView-first řešení
 
 ## Otevření v Android Studiu
 
-1. Otevři přímo složku `android/` jako samostatný projekt.
-2. Nastav JDK 17.
-3. Nech projekt stáhnout Gradle 8.13 podle `gradle/wrapper/gradle-wrapper.properties`.
-4. Po prvním sync spusť `:app:assembleDebug`.
+1. Otevři přímo složku `android/`.
+2. Použij JDK 17.
+3. Synchronizuj Gradle.
+4. Spusť `:app:assembleDebug`.
 
 ## Doporučené příkazy
 
 ```bash
 cd android
-chmod +x gradlew
-./gradlew help
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug
 ```
 
-## Runtime konfigurace
+Na Windows:
 
-Výchozí runtime base URL je `https://hotel.hcasc.cz`.
-
-Override bez zásahu do zdrojových souborů:
-
-```bash
-./gradlew -PkajovoHotelBaseUrl=https://hotel.hcasc.cz :app:assembleDebug
+```powershell
+cd android
+.\gradlew.bat assembleDebug
 ```
 
-Projekt neobsahuje žádná tajemství ani produkční credentials.
+## Release pravidla
 
-## Neporušitelné pravidlo parity s webem
+- Každá uživatelsky viditelná změna Android appky musí být vydaná jako nová verze.
+- Jediný zdroj pravdy pro Android release metadata je `android/release/android-release.json`.
+- veřejná APK musí být v `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`
+- před releasem je povinné spustit `python scripts/check_android_release_integrity.py`
 
-Každá runtime změna Android aplikace musí být spojená i s adekvátní změnou webové verze a tato webová změna musí být odladěná pro desktop, tablet i mobil.
+## Parita s webem
 
-Stejně tak každá runtime změna webové aplikace musí mít odpovídající změnu v Android aplikaci. Android implementace přitom musí zůstat plně nativní; wrapper nebo WebView-first model není přípustný.
+- Každá runtime změna Android aplikace musí být spojená i s adekvátní změnou webové verze.
+- Každá runtime změna webu musí mít odpovídající runtime změnu Android appky.
+- web musí být ověřený pro desktop, tablet a mobil
+- wrapper nebo WebView-first model není přípustný
 
-Toto pravidlo je blokované CI guardem `pnpm ci:policy`.
+## Historické materiály
 
-## Standard verzování Android appky
-
-Každá uživatelsky viditelná změna Android aplikace musí být vydaná jako nová verze. Nestačí push zdrojových kódů.
-
-Jediný zdroj pravdy pro Android release metadata je `android/release/android-release.json`.
-
-Povinný release postup:
-
-1. Upravit `android/release/android-release.json`:
-   - `version_code`
-   - `version_name`
-   - případně `title`, `message`, `required`
-2. Sestavit novou APK.
-3. Nahradit veřejný soubor `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`.
-4. Přepočítat `sha256` v `android/release/android-release.json` podle nové APK.
-5. Spustit `python scripts/check_android_release_integrity.py`.
-6. Ověřit po deploy, že `https://hotel.hcasc.cz/api/app/android-release` vrací stejnou verzi, `version_code` a `sha256` jako release manifest i produkční APK.
-
-Auto-update v aplikaci je navázaný na backend metadata, release hlavičky na API odpovědích a veřejnou APK na produkci. Pokud se nezvedne verze, hash a veřejná APK současně, release integrity gate musí změnu zablokovat.
-
-## Scope, který je záměrně mimo projekt
-
-- Admin scope.
-- Reports a dashboardy.
-- WebView nebo hybridní wrapper.
-- Non-admin inventory detail/create/edit/delete item flow.
-- Maintenance issue create flow pro roli `údržba`.
-
-## Poznámka k ověření
-
-V tomto kontejneru nebylo možné provést reálný Android build, protože chybí Android SDK a síť pro stažení Gradle distribuce. Statické wiring kontroly a final hardening jsou zdokumentované ve `BuildVerification.final.md`.
+`KajovoHotelAndroid.md`, `KajovoHotelAndroid.audit.md` a handoff JSON soubory jsou historická projektová evidence. Pokud jsou v rozporu s kódem nebo s tímto README, přednost má kód a tento README.

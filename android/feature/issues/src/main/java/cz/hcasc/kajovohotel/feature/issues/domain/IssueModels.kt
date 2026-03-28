@@ -24,6 +24,7 @@ data class MaintenanceIssue(
 data class IssueFilters(
     val status: IssueStatus? = null,
     val priority: IssuePriority? = null,
+    val location: String = "",
     val roomNumber: String = "",
 )
 
@@ -32,6 +33,8 @@ data class IssueDraft(
     val location: String = "",
     val description: String = "",
     val roomNumber: String = "",
+    val assignee: String = "",
+    val status: IssueStatus = IssueStatus.NEW,
     val priority: IssuePriority = IssuePriority.MEDIUM,
 ) {
     fun isValidForSubmit(): Boolean = title.isNotBlank() && location.isNotBlank()
@@ -42,5 +45,7 @@ fun MaintenanceIssue.toDraft() = IssueDraft(
     location = location,
     description = description,
     roomNumber = roomNumber,
+    assignee = assignee,
+    status = status,
     priority = priority,
 )

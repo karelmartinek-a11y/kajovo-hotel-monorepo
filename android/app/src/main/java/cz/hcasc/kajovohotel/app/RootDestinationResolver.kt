@@ -24,7 +24,7 @@ fun resolveAuthenticatedRoute(identity: AuthenticatedIdentity): String {
     if (identity.requiresRoleSelection()) {
         return PortalRoutes.Roles
     }
-    val activeRole = identity.activeRole ?: identity.roles.singleOrNull() ?: return PortalRoutes.Login
+    val activeRole = identity.resolvedActiveRole() ?: identity.assignedRoles().singleOrNull() ?: return PortalRoutes.Login
     return if (identity.canOpenDestination(activeRole.homeRoute())) {
         activeRole.homeRoute()
     } else {
@@ -47,12 +47,12 @@ fun AuthenticatedIdentity.canOpenDestination(route: String): Boolean {
 }
 
 fun PortalDestination.isAccessibleBy(identity: AuthenticatedIdentity): Boolean {
-    val currentRole = identity.activeRole ?: return false
+    val currentRole = identity.resolvedActiveRole() ?: return false
     return allowedRoles.contains(currentRole)
 }
 
 fun AuthenticatedIdentity.accessibleRoles(): List<PortalRole> {
-    return roles.distinct().filter { role ->
+    return assignedRoles().filter { role ->
         PortalDestinations.any { destination -> destination.allowedRoles.contains(role) }
     }
 }

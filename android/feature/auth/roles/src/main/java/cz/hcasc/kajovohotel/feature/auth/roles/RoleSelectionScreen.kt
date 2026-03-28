@@ -34,7 +34,7 @@ fun RoleSelectionScreen(roles: List<PortalRole>, isBusy: Boolean, onConfirm: (Po
         Text(text = "Vyber aktivní roli", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
             title = "Role a přístup",
-            subtitle = "Zobrazují se jen role, ke kterým má uživatel skutečně dostupné moduly.",
+            subtitle = "Zobrazují se všechny přiřazené role. Konkrétní obrazovky se povolují až podle aktivní role a aktuálních oprávnění.",
         )
         roles.forEach { role ->
             Row(modifier = Modifier.fillMaxWidth()) {

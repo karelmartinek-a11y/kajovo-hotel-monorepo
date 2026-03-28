@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 WEB_BASE_URL="${WEB_BASE_URL:-http://localhost:8080}"

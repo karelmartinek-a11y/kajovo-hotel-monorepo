@@ -1,174 +1,79 @@
-# CI gate pro Kajovo Hotel
+# CI guardy
 
-Tento dokument popisuje skutečné blokující kontroly pro `main` a jejich vztah ke KDGS.
+Tento dokument popisuje current-state blokující kontroly pro branch `main`.
 
 ## 1. Autorita
 
-Autoritativní zdroje:
+Pokud se dokument rozchází s workflow nebo skripty, přednost mají:
 
-- [`docs/Kajovo_Design_Governance_Standard_SSOT.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/Kajovo_Design_Governance_Standard_SSOT.md)
-- [`docs/forenzni-plan-implementace-kdgs-2026-03-16.md`](/C:/GitHub/kajovo-hotel-monorepo/docs/forenzni-plan-implementace-kdgs-2026-03-16.md)
-- [`/.github/workflows/ci-gates.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/ci-gates.yml)
-- [`/.github/workflows/ci-full.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/ci-full.yml)
-- [`/.github/workflows/release.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/release.yml)
-- [`/.github/workflows/deploy-production.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/deploy-production.yml)
+- `.github/workflows/*.yml`
+- `package.json`
+- `scripts/check_android_release_integrity.py`
+- `scripts/check_runtime_integrity.mjs`
+- `scripts/check_mojibake.py`
 
-Pokud se tento dokument rozchází s workflow soubory, platí workflow soubory.
-
-## 2. Lokální skripty
+## 2. Lokální guardy
 
 ### `pnpm ci:gates`
 
-Lokální frontend gate v root [`package.json`](/C:/GitHub/kajovo-hotel-monorepo/package.json):
+Aktuálně skládá:
 
 1. `pnpm ci:tokens`
 2. `pnpm ci:brand-assets`
 3. `pnpm ci:signage`
 4. `pnpm ci:text-integrity`
 5. `pnpm ci:frontend-manifest`
-6. `pnpm ci:runtime-integrity`
-7. `pnpm ci:web-smoke`
-8. `pnpm ci:visual`
+6. `pnpm ci:policy-test`
+7. `pnpm ci:android-release-integrity`
+8. `pnpm ci:android-smoke`
+9. `pnpm ci:runtime-integrity`
+10. `pnpm ci:web-smoke`
+11. `pnpm ci:visual`
 
-Tento skript je důležitý, ale není to celý release gate.
-
-### Další důležité lokální skripty
+### Další blokující příkazy
 
 - `pnpm ci:policy`
 - `pnpm contract:check`
-- `pnpm ci:visual`
-- `pnpm ci:e2e-smoke`
 - `pnpm typecheck`
 - `pnpm unit`
-
-## 3. GitHub workflow `CI Gates - KajovoHotel`
-
-Workflow: [`ci-gates.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/ci-gates.yml)
-
-Obsahuje tyto blokující joby:
-
-### `release-gate`
-
-Pouští sjednocený release gate přes [`scripts/release_gate.py`](/C:/GitHub/kajovo-hotel-monorepo/scripts/release_gate.py).
-
-Aktuálně spouští:
-
-- `pnpm typecheck`
-- build webu
-- build adminu
-- `python -m pytest apps/kajovo-hotel-api/tests -q`
-- `pnpm ci:gates`
 - `pnpm ci:e2e-smoke`
 
-### `e2e-smoke`
+## 3. GitHub Actions
 
-Třikrát deterministicky spouští admin smoke:
+### `CI Gates - KajovoHotel`
 
-- `pnpm ci:e2e-smoke`
+Hlavní blokující workflow pro merge a deploy.
 
-nad dočasnou smoke databází a lokálně spuštěným API.
+Kryje zejména:
 
-### `guardrails`
+- typecheck
+- build webu a adminu
+- backend testy
+- release gate
+- parity a brand guardy
+- Android release integrity
+- Android smoke
+- web smoke
+- visual běhy
+- admin smoke
 
-Samostatně blokuje:
+### `CI Full - Kajovo Hotel`
 
-- `pnpm ci:policy`
-- `pnpm ci:tokens`
-- `pnpm ci:brand-assets`
-- `pnpm ci:signage`
-- `pnpm ci:web-smoke`
-- `pnpm ci:visual`
-- `pnpm contract:check`
+Širší regresní běh nad rámec hlavní gate.
 
-### `lint`
+### `CI Release - Kajovo Hotel`
 
-Blokuje `ruff` lint pro API.
+Release vrstva navázaná na buildy a produkční release tok.
 
-### `typecheck`
+### `Deploy - hotel.hcasc.cz`
 
-Blokuje `pnpm typecheck`.
+Nasazení až po úspěšném průchodu blokujících gate.
 
-### `unit-tests`
+## 4. Co guardy explicitně hlídají
 
-Blokuje `pnpm unit`.
-
-## 4. GitHub workflow `CI Full - Kajovo Hotel`
-
-Workflow: [`ci-full.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/ci-full.yml)
-
-Aktuálně obsahuje:
-
-- plné API testy (`pytest`)
-- web Playwright běh
-- admin `e2e-smoke`
-- lint a `contract:check`
-- samostatný auth smoke
-
-Tento workflow je důkazní a regresní vrstva navíc nad `CI Gates - KajovoHotel`.
-
-## 5. GitHub workflow `CI Release - Kajovo Hotel`
-
-Workflow: [`release.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/release.yml)
-
-Aktuálně obsahuje:
-
-- `pnpm lint`
-- `pnpm unit`
-- build webu
-- build adminu
-- web smoke Playwright běh
-
-Tento workflow není autoritativní blokující gate pro deploy, ale je další release-validační vrstva pro `main`.
-
-## 6. Produkční deploy gate
-
-Workflow: [`deploy-production.yml`](/C:/GitHub/kajovo-hotel-monorepo/.github/workflows/deploy-production.yml)
-
-Deploy na `hotel.hcasc.cz` se spouští jen po úspěšném `CI Gates - KajovoHotel` na `main`, nebo ručně.
-
-Po deployi blokují release ještě tyto kontroly:
-
-- ověření deploy target env
-- ověření admin credentials env
-- ověření runtime artifact SHA na serveru
-- HTTP gate:
-  - `GET /`
-  - `GET /admin/login`
-  - `GET /api/health`
-- live admin login
-- live smoke správy uživatelů
-
-## 7. Vztah ke KDGS
-
-KDGS vyžaduje, aby release blokoval minimálně:
-
-- porušení brand pravidel,
-- chybějící povinné stavy view,
-- token drift,
-- layoutové a ergonomické rozpady,
-- nehotové nebo falešné výstupy.
-
-Aktuální stav:
-
-- brand a tokeny jsou v gate zapojené,
-- text integrity a runtime integrity jsou v gate zapojené,
-- smoke testy jsou v gate zapojené,
-- contract freshness je v gate zapojená,
-- vykonávaný KDGS geometrický a vizuální důkaz je zapojený přes `ci:visual` pro web i admin, ale jen pro current-state reprezentativní set rout a kritických interakcí,
-- deklarace povinných stavů pro všechna view je samostatně hlídaná IA scaffold guardem, nikoli plným runtime vykreslením každé varianty.
-
-## 8. Doporučené lokální minimum před push
-
-```bash
-pnpm typecheck
-pnpm unit
-pnpm ci:gates
-pnpm ci:e2e-smoke
-pnpm contract:check
-```
-
-Pokud změna sahá do API lintu nebo workflow:
-
-```bash
-python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
-```
+- drift v textových souborech a mojibake
+- přítomnost povinných brand assetů a signace
+- drift mezi routami, manifesty a runtime realitou
+- drift mezi API kontraktem a sdíleným klientem
+- drift mezi Android release manifestem, veřejnou APK a live API
+- neporušení parity mezi webem a Androidem

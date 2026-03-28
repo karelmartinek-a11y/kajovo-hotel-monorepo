@@ -6,9 +6,11 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -25,10 +27,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
+import cz.hcasc.kajovohotel.core.designsystem.R
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.InventoryMovementType
@@ -216,11 +223,17 @@ fun InventoryScreen(
                 }
                 if (section == InventorySection.LIST) {
                     items(state.items, key = { item -> item.id }) { item ->
-                        FeatureCard(
-                            title = item.name,
-                            subtitle = "${item.unit} · stav ${item.currentStock} · minimum ${item.minStock}",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                            InventoryThumb(
+                                thumbPath = item.pictogramThumbPath,
+                                fallbackLabel = item.name,
+                            )
+                            FeatureCard(
+                                title = item.name,
+                                subtitle = "${item.unit} · stav ${item.currentStock} · minimum ${item.minStock}",
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                         TextButton(
                             onClick = {
                                 viewModel.selectItem(item.id)
@@ -281,6 +294,10 @@ private fun DetailCard(
         FeatureCard(
             title = detail.name,
             subtitle = "Veličina ${detail.unit} · minimum ${detail.minStock} · stav ${detail.currentStock}",
+        )
+        InventoryThumb(
+            thumbPath = detail.pictogramThumbPath,
+            fallbackLabel = detail.name,
         )
         Text(text = "Hodnota veličiny v 1 ks: ${detail.amountPerPieceBase}")
         if (detail.createdAt.isNotBlank()) {
@@ -359,7 +376,13 @@ private fun ItemEditorCard(
         if (state.selectedPictogram != null) {
             Text(text = "Vybraná miniatura: ${state.selectedPictogram.fileName}")
         } else if (state.selectedDetail?.pictogramThumbPath?.isNotBlank() == true) {
-            Text(text = "Položka už má uloženou miniaturu.")
+            Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                Text(text = "Položka už má uloženou miniaturu.")
+                InventoryThumb(
+                    thumbPath = state.selectedDetail?.pictogramThumbPath.orEmpty(),
+                    fallbackLabel = draft.name,
+                )
+            }
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             OutlinedButton(onClick = onSelectPictogram) { Text("Vybrat miniaturu") }
@@ -453,4 +476,30 @@ private fun readBinaryPayload(context: Context, uri: Uri): BinaryPayload? {
     } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "inventory-pictogram.jpg"
     val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
     return BinaryPayload(fileName = fileName, mimeType = mimeType, bytes = bytes)
+}
+
+@Composable
+private fun InventoryThumb(
+    thumbPath: String,
+    fallbackLabel: String,
+) {
+    if (thumbPath.isNotBlank()) {
+        AsyncImage(
+            model = thumbPath,
+            contentDescription = "Miniatura skladové položky",
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp),
+            contentScale = ContentScale.Crop,
+        )
+        return
+    }
+    Image(
+        painter = painterResource(R.drawable.kajovo_mark_logo),
+        contentDescription = "Zástupná miniatura položky $fallbackLabel",
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(96.dp),
+        contentScale = ContentScale.Fit,
+    )
 }

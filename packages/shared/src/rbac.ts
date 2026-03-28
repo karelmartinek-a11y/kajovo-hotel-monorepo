@@ -1,4 +1,4 @@
-﻿export type Role = 'recepce' | 'pokojská' | 'údržba' | 'snídaně' | 'sklad' | 'admin';
+export type Role = 'recepce' | 'pokojská' | 'údržba' | 'snídaně' | 'sklad' | 'admin';
 
 export type ModuleKey =
   | 'dashboard'

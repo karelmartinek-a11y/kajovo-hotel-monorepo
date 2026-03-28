@@ -1000,3 +1000,8 @@ Tento návrh je technicky platný a kompilovatelný jako samostatný nativní An
 - release gates budou obsahovat utility states, role smoke a overflow/ergonomii.
 
 Z pohledu implementační připravenosti lze začít ihned s Fází 0 a Fází 1. Auth/reset blocker je v této repo revizi odstraněný a RBAC kontrakt je pro dnešní scope srovnaný. Definitivní production scope sign-off proto dnes stojí hlavně na business rozhodnutí o rozsahu Android v1, ne na otevřeném driftu mezi backendem, shared vrstvou a dokumentací.
+# Archivní poznámka
+
+Tento dokument je historický architektonický a delivery materiál.
+Aktivní current-state provozní dokumentace Androidu je `android/README_ANDROID.md`.
+Při konfliktu má přednost current-state README a reálný kód.

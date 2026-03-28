@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -30,7 +34,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -91,8 +99,18 @@ fun HousekeepingScreen(
                 subtitle = "Vyberte typ zápisu, pokoj, krátký text a přiložte až 3 fotografie.",
             )
         }
+        item { Text(text = state.draftNotice, style = MaterialTheme.typography.bodyMedium) }
+        state.photoLimitMessage?.let { message ->
+            item {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
         item {
-            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                 FilterChip(
                     selected = state.draft.mode == HousekeepingCaptureMode.LOST_FOUND,
                     onClick = { viewModel.updateDraft { current -> current.copy(mode = HousekeepingCaptureMode.LOST_FOUND) } },
@@ -124,8 +142,11 @@ fun HousekeepingScreen(
         }
         if (state.pendingPhotos.isNotEmpty()) {
             item { Text(text = "Vybrané fotografie: ${state.pendingPhotos.size}/3", style = MaterialTheme.typography.bodyMedium) }
-            items(state.pendingPhotos) { payload ->
-                FeatureCard(title = payload.fileName, subtitle = payload.mimeType)
+            itemsIndexed(state.pendingPhotos) { index, payload ->
+                PendingPhotoCard(
+                    payload = payload,
+                    onRemove = { viewModel.removePendingPhoto(index) },
+                )
             }
         }
         item {
@@ -168,6 +189,47 @@ fun HousekeepingScreen(
         }
         state.errorMessage?.let { message ->
             item { FeatureCard(title = "Chyba zápisu pokojské", subtitle = message) }
+        }
+    }
+}
+
+@Composable
+private fun PendingPhotoCard(
+    payload: BinaryPayload,
+    onRemove: () -> Unit,
+) {
+    val context = LocalContext.current
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(payload.bytes)
+                    .build(),
+                contentDescription = "Náhled fotografie pokojské",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+                contentScale = ContentScale.Crop,
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+            ) {
+                Text(text = payload.fileName, style = MaterialTheme.typography.titleMedium)
+                Text(text = payload.mimeType, style = MaterialTheme.typography.bodyMedium)
+                OutlinedButton(
+                    onClick = onRemove,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Odebrat fotografii")
+                }
+            }
         }
     }
 }

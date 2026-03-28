@@ -1,4 +1,4 @@
-﻿.gitignore diff:
+.gitignore diff:
 diff --git a/.gitignore b/.gitignore
 index c47acee..ec2681d 100644
 --- a/.gitignore

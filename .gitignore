@@ -21,8 +21,16 @@ kajovo_hotel.db
 artifacts/pytest/
 artifacts/breakfast-runtime-smoke/
 artifacts/kajovo-*/
+artifacts/release-gate/
+artifacts/encoding-audit/
+artifacts/deploy-runtime/
 android/.gradle-dist/
 android/.gradle/
 android/.idea/
 android/.kotlin/
 android/local.properties
+*.bak
+*.old
+*.orig
+*.rej
+*.backup

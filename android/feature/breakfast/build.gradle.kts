@@ -60,6 +60,7 @@ dependencies {
 
     testImplementation(libs.junit4)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 

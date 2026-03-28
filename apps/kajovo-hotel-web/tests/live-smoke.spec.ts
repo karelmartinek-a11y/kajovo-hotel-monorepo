@@ -273,6 +273,43 @@ test('multirolni portal uzivatel vidi po vyberu role prepinac ostatnich roli v z
   await expect(page.getByRole('button', { name: /recepce/i })).toBeVisible();
 });
 
+test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na snidane', async ({ page, request }, testInfo) => {
+  const adminLoginResponse = await request.post('/api/auth/admin/login', {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  expect(adminLoginResponse.ok()).toBeTruthy();
+
+  const csrfHeaders = await csrfHeaderFor(request);
+  const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
+  const portalEmail = `web-hk-breakfast-${suffix}@kajovohotel.local`;
+  const portalPassword = `WebHkBreakfast-${suffix}-pass`;
+
+  const createUserResponse = await request.post('/api/v1/users', {
+    data: {
+      email: portalEmail,
+      password: portalPassword,
+      first_name: 'Pokoj',
+      last_name: 'Snidane',
+      roles: ['pokojska', 'snidane'],
+    },
+    headers: csrfHeaders,
+  });
+  expect(createUserResponse.status()).toBe(201);
+
+  await loginPortalUser(page, portalEmail, portalPassword);
+
+  await expect(page.getByTestId('role-select-page')).toBeVisible();
+  await page.getByTestId('role-select-page').getByRole('button').first().click();
+
+  await expect(page).toHaveURL(/\/pokojska$/);
+  await expect(page.locator('.k-role-switcher__active')).toHaveText(/pokojská/i);
+  await page.locator('.k-role-switcher__button').first().click();
+
+  await expect(page).toHaveURL(/\/snidane$/);
+  await expect(page.locator('.k-role-switcher__active')).toHaveText(/snídaně/i);
+  await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+});
+
 for (const scenario of ROLE_SCENARIOS) {
   test(`RBAC matice pro roli ${scenario.key} zobrazi jen povolene moduly a odmitne zakazane route`, async ({ page, request }, testInfo) => {
     const { portalEmail, portalPassword } = await createPortalUserForRole(request, testInfo, scenario.apiRole);
