@@ -30,6 +30,14 @@ class SessionErrorMapperTest {
     }
 
     @Test
+    fun `maps login 401 without detail to explicit invalid credentials copy`() {
+        val resolution = SessionErrorMapper.resolveInteractiveLoginFailure(httpExceptionWithoutDetail(401))
+
+        assertTrue(resolution.clearLocalSession)
+        assertEquals("Neplatné uživatelské jméno nebo heslo.", resolution.message)
+    }
+
+    @Test
     fun `maps active role requirement to role selection`() {
         val resolution = SessionErrorMapper.resolve(httpException(403, "Active role must be selected"), "fallback")
 
@@ -40,5 +48,9 @@ class SessionErrorMapperTest {
     private fun httpException(code: Int, detail: String): HttpException {
         val body = "{\"detail\":\"$detail\"}".toResponseBody("application/json".toMediaType())
         return HttpException(Response.error<Any>(code, body))
+    }
+
+    private fun httpExceptionWithoutDetail(code: Int): HttpException {
+        return HttpException(Response.error<Any>(code, "{}".toResponseBody("application/json".toMediaType())))
     }
 }

@@ -3190,6 +3190,7 @@ function PortalProfilePage(): JSX.Element {
 type AuthLoadState =
   | { status: 'loading' }
   | { status: 'authenticated'; profile: AuthProfile }
+  | { status: 'error'; message: string }
   | { status: 'unauthenticated' };
 
 function AppRoutes(): JSX.Element {
@@ -3201,6 +3202,10 @@ function AppRoutes(): JSX.Element {
       .then((resolved) => {
         if (resolved.status === 'authenticated') {
           setAuthState({ status: 'authenticated', profile: resolved.profile });
+          return;
+        }
+        if (resolved.status === 'error') {
+          setAuthState({ status: 'error', message: resolved.message });
           return;
         }
         setAuthState({ status: 'unauthenticated' });
@@ -3221,12 +3226,14 @@ function AppRoutes(): JSX.Element {
     );
   }
 
+  const loginError = authState.status === 'error' ? authState.message : null;
+
   if (authState.status !== 'authenticated') {
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
-        <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="/login" element={<PortalLoginPage initialError={loginError} />} />
         <Route path="/login/reset" element={<PortalResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

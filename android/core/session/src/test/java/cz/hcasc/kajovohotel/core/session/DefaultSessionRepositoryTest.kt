@@ -42,13 +42,7 @@ class DefaultSessionRepositoryTest {
                 ),
             ),
         )
-        val repository = DefaultSessionRepository(
-            authApi = authApi,
-            cookieStore = FakeCookieStore(),
-            metadataStore = FakeMetadataStore(),
-            moduleSnapshotDao = FakeModuleSnapshotDao(),
-            logger = AppLogger(),
-        )
+        val repository = repository(authApi = authApi)
 
         repository.signIn("recepce@example.com", "recepce-pass", rememberMe = true)
 
@@ -63,7 +57,7 @@ class DefaultSessionRepositoryTest {
                 AuthIdentityDto(
                     email = "recepce@example.com",
                     role = "recepce",
-                    roles = listOf("recepce", "snĂ­danÄ›"),
+                    roles = listOf("recepce", "snídaně"),
                     active_role = null,
                     permissions = emptyList(),
                     actor_type = "portal",
@@ -71,13 +65,7 @@ class DefaultSessionRepositoryTest {
             ),
         )
         val metadataStore = FakeMetadataStore()
-        val repository = DefaultSessionRepository(
-            authApi,
-            FakeCookieStore(),
-            metadataStore,
-            FakeModuleSnapshotDao(),
-            AppLogger(),
-        )
+        val repository = repository(authApi = authApi, metadataStore = metadataStore)
 
         repository.restoreSession()
 
@@ -94,21 +82,15 @@ class DefaultSessionRepositoryTest {
             meResult = Result.success(
                 AuthIdentityDto(
                     email = "snidane@example.com",
-                    role = "snĂ­danÄ›",
-                    roles = listOf("recepce", "snĂ­danÄ›"),
-                    active_role = "snĂ­danÄ›",
+                    role = "snÄ‚Â­danĂ„â€ş",
+                    roles = listOf("recepce", "snÄ‚Â­danĂ„â€ş"),
+                    active_role = "snÄ‚Â­danĂ„â€ş",
                     permissions = listOf("breakfast:read", "breakfast:write"),
                     actor_type = "portal",
                 ),
             ),
         )
-        val repository = DefaultSessionRepository(
-            authApi = authApi,
-            cookieStore = FakeCookieStore(),
-            metadataStore = FakeMetadataStore(),
-            moduleSnapshotDao = FakeModuleSnapshotDao(),
-            logger = AppLogger(),
-        )
+        val repository = repository(authApi = authApi)
 
         repository.restoreSession()
 
@@ -123,16 +105,13 @@ class DefaultSessionRepositoryTest {
             snapshot = SessionIdentitySnapshot(
                 email = "recepce@example.com",
                 actorType = "portal",
-                roles = listOf("recepce", "snĂ­danÄ›"),
+                roles = listOf("recepce", "snídaně"),
                 permissions = setOf("breakfast:read", "breakfast:write"),
             )
         }
-        val repository = DefaultSessionRepository(
+        val repository = repository(
             authApi = FakeAuthApi(meResult = Result.failure(httpException(403, "Active role must be selected"))),
-            cookieStore = FakeCookieStore(),
             metadataStore = metadataStore,
-            moduleSnapshotDao = FakeModuleSnapshotDao(),
-            logger = AppLogger(),
         )
 
         repository.restoreSession()
@@ -145,11 +124,15 @@ class DefaultSessionRepositoryTest {
 
     @Test
     fun `logout clears cookies metadata and room cache`() = runTest {
-        val authApi = FakeAuthApi(logoutResult = Result.success(Response.success(Unit)))
-        val metadataStore = FakeMetadataStore()
         val cookieStore = FakeCookieStore()
+        val metadataStore = FakeMetadataStore()
         val dao = FakeModuleSnapshotDao()
-        val repository = DefaultSessionRepository(authApi, cookieStore, metadataStore, dao, AppLogger())
+        val repository = repository(
+            authApi = FakeAuthApi(logoutResult = Result.success(Response.success(Unit))),
+            cookieStore = cookieStore,
+            metadataStore = metadataStore,
+            moduleSnapshotDao = dao,
+        )
 
         repository.logout()
 
@@ -161,13 +144,7 @@ class DefaultSessionRepositoryTest {
 
     @Test
     fun `401 network event clears local session`() = runTest {
-        val repository = DefaultSessionRepository(
-            authApi = FakeAuthApi(),
-            cookieStore = FakeCookieStore(),
-            metadataStore = FakeMetadataStore(),
-            moduleSnapshotDao = FakeModuleSnapshotDao(),
-            logger = AppLogger(),
-        )
+        val repository = repository()
 
         repository.handleNetworkEvent(AuthNetworkEvent.Unauthorized("expired"))
 
@@ -175,24 +152,108 @@ class DefaultSessionRepositoryTest {
     }
 
     @Test
-    fun `change password success logs user out`() = runTest {
-        val authApi = FakeAuthApi(
-            changePasswordResult = Result.success(Response.success(Unit)),
-            meResult = Result.success(
-                AuthIdentityDto(
-                    email = "recepce@example.com",
-                    role = "recepce",
-                    roles = listOf("recepce"),
-                    active_role = "recepce",
-                    permissions = listOf("breakfast:read"),
-                    actor_type = "portal",
+    fun `sign in with invalid credentials keeps unauthenticated state and exposes login error message`() = runTest {
+        val repository = repository(
+            authApi = FakeAuthApi(loginResult = Result.failure(httpException(401, "Invalid credentials"))),
+        )
+
+        repository.signIn("recepce@example.com", "spatne-heslo", rememberMe = false)
+
+        assertTrue(repository.sessionState.value is SessionState.Unauthenticated)
+        assertEquals("Neplatné uživatelské jméno nebo heslo.", repository.sessionMessage.value)
+    }
+
+    @Test
+    fun `role selection requirement after login keeps authenticated state and exposes guidance message`() = runTest {
+        val repository = repository(
+            authApi = FakeAuthApi(
+                loginResult = Result.success(
+                    AuthIdentityDto(
+                        email = "recepce@example.com",
+                        role = "recepce",
+                        roles = listOf("recepce", "snídaně"),
+                        active_role = null,
+                        permissions = listOf("breakfast:read", "breakfast:write"),
+                        actor_type = "portal",
+                    ),
+                ),
+                meResult = Result.failure(httpExceptionWithoutDetail(401)),
+            ),
+        )
+
+        repository.signIn("recepce@example.com", "spravne-heslo", rememberMe = false)
+
+        val state = repository.sessionState.value as SessionState.Authenticated
+        assertTrue(state.identity.requiresRoleSelection())
+        assertEquals("Přihlášení se nepodařilo. Vyberte aktivní roli pro pokračování.", repository.sessionMessage.value)
+    }
+
+    @Test
+    fun `successful login keeps breakfast role available for proper utf8 payload`() = runTest {
+        val repository = repository(
+            authApi = FakeAuthApi(
+                loginResult = Result.success(
+                    AuthIdentityDto(
+                        email = "snidane@example.com",
+                        role = "snídaně",
+                        roles = listOf("recepce", "snídaně"),
+                        active_role = null,
+                        permissions = emptyList(),
+                        actor_type = "portal",
+                    ),
+                ),
+                meResult = Result.success(
+                    AuthIdentityDto(
+                        email = "snidane@example.com",
+                        role = "snídaně",
+                        roles = listOf("recepce", "snídaně"),
+                        active_role = null,
+                        permissions = emptyList(),
+                        actor_type = "portal",
+                    ),
                 ),
             ),
         )
-        val metadataStore = FakeMetadataStore()
+
+        repository.signIn("snidane@example.com", "spravne-heslo", rememberMe = false)
+
+        val state = repository.sessionState.value as SessionState.Authenticated
+        assertEquals(listOf(PortalRole.RECEPTION, PortalRole.BREAKFAST), state.identity.roles)
+        assertTrue(state.identity.requiresRoleSelection())
+    }
+
+    @Test
+    fun `access denied network event preserves explicit message for UI`() = runTest {
+        val repository = repository()
+
+        repository.handleNetworkEvent(AuthNetworkEvent.AccessDenied("Nemáte přístup do tohoto modulu."))
+
+        assertEquals("Nemáte přístup do tohoto modulu.", repository.sessionMessage.value)
+    }
+
+    @Test
+    fun `change password success logs user out`() = runTest {
         val cookieStore = FakeCookieStore()
+        val metadataStore = FakeMetadataStore()
         val dao = FakeModuleSnapshotDao()
-        val repository = DefaultSessionRepository(authApi, cookieStore, metadataStore, dao, AppLogger())
+        val repository = repository(
+            authApi = FakeAuthApi(
+                changePasswordResult = Result.success(Response.success(Unit)),
+                meResult = Result.success(
+                    AuthIdentityDto(
+                        email = "recepce@example.com",
+                        role = "recepce",
+                        roles = listOf("recepce"),
+                        active_role = "recepce",
+                        permissions = listOf("breakfast:read"),
+                        actor_type = "portal",
+                    ),
+                ),
+            ),
+            cookieStore = cookieStore,
+            metadataStore = metadataStore,
+            moduleSnapshotDao = dao,
+        )
 
         repository.restoreSession()
         val result = repository.changePassword("old-password", "new-password")
@@ -202,6 +263,21 @@ class DefaultSessionRepositoryTest {
         assertTrue(metadataStore.cleared)
         assertTrue(dao.cleared)
         assertTrue(repository.sessionState.value is SessionState.Unauthenticated)
+    }
+
+    private fun repository(
+        authApi: AuthApi = FakeAuthApi(),
+        cookieStore: FakeCookieStore = FakeCookieStore(),
+        metadataStore: FakeMetadataStore = FakeMetadataStore(),
+        moduleSnapshotDao: FakeModuleSnapshotDao = FakeModuleSnapshotDao(),
+    ): DefaultSessionRepository {
+        return DefaultSessionRepository(
+            authApi = authApi,
+            cookieStore = cookieStore,
+            metadataStore = metadataStore,
+            moduleSnapshotDao = moduleSnapshotDao,
+            logger = AppLogger(),
+        )
     }
 
     private class FakeAuthApi(
@@ -269,6 +345,7 @@ class DefaultSessionRepositoryTest {
 
     private class FakeCookieStore : SessionCookieStore {
         var cleared = false
+
         override fun clearAll() {
             cleared = true
         }
@@ -304,8 +381,10 @@ class DefaultSessionRepositoryTest {
 
     private class FakeModuleSnapshotDao : ModuleSnapshotDao {
         var cleared = false
+
         override suspend fun get(key: String): ModuleSnapshotEntity? = null
         override suspend fun upsert(entity: ModuleSnapshotEntity) = Unit
+
         override suspend fun clearAll() {
             cleared = true
         }
@@ -315,6 +394,10 @@ class DefaultSessionRepositoryTest {
         fun httpException(code: Int, detail: String): HttpException {
             val body = "{\"detail\":\"$detail\"}".toResponseBody("application/json".toMediaType())
             return HttpException(Response.error<Any>(code, body))
+        }
+
+        fun httpExceptionWithoutDetail(code: Int): HttpException {
+            return HttpException(Response.error<Any>(code, "{}".toResponseBody("application/json".toMediaType())))
         }
     }
 }

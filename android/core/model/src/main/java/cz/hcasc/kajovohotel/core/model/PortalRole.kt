@@ -11,10 +11,16 @@ enum class PortalRole(val wireValue: String, val displayName: String) {
 
     companion object {
         private val encodingDriftRepairs = mapOf(
+            "pokojskĂ„â€šĂ‹â€ˇ" to "pokojská",
+            "pokojskĂ„ÂĂ‹â€ˇ" to "pokojská",
+            "pokojskÄ‚Ë‡" to "pokojská",
             "pokojskĂˇ" to "pokojská",
-            "pokojskăˇ" to "pokojská",
+            "Ă„â€šÄąĹşdrĂ„Ä…Ă„Äľba" to "údržba",
+            "Ă„ÂÄąĹşdrĂ„ÄľÄąÄľba" to "údržba",
+            "Ä‚ĹźdrÄąÄľba" to "údržba",
             "ĂşdrĹľba" to "údržba",
-            "ăşdrľžba" to "údržba",
+            "snĂ„â€šĂ‚Â­danÄ‚â€žĂ˘â‚¬Ĺź" to "snídaně",
+            "snÄ‚Â­danĂ„â€ş" to "snídaně",
             "snĂ­danÄ›" to "snídaně",
         )
 
@@ -23,12 +29,18 @@ enum class PortalRole(val wireValue: String, val displayName: String) {
             "reception" to RECEPTION,
             "pokojska" to HOUSEKEEPING,
             "pokojská" to HOUSEKEEPING,
+            "pokojskĂˇ" to HOUSEKEEPING,
+            "pokojskÄ‚Ë‡" to HOUSEKEEPING,
             "housekeeping" to HOUSEKEEPING,
             "udrzba" to MAINTENANCE,
             "údržba" to MAINTENANCE,
+            "ĂşdrĹľba" to MAINTENANCE,
+            "Ä‚ĹźdrÄąÄľba" to MAINTENANCE,
             "maintenance" to MAINTENANCE,
             "snidane" to BREAKFAST,
             "snídaně" to BREAKFAST,
+            "snĂ­danÄ›" to BREAKFAST,
+            "snÄ‚Â­danĂ„â€ş" to BREAKFAST,
             "breakfast" to BREAKFAST,
             "sklad" to INVENTORY,
             "warehouse" to INVENTORY,

@@ -2,7 +2,33 @@ import React from 'react';
 import { KajovoFullLockup, KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
-export function PortalLoginPage(): JSX.Element {
+type PortalLoginPageProps = {
+  initialError?: string | null;
+};
+
+async function readLoginError(response: Response, fallback: string): Promise<string> {
+  const raw = await response.text();
+  if (!raw.trim()) {
+    return fallback;
+  }
+  try {
+    const payload = JSON.parse(raw) as { detail?: unknown };
+    if (typeof payload.detail === 'string' && payload.detail.trim()) {
+      if (response.status === 401) {
+        return 'Neplatné uživatelské jméno nebo heslo.';
+      }
+      return payload.detail.trim();
+    }
+  } catch {
+    // Odpověď není JSON, vracíme fallback nebo raw text.
+  }
+  if (response.status === 401) {
+    return 'Neplatné uživatelské jméno nebo heslo.';
+  }
+  return raw.trim() || fallback;
+}
+
+export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = {}): JSX.Element {
   const bundle = React.useMemo(() => {
     const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
     return getAuthBundle('portal', lang);
@@ -19,14 +45,18 @@ export function PortalLoginPage(): JSX.Element {
 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(initialError);
+
+  React.useEffect(() => {
+    setError(initialError);
+  }, [initialError]);
 
   async function login(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setError(null);
     const principal = email.trim();
     if (!principal || !password) {
-      setError(copy.credentialsRequired ?? copy.loginError ?? 'Neplatné přihlašovací údaje.');
+      setError(copy.credentialsRequired ?? copy.loginError ?? 'Vyplňte uživatelské jméno i heslo.');
       return;
     }
     const response = await fetch('/api/auth/login', {
@@ -36,7 +66,7 @@ export function PortalLoginPage(): JSX.Element {
       body: JSON.stringify({ email: principal, password }),
     });
     if (!response.ok) {
-      setError(copy.loginError ?? 'Neplatné přihlašovací údaje.');
+      setError(await readLoginError(response, copy.loginError ?? 'Přihlášení se nepodařilo.'));
       return;
     }
     window.location.assign('/');

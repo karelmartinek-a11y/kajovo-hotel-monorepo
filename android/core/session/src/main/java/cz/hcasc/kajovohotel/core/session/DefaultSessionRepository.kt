@@ -30,8 +30,12 @@ class DefaultSessionRepository(
     private val mutableSessionState = MutableStateFlow<SessionState>(SessionState.Checking)
     override val sessionState: StateFlow<SessionState> = mutableSessionState
 
+    private val mutableSessionMessage = MutableStateFlow<String?>(null)
+    override val sessionMessage: StateFlow<String?> = mutableSessionMessage
+
     override suspend fun restoreSession() {
         mutableSessionState.value = SessionState.Checking
+        mutableSessionMessage.value = null
         runCatching { authApi.me() }
             .onSuccess { dto ->
                 applyAuthenticatedIdentity(dto, dto.active_role)
@@ -49,6 +53,7 @@ class DefaultSessionRepository(
 
     override suspend fun signIn(email: String, password: String, rememberMe: Boolean) {
         mutableSessionState.value = SessionState.Checking
+        mutableSessionMessage.value = null
         runCatching {
             authApi.login(
                 PortalLoginRequest(
@@ -65,30 +70,36 @@ class DefaultSessionRepository(
                         applyAuthenticatedIdentity(dto, dto.active_role)
                     }
                     .onFailure { throwable ->
-                        val resolution = SessionErrorMapper.resolve(
-                            throwable = throwable,
-                            fallbackMessage = "Přihlášení se nepodařilo.",
-                        )
+                        val parsedRoles = loginDto.roles.mapNotNull(PortalRole.Companion::fromWire).distinct()
+                        val resolution = if (loginDto.active_role == null && parsedRoles.size > 1) {
+                            SessionErrorResolution(
+                                message = "Přihlášení se nepodařilo. Vyberte aktivní roli pro pokračování.",
+                                requireRoleSelection = true,
+                            )
+                        } else {
+                            SessionErrorMapper.resolve(
+                                throwable = throwable,
+                                fallbackMessage = "Přihlášení se nepodařilo.",
+                                unauthorizedMessage = "Přihlášení se nepodařilo. Vyberte aktivní roli pro pokračování.",
+                            )
+                        }
                         if (!applyRoleSelectionFromIdentity(loginDto, resolution)) {
                             applyResolution(resolution)
                         }
                     }
             }
             .onFailure { throwable ->
-                applyResolution(
-                    SessionErrorMapper.resolve(
-                        throwable = throwable,
-                        fallbackMessage = "Přihlášení se nepodařilo.",
-                    ),
-                )
+                applyResolution(SessionErrorMapper.resolveInteractiveLoginFailure(throwable))
             }
     }
 
     override suspend fun selectRole(role: PortalRole) {
+        mutableSessionMessage.value = null
         runCatching {
             authApi.selectRole(SelectRoleRequest(role = role.wireValue))
             authApi.me()
-        }.onSuccess { dto ->
+        }
+            .onSuccess { dto ->
                 applyAuthenticatedIdentity(dto, dto.active_role)
             }
             .onFailure { throwable ->
@@ -105,6 +116,7 @@ class DefaultSessionRepository(
         runCatching { authApi.logout() }
             .onFailure { logger.error("Logout request failed", it) }
         clearLocalSession()
+        mutableSessionMessage.value = null
         mutableSessionState.value = SessionState.Unauthenticated
     }
 
@@ -112,34 +124,44 @@ class DefaultSessionRepository(
         when (event) {
             is AuthNetworkEvent.Unauthorized -> {
                 clearLocalSession()
+                mutableSessionMessage.value = event.message
                 mutableSessionState.value = SessionState.Unauthenticated
             }
+
             is AuthNetworkEvent.RoleSelectionRequired -> {
+                val message = event.message ?: "Vyberte aktivní roli pro pokračování."
+                mutableSessionMessage.value = message
                 val current = mutableSessionState.value as? SessionState.Authenticated
                 if (current != null) {
                     val updatedIdentity = current.identity.copy(activeRole = null)
                     metadataStore.saveActiveRole(null)
                     mutableSessionState.value = SessionState.Authenticated(updatedIdentity)
-                } else if (!restoreRoleSelectionFromSnapshot(SessionErrorResolution(message = event.message ?: "Vyberte aktivní roli pro pokračování.", requireRoleSelection = true))) {
+                } else if (!restoreRoleSelectionFromSnapshot(SessionErrorResolution(message = message, requireRoleSelection = true))) {
                     mutableSessionState.value = SessionState.Failure(
-                        message = event.message ?: "Vyberte aktivní roli pro pokračování.",
+                        message = message,
                         utilityState = BlockingUtilityState.GLOBAL_BLOCKING_ERROR,
                     )
                 }
             }
+
             is AuthNetworkEvent.Maintenance -> {
+                mutableSessionMessage.value = event.message
                 mutableSessionState.value = SessionState.Failure(
                     message = event.message ?: "Server je dočasně v maintenance režimu.",
                     utilityState = BlockingUtilityState.MAINTENANCE,
                 )
             }
+
             is AuthNetworkEvent.Offline -> {
+                mutableSessionMessage.value = event.message
                 mutableSessionState.value = SessionState.Failure(
                     message = event.message ?: "Síť není dostupná.",
                     utilityState = BlockingUtilityState.OFFLINE,
                 )
             }
+
             is AuthNetworkEvent.AccessDenied -> {
+                mutableSessionMessage.value = event.message ?: "Přístup byl odepřen."
                 logger.info(event.message ?: "Server odmítl přístup k akci.")
             }
         }
@@ -205,11 +227,13 @@ class DefaultSessionRepository(
     }
 
     private suspend fun applyResolution(resolution: SessionErrorResolution) {
+        mutableSessionMessage.value = resolution.message
         when {
             resolution.clearLocalSession -> {
                 clearLocalSession()
                 mutableSessionState.value = SessionState.Unauthenticated
             }
+
             resolution.requireRoleSelection -> {
                 if (!restoreRoleSelectionFromSnapshot(resolution)) {
                     mutableSessionState.value = SessionState.Failure(
@@ -218,12 +242,14 @@ class DefaultSessionRepository(
                     )
                 }
             }
+
             resolution.utilityState != null -> {
                 mutableSessionState.value = SessionState.Failure(
                     message = resolution.message,
                     utilityState = resolution.utilityState,
                 )
             }
+
             else -> {
                 mutableSessionState.value = SessionState.Failure(
                     message = resolution.message,
@@ -237,6 +263,7 @@ class DefaultSessionRepository(
     private suspend fun restoreRoleSelectionFromSnapshot(resolution: SessionErrorResolution): Boolean {
         if (!resolution.requireRoleSelection) return false
         val snapshot = metadataStore.loadIdentitySnapshot() ?: return false
+        mutableSessionMessage.value = resolution.message
         mutableSessionState.value = SessionState.Authenticated(snapshot.toIdentity())
         metadataStore.saveActiveRole(null)
         return true
@@ -244,6 +271,7 @@ class DefaultSessionRepository(
 
     private suspend fun applyRoleSelectionFromIdentity(loginDto: AuthIdentityDto, resolution: SessionErrorResolution): Boolean {
         if (!resolution.requireRoleSelection) return false
+        mutableSessionMessage.value = resolution.message
         mutableSessionState.value = SessionState.Authenticated(loginDto.toAuthenticatedIdentity(activeRoleOverride = null))
         metadataStore.saveLastLogin(loginDto.email)
         metadataStore.saveActiveRole(null)
@@ -252,6 +280,7 @@ class DefaultSessionRepository(
 
     private suspend fun applyAuthenticatedIdentity(dto: AuthIdentityDto, activeRoleOverride: String?) {
         mutableSessionState.value = SessionState.Authenticated(dto.toAuthenticatedIdentity(activeRoleOverride))
+        mutableSessionMessage.value = null
         metadataStore.saveLastLogin(dto.email)
         metadataStore.saveActiveRole(activeRoleOverride)
         metadataStore.saveIdentitySnapshot(dto.toSnapshot())

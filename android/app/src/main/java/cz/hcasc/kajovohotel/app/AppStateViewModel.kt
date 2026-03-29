@@ -30,6 +30,7 @@ class AppStateViewModel @Inject constructor(
     androidReleaseSignalStore: AndroidReleaseSignalStore,
 ) : ViewModel() {
     val sessionState = sessionRepository.sessionState
+    private val sessionMessage = sessionRepository.sessionMessage
 
     private val mutableProfile = MutableStateFlow<AuthProfile?>(null)
     val profile: StateFlow<AuthProfile?> = mutableProfile.asStateFlow()
@@ -45,10 +46,15 @@ class AppStateViewModel @Inject constructor(
         viewModelScope.launch {
             networkEventStore.events.collectLatest { event ->
                 sessionRepository.handleNetworkEvent(event)
-                mutableMessage.value = event.message
+                mutableMessage.value = sessionMessage.value ?: event.message
                 if (event is AuthNetworkEvent.Unauthorized) {
                     mutableProfile.value = null
                 }
+            }
+        }
+        viewModelScope.launch {
+            sessionMessage.collectLatest { message ->
+                mutableMessage.value = message
             }
         }
         viewModelScope.launch {

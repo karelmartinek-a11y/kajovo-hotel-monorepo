@@ -12,7 +12,11 @@ data class SessionErrorResolution(
 )
 
 object SessionErrorMapper {
-    fun resolve(throwable: Throwable, fallbackMessage: String): SessionErrorResolution {
+    fun resolve(
+        throwable: Throwable,
+        fallbackMessage: String,
+        unauthorizedMessage: String? = null,
+    ): SessionErrorResolution {
         val httpException = throwable as? HttpException
         val detail = httpException?.response()?.errorBody()?.string()?.extractDetail()
         return when {
@@ -21,7 +25,7 @@ object SessionErrorMapper {
                 utilityState = BlockingUtilityState.OFFLINE,
             )
             httpException?.code() == 401 -> SessionErrorResolution(
-                message = detail ?: "Přihlášení vypršelo. Přihlaste se znovu.",
+                message = unauthorizedMessage ?: detail ?: "Přihlášení vypršelo. Přihlaste se znovu.",
                 clearLocalSession = true,
             )
             httpException?.code() == 403 && detail == "Active role must be selected" -> SessionErrorResolution(
@@ -44,6 +48,14 @@ object SessionErrorMapper {
             )
             else -> SessionErrorResolution(message = detail ?: fallbackMessage)
         }
+    }
+
+    fun resolveInteractiveLoginFailure(throwable: Throwable): SessionErrorResolution {
+        return resolve(
+            throwable = throwable,
+            fallbackMessage = "Přihlášení se nepodařilo.",
+            unauthorizedMessage = "Neplatné uživatelské jméno nebo heslo.",
+        )
     }
 }
 

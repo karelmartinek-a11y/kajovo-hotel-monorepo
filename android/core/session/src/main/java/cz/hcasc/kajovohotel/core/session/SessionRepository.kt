@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface SessionRepository {
     val sessionState: StateFlow<SessionState>
+    val sessionMessage: StateFlow<String?>
+
     suspend fun restoreSession()
     suspend fun signIn(email: String, password: String, rememberMe: Boolean)
     suspend fun selectRole(role: PortalRole)

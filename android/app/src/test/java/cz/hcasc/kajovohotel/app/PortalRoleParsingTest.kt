@@ -15,8 +15,11 @@ class PortalRoleParsingTest {
     @Test
     fun `parser opravi rozbite role z produkcnich payloadu`() {
         assertEquals(PortalRole.HOUSEKEEPING, PortalRole.fromWire("pokojskĂˇ"))
+        assertEquals(PortalRole.HOUSEKEEPING, PortalRole.fromWire("pokojskÄ‚Ë‡"))
         assertEquals(PortalRole.MAINTENANCE, PortalRole.fromWire("ĂşdrĹľba"))
+        assertEquals(PortalRole.MAINTENANCE, PortalRole.fromWire("Ä‚ĹźdrÄąÄľba"))
         assertEquals(PortalRole.BREAKFAST, PortalRole.fromWire("snĂ­danÄ›"))
+        assertEquals(PortalRole.BREAKFAST, PortalRole.fromWire("snÄ‚Â­danĂ„â€ş"))
     }
 
     @Test
