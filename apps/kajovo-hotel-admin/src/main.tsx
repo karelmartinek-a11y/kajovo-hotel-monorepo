@@ -1701,6 +1701,9 @@ function BreakfastList(): JSX.Element {
   );
 
   const listItems = isServingView ? visibleItems : filteredItems;
+  const breakfastImportStamp = summary?.source_imported_at
+    ? formatShortDateTime(summary.source_imported_at)
+    : 'nenalezeno';
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -1767,6 +1770,7 @@ function BreakfastList(): JSX.Element {
               })}
             />
           )}
+          <p className="k-text-muted">Zdroj dat importu snídaní: {breakfastImportStamp}</p>
         </>
       )}
     </main>

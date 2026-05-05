@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO
 
 from fastapi import (
@@ -16,7 +16,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -29,7 +29,7 @@ from app.api.schemas import (
     BreakfastStatus,
 )
 from app.config import get_settings
-from app.db.models import BreakfastOrder
+from app.db.models import BreakfastImportProcessedAttachment, BreakfastOrder
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
 from app.services.breakfast.parser import parse_breakfast_pdf
@@ -58,7 +58,12 @@ def _visible_breakfast_orders(orders: list[BreakfastOrder]) -> list[BreakfastOrd
     )
 
 
-def _build_daily_summary(service_date: date, orders: list[BreakfastOrder]) -> BreakfastDailySummary:
+def _build_daily_summary(
+    service_date: date,
+    orders: list[BreakfastOrder],
+    *,
+    source_imported_at: datetime | None = None,
+) -> BreakfastDailySummary:
     counts = {status: 0 for status in BreakfastStatus}
     for order in orders:
         counts[BreakfastStatus(order.status)] += 1
@@ -68,6 +73,7 @@ def _build_daily_summary(service_date: date, orders: list[BreakfastOrder]) -> Br
         total_orders=len(orders),
         total_guests=sum(order.guest_count for order in orders),
         status_counts=counts,
+        source_imported_at=source_imported_at,
     )
 
 
@@ -141,7 +147,12 @@ def get_daily_summary(
             .order_by(BreakfastOrder.id.desc())
         )
     ))
-    return _build_daily_summary(service_date, orders)
+    source_imported_at = db.scalar(
+        select(func.max(BreakfastImportProcessedAttachment.imported_at)).where(
+            BreakfastImportProcessedAttachment.parsed_day == service_date
+        )
+    )
+    return _build_daily_summary(service_date, orders, source_imported_at=source_imported_at)
 
 
 @router.get("/{order_id}", response_model=BreakfastOrderRead)

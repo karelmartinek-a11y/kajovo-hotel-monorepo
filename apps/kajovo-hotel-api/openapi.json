@@ -376,6 +376,18 @@
             "title": "Service Date",
             "type": "string"
           },
+          "source_imported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Imported At"
+          },
           "status_counts": {
             "additionalProperties": {
               "type": "integer"

@@ -65,6 +65,7 @@ export type Body_upload_report_photos_api_v1_reports__report_id__photos_post = {
 };
 export type BreakfastDailySummary = {
   "service_date": string;
+  "source_imported_at"?: string | null;
   "status_counts": Record<string, unknown>;
   "total_guests": number;
   "total_orders": number;

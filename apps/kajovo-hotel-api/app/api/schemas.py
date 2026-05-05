@@ -107,6 +107,7 @@ class BreakfastDailySummary(BaseModel):
     total_orders: int
     total_guests: int
     status_counts: dict[BreakfastStatus, int]
+    source_imported_at: datetime | None = None
 
 
 class BreakfastImportItem(BaseModel):
