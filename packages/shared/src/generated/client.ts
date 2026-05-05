@@ -114,6 +114,14 @@ export type BreakfastImportResponse = {
   "saved"?: boolean;
   "status": string;
 };
+export type BreakfastImportRunResponse = {
+  "errors": Array<string>;
+  "imported_count": number;
+  "matched_messages": number;
+  "ok": boolean;
+  "replaced_future_count": number;
+  "scanned_messages": number;
+};
 export type BreakfastOrderCreate = {
   "diet_no_gluten"?: boolean;
   "diet_no_milk"?: boolean;
@@ -657,6 +665,9 @@ export const apiClient = {
   },
   async getBreakfastImportLogsApiV1AdminSettingsBreakfastImportLogsGet(query: { "limit"?: number; }): Promise<Array<BreakfastImportLogEntry>> {
     return request<Array<BreakfastImportLogEntry>>('GET', `/api/v1/admin/settings/breakfast-import-logs`, query, undefined);
+  },
+  async runBreakfastImportNowApiV1AdminSettingsBreakfastImportRunPost(): Promise<BreakfastImportRunResponse> {
+    return request<BreakfastImportRunResponse>('POST', `/api/v1/admin/settings/breakfast-import-run`, undefined, undefined);
   },
   async getBreakfastMailboxSettingsApiV1AdminSettingsBreakfastMailboxGet(): Promise<BreakfastImportMailboxSettingsRead> {
     return request<BreakfastImportMailboxSettingsRead>('GET', `/api/v1/admin/settings/breakfast-mailbox`, undefined, undefined);

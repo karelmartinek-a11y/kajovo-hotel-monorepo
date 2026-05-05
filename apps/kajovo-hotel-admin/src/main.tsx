@@ -340,6 +340,15 @@ type BreakfastImportLogEntryReadModel = {
   details_json: string;
 };
 
+type BreakfastImportRunResponseModel = {
+  ok: boolean;
+  imported_count: number;
+  replaced_future_count: number;
+  matched_messages: number;
+  scanned_messages: number;
+  errors: string[];
+};
+
 function smtpSecurityHint(port: number, useTls: boolean, useSsl: boolean): string {
   if (useTls && useSsl) {
     return 'TLS i SSL nelze pouzit soucasne. Zvolte pouze jeden rezim.';
@@ -967,6 +976,20 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   }
   if (path === '/api/v1/admin/settings/breakfast-import-logs' && method === 'GET') {
     const response = await fetch(`${path}${url.search}`, { credentials: 'include' });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-import-run' && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers: Record<string, string> = {};
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+    });
     if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
@@ -4367,6 +4390,28 @@ function SettingsAdmin(): JSX.Element {
     }
   }
 
+  async function runManualBreakfastImport(): Promise<void> {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await fetchJson<BreakfastImportRunResponseModel>('/api/v1/admin/settings/breakfast-import-run', {
+        method: 'POST',
+      });
+      const summary = `Ruční import dokončen. Prohledáno: ${result.scanned_messages}, odpovídá filtru: ${result.matched_messages}, nově importováno: ${result.imported_count}, přepsané budoucí dny: ${result.replaced_future_count}.`;
+      const details = result.errors.length > 0 ? ` Chyby: ${result.errors.join(' | ')}` : '';
+      setMessage(`${summary}${details}`);
+      load({ preserveMessage: true });
+    } catch (err) {
+      const description = err instanceof Error && err.message.trim()
+        ? err.message.trim()
+        : 'Ruční import se nepodařilo spustit.';
+      setError(description);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <main className="k-page" data-testid="settings-admin-page">
       <h1>{'Nastaven\u00ed SMTP'}</h1>
@@ -4470,6 +4515,11 @@ function SettingsAdmin(): JSX.Element {
               <input id="imap_subject_filter" className="k-input" value={mailboxSubjectContains} onChange={(e) => setMailboxSubjectContains(e.target.value)} />
             </FormField>
             <p className="k-muted">Plán běhů je pevný: 14:00, 16:00, 18:00, 20:00, 22:20, 23:50 (Europe/Prague).</p>
+            <div className="k-toolbar">
+              <button className="k-button secondary" type="button" onClick={() => void runManualBreakfastImport()} disabled={saving}>
+                Spustit import teď (mimo interval)
+              </button>
+            </div>
           </div>
         </Card>
         <Card title="Forenzní log importu snídaní">

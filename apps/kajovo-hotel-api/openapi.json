@@ -649,6 +649,47 @@
         "title": "BreakfastImportResponse",
         "type": "object"
       },
+      "BreakfastImportRunResponse": {
+        "properties": {
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "imported_count": {
+            "title": "Imported Count",
+            "type": "integer"
+          },
+          "matched_messages": {
+            "title": "Matched Messages",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "replaced_future_count": {
+            "title": "Replaced Future Count",
+            "type": "integer"
+          },
+          "scanned_messages": {
+            "title": "Scanned Messages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "imported_count",
+          "replaced_future_count",
+          "matched_messages",
+          "scanned_messages",
+          "errors"
+        ],
+        "title": "BreakfastImportRunResponse",
+        "type": "object"
+      },
       "BreakfastOrderCreate": {
         "properties": {
           "diet_no_gluten": {
@@ -4555,6 +4596,27 @@
           }
         },
         "summary": "Get Breakfast Import Logs",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/breakfast-import-run": {
+      "post": {
+        "operationId": "run_breakfast_import_now_api_v1_admin_settings_breakfast_import_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastImportRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run Breakfast Import Now",
         "tags": [
           "settings"
         ]

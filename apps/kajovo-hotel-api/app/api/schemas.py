@@ -780,6 +780,15 @@ class BreakfastImportLogEntry(BaseModel):
     details_json: str
 
 
+class BreakfastImportRunResponse(BaseModel):
+    ok: bool
+    imported_count: int
+    replaced_future_count: int
+    matched_messages: int
+    scanned_messages: int
+    errors: list[str]
+
+
 class MailDispatchResponse(BaseModel):
     ok: bool
     connected: bool

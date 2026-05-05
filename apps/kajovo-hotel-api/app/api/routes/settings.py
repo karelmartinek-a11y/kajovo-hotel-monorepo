@@ -10,6 +10,7 @@ from app.api.schemas import (
     BreakfastImportLogEntry,
     BreakfastImportMailboxSettingsRead,
     BreakfastImportMailboxSettingsUpsert,
+    BreakfastImportRunResponse,
     SmtpOperationalStatusRead,
     SmtpSettingsRead,
     SmtpSettingsUpsert,
@@ -20,6 +21,7 @@ from app.config import get_settings
 from app.db.models import BreakfastImportMailboxSettings, BreakfastImportRunLog, PortalSmtpSettings
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
+from app.services.breakfast.mail_fetcher import BreakfastMailFetcher
 from app.services.mail import (
     MailMessage,
     SmtpDeliveryError,
@@ -526,3 +528,17 @@ def get_breakfast_import_logs(
         )
         for row in rows
     ]
+
+
+@router.post("/breakfast-import-run", response_model=BreakfastImportRunResponse)
+def run_breakfast_import_now(db: Session = Depends(get_db)) -> BreakfastImportRunResponse:
+    fetcher = BreakfastMailFetcher(get_settings())
+    result = fetcher.run_mailbox_import(db, trigger="manual")
+    return BreakfastImportRunResponse(
+        ok=result.ok,
+        imported_count=result.imported_count,
+        replaced_future_count=result.replaced_future_count,
+        matched_messages=result.matched_messages,
+        scanned_messages=result.scanned_messages,
+        errors=result.errors,
+    )
