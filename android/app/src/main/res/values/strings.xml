@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">KájovoHotel</string>
+    <string name="breakfast_import_source_footer">Zdroj dat importu snídaní</string>
 </resources>

@@ -407,14 +407,16 @@ def import_breakfast_pdf(
         )
 
     if save:
-        db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
-            synchronize_session=False
-        )
+        target_days = sorted({row.day for row in rows})
+        for target_day in target_days:
+            db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
+                synchronize_session=False
+            )
         for row in rows:
             override = diet_overrides.get(str(row.room), {})
             db.add(
                 BreakfastOrder(
-                    service_date=parsed_day,
+                    service_date=row.day,
                     room_number=row.room,
                     guest_name=row.guest_name or f"Pokoj {row.room}",
                     guest_count=max(1, int(row.breakfast_count)),

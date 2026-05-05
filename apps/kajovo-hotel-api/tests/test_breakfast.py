@@ -309,6 +309,28 @@ Celkem: 28 16 0 54 54 0 0 0
     assert all(row.room != "105" for row in rows)
 
 
+def test_parse_breakfast_text_for_multiday_overview_spreads_days() -> None:
+    parsed_day, rows = parse_breakfast_text(
+        """
+Přehled stravy 6.5.2026-31.12.2026
+Přehled stravy 6.5.2026 - 31.12.2026
+POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD BEZ STRAVY SNÍDANĚ OBĚD VEČEŘE POLOPENZE PLNÁ PENZE BALÍČEK ALL INCLUSIVE
+101 KOMFORT Bulldogs Brno | 07.05.-10.05. 0 9 0 0 0 0 0 0
+102 KOMFORT Pavel Vobruba 11.05.-12.05. 0 1 0 0 0 0 0 0
+103 KOMFORT Sabrina Schnupp; Booking.com B.V. 23.05.-30.05. 24 0 0 0 0 0 0 0
+"""
+    )
+
+    assert parsed_day == date(2026, 5, 6)
+    by_room = [(row.day.isoformat(), row.room, row.breakfast_count) for row in rows]
+    assert by_room == [
+        ("2026-05-08", "101", 3),
+        ("2026-05-09", "101", 3),
+        ("2026-05-10", "101", 3),
+        ("2026-05-12", "102", 1),
+    ]
+
+
 def test_import_breakfast_pdf_overwrite_and_diets(
     api_request: ApiRequest, api_base_url: str
 ) -> None:

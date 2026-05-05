@@ -4,7 +4,7 @@ import re
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from io import BytesIO
 
 
@@ -20,9 +20,16 @@ DATE_RE = re.compile(
     r"(?:prehled)\s+stravy(?:\s+na\s+den)?\s+(\d{1,2}[./-]\d{1,2}[./-]\d{4})",
     re.IGNORECASE,
 )
+DATE_RANGE_TITLE_RE = re.compile(
+    r"(?:prehled)\s+stravy(?:\s+na\s+den)?\s+(\d{1,2}[./-]\d{1,2}[./-]\d{4})\s*-\s*(\d{1,2}[./-]\d{1,2}[./-]\d{4})",
+    re.IGNORECASE,
+)
 DATE_FALLBACK_RE = re.compile(r"\b(\d{1,2}[./-]\d{1,2}[./-]\d{4})\b")
 DATE_RANGE_RE = re.compile(
     r"\d{1,2}[./-]\d{1,2}\.?[./-]?\s*-\s*\d{1,2}[./-]\d{1,2}\.?(?:[./-]\d{2,4})?"
+)
+STAY_RANGE_RE = re.compile(
+    r"(\d{1,2})[./-](\d{1,2})\.\s*-\s*(\d{1,2})[./-](\d{1,2})\."
 )
 ROOM_PREFIXES = {"KOMFORT", "LOWCOST", "SUPERIOR"}
 BOOKING_NOISE = re.compile(r"(booking\.com|b\.v\.|mevris)", re.IGNORECASE)
@@ -88,6 +95,18 @@ def _find_report_date(full_text: str) -> date:
     raise ValueError("PDF date not found (expected 'Prehled stravy <datum>').")
 
 
+def _find_report_range(full_text: str) -> tuple[date, date] | None:
+    normalized = _strip_accents(full_text)
+    match = DATE_RANGE_TITLE_RE.search(normalized)
+    if not match:
+        return None
+    start = _parse_date_candidate(match.group(1))
+    end = _parse_date_candidate(match.group(2))
+    if end < start:
+        return None
+    return start, end
+
+
 def _should_skip_line(line: str) -> bool:
     normalized = _normalize_line(line).lower()
     if not normalized:
@@ -140,6 +159,10 @@ def _collect_blocks(full_text: str) -> list[str]:
 
 
 def parse_breakfast_text(full_text: str) -> tuple[date, list[BreakfastRow]]:
+    report_range = _find_report_range(full_text)
+    if report_range and report_range[0] != report_range[1]:
+        return _parse_breakfast_overview_text(full_text, report_range)
+
     report_date = _find_report_date(full_text)
     blocks = _collect_blocks(full_text)
 
@@ -176,6 +199,100 @@ def parse_breakfast_text(full_text: str) -> tuple[date, list[BreakfastRow]]:
     ]
     rows.sort(key=lambda row: int(re.sub(r"\D", "", row.room) or "0"))
     return report_date, rows
+
+
+def _resolve_stay_year(
+    *,
+    day: int,
+    month: int,
+    report_start: date,
+    report_end: date,
+) -> int:
+    if report_start.year == report_end.year:
+        return report_start.year
+    if month >= report_start.month:
+        return report_start.year
+    return report_end.year
+
+
+def _parse_breakfast_overview_text(
+    full_text: str,
+    report_range: tuple[date, date],
+) -> tuple[date, list[BreakfastRow]]:
+    report_start, report_end = report_range
+    blocks = _collect_blocks(full_text)
+
+    rows: list[BreakfastRow] = []
+    for block in blocks:
+        room_match = re.match(r"^(\d{3})\b", block)
+        if not room_match:
+            continue
+        room = room_match.group(1)
+        rest = block[room_match.end() :].strip()
+
+        stay_match = STAY_RANGE_RE.search(rest)
+        if not stay_match:
+            continue
+
+        arrival_day = int(stay_match.group(1))
+        arrival_month = int(stay_match.group(2))
+        departure_day = int(stay_match.group(3))
+        departure_month = int(stay_match.group(4))
+
+        arrival_year = _resolve_stay_year(
+            day=arrival_day,
+            month=arrival_month,
+            report_start=report_start,
+            report_end=report_end,
+        )
+        departure_year = _resolve_stay_year(
+            day=departure_day,
+            month=departure_month,
+            report_start=report_start,
+            report_end=report_end,
+        )
+        if departure_month < arrival_month:
+            departure_year = arrival_year + 1
+
+        try:
+            arrival = date(arrival_year, arrival_month, arrival_day)
+            departure = date(departure_year, departure_month, departure_day)
+        except ValueError:
+            continue
+
+        nights = (departure - arrival).days
+        if nights <= 0:
+            continue
+
+        numbers = [int(number) for number in re.findall(r"\d+", rest[stay_match.end() :])]
+        if len(numbers) < 2:
+            continue
+        breakfast_total = numbers[1]
+        if breakfast_total <= 0:
+            continue
+
+        guest_clean = _extract_guest_name(rest[: stay_match.start()].strip(" -;|"))
+        per_day = breakfast_total // nights
+        remainder = breakfast_total % nights
+
+        for night_index in range(nights):
+            count = per_day + (1 if night_index < remainder else 0)
+            if count <= 0:
+                continue
+            breakfast_day = arrival + timedelta(days=night_index + 1)
+            if breakfast_day < report_start or breakfast_day > report_end:
+                continue
+            rows.append(
+                BreakfastRow(
+                    day=breakfast_day,
+                    room=room,
+                    breakfast_count=count,
+                    guest_name=guest_clean or None,
+                )
+            )
+
+    rows.sort(key=lambda row: (row.day.isoformat(), int(re.sub(r"\D", "", row.room) or "0")))
+    return report_start, rows
 
 
 def parse_breakfast_pdf(pdf_bytes: bytes) -> tuple[date, list[BreakfastRow]]:
