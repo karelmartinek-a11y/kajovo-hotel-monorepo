@@ -215,71 +215,76 @@ class BreakfastMailFetcher:
             for uid in reversed(uids):
                 scanned_messages += 1
                 uid_text = uid.decode("utf-8", "ignore")
-                typ, parts = client.fetch(uid, "(RFC822)")
-                if typ != "OK" or not parts:
-                    errors.append(f"UID {uid_text}: fetch selhal")
-                    continue
-                raw = parts[0][1] if isinstance(parts[0], tuple) else b""
-                if not raw:
-                    continue
-                msg = email.message_from_bytes(raw)
-                from_header = _decode_header_value(msg.get("From")).lower()
-                subject = _decode_header_value(msg.get("Subject")).lower()
-                if config.from_contains.lower() not in from_header:
-                    continue
-                if config.subject_contains and config.subject_contains.lower() not in subject:
-                    continue
-                matched_messages += 1
-                for _, pdf_bytes in _iter_pdf_attachments(msg):
-                    attachment_hash = hashlib.sha256(pdf_bytes).hexdigest()
-                    parsed = db.scalar(
-                        select(BreakfastImportProcessedAttachment).where(
-                            BreakfastImportProcessedAttachment.message_uid == uid_text,
-                            BreakfastImportProcessedAttachment.attachment_hash == attachment_hash,
-                        )
-                    )
-                    if parsed is not None:
+                try:
+                    typ, parts = client.fetch(uid, "(RFC822)")
+                    if typ != "OK" or not parts:
+                        errors.append(f"UID {uid_text}: fetch selhal")
                         continue
-                    try:
-                        parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
-                    except ValueError:
-                        errors.append(f"UID {uid_text}: příloha není validní PDF snídaní")
+                    raw = parts[0][1] if isinstance(parts[0], tuple) else b""
+                    if not raw:
                         continue
-                    now_day = now_local.date()
-                    preserve_diets = parsed_day > now_day
-                    diet_map = self._preserve_diets(db, parsed_day) if preserve_diets else {}
-                    existing_count = db.query(BreakfastOrder).filter(
-                        BreakfastOrder.service_date == parsed_day
-                    ).count()
-                    db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
-                        synchronize_session=False
-                    )
-                    for row in rows:
-                        preserved = diet_map.get(str(row.room), {})
-                        db.add(
-                            BreakfastOrder(
-                                service_date=parsed_day,
-                                room_number=row.room,
-                                guest_name=row.guest_name or f"Pokoj {row.room}",
-                                guest_count=max(1, int(row.breakfast_count)),
-                                status=BreakfastStatus.PENDING.value,
-                                note="Automatický import e-mailu",
-                                diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
-                                diet_no_milk=bool(preserved.get("diet_no_milk", False)),
-                                diet_no_pork=bool(preserved.get("diet_no_pork", False)),
+                    msg = email.message_from_bytes(raw)
+                    from_header = _decode_header_value(msg.get("From")).lower()
+                    subject = _decode_header_value(msg.get("Subject")).lower()
+                    if config.from_contains.lower() not in from_header:
+                        continue
+                    if config.subject_contains and config.subject_contains.lower() not in subject:
+                        continue
+                    matched_messages += 1
+                    for _, pdf_bytes in _iter_pdf_attachments(msg):
+                        attachment_hash = hashlib.sha256(pdf_bytes).hexdigest()
+                        parsed = db.scalar(
+                            select(BreakfastImportProcessedAttachment).where(
+                                BreakfastImportProcessedAttachment.message_uid == uid_text,
+                                BreakfastImportProcessedAttachment.attachment_hash == attachment_hash,
                             )
                         )
-                    db.add(
-                        BreakfastImportProcessedAttachment(
-                            message_uid=uid_text,
-                            attachment_hash=attachment_hash,
-                            parsed_day=parsed_day,
+                        if parsed is not None:
+                            continue
+                        try:
+                            parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
+                        except ValueError:
+                            errors.append(f"UID {uid_text}: pĹ™Ă­loha nenĂ­ validnĂ­ PDF snĂ­danĂ­")
+                            continue
+                        now_day = now_local.date()
+                        preserve_diets = parsed_day > now_day
+                        diet_map = self._preserve_diets(db, parsed_day) if preserve_diets else {}
+                        existing_count = db.query(BreakfastOrder).filter(
+                            BreakfastOrder.service_date == parsed_day
+                        ).count()
+                        db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
+                            synchronize_session=False
                         )
-                    )
-                    db.commit()
-                    imported_count += 1
-                    if preserve_diets and existing_count > 0:
-                        replaced_future_count += 1
+                        for row in rows:
+                            preserved = diet_map.get(str(row.room), {})
+                            db.add(
+                                BreakfastOrder(
+                                    service_date=parsed_day,
+                                    room_number=row.room,
+                                    guest_name=row.guest_name or f"Pokoj {row.room}",
+                                    guest_count=max(1, int(row.breakfast_count)),
+                                    status=BreakfastStatus.PENDING.value,
+                                    note="AutomatickĂ˝ import e-mailu",
+                                    diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
+                                    diet_no_milk=bool(preserved.get("diet_no_milk", False)),
+                                    diet_no_pork=bool(preserved.get("diet_no_pork", False)),
+                                )
+                            )
+                        db.add(
+                            BreakfastImportProcessedAttachment(
+                                message_uid=uid_text,
+                                attachment_hash=attachment_hash,
+                                parsed_day=parsed_day,
+                            )
+                        )
+                        db.commit()
+                        imported_count += 1
+                        if preserve_diets and existing_count > 0:
+                            replaced_future_count += 1
+                except Exception as exc:
+                    db.rollback()
+                    errors.append(f"UID {uid_text}: neočekávaná chyba importu ({type(exc).__name__})")
+                    log.exception("breakfast.mail_fetcher.uid_failed", extra={"uid": uid_text})
         finally:
             try:
                 client.logout()
