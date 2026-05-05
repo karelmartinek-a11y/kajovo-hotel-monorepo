@@ -3,10 +3,13 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
+    BreakfastImportLogEntry,
+    BreakfastImportMailboxSettingsRead,
+    BreakfastImportMailboxSettingsUpsert,
     SmtpOperationalStatusRead,
     SmtpSettingsRead,
     SmtpSettingsUpsert,
@@ -14,7 +17,7 @@ from app.api.schemas import (
     SmtpTestEmailResponse,
 )
 from app.config import get_settings
-from app.db.models import PortalSmtpSettings
+from app.db.models import BreakfastImportMailboxSettings, BreakfastImportRunLog, PortalSmtpSettings
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
 from app.services.mail import (
@@ -27,6 +30,9 @@ from app.services.mail import (
     to_read_model,
     to_stored_config,
     validate_smtp_security_mode,
+    decrypt_secret,
+    encrypt_secret,
+    mask_secret,
 )
 
 router = APIRouter(
@@ -425,3 +431,98 @@ def test_smtp_email(
         send_attempted=result.send_attempted,
         message=message,
     )
+
+
+def _default_breakfast_mailbox_settings() -> BreakfastImportMailboxSettingsRead:
+    defaults = get_settings()
+    return BreakfastImportMailboxSettingsRead(
+        enabled=True,
+        host=defaults.breakfast_imap_host,
+        port=defaults.breakfast_imap_port,
+        use_ssl=defaults.breakfast_imap_use_ssl,
+        mailbox=defaults.breakfast_imap_mailbox,
+        username=defaults.breakfast_imap_username,
+        password_masked="",
+        from_contains=defaults.breakfast_imap_from_contains
+        or "noreply=better-hotel.com@mg2.better-hotel.com",
+        subject_contains=defaults.breakfast_imap_subject_contains,
+    )
+
+
+@router.get("/breakfast-mailbox", response_model=BreakfastImportMailboxSettingsRead)
+def get_breakfast_mailbox_settings(db: Session = Depends(get_db)) -> BreakfastImportMailboxSettingsRead:
+    row = db.get(BreakfastImportMailboxSettings, 1)
+    if row is None:
+        return _default_breakfast_mailbox_settings()
+    password_masked = ""
+    if row.password_encrypted:
+        try:
+            password_masked = mask_secret(decrypt_secret(row.password_encrypted, get_settings().smtp_encryption_key))
+        except Exception:
+            password_masked = ""
+    return BreakfastImportMailboxSettingsRead(
+        enabled=bool(row.enabled),
+        host=row.host,
+        port=row.port,
+        use_ssl=bool(row.use_ssl),
+        mailbox=row.mailbox,
+        username=row.username,
+        password_masked=password_masked,
+        from_contains=row.from_contains,
+        subject_contains=row.subject_contains,
+    )
+
+
+@router.put("/breakfast-mailbox", response_model=BreakfastImportMailboxSettingsRead)
+def put_breakfast_mailbox_settings(
+    payload: BreakfastImportMailboxSettingsUpsert,
+    db: Session = Depends(get_db),
+) -> BreakfastImportMailboxSettingsRead:
+    settings = get_settings()
+    row = db.get(BreakfastImportMailboxSettings, 1)
+    if row is None:
+        row = BreakfastImportMailboxSettings(id=1)
+    password = (payload.password or "").strip()
+    if not row.password_encrypted and not password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="IMAP heslo je povinné pro novou konfiguraci.",
+        )
+    if password:
+        row.password_encrypted = encrypt_secret(password, settings.smtp_encryption_key)
+    row.enabled = payload.enabled
+    row.host = payload.host.strip()
+    row.port = payload.port
+    row.use_ssl = payload.use_ssl
+    row.mailbox = payload.mailbox.strip()
+    row.username = payload.username.strip()
+    row.from_contains = payload.from_contains.strip()
+    row.subject_contains = payload.subject_contains.strip()
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return get_breakfast_mailbox_settings(db)
+
+
+@router.get("/breakfast-import-logs", response_model=list[BreakfastImportLogEntry])
+def get_breakfast_import_logs(
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> list[BreakfastImportLogEntry]:
+    safe_limit = max(1, min(limit, 500))
+    rows = db.scalars(
+        select(BreakfastImportRunLog)
+        .order_by(BreakfastImportRunLog.id.desc())
+        .limit(safe_limit)
+    ).all()
+    return [
+        BreakfastImportLogEntry(
+            id=row.id,
+            started_at=row.started_at,
+            finished_at=row.finished_at,
+            ok=bool(row.ok),
+            trigger=row.trigger,
+            details_json=row.details_json,
+        )
+        for row in rows
+    ]

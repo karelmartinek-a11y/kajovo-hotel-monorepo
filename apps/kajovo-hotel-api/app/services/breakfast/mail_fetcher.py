@@ -1,20 +1,44 @@
 from __future__ import annotations
 
 import email
+import hashlib
 import imaplib
+import json
 import logging
-import os
-from datetime import date, timedelta
+from dataclasses import dataclass
+from datetime import date, datetime
 from email.message import Message
-from pathlib import Path
+from zoneinfo import ZoneInfo
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.db.models import BreakfastOrder, BreakfastStatus
+from app.db.models import (
+    BreakfastImportMailboxSettings,
+    BreakfastImportProcessedAttachment,
+    BreakfastImportRunLog,
+    BreakfastOrder,
+    BreakfastStatus,
+)
 from app.services.breakfast.parser import parse_breakfast_pdf
+from app.services.mail import decrypt_secret
+from app.time_utils import utc_now
 
 log = logging.getLogger("kajovo.breakfast.mail_fetcher")
+
+SCHEDULE_TIMES = ("14:00", "16:00", "18:00", "20:00", "22:20", "23:50")
+DEFAULT_FROM = "noreply=better-hotel.com@mg2.better-hotel.com"
+
+
+@dataclass(frozen=True)
+class BreakfastImportRunResult:
+    ok: bool
+    imported_count: int
+    replaced_future_count: int
+    matched_messages: int
+    scanned_messages: int
+    errors: list[str]
 
 
 def _decode_header_value(value: str | None) -> str:
@@ -32,134 +56,206 @@ def _decode_header_value(value: str | None) -> str:
 
 def _iter_pdf_attachments(msg: Message) -> list[tuple[str, bytes]]:
     out: list[tuple[str, bytes]] = []
-
-    def _extract(part: Message) -> None:
+    for part in msg.walk() if msg.is_multipart() else [msg]:
+        if part.is_multipart():
+            continue
         ctype = (part.get_content_type() or "").lower()
         filename = _decode_header_value(part.get_filename() or "")
         is_pdf = filename.lower().endswith(".pdf") if filename else ctype == "application/pdf"
         if not is_pdf:
-            return
+            continue
         payload = part.get_payload(decode=True)
-        if isinstance(payload, (bytes, bytearray)):
+        if isinstance(payload, (bytes, bytearray)) and payload:
             out.append((filename or "attachment.pdf", bytes(payload)))
-
-    if msg.is_multipart():
-        for part in msg.walk():
-            if part.is_multipart():
-                continue
-            _extract(part)
-    else:
-        _extract(msg)
     return out
 
 
-def _match_message(msg: Message, from_contains: str, subject_contains: str) -> bool:
-    from_header = _decode_header_value(msg.get("From")).lower()
-    subject = _decode_header_value(msg.get("Subject")).lower()
-    if from_contains and from_contains.lower() not in from_header:
-        return False
-    if subject_contains and subject_contains.lower() not in subject:
-        return False
-    return True
-
-
-def _imap_date(value: date) -> str:
-    return value.strftime("%d-%b-%Y")
+def _is_scheduled_now(now_local: datetime) -> bool:
+    current = f"{now_local.hour:02d}:{now_local.minute:02d}"
+    return current in SCHEDULE_TIMES
 
 
 class BreakfastMailFetcher:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    def validate_configuration(self) -> list[str]:
-        missing: list[str] = []
-        required_fields = {
-            "breakfast_imap_host": self.settings.breakfast_imap_host,
-            "breakfast_imap_username": self.settings.breakfast_imap_username,
-            "breakfast_imap_password": self.settings.breakfast_imap_password,
-        }
-        for field_name, value in required_fields.items():
-            if not str(value).strip():
-                missing.append(field_name)
-        return missing
+    def _load_mailbox_settings(self, db: Session) -> BreakfastImportMailboxSettings:
+        row = db.get(BreakfastImportMailboxSettings, 1)
+        if row is not None:
+            return row
+        return BreakfastImportMailboxSettings(
+            id=1,
+            enabled=True,
+            host=self.settings.breakfast_imap_host,
+            port=self.settings.breakfast_imap_port,
+            use_ssl=self.settings.breakfast_imap_use_ssl,
+            mailbox=self.settings.breakfast_imap_mailbox,
+            username=self.settings.breakfast_imap_username,
+            password_encrypted="",
+            from_contains=self.settings.breakfast_imap_from_contains or DEFAULT_FROM,
+            subject_contains=self.settings.breakfast_imap_subject_contains,
+        )
 
-    def _connect(self) -> imaplib.IMAP4:
-        if self.settings.breakfast_imap_use_ssl:
-            client = imaplib.IMAP4_SSL(
-                self.settings.breakfast_imap_host, self.settings.breakfast_imap_port
-            )
+    def _connect(self, config: BreakfastImportMailboxSettings) -> imaplib.IMAP4:
+        password = decrypt_secret(config.password_encrypted, self.settings.smtp_encryption_key)
+        if config.use_ssl:
+            client = imaplib.IMAP4_SSL(config.host, config.port)
         else:
-            client = imaplib.IMAP4(
-                self.settings.breakfast_imap_host, self.settings.breakfast_imap_port
-            )
-        client.login(self.settings.breakfast_imap_username, self.settings.breakfast_imap_password)
+            client = imaplib.IMAP4(config.host, config.port)
+        client.login(config.username, password)
         return client
 
-    def fetch_and_store_for_day(self, db: Session, day: date) -> bool:
-        missing = self.validate_configuration()
-        if missing:
-            log.warning(
-                "Breakfast IMAP import skipped due to missing configuration",
-                extra={"context": {"day": day.isoformat(), "missing": missing}},
+    def _preserve_diets(self, db: Session, service_day: date) -> dict[str, dict[str, bool]]:
+        current = db.scalars(
+            select(BreakfastOrder).where(BreakfastOrder.service_date == service_day)
+        ).all()
+        return {
+            row.room_number: {
+                "diet_no_gluten": bool(row.diet_no_gluten),
+                "diet_no_milk": bool(row.diet_no_milk),
+                "diet_no_pork": bool(row.diet_no_pork),
+            }
+            for row in current
+        }
+
+    def run_mailbox_import(self, db: Session, *, trigger: str = "scheduler") -> BreakfastImportRunResult:
+        started_at = utc_now()
+        scanned_messages = 0
+        matched_messages = 0
+        imported_count = 0
+        replaced_future_count = 0
+        errors: list[str] = []
+
+        config = self._load_mailbox_settings(db)
+        now_local = utc_now().astimezone(ZoneInfo("Europe/Prague"))
+        if trigger == "scheduler" and not _is_scheduled_now(now_local):
+            return BreakfastImportRunResult(
+                ok=True,
+                imported_count=0,
+                replaced_future_count=0,
+                matched_messages=0,
+                scanned_messages=0,
+                errors=[],
             )
-            return False
+        if not config.enabled:
+            return BreakfastImportRunResult(
+                ok=True,
+                imported_count=0,
+                replaced_future_count=0,
+                matched_messages=0,
+                scanned_messages=0,
+                errors=[],
+            )
+
+        missing = [
+            name
+            for name, value in {
+                "host": config.host,
+                "username": config.username,
+                "password_encrypted": config.password_encrypted,
+            }.items()
+            if not str(value).strip()
+        ]
+        if missing:
+            return self._persist_log(
+                db,
+                started_at=started_at,
+                ok=False,
+                trigger=trigger,
+                scanned_messages=0,
+                matched_messages=0,
+                imported_count=0,
+                replaced_future_count=0,
+                errors=[f"Chybí konfigurace: {', '.join(missing)}"],
+            )
 
         try:
-            client = self._connect()
-        except imaplib.IMAP4.error:
-            log.exception("Breakfast IMAP login failed for %s", day.isoformat())
-            return False
-        except OSError:
-            log.exception("Breakfast IMAP connection failed for %s", day.isoformat())
-            return False
+            client = self._connect(config)
+        except Exception as exc:
+            return self._persist_log(
+                db,
+                started_at=started_at,
+                ok=False,
+                trigger=trigger,
+                scanned_messages=0,
+                matched_messages=0,
+                imported_count=0,
+                replaced_future_count=0,
+                errors=[f"Přihlášení do schránky selhalo: {exc}"],
+            )
 
         try:
-            typ, _ = client.select(self.settings.breakfast_imap_mailbox)
+            typ, _ = client.select(config.mailbox or "INBOX")
             if typ != "OK":
-                log.warning("Breakfast IMAP mailbox select failed for %s", day.isoformat())
-                return False
-
-            since = _imap_date(day)
-            before = _imap_date(day + timedelta(days=1))
-            typ, data = client.search(None, "SINCE", since, "BEFORE", before)
+                return self._persist_log(
+                    db,
+                    started_at=started_at,
+                    ok=False,
+                    trigger=trigger,
+                    scanned_messages=0,
+                    matched_messages=0,
+                    imported_count=0,
+                    replaced_future_count=0,
+                    errors=["Výběr schránky selhal"],
+                )
+            typ, data = client.search(None, "ALL")
             if typ != "OK" or not data:
-                log.warning("Breakfast IMAP search failed for %s", day.isoformat())
-                return False
+                return self._persist_log(
+                    db,
+                    started_at=started_at,
+                    ok=True,
+                    trigger=trigger,
+                    scanned_messages=0,
+                    matched_messages=0,
+                    imported_count=0,
+                    replaced_future_count=0,
+                    errors=[],
+                )
             uids = data[0].split()
             for uid in reversed(uids):
+                scanned_messages += 1
+                uid_text = uid.decode("utf-8", "ignore")
                 typ, parts = client.fetch(uid, "(RFC822)")
                 if typ != "OK" or not parts:
-                    log.warning(
-                        "Breakfast IMAP fetch failed for uid=%s",
-                        uid.decode("utf-8", "ignore"),
-                    )
+                    errors.append(f"UID {uid_text}: fetch selhal")
                     continue
                 raw = parts[0][1] if isinstance(parts[0], tuple) else b""
                 if not raw:
                     continue
                 msg = email.message_from_bytes(raw)
-                if not _match_message(
-                    msg,
-                    self.settings.breakfast_imap_from_contains,
-                    self.settings.breakfast_imap_subject_contains,
-                ):
+                from_header = _decode_header_value(msg.get("From")).lower()
+                subject = _decode_header_value(msg.get("Subject")).lower()
+                if config.from_contains.lower() not in from_header:
                     continue
-                attachments = _iter_pdf_attachments(msg)
-                for _, pdf_bytes in attachments:
+                if config.subject_contains and config.subject_contains.lower() not in subject:
+                    continue
+                matched_messages += 1
+                for _, pdf_bytes in _iter_pdf_attachments(msg):
+                    attachment_hash = hashlib.sha256(pdf_bytes).hexdigest()
+                    parsed = db.scalar(
+                        select(BreakfastImportProcessedAttachment).where(
+                            BreakfastImportProcessedAttachment.message_uid == uid_text,
+                            BreakfastImportProcessedAttachment.attachment_hash == attachment_hash,
+                        )
+                    )
+                    if parsed is not None:
+                        continue
                     try:
                         parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
                     except ValueError:
-                        log.warning(
-                            "Breakfast IMAP attachment is not a valid breakfast PDF",
-                            extra={"context": {"day": day.isoformat()}},
-                        )
+                        errors.append(f"UID {uid_text}: příloha není validní PDF snídaní")
                         continue
-                    if parsed_day != day:
-                        continue
+                    now_day = now_local.date()
+                    preserve_diets = parsed_day > now_day
+                    diet_map = self._preserve_diets(db, parsed_day) if preserve_diets else {}
+                    existing_count = db.query(BreakfastOrder).filter(
+                        BreakfastOrder.service_date == parsed_day
+                    ).count()
                     db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
                         synchronize_session=False
                     )
                     for row in rows:
+                        preserved = diet_map.get(str(row.room), {})
                         db.add(
                             BreakfastOrder(
                                 service_date=parsed_day,
@@ -167,19 +263,76 @@ class BreakfastMailFetcher:
                                 guest_name=row.guest_name or f"Pokoj {row.room}",
                                 guest_count=max(1, int(row.breakfast_count)),
                                 status=BreakfastStatus.PENDING.value,
-                                note="Import IMAP",
+                                note="Automatický import e-mailu",
+                                diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
+                                diet_no_milk=bool(preserved.get("diet_no_milk", False)),
+                                diet_no_pork=bool(preserved.get("diet_no_pork", False)),
                             )
                         )
-                    archive_dir = Path(self.settings.media_root) / "breakfast" / "imports"
-                    os.makedirs(archive_dir, exist_ok=True)
-                    (archive_dir / f"{parsed_day.isoformat()}-imap.pdf").write_bytes(pdf_bytes)
+                    db.add(
+                        BreakfastImportProcessedAttachment(
+                            message_uid=uid_text,
+                            attachment_hash=attachment_hash,
+                            parsed_day=parsed_day,
+                        )
+                    )
                     db.commit()
-                    log.info("Breakfast IMAP import completed for %s", parsed_day.isoformat())
-                    return True
-            log.info("Breakfast IMAP finished without matching PDF for %s", day.isoformat())
-            return False
+                    imported_count += 1
+                    if preserve_diets and existing_count > 0:
+                        replaced_future_count += 1
         finally:
             try:
                 client.logout()
             except Exception:
                 pass
+        return self._persist_log(
+            db,
+            started_at=started_at,
+            ok=len(errors) == 0,
+            trigger=trigger,
+            scanned_messages=scanned_messages,
+            matched_messages=matched_messages,
+            imported_count=imported_count,
+            replaced_future_count=replaced_future_count,
+            errors=errors,
+        )
+
+    def _persist_log(
+        self,
+        db: Session,
+        *,
+        started_at: datetime,
+        ok: bool,
+        trigger: str,
+        scanned_messages: int,
+        matched_messages: int,
+        imported_count: int,
+        replaced_future_count: int,
+        errors: list[str],
+    ) -> BreakfastImportRunResult:
+        finished_at = utc_now()
+        details = {
+            "scanned_messages": scanned_messages,
+            "matched_messages": matched_messages,
+            "imported_count": imported_count,
+            "replaced_future_count": replaced_future_count,
+            "errors": errors,
+        }
+        db.add(
+            BreakfastImportRunLog(
+                started_at=started_at,
+                finished_at=finished_at,
+                ok=ok,
+                trigger=trigger,
+                details_json=json.dumps(details, ensure_ascii=False),
+            )
+        )
+        db.commit()
+        return BreakfastImportRunResult(
+            ok=ok,
+            imported_count=imported_count,
+            replaced_future_count=replaced_future_count,
+            matched_messages=matched_messages,
+            scanned_messages=scanned_messages,
+            errors=errors,
+        )

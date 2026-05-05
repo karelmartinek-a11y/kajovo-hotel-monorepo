@@ -448,6 +448,170 @@
         "title": "BreakfastImportItem",
         "type": "object"
       },
+      "BreakfastImportLogEntry": {
+        "properties": {
+          "details_json": {
+            "title": "Details Json",
+            "type": "string"
+          },
+          "finished_at": {
+            "format": "date-time",
+            "title": "Finished At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "finished_at",
+          "ok",
+          "trigger",
+          "details_json"
+        ],
+        "title": "BreakfastImportLogEntry",
+        "type": "object"
+      },
+      "BreakfastImportMailboxSettingsRead": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "from_contains": {
+            "title": "From Contains",
+            "type": "string"
+          },
+          "host": {
+            "title": "Host",
+            "type": "string"
+          },
+          "mailbox": {
+            "title": "Mailbox",
+            "type": "string"
+          },
+          "password_masked": {
+            "title": "Password Masked",
+            "type": "string"
+          },
+          "port": {
+            "title": "Port",
+            "type": "integer"
+          },
+          "subject_contains": {
+            "title": "Subject Contains",
+            "type": "string"
+          },
+          "use_ssl": {
+            "title": "Use Ssl",
+            "type": "boolean"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "host",
+          "port",
+          "use_ssl",
+          "mailbox",
+          "username",
+          "password_masked",
+          "from_contains",
+          "subject_contains"
+        ],
+        "title": "BreakfastImportMailboxSettingsRead",
+        "type": "object"
+      },
+      "BreakfastImportMailboxSettingsUpsert": {
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "from_contains": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "From Contains",
+            "type": "string"
+          },
+          "host": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Host",
+            "type": "string"
+          },
+          "mailbox": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Mailbox",
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "port": {
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "title": "Port",
+            "type": "integer"
+          },
+          "subject_contains": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Subject Contains",
+            "type": "string"
+          },
+          "use_ssl": {
+            "default": true,
+            "title": "Use Ssl",
+            "type": "boolean"
+          },
+          "username": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "mailbox",
+          "username",
+          "from_contains"
+        ],
+        "title": "BreakfastImportMailboxSettingsUpsert",
+        "type": "object"
+      },
       "BreakfastImportResponse": {
         "properties": {
           "date": {
@@ -4346,6 +4510,113 @@
         "summary": "Update Admin Profile",
         "tags": [
           "profile"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/breakfast-import-logs": {
+      "get": {
+        "operationId": "get_breakfast_import_logs_api_v1_admin_settings_breakfast_import_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BreakfastImportLogEntry"
+                  },
+                  "title": "Response Get Breakfast Import Logs Api V1 Admin Settings Breakfast Import Logs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Breakfast Import Logs",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/breakfast-mailbox": {
+      "get": {
+        "operationId": "get_breakfast_mailbox_settings_api_v1_admin_settings_breakfast_mailbox_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastImportMailboxSettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Breakfast Mailbox Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "put_breakfast_mailbox_settings_api_v1_admin_settings_breakfast_mailbox_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreakfastImportMailboxSettingsUpsert"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastImportMailboxSettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Breakfast Mailbox Settings",
+        "tags": [
+          "settings"
         ]
       }
     },

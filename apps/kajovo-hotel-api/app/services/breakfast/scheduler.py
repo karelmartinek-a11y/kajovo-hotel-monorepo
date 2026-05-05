@@ -20,6 +20,10 @@ class BreakfastSchedulerResult:
     service_date: str
     attempt: int
     imported: bool
+    imported_count: int = 0
+    replaced_future_count: int = 0
+    matched_messages: int = 0
+    scanned_messages: int = 0
     error: str | None = None
 
 
@@ -50,12 +54,17 @@ def run_breakfast_scheduler_iteration(
     service_day = target_day or utc_today()
     db = SessionLocal()
     try:
-        imported = fetcher.fetch_and_store_for_day(db, service_day)
+        run_result = fetcher.run_mailbox_import(db, trigger="scheduler")
         result = BreakfastSchedulerResult(
-            ok=True,
+            ok=run_result.ok,
             service_date=service_day.isoformat(),
             attempt=attempt,
-            imported=imported,
+            imported=run_result.imported_count > 0,
+            imported_count=run_result.imported_count,
+            replaced_future_count=run_result.replaced_future_count,
+            matched_messages=run_result.matched_messages,
+            scanned_messages=run_result.scanned_messages,
+            error="; ".join(run_result.errors) if run_result.errors else None,
         )
         _write_runtime_artifact(result)
         return result

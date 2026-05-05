@@ -77,6 +77,36 @@ export type BreakfastImportItem = {
   "guest_name"?: string | null;
   "room": number;
 };
+export type BreakfastImportLogEntry = {
+  "details_json": string;
+  "finished_at": string;
+  "id": number;
+  "ok": boolean;
+  "started_at": string;
+  "trigger": string;
+};
+export type BreakfastImportMailboxSettingsRead = {
+  "enabled": boolean;
+  "from_contains": string;
+  "host": string;
+  "mailbox": string;
+  "password_masked": string;
+  "port": number;
+  "subject_contains": string;
+  "use_ssl": boolean;
+  "username": string;
+};
+export type BreakfastImportMailboxSettingsUpsert = {
+  "enabled"?: boolean;
+  "from_contains": string;
+  "host": string;
+  "mailbox": string;
+  "password"?: string | null;
+  "port": number;
+  "subject_contains"?: string;
+  "use_ssl"?: boolean;
+  "username": string;
+};
 export type BreakfastImportResponse = {
   "date": string;
   "items": Array<BreakfastImportItem>;
@@ -624,6 +654,15 @@ export const apiClient = {
   },
   async updateAdminProfileApiV1AdminProfilePut(body: AdminProfileUpdate): Promise<AdminProfileRead> {
     return request<AdminProfileRead>('PUT', `/api/v1/admin/profile`, undefined, body);
+  },
+  async getBreakfastImportLogsApiV1AdminSettingsBreakfastImportLogsGet(query: { "limit"?: number; }): Promise<Array<BreakfastImportLogEntry>> {
+    return request<Array<BreakfastImportLogEntry>>('GET', `/api/v1/admin/settings/breakfast-import-logs`, query, undefined);
+  },
+  async getBreakfastMailboxSettingsApiV1AdminSettingsBreakfastMailboxGet(): Promise<BreakfastImportMailboxSettingsRead> {
+    return request<BreakfastImportMailboxSettingsRead>('GET', `/api/v1/admin/settings/breakfast-mailbox`, undefined, undefined);
+  },
+  async putBreakfastMailboxSettingsApiV1AdminSettingsBreakfastMailboxPut(body: BreakfastImportMailboxSettingsUpsert): Promise<BreakfastImportMailboxSettingsRead> {
+    return request<BreakfastImportMailboxSettingsRead>('PUT', `/api/v1/admin/settings/breakfast-mailbox`, undefined, body);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);

@@ -319,6 +319,27 @@ type SmtpOperationalStatusReadModel = {
   last_test_error: string | null;
 };
 
+type BreakfastMailboxSettingsReadModel = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  use_ssl: boolean;
+  mailbox: string;
+  username: string;
+  password_masked: string;
+  from_contains: string;
+  subject_contains: string;
+};
+
+type BreakfastImportLogEntryReadModel = {
+  id: number;
+  started_at: string;
+  finished_at: string;
+  ok: boolean;
+  trigger: string;
+  details_json: string;
+};
+
 function smtpSecurityHint(port: number, useTls: boolean, useSsl: boolean): string {
   if (useTls && useSsl) {
     return 'TLS i SSL nelze pouzit soucasne. Zvolte pouze jeden rezim.';
@@ -921,6 +942,31 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
       headers,
       body: JSON.stringify(body),
     });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-mailbox' && method === 'GET') {
+    const response = await fetch(path, { credentials: 'include' });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-mailbox' && method === 'PUT') {
+    const csrf = readCsrfToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'PUT',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-import-logs' && method === 'GET') {
+    const response = await fetch(`${path}${url.search}`, { credentials: 'include' });
     if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
@@ -4069,6 +4115,16 @@ function SettingsAdmin(): JSX.Element {
   const [loadedConfig, setLoadedConfig] = React.useState<SmtpSettingsSnapshot | null>(null);
   const [status, setStatus] = React.useState<SmtpOperationalStatusReadModel | null>(null);
   const [mailDialog, setMailDialog] = React.useState<MailActionDialogState | null>(null);
+  const [mailboxEnabled, setMailboxEnabled] = React.useState(true);
+  const [mailboxHost, setMailboxHost] = React.useState('');
+  const [mailboxPort, setMailboxPort] = React.useState(993);
+  const [mailboxUseSsl, setMailboxUseSsl] = React.useState(true);
+  const [mailboxName, setMailboxName] = React.useState('INBOX');
+  const [mailboxUsername, setMailboxUsername] = React.useState('');
+  const [mailboxPassword, setMailboxPassword] = React.useState('');
+  const [mailboxFromContains, setMailboxFromContains] = React.useState('noreply=better-hotel.com@mg2.better-hotel.com');
+  const [mailboxSubjectContains, setMailboxSubjectContains] = React.useState('');
+  const [mailboxLogs, setMailboxLogs] = React.useState<BreakfastImportLogEntryReadModel[]>([]);
 
   const load = React.useCallback((options?: { preserveMessage?: boolean }) => {
     setLoading(true);
@@ -4079,13 +4135,31 @@ function SettingsAdmin(): JSX.Element {
     void Promise.allSettled([
       fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp'),
       fetchJson<SmtpOperationalStatusReadModel>('/api/v1/admin/settings/smtp/status'),
+      fetchJson<BreakfastMailboxSettingsReadModel>('/api/v1/admin/settings/breakfast-mailbox'),
+      fetchJson<BreakfastImportLogEntryReadModel[]>('/api/v1/admin/settings/breakfast-import-logs?limit=100'),
     ])
-      .then(([settingsResult, statusResult]) => {
+      .then(([settingsResult, statusResult, mailboxResult, logsResult]) => {
         const smtpStatus = statusResult.status === 'fulfilled' ? statusResult.value : null;
         if (statusResult.status === 'fulfilled') {
           setStatus(statusResult.value);
         } else {
           setStatus(null);
+        }
+        if (mailboxResult.status === 'fulfilled') {
+          const mailbox = mailboxResult.value;
+          setMailboxEnabled(mailbox.enabled);
+          setMailboxHost(mailbox.host);
+          setMailboxPort(mailbox.port);
+          setMailboxUseSsl(mailbox.use_ssl);
+          setMailboxName(mailbox.mailbox);
+          setMailboxUsername(mailbox.username);
+          setMailboxFromContains(mailbox.from_contains);
+          setMailboxSubjectContains(mailbox.subject_contains);
+        }
+        if (logsResult.status === 'fulfilled') {
+          setMailboxLogs(logsResult.value);
+        } else {
+          setMailboxLogs([]);
         }
         if (settingsResult.status === 'fulfilled') {
           const data = settingsResult.value;
@@ -4173,6 +4247,20 @@ function SettingsAdmin(): JSX.Element {
           use_ssl: useSsl,
         }),
       });
+      await fetchJson<BreakfastMailboxSettingsReadModel>('/api/v1/admin/settings/breakfast-mailbox', {
+        method: 'PUT',
+        body: JSON.stringify({
+          enabled: mailboxEnabled,
+          host: mailboxHost.trim(),
+          port: Number(mailboxPort),
+          use_ssl: mailboxUseSsl,
+          mailbox: mailboxName.trim() || 'INBOX',
+          username: mailboxUsername.trim(),
+          password: mailboxPassword,
+          from_contains: mailboxFromContains.trim(),
+          subject_contains: mailboxSubjectContains.trim(),
+        }),
+      });
       setLoadedConfig({
         fromEmail: fromEmail.trim().toLowerCase(),
         host: host.trim(),
@@ -4183,6 +4271,7 @@ function SettingsAdmin(): JSX.Element {
       });
       setMessage('SMTP nastavení bylo uloženo.');
       setPassword('');
+      setMailboxPassword('');
       load({ preserveMessage: true });
     } catch (err) {
       const description = err instanceof Error && err.message.trim()
@@ -4350,6 +4439,50 @@ function SettingsAdmin(): JSX.Element {
               <button className="k-button secondary" type="button" onClick={() => void sendTestEmail()} disabled={saving}>{'Odeslat testovac\u00ed e-mail'}</button>
             </div>
           </div>
+        </Card>
+        <Card title="Automatický import snídaní z e-mailu">
+          <div className="k-form-grid">
+            <label className="k-role-label">
+              <input type="checkbox" checked={mailboxEnabled} onChange={(e) => setMailboxEnabled(e.target.checked)} /> Aktivní
+            </label>
+            <FormField id="imap_host" label="IMAP host">
+              <input id="imap_host" className="k-input" value={mailboxHost} onChange={(e) => setMailboxHost(e.target.value)} />
+            </FormField>
+            <FormField id="imap_port" label="IMAP port">
+              <input id="imap_port" className="k-input" type="number" value={mailboxPort} onChange={(e) => setMailboxPort(Number(e.target.value) || 0)} />
+            </FormField>
+            <label className="k-role-label">
+              <input type="checkbox" checked={mailboxUseSsl} onChange={(e) => setMailboxUseSsl(e.target.checked)} /> Použít SSL
+            </label>
+            <FormField id="imap_mailbox" label="Schránka">
+              <input id="imap_mailbox" className="k-input" value={mailboxName} onChange={(e) => setMailboxName(e.target.value)} />
+            </FormField>
+            <FormField id="imap_username" label="IMAP uživatel">
+              <input id="imap_username" className="k-input" value={mailboxUsername} onChange={(e) => setMailboxUsername(e.target.value)} />
+            </FormField>
+            <FormField id="imap_password" label="IMAP heslo">
+              <input id="imap_password" className="k-input" type="password" value={mailboxPassword} onChange={(e) => setMailboxPassword(e.target.value)} />
+            </FormField>
+            <FormField id="imap_from_filter" label="Filtr odesílatele">
+              <input id="imap_from_filter" className="k-input" value={mailboxFromContains} onChange={(e) => setMailboxFromContains(e.target.value)} />
+            </FormField>
+            <FormField id="imap_subject_filter" label="Filtr předmětu">
+              <input id="imap_subject_filter" className="k-input" value={mailboxSubjectContains} onChange={(e) => setMailboxSubjectContains(e.target.value)} />
+            </FormField>
+            <p className="k-muted">Plán běhů je pevný: 14:00, 16:00, 18:00, 20:00, 22:20, 23:50 (Europe/Prague).</p>
+          </div>
+        </Card>
+        <Card title="Forenzní log importu snídaní">
+          <DataTable
+            headers={['Start', 'Konec', 'Stav', 'Spouštěč', 'Detaily']}
+            rows={mailboxLogs.map((item) => ([
+              formatDateTime(item.started_at),
+              formatDateTime(item.finished_at),
+              item.ok ? 'OK' : 'CHYBA',
+              item.trigger,
+              item.details_json,
+            ]))}
+          />
         </Card>
         </>
       )}

@@ -747,6 +747,39 @@ class SmtpTestEmailResponse(BaseModel):
     message: str
 
 
+class BreakfastImportMailboxSettingsUpsert(BaseModel):
+    enabled: bool = True
+    host: str = Field(min_length=1, max_length=255)
+    port: int = Field(ge=1, le=65535)
+    use_ssl: bool = True
+    mailbox: str = Field(min_length=1, max_length=128)
+    username: str = Field(min_length=1, max_length=255)
+    password: str | None = Field(default=None, max_length=1024)
+    from_contains: str = Field(min_length=1, max_length=255)
+    subject_contains: str = Field(default="", max_length=255)
+
+
+class BreakfastImportMailboxSettingsRead(BaseModel):
+    enabled: bool
+    host: str
+    port: int
+    use_ssl: bool
+    mailbox: str
+    username: str
+    password_masked: str
+    from_contains: str
+    subject_contains: str
+
+
+class BreakfastImportLogEntry(BaseModel):
+    id: int
+    started_at: datetime
+    finished_at: datetime
+    ok: bool
+    trigger: str
+    details_json: str
+
+
 class MailDispatchResponse(BaseModel):
     ok: bool
     connected: bool
