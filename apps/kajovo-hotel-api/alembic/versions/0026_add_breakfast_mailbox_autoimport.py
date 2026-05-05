@@ -1,6 +1,6 @@
 """Add breakfast mailbox autoimport tables.
 
-Revision ID: 0026_add_breakfast_mailbox_autoimport
+Revision ID: 0026_breakfast_mail_autoimport
 Revises: 0025_add_smtp_from_email
 Create Date: 2026-05-05
 """
@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "0026_add_breakfast_mailbox_autoimport"
+revision: str = "0026_breakfast_mail_autoimport"
 down_revision: str | None = "0025_add_smtp_from_email"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
