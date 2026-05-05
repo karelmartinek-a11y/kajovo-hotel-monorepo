@@ -48,7 +48,10 @@ def _decode_header_value(value: str | None) -> str:
     out: list[str] = []
     for part, encoding in parts:
         if isinstance(part, bytes):
-            out.append(part.decode(encoding or "utf-8", errors="replace"))
+            try:
+                out.append(part.decode(encoding or "utf-8", errors="replace"))
+            except LookupError:
+                out.append(part.decode("utf-8", errors="replace"))
         else:
             out.append(str(part))
     return "".join(out).strip()
