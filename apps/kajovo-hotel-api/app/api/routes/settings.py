@@ -27,12 +27,12 @@ from app.services.mail import (
     SmtpSettingsPayload,
     StoredSmtpConfig,
     build_email_service,
-    to_read_model,
-    to_stored_config,
-    validate_smtp_security_mode,
     decrypt_secret,
     encrypt_secret,
     mask_secret,
+    to_read_model,
+    to_stored_config,
+    validate_smtp_security_mode,
 )
 
 router = APIRouter(
