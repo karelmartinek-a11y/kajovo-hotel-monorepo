@@ -5,6 +5,7 @@ import hashlib
 import imaplib
 import json
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 from email.message import Message
@@ -250,29 +251,37 @@ class BreakfastMailFetcher:
                             errors.append(f"UID {uid_text}: pĹ™Ă­loha nenĂ­ validnĂ­ PDF snĂ­danĂ­")
                             continue
                         now_day = now_local.date()
-                        preserve_diets = parsed_day > now_day
-                        diet_map = self._preserve_diets(db, parsed_day) if preserve_diets else {}
-                        existing_count = db.query(BreakfastOrder).filter(
-                            BreakfastOrder.service_date == parsed_day
-                        ).count()
-                        db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
-                            synchronize_session=False
-                        )
+                        rows_by_day: dict[date, list] = defaultdict(list)
                         for row in rows:
-                            preserved = diet_map.get(str(row.room), {})
-                            db.add(
-                                BreakfastOrder(
-                                    service_date=parsed_day,
-                                    room_number=row.room,
-                                    guest_name=row.guest_name or f"Pokoj {row.room}",
-                                    guest_count=max(1, int(row.breakfast_count)),
-                                    status=BreakfastStatus.PENDING.value,
-                                    note="AutomatickĂ˝ import e-mailu",
-                                    diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
-                                    diet_no_milk=bool(preserved.get("diet_no_milk", False)),
-                                    diet_no_pork=bool(preserved.get("diet_no_pork", False)),
-                                )
+                            rows_by_day[row.day].append(row)
+                        for target_day, day_rows in rows_by_day.items():
+                            if target_day < now_day:
+                                continue
+                            preserve_diets = target_day > now_day
+                            diet_map = self._preserve_diets(db, target_day) if preserve_diets else {}
+                            existing_count = db.query(BreakfastOrder).filter(
+                                BreakfastOrder.service_date == target_day
+                            ).count()
+                            db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
+                                synchronize_session=False
                             )
+                            for row in day_rows:
+                                preserved = diet_map.get(str(row.room), {})
+                                db.add(
+                                    BreakfastOrder(
+                                        service_date=row.day,
+                                        room_number=row.room,
+                                        guest_name=row.guest_name or f"Pokoj {row.room}",
+                                        guest_count=max(1, int(row.breakfast_count)),
+                                        status=BreakfastStatus.PENDING.value,
+                                        note="Automatický import e-mailu",
+                                        diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
+                                        diet_no_milk=bool(preserved.get("diet_no_milk", False)),
+                                        diet_no_pork=bool(preserved.get("diet_no_pork", False)),
+                                    )
+                                )
+                            if preserve_diets and existing_count > 0:
+                                replaced_future_count += 1
                         db.add(
                             BreakfastImportProcessedAttachment(
                                 message_uid=uid_text,
@@ -282,8 +291,6 @@ class BreakfastMailFetcher:
                         )
                         db.commit()
                         imported_count += 1
-                        if preserve_diets and existing_count > 0:
-                            replaced_future_count += 1
                 except Exception as exc:
                     db.rollback()
                     errors.append(f"UID {uid_text}: neočekávaná chyba importu ({type(exc).__name__})")

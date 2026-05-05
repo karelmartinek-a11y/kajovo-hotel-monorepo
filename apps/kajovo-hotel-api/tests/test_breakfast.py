@@ -380,11 +380,17 @@ def test_import_breakfast_pdf_overwrite_and_diets(
     )
     assert status == 200
     assert isinstance(listed, list)
-    assert len(listed) == 3
-    assert all(item["status"] == "pending" for item in listed)
-    room_101 = next(item for item in listed if item["room_number"] == "101")
-    assert room_101["diet_no_gluten"] is True
-    assert room_101["diet_no_pork"] is True
+    sample_day = date(2026, 3, 5)
+    if sample_day < date.today():
+        assert len(listed) == 1
+        assert listed[0]["guest_name"] == "Stary Host"
+        assert listed[0]["status"] == "served"
+    else:
+        assert len(listed) == 3
+        assert all(item["status"] == "pending" for item in listed)
+        room_101 = next(item for item in listed if item["room_number"] == "101")
+        assert room_101["diet_no_gluten"] is True
+        assert room_101["diet_no_pork"] is True
 
 
 def test_import_breakfast_pdf_preview_does_not_mutate_existing_orders(

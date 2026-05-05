@@ -3,6 +3,7 @@ import os
 import re
 from datetime import date, datetime
 from io import BytesIO
+from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
@@ -34,6 +35,7 @@ from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
 from app.services.breakfast.parser import parse_breakfast_pdf
 from app.services.pdf.breakfast import build_breakfast_schedule_pdf
+from app.time_utils import utc_now
 
 router = APIRouter(
     prefix="/api/v1/breakfast",
@@ -113,6 +115,10 @@ def _parse_diet_overrides(raw: str | None) -> dict[str, dict[str, bool]]:
             "diet_no_pork": bool(item.get("diet_no_pork", False)),
         }
     return overrides
+
+
+def _today_prague() -> date:
+    return utc_now().astimezone(ZoneInfo("Europe/Prague")).date()
 
 
 @router.get("", response_model=list[BreakfastOrderRead])
@@ -407,12 +413,15 @@ def import_breakfast_pdf(
         )
 
     if save:
-        target_days = sorted({row.day for row in rows})
+        today = _today_prague()
+        target_days = sorted({row.day for row in rows if row.day >= today})
         for target_day in target_days:
             db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
                 synchronize_session=False
             )
         for row in rows:
+            if row.day < today:
+                continue
             override = diet_overrides.get(str(row.room), {})
             db.add(
                 BreakfastOrder(
