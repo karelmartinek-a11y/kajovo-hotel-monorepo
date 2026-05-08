@@ -7,7 +7,7 @@ import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from email.message import Message
 from zoneinfo import ZoneInfo
 
@@ -74,9 +74,23 @@ def _iter_pdf_attachments(msg: Message) -> list[tuple[str, bytes]]:
     return out
 
 
-def _is_scheduled_now(now_local: datetime) -> bool:
-    current = f"{now_local.hour:02d}:{now_local.minute:02d}"
-    return current in SCHEDULE_TIMES
+def _is_scheduled_now(now_local: datetime, interval_seconds: int) -> bool:
+    interval = max(60, int(interval_seconds))
+    window_start = now_local - timedelta(seconds=interval)
+    for schedule_time in SCHEDULE_TIMES:
+        hour_text, minute_text = schedule_time.split(":")
+        slot_time = now_local.replace(
+            hour=int(hour_text),
+            minute=int(minute_text),
+            second=0,
+            microsecond=0,
+        )
+        if window_start <= slot_time <= now_local:
+            return True
+        previous_day_slot_time = slot_time - timedelta(days=1)
+        if window_start <= previous_day_slot_time <= now_local:
+            return True
+    return False
 
 
 class BreakfastMailFetcher:
@@ -132,7 +146,10 @@ class BreakfastMailFetcher:
 
         config = self._load_mailbox_settings(db)
         now_local = utc_now().astimezone(ZoneInfo("Europe/Prague"))
-        if trigger == "scheduler" and not _is_scheduled_now(now_local):
+        if trigger == "scheduler" and not _is_scheduled_now(
+            now_local,
+            self.settings.breakfast_scheduler_interval_seconds,
+        ):
             return BreakfastImportRunResult(
                 ok=True,
                 imported_count=0,
