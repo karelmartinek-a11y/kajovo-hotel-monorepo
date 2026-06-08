@@ -274,12 +274,12 @@
 
 .k-modal-progress {
   display: grid;
-  gap: var(--k-spacing-1);
+  gap: var(--k-spacing-compact);
 }
 
 .k-modal-progress__item {
   display: grid;
-  gap: 2px;
+  gap: var(--k-spacing-compact);
   padding: var(--k-spacing-3);
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-2);

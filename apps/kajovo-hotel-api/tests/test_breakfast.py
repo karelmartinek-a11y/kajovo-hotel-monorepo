@@ -7,6 +7,7 @@ from collections.abc import Callable
 from datetime import date
 from http.cookiejar import CookieJar
 from pathlib import Path
+from time import sleep
 
 import pytest
 from sqlalchemy import select
@@ -126,6 +127,20 @@ def create_order(api_request: ApiRequest, **overrides: object) -> dict[str, obje
     assert status == 201
     assert isinstance(data, dict)
     return data
+
+
+def wait_for_manual_refresh_job(api_request: ApiRequest, job_id: int) -> dict[str, object]:
+    job: dict[str, object] | None = None
+    for _ in range(50):
+        job_status, payload = api_request(f"/api/v1/breakfast/manual-refresh/{job_id}")
+        assert job_status == 200
+        assert isinstance(payload, dict)
+        job = payload
+        if payload.get("status") in {"succeeded", "failed"}:
+            return payload
+        sleep(0.1)
+    assert job is not None
+    raise AssertionError(f"Manual refresh job {job_id} neskončil včas: {job}")
 
 
 def test_create_and_read_breakfast_order(api_request: ApiRequest) -> None:
@@ -563,9 +578,7 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
     assert isinstance(created, dict)
     assert created["service_date"] == target_day.isoformat()
 
-    job_status, job = api_request(f"/api/v1/breakfast/manual-refresh/{created['id']}")
-    assert job_status == 200
-    assert isinstance(job, dict)
+    job = wait_for_manual_refresh_job(api_request, created["id"])
     assert job["status"] == "succeeded"
     assert job["imported_count"] == 2
 
@@ -646,9 +659,7 @@ def test_manual_refresh_reports_login_failure(api_request: ApiRequest, monkeypat
     assert status == 202
     assert isinstance(created, dict)
 
-    job_status, job = api_request(f"/api/v1/breakfast/manual-refresh/{created['id']}")
-    assert job_status == 200
-    assert isinstance(job, dict)
+    job = wait_for_manual_refresh_job(api_request, created["id"])
     assert job["status"] == "failed"
     assert job["error_message"] == "Přihlášení do Better Hotelu selhalo."
 
@@ -712,9 +723,7 @@ def test_manual_refresh_reports_import_failure(api_request: ApiRequest, monkeypa
     assert status == 202
     assert isinstance(created, dict)
 
-    job_status, job = api_request(f"/api/v1/breakfast/manual-refresh/{created['id']}")
-    assert job_status == 200
-    assert isinstance(job, dict)
+    job = wait_for_manual_refresh_job(api_request, created["id"])
     assert job["status"] == "failed"
     assert job["error_message"] == "PDF neobsahuje položky pro zvolený den."
 

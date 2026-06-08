@@ -534,7 +534,7 @@ private fun BreakfastDateSelector(
                     }
                 },
             )
-            Button(onClick = { onRefresh(serviceDate) }) { Text("Aktualizovat") }
+            Button(onClick = { onRefresh(serviceDate) }) { Text("Aktualizovat z Better Hotelu") }
         }
     }
 }
