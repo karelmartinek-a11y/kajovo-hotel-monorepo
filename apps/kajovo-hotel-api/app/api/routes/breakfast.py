@@ -24,15 +24,22 @@ from app.api.schemas import (
     BreakfastDailySummary,
     BreakfastImportItem,
     BreakfastImportResponse,
+    BreakfastManualRefreshJobRead,
+    BreakfastManualRefreshProgressItem,
+    BreakfastManualRefreshRequest,
     BreakfastOrderCreate,
     BreakfastOrderRead,
     BreakfastOrderUpdate,
     BreakfastStatus,
 )
 from app.config import get_settings
-from app.db.models import BreakfastImportProcessedAttachment, BreakfastOrder
+from app.db.models import BreakfastImportProcessedAttachment, BreakfastManualRefreshJob, BreakfastOrder
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
+from app.services.breakfast.manual_refresh import (
+    get_manual_breakfast_refresh_job,
+    start_manual_breakfast_refresh,
+)
 from app.services.breakfast.parser import parse_breakfast_pdf
 from app.services.pdf.breakfast import build_breakfast_schedule_pdf
 from app.time_utils import utc_now
@@ -121,6 +128,42 @@ def _today_prague() -> date:
     return utc_now().astimezone(ZoneInfo("Europe/Prague")).date()
 
 
+def _read_manual_refresh_job(job: BreakfastManualRefreshJob) -> BreakfastManualRefreshJobRead:
+    progress: list[BreakfastManualRefreshProgressItem] = []
+    if job.progress_json:
+        try:
+            payload = json.loads(job.progress_json)
+        except json.JSONDecodeError:
+            payload = []
+        if isinstance(payload, list):
+            for item in payload:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    progress.append(
+                        BreakfastManualRefreshProgressItem(
+                            at=datetime.fromisoformat(str(item.get("at"))),
+                            step=str(item.get("step") or "runner"),
+                            message=str(item.get("message") or ""),
+                        )
+                    )
+                except ValueError:
+                    continue
+    return BreakfastManualRefreshJobRead(
+        id=job.id,
+        job_key=job.job_key,
+        service_date=job.service_date,
+        status=job.status,
+        progress=progress,
+        message=job.message,
+        error_message=job.error_message,
+        imported_count=job.imported_count,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+    )
+
+
 @router.get("", response_model=list[BreakfastOrderRead])
 def list_breakfast_orders(
     service_date: date | None = Query(default=None),
@@ -159,6 +202,26 @@ def get_daily_summary(
         )
     )
     return _build_daily_summary(service_date, orders, source_imported_at=source_imported_at)
+
+
+@router.post("/manual-refresh", response_model=BreakfastManualRefreshJobRead, status_code=status.HTTP_202_ACCEPTED)
+def manual_refresh_breakfast(
+    payload: BreakfastManualRefreshRequest,
+    db: Session = Depends(get_db),
+) -> BreakfastManualRefreshJobRead:
+    job = start_manual_breakfast_refresh(db, payload.service_date)
+    return _read_manual_refresh_job(job)
+
+
+@router.get("/manual-refresh/{job_id}", response_model=BreakfastManualRefreshJobRead)
+def get_manual_refresh_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> BreakfastManualRefreshJobRead:
+    job = get_manual_breakfast_refresh_job(db, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manual refresh job not found")
+    return _read_manual_refresh_job(job)
 
 
 @router.get("/{order_id}", response_model=BreakfastOrderRead)

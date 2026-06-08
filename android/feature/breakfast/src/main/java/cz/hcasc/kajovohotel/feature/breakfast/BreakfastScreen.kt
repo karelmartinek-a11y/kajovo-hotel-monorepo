@@ -6,11 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,6 +29,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -187,6 +191,7 @@ fun BreakfastScreen(
                 onDateChange = viewModel::setServiceDate,
                 onSearchChange = viewModel::setSearchQuery,
                 onRefresh = { date -> viewModel.load(activeRole, date) },
+                onManualRefresh = viewModel::startManualRefresh,
                 onPickImport = { pdfLauncher.launch(arrayOf("application/pdf")) },
                 onExport = viewModel::triggerExport,
                 onSaveQueuedDrafts = viewModel::saveQueuedDrafts,
@@ -315,6 +320,14 @@ fun BreakfastScreen(
                         )
                     }
                 }
+                if (state.isRefreshing || state.manualRefreshJob != null || state.manualRefreshError != null) {
+                    item {
+                        ManualRefreshDialog(
+                            state = state,
+                            onDismiss = viewModel::clearManualRefreshDialog,
+                        )
+                    }
+                }
             }
         }
     }
@@ -358,6 +371,7 @@ private fun BreakfastToolbar(
     onDateChange: (String) -> Unit,
     onSearchChange: (String) -> Unit,
     onRefresh: (String) -> Unit,
+    onManualRefresh: () -> Unit,
     onPickImport: () -> Unit,
     onExport: () -> Unit,
     onSaveQueuedDrafts: () -> Unit,
@@ -370,6 +384,13 @@ private fun BreakfastToolbar(
             onDateChange = onDateChange,
             onRefresh = onRefresh,
         )
+        Button(
+            onClick = onManualRefresh,
+            enabled = !state.isRefreshing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (state.isRefreshing) "Aktualizace běží" else "Aktualizovat")
+        }
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearchChange,
@@ -410,6 +431,69 @@ private fun BreakfastToolbar(
         }
         state.exportMessage?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
         state.successMessage?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
+    }
+}
+
+@Composable
+private fun ManualRefreshDialog(
+    state: BreakfastUiState,
+    onDismiss: () -> Unit,
+) {
+    val job = state.manualRefreshJob
+    Dialog(onDismissRequest = { if (!state.isRefreshing) onDismiss() }) {
+        Surface(shape = RoundedCornerShape(KajovoRadiusTokens.R16)) {
+            Column(
+                modifier = Modifier.padding(KajovoSpacingTokens.S5),
+                verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
+            ) {
+                Text(
+                    text = when {
+                        state.isRefreshing -> "Ruční aktualizace probíhá"
+                        state.manualRefreshError != null -> "Ruční aktualizace selhala"
+                        job?.status == cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshStatus.SUCCEEDED -> "Ruční aktualizace dokončena"
+                        else -> "Ruční aktualizace snídaní"
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                if (state.isRefreshing) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.padding(end = KajovoSpacingTokens.S2))
+                        Text(text = "Připravuji Better Hotel, stahuji přehled a přepisuji vybraný den.")
+                    }
+                }
+                state.manualRefreshError?.let {
+                    Text(text = it, color = MaterialTheme.colorScheme.error)
+                }
+                job?.message?.let {
+                    Text(text = it, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (job?.progress?.isNotEmpty() == true) {
+                    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                        job.progress.forEach { item ->
+                            Card(
+                                shape = RoundedCornerShape(KajovoRadiusTokens.R12),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(KajovoSpacingTokens.S3),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(text = item.step, fontWeight = FontWeight.SemiBold)
+                                    Text(text = item.message)
+                                    Text(text = formatDetailDateTime(item.at), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                    OutlinedButton(onClick = onDismiss, enabled = !state.isRefreshing) {
+                        Text("Zavřít")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -459,10 +543,11 @@ private fun BreakfastDateSelector(
 private fun BreakfastSummaryCard(state: BreakfastUiState) {
     val stats = state.orders.serviceStats(state.summary)
     val summaryDate = state.summary?.serviceDate ?: state.serviceDate
+    val importedAt = state.summary?.sourceImportedAt?.let(::formatDetailDateTime) ?: "nenalezeno"
 
     FeatureCard(
         title = "Denní souhrn $summaryDate",
-        subtitle = "Snídaně ${stats.totalBreakfasts} · vydáno ${stats.servedBreakfasts} · zbývá ${stats.remainingBreakfasts}\nPokoje ${stats.totalRooms} · vydáno ${stats.servedRooms} · zbývá ${stats.remainingRooms}",
+        subtitle = "Snídaně ${stats.totalBreakfasts} · vydáno ${stats.servedBreakfasts} · zbývá ${stats.remainingBreakfasts}\nPokoje ${stats.totalRooms} · vydáno ${stats.servedRooms} · zbývá ${stats.remainingRooms}\nZdroj uložen: $importedAt",
     )
 }
 

@@ -123,6 +123,28 @@ export type BreakfastImportRunResponse = {
   "replaced_future_count": number;
   "scanned_messages": number;
 };
+export type BreakfastManualRefreshJobRead = {
+  "created_at": string | null;
+  "error_message"?: string | null;
+  "finished_at": string | null;
+  "id": number;
+  "imported_count": number;
+  "job_key": string;
+  "message"?: string | null;
+  "progress"?: Array<BreakfastManualRefreshProgressItem>;
+  "service_date": string;
+  "started_at": string | null;
+  "status": BreakfastManualRefreshStatus;
+};
+export type BreakfastManualRefreshProgressItem = {
+  "at": string;
+  "message": string;
+  "step": string;
+};
+export type BreakfastManualRefreshRequest = {
+  "service_date": string;
+};
+export type BreakfastManualRefreshStatus = "queued" | "running" | "succeeded" | "failed";
 export type BreakfastOrderCreate = {
   "diet_no_gluten"?: boolean;
   "diet_no_milk"?: boolean;
@@ -705,6 +727,12 @@ export const apiClient = {
   },
   async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
     return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
+  },
+  async manualRefreshBreakfastApiV1BreakfastManualRefreshPost(body: BreakfastManualRefreshRequest): Promise<void> {
+    return request<void>('POST', `/api/v1/breakfast/manual-refresh`, undefined, body);
+  },
+  async getManualRefreshJobApiV1BreakfastManualRefreshJobIdGet(job_id: number): Promise<BreakfastManualRefreshJobRead> {
+    return request<BreakfastManualRefreshJobRead>('GET', `/api/v1/breakfast/manual-refresh/${job_id}`, undefined, undefined);
   },
   async deleteBreakfastOrdersForPeriodApiV1BreakfastPeriodDeleteDelete(query: { "date_from": string; "date_to": string; }): Promise<void> {
     return request<void>('DELETE', `/api/v1/breakfast/period/delete`, query, undefined);

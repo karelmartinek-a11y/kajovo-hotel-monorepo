@@ -128,6 +128,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     env["KAJOVO_API_ADMIN_EMAIL"] = admin_email()
     env["KAJOVO_API_ADMIN_PASSWORD"] = admin_password()
     env["KAJOVO_API_DEVICE_BOOTSTRAP_KEY"] = "test-device-bootstrap-key"
+    env["KAJOVO_API_BETTER_HOTEL_REFRESH_MODE"] = "test"
     media_root = api_db_path.parent / "media"
     media_root.mkdir(parents=True, exist_ok=True)
     env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)
@@ -241,7 +242,6 @@ def api_request(api_base_url: str) -> ApiRequest:
     _request.opener = opener  # type: ignore[attr-defined]
     _request.jar = jar  # type: ignore[attr-defined]
     return _request
-
 
 
 

@@ -5,10 +5,15 @@ import cz.hcasc.kajovohotel.core.common.BaseUrlConfig
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
 import cz.hcasc.kajovohotel.core.model.BreakfastStatus
 import cz.hcasc.kajovohotel.core.network.api.BreakfastApi
+import cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshJobDto
+import cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshRequestDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderUpdateDto
 import cz.hcasc.kajovohotel.core.network.readableMessage
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportItem
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportPreview
+import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshJob
+import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshProgress
+import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshStatus
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrderDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastSummary
@@ -143,6 +148,22 @@ class BreakfastRepository @Inject constructor(
             AppResult.Error(throwable.readableMessage("Export PDF se nepodařilo spustit."), throwable)
         }
     }
+
+    suspend fun startManualRefresh(serviceDate: String): AppResult<BreakfastManualRefreshJob> {
+        return try {
+            AppResult.Success(api.startManualRefresh(BreakfastManualRefreshRequestDto(service_date = serviceDate)).toDomain())
+        } catch (throwable: Throwable) {
+            AppResult.Error(throwable.readableMessage("Ruční aktualizaci se nepodařilo spustit."), throwable)
+        }
+    }
+
+    suspend fun manualRefreshJob(jobId: Int): AppResult<BreakfastManualRefreshJob> {
+        return try {
+            AppResult.Success(api.manualRefreshJob(jobId).toDomain())
+        } catch (throwable: Throwable) {
+            AppResult.Error(throwable.readableMessage("Stav ruční aktualizace se nepodařilo načíst."), throwable)
+        }
+    }
 }
 
 private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderDto.toDomain() = BreakfastOrder(
@@ -165,6 +186,32 @@ private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastDailySummaryDto.toDom
     totalOrders = total_orders,
     totalGuests = total_guests,
     statusCounts = status_counts,
+    sourceImportedAt = source_imported_at,
+)
+
+private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshJobDto.toDomain() = BreakfastManualRefreshJob(
+    id = id,
+    jobKey = job_key,
+    serviceDate = service_date,
+    status = when (status.lowercase()) {
+        "queued" -> BreakfastManualRefreshStatus.QUEUED
+        "running" -> BreakfastManualRefreshStatus.RUNNING
+        "succeeded" -> BreakfastManualRefreshStatus.SUCCEEDED
+        else -> BreakfastManualRefreshStatus.FAILED
+    },
+    progress = progress.map {
+        BreakfastManualRefreshProgress(
+            at = it.at,
+            step = it.step,
+            message = it.message,
+        )
+    },
+    message = message,
+    errorMessage = error_message,
+    importedCount = imported_count,
+    createdAt = created_at,
+    startedAt = started_at,
+    finishedAt = finished_at,
 )
 
 private fun retrofit2.Response<ResponseBody>.fileNameOrDefault(serviceDate: String): String {

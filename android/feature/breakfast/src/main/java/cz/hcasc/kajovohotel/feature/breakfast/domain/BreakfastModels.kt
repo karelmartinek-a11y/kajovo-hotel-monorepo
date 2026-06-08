@@ -29,6 +29,34 @@ data class BreakfastSummary(
     val totalOrders: Int,
     val totalGuests: Int,
     val statusCounts: Map<String, Int>,
+    val sourceImportedAt: String? = null,
+)
+
+enum class BreakfastManualRefreshStatus {
+    QUEUED,
+    RUNNING,
+    SUCCEEDED,
+    FAILED,
+}
+
+data class BreakfastManualRefreshProgress(
+    val at: String,
+    val step: String,
+    val message: String,
+)
+
+data class BreakfastManualRefreshJob(
+    val id: Int,
+    val jobKey: String,
+    val serviceDate: String,
+    val status: BreakfastManualRefreshStatus,
+    val progress: List<BreakfastManualRefreshProgress>,
+    val message: String?,
+    val errorMessage: String?,
+    val importedCount: Int,
+    val createdAt: String?,
+    val startedAt: String?,
+    val finishedAt: String?,
 )
 
 data class BreakfastServiceStats(
@@ -155,6 +183,8 @@ fun BreakfastOrder.matchesSearch(query: String): Boolean {
     if (term.isBlank()) return true
     return roomNumber.lowercase().contains(term) || guestName.lowercase().contains(term)
 }
+
+fun BreakfastManualRefreshStatus.isTerminal(): Boolean = this == BreakfastManualRefreshStatus.SUCCEEDED || this == BreakfastManualRefreshStatus.FAILED
 
 fun PortalRole.breakfastScreenTitle(): String = when (this) {
     PortalRole.RECEPTION -> "Snídaně / recepce"

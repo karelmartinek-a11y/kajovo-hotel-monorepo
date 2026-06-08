@@ -222,6 +222,85 @@
   font-size: var(--k-font-size-sm);
 }
 
+.k-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--k-spacing-4);
+  background: color-mix(in srgb, var(--k-color-ink) 66%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.k-modal-card {
+  width: min(100%, 720px);
+  max-height: min(86vh, 840px);
+  overflow: auto;
+  display: grid;
+  gap: var(--k-spacing-4);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-3);
+  background: var(--k-color-surface-raised);
+  padding: var(--k-spacing-5);
+  box-shadow: var(--k-shadow-lg);
+}
+
+.k-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-spacing-4);
+}
+
+.k-modal-header h2 {
+  margin: 0 0 var(--k-spacing-1);
+}
+
+.k-modal-header p {
+  margin: 0;
+}
+
+.k-modal-spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 4px solid color-mix(in srgb, var(--k-color-brand-red) 18%, var(--k-color-border));
+  border-top-color: var(--k-color-brand-red);
+  animation: k-modal-spin 900ms linear infinite;
+  flex: 0 0 auto;
+}
+
+.k-modal-progress {
+  display: grid;
+  gap: var(--k-spacing-2);
+}
+
+.k-modal-progress__item {
+  display: grid;
+  gap: 2px;
+  padding: var(--k-spacing-3);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-2);
+  background: var(--k-color-surface);
+}
+
+.k-modal-progress__item strong {
+  color: var(--k-color-ink);
+}
+
+.k-modal-progress__item span,
+.k-modal-progress__item small {
+  color: var(--k-color-ink-secondary);
+}
+
+@keyframes k-modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 960px) {
   .k-login-page {
     grid-template-columns: 1fr;

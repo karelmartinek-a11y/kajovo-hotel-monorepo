@@ -2,6 +2,8 @@ package cz.hcasc.kajovohotel.core.network.api
 
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastDailySummaryDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastImportResponseDto
+import cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshJobDto
+import cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshRequestDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderCreateDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderUpdateDto
@@ -26,5 +28,7 @@ interface BreakfastApi {
     @POST("/api/v1/breakfast") suspend fun create(@Body request: BreakfastOrderCreateDto): BreakfastOrderDto
     @PUT("/api/v1/breakfast/{orderId}") suspend fun update(@Path("orderId") orderId: Int, @Body request: BreakfastOrderUpdateDto): BreakfastOrderDto
     @Multipart @POST("/api/v1/breakfast/import") suspend fun importPdf(@Part file: MultipartBody.Part, @Part("save") save: RequestBody, @Part("overrides") overrides: RequestBody? = null): BreakfastImportResponseDto
+    @POST("/api/v1/breakfast/manual-refresh") suspend fun startManualRefresh(@Body request: BreakfastManualRefreshRequestDto): BreakfastManualRefreshJobDto
+    @GET("/api/v1/breakfast/manual-refresh/{jobId}") suspend fun manualRefreshJob(@Path("jobId") jobId: Int): BreakfastManualRefreshJobDto
     @Streaming @GET("/api/v1/breakfast/export/daily") suspend fun exportDaily(@Query("service_date") serviceDate: String): Response<ResponseBody>
 }

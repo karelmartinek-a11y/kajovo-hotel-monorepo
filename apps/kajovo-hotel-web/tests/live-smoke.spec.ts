@@ -112,7 +112,13 @@ async function createPortalUserForRole(
 }
 
 async function loginPortalUser(page: import('@playwright/test').Page, email: string, password: string) {
-  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.context().clearCookies();
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.reload({ waitUntil: 'networkidle' });
   await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
@@ -179,10 +185,14 @@ test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, reques
   });
   expect(createUserResponse.status()).toBe(201);
 
-  await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(portalEmail);
-  await page.getByLabel(/heslo/i).fill(portalPassword);
-  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+  const portalLoginResponse = await request.post('/api/auth/login', {
+    data: { email: portalEmail, password: portalPassword },
+  });
+  expect(portalLoginResponse.ok()).toBeTruthy();
+  const portalState = await request.storageState();
+  await page.context().clearCookies();
+  await page.context().addCookies(portalState.cookies);
+  await page.goto('/recepce', { waitUntil: 'networkidle' });
 
   await expect(page).toHaveURL(/\/recepce$/);
   await page.getByRole('link', { name: /otevrit snidane|otevřít snídaně/i }).click();
@@ -193,6 +203,188 @@ test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, reques
 
   await expect(page.getByText(/kontrola importu/i)).toBeVisible();
   await expect(page.getByRole('cell', { name: '101' }).first()).toBeVisible();
+});
+
+test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page, request }, testInfo) => {
+  const adminLoginResponse = await request.post('/api/auth/admin/login', {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  expect(adminLoginResponse.ok()).toBeTruthy();
+
+  const csrfHeaders = await csrfHeaderFor(request);
+  const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
+  const portalEmail = `web-manual-refresh-${suffix}@kajovohotel.local`;
+  const portalPassword = `WebManual-${suffix}-pass`;
+
+  const createUserResponse = await request.post('/api/v1/users', {
+    data: {
+      email: portalEmail,
+      password: portalPassword,
+      first_name: 'Ruční',
+      last_name: 'Aktualizace',
+      roles: ['snidane'],
+    },
+    headers: csrfHeaders,
+  });
+  expect(createUserResponse.status()).toBe(201);
+
+  await page.route('**/api/v1/breakfast**', async (route) => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+    const path = url.pathname;
+
+    const initialOrders = [
+      {
+        id: 1,
+        service_date: '2026-06-08',
+        room_number: '101',
+        guest_name: 'Původní host',
+        guest_count: 1,
+        note: null,
+        diet_no_gluten: false,
+        diet_no_milk: false,
+        diet_no_pork: false,
+        status: 'pending',
+        created_at: '2026-06-08T07:00:00Z',
+        updated_at: '2026-06-08T07:00:00Z',
+      },
+    ];
+    const refreshedOrders = [
+      ...initialOrders,
+      {
+        id: 2,
+        service_date: '2026-06-08',
+        room_number: '102',
+        guest_name: 'Nový host',
+        guest_count: 2,
+        note: null,
+        diet_no_gluten: false,
+        diet_no_milk: false,
+        diet_no_pork: false,
+        status: 'pending',
+        created_at: '2026-06-08T08:00:00Z',
+        updated_at: '2026-06-08T08:00:00Z',
+      },
+    ];
+    const currentOrders = (page as unknown as { _manualRefreshDone?: boolean })._manualRefreshDone ? refreshedOrders : initialOrders;
+    const currentSummary = (page as unknown as { _manualRefreshDone?: boolean })._manualRefreshDone
+      ? {
+          service_date: '2026-06-08',
+          total_orders: 2,
+          total_guests: 3,
+          status_counts: { pending: 2, preparing: 0, served: 0, cancelled: 0 },
+          source_imported_at: '2026-06-08T08:05:00Z',
+        }
+      : {
+          service_date: '2026-06-08',
+          total_orders: 1,
+          total_guests: 1,
+          status_counts: { pending: 1, preparing: 0, served: 0, cancelled: 0 },
+          source_imported_at: '2026-06-08T07:05:00Z',
+        };
+
+    if (method === 'GET' && path === '/api/v1/breakfast') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentOrders) });
+      return;
+    }
+    if (method === 'GET' && path === '/api/v1/breakfast/daily-summary') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentSummary) });
+      return;
+    }
+    if (method === 'POST' && path === '/api/v1/breakfast/manual-refresh') {
+      (page as unknown as { _manualRefreshPolls?: number; _manualRefreshDone?: boolean })._manualRefreshPolls = 0;
+      await route.fulfill({
+        status: 202,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 1,
+          job_key: 'manual-refresh-test',
+          service_date: '2026-06-08',
+          status: 'queued',
+          progress: [
+            { at: '2026-06-08T08:00:00Z', step: 'queued', message: 'Žádost byla zařazena do fronty.' },
+          ],
+          message: 'Žádost byla zařazena do fronty.',
+          error_message: null,
+          imported_count: 0,
+          created_at: '2026-06-08T08:00:00Z',
+          started_at: null,
+          finished_at: null,
+        }),
+      });
+      return;
+    }
+    if (method === 'GET' && path === '/api/v1/breakfast/manual-refresh/1') {
+      const state = page as unknown as { _manualRefreshPolls?: number; _manualRefreshDone?: boolean };
+      state._manualRefreshPolls = (state._manualRefreshPolls ?? 0) + 1;
+      if ((state._manualRefreshPolls ?? 0) === 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 1,
+            job_key: 'manual-refresh-test',
+            service_date: '2026-06-08',
+            status: 'running',
+            progress: [
+              { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
+            ],
+            message: 'Přihlášení do Better Hotelu proběhlo.',
+            error_message: null,
+            imported_count: 0,
+            created_at: '2026-06-08T08:00:00Z',
+            started_at: '2026-06-08T08:00:01Z',
+            finished_at: null,
+          }),
+        });
+        return;
+      }
+      state._manualRefreshDone = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 1,
+          job_key: 'manual-refresh-test',
+          service_date: '2026-06-08',
+          status: 'succeeded',
+          progress: [
+            { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
+            { at: '2026-06-08T08:00:02Z', step: 'download', message: 'PDF bylo staženo.' },
+          ],
+          message: 'Ruční import dokončen.',
+          error_message: null,
+          imported_count: 2,
+          created_at: '2026-06-08T08:00:00Z',
+          started_at: '2026-06-08T08:00:01Z',
+          finished_at: '2026-06-08T08:00:04Z',
+        }),
+      });
+      return;
+    }
+
+    await route.continue();
+  });
+
+  const portalLoginResponse = await request.post('/api/auth/login', {
+    data: { email: portalEmail, password: portalPassword },
+  });
+  expect(portalLoginResponse.ok()).toBeTruthy();
+  const portalState = await request.storageState();
+  await page.context().clearCookies();
+  await page.context().addCookies(portalState.cookies);
+  await page.goto('/snidane', { waitUntil: 'networkidle' });
+
+  await expect(page).toHaveURL(/\/snidane$/);
+  await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Aktualizovat' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Aktualizovat' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('dialog').locator('.k-modal-progress__item').first()).toContainText('Přihlášení do Better Hotelu proběhlo.');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('cell', { name: '102' }).first()).toBeVisible();
+  await expect(page.getByText(/Zdroj dat importu snídaní:/i)).toBeVisible();
 });
 
 test('portal bez session skonci na loginu', async ({ page }) => {
@@ -261,10 +453,14 @@ test('multirolni portal uzivatel vidi po vyberu role prepinac ostatnich roli v z
   });
   expect(createUserResponse.status()).toBe(201);
 
-  await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(portalEmail);
-  await page.getByLabel(/heslo/i).fill(portalPassword);
-  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+  const portalLoginResponse = await request.post('/api/auth/login', {
+    data: { email: portalEmail, password: portalPassword },
+  });
+  expect(portalLoginResponse.ok()).toBeTruthy();
+  const portalState = await request.storageState();
+  await page.context().clearCookies();
+  await page.context().addCookies(portalState.cookies);
+  await page.goto('/snidane', { waitUntil: 'networkidle' });
 
   await expect(page.getByTestId('role-select-page')).toBeVisible();
   await page.getByRole('button', { name: /pokračovat jako pokojská/i }).click();

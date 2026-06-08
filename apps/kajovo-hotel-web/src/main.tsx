@@ -76,6 +76,26 @@ type BreakfastImportResponse = {
   items: BreakfastImportItem[];
 };
 
+type BreakfastManualRefreshProgressItem = {
+  at: string;
+  step: string;
+  message: string;
+};
+
+type BreakfastManualRefreshJob = {
+  id: number;
+  job_key: string;
+  service_date: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  progress: BreakfastManualRefreshProgressItem[];
+  message: string | null;
+  error_message: string | null;
+  imported_count: number;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
 type LostFoundItem = LostFoundItemRead;
 
 type LostFoundPayload = LostFoundItemCreate;
@@ -358,6 +378,10 @@ function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStat
   return typeof value === 'number' ? value : 0;
 }
 
+function formatOptionalDateTime(value: string | null | undefined): string {
+  return value ? formatShortDateTime(value) : 'nenalezeno';
+}
+
 function compareRoomNumbers(left: string, right: string): number {
   const leftMatch = left.match(/\d+/);
   const rightMatch = right.match(/\d+/);
@@ -554,6 +578,35 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
 
   if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
   if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
+  if (path === '/api/v1/breakfast/manual-refresh' && method === 'POST') {
+    const response = await fetch('/api/v1/breakfast/manual-refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': readCsrfToken(),
+      },
+      body: JSON.stringify(body ?? {}),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `Ruční aktualizace skončila chybou ${response.status}.`);
+    }
+    return (await response.json()) as T;
+  }
+  const manualRefreshId = path.match(/^\/api\/v1\/breakfast\/manual-refresh\/(\d+)$/);
+  if (manualRefreshId && method === 'GET') {
+    const response = await fetch(`/api/v1/breakfast/manual-refresh/${manualRefreshId[1]}`, {
+      method: 'GET',
+      headers: {
+        'X-CSRF-Token': readCsrfToken(),
+      },
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `Ruční aktualizace skončila chybou ${response.status}.`);
+    }
+    return (await response.json()) as T;
+  }
   const breakfastId = path.match(/^\/api\/v1\/breakfast\/(\d+)$/);
   if (breakfastId && method === 'GET') return (await apiClient.getBreakfastOrderApiV1BreakfastOrderIdGet(Number(breakfastId[1]))) as T;
   if (breakfastId && method === 'PUT') return (await apiClient.updateBreakfastOrderApiV1BreakfastOrderIdPut(Number(breakfastId[1]), body as BreakfastOrderCreate)) as T;
@@ -845,6 +898,7 @@ function BreakfastList(): JSX.Element {
   const canEditDiet = isRecepce || isAdmin;
   const canServe = isBreakfast || isRecepce;
   const canClearDay = isAdmin;
+  const canManualRefresh = isBreakfast || isRecepce || isAdmin;
 
   const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
@@ -857,6 +911,10 @@ function BreakfastList(): JSX.Element {
   const [importInfo, setImportInfo] = React.useState<string | null>(null);
   const [importError, setImportError] = React.useState<string | null>(null);
   const [importBusy, setImportBusy] = React.useState(false);
+  const [manualRefreshBusy, setManualRefreshBusy] = React.useState(false);
+  const [manualRefreshOpen, setManualRefreshOpen] = React.useState(false);
+  const [manualRefreshJob, setManualRefreshJob] = React.useState<BreakfastManualRefreshJob | null>(null);
+  const [manualRefreshError, setManualRefreshError] = React.useState<string | null>(null);
   const [drafts, setDrafts] = React.useState<Record<number, Partial<BreakfastPayload>>>({});
   const [saveBusy, setSaveBusy] = React.useState(false);
   const [saveInfo, setSaveInfo] = React.useState<string | null>(null);
@@ -1178,6 +1236,62 @@ function BreakfastList(): JSX.Element {
     window.open(url, '_blank', 'noopener');
   };
 
+  const pollManualRefreshJob = async (jobId: number): Promise<BreakfastManualRefreshJob> => {
+    for (;;) {
+      const job = await fetchJson<BreakfastManualRefreshJob>(`/api/v1/breakfast/manual-refresh/${jobId}`);
+      setManualRefreshJob(job);
+      if (job.status === 'succeeded' || job.status === 'failed') {
+        return job;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
+  };
+
+  const runManualRefresh = async (): Promise<void> => {
+    if (!canManualRefresh || manualRefreshBusy) {
+      return;
+    }
+    setManualRefreshBusy(true);
+    setManualRefreshOpen(true);
+    setManualRefreshError(null);
+    setManualRefreshJob({
+      id: 0,
+      job_key: '',
+      service_date: serviceDate,
+      status: 'queued',
+      progress: [
+        { at: new Date().toISOString(), step: 'queued', message: 'Žádost se připravuje.' },
+      ],
+      message: 'Žádost se připravuje.',
+      error_message: null,
+      imported_count: 0,
+      created_at: null,
+      started_at: null,
+      finished_at: null,
+    });
+    try {
+      const job = await fetchJson<BreakfastManualRefreshJob>('/api/v1/breakfast/manual-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service_date: serviceDate }),
+      });
+      setManualRefreshJob(job);
+      const finalJob = await pollManualRefreshJob(job.id);
+      if (finalJob.status === 'succeeded') {
+        setManualRefreshOpen(false);
+        setManualRefreshJob(null);
+        setImportInfo(`Ruční aktualizace pro ${serviceDate} byla dokončena.`);
+        loadDay(serviceDate);
+        return;
+      }
+      setManualRefreshError(finalJob.error_message ?? 'Ruční aktualizace selhala.');
+    } catch (error) {
+      setManualRefreshError(error instanceof Error ? error.message : 'Ruční aktualizaci se nepodařilo spustit.');
+    } finally {
+      setManualRefreshBusy(false);
+    }
+  };
+
   const importPreviewTable = importPreview ? (
     <div className="k-card">
       <div className="k-toolbar">
@@ -1218,6 +1332,7 @@ function BreakfastList(): JSX.Element {
   const breakfastToolbar = isServingView ? (
     <div className="k-toolbar">
       <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat</button> : null}
     </div>
   ) : (
     <div className="k-toolbar">
@@ -1228,6 +1343,7 @@ function BreakfastList(): JSX.Element {
         event.currentTarget.value = '';
       }} /> : null}
       {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat</button> : null}
       {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
       {canClearDay ? <button className="k-button secondary" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
       {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
@@ -1238,6 +1354,14 @@ function BreakfastList(): JSX.Element {
   const breakfastImportStamp = summary?.source_imported_at
     ? formatShortDateTime(summary.source_imported_at)
     : 'nenalezeno';
+  const manualRefreshProgress = manualRefreshJob?.progress ?? [];
+  const manualRefreshTitle = manualRefreshJob
+    ? manualRefreshJob.status === 'succeeded'
+      ? 'Aktualizace dokončena'
+      : manualRefreshJob.status === 'failed'
+        ? 'Aktualizace selhala'
+        : 'Aktualizace probíhá'
+    : 'Aktualizace snídaní';
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -1246,10 +1370,13 @@ function BreakfastList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <>
-          <div className="k-grid cards-3">
+          <div className="k-grid cards-4">
             <Card title="Objednávky dne"><strong>{summary?.total_orders ?? 0}</strong></Card>
             <Card title="Hosté dne"><strong>{summary?.total_guests ?? 0}</strong></Card>
             <Card title="Čekající"><strong>{getSummaryCount(summary, 'pending')}</strong></Card>
+            <Card title="Zdroj přehledu">
+              <strong>{formatOptionalDateTime(summary?.source_imported_at)}</strong>
+            </Card>
           </div>
           {breakfastToolbar}
           {isAdmin ? (
@@ -1303,6 +1430,35 @@ function BreakfastList(): JSX.Element {
             />
           )}
           <p className="k-text-muted">Zdroj dat importu snídaní: {breakfastImportStamp}</p>
+          {manualRefreshOpen ? (
+            <div className="k-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="breakfast-refresh-title">
+              <div className="k-modal-card">
+                <div className="k-modal-header">
+                  <div>
+                    <h2 id="breakfast-refresh-title">{manualRefreshTitle}</h2>
+                    <p className="k-subtle">Ruční aktualizace pro den {manualRefreshJob?.service_date ?? serviceDate}.</p>
+                  </div>
+                  <div className="k-modal-spinner" aria-hidden="true" />
+                </div>
+                {manualRefreshError ? <p className="k-text-error">{manualRefreshError}</p> : null}
+                {manualRefreshJob?.message ? <p className="k-text-muted">{manualRefreshJob.message}</p> : null}
+                <div className="k-modal-progress">
+                  {manualRefreshProgress.length > 0 ? manualRefreshProgress.map((item) => (
+                    <div key={`${item.at}-${item.step}-${item.message}`} className="k-modal-progress__item">
+                      <strong>{item.step}</strong>
+                      <span>{item.message}</span>
+                      <small>{formatShortDateTime(item.at)}</small>
+                    </div>
+                  )) : <p className="k-text-muted">Čekám na stav serverového jobu.</p>}
+                </div>
+                <div className="k-toolbar">
+                  <button className="k-button secondary" type="button" onClick={() => setManualRefreshOpen(false)} disabled={manualRefreshBusy}>
+                    Zavřít
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </main>

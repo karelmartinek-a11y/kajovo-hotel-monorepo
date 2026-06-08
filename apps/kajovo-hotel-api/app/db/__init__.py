@@ -1,0 +1,1 @@
+"""Balíček databázové vrstvy."""

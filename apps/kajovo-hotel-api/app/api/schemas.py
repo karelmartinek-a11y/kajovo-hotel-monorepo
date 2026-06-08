@@ -127,6 +127,37 @@ class BreakfastImportResponse(BaseModel):
     items: list[BreakfastImportItem]
 
 
+class BreakfastManualRefreshStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class BreakfastManualRefreshProgressItem(BaseModel):
+    at: datetime
+    step: str
+    message: str
+
+
+class BreakfastManualRefreshRequest(BaseModel):
+    service_date: date
+
+
+class BreakfastManualRefreshJobRead(BaseModel):
+    id: int
+    job_key: str
+    service_date: date
+    status: BreakfastManualRefreshStatus
+    progress: list[BreakfastManualRefreshProgressItem] = Field(default_factory=list)
+    message: str | None = None
+    error_message: str | None = None
+    imported_count: int
+    created_at: datetime | None
+    started_at: datetime | None
+    finished_at: datetime | None
+
+
 class LostFoundItemType(StrEnum):
     LOST = "lost"
     FOUND = "found"

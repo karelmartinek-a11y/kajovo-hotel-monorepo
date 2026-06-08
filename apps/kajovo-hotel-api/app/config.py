@@ -34,6 +34,16 @@ class Settings(BaseSettings):
     breakfast_imap_password: str = ""
     breakfast_imap_from_contains: str = "better-hotel.com"
     breakfast_imap_subject_contains: str = "prehled stravy"
+    better_hotel_base_url: str = Field(default="", validation_alias=AliasChoices("BETTER_HOTEL_BASE_URL", "KAJOVO_API_BETTER_HOTEL_BASE_URL"))
+    better_hotel_login_path: str = "/login"
+    better_hotel_report_url_template: str = ""
+    better_hotel_username: str = Field(default="", validation_alias=AliasChoices("bb_user", "BB_USER", "KAJOVO_API_BETTER_HOTEL_USERNAME"))
+    better_hotel_password: str = Field(default="", validation_alias=AliasChoices("bb_pass", "BB_PASS", "KAJOVO_API_BETTER_HOTEL_PASSWORD"))
+    better_hotel_playwright_timeout_seconds: int = 180
+    better_hotel_refresh_mode: str = Field(
+        default="playwright",
+        validation_alias=AliasChoices("KAJOVO_API_BETTER_HOTEL_REFRESH_MODE"),
+    )
     breakfast_runtime_artifact_dir: str = "/app/data/runtime-artifacts"
     device_bootstrap_key: str = ""
     device_challenge_ttl_seconds: int = 300
