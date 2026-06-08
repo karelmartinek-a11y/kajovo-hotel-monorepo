@@ -33,7 +33,11 @@ from app.api.schemas import (
     BreakfastStatus,
 )
 from app.config import get_settings
-from app.db.models import BreakfastImportProcessedAttachment, BreakfastManualRefreshJob, BreakfastOrder
+from app.db.models import (
+    BreakfastImportProcessedAttachment,
+    BreakfastManualRefreshJob,
+    BreakfastOrder,
+)
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
 from app.services.breakfast.manual_refresh import (

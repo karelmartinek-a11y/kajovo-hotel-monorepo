@@ -19,8 +19,8 @@ from app.db.models import (
 )
 from app.db.session import SessionLocal
 from app.services.breakfast import manual_refresh as manual_refresh_service
-from app.time_utils import utc_now
 from app.services.breakfast.parser import parse_breakfast_pdf, parse_breakfast_text
+from app.time_utils import utc_now
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
