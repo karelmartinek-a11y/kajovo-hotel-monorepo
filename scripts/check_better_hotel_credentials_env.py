@@ -20,12 +20,10 @@ def main() -> int:
     password = _value("bb_pass", "BB_PASS", "KAJOVO_API_BETTER_HOTEL_PASSWORD")
 
     errors: list[str] = []
-    if not base_url:
-        errors.append("Missing Better Hotel base URL: set BETTER_HOTEL_BASE_URL.")
-    if not username:
-        errors.append("Missing Better Hotel username: set bb_user.")
-    if not password:
-        errors.append("Missing Better Hotel password: set bb_pass.")
+    if bool(username) != bool(password):
+        errors.append("Better Hotel credentials must be provided together: set both bb_user and bb_pass.")
+    if (username or password) and not base_url:
+        errors.append("Missing Better Hotel base URL: set BETTER_HOTEL_BASE_URL when bb_user/bb_pass are used.")
 
     if errors:
         print("Better Hotel credential environment check: FAIL", file=sys.stderr)
@@ -34,11 +32,14 @@ def main() -> int:
         return 1
 
     print("Better Hotel credential environment check: PASS")
-    print(f"Better Hotel base URL source resolved to: {base_url}")
-    if login_path:
-        print(f"Better Hotel login path resolved to: {login_path}")
-    if report_url_template:
-        print("Better Hotel report URL template resolved: yes")
+    if username and password:
+        print(f"Better Hotel base URL source resolved to: {base_url}")
+        if login_path:
+            print(f"Better Hotel login path resolved to: {login_path}")
+        if report_url_template:
+            print("Better Hotel report URL template resolved: yes")
+    else:
+        print("Better Hotel browser credentials nejsou nastavené; deploy bude spoléhat na live ruční refresh fallback.")
     return 0
 
 

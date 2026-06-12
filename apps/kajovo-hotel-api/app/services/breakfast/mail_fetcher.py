@@ -22,7 +22,7 @@ from app.db.models import (
     BreakfastOrder,
     BreakfastStatus,
 )
-from app.services.breakfast.parser import parse_breakfast_pdf
+from app.services.breakfast.parser import BreakfastRow, parse_breakfast_pdf
 from app.services.mail import decrypt_secret
 from app.time_utils import utc_now
 
@@ -40,6 +40,17 @@ class BreakfastImportRunResult:
     matched_messages: int
     scanned_messages: int
     errors: list[str]
+
+
+@dataclass(frozen=True)
+class BreakfastMailboxPdfCandidate:
+    message_uid: str
+    attachment_hash: str
+    parsed_day: date
+    rows: list[BreakfastRow]
+    pdf_bytes: bytes
+    matched_messages: int
+    scanned_messages: int
 
 
 def _decode_header_value(value: str | None) -> str:
@@ -135,6 +146,83 @@ class BreakfastMailFetcher:
             }
             for row in current
         }
+
+    def find_latest_pdf_for_day(
+        self,
+        db: Session,
+        *,
+        target_day: date,
+    ) -> BreakfastMailboxPdfCandidate | None:
+        config = self._load_mailbox_settings(db)
+        if not config.enabled:
+            raise RuntimeError("Mailbox import snídaní je vypnutý.")
+
+        missing = [
+            name
+            for name, value in {
+                "host": config.host,
+                "username": config.username,
+                "password_encrypted": config.password_encrypted,
+            }.items()
+            if not str(value).strip()
+        ]
+        if missing:
+            raise RuntimeError(f"Chybí konfigurace mailboxu: {', '.join(missing)}")
+
+        scanned_messages = 0
+        matched_messages = 0
+        client = self._connect(config)
+        try:
+            typ, _ = client.select(config.mailbox or "INBOX")
+            if typ != "OK":
+                raise RuntimeError("Výběr schránky selhal.")
+            typ, data = client.search(None, "ALL")
+            if typ != "OK" or not data:
+                return None
+            uids = data[0].split()
+            for uid in reversed(uids):
+                scanned_messages += 1
+                uid_text = uid.decode("utf-8", "ignore")
+                try:
+                    typ, parts = client.fetch(uid, "(RFC822)")
+                    if typ != "OK" or not parts:
+                        continue
+                    raw = parts[0][1] if isinstance(parts[0], tuple) else b""
+                    if not raw:
+                        continue
+                    msg = email.message_from_bytes(raw)
+                    from_header = _decode_header_value(msg.get("From")).lower()
+                    subject = _decode_header_value(msg.get("Subject")).lower()
+                    if config.from_contains.lower() not in from_header:
+                        continue
+                    if config.subject_contains and config.subject_contains.lower() not in subject:
+                        continue
+                    matched_messages += 1
+                    for _, pdf_bytes in _iter_pdf_attachments(msg):
+                        attachment_hash = hashlib.sha256(pdf_bytes).hexdigest()
+                        try:
+                            parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
+                        except ValueError:
+                            continue
+                        if parsed_day == target_day or any(row.day == target_day for row in rows):
+                            return BreakfastMailboxPdfCandidate(
+                                message_uid=uid_text,
+                                attachment_hash=attachment_hash,
+                                parsed_day=parsed_day,
+                                rows=rows,
+                                pdf_bytes=pdf_bytes,
+                                matched_messages=matched_messages,
+                                scanned_messages=scanned_messages,
+                            )
+                except Exception:
+                    log.exception("breakfast.mail_fetcher.manual_lookup_failed", extra={"uid": uid_text})
+                    continue
+        finally:
+            try:
+                client.logout()
+            except Exception:
+                pass
+        return None
 
     def run_mailbox_import(self, db: Session, *, trigger: str = "scheduler") -> BreakfastImportRunResult:
         started_at = utc_now()

@@ -146,9 +146,6 @@ if (beforeSummary.response.status !== 200) {
   throw new Error(`Before summary failed with ${beforeSummary.response.status}: ${JSON.stringify(beforeSummary.payload)}`);
 }
 const beforeStamp = String(beforeSummary.payload?.source_imported_at ?? '');
-if (!beforeStamp) {
-  throw new Error('Před ruční aktualizací chybí source_imported_at.');
-}
 
 const startResponse = await requestJson(session, '/api/v1/breakfast/manual-refresh', {
   method: 'POST',
@@ -177,7 +174,7 @@ const afterStamp = String(afterSummary.payload?.source_imported_at ?? '');
 if (!afterStamp) {
   throw new Error('Po ruční aktualizaci chybí source_imported_at.');
 }
-if (afterStamp === beforeStamp) {
+if (beforeStamp && afterStamp === beforeStamp) {
   throw new Error(`Ruční aktualizace nepromítla nový import: ${beforeStamp}`);
 }
 

@@ -24,6 +24,7 @@ from app.db.models import (
     BreakfastStatus,
 )
 from app.db.session import SessionLocal
+from app.services.breakfast.mail_fetcher import BreakfastMailFetcher, BreakfastMailboxPdfCandidate
 from app.services.breakfast.parser import BreakfastRow, parse_breakfast_pdf
 from app.time_utils import utc_now
 
@@ -183,6 +184,17 @@ def _persist_import(
     return len(rows)
 
 
+def _playwright_refresh_is_available() -> bool:
+    settings = get_settings()
+    if not settings.better_hotel_base_url.strip():
+        return False
+    if not settings.better_hotel_username.strip():
+        return False
+    if not settings.better_hotel_password.strip():
+        return False
+    return _resolve_playwright_script().is_file()
+
+
 def _write_run_log(
     db: Session,
     *,
@@ -206,6 +218,124 @@ def _write_run_log(
         )
     )
     db.commit()
+
+
+def _run_mailbox_refresh_job(job_key: str, *, fallback_reason: str | None = None) -> None:
+    settings = get_settings()
+    with SessionLocal() as db:
+        job = _load_job(db, job_key)
+        started_at = utc_now()
+        _set_job_state(
+            db,
+            job_key,
+            status="running",
+            message="Hledám poslední přehled stravy v mailboxu.",
+            started_at=started_at,
+        )
+        if fallback_reason:
+            _append_progress(db, job, step="fallback", message=fallback_reason)
+        try:
+            fetcher = BreakfastMailFetcher(settings)
+            _append_progress(db, job, step="mailbox", message="Připojuji se do schránky s přehledy stravy.")
+            candidate = fetcher.find_latest_pdf_for_day(db, target_day=job.service_date)
+            if candidate is None:
+                raise RuntimeError(
+                    f"Ve schránce nebyl nalezen PDF přehled pro den {job.service_date.isoformat()}."
+                )
+            _append_progress(
+                db,
+                job,
+                step="mailbox",
+                message=(
+                    "Nalezen odpovídající e-mailový přehled "
+                    f"(prohledáno {candidate.scanned_messages} zpráv, shoda {candidate.matched_messages})."
+                ),
+            )
+            imported_count = _import_mailbox_candidate(
+                db,
+                job=job,
+                candidate=candidate,
+            )
+            _write_run_log(
+                db,
+                started_at=started_at,
+                ok=True,
+                trigger="manual_mailbox",
+                imported_count=imported_count,
+                errors=[],
+            )
+            _set_job_state(
+                db,
+                job_key,
+                status="succeeded",
+                message="Ruční import dokončen z posledního e-mailového PDF.",
+                imported_count=imported_count,
+                finished_at=utc_now(),
+            )
+        except Exception as exc:
+            db.rollback()
+            errors = [f"{type(exc).__name__}: {exc}"]
+            try:
+                _write_run_log(
+                    db,
+                    started_at=started_at,
+                    ok=False,
+                    trigger="manual_mailbox",
+                    imported_count=0,
+                    errors=errors,
+                )
+            except Exception:
+                log.exception("Manual mailbox breakfast run log write failed", extra={"context": {"job_key": job_key}})
+            try:
+                _set_job_state(
+                    db,
+                    job_key,
+                    status="failed",
+                    message="Ruční import selhal.",
+                    error_message=str(exc),
+                    finished_at=utc_now(),
+                )
+            except Exception:
+                log.exception("Manual mailbox breakfast job state update failed", extra={"context": {"job_key": job_key}})
+            log.exception("Manual mailbox breakfast refresh failed", extra={"context": {"job_key": job_key}})
+
+
+def _import_mailbox_candidate(
+    db: Session,
+    *,
+    job: BreakfastManualRefreshJob,
+    candidate: BreakfastMailboxPdfCandidate,
+) -> int:
+    _append_progress(db, job, step="parse", message="Zpracovávám PDF z mailboxu.")
+    if candidate.parsed_day != job.service_date:
+        _append_progress(
+            db,
+            job,
+            step="validate",
+            message=(
+                f"PDF je primárně pro den {candidate.parsed_day.isoformat()}, "
+                f"použiji položky pro {job.service_date.isoformat()}."
+            ),
+        )
+    target_rows = [row for row in candidate.rows if row.day == job.service_date]
+    if not target_rows:
+        raise RuntimeError(f"PDF neobsahuje žádné položky pro den {job.service_date.isoformat()}.")
+    imported_count = _persist_import(
+        db,
+        job=job,
+        target_day=job.service_date,
+        rows=target_rows,
+        pdf_bytes=candidate.pdf_bytes,
+    )
+    db.add(
+        BreakfastImportProcessedAttachment(
+            message_uid=f"{candidate.message_uid}:manual:{job.job_key}",
+            attachment_hash=candidate.attachment_hash,
+            parsed_day=job.service_date,
+        )
+    )
+    db.commit()
+    return imported_count
 
 
 def _run_test_refresh_job(job_key: str) -> None:
@@ -289,6 +419,15 @@ def _run_playwright_job(job_key: str) -> None:
     if str(settings.better_hotel_refresh_mode).lower() == "test":
         _run_test_refresh_job(job_key)
         return
+    if not _playwright_refresh_is_available():
+        _run_mailbox_refresh_job(
+            job_key,
+            fallback_reason=(
+                "Better Hotel browser refresh není nakonfigurovaný, "
+                "použiji poslední dostupný e-mailový přehled."
+            ),
+        )
+        return
     with SessionLocal() as db:
         job = _load_job(db, job_key)
         started_at = utc_now()
@@ -319,11 +458,6 @@ def _run_playwright_job(job_key: str) -> None:
         try:
             repo_root = _resolve_repo_root()
             playwright_script = _resolve_playwright_script()
-            if not playwright_script.is_file():
-                raise RuntimeError(
-                    "Runner Better Hotelu neni dostupny na serveru. "
-                    "Nastavte KAJOVO_BETTER_HOTEL_REFRESH_SCRIPT nebo doplnte scripts/better_hotel_refresh.mjs."
-                )
             command = ["node", str(playwright_script)]
             process = subprocess.Popen(
                 command,
