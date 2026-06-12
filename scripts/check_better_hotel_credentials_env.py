@@ -3,6 +3,9 @@ from __future__ import annotations
 import os
 import sys
 
+DEFAULT_BETTER_HOTEL_BASE_URL = "https://app.bebetterhotels.com"
+DEFAULT_BETTER_HOTEL_LOGIN_PATH = "/users/sign_in"
+
 
 def _value(*keys: str) -> str:
     for key in keys:
@@ -19,11 +22,14 @@ def main() -> int:
     username = _value("bb_user", "BB_USER", "KAJOVO_API_BETTER_HOTEL_USERNAME")
     password = _value("bb_pass", "BB_PASS", "KAJOVO_API_BETTER_HOTEL_PASSWORD")
 
+    if (username or password) and not base_url:
+        base_url = DEFAULT_BETTER_HOTEL_BASE_URL
+    if (username or password) and not login_path:
+        login_path = DEFAULT_BETTER_HOTEL_LOGIN_PATH
+
     errors: list[str] = []
     if bool(username) != bool(password):
         errors.append("Better Hotel credentials must be provided together: set both bb_user and bb_pass.")
-    if (username or password) and not base_url:
-        errors.append("Missing Better Hotel base URL: set BETTER_HOTEL_BASE_URL when bb_user/bb_pass are used.")
 
     if errors:
         print("Better Hotel credential environment check: FAIL", file=sys.stderr)
