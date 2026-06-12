@@ -29,9 +29,28 @@ from app.time_utils import utc_now
 
 log = logging.getLogger("kajovo.breakfast.manual_refresh")
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-PLAYWRIGHT_SCRIPT = REPO_ROOT / "scripts" / "better_hotel_refresh.mjs"
 MAX_PROGRESS_ENTRIES = 20
+
+
+def _resolve_repo_root() -> Path:
+    explicit_root = os.environ.get("KAJOVO_REPO_ROOT", "").strip()
+    if explicit_root:
+        return Path(explicit_root).resolve()
+
+    current = Path(__file__).resolve()
+    for candidate in (current.parent, *current.parents):
+        if (candidate / "scripts").is_dir() and (candidate / "apps").is_dir():
+            return candidate
+
+    return current.parent
+
+
+def _resolve_playwright_script() -> Path:
+    explicit_script = os.environ.get("KAJOVO_BETTER_HOTEL_REFRESH_SCRIPT", "").strip()
+    if explicit_script:
+        return Path(explicit_script).resolve()
+
+    return _resolve_repo_root() / "scripts" / "better_hotel_refresh.mjs"
 
 
 @dataclass(frozen=True)
@@ -296,12 +315,19 @@ def _run_playwright_job(job_key: str) -> None:
                 "BETTER_HOTEL_TIMEOUT_SECONDS": str(settings.better_hotel_playwright_timeout_seconds),
             }
         )
-        command = ["node", str(PLAYWRIGHT_SCRIPT)]
+        repo_root = _resolve_repo_root()
+        playwright_script = _resolve_playwright_script()
+        if not playwright_script.is_file():
+            raise RuntimeError(
+                "Runner Better Hotelu neni dostupny na serveru. "
+                "Nastavte KAJOVO_BETTER_HOTEL_REFRESH_SCRIPT nebo doplnte scripts/better_hotel_refresh.mjs."
+            )
+        command = ["node", str(playwright_script)]
         log.info("Starting manual breakfast refresh job", extra={"context": {"job_key": job_key}})
         try:
             process = subprocess.Popen(
                 command,
-                cwd=str(REPO_ROOT),
+                cwd=str(repo_root),
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
