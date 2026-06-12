@@ -24,7 +24,7 @@ from app.db.models import (
     BreakfastStatus,
 )
 from app.db.session import SessionLocal
-from app.services.breakfast.mail_fetcher import BreakfastMailFetcher, BreakfastMailboxPdfCandidate
+from app.services.breakfast.mail_fetcher import BreakfastMailboxPdfCandidate, BreakfastMailFetcher
 from app.services.breakfast.parser import BreakfastRow, parse_breakfast_pdf
 from app.time_utils import utc_now
 
