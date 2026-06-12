@@ -122,6 +122,40 @@ SQL
     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
 }
 
+reconcile_alembic_version_storage() {
+  local sql
+  sql="$(cat <<'SQL'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'alembic_version'
+  ) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'alembic_version'
+        AND column_name = 'version_num'
+        AND COALESCE(character_maximum_length, 0) < 128
+    ) THEN
+      ALTER TABLE public.alembic_version
+        ALTER COLUMN version_num TYPE VARCHAR(128);
+    END IF;
+  END IF;
+END
+$$;
+SQL
+)"
+
+  echo "Dorovnavam uloziste Alembic revizi pro delsi revision ID..."
+  PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+    compose_cmd exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
+}
+
 http_check() {
   local url="$1"
   local label="$2"
@@ -286,6 +320,12 @@ for i in {1..10}; do
   if [[ "$has_alembic_version" != "t" && "${existing_app_tables:-0}" =~ ^[0-9]+$ && "${existing_app_tables:-0}" -gt 0 ]]; then
     echo "Detekovano existujici schema bez alembic_version -> adoptuji schema pomoci alembic stamp head."
     if ! compose_cmd run --rm api alembic stamp head; then
+      sleep 2
+      continue
+    fi
+  fi
+  if [[ "$has_alembic_version" == "t" ]]; then
+    if ! reconcile_alembic_version_storage; then
       sleep 2
       continue
     fi
