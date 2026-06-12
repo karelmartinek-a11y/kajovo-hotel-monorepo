@@ -315,16 +315,16 @@ def _run_playwright_job(job_key: str) -> None:
                 "BETTER_HOTEL_TIMEOUT_SECONDS": str(settings.better_hotel_playwright_timeout_seconds),
             }
         )
-        repo_root = _resolve_repo_root()
-        playwright_script = _resolve_playwright_script()
-        if not playwright_script.is_file():
-            raise RuntimeError(
-                "Runner Better Hotelu neni dostupny na serveru. "
-                "Nastavte KAJOVO_BETTER_HOTEL_REFRESH_SCRIPT nebo doplnte scripts/better_hotel_refresh.mjs."
-            )
-        command = ["node", str(playwright_script)]
         log.info("Starting manual breakfast refresh job", extra={"context": {"job_key": job_key}})
         try:
+            repo_root = _resolve_repo_root()
+            playwright_script = _resolve_playwright_script()
+            if not playwright_script.is_file():
+                raise RuntimeError(
+                    "Runner Better Hotelu neni dostupny na serveru. "
+                    "Nastavte KAJOVO_BETTER_HOTEL_REFRESH_SCRIPT nebo doplnte scripts/better_hotel_refresh.mjs."
+                )
+            command = ["node", str(playwright_script)]
             process = subprocess.Popen(
                 command,
                 cwd=str(repo_root),
