@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from './Icon';
 
 type Props = {
   title: string;
@@ -21,6 +22,14 @@ function liveRegionProps(stateKey?: string): { role?: 'alert'; ariaLive: 'assert
 export function StateView({ title, description, action, stateKey }: Props): JSX.Element {
   const testId = stateKey ? `state-view-${stateKey}` : 'state-view';
   const { role, ariaLive } = liveRegionProps(stateKey);
+  const iconName =
+    stateKey === 'error' || stateKey === '404'
+      ? 'file-text'
+      : stateKey === 'offline' || stateKey === 'maintenance'
+        ? 'tool'
+        : stateKey === 'empty'
+          ? 'folder'
+          : 'layout-dashboard';
 
   return (
     <section
@@ -30,6 +39,9 @@ export function StateView({ title, description, action, stateKey }: Props): JSX.
       aria-live={ariaLive}
       aria-atomic="true"
     >
+      <span className="k-state-view__icon-wrap">
+        <Icon name={iconName} className="k-state-view__icon" title={title} />
+      </span>
       <h2>{title}</h2>
       <p>{description}</p>
       {action ? <div className="k-state-view-action">{action}</div> : null}

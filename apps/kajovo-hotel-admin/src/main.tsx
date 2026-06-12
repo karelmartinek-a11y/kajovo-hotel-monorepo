@@ -4842,8 +4842,16 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
               </button>
             </div>
           </form>
-        </Card>
-      </section>
+          </Card>
+          <Card title="Sprava hotelu v jednom vstupu" icon="layout-dashboard" eyebrow="Dnesni provoz">
+            <div className="k-grid">
+              <div className="k-nav-link"><span>Uzivatele a role</span></div>
+              <div className="k-nav-link"><span>Snidane, zavady a sklad</span></div>
+              <div className="k-nav-link"><span>SMTP a systemove nastaveni</span></div>
+              <p className="k-subtle">Po prihlaseni navazete na dashboard, operacni moduly i spravu pristupu bez prepinani mezi aplikacemi.</p>
+            </div>
+          </Card>
+        </section>
       <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="admin-hint-dialog" />
     </main>
   );

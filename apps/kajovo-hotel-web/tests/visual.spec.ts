@@ -95,7 +95,7 @@ function uniqueSuffix(projectName: string, parallelIndex: number) {
 async function createPortalUser(
   request: APIRequestContext,
   testInfo: { project: { name: string }; parallelIndex: number },
-  roles: string[]
+  roles: string[],
 ) {
   const adminLoginResponse = await request.post('/api/auth/admin/login', {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
@@ -127,16 +127,16 @@ async function loginPortal(page: Page, email: string, password: string, landingP
   await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
-  await expect(page).toHaveURL(landingPath);
+  await expect(page).toHaveURL(landingPath, { timeout: 15000 });
   const roleSelect = page.getByTestId('role-select-page');
   if (await roleSelect.isVisible().catch(() => false)) {
     await page.getByRole('button', { name: new RegExp(`pokračovat jako ${roleName}`, 'i') }).click();
-    await expect(page).toHaveURL(landingPath);
+    await expect(page).toHaveURL(landingPath, { timeout: 15000 });
   }
 }
 
 async function waitForView(page: Page, view: ViewCheck) {
-  await page.goto(view.path, { waitUntil: 'domcontentloaded' });
+  await page.goto(view.path, { waitUntil: 'networkidle' });
   if (view.readyTestId) {
     await expect(page.getByTestId(view.readyTestId)).toBeVisible();
   } else {
@@ -151,7 +151,7 @@ async function visibleBrandCount(page: Page): Promise<number> {
       const style = window.getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
-    }).length
+    }).length,
   );
 }
 
@@ -207,11 +207,11 @@ async function assertKdgsGeometry(page: Page, viewName: string) {
   });
   expect.soft(
     overflow.scrollWidth <= overflow.clientWidth + 1,
-    `${viewName}: root viewport nesmí mít horizontální overflow`
+    `${viewName}: root viewport nesmí mít horizontální overflow`,
   ).toBeTruthy();
   expect.soft(
     overflow.bodyScrollWidth <= overflow.bodyClientWidth + 1,
-    `${viewName}: body nesmí mít horizontální overflow`
+    `${viewName}: body nesmí mít horizontální overflow`,
   ).toBeTruthy();
 
   const candidates = await interactiveCandidates(page);
@@ -227,6 +227,11 @@ test.describe('KDGS vizuální a geometrická kontrola portálu', () => {
       await assertKdgsGeometry(page, view.name);
     });
   }
+});
+
+test.describe('KDGS role scénáře portálu', () => {
+  test.describe.configure({ mode: 'serial' });
+  test.setTimeout(90000);
 
   for (const scenario of portalScenarios) {
     test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {

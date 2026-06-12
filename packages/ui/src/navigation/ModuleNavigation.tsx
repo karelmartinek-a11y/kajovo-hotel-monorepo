@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
+import { Icon } from '../components/Icon';
 
 type Props = {
   modules: NavModule[];
@@ -216,7 +217,8 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
                   aria-current={currentPath === module.route ? 'page' : undefined}
                   onClick={() => setOverflowOpen(false)}
                 >
-                  {module.label}
+                  <Icon name={module.icon} className="k-nav-link__icon" />
+                  <span>{module.label}</span>
                 </Link>
               ))}
             </React.Fragment>
@@ -247,7 +249,8 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
                       role="menuitem"
                       onClick={() => setOverflowOpen(false)}
                     >
-                      {module.label}
+                      <Icon name={module.icon} className="k-nav-link__icon" />
+                      <span>{module.label}</span>
                     </Link>
                   ))}
                 </div>
@@ -299,7 +302,8 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
                   role="menuitem"
                   onClick={() => setDrawerOpen(false)}
                 >
-                  {module.label}
+                  <Icon name={module.icon} className="k-nav-link__icon" />
+                  <span>{module.label}</span>
                 </Link>
               ))}
               {searchableItems.length === 0 ? <p className="k-nav-empty">Žádné výsledky.</p> : null}

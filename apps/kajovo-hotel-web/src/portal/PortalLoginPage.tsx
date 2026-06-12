@@ -1,5 +1,5 @@
 import React from 'react';
-import { KajovoFullLockup, KajovoSign } from '@kajovo/ui';
+import { Icon, KajovoFullLockup, KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 type PortalLoginPageProps = {
@@ -131,6 +131,23 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
           </a>
         </section>
       </section>
+      <aside className="k-login-preview" aria-label="Prehled provozniho portalu">
+        <div className="k-card">
+          <div className="k-card__header">
+            <div className="k-card__title-wrap">
+              <p className="k-card__eyebrow">Dnesni provoz</p>
+              <h3>Jedno rozhrani pro celou smenu</h3>
+            </div>
+            <Icon name="layout-dashboard" className="k-card__icon" title="Prehled" />
+          </div>
+          <div className="k-card__body k-grid">
+            <div className="k-nav-link"><Icon name="utensils" className="k-nav-link__icon" /><span>Snidane a importy</span></div>
+            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>Zavady a pokojska</span></div>
+            <div className="k-nav-link"><Icon name="search" className="k-nav-link__icon" /><span>Ztraty a nalezy</span></div>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Hlaseni a profil</span></div>
+          </div>
+        </div>
+      </aside>
       <KajovoSign href="/" />
     </main>
   );

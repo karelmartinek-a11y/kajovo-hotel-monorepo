@@ -3,12 +3,14 @@ import React from 'react';
 type Props = {
   headers: string[];
   rows: Array<Array<React.ReactNode>>;
+  caption?: string;
 };
 
-export function DataTable({ headers, rows }: Props): JSX.Element {
+export function DataTable({ headers, rows, caption = 'Tabulka' }: Props): JSX.Element {
   return (
-    <div className="k-table-wrap" role="region" aria-label="Tabulka" tabIndex={0}>
+    <div className="k-table-wrap" role="region" aria-label={caption} tabIndex={0}>
       <table className="k-table">
+        <caption className="k-nav-sr-only">{caption}</caption>
         <thead>
           <tr>
             {headers.map((header) => (

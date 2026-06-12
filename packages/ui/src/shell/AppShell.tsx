@@ -2,6 +2,7 @@ import React from 'react';
 import '../tokens.css';
 import { KajovoSign } from './KajovoSign';
 import { KajovoWordmark } from './KajovoWordmark';
+import { Icon } from '../components/Icon';
 import type { PanelLayout } from './panelLayout';
 import { ModuleNavigation } from '../navigation/ModuleNavigation';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
@@ -67,6 +68,18 @@ export function AppShell({
   return (
     <div className="k-app-shell" data-panel-layout={panelLayout}>
       <header className="k-app-header">
+        <div className="k-app-header__ribbon">
+          <div className="k-shell-inner k-app-header__ribbon-inner">
+            <span className="k-app-header__ribbon-item">
+              <Icon name="briefcase" className="k-app-header__ribbon-icon" />
+              <span>{panelLayout === 'admin' ? 'Administrace hotelu' : 'Provozni portal hotelu'}</span>
+            </span>
+            <span className="k-app-header__ribbon-item">
+              <Icon name="tool" className="k-app-header__ribbon-icon" />
+              <span>Desktop, tablet i mobil v jednom toku</span>
+            </span>
+          </div>
+        </div>
         <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>
           Přeskočit na obsah
         </a>

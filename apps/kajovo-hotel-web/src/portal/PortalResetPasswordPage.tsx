@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { KajovoFullLockup, KajovoSign } from '@kajovo/ui';
+import { Icon, KajovoFullLockup, KajovoSign } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -133,6 +133,22 @@ export function PortalResetPasswordPage(): JSX.Element {
           ) : null}
         </form>
       </section>
+      <aside className="k-login-preview" aria-label="Instrukce k obnoveni pristupu">
+        <div className="k-card">
+          <div className="k-card__header">
+            <div className="k-card__title-wrap">
+              <p className="k-card__eyebrow">Obnova pristupu</p>
+              <h3>Po zmene hesla se vratite zpet do smeny</h3>
+            </div>
+            <Icon name="profile" className="k-card__icon" title="Obnova pristupu" />
+          </div>
+          <div className="k-card__body k-grid">
+            <p className="k-text-muted">Pouzijte odkaz ze spravcovskeho mailu a nastavte nove heslo alespon o 8 znacich.</p>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Token z odkazu</span></div>
+            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>Nova hesla musi souhlasit</span></div>
+          </div>
+        </div>
+      </aside>
       <KajovoSign href="/" />
     </main>
   );

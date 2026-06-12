@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +71,10 @@ fun PortalChrome(
                         Text(text = roleLabel, style = MaterialTheme.typography.bodyMedium)
                     }
                 },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
                 actions = {
                     if (availableRoles.size > 1 && onRoleSelected != null) {
                         Box {
@@ -147,11 +153,11 @@ fun PortalChrome(
 fun SignageBadge() {
     Box(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(KajovoRadiusTokens.R8))
+            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(KajovoRadiusTokens.R12))
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(KajovoRadiusTokens.R8),
+                shape = RoundedCornerShape(KajovoRadiusTokens.R12),
             )
             .padding(horizontal = KajovoSpacingTokens.S4, vertical = KajovoSpacingTokens.S2),
         contentAlignment = Alignment.Center,
@@ -194,11 +200,33 @@ fun FeatureCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(KajovoRadiusTokens.R12),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
         Column(
             modifier = Modifier.padding(KajovoSpacingTokens.S4),
             verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
         ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(KajovoRadiusTokens.R8))
+                        .padding(horizontal = KajovoSpacingTokens.S2, vertical = KajovoSpacingTokens.S1),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Badge,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+                Text(
+                    text = "KÁJOVO HOSPITALITY",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(text = title, style = MaterialTheme.typography.titleLarge)
             Text(text = subtitle, style = MaterialTheme.typography.bodyMedium)
         }

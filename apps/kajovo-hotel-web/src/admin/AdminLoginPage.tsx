@@ -1,5 +1,5 @@
 import React from 'react';
-import { KajovoFullLockup, KajovoSign, StateView } from '@kajovo/ui';
+import { Icon, KajovoFullLockup, KajovoSign, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 type LoginErrorState = {
@@ -144,6 +144,23 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
           {authError ? <StateView title="Ověření přihlášení selhalo" description={authError} stateKey="error" /> : null}
         </form>
       </section>
+      <aside className="k-login-preview" aria-label="Prehled administrace">
+        <div className="k-card">
+          <div className="k-card__header">
+            <div className="k-card__title-wrap">
+              <p className="k-card__eyebrow">Administrace</p>
+              <h3>Sprava hotelu, uzivatelu a nastaveni</h3>
+            </div>
+            <Icon name="settings" className="k-card__icon" title="Administrace" />
+          </div>
+          <div className="k-card__body k-grid">
+            <div className="k-nav-link"><Icon name="users" className="k-nav-link__icon" /><span>Uzivatele a role</span></div>
+            <div className="k-nav-link"><Icon name="layout-dashboard" className="k-nav-link__icon" /><span>Operacni prehled</span></div>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Hlaseni a snidane</span></div>
+            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>SMTP a systemove nastaveni</span></div>
+          </div>
+        </div>
+      </aside>
       <KajovoSign href="/admin/" />
     </main>
   );

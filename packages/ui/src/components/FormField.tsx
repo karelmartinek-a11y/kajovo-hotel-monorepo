@@ -9,7 +9,7 @@ type Props = {
 export function FormField({ id, label, children }: Props): JSX.Element {
   return (
     <div className="k-form-field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id} className="k-form-field__label">{label}</label>
       {children}
     </div>
   );
