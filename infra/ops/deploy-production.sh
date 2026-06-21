@@ -20,6 +20,7 @@ DEPLOY_SOURCE_SHA="${DEPLOY_SOURCE_SHA:-}"
 HOST_NGINX_TEMPLATE="${HOST_NGINX_TEMPLATE:-$ROOT_DIR/infra/reverse-proxy/production-host.conf}"
 HOST_NGINX_SITE_PATH="${HOST_NGINX_SITE_PATH:-/etc/nginx/sites-available/hotel.hcasc.cz.conf}"
 HOST_NGINX_ENABLED_PATH="${HOST_NGINX_ENABLED_PATH:-/etc/nginx/sites-enabled/hotel.hcasc.cz.conf}"
+HOST_NGINX_SYNC_HELPER="${HOST_NGINX_SYNC_HELPER:-/usr/local/bin/kajovo-sync-hotel-nginx}"
 
 require_cmd() {
   local name="$1"
@@ -195,12 +196,25 @@ sync_host_nginx_config() {
   fi
 
   echo "Synchronizuji host-level Nginx konfiguraci pro hotel.hcasc.cz..."
-  install -D -m 0644 "$HOST_NGINX_TEMPLATE" "$HOST_NGINX_SITE_PATH"
-  if [[ ! -L "$HOST_NGINX_ENABLED_PATH" ]]; then
-    ln -sfn "$HOST_NGINX_SITE_PATH" "$HOST_NGINX_ENABLED_PATH"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    install -D -m 0644 "$HOST_NGINX_TEMPLATE" "$HOST_NGINX_SITE_PATH"
+    if [[ ! -L "$HOST_NGINX_ENABLED_PATH" ]]; then
+      ln -sfn "$HOST_NGINX_SITE_PATH" "$HOST_NGINX_ENABLED_PATH"
+    fi
+    nginx -t
+    systemctl reload nginx
+    return 0
   fi
-  nginx -t
-  systemctl reload nginx
+
+  if [[ -x "$HOST_NGINX_SYNC_HELPER" ]] && sudo -n "$HOST_NGINX_SYNC_HELPER" \
+    "$HOST_NGINX_TEMPLATE" \
+    "$HOST_NGINX_SITE_PATH" \
+    "$HOST_NGINX_ENABLED_PATH"; then
+    return 0
+  fi
+
+  echo "Deploy uzivatel nema prava pro host-level Nginx sync a helper $HOST_NGINX_SYNC_HELPER neni dostupny pres sudo -n." >&2
+  exit 1
 }
 
 http_check() {

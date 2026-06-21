@@ -59,6 +59,8 @@ Volitelné aliasy:
 
 Alias hodnoty se musí rovnat kanonickým admin credentials.
 
+Produkční host musí mít nainstalovaný root helper `/usr/local/bin/kajovo-sync-hotel-nginx` a deploy uživatel jej musí umět spustit přes `sudo -n`, protože workflow synchronizuje host-level Nginx konfiguraci bez přímého zápisu do `/etc/nginx`.
+
 ## Co deploy workflow ověřuje
 
 - zdraví `postgres`, `api`, `web`, `admin`

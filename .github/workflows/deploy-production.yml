@@ -119,6 +119,19 @@ jobs:
           target: /tmp/
           overwrite: true
 
+      - name: Verify remote nginx sync helper
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null
+            echo "Remote nginx sync helper: PASS"
+
       - name: Deploy uploaded release via SSH password
         uses: appleboy/ssh-action@v1.2.0
         with:

@@ -53,6 +53,8 @@ ssh temp "sudo cat /opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.js
 ssh temp "sudo nginx -t && sudo grep -nE 'location = /admin|location ~\\* \\^/admin' /etc/nginx/sites-available/hotel.hcasc.cz.conf"
 ```
 
+4. Produkcni deploy uzivatel musi mit na serveru povoleny `sudo -n /usr/local/bin/kajovo-sync-hotel-nginx`, jinak workflow nedokaze bezpecne synchronizovat host-level Nginx konfiguraci z repa.
+
 4. Browser smoke na ostre domene pro web i admin probehne bez relevantnich console/network chyb.
 
 ## Poznamka k rollbacku
