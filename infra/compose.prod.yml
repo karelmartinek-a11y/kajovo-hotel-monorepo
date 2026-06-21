@@ -25,6 +25,8 @@ services:
       context: ..
       dockerfile: apps/kajovo-hotel-api/Dockerfile
     restart: unless-stopped
+    volumes:
+      - api_data:/app/data
     environment:
       KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-KájovoHotel API}
       KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
@@ -97,4 +99,5 @@ networks:
     driver: bridge
 
 volumes:
+  api_data:
   postgres_data:

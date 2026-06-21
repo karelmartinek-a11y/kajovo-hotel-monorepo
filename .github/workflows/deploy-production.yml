@@ -27,6 +27,7 @@ jobs:
       HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
       HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
       HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
+      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
       HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
       KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
@@ -68,8 +69,8 @@ jobs:
             echo "Missing HOTEL_DEPLOY_USER in GitHub secrets or variables." >&2
             exit 1
           fi
-          if [ -z "${HOTEL_DEPLOY_PASS:-}" ]; then
-            echo "Missing HOTEL_DEPLOY_PASS in GitHub secrets or variables." >&2
+          if [ -z "${HOTEL_DEPLOY_PASS:-}" ] && [ -z "${HOTEL_DEPLOY_KEY:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_PASS or HOTEL_DEPLOY_KEY in GitHub secrets or variables." >&2
             exit 1
           fi
           echo "Deploy target environment check: PASS"
@@ -97,6 +98,7 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           source: ${{ env.RELEASE_ARCHIVE }}
           target: /tmp/
@@ -108,6 +110,7 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           envs: DEPLOY_SHA,RELEASE_ARCHIVE,HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD,BETTER_HOTEL_BASE_URL,BETTER_HOTEL_LOGIN_PATH,BETTER_HOTEL_REPORT_URL_TEMPLATE,bb_user,bb_pass
           script: |
@@ -155,6 +158,7 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           envs: DEPLOY_SHA
           script: |
@@ -286,6 +290,7 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           script: |
             set -euo pipefail
