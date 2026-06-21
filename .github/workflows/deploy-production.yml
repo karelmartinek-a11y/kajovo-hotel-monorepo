@@ -214,6 +214,17 @@ jobs:
           )
           PY
 
+      - name: Route deploy verification to target host
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$HOTEL_DEPLOY_HOST hotel.hcasc.cz" | sudo tee -a /etc/hosts >/dev/null
+            getent hosts hotel.hcasc.cz
+          else
+            echo "HOTEL_DEPLOY_HOST is not an IPv4 address; live verification will use DNS."
+          fi
+
       - name: Post-deploy HTTP gate
         shell: bash
         run: |
