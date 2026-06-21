@@ -4634,7 +4634,7 @@ function AuthSelfServiceProfilePage(): JSX.Element {
           'X-CSRF-Token': readCsrfToken(),
         },
       });
-      await navigate('/admin/login');
+      await navigate('/login');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Odhlášení se nepodařilo dokončit.');
     } finally {
