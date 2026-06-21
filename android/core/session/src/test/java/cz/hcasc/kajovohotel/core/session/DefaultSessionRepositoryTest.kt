@@ -77,6 +77,29 @@ class DefaultSessionRepositoryTest {
     }
 
     @Test
+    fun `restore session without cookie hint skips me request and stays unauthenticated`() = runTest {
+        val authApi = FakeAuthApi(
+            meResult = Result.success(
+                AuthIdentityDto(
+                    email = "recepce@example.com",
+                    role = "recepce",
+                    roles = listOf("recepce"),
+                    active_role = "recepce",
+                    permissions = listOf("breakfast:read"),
+                    actor_type = "portal",
+                ),
+            ),
+        )
+        val cookieStore = FakeCookieStore(hasSessionCookieHint = false)
+        val repository = repository(authApi = authApi, cookieStore = cookieStore)
+
+        repository.restoreSession()
+
+        assertTrue(repository.sessionState.value is SessionState.Unauthenticated)
+        assertEquals(0, authApi.meCalls)
+    }
+
+    @Test
     fun `restore session opravi rozbitou aktivni roli z backendu`() = runTest {
         val authApi = FakeAuthApi(
             meResult = Result.success(
@@ -318,6 +341,7 @@ class DefaultSessionRepositoryTest {
         private val changePasswordResult: Result<Response<Unit>> = Result.success(Response.success(Unit)),
     ) : AuthApi {
         var lastLoginRequest: PortalLoginRequest? = null
+        var meCalls: Int = 0
 
         override suspend fun androidRelease(): AndroidReleaseDto = AndroidReleaseDto(
             version_code = 1,
@@ -334,7 +358,10 @@ class DefaultSessionRepositoryTest {
             return loginResult.getOrThrow()
         }
 
-        override suspend fun me(): AuthIdentityDto = meResult.getOrThrow()
+        override suspend fun me(): AuthIdentityDto {
+            meCalls += 1
+            return meResult.getOrThrow()
+        }
         override suspend fun selectRole(request: SelectRoleRequest): AuthIdentityDto = selectRoleResult.getOrThrow()
         override suspend fun logout(): Response<Unit> = logoutResult.getOrThrow()
         override suspend fun profile(): AuthProfileDto = profileResult.getOrThrow()
@@ -343,8 +370,12 @@ class DefaultSessionRepositoryTest {
         override suspend fun resetPassword(request: PortalPasswordResetRequest): Response<Unit> = Response.success(Unit)
     }
 
-    private class FakeCookieStore : SessionCookieStore {
+    private class FakeCookieStore(
+        private val hasSessionCookieHint: Boolean = true,
+    ) : SessionCookieStore {
         var cleared = false
+
+        override fun hasSessionCookieHint(): Boolean = hasSessionCookieHint
 
         override fun clearAll() {
             cleared = true

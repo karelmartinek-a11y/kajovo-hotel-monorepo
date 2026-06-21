@@ -410,6 +410,10 @@ function readCsrfToken(): string {
     ?.split('=')[1] ?? '';
 }
 
+function hasAuthCookieHint(): boolean {
+  return readCsrfToken().length > 0;
+}
+
 function normalizePhoneInput(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length === 0) {
@@ -3355,9 +3359,14 @@ type AuthLoadState =
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
+  const [authState, setAuthState] = React.useState<AuthLoadState>(() => (
+    hasAuthCookieHint() ? { status: 'loading' } : { status: 'unauthenticated' }
+  ));
 
   React.useEffect(() => {
+    if (!hasAuthCookieHint()) {
+      return;
+    }
     void resolveAuthProfile()
       .then((resolved) => {
         if (resolved.status === 'authenticated') {

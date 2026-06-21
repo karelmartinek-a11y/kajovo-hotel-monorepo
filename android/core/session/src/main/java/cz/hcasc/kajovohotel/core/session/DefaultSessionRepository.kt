@@ -34,6 +34,11 @@ class DefaultSessionRepository(
     override val sessionMessage: StateFlow<String?> = mutableSessionMessage
 
     override suspend fun restoreSession() {
+        if (!cookieStore.hasSessionCookieHint()) {
+            mutableSessionMessage.value = null
+            mutableSessionState.value = SessionState.Unauthenticated
+            return
+        }
         mutableSessionState.value = SessionState.Checking
         mutableSessionMessage.value = null
         runCatching { authApi.me() }

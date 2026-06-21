@@ -198,6 +198,10 @@ function readCsrfToken(): string {
     .find((item) => item.startsWith('kajovo_csrf='))
     ?.split('=')[1] ?? '';
 }
+
+function hasAuthCookieHint(): boolean {
+  return readCsrfToken().length > 0;
+}
 const portalRoleLabels: Record<PortalRole, string> = {
   'pokojská': 'Pokojská',
   'údržba': 'Údržba',
@@ -4859,7 +4863,9 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
+  const [authState, setAuthState] = React.useState<AuthLoadState>(() => (
+    hasAuthCookieHint() ? { status: 'loading' } : { status: 'unauthenticated' }
+  ));
   const adminLocale = typeof document !== 'undefined' ? document.documentElement.lang : 'cs';
   const roleSwitcherLabels = React.useMemo(() => {
     const bundle = getAuthBundle('admin', adminLocale);
@@ -4876,6 +4882,9 @@ function AppRoutes(): JSX.Element {
   }, []);
 
   React.useEffect(() => {
+    if (!hasAuthCookieHint()) {
+      return;
+    }
     refreshAuth();
   }, [refreshAuth]);
 
