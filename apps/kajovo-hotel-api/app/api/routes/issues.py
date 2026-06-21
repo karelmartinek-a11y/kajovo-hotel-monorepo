@@ -277,5 +277,7 @@ def get_issue_photo(
     storage = MediaStorage(get_settings().media_root)
     path = storage.resolve(rel)
     if not path.exists():
+        if kind == "thumb":
+            return storage.placeholder_thumb_response("ZA")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
     return FileResponse(path, media_type=photo.mime_type)

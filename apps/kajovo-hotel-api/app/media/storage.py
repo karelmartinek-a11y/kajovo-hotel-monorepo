@@ -4,8 +4,11 @@ import io
 import shutil
 import uuid
 from dataclasses import dataclass
+from html import escape
 from pathlib import Path
 from typing import BinaryIO
+
+from fastapi.responses import Response
 
 try:
     from PIL import Image
@@ -27,7 +30,6 @@ class StoredMedia:
 class MediaStorage:
     def __init__(self, media_root: str):
         self.root = Path(media_root).resolve()
-        self.root.mkdir(parents=True, exist_ok=True)
 
     def _safe_rel(self, relpath: str) -> Path:
         rel = Path(relpath)
@@ -41,6 +43,19 @@ class MediaStorage:
     def resolve(self, relpath: str) -> Path:
         return self._safe_rel(relpath)
 
+    def placeholder_thumb_response(self, label: str = 'KH') -> Response:
+        safe_label = escape((label or 'KH')[:4].upper())
+        svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360" viewBox="0 0 480 360" role="img" aria-label="Chybějící náhled média">
+  <rect width="480" height="360" fill="#f2f4f7"/>
+  <rect x="20" y="20" width="440" height="320" rx="24" fill="#d9dee7"/>
+  <text x="240" y="196" text-anchor="middle" font-family="Arial, sans-serif" font-size="64" font-weight="700" fill="#5f6b7a">{safe_label}</text>
+</svg>"""
+        return Response(
+            content=svg.encode('utf-8'),
+            media_type='image/svg+xml',
+            headers={'Cache-Control': 'no-store'},
+        )
+
     def store_image(
         self,
         *,
@@ -53,6 +68,7 @@ class MediaStorage:
         if ext not in {'.jpg', '.jpeg', '.png', '.webp'}:
             ext = '.jpg'
 
+        self.root.mkdir(parents=True, exist_ok=True)
         token = uuid.uuid4().hex
         base_rel = Path(category) / str(resource_id)
         orig_rel = str((base_rel / f'{token}{ext}').as_posix())

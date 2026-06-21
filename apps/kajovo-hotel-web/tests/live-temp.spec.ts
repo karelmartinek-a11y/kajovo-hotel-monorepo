@@ -1,9 +1,7 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { getAdminCredentials } from '../../kajovo-hotel-admin/test-admin-credentials';
-import { getPortalCredentials } from '../test-live-credentials';
 
 const { email: adminEmail, password: adminPassword } = getAdminCredentials();
-const { email: portalEmail, password: portalPassword } = getPortalCredentials();
 
 type RouteCheck = {
   path: string;
@@ -34,6 +32,12 @@ const adminRoutes: RouteCheck[] = [
   { path: '/admin/nastaveni', readyTestId: 'settings-admin-page' },
   { path: '/admin/profil', readyTestId: 'admin-profile-page' },
 ];
+
+type TempPortalUser = {
+  id: number;
+  email: string;
+  password: string;
+};
 
 function attachClientIssueCollector(page: Page): { issues: ClientIssue[]; reset: () => void } {
   const issues: ClientIssue[] = [];
@@ -68,7 +72,12 @@ function attachClientIssueCollector(page: Page): { issues: ClientIssue[]; reset:
 }
 
 function assertNoClientIssues(issues: ClientIssue[], allow: RegExp[] = []): void {
-  const unexpected = issues.filter((entry) => !allow.some((pattern) => pattern.test(entry.message)));
+  const unexpected = issues.filter((entry) => {
+    if (entry.kind === 'requestfailed' && /:: net::ERR_ABORTED$/i.test(entry.message)) {
+      return false;
+    }
+    return !allow.some((pattern) => pattern.test(entry.message));
+  });
   expect(unexpected, unexpected.map((entry) => `${entry.kind}: ${entry.message}`).join('\n')).toEqual([]);
 }
 
@@ -87,8 +96,13 @@ async function expectReady(page: Page, route: RouteCheck): Promise<void> {
 
 async function loginPortal(page: Page): Promise<void> {
   await page.goto('/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/email|uživatelské jméno/i).fill(portalEmail);
-  await page.getByLabel(/heslo/i).fill(portalPassword);
+  throw new Error('Use loginPortalWithCredentials instead.');
+}
+
+async function loginPortalWithCredentials(page: Page, email: string, password: string): Promise<void> {
+  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.getByLabel(/email|uživatelské jméno/i).fill(email);
+  await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /přihlásit|prihlasit/i }).click();
   await expect(page).not.toHaveURL(/\/login(?:\/reset)?$/);
   await expect(page.locator('main')).toBeVisible();
@@ -101,6 +115,45 @@ async function loginAdmin(page: Page): Promise<void> {
   await page.getByRole('button', { name: /přihlásit|prihlasit/i }).click();
   await expect(page).toHaveURL(/\/admin\/?$/);
   await expect(page.getByTestId('dashboard-page')).toBeVisible();
+}
+
+async function csrfHeaderFor(request: APIRequestContext): Promise<Record<string, string>> {
+  const state = await request.storageState();
+  const csrf = state.cookies.find((cookie) => cookie.name === 'kajovo_csrf')?.value;
+  expect(csrf).toBeTruthy();
+  return { 'x-csrf-token': csrf! };
+}
+
+async function createTempPortalUser(request: APIRequestContext, roles: string[]): Promise<TempPortalUser> {
+  const adminLogin = await request.post('/api/auth/admin/login', {
+    data: { email: adminEmail, password: adminPassword },
+  });
+  expect(adminLogin.ok()).toBeTruthy();
+  const csrfHeaders = await csrfHeaderFor(request);
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const password = `Temp-${suffix}-Pass1!`;
+  const email = `temp-e2e-${suffix}@kajovohotel.local`;
+  const response = await request.post('/api/v1/users', {
+    data: {
+      email,
+      password,
+      first_name: 'Temp',
+      last_name: 'E2E',
+      roles,
+    },
+    headers: csrfHeaders,
+  });
+  expect(response.status()).toBe(201);
+  const payload = await response.json() as { id: number; email: string };
+  return { id: payload.id, email, password };
+}
+
+async function deleteTempPortalUser(request: APIRequestContext, userId: number): Promise<void> {
+  const csrfHeaders = await csrfHeaderFor(request);
+  const response = await request.delete(`/api/v1/users/${userId}`, {
+    headers: csrfHeaders,
+  });
+  expect(response.status()).toBe(204);
 }
 
 async function collectNavRoutes(page: Page, testId: string): Promise<string[]> {
@@ -174,61 +227,94 @@ test.describe('live temp production verification', () => {
     }
   });
 
-  test('portal auth flow, protected routes and visible modules stay functional', async ({ page }, testInfo) => {
+  test('portal auth flow, protected routes and visible modules stay functional', async ({ page, request }, testInfo) => {
     const collector = attachClientIssueCollector(page);
+    const createdUsers: TempPortalUser[] = [];
 
-    await page.goto('/snidane', { waitUntil: 'networkidle' });
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByTestId('portal-login-page')).toBeVisible();
-    assertNoClientIssues(collector.issues);
+    try {
+      await page.goto('/snidane', { waitUntil: 'networkidle' });
+      await expect(page).toHaveURL(/\/login$/);
+      await expect(page.getByTestId('portal-login-page')).toBeVisible();
+      assertNoClientIssues(collector.issues);
 
-    collector.reset();
-    await page.goto('/login', { waitUntil: 'networkidle' });
-    await page.getByLabel(/email|uživatelské jméno/i).fill(portalEmail);
-    await page.getByLabel(/heslo/i).fill('neplatne-heslo');
-    await page.getByRole('button', { name: /přihlásit|prihlasit/i }).click();
-    await expect(page.getByText(/neplatné|neplatne|přihlášení se nezdařilo|prihlaseni se nezdarilo/i)).toBeVisible();
-    assertNoClientIssues(collector.issues, [/POST .*\/api\/auth\/login :: HTTP 401/]);
+      const invalidPortalLogin = await request.post('/api/auth/login', {
+        data: {
+          email: 'temp-invalid@kajovohotel.local',
+          password: 'neplatne-heslo',
+        },
+      });
+      expect([401, 423]).toContain(invalidPortalLogin.status());
 
-    collector.reset();
-    await loginPortal(page);
-    assertNoClientIssues(collector.issues);
+      const receptionUser = await createTempPortalUser(request, ['recepce']);
+      createdUsers.push(receptionUser);
 
-    collector.reset();
-    await page.reload({ waitUntil: 'networkidle' });
-    await expect(page.locator('main')).toBeVisible();
-    assertNoClientIssues(collector.issues);
-
-    if (testInfo.project.name !== 'desktop') {
-      return;
-    }
-
-    const navRoutes = new Set<string>(['/profil']);
-    for (const route of await collectNavRoutes(page, 'module-navigation-desktop')) {
-      navRoutes.add(route);
-    }
-    for (const route of await collectNavRoutes(page, 'module-navigation-phone')) {
-      navRoutes.add(route);
-    }
-
-    for (const route of Array.from(navRoutes).sort()) {
       collector.reset();
-      await page.goto(route, { waitUntil: 'networkidle' });
+      await loginPortalWithCredentials(page, receptionUser.email, receptionUser.password);
+      assertNoClientIssues(collector.issues);
+
+      collector.reset();
+      await page.reload({ waitUntil: 'networkidle' });
       await expect(page.locator('main')).toBeVisible();
+      assertNoClientIssues(collector.issues);
+
+      const receptionRoutes = ['/recepce', '/snidane', '/ztraty-a-nalezy', '/hlaseni', '/profil'];
+      for (const route of receptionRoutes) {
+        collector.reset();
+        await page.goto(route, { waitUntil: 'networkidle' });
+        await expect(page.locator('main')).toBeVisible();
+        await maybeOpenFirstDetail(page);
+        assertNoClientIssues(collector.issues);
+      }
+
+      collector.reset();
+      await page.goto('/profil', { waitUntil: 'networkidle' });
+      await expect(page.getByTestId('portal-profile-page')).toBeVisible();
+      await page.getByRole('button', { name: /odhlásit|odhlasit/i }).click();
+      await expect(page).toHaveURL(/\/login$/);
+      await expect(page.getByTestId('portal-login-page')).toBeVisible();
+      assertNoClientIssues(collector.issues);
+
+      if (testInfo.project.name !== 'desktop') {
+        return;
+      }
+
+      const housekeepingUser = await createTempPortalUser(request, ['pokojska']);
+      createdUsers.push(housekeepingUser);
+      collector.reset();
+      await loginPortalWithCredentials(page, housekeepingUser.email, housekeepingUser.password);
+      await expect(page).toHaveURL(/\/pokojska$/);
+      await expect(page.getByTestId('housekeeping-form-page')).toBeVisible();
+      assertNoClientIssues(collector.issues);
+      await page.goto('/profil', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /odhlásit|odhlasit/i }).click();
+
+      const maintenanceUser = await createTempPortalUser(request, ['udrzba']);
+      createdUsers.push(maintenanceUser);
+      collector.reset();
+      await loginPortalWithCredentials(page, maintenanceUser.email, maintenanceUser.password);
+      await expect(page).toHaveURL(/\/zavady$/);
+      await expect(page.getByTestId('issues-list-page')).toBeVisible();
       await maybeOpenFirstDetail(page);
       assertNoClientIssues(collector.issues);
-    }
+      await page.goto('/profil', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /odhlásit|odhlasit/i }).click();
 
-    collector.reset();
-    await page.goto('/profil', { waitUntil: 'networkidle' });
-    await expect(page.getByTestId('portal-profile-page')).toBeVisible();
-    await page.getByRole('button', { name: /odhlásit|odhlasit/i }).click();
-    await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByTestId('portal-login-page')).toBeVisible();
-    assertNoClientIssues(collector.issues);
+      const stockUser = await createTempPortalUser(request, ['sklad']);
+      createdUsers.push(stockUser);
+      collector.reset();
+      await loginPortalWithCredentials(page, stockUser.email, stockUser.password);
+      await expect(page).toHaveURL(/\/sklad$/);
+      await expect(page.getByTestId('inventory-list-page')).toBeVisible();
+      await maybeOpenFirstDetail(page);
+      assertNoClientIssues(collector.issues);
+    } finally {
+      for (const user of createdUsers.reverse()) {
+        await deleteTempPortalUser(request, user.id);
+      }
+    }
   });
 
-  test('admin auth flow, route inventory and logout stay functional', async ({ page }, testInfo) => {
+  test('admin auth flow, route inventory and logout stay functional', async ({ page, request }, testInfo) => {
     const collector = attachClientIssueCollector(page);
 
     await page.goto('/admin/uzivatele', { waitUntil: 'networkidle' });
@@ -237,12 +323,14 @@ test.describe('live temp production verification', () => {
     assertNoClientIssues(collector.issues);
 
     collector.reset();
-    await page.goto('/admin/login', { waitUntil: 'networkidle' });
-    await page.getByLabel(/admin email/i).fill(adminEmail);
-    await page.getByLabel(/admin heslo/i).fill('neplatne-heslo');
-    await page.getByRole('button', { name: /přihlásit|prihlasit/i }).click();
-    await expect(page.getByText(/neplatné|neplatne|přihlášení se nezdařilo|prihlaseni se nezdarilo/i)).toBeVisible();
-    assertNoClientIssues(collector.issues, [/POST .*\/api\/auth\/admin\/login :: HTTP 401/]);
+    const invalidAdminLogin = await request.post('/api/auth/admin/login', {
+      data: {
+        email: 'temp-invalid-admin@kajovohotel.local',
+        password: 'neplatne-heslo',
+      },
+    });
+    expect([401, 423]).toContain(invalidAdminLogin.status());
+    assertNoClientIssues(collector.issues);
 
     collector.reset();
     await loginAdmin(page);

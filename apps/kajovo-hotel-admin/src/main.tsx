@@ -4574,10 +4574,12 @@ function SettingsAdmin(): JSX.Element {
 }
 
 function AuthSelfServiceProfilePage(): JSX.Element {
+  const navigate = useNavigate();
   const [profile, setProfile] = React.useState<AdminProfileReadModel | null>(null);
   const [displayName, setDisplayName] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [loggingOut, setLoggingOut] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
 
@@ -4620,6 +4622,26 @@ function AuthSelfServiceProfilePage(): JSX.Element {
     }
   }
 
+  async function logout(): Promise<void> {
+    setLoggingOut(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await fetch('/api/auth/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': readCsrfToken(),
+        },
+      });
+      await navigate('/admin/login');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Odhlášení se nepodařilo dokončit.');
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <main className="k-page" data-testid="admin-profile-page">
       <h1>Profil administrátora</h1>
@@ -4652,6 +4674,9 @@ function AuthSelfServiceProfilePage(): JSX.Element {
               <div className="k-toolbar">
                 <button className="k-button" type="button" onClick={() => void saveProfile()} disabled={saving}>
                   Uložit profil
+                </button>
+                <button className="k-button secondary" type="button" onClick={() => void logout()} disabled={loggingOut}>
+                  Odhlásit
                 </button>
               </div>
             </div>

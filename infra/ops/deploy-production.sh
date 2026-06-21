@@ -90,6 +90,15 @@ wait_for_container_health() {
   return 1
 }
 
+prepare_api_media_volume() {
+  echo "Pripravuji zapisovatelny /app/data volume pro API..."
+  compose_cmd up -d api
+  compose_cmd exec -T --user root api sh -lc '
+    mkdir -p /app/data/media/issues /app/data/media/lost-found /app/data/media/reports /app/data/media/inventory
+    chown -R appuser:appuser /app/data
+  '
+}
+
 reconcile_runtime_schema() {
   local sql
   # Dorovname stary produkcni schema drift u SMTP tabulky i v pripade,
@@ -387,6 +396,7 @@ if [[ "$sql_ok" -ne 1 ]]; then
 fi
 
 compose_cmd up -d --force-recreate api web admin
+prepare_api_media_volume
 
 wait_for_container_health postgres 180
 wait_for_container_health api 180

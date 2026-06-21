@@ -15,6 +15,7 @@ export default defineConfig({
   testMatch: 'live-temp.spec.ts',
   timeout: 90_000,
   fullyParallel: false,
+  workers: 1,
   retries: 0,
   use: {
     baseURL,

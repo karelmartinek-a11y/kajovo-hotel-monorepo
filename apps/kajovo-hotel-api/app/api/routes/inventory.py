@@ -529,6 +529,8 @@ def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
     storage = InventoryMediaStorage(get_settings().media_root)
     path = storage.resolve(rel)
     if not path.exists():
+        if kind == "thumb":
+            return storage.placeholder_thumb_response("SK")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
     media_type = "image/jpeg" if kind == "thumb" else (mimetypes.guess_type(path.name)[0] or "image/jpeg")
     return FileResponse(path, media_type=media_type)
