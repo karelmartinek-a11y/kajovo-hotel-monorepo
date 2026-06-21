@@ -1,10 +1,13 @@
 # Produkční deploy
 
+Aktualni produkcni server pro `https://hotel.hcasc.cz` je `89.221.222.92`.
+
 ## Autoritativní zdroje
 
 - `.github/workflows/ci-gates.yml`
 - `.github/workflows/deploy-production.yml`
 - `infra/ops/deploy-production.sh`
+- `infra/reverse-proxy/production-host.conf`
 - `android/release/android-release.json`
 - `docs/github-settings-checklist.md`
 
@@ -40,6 +43,7 @@ Toto pravidlo blokují `pnpm ci:policy` a `pnpm ci:policy-test`.
 Povinné:
 
 - `HOTEL_DEPLOY_HOST`
+- `HOTEL_DEPLOY_HOST` musi po cutoveru smerovat na `89.221.222.92` nebo na alias, ktery se na tuto IP jednoznacne resolvuje.
 - `HOTEL_DEPLOY_PORT`
 - `HOTEL_DEPLOY_USER`
 - `HOTEL_DEPLOY_PASS`

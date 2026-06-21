@@ -51,7 +51,6 @@ class Settings(BaseSettings):
     trusted_hosts: list[str] = Field(
         default_factory=lambda: [
             "hotel.hcasc.cz",
-            "kajovohotel.hcasc.cz",
             "kajovohotel-staging.hcasc.cz",
             "kajovohotel.local",
             "localhost",
@@ -61,7 +60,6 @@ class Settings(BaseSettings):
     cors_allow_origins: list[str] = Field(
         default_factory=lambda: [
             "https://hotel.hcasc.cz",
-            "https://kajovohotel.hcasc.cz",
             "https://kajovohotel-staging.hcasc.cz",
             "http://localhost:4173",
             "http://127.0.0.1:4173",

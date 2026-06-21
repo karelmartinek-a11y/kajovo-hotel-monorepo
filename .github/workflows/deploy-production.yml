@@ -23,6 +23,7 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       DEPLOY_BASE_URL: https://hotel.hcasc.cz
+      PRODUCTION_SERVER_IPV4: 89.221.222.92
       HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
       HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
       HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
@@ -71,6 +72,20 @@ jobs:
           fi
           if [ -z "${HOTEL_DEPLOY_PASS:-}" ] && [ -z "${HOTEL_DEPLOY_KEY:-}" ]; then
             echo "Missing HOTEL_DEPLOY_PASS or HOTEL_DEPLOY_KEY in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          resolved_ipv4=""
+          if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            resolved_ipv4="$HOTEL_DEPLOY_HOST"
+          else
+            resolved_ipv4="$(getent ahostsv4 "$HOTEL_DEPLOY_HOST" | awk '{print $1}' | sort -u | paste -sd ',' -)"
+          fi
+          if [[ -z "$resolved_ipv4" ]]; then
+            echo "Nepodarilo se zjistit IPv4 adresu pro HOTEL_DEPLOY_HOST=$HOTEL_DEPLOY_HOST" >&2
+            exit 1
+          fi
+          if [[ ",$resolved_ipv4," != *",${PRODUCTION_SERVER_IPV4},"* ]]; then
+            echo "HOTEL_DEPLOY_HOST nemiri na produkcni server ${PRODUCTION_SERVER_IPV4}. Resolved IPv4: ${resolved_ipv4}" >&2
             exit 1
           fi
           echo "Deploy target environment check: PASS"

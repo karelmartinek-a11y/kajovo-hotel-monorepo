@@ -17,6 +17,9 @@ RUN_VERIFY_SCRIPT="${RUN_VERIFY_SCRIPT:-1}"
 RESET_DB_ON_DEPLOY="${RESET_DB_ON_DEPLOY:-false}"
 SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
 DEPLOY_SOURCE_SHA="${DEPLOY_SOURCE_SHA:-}"
+HOST_NGINX_TEMPLATE="${HOST_NGINX_TEMPLATE:-$ROOT_DIR/infra/reverse-proxy/production-host.conf}"
+HOST_NGINX_SITE_PATH="${HOST_NGINX_SITE_PATH:-/etc/nginx/sites-available/hotel.hcasc.cz.conf}"
+HOST_NGINX_ENABLED_PATH="${HOST_NGINX_ENABLED_PATH:-/etc/nginx/sites-enabled/hotel.hcasc.cz.conf}"
 
 require_cmd() {
   local name="$1"
@@ -183,6 +186,21 @@ SQL
   PGPASSWORD="${POSTGRES_PASSWORD:-}" \
     compose_cmd exec -T postgres \
     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
+}
+
+sync_host_nginx_config() {
+  if [[ ! -f "$HOST_NGINX_TEMPLATE" ]]; then
+    echo "Chybi host-level Nginx sablona: $HOST_NGINX_TEMPLATE" >&2
+    exit 1
+  fi
+
+  echo "Synchronizuji host-level Nginx konfiguraci pro hotel.hcasc.cz..."
+  install -D -m 0644 "$HOST_NGINX_TEMPLATE" "$HOST_NGINX_SITE_PATH"
+  if [[ ! -L "$HOST_NGINX_ENABLED_PATH" ]]; then
+    ln -sfn "$HOST_NGINX_SITE_PATH" "$HOST_NGINX_ENABLED_PATH"
+  fi
+  nginx -t
+  systemctl reload nginx
 }
 
 http_check() {
@@ -417,6 +435,7 @@ fi
 
 compose_cmd up -d --force-recreate api web admin
 prepare_api_media_volume
+sync_host_nginx_config
 
 wait_for_container_health postgres 180
 wait_for_container_health api 180
