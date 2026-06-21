@@ -120,6 +120,17 @@ BEGIN
       ADD COLUMN IF NOT EXISTS last_test_recipient VARCHAR(255) NULL,
       ADD COLUMN IF NOT EXISTS last_test_error TEXT NULL;
   END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'inventory_movements'
+  ) THEN
+    ALTER TABLE public.inventory_movements
+      ADD COLUMN IF NOT EXISTS card_id INTEGER NULL,
+      ADD COLUMN IF NOT EXISTS card_item_id INTEGER NULL;
+  END IF;
 END
 $$;
 SQL
@@ -129,6 +140,15 @@ SQL
   PGPASSWORD="${POSTGRES_PASSWORD:-}" \
     compose_cmd exec -T postgres \
     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
+
+  PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+    compose_cmd exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 <<'SQL'
+CREATE INDEX IF NOT EXISTS ix_inventory_movements_card_id
+  ON public.inventory_movements (card_id);
+CREATE INDEX IF NOT EXISTS ix_inventory_movements_card_item_id
+  ON public.inventory_movements (card_item_id);
+SQL
 }
 
 reconcile_alembic_version_storage() {

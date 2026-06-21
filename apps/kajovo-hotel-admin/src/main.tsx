@@ -4574,7 +4574,6 @@ function SettingsAdmin(): JSX.Element {
 }
 
 function AuthSelfServiceProfilePage(): JSX.Element {
-  const navigate = useNavigate();
   const [profile, setProfile] = React.useState<AdminProfileReadModel | null>(null);
   const [displayName, setDisplayName] = React.useState('');
   const [loading, setLoading] = React.useState(true);
@@ -4634,7 +4633,8 @@ function AuthSelfServiceProfilePage(): JSX.Element {
           'X-CSRF-Token': readCsrfToken(),
         },
       });
-      await navigate('/login');
+      window.location.assign('/admin/login');
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Odhlášení se nepodařilo dokončit.');
     } finally {
