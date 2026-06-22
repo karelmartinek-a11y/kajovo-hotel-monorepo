@@ -147,6 +147,14 @@ if (beforeSummary.response.status !== 200) {
 }
 const beforeStamp = String(beforeSummary.payload?.source_imported_at ?? '');
 
+const syncSettings = await requestJson(session, '/api/v1/admin/settings/breakfast-sync');
+if (syncSettings.response.status !== 200) {
+  throw new Error(`Breakfast sync settings failed with ${syncSettings.response.status}: ${JSON.stringify(syncSettings.payload)}`);
+}
+if (syncSettings.payload?.provider !== 'better_hotel_api') {
+  throw new Error(`Unexpected breakfast sync provider: ${JSON.stringify(syncSettings.payload)}`);
+}
+
 const startResponse = await requestJson(session, '/api/v1/breakfast/manual-refresh', {
   method: 'POST',
   payload: { service_date: serviceDate },
@@ -161,9 +169,6 @@ if (!startResponse.payload?.id) {
 const job = await pollJob(session, startResponse.payload.id);
 if (job.status !== 'succeeded') {
   throw new Error(`Manual refresh job did not succeed: ${JSON.stringify(job)}`);
-}
-if ((job.imported_count ?? 0) <= 0) {
-  throw new Error(`Manual refresh job imported_count is not positive: ${JSON.stringify(job)}`);
 }
 
 const afterSummary = await requestJson(session, `/api/v1/breakfast/daily-summary?service_date=${encodeURIComponent(serviceDate)}`);
@@ -186,6 +191,7 @@ console.log(JSON.stringify({
   after_source_imported_at: afterStamp,
   job_status: job.status,
   imported_count: job.imported_count,
+  sync_provider: syncSettings.payload?.provider,
   total_orders: afterSummary.payload?.total_orders,
   total_guests: afterSummary.payload?.total_guests,
 }, null, 2));

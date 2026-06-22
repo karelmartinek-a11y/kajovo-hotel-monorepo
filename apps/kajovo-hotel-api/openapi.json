@@ -500,130 +500,6 @@
         "title": "BreakfastImportLogEntry",
         "type": "object"
       },
-      "BreakfastImportMailboxSettingsRead": {
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "from_contains": {
-            "title": "From Contains",
-            "type": "string"
-          },
-          "host": {
-            "title": "Host",
-            "type": "string"
-          },
-          "mailbox": {
-            "title": "Mailbox",
-            "type": "string"
-          },
-          "password_masked": {
-            "title": "Password Masked",
-            "type": "string"
-          },
-          "port": {
-            "title": "Port",
-            "type": "integer"
-          },
-          "subject_contains": {
-            "title": "Subject Contains",
-            "type": "string"
-          },
-          "use_ssl": {
-            "title": "Use Ssl",
-            "type": "boolean"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "enabled",
-          "host",
-          "port",
-          "use_ssl",
-          "mailbox",
-          "username",
-          "password_masked",
-          "from_contains",
-          "subject_contains"
-        ],
-        "title": "BreakfastImportMailboxSettingsRead",
-        "type": "object"
-      },
-      "BreakfastImportMailboxSettingsUpsert": {
-        "properties": {
-          "enabled": {
-            "default": true,
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "from_contains": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "From Contains",
-            "type": "string"
-          },
-          "host": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Host",
-            "type": "string"
-          },
-          "mailbox": {
-            "maxLength": 128,
-            "minLength": 1,
-            "title": "Mailbox",
-            "type": "string"
-          },
-          "password": {
-            "anyOf": [
-              {
-                "maxLength": 1024,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Password"
-          },
-          "port": {
-            "maximum": 65535.0,
-            "minimum": 1.0,
-            "title": "Port",
-            "type": "integer"
-          },
-          "subject_contains": {
-            "default": "",
-            "maxLength": 255,
-            "title": "Subject Contains",
-            "type": "string"
-          },
-          "use_ssl": {
-            "default": true,
-            "title": "Use Ssl",
-            "type": "boolean"
-          },
-          "username": {
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "host",
-          "port",
-          "mailbox",
-          "username",
-          "from_contains"
-        ],
-        "title": "BreakfastImportMailboxSettingsUpsert",
-        "type": "object"
-      },
       "BreakfastImportResponse": {
         "properties": {
           "date": {
@@ -674,29 +550,46 @@
             "title": "Imported Count",
             "type": "integer"
           },
-          "matched_messages": {
-            "title": "Matched Messages",
+          "imported_days": {
+            "title": "Imported Days",
             "type": "integer"
           },
           "ok": {
             "title": "Ok",
             "type": "boolean"
           },
+          "processed_days": {
+            "title": "Processed Days",
+            "type": "integer"
+          },
+          "range_end": {
+            "format": "date",
+            "title": "Range End",
+            "type": "string"
+          },
+          "range_start": {
+            "format": "date",
+            "title": "Range Start",
+            "type": "string"
+          },
           "replaced_future_count": {
             "title": "Replaced Future Count",
             "type": "integer"
           },
-          "scanned_messages": {
-            "title": "Scanned Messages",
+          "reservations_count": {
+            "title": "Reservations Count",
             "type": "integer"
           }
         },
         "required": [
           "ok",
           "imported_count",
+          "imported_days",
+          "processed_days",
+          "range_start",
+          "range_end",
           "replaced_future_count",
-          "matched_messages",
-          "scanned_messages",
+          "reservations_count",
           "errors"
         ],
         "title": "BreakfastImportRunResponse",
@@ -1135,6 +1028,168 @@
         ],
         "title": "BreakfastStatus",
         "type": "string"
+      },
+      "BreakfastSyncRuntimeStatusRead": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "imported": {
+            "title": "Imported",
+            "type": "boolean"
+          },
+          "imported_days": {
+            "default": 0,
+            "title": "Imported Days",
+            "type": "integer"
+          },
+          "imported_rows": {
+            "default": 0,
+            "title": "Imported Rows",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "processed_days": {
+            "default": 0,
+            "title": "Processed Days",
+            "type": "integer"
+          },
+          "range_end": {
+            "format": "date",
+            "title": "Range End",
+            "type": "string"
+          },
+          "range_start": {
+            "format": "date",
+            "title": "Range Start",
+            "type": "string"
+          },
+          "replaced_future_count": {
+            "default": 0,
+            "title": "Replaced Future Count",
+            "type": "integer"
+          },
+          "reservations_count": {
+            "default": 0,
+            "title": "Reservations Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "range_start",
+          "range_end",
+          "attempt",
+          "imported"
+        ],
+        "title": "BreakfastSyncRuntimeStatusRead",
+        "type": "object"
+      },
+      "BreakfastSyncSettingsRead": {
+        "properties": {
+          "access_token_configured": {
+            "title": "Access Token Configured",
+            "type": "boolean"
+          },
+          "breakfast_food_codes": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Breakfast Food Codes",
+            "type": "array"
+          },
+          "breakfast_window_days_forward": {
+            "title": "Breakfast Window Days Forward",
+            "type": "integer"
+          },
+          "client_token_configured": {
+            "title": "Client Token Configured",
+            "type": "boolean"
+          },
+          "connector_base_url": {
+            "title": "Connector Base Url",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "runtime_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BreakfastSyncRuntimeStatusRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schedule_times": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Schedule Times",
+            "type": "array"
+          },
+          "scheduler_enabled": {
+            "title": "Scheduler Enabled",
+            "type": "boolean"
+          },
+          "scheduler_interval_seconds": {
+            "title": "Scheduler Interval Seconds",
+            "type": "integer"
+          },
+          "scheduler_max_retries": {
+            "title": "Scheduler Max Retries",
+            "type": "integer"
+          },
+          "scheduler_retry_seconds": {
+            "title": "Scheduler Retry Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "connector_base_url",
+          "scheduler_enabled",
+          "access_token_configured",
+          "client_token_configured",
+          "breakfast_window_days_forward",
+          "breakfast_food_codes",
+          "scheduler_interval_seconds",
+          "scheduler_retry_seconds",
+          "scheduler_max_retries",
+          "schedule_times"
+        ],
+        "title": "BreakfastSyncSettingsRead",
+        "type": "object"
       },
       "DeviceChallengeRequest": {
         "properties": {
@@ -4783,61 +4838,22 @@
         ]
       }
     },
-    "/api/v1/admin/settings/breakfast-mailbox": {
+    "/api/v1/admin/settings/breakfast-sync": {
       "get": {
-        "operationId": "get_breakfast_mailbox_settings_api_v1_admin_settings_breakfast_mailbox_get",
+        "operationId": "get_breakfast_sync_settings_api_v1_admin_settings_breakfast_sync_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BreakfastImportMailboxSettingsRead"
+                  "$ref": "#/components/schemas/BreakfastSyncSettingsRead"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "Get Breakfast Mailbox Settings",
-        "tags": [
-          "settings"
-        ]
-      },
-      "put": {
-        "operationId": "put_breakfast_mailbox_settings_api_v1_admin_settings_breakfast_mailbox_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BreakfastImportMailboxSettingsUpsert"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BreakfastImportMailboxSettingsRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Put Breakfast Mailbox Settings",
+        "summary": "Get Breakfast Sync Settings",
         "tags": [
           "settings"
         ]

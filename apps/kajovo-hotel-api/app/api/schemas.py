@@ -779,28 +779,34 @@ class SmtpTestEmailResponse(BaseModel):
     message: str
 
 
-class BreakfastImportMailboxSettingsUpsert(BaseModel):
-    enabled: bool = True
-    host: str = Field(min_length=1, max_length=255)
-    port: int = Field(ge=1, le=65535)
-    use_ssl: bool = True
-    mailbox: str = Field(min_length=1, max_length=128)
-    username: str = Field(min_length=1, max_length=255)
-    password: str | None = Field(default=None, max_length=1024)
-    from_contains: str = Field(min_length=1, max_length=255)
-    subject_contains: str = Field(default="", max_length=255)
+class BreakfastSyncRuntimeStatusRead(BaseModel):
+    ok: bool
+    range_start: date
+    range_end: date
+    attempt: int
+    imported: bool
+    imported_days: int = 0
+    imported_rows: int = 0
+    replaced_future_count: int = 0
+    reservations_count: int = 0
+    processed_days: int = 0
+    generated_at: datetime | None = None
+    error: str | None = None
 
 
-class BreakfastImportMailboxSettingsRead(BaseModel):
-    enabled: bool
-    host: str
-    port: int
-    use_ssl: bool
-    mailbox: str
-    username: str
-    password_masked: str
-    from_contains: str
-    subject_contains: str
+class BreakfastSyncSettingsRead(BaseModel):
+    provider: str
+    connector_base_url: str
+    scheduler_enabled: bool
+    access_token_configured: bool
+    client_token_configured: bool
+    breakfast_window_days_forward: int
+    breakfast_food_codes: list[int]
+    scheduler_interval_seconds: int
+    scheduler_retry_seconds: int
+    scheduler_max_retries: int
+    schedule_times: list[str]
+    runtime_status: BreakfastSyncRuntimeStatusRead | None = None
 
 
 class BreakfastImportLogEntry(BaseModel):
@@ -815,9 +821,12 @@ class BreakfastImportLogEntry(BaseModel):
 class BreakfastImportRunResponse(BaseModel):
     ok: bool
     imported_count: int
+    imported_days: int
+    processed_days: int
+    range_start: date
+    range_end: date
     replaced_future_count: int
-    matched_messages: int
-    scanned_messages: int
+    reservations_count: int
     errors: list[str]
 
 

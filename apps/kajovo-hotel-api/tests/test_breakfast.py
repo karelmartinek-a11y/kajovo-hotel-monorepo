@@ -11,14 +11,16 @@ from time import sleep
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.db.models import (
+    Base,
     BreakfastImportProcessedAttachment,
     BreakfastImportRunLog,
     BreakfastManualRefreshJob,
     BreakfastOrder,
 )
-from app.db.session import SessionLocal
 from app.services.breakfast import manual_refresh as manual_refresh_service
 from app.services.breakfast.parser import parse_breakfast_pdf, parse_breakfast_text
 from app.time_utils import utc_now
@@ -457,25 +459,18 @@ def test_import_breakfast_pdf_preview_does_not_mutate_existing_orders(
 
 
 def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
-    api_request: ApiRequest, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     target_day = date(2026, 4, 10)
-    create_order(
-        api_request,
-        service_date=target_day.isoformat(),
-        room_number="101",
-        guest_name="Stary host",
-        guest_count=1,
-        status="served",
-    )
-    create_order(
-        api_request,
-        service_date="2026-04-11",
-        room_number="201",
-        guest_name="Mimo den",
-        guest_count=2,
-        status="pending",
-    )
+    engine = create_engine(f"sqlite:///{tmp_path / 'manual-refresh-success.db'}")
+    Base.metadata.create_all(bind=engine)
+    test_session_local = sessionmaker(bind=engine)
+    monkeypatch.setattr(manual_refresh_service, "SessionLocal", test_session_local)
+
+    with test_session_local() as db:
+        db.add(BreakfastOrder(service_date=target_day, room_number="101", guest_name="Stary host", guest_count=1, status="served"))
+        db.add(BreakfastOrder(service_date=date(2026, 4, 11), room_number="201", guest_name="Mimo den", guest_count=2, status="pending"))
+        db.commit()
 
     class SyncThread:
         def __init__(self, target, args=(), kwargs=None, name=None, daemon=None):
@@ -487,7 +482,7 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
             self.target(*self.args, **self.kwargs)
 
     def fake_worker(job_key: str) -> None:
-        with SessionLocal() as db:
+        with test_session_local() as db:
             job = db.scalar(select(BreakfastManualRefreshJob).where(BreakfastManualRefreshJob.job_key == job_key))
             assert job is not None
             job.status = "running"
@@ -497,12 +492,12 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
                     {
                         "at": utc_now().isoformat(),
                         "step": "login",
-                        "message": "Přihlášení do Better Hotelu proběhlo.",
+                        "message": "Synchronizace Better Hotel API byla zahájena.",
                     }
                 ],
                 ensure_ascii=False,
             )
-            job.message = "Přihlášení do Better Hotelu proběhlo."
+            job.message = "Synchronizace Better Hotel API byla zahájena."
             db.commit()
 
             db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
@@ -515,7 +510,7 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
                     guest_name="Nový host 1",
                     guest_count=2,
                     status="pending",
-                    note="Ruční import Better Hotel",
+                    note="Ruční synchronizace Better Hotel API",
                     diet_no_gluten=False,
                     diet_no_milk=False,
                     diet_no_pork=False,
@@ -528,7 +523,7 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
                     guest_name="Nový host 2",
                     guest_count=1,
                     status="pending",
-                    note="Ruční import Better Hotel",
+                    note="Ruční synchronizace Better Hotel API",
                     diet_no_gluten=False,
                     diet_no_milk=False,
                     diet_no_pork=False,
@@ -546,8 +541,8 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
                     started_at=job.started_at or utc_now(),
                     finished_at=utc_now(),
                     ok=True,
-                    trigger="manual_playwright",
-                    details_json=json.dumps({"imported_count": 2, "errors": []}, ensure_ascii=False),
+                    trigger="manual_api",
+                    details_json=json.dumps({"imported_rows": 2, "errors": []}, ensure_ascii=False),
                 )
             )
             job.status = "succeeded"
@@ -556,58 +551,46 @@ def test_manual_refresh_overwrites_selected_day_and_updates_timestamp(
                     {
                         "at": utc_now().isoformat(),
                         "step": "download",
-                        "message": "PDF bylo staženo do cílového souboru.",
+                        "message": "API odpověď byla zpracována.",
                     }
                 ],
                 ensure_ascii=False,
             )
-            job.message = "Ruční import dokončen."
+            job.message = "Ruční synchronizace dokončena."
             job.imported_count = 2
             job.finished_at = utc_now()
             db.commit()
 
     monkeypatch.setattr(manual_refresh_service.threading, "Thread", SyncThread)
-    monkeypatch.setattr(manual_refresh_service, "_run_playwright_job", fake_worker)
+    monkeypatch.setattr(manual_refresh_service, "_run_manual_sync_job", fake_worker)
 
-    status, created = api_request(
-        "/api/v1/breakfast/manual-refresh",
-        method="POST",
-        payload={"service_date": target_day.isoformat()},
-    )
-    assert status == 202
-    assert isinstance(created, dict)
-    assert created["service_date"] == target_day.isoformat()
+    with test_session_local() as db:
+        created = manual_refresh_service.start_manual_breakfast_refresh(db, target_day)
+        db.expire_all()
+        job = manual_refresh_service.get_manual_breakfast_refresh_job(db, created.id)
+        assert job is not None
+        assert job.status == "succeeded"
+        assert job.imported_count == 2
 
-    job = wait_for_manual_refresh_job(api_request, created["id"])
-    assert job["status"] == "succeeded"
-    assert job["imported_count"] == 2
-
-    status, listed = api_request("/api/v1/breakfast", params={"service_date": target_day.isoformat()})
-    assert status == 200
-    assert isinstance(listed, list)
-    assert [item["room_number"] for item in listed] == ["101", "102"]
-    assert all(item["guest_name"].startswith("Nový host") for item in listed)
-
-    summary_status, summary = api_request(
-        "/api/v1/breakfast/daily-summary",
-        params={"service_date": target_day.isoformat()},
-    )
-    assert summary_status == 200
-    assert isinstance(summary, dict)
-    assert summary["source_imported_at"] is not None
-
-    other_day_status, other_day = api_request(
-        "/api/v1/breakfast",
-        params={"service_date": "2026-04-11"},
-    )
-    assert other_day_status == 200
-    assert isinstance(other_day, list)
-    assert len(other_day) == 1
+    with test_session_local() as db:
+        listed = db.scalars(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day).order_by(BreakfastOrder.room_number.asc())).all()
+        assert [item.room_number for item in listed] == ["101", "102"]
+        assert all(item.guest_name.startswith("Nový host") for item in listed)
+        imported_at = db.scalar(select(BreakfastImportProcessedAttachment.imported_at).where(BreakfastImportProcessedAttachment.parsed_day == target_day))
+        assert imported_at is not None
+        other_day = db.scalars(select(BreakfastOrder).where(BreakfastOrder.service_date == date(2026, 4, 11))).all()
+        assert len(other_day) == 1
 
 
-def test_manual_refresh_reports_login_failure(api_request: ApiRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_manual_refresh_reports_login_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target_day = date(2026, 4, 12)
-    create_order(api_request, service_date=target_day.isoformat(), room_number="111", guest_name="Beze změny")
+    engine = create_engine(f"sqlite:///{tmp_path / 'manual-refresh-login-failure.db'}")
+    Base.metadata.create_all(bind=engine)
+    test_session_local = sessionmaker(bind=engine)
+    monkeypatch.setattr(manual_refresh_service, "SessionLocal", test_session_local)
+    with test_session_local() as db:
+        db.add(BreakfastOrder(service_date=target_day, room_number="111", guest_name="Beze změny", guest_count=1, status="pending"))
+        db.commit()
 
     class SyncThread:
         def __init__(self, target, args=(), kwargs=None, name=None, daemon=None):
@@ -619,12 +602,12 @@ def test_manual_refresh_reports_login_failure(api_request: ApiRequest, monkeypat
             self.target(*self.args, **self.kwargs)
 
     def fake_worker(job_key: str) -> None:
-        with SessionLocal() as db:
+        with test_session_local() as db:
             job = db.scalar(select(BreakfastManualRefreshJob).where(BreakfastManualRefreshJob.job_key == job_key))
             assert job is not None
             job.status = "failed"
-            job.error_message = "Přihlášení do Better Hotelu selhalo."
-            job.message = "Ruční import selhal."
+            job.error_message = "Better Hotel API autentizace selhala."
+            job.message = "Ruční synchronizace selhala."
             job.started_at = utc_now()
             job.finished_at = utc_now()
             job.progress_json = json.dumps(
@@ -632,7 +615,7 @@ def test_manual_refresh_reports_login_failure(api_request: ApiRequest, monkeypat
                     {
                         "at": utc_now().isoformat(),
                         "step": "login",
-                        "message": "Přihlášení do Better Hotelu selhalo.",
+                        "message": "Better Hotel API autentizace selhala.",
                     }
                 ],
                 ensure_ascii=False,
@@ -642,36 +625,35 @@ def test_manual_refresh_reports_login_failure(api_request: ApiRequest, monkeypat
                     started_at=job.started_at,
                     finished_at=job.finished_at,
                     ok=False,
-                    trigger="manual_playwright",
-                    details_json=json.dumps({"imported_count": 0, "errors": [job.error_message]}, ensure_ascii=False),
+                    trigger="manual_api",
+                    details_json=json.dumps({"imported_rows": 0, "errors": [job.error_message]}, ensure_ascii=False),
                 )
             )
             db.commit()
 
     monkeypatch.setattr(manual_refresh_service.threading, "Thread", SyncThread)
-    monkeypatch.setattr(manual_refresh_service, "_run_playwright_job", fake_worker)
+    monkeypatch.setattr(manual_refresh_service, "_run_manual_sync_job", fake_worker)
 
-    status, created = api_request(
-        "/api/v1/breakfast/manual-refresh",
-        method="POST",
-        payload={"service_date": target_day.isoformat()},
-    )
-    assert status == 202
-    assert isinstance(created, dict)
-
-    job = wait_for_manual_refresh_job(api_request, created["id"])
-    assert job["status"] == "failed"
-    assert job["error_message"] == "Přihlášení do Better Hotelu selhalo."
-
-    status, listed = api_request("/api/v1/breakfast", params={"service_date": target_day.isoformat()})
-    assert status == 200
-    assert isinstance(listed, list)
-    assert len(listed) == 1
+    with test_session_local() as db:
+        created = manual_refresh_service.start_manual_breakfast_refresh(db, target_day)
+        db.expire_all()
+        job = manual_refresh_service.get_manual_breakfast_refresh_job(db, created.id)
+        assert job is not None
+        assert job.status == "failed"
+        assert job.error_message == "Better Hotel API autentizace selhala."
+        listed = db.scalars(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day)).all()
+        assert len(listed) == 1
 
 
-def test_manual_refresh_reports_import_failure(api_request: ApiRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_manual_refresh_reports_import_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target_day = date(2026, 4, 13)
-    create_order(api_request, service_date=target_day.isoformat(), room_number="112", guest_name="Stále původní")
+    engine = create_engine(f"sqlite:///{tmp_path / 'manual-refresh-import-failure.db'}")
+    Base.metadata.create_all(bind=engine)
+    test_session_local = sessionmaker(bind=engine)
+    monkeypatch.setattr(manual_refresh_service, "SessionLocal", test_session_local)
+    with test_session_local() as db:
+        db.add(BreakfastOrder(service_date=target_day, room_number="112", guest_name="Stále původní", guest_count=1, status="pending"))
+        db.commit()
 
     class SyncThread:
         def __init__(self, target, args=(), kwargs=None, name=None, daemon=None):
@@ -683,12 +665,12 @@ def test_manual_refresh_reports_import_failure(api_request: ApiRequest, monkeypa
             self.target(*self.args, **self.kwargs)
 
     def fake_worker(job_key: str) -> None:
-        with SessionLocal() as db:
+        with test_session_local() as db:
             job = db.scalar(select(BreakfastManualRefreshJob).where(BreakfastManualRefreshJob.job_key == job_key))
             assert job is not None
             job.status = "failed"
             job.error_message = "PDF neobsahuje položky pro zvolený den."
-            job.message = "Ruční import selhal."
+            job.message = "Ruční synchronizace selhala."
             job.started_at = utc_now()
             job.finished_at = utc_now()
             job.progress_json = json.dumps(
@@ -706,26 +688,22 @@ def test_manual_refresh_reports_import_failure(api_request: ApiRequest, monkeypa
                     started_at=job.started_at,
                     finished_at=job.finished_at,
                     ok=False,
-                    trigger="manual_playwright",
-                    details_json=json.dumps({"imported_count": 0, "errors": [job.error_message]}, ensure_ascii=False),
+                    trigger="manual_api",
+                    details_json=json.dumps({"imported_rows": 0, "errors": [job.error_message]}, ensure_ascii=False),
                 )
             )
             db.commit()
 
     monkeypatch.setattr(manual_refresh_service.threading, "Thread", SyncThread)
-    monkeypatch.setattr(manual_refresh_service, "_run_playwright_job", fake_worker)
+    monkeypatch.setattr(manual_refresh_service, "_run_manual_sync_job", fake_worker)
 
-    status, created = api_request(
-        "/api/v1/breakfast/manual-refresh",
-        method="POST",
-        payload={"service_date": target_day.isoformat()},
-    )
-    assert status == 202
-    assert isinstance(created, dict)
-
-    job = wait_for_manual_refresh_job(api_request, created["id"])
-    assert job["status"] == "failed"
-    assert job["error_message"] == "PDF neobsahuje položky pro zvolený den."
+    with test_session_local() as db:
+        created = manual_refresh_service.start_manual_breakfast_refresh(db, target_day)
+        db.expire_all()
+        job = manual_refresh_service.get_manual_breakfast_refresh_job(db, created.id)
+        assert job is not None
+        assert job.status == "failed"
+        assert job.error_message == "PDF neobsahuje položky pro zvolený den."
 
 
 def test_breakfast_export_pdf(api_request: ApiRequest, api_base_url: str) -> None:

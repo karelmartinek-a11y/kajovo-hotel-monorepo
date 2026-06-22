@@ -26,23 +26,42 @@ class Settings(BaseSettings):
     breakfast_scheduler_interval_seconds: int = 300
     breakfast_scheduler_retry_seconds: int = 30
     breakfast_scheduler_max_retries: int = 3
-    breakfast_imap_host: str = ""
-    breakfast_imap_port: int = 993
-    breakfast_imap_use_ssl: bool = True
-    breakfast_imap_mailbox: str = "INBOX"
-    breakfast_imap_username: str = ""
-    breakfast_imap_password: str = ""
-    breakfast_imap_from_contains: str = "better-hotel.com"
-    breakfast_imap_subject_contains: str = "prehled stravy"
-    better_hotel_base_url: str = Field(default="", validation_alias=AliasChoices("BETTER_HOTEL_BASE_URL", "KAJOVO_API_BETTER_HOTEL_BASE_URL"))
-    better_hotel_login_path: str = "/login"
-    better_hotel_report_url_template: str = ""
-    better_hotel_username: str = Field(default="", validation_alias=AliasChoices("bb_user", "BB_USER", "KAJOVO_API_BETTER_HOTEL_USERNAME"))
-    better_hotel_password: str = Field(default="", validation_alias=AliasChoices("bb_pass", "BB_PASS", "KAJOVO_API_BETTER_HOTEL_PASSWORD"))
-    better_hotel_playwright_timeout_seconds: int = 180
-    better_hotel_refresh_mode: str = Field(
-        default="playwright",
-        validation_alias=AliasChoices("KAJOVO_API_BETTER_HOTEL_REFRESH_MODE"),
+    better_hotel_connector_base_url: str = Field(
+        default="https://api.better-hotel.com/api/connector/v/1",
+        validation_alias=AliasChoices(
+            "BETTER_HOTEL_CONNECTOR_BASE_URL",
+            "KAJOVO_API_BETTER_HOTEL_CONNECTOR_BASE_URL",
+            "BETTER_HOTEL_BASE_URL",
+            "KAJOVO_API_BETTER_HOTEL_BASE_URL",
+        ),
+    )
+    better_hotel_access_token: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "BETTER_HOTEL_ACCESS_TOKEN",
+            "KAJOVO_API_BETTER_HOTEL_ACCESS_TOKEN",
+            "A_token",
+        ),
+    )
+    better_hotel_client_token: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "BETTER_HOTEL_CLIENT_TOKEN",
+            "KAJOVO_API_BETTER_HOTEL_CLIENT_TOKEN",
+            "C_token",
+        ),
+    )
+    better_hotel_breakfast_window_days_forward: int = Field(
+        default=7,
+        validation_alias=AliasChoices("KAJOVO_API_BETTER_HOTEL_BREAKFAST_WINDOW_DAYS_FORWARD"),
+    )
+    better_hotel_breakfast_food_codes: str = Field(
+        default="1",
+        validation_alias=AliasChoices("KAJOVO_API_BETTER_HOTEL_BREAKFAST_FOOD_CODES"),
+    )
+    better_hotel_request_timeout_seconds: int = Field(
+        default=30,
+        validation_alias=AliasChoices("KAJOVO_API_BETTER_HOTEL_REQUEST_TIMEOUT_SECONDS"),
     )
     breakfast_runtime_artifact_dir: str = "/app/data/runtime-artifacts"
     device_bootstrap_key: str = ""

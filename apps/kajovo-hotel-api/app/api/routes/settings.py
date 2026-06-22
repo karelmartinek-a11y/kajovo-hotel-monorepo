@@ -1,5 +1,7 @@
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,9 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     BreakfastImportLogEntry,
-    BreakfastImportMailboxSettingsRead,
-    BreakfastImportMailboxSettingsUpsert,
     BreakfastImportRunResponse,
+    BreakfastSyncRuntimeStatusRead,
+    BreakfastSyncSettingsRead,
     SmtpOperationalStatusRead,
     SmtpSettingsRead,
     SmtpSettingsUpsert,
@@ -18,10 +20,15 @@ from app.api.schemas import (
     SmtpTestEmailResponse,
 )
 from app.config import get_settings
-from app.db.models import BreakfastImportMailboxSettings, BreakfastImportRunLog, PortalSmtpSettings
+from app.db.models import BreakfastImportRunLog, PortalSmtpSettings
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
-from app.services.breakfast.mail_fetcher import BreakfastMailFetcher
+from app.services.breakfast.sync import (
+    SCHEDULE_TIMES,
+    BetterHotelSyncError,
+    prague_today,
+    sync_breakfast_range,
+)
 from app.services.mail import (
     MailMessage,
     SmtpDeliveryError,
@@ -29,9 +36,6 @@ from app.services.mail import (
     SmtpSettingsPayload,
     StoredSmtpConfig,
     build_email_service,
-    decrypt_secret,
-    encrypt_secret,
-    mask_secret,
     to_read_model,
     to_stored_config,
     validate_smtp_security_mode,
@@ -435,75 +439,68 @@ def test_smtp_email(
     )
 
 
-def _default_breakfast_mailbox_settings() -> BreakfastImportMailboxSettingsRead:
-    defaults = get_settings()
-    return BreakfastImportMailboxSettingsRead(
-        enabled=True,
-        host=defaults.breakfast_imap_host,
-        port=defaults.breakfast_imap_port,
-        use_ssl=defaults.breakfast_imap_use_ssl,
-        mailbox=defaults.breakfast_imap_mailbox,
-        username=defaults.breakfast_imap_username,
-        password_masked="",
-        from_contains=defaults.breakfast_imap_from_contains
-        or "noreply=better-hotel.com@mg2.better-hotel.com",
-        subject_contains=defaults.breakfast_imap_subject_contains,
-    )
+def _load_breakfast_runtime_status() -> BreakfastSyncRuntimeStatusRead | None:
+    runtime_path = Path(get_settings().breakfast_runtime_artifact_dir) / "breakfast-scheduler-latest.json"
+    if not runtime_path.is_file():
+        return None
+    try:
+        payload = json.loads(runtime_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("breakfast.sync.runtime_artifact_read_failed")
+        return None
 
-
-@router.get("/breakfast-mailbox", response_model=BreakfastImportMailboxSettingsRead)
-def get_breakfast_mailbox_settings(db: Session = Depends(get_db)) -> BreakfastImportMailboxSettingsRead:
-    row = db.get(BreakfastImportMailboxSettings, 1)
-    if row is None:
-        return _default_breakfast_mailbox_settings()
-    password_masked = ""
-    if row.password_encrypted:
-        try:
-            password_masked = mask_secret(decrypt_secret(row.password_encrypted, get_settings().smtp_encryption_key))
-        except Exception:
-            password_masked = ""
-    return BreakfastImportMailboxSettingsRead(
-        enabled=bool(row.enabled),
-        host=row.host,
-        port=row.port,
-        use_ssl=bool(row.use_ssl),
-        mailbox=row.mailbox,
-        username=row.username,
-        password_masked=password_masked,
-        from_contains=row.from_contains,
-        subject_contains=row.subject_contains,
-    )
-
-
-@router.put("/breakfast-mailbox", response_model=BreakfastImportMailboxSettingsRead)
-def put_breakfast_mailbox_settings(
-    payload: BreakfastImportMailboxSettingsUpsert,
-    db: Session = Depends(get_db),
-) -> BreakfastImportMailboxSettingsRead:
-    settings = get_settings()
-    row = db.get(BreakfastImportMailboxSettings, 1)
-    if row is None:
-        row = BreakfastImportMailboxSettings(id=1)
-    password = (payload.password or "").strip()
-    if not row.password_encrypted and not password:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="IMAP heslo je povinné pro novou konfiguraci.",
+    try:
+        generated_at_raw = payload.get("generated_at")
+        generated_at = (
+            datetime.fromisoformat(str(generated_at_raw))
+            if isinstance(generated_at_raw, str) and generated_at_raw
+            else None
         )
-    if password:
-        row.password_encrypted = encrypt_secret(password, settings.smtp_encryption_key)
-    row.enabled = payload.enabled
-    row.host = payload.host.strip()
-    row.port = payload.port
-    row.use_ssl = payload.use_ssl
-    row.mailbox = payload.mailbox.strip()
-    row.username = payload.username.strip()
-    row.from_contains = payload.from_contains.strip()
-    row.subject_contains = payload.subject_contains.strip()
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return get_breakfast_mailbox_settings(db)
+        return BreakfastSyncRuntimeStatusRead(
+            ok=bool(payload.get("ok")),
+            range_start=date.fromisoformat(str(payload.get("range_start"))),
+            range_end=date.fromisoformat(str(payload.get("range_end"))),
+            attempt=int(payload.get("attempt") or 1),
+            imported=bool(payload.get("imported")),
+            imported_days=int(payload.get("imported_days") or 0),
+            imported_rows=int(payload.get("imported_rows") or 0),
+            replaced_future_count=int(payload.get("replaced_future_count") or 0),
+            reservations_count=int(payload.get("reservations_count") or 0),
+            processed_days=int(payload.get("processed_days") or 0),
+            generated_at=generated_at,
+            error=str(payload.get("error")) if payload.get("error") else None,
+        )
+    except Exception:
+        logger.exception("breakfast.sync.runtime_artifact_parse_failed")
+        return None
+
+
+@router.get("/breakfast-sync", response_model=BreakfastSyncSettingsRead)
+def get_breakfast_sync_settings() -> BreakfastSyncSettingsRead:
+    settings = get_settings()
+    food_codes: list[int] = []
+    for item in (settings.better_hotel_breakfast_food_codes or "").replace(";", ",").split(","):
+        normalized = item.strip()
+        if not normalized:
+            continue
+        try:
+            food_codes.append(int(normalized))
+        except ValueError:
+            continue
+    return BreakfastSyncSettingsRead(
+        provider="better_hotel_api",
+        connector_base_url=settings.better_hotel_connector_base_url,
+        scheduler_enabled=settings.breakfast_scheduler_enabled,
+        access_token_configured=bool(settings.better_hotel_access_token.strip()),
+        client_token_configured=bool(settings.better_hotel_client_token.strip()),
+        breakfast_window_days_forward=max(0, int(settings.better_hotel_breakfast_window_days_forward)),
+        breakfast_food_codes=food_codes,
+        scheduler_interval_seconds=max(60, int(settings.breakfast_scheduler_interval_seconds)),
+        scheduler_retry_seconds=max(5, int(settings.breakfast_scheduler_retry_seconds)),
+        scheduler_max_retries=max(1, int(settings.breakfast_scheduler_max_retries)),
+        schedule_times=list(SCHEDULE_TIMES),
+        runtime_status=_load_breakfast_runtime_status(),
+    )
 
 
 @router.get("/breakfast-import-logs", response_model=list[BreakfastImportLogEntry])
@@ -532,13 +529,31 @@ def get_breakfast_import_logs(
 
 @router.post("/breakfast-import-run", response_model=BreakfastImportRunResponse)
 def run_breakfast_import_now(db: Session = Depends(get_db)) -> BreakfastImportRunResponse:
-    fetcher = BreakfastMailFetcher(get_settings())
-    result = fetcher.run_mailbox_import(db, trigger="manual")
+    settings = get_settings()
+    today_local = prague_today()
+    range_end = today_local + timedelta(days=max(0, int(settings.better_hotel_breakfast_window_days_forward)))
+    try:
+        result = sync_breakfast_range(
+            db,
+            settings=settings,
+            range_start=today_local,
+            range_end=range_end,
+            trigger="manual_api",
+            note="Ruční synchronizace Better Hotel API",
+        )
+    except BetterHotelSyncError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
     return BreakfastImportRunResponse(
         ok=result.ok,
-        imported_count=result.imported_count,
+        imported_count=result.imported_rows,
+        imported_days=result.imported_days,
+        processed_days=result.processed_days,
+        range_start=result.range_start,
+        range_end=result.range_end,
         replaced_future_count=result.replaced_future_count,
-        matched_messages=result.matched_messages,
-        scanned_messages=result.scanned_messages,
+        reservations_count=result.reservations_count,
         errors=result.errors,
     )

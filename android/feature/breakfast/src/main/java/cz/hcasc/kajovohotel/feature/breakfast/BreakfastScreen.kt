@@ -459,7 +459,7 @@ private fun ManualRefreshDialog(
                 if (state.isRefreshing) {
                     Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.padding(end = KajovoSpacingTokens.S2))
-                        Text(text = "Připravuji Better Hotel, stahuji přehled a přepisuji vybraný den.")
+                        Text(text = "Synchronizuji snídaně z API a přepisuji vybraný den.")
                     }
                 }
                 state.manualRefreshError?.let {
@@ -534,7 +534,7 @@ private fun BreakfastDateSelector(
                     }
                 },
             )
-            Button(onClick = { onRefresh(serviceDate) }) { Text("Aktualizovat z Better Hotelu") }
+            Button(onClick = { onRefresh(serviceDate) }) { Text("Aktualizovat z API") }
         }
     }
 }

@@ -1336,7 +1336,7 @@ function BreakfastList(): JSX.Element {
   const breakfastToolbar = isServingView ? (
     <div className="k-toolbar">
       <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
-      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat</button> : null}
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
     </div>
   ) : (
     <div className="k-toolbar">
@@ -1347,7 +1347,7 @@ function BreakfastList(): JSX.Element {
         event.currentTarget.value = '';
       }} /> : null}
       {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
-      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat</button> : null}
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
       {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
       {canClearDay ? <button className="k-button secondary" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
       {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
@@ -1440,7 +1440,7 @@ function BreakfastList(): JSX.Element {
                 <div className="k-modal-header">
                   <div>
                     <h2 id="breakfast-refresh-title">{manualRefreshTitle}</h2>
-                    <p className="k-subtle">Ruční aktualizace pro den {manualRefreshJob?.service_date ?? serviceDate}.</p>
+                    <p className="k-subtle">Ruční synchronizace z API pro den {manualRefreshJob?.service_date ?? serviceDate}.</p>
                   </div>
                   <div className="k-modal-spinner" aria-hidden="true" />
                 </div>

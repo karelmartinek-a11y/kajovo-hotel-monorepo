@@ -86,28 +86,6 @@ export type BreakfastImportLogEntry = {
   "started_at": string;
   "trigger": string;
 };
-export type BreakfastImportMailboxSettingsRead = {
-  "enabled": boolean;
-  "from_contains": string;
-  "host": string;
-  "mailbox": string;
-  "password_masked": string;
-  "port": number;
-  "subject_contains": string;
-  "use_ssl": boolean;
-  "username": string;
-};
-export type BreakfastImportMailboxSettingsUpsert = {
-  "enabled"?: boolean;
-  "from_contains": string;
-  "host": string;
-  "mailbox": string;
-  "password"?: string | null;
-  "port": number;
-  "subject_contains"?: string;
-  "use_ssl"?: boolean;
-  "username": string;
-};
 export type BreakfastImportResponse = {
   "date": string;
   "items": Array<BreakfastImportItem>;
@@ -118,10 +96,13 @@ export type BreakfastImportResponse = {
 export type BreakfastImportRunResponse = {
   "errors": Array<string>;
   "imported_count": number;
-  "matched_messages": number;
+  "imported_days": number;
   "ok": boolean;
+  "processed_days": number;
+  "range_end": string;
+  "range_start": string;
   "replaced_future_count": number;
-  "scanned_messages": number;
+  "reservations_count": number;
 };
 export type BreakfastManualRefreshJobRead = {
   "created_at": string | null;
@@ -182,6 +163,34 @@ export type BreakfastOrderUpdate = {
   "status"?: BreakfastStatus | null;
 };
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
+export type BreakfastSyncRuntimeStatusRead = {
+  "attempt": number;
+  "error"?: string | null;
+  "generated_at"?: string | null;
+  "imported": boolean;
+  "imported_days"?: number;
+  "imported_rows"?: number;
+  "ok": boolean;
+  "processed_days"?: number;
+  "range_end": string;
+  "range_start": string;
+  "replaced_future_count"?: number;
+  "reservations_count"?: number;
+};
+export type BreakfastSyncSettingsRead = {
+  "access_token_configured": boolean;
+  "breakfast_food_codes": Array<number>;
+  "breakfast_window_days_forward": number;
+  "client_token_configured": boolean;
+  "connector_base_url": string;
+  "provider": string;
+  "runtime_status"?: BreakfastSyncRuntimeStatusRead | null;
+  "schedule_times": Array<string>;
+  "scheduler_enabled": boolean;
+  "scheduler_interval_seconds": number;
+  "scheduler_max_retries": number;
+  "scheduler_retry_seconds": number;
+};
 export type DeviceChallengeRequest = {
   "device_id": string;
   "device_secret": string;
@@ -692,11 +701,8 @@ export const apiClient = {
   async runBreakfastImportNowApiV1AdminSettingsBreakfastImportRunPost(): Promise<BreakfastImportRunResponse> {
     return request<BreakfastImportRunResponse>('POST', `/api/v1/admin/settings/breakfast-import-run`, undefined, undefined);
   },
-  async getBreakfastMailboxSettingsApiV1AdminSettingsBreakfastMailboxGet(): Promise<BreakfastImportMailboxSettingsRead> {
-    return request<BreakfastImportMailboxSettingsRead>('GET', `/api/v1/admin/settings/breakfast-mailbox`, undefined, undefined);
-  },
-  async putBreakfastMailboxSettingsApiV1AdminSettingsBreakfastMailboxPut(body: BreakfastImportMailboxSettingsUpsert): Promise<BreakfastImportMailboxSettingsRead> {
-    return request<BreakfastImportMailboxSettingsRead>('PUT', `/api/v1/admin/settings/breakfast-mailbox`, undefined, body);
+  async getBreakfastSyncSettingsApiV1AdminSettingsBreakfastSyncGet(): Promise<BreakfastSyncSettingsRead> {
+    return request<BreakfastSyncSettingsRead>('GET', `/api/v1/admin/settings/breakfast-sync`, undefined, undefined);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);

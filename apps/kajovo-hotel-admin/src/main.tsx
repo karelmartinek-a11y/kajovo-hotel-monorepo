@@ -323,16 +323,34 @@ type SmtpOperationalStatusReadModel = {
   last_test_error: string | null;
 };
 
-type BreakfastMailboxSettingsReadModel = {
-  enabled: boolean;
-  host: string;
-  port: number;
-  use_ssl: boolean;
-  mailbox: string;
-  username: string;
-  password_masked: string;
-  from_contains: string;
-  subject_contains: string;
+type BreakfastSyncRuntimeStatusReadModel = {
+  ok: boolean;
+  range_start: string;
+  range_end: string;
+  attempt: number;
+  imported: boolean;
+  imported_days: number;
+  imported_rows: number;
+  replaced_future_count: number;
+  reservations_count: number;
+  processed_days: number;
+  generated_at?: string | null;
+  error?: string | null;
+};
+
+type BreakfastSyncSettingsReadModel = {
+  provider: string;
+  connector_base_url: string;
+  scheduler_enabled: boolean;
+  access_token_configured: boolean;
+  client_token_configured: boolean;
+  breakfast_window_days_forward: number;
+  breakfast_food_codes: number[];
+  scheduler_interval_seconds: number;
+  scheduler_retry_seconds: number;
+  scheduler_max_retries: number;
+  schedule_times: string[];
+  runtime_status?: BreakfastSyncRuntimeStatusReadModel | null;
 };
 
 type BreakfastImportLogEntryReadModel = {
@@ -347,9 +365,12 @@ type BreakfastImportLogEntryReadModel = {
 type BreakfastImportRunResponseModel = {
   ok: boolean;
   imported_count: number;
+  imported_days: number;
+  processed_days: number;
+  range_start: string;
+  range_end: string;
   replaced_future_count: number;
-  matched_messages: number;
-  scanned_messages: number;
+  reservations_count: number;
   errors: string[];
 };
 
@@ -958,23 +979,8 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
-  if (path === '/api/v1/admin/settings/breakfast-mailbox' && method === 'GET') {
+  if (path === '/api/v1/admin/settings/breakfast-sync' && method === 'GET') {
     const response = await fetch(path, { credentials: 'include' });
-    if (!response.ok) throw await buildHttpError(response);
-    return (await response.json()) as T;
-  }
-  if (path === '/api/v1/admin/settings/breakfast-mailbox' && method === 'PUT') {
-    const csrf = readCsrfToken();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (csrf) {
-      headers['x-csrf-token'] = csrf;
-    }
-    const response = await fetch(path, {
-      method: 'PUT',
-      credentials: 'include',
-      headers,
-      body: JSON.stringify(body),
-    });
     if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
   }
@@ -4146,15 +4152,7 @@ function SettingsAdmin(): JSX.Element {
   const [loadedConfig, setLoadedConfig] = React.useState<SmtpSettingsSnapshot | null>(null);
   const [status, setStatus] = React.useState<SmtpOperationalStatusReadModel | null>(null);
   const [mailDialog, setMailDialog] = React.useState<MailActionDialogState | null>(null);
-  const [mailboxEnabled, setMailboxEnabled] = React.useState(true);
-  const [mailboxHost, setMailboxHost] = React.useState('');
-  const [mailboxPort, setMailboxPort] = React.useState(993);
-  const [mailboxUseSsl, setMailboxUseSsl] = React.useState(true);
-  const [mailboxName, setMailboxName] = React.useState('INBOX');
-  const [mailboxUsername, setMailboxUsername] = React.useState('');
-  const [mailboxPassword, setMailboxPassword] = React.useState('');
-  const [mailboxFromContains, setMailboxFromContains] = React.useState('noreply=better-hotel.com@mg2.better-hotel.com');
-  const [mailboxSubjectContains, setMailboxSubjectContains] = React.useState('');
+  const [breakfastSync, setBreakfastSync] = React.useState<BreakfastSyncSettingsReadModel | null>(null);
   const [mailboxLogs, setMailboxLogs] = React.useState<BreakfastImportLogEntryReadModel[]>([]);
 
   const load = React.useCallback((options?: { preserveMessage?: boolean }) => {
@@ -4166,27 +4164,17 @@ function SettingsAdmin(): JSX.Element {
     void Promise.allSettled([
       fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp'),
       fetchJson<SmtpOperationalStatusReadModel>('/api/v1/admin/settings/smtp/status'),
-      fetchJson<BreakfastMailboxSettingsReadModel>('/api/v1/admin/settings/breakfast-mailbox'),
+      fetchJson<BreakfastSyncSettingsReadModel>('/api/v1/admin/settings/breakfast-sync'),
       fetchJson<BreakfastImportLogEntryReadModel[]>('/api/v1/admin/settings/breakfast-import-logs?limit=100'),
     ])
-      .then(([settingsResult, statusResult, mailboxResult, logsResult]) => {
+      .then(([settingsResult, statusResult, breakfastSyncResult, logsResult]) => {
         const smtpStatus = statusResult.status === 'fulfilled' ? statusResult.value : null;
         if (statusResult.status === 'fulfilled') {
           setStatus(statusResult.value);
         } else {
           setStatus(null);
         }
-        if (mailboxResult.status === 'fulfilled') {
-          const mailbox = mailboxResult.value;
-          setMailboxEnabled(mailbox.enabled);
-          setMailboxHost(mailbox.host);
-          setMailboxPort(mailbox.port);
-          setMailboxUseSsl(mailbox.use_ssl);
-          setMailboxName(mailbox.mailbox);
-          setMailboxUsername(mailbox.username);
-          setMailboxFromContains(mailbox.from_contains);
-          setMailboxSubjectContains(mailbox.subject_contains);
-        }
+        setBreakfastSync(breakfastSyncResult.status === 'fulfilled' ? breakfastSyncResult.value : null);
         if (logsResult.status === 'fulfilled') {
           setMailboxLogs(logsResult.value);
         } else {
@@ -4278,20 +4266,6 @@ function SettingsAdmin(): JSX.Element {
           use_ssl: useSsl,
         }),
       });
-      await fetchJson<BreakfastMailboxSettingsReadModel>('/api/v1/admin/settings/breakfast-mailbox', {
-        method: 'PUT',
-        body: JSON.stringify({
-          enabled: mailboxEnabled,
-          host: mailboxHost.trim(),
-          port: Number(mailboxPort),
-          use_ssl: mailboxUseSsl,
-          mailbox: mailboxName.trim() || 'INBOX',
-          username: mailboxUsername.trim(),
-          password: mailboxPassword,
-          from_contains: mailboxFromContains.trim(),
-          subject_contains: mailboxSubjectContains.trim(),
-        }),
-      });
       setLoadedConfig({
         fromEmail: fromEmail.trim().toLowerCase(),
         host: host.trim(),
@@ -4302,7 +4276,6 @@ function SettingsAdmin(): JSX.Element {
       });
       setMessage('SMTP nastavení bylo uloženo.');
       setPassword('');
-      setMailboxPassword('');
       load({ preserveMessage: true });
     } catch (err) {
       const description = err instanceof Error && err.message.trim()
@@ -4406,14 +4379,14 @@ function SettingsAdmin(): JSX.Element {
       const result = await fetchJson<BreakfastImportRunResponseModel>('/api/v1/admin/settings/breakfast-import-run', {
         method: 'POST',
       });
-      const summary = `Ruční import dokončen. Prohledáno: ${result.scanned_messages}, odpovídá filtru: ${result.matched_messages}, nově importováno: ${result.imported_count}, přepsané budoucí dny: ${result.replaced_future_count}.`;
+      const summary = `Ruční synchronizace dokončena. Rozsah ${result.range_start} až ${result.range_end}, dny ${result.imported_days}/${result.processed_days}, položky ${result.imported_count}, rezervace ${result.reservations_count}, přepsané budoucí dny ${result.replaced_future_count}.`;
       const details = result.errors.length > 0 ? ` Chyby: ${result.errors.join(' | ')}` : '';
       setMessage(`${summary}${details}`);
       load({ preserveMessage: true });
     } catch (err) {
       const description = err instanceof Error && err.message.trim()
         ? err.message.trim()
-        : 'Ruční import se nepodařilo spustit.';
+        : 'Ruční synchronizaci se nepodařilo spustit.';
       setError(description);
     } finally {
       setSaving(false);
@@ -4493,44 +4466,35 @@ function SettingsAdmin(): JSX.Element {
             </div>
           </div>
         </Card>
-        <Card title="Automatický import snídaní z e-mailu">
-          <div className="k-form-grid">
-            <label className="k-role-label">
-              <input type="checkbox" checked={mailboxEnabled} onChange={(e) => setMailboxEnabled(e.target.checked)} /> Aktivní
-            </label>
-            <FormField id="imap_host" label="IMAP host">
-              <input id="imap_host" className="k-input" value={mailboxHost} onChange={(e) => setMailboxHost(e.target.value)} />
-            </FormField>
-            <FormField id="imap_port" label="IMAP port">
-              <input id="imap_port" className="k-input" type="number" value={mailboxPort} onChange={(e) => setMailboxPort(Number(e.target.value) || 0)} />
-            </FormField>
-            <label className="k-role-label">
-              <input type="checkbox" checked={mailboxUseSsl} onChange={(e) => setMailboxUseSsl(e.target.checked)} /> Použít SSL
-            </label>
-            <FormField id="imap_mailbox" label="Schránka">
-              <input id="imap_mailbox" className="k-input" value={mailboxName} onChange={(e) => setMailboxName(e.target.value)} />
-            </FormField>
-            <FormField id="imap_username" label="IMAP uživatel">
-              <input id="imap_username" className="k-input" value={mailboxUsername} onChange={(e) => setMailboxUsername(e.target.value)} />
-            </FormField>
-            <FormField id="imap_password" label="IMAP heslo">
-              <input id="imap_password" className="k-input" type="password" value={mailboxPassword} onChange={(e) => setMailboxPassword(e.target.value)} />
-            </FormField>
-            <FormField id="imap_from_filter" label="Filtr odesílatele">
-              <input id="imap_from_filter" className="k-input" value={mailboxFromContains} onChange={(e) => setMailboxFromContains(e.target.value)} />
-            </FormField>
-            <FormField id="imap_subject_filter" label="Filtr předmětu">
-              <input id="imap_subject_filter" className="k-input" value={mailboxSubjectContains} onChange={(e) => setMailboxSubjectContains(e.target.value)} />
-            </FormField>
-            <p className="k-muted">Plán běhů je pevný: 14:00, 16:00, 18:00, 20:00, 22:20, 23:50 (Europe/Prague).</p>
-            <div className="k-toolbar">
-              <button className="k-button secondary" type="button" onClick={() => void runManualBreakfastImport()} disabled={saving}>
-                Spustit import teď (mimo interval)
-              </button>
-            </div>
+        <Card title="Synchronizace snídaní z Better Hotel API">
+          <DataTable
+            headers={['Položka', 'Stav']}
+            rows={[
+              ['Zdroj', breakfastSync?.provider === 'better_hotel_api' ? 'Better Hotel API' : 'Neznámý'],
+              ['API URL', breakfastSync?.connector_base_url ?? '-'],
+              ['Scheduler aktivní', breakfastSync?.scheduler_enabled ? 'Ano' : 'Ne'],
+              ['Access token', breakfastSync?.access_token_configured ? 'Nastaven' : 'Chybí'],
+              ['Client token', breakfastSync?.client_token_configured ? 'Nastaven' : 'Chybí'],
+              ['Rozsah dopředu', breakfastSync ? `${breakfastSync.breakfast_window_days_forward} dnů` : '-'],
+              ['Kódy snídaně', breakfastSync?.breakfast_food_codes?.length ? breakfastSync.breakfast_food_codes.join(', ') : '-'],
+              ['Sloty běhu', breakfastSync?.schedule_times?.length ? breakfastSync.schedule_times.join(', ') : '-'],
+              ['Interval scheduleru', breakfastSync ? `${breakfastSync.scheduler_interval_seconds} s` : '-'],
+              ['Retry interval', breakfastSync ? `${breakfastSync.scheduler_retry_seconds} s` : '-'],
+              ['Max. retry', breakfastSync ? String(breakfastSync.scheduler_max_retries) : '-'],
+              ['Poslední běh', breakfastSync?.runtime_status?.generated_at ? formatDateTime(breakfastSync.runtime_status.generated_at) : 'Bez runtime artefaktu'],
+              ['Poslední rozsah', breakfastSync?.runtime_status ? `${breakfastSync.runtime_status.range_start} až ${breakfastSync.runtime_status.range_end}` : '-'],
+              ['Poslední výsledek', breakfastSync?.runtime_status ? (breakfastSync.runtime_status.ok ? 'OK' : 'Chyba') : 'Bez záznamu'],
+              ['Poslední import', breakfastSync?.runtime_status ? `${breakfastSync.runtime_status.imported_rows} položek / ${breakfastSync.runtime_status.imported_days} dnů` : '-'],
+              ['Poslední chyba', breakfastSync?.runtime_status?.error ?? '-'],
+            ]}
+          />
+          <div className="k-toolbar">
+            <button className="k-button secondary" type="button" onClick={() => void runManualBreakfastImport()} disabled={saving}>
+              Spustit synchronizaci teď
+            </button>
           </div>
         </Card>
-        <Card title="Forenzní log importu snídaní">
+        <Card title="Forenzní log synchronizace snídaní">
           <DataTable
             headers={['Start', 'Konec', 'Stav', 'Spouštěč', 'Detaily']}
             rows={mailboxLogs.map((item) => ([
