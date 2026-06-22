@@ -7,8 +7,8 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
