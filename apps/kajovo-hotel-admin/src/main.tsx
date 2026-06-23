@@ -1761,9 +1761,9 @@ function BreakfastList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <>
-          <div className="k-card">
-            <p className="k-text-muted" style={{ margin: 0 }}>Datum přehledu snídaní</p>
-            <h2 style={{ margin: '0.35rem 0 0', fontSize: 'clamp(1.75rem, 4vw, 2.5rem)' }}>
+          <div className="k-card k-breakfast-overview-date">
+            <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
+            <h2 className="k-breakfast-overview-date__value">
               {formatBreakfastHeadlineDate(breakfastSummaryDate)}
             </h2>
           </div>
@@ -1822,7 +1822,7 @@ function BreakfastList(): JSX.Element {
             <Card title="Vydáno"><strong>{overviewStats.servedBreakfasts}</strong></Card>
             <Card title="Zbývá vydat"><strong>{overviewStats.remainingBreakfasts}</strong></Card>
           </div>
-          <p className="k-text-muted" style={{ fontStyle: 'italic', fontSize: '0.95rem' }}>
+          <p className="k-text-muted k-breakfast-overview-updated-at">
             Data aktualizována: {breakfastImportStamp}
           </p>
         </>

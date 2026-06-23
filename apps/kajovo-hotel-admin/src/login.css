@@ -279,6 +279,21 @@
   background: rgba(239, 228, 217, 0.55);
 }
 
+.k-breakfast-overview-date__label {
+  margin: 0;
+}
+
+.k-breakfast-overview-date__value {
+  margin: var(--k-spacing-2) 0 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  line-height: 1.05;
+}
+
+.k-breakfast-overview-updated-at {
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
 @media (max-width: 960px) {
   .k-login-page {
     grid-template-columns: 1fr;
