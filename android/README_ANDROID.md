@@ -1,4 +1,4 @@
-# Kajovo Hotel Android
+﻿# Kajovo Hotel Android
 
 Tento adresář je samostatný nativní Android projekt. Aktivní current-state provozní dokumentace pro Android je právě tento soubor.
 
@@ -13,6 +13,7 @@ Tento adresář je samostatný nativní Android projekt. Aktivní current-state 
 - role-aware shell bez admin scope
 - utility stavy `intro`, `offline`, `maintenance`, `not-found`, `access-denied`, `global-blocking-error`
 - feature moduly `recepce`, `pokojská`, `snídaně`, `ztráty a nálezy`, `závady`, `sklad`, `hlášení`, `profil`
+- adaptivní mobilní a tabletové rozložení pro vstupní a profilové veřejné obrazovky
 
 ## Co projekt záměrně neobsahuje
 
@@ -40,6 +41,8 @@ Na Windows:
 ```powershell
 cd android
 .\gradlew.bat assembleDebug
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat lintDebug
 ```
 
 ## Release pravidla
@@ -54,8 +57,10 @@ cd android
 - Každá runtime změna Android aplikace musí být spojená i s adekvátní změnou webové verze.
 - Každá runtime změna webu musí mít odpovídající runtime změnu Android appky.
 - web musí být ověřený pro desktop, tablet a mobil
+- Android musí mít samostatné nativní mobilní i tabletové chování, ne jen roztažený telefonní layout
 - wrapper nebo WebView-first model není přípustný
 
 ## Historické materiály
 
-`KajovoHotelAndroid.md`, `KajovoHotelAndroid.audit.md` a handoff JSON soubory jsou historická projektová evidence. Pokud jsou v rozporu s kódem nebo s tímto README, přednost má kód a tento README.
+Historická Android projektová evidence je přesunutá do `docs/archive/android-history/`.
+Pokud je historický materiál v rozporu s kódem nebo s tímto README, přednost má kód a tento README.

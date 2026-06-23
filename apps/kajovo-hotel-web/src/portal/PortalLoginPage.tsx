@@ -120,7 +120,7 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
             <img src="/downloads/kajovo-hotel-android-icon.png" alt="" />
           </div>
           <p className="k-login-download__copy">
-            Pro přihlášení z telefonu nebo tabletu si můžeš stáhnout instalační APK balíček.
+            Pro přihlášení z telefonu nebo tabletu si můžeš stáhnout plnohodnotnou nativní Android aplikaci v APK balíčku.
           </p>
           <a
             className="k-button k-login-download__action"
@@ -144,7 +144,7 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
             <div className="k-nav-link"><Icon name="utensils" className="k-nav-link__icon" /><span>Snidane a importy</span></div>
             <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>Zavady a pokojska</span></div>
             <div className="k-nav-link"><Icon name="search" className="k-nav-link__icon" /><span>Ztraty a nalezy</span></div>
-            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Hlaseni a profil</span></div>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Hlaseni, profil a nativni Android</span></div>
           </div>
         </div>
       </aside>

@@ -2,6 +2,9 @@ package cz.hcasc.kajovohotel.feature.reception
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cz.hcasc.kajovohotel.core.designsystem.BulletLine
+import cz.hcasc.kajovohotel.core.designsystem.KajovoDeviceLayout
+import cz.hcasc.kajovohotel.core.designsystem.rememberKajovoDeviceLayout
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoRadiusTokens
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 
@@ -22,45 +27,129 @@ fun ReceptionHubScreen(
     onLostFoundClick: () -> Unit,
     onReportsClick: () -> Unit,
 ) {
+    val deviceLayout = rememberKajovoDeviceLayout()
+
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Recepce", style = MaterialTheme.typography.headlineMedium)
         Text(
-            text = "Vyberte provozní tok, který chcete otevřít. Každá karta vede do plnohodnotného pracovního vstupu, ne jen do stručné zkratky.",
+            text = "Vyberte provoznĂ­ tok, kterĂ˝ chcete otevĹ™Ă­t. KaĹľdĂˇ karta vede do plnohodnotnĂ©ho pracovnĂ­ho vstupu, ne jen do struÄŤnĂ© zkratky.",
             style = MaterialTheme.typography.bodyMedium,
         )
-        ReceptionActionCard(
-            title = "Zpracování nálezů",
-            subtitle = "Seznam čekajících nálezů, detail položky a převzetí po recepci.",
-            points = listOf(
-                "Otevře přehled čekajících záznamů.",
-                "Zobrazí detail a stav zpracování.",
-                "Po potvrzení nález zmizí ze seznamu recepce.",
-            ),
-            actionLabel = "Otevřít nálezy",
-            onAction = onLostFoundClick,
-        )
-        ReceptionActionCard(
-            title = "Import a správa snídaní",
-            subtitle = "Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF.",
-            points = listOf(
-                "Načte denní přehled a rozpracované objednávky.",
-                "Umožní otevřít detail i upravit objednávku.",
-                "Podporuje import i export PDF pro recepci.",
-            ),
-            actionLabel = "Otevřít snídaně",
-            onAction = onBreakfastClick,
-        )
-        ReceptionActionCard(
-            title = "Přehled hlášení",
-            subtitle = "Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role.",
-            points = listOf(
-                "Zobrazí seznam provozních hlášení.",
-                "Otevře detail a úpravu podle oprávnění role.",
-                "Drží jednotný tok pro recepci i navazující provoz.",
-            ),
-            actionLabel = "Otevřít hlášení",
-            onAction = onReportsClick,
-        )
+        if (deviceLayout == KajovoDeviceLayout.TABLET) {
+            ReceptionTabletGrid(
+                onBreakfastClick = onBreakfastClick,
+                onLostFoundClick = onLostFoundClick,
+                onReportsClick = onReportsClick,
+            )
+        } else {
+            ReceptionCards(
+                onBreakfastClick = onBreakfastClick,
+                onLostFoundClick = onLostFoundClick,
+                onReportsClick = onReportsClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceptionCards(
+    onBreakfastClick: () -> Unit,
+    onLostFoundClick: () -> Unit,
+    onReportsClick: () -> Unit,
+) {
+    ReceptionActionCard(
+        title = "ZpracovĂˇnĂ­ nĂˇlezĹŻ",
+        subtitle = "Seznam ÄŤekajĂ­cĂ­ch nĂˇlezĹŻ, detail poloĹľky a pĹ™evzetĂ­ po recepci.",
+        points = listOf(
+            "OtevĹ™e pĹ™ehled ÄŤekajĂ­cĂ­ch zĂˇznamĹŻ.",
+            "ZobrazĂ­ detail a stav zpracovĂˇnĂ­.",
+            "Po potvrzenĂ­ nĂˇlez zmizĂ­ ze seznamu recepce.",
+        ),
+        actionLabel = "OtevĹ™Ă­t nĂˇlezy",
+        onAction = onLostFoundClick,
+    )
+    ReceptionActionCard(
+        title = "Import a sprĂˇva snĂ­danĂ­",
+        subtitle = "DennĂ­ souhrn, seznam objednĂˇvek, detail, zaloĹľenĂ­, Ăşpravy i prĂˇce s PDF.",
+        points = listOf(
+            "NaÄŤte dennĂ­ pĹ™ehled a rozpracovanĂ© objednĂˇvky.",
+            "UmoĹľnĂ­ otevĹ™Ă­t detail i upravit objednĂˇvku.",
+            "Podporuje import i export PDF pro recepci.",
+        ),
+        actionLabel = "OtevĹ™Ă­t snĂ­danÄ›",
+        onAction = onBreakfastClick,
+    )
+    ReceptionActionCard(
+        title = "PĹ™ehled hlĂˇĹˇenĂ­",
+        subtitle = "ProvoznĂ­ hlĂˇĹˇenĂ­ s detailem a Ăşpravami dostupnĂ˝mi pro oprĂˇvnÄ›nĂ© role.",
+        points = listOf(
+            "ZobrazĂ­ seznam provoznĂ­ch hlĂˇĹˇenĂ­.",
+            "OtevĹ™e detail a Ăşpravu podle oprĂˇvnÄ›nĂ­ role.",
+            "DrĹľĂ­ jednotnĂ˝ tok pro recepci i navazujĂ­cĂ­ provoz.",
+        ),
+        actionLabel = "OtevĹ™Ă­t hlĂˇĹˇenĂ­",
+        onAction = onReportsClick,
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReceptionTabletGrid(
+    onBreakfastClick: () -> Unit,
+    onLostFoundClick: () -> Unit,
+    onReportsClick: () -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4),
+        verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4),
+        maxItemsInEachRow = 2,
+    ) {
+        TabletGridCell {
+            ReceptionActionCard(
+                title = "ZpracovĂˇnĂ­ nĂˇlezĹŻ",
+                subtitle = "Seznam ÄŤekajĂ­cĂ­ch nĂˇlezĹŻ, detail poloĹľky a pĹ™evzetĂ­ po recepci.",
+                points = listOf(
+                    "OtevĹ™e pĹ™ehled ÄŤekajĂ­cĂ­ch zĂˇznamĹŻ.",
+                    "ZobrazĂ­ detail a stav zpracovĂˇnĂ­.",
+                    "Po potvrzenĂ­ nĂˇlez zmizĂ­ ze seznamu recepce.",
+                ),
+                actionLabel = "OtevĹ™Ă­t nĂˇlezy",
+                onAction = onLostFoundClick,
+            )
+        }
+        TabletGridCell {
+            ReceptionActionCard(
+                title = "Import a sprĂˇva snĂ­danĂ­",
+                subtitle = "DennĂ­ souhrn, seznam objednĂˇvek, detail, zaloĹľenĂ­, Ăşpravy i prĂˇce s PDF.",
+                points = listOf(
+                    "NaÄŤte dennĂ­ pĹ™ehled a rozpracovanĂ© objednĂˇvky.",
+                    "UmoĹľnĂ­ otevĹ™Ă­t detail i upravit objednĂˇvku.",
+                    "Podporuje import i export PDF pro recepci.",
+                ),
+                actionLabel = "OtevĹ™Ă­t snĂ­danÄ›",
+                onAction = onBreakfastClick,
+            )
+        }
+        TabletGridCell {
+            ReceptionActionCard(
+                title = "PĹ™ehled hlĂˇĹˇenĂ­",
+                subtitle = "ProvoznĂ­ hlĂˇĹˇenĂ­ s detailem a Ăşpravami dostupnĂ˝mi pro oprĂˇvnÄ›nĂ© role.",
+                points = listOf(
+                    "ZobrazĂ­ seznam provoznĂ­ch hlĂˇĹˇenĂ­.",
+                    "OtevĹ™e detail a Ăşpravu podle oprĂˇvnÄ›nĂ­ role.",
+                    "DrĹľĂ­ jednotnĂ˝ tok pro recepci i navazujĂ­cĂ­ provoz.",
+                ),
+                actionLabel = "OtevĹ™Ă­t hlĂˇĹˇenĂ­",
+                onAction = onReportsClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TabletGridCell(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth(0.48f)) {
+        content()
     }
 }
 

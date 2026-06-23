@@ -15,8 +15,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import cz.hcasc.kajovohotel.core.designsystem.AdaptiveTwoColumnBlock
 import cz.hcasc.kajovohotel.core.designsystem.BulletLine
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
+import cz.hcasc.kajovohotel.core.designsystem.KajovoDeviceLayout
+import cz.hcasc.kajovohotel.core.designsystem.rememberKajovoDeviceLayout
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 import cz.hcasc.kajovohotel.core.model.AuthProfile
 
@@ -34,41 +37,130 @@ fun ProfileScreen(
     var lastName by remember(profile?.lastName) { mutableStateOf(profile?.lastName.orEmpty()) }
     var phone by remember(profile?.phone) { mutableStateOf(profile?.phone.orEmpty()) }
     var note by remember(profile?.note) { mutableStateOf(profile?.note.orEmpty()) }
+    val deviceLayout = rememberKajovoDeviceLayout()
 
     val normalizedPhone = normalizePhoneInput(phone)
     val isPhoneValid = normalizedPhone.isNullOrBlank() || phoneRegex.matches(normalizedPhone)
 
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Můj profil", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "MĹŻj profil", style = MaterialTheme.typography.headlineMedium)
+        if (deviceLayout == KajovoDeviceLayout.TABLET) {
+            AdaptiveTwoColumnBlock(
+                leading = {
+                    ProfileSummaryCard(
+                        profile = profile,
+                        message = message,
+                        onChangePasswordClick = onChangePasswordClick,
+                        onLogoutClick = onLogoutClick,
+                    )
+                },
+                trailing = {
+                    ProfileFormCard(
+                        firstName = firstName,
+                        lastName = lastName,
+                        phone = phone,
+                        note = note,
+                        isPhoneValid = isPhoneValid,
+                        onFirstNameChange = { firstName = it },
+                        onLastNameChange = { lastName = it },
+                        onPhoneChange = { phone = normalizePhoneInput(it).orEmpty() },
+                        onNoteChange = { note = it },
+                        onSave = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), note.trim()) },
+                    )
+                },
+            )
+        } else {
+            ProfileSummaryCard(
+                profile = profile,
+                message = message,
+                onChangePasswordClick = onChangePasswordClick,
+                onLogoutClick = onLogoutClick,
+            )
+            ProfileFormCard(
+                firstName = firstName,
+                lastName = lastName,
+                phone = phone,
+                note = note,
+                isPhoneValid = isPhoneValid,
+                onFirstNameChange = { firstName = it },
+                onLastNameChange = { lastName = it },
+                onPhoneChange = { phone = normalizePhoneInput(it).orEmpty() },
+                onNoteChange = { note = it },
+                onSave = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), note.trim()) },
+            )
+            Button(onClick = onChangePasswordClick) {
+                Text(text = "ZmÄ›nit heslo")
+            }
+            OutlinedButton(onClick = onLogoutClick) {
+                Text(text = "OdhlĂˇsit")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileSummaryCard(
+    profile: AuthProfile?,
+    message: String?,
+    onChangePasswordClick: () -> Unit,
+    onLogoutClick: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         profile?.let {
             FeatureCard(
                 title = it.fullName,
-                subtitle = "Správa kontaktních údajů a provozní poznámky k účtu ${it.email}",
+                subtitle = "SprĂˇva kontaktnĂ­ch ĂşdajĹŻ a provoznĂ­ poznĂˇmky k ĂşÄŤtu ${it.email}",
             )
             BulletLine(label = "Role", value = it.roles.joinToString { role -> role.displayName })
         }
+        if (!message.isNullOrBlank()) {
+            Text(text = message)
+        }
+        Button(onClick = onChangePasswordClick, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "ZmÄ›nit heslo")
+        }
+        OutlinedButton(onClick = onLogoutClick, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "OdhlĂˇsit")
+        }
+    }
+}
+
+@Composable
+private fun ProfileFormCard(
+    firstName: String,
+    lastName: String,
+    phone: String,
+    note: String,
+    isPhoneValid: Boolean,
+    onFirstNameChange: (String) -> Unit,
+    onLastNameChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onSave: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         OutlinedTextField(
             value = firstName,
-            onValueChange = { firstName = it },
+            onValueChange = onFirstNameChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Jméno") },
+            label = { Text("JmĂ©no") },
         )
         OutlinedTextField(
             value = lastName,
-            onValueChange = { lastName = it },
+            onValueChange = onLastNameChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Příjmení") },
+            label = { Text("PĹ™Ă­jmenĂ­") },
         )
         OutlinedTextField(
             value = phone,
-            onValueChange = { phone = normalizePhoneInput(it).orEmpty() },
+            onValueChange = onPhoneChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Telefon (E.164, volitelný)") },
+            label = { Text("Telefon (E.164, volitelnĂ˝)") },
             supportingText = {
                 if (!isPhoneValid) {
-                    Text("Telefon musí být ve formátu E.164.")
+                    Text("Telefon musĂ­ bĂ˝t ve formĂˇtu E.164.")
                 } else {
-                    Text("Například +420123456789.")
+                    Text("NapĹ™Ă­klad +420123456789.")
                 }
             },
             isError = !isPhoneValid,
@@ -76,25 +168,17 @@ fun ProfileScreen(
         )
         OutlinedTextField(
             value = note,
-            onValueChange = { note = it },
+            onValueChange = onNoteChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Poznámka") },
+            label = { Text("PoznĂˇmka") },
             minLines = 3,
         )
-        if (!message.isNullOrBlank()) {
-            Text(text = message)
-        }
         Button(
-            onClick = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), note.trim()) },
+            onClick = onSave,
             enabled = firstName.isNotBlank() && lastName.isNotBlank() && isPhoneValid,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(text = "Uložit profil")
-        }
-        Button(onClick = onChangePasswordClick) {
-            Text(text = "Změnit heslo")
-        }
-        OutlinedButton(onClick = onLogoutClick) {
-            Text(text = "Odhlásit")
+            Text(text = "UloĹľit profil")
         }
     }
 }
@@ -105,23 +189,23 @@ fun ChangePasswordScreen(message: String?, onSubmit: (String, String) -> Unit) {
     var newPassword by remember { mutableStateOf("") }
 
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Změna hesla", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "ZmÄ›na hesla", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
-            title = "Bezpečné obnovení přístupu",
-            subtitle = "Po změně hesla se účet znovu ověří a navážete novým přihlášením.",
+            title = "BezpeÄŤnĂ© obnovenĂ­ pĹ™Ă­stupu",
+            subtitle = "Po zmÄ›nÄ› hesla se ĂşÄŤet znovu ovÄ›Ĺ™Ă­ a navĂˇĹľete novĂ˝m pĹ™ihlĂˇĹˇenĂ­m.",
         )
         OutlinedTextField(
             value = oldPassword,
             onValueChange = { oldPassword = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Stávající heslo") },
+            label = { Text("StĂˇvajĂ­cĂ­ heslo") },
             visualTransformation = PasswordVisualTransformation(),
         )
         OutlinedTextField(
             value = newPassword,
             onValueChange = { newPassword = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Nové heslo") },
+            label = { Text("NovĂ© heslo") },
             visualTransformation = PasswordVisualTransformation(),
         )
         if (!message.isNullOrBlank()) {
@@ -131,7 +215,7 @@ fun ChangePasswordScreen(message: String?, onSubmit: (String, String) -> Unit) {
             onClick = { onSubmit(oldPassword, newPassword) },
             enabled = oldPassword.length >= 8 && newPassword.length >= 8,
         ) {
-            Text(text = "Potvrdit změnu")
+            Text(text = "Potvrdit zmÄ›nu")
         }
     }
 }
@@ -147,27 +231,27 @@ fun ResetPasswordScreen(
     val passwordsMatch = password == confirmPassword
 
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Dokončení resetu hesla", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "DokonÄŤenĂ­ resetu hesla", style = MaterialTheme.typography.headlineMedium)
         FeatureCard(
             title = "Reset z odkazu hotel.hcasc.cz",
-            subtitle = "Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.",
+            subtitle = "DokonÄŤete reset hesla z odkazu, kterĂ˝ vystavil administrĂˇtor. Po uloĹľenĂ­ se pĹ™ihlĂˇsĂ­te novĂ˝m heslem.",
         )
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Nové heslo") },
+            label = { Text("NovĂ© heslo") },
             visualTransformation = PasswordVisualTransformation(),
         )
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Potvrzení hesla") },
+            label = { Text("PotvrzenĂ­ hesla") },
             visualTransformation = PasswordVisualTransformation(),
         )
         if (!passwordsMatch && confirmPassword.isNotEmpty()) {
-            Text(text = "Hesla se neshodují.", color = MaterialTheme.colorScheme.error)
+            Text(text = "Hesla se neshodujĂ­.", color = MaterialTheme.colorScheme.error)
         }
         if (!message.isNullOrBlank()) {
             Text(text = message)
@@ -176,10 +260,10 @@ fun ResetPasswordScreen(
             onClick = { onSubmit(password, confirmPassword) },
             enabled = password.length >= 8 && confirmPassword.length >= 8 && passwordsMatch,
         ) {
-            Text(text = "Nastavit nové heslo")
+            Text(text = "Nastavit novĂ© heslo")
         }
         OutlinedButton(onClick = onBackToLogin) {
-            Text(text = "Zpět na přihlášení")
+            Text(text = "ZpÄ›t na pĹ™ihlĂˇĹˇenĂ­")
         }
     }
 }
