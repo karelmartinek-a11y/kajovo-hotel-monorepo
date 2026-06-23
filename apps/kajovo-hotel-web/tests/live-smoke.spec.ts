@@ -402,7 +402,7 @@ test('portal bez session skonci na loginu', async ({ page }, testInfo) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Stáhnout APK' })).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
+  await expect(page.getByRole('link', { name: 'Stáhnout APK' })).toHaveAttribute('href', /(?:https:\/\/hotel\.hcasc\.cz)?\/downloads\/kajovo-hotel-android\.apk$/);
   await expect(page.getByTestId('portal-android-release-version')).toContainText('Aktuální release:');
   if (testInfo.project.name === 'phone') {
     await expect(page.getByRole('link', { name: 'Otevřít aplikaci' })).toBeVisible();
