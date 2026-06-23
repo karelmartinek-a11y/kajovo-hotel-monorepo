@@ -61,11 +61,11 @@ fun LoginScreen(
     ) {
         FullBrandLockup()
         Text(
-            text = "VĂ­tejte v ${Branding.APP_NAME}",
+            text = "Vítejte v ${Branding.APP_NAME}",
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(
-            text = "ProvoznĂ­ pĹ™ihlĂˇĹˇenĂ­ pro recepci, sklad, hlĂˇĹˇenĂ­ i servisnĂ­ moduly.",
+            text = "Provozní přihlášení pro recepci, sklad, hlášení i servisní moduly.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -117,7 +117,7 @@ private fun LoginFormCard(
             value = email,
             onValueChange = onEmailChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("UĹľivatelskĂ© jmĂ©no") },
+            label = { Text("Uživatelské jméno") },
             singleLine = true,
             enabled = !isBusy,
         )
@@ -140,15 +140,15 @@ private fun LoginFormCard(
                 contentDescription = null,
                 modifier = Modifier.padding(end = KajovoSpacingTokens.S2),
             )
-            Text(text = if (isBusy) "ProbĂ­hĂˇ pĹ™ihlĂˇĹˇenĂ­" else "PĹ™ihlĂˇsit")
+            Text(text = if (isBusy) "Probíhá přihlášení" else "Přihlásit")
         }
         Text(
-            text = "Reset hesla odesĂ­lĂˇ pouze administrĂˇtor ze sprĂˇvy uĹľivatelĹŻ.",
+            text = "Reset hesla odesílá pouze administrátor ze správy uživatelů.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = "Aplikace po spuĹˇtÄ›nĂ­ automaticky ovÄ›Ĺ™uje dostupnost novĂ© verze jeĹˇtÄ› pĹ™ed pĹ™ihlĂˇĹˇenĂ­m.",
+            text = "Aplikace po spuštění automaticky ověřuje dostupnost nové verze ještě před přihlášením.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -170,30 +170,30 @@ private fun LoginOverviewCard() {
             modifier = Modifier.padding(KajovoSpacingTokens.S4),
             verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4),
         ) {
-            HospitalityPill(text = "HotelovĂ˝ provoz â€˘ produkÄŤnĂ­ pĹ™Ă­stup")
+            HospitalityPill(text = "Hotelový provoz • produkční přístup")
             Text(
-                text = "PĹ™ihlaste se do provoznĂ­ho portĂˇlu",
+                text = "Přihlaste se do provozního portálu",
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Po ovÄ›Ĺ™enĂ­ ĂşÄŤtu navĂˇĹľete pĹ™esnÄ› tam, kde zaÄŤĂ­nĂˇ dneĹˇnĂ­ smÄ›na.",
+                text = "Po ověření účtu navážete přesně tam, kde začíná dnešní směna.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             HospitalityFeatureRow(
                 icon = Icons.Outlined.VerifiedUser,
-                title = "Role podle oprĂˇvnÄ›nĂ­",
-                body = "Aplikace po pĹ™ihlĂˇĹˇenĂ­ otevĹ™e jen moduly, kterĂ© mĂˇ ĂşÄŤet skuteÄŤnÄ› povolenĂ©.",
+                title = "Role podle oprávnění",
+                body = "Aplikace po přihlášení otevře jen moduly, které má účet skutečně povolené.",
             )
             HospitalityFeatureRow(
                 icon = Icons.Outlined.Sync,
-                title = "Kontrola releasu pĹ™ed vstupem",
-                body = "Android klient pĹ™ed pĹ™ihlĂˇĹˇenĂ­m ovÄ›Ĺ™uje novou verzi a pĹ™ipravĂ­ aktualizaci.",
+                title = "Kontrola releasu před vstupem",
+                body = "Android klient před přihlášením ověřuje novou verzi a připraví aktualizaci.",
             )
             HospitalityFeatureRow(
                 icon = Icons.Outlined.Security,
-                title = "BezpeÄŤnĂ˝ provoznĂ­ pĹ™Ă­stup",
-                body = "Reset hesla i nĂˇpovÄ›du k ĂşÄŤtu drĹľĂ­ administrace, ne veĹ™ejnĂ˝ formulĂˇĹ™.",
+                title = "Bezpečný provozní přístup",
+                body = "Reset hesla i nápovědu k účtu drží administrace, ne veřejný formulář.",
             )
         }
     }

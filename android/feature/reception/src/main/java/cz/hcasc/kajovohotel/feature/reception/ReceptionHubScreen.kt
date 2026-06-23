@@ -32,7 +32,7 @@ fun ReceptionHubScreen(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
         Text(text = "Recepce", style = MaterialTheme.typography.headlineMedium)
         Text(
-            text = "Vyberte provoznĂ­ tok, kterĂ˝ chcete otevĹ™Ă­t. KaĹľdĂˇ karta vede do plnohodnotnĂ©ho pracovnĂ­ho vstupu, ne jen do struÄŤnĂ© zkratky.",
+            text = "Vyberte provozní tok, který chcete otevřít. Každá karta vede do plnohodnotného pracovního vstupu, ne jen do stručné zkratky.",
             style = MaterialTheme.typography.bodyMedium,
         )
         if (deviceLayout == KajovoDeviceLayout.TABLET) {
@@ -58,36 +58,36 @@ private fun ReceptionCards(
     onReportsClick: () -> Unit,
 ) {
     ReceptionActionCard(
-        title = "ZpracovĂˇnĂ­ nĂˇlezĹŻ",
-        subtitle = "Seznam ÄŤekajĂ­cĂ­ch nĂˇlezĹŻ, detail poloĹľky a pĹ™evzetĂ­ po recepci.",
+        title = "Zpracování nálezů",
+        subtitle = "Seznam čekajících nálezů, detail položky a převzetí po recepci.",
         points = listOf(
-            "OtevĹ™e pĹ™ehled ÄŤekajĂ­cĂ­ch zĂˇznamĹŻ.",
-            "ZobrazĂ­ detail a stav zpracovĂˇnĂ­.",
-            "Po potvrzenĂ­ nĂˇlez zmizĂ­ ze seznamu recepce.",
+            "Otevře přehled čekajících záznamů.",
+            "Zobrazí detail a stav zpracování.",
+            "Po potvrzení nález zmizí ze seznamu recepce.",
         ),
-        actionLabel = "OtevĹ™Ă­t nĂˇlezy",
+        actionLabel = "Otevřít nálezy",
         onAction = onLostFoundClick,
     )
     ReceptionActionCard(
-        title = "Import a sprĂˇva snĂ­danĂ­",
-        subtitle = "DennĂ­ souhrn, seznam objednĂˇvek, detail, zaloĹľenĂ­, Ăşpravy i prĂˇce s PDF.",
+        title = "Import a správa snídaní",
+        subtitle = "Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF.",
         points = listOf(
-            "NaÄŤte dennĂ­ pĹ™ehled a rozpracovanĂ© objednĂˇvky.",
-            "UmoĹľnĂ­ otevĹ™Ă­t detail i upravit objednĂˇvku.",
+            "Načte denní přehled a rozpracované objednávky.",
+            "Umožní otevřít detail i upravit objednávku.",
             "Podporuje import i export PDF pro recepci.",
         ),
-        actionLabel = "OtevĹ™Ă­t snĂ­danÄ›",
+        actionLabel = "Otevřít snídaně",
         onAction = onBreakfastClick,
     )
     ReceptionActionCard(
-        title = "PĹ™ehled hlĂˇĹˇenĂ­",
-        subtitle = "ProvoznĂ­ hlĂˇĹˇenĂ­ s detailem a Ăşpravami dostupnĂ˝mi pro oprĂˇvnÄ›nĂ© role.",
+        title = "Přehled hlášení",
+        subtitle = "Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role.",
         points = listOf(
-            "ZobrazĂ­ seznam provoznĂ­ch hlĂˇĹˇenĂ­.",
-            "OtevĹ™e detail a Ăşpravu podle oprĂˇvnÄ›nĂ­ role.",
-            "DrĹľĂ­ jednotnĂ˝ tok pro recepci i navazujĂ­cĂ­ provoz.",
+            "Zobrazí seznam provozních hlášení.",
+            "Otevře detail a úpravu podle oprávnění role.",
+            "Drží jednotný tok pro recepci i navazující provoz.",
         ),
-        actionLabel = "OtevĹ™Ă­t hlĂˇĹˇenĂ­",
+        actionLabel = "Otevřít hlášení",
         onAction = onReportsClick,
     )
 }
@@ -106,40 +106,40 @@ private fun ReceptionTabletGrid(
     ) {
         TabletGridCell {
             ReceptionActionCard(
-                title = "ZpracovĂˇnĂ­ nĂˇlezĹŻ",
-                subtitle = "Seznam ÄŤekajĂ­cĂ­ch nĂˇlezĹŻ, detail poloĹľky a pĹ™evzetĂ­ po recepci.",
+                title = "Zpracování nálezů",
+                subtitle = "Seznam čekajících nálezů, detail položky a převzetí po recepci.",
                 points = listOf(
-                    "OtevĹ™e pĹ™ehled ÄŤekajĂ­cĂ­ch zĂˇznamĹŻ.",
-                    "ZobrazĂ­ detail a stav zpracovĂˇnĂ­.",
-                    "Po potvrzenĂ­ nĂˇlez zmizĂ­ ze seznamu recepce.",
+                    "Otevře přehled čekajících záznamů.",
+                    "Zobrazí detail a stav zpracování.",
+                    "Po potvrzení nález zmizí ze seznamu recepce.",
                 ),
-                actionLabel = "OtevĹ™Ă­t nĂˇlezy",
+                actionLabel = "Otevřít nálezy",
                 onAction = onLostFoundClick,
             )
         }
         TabletGridCell {
             ReceptionActionCard(
-                title = "Import a sprĂˇva snĂ­danĂ­",
-                subtitle = "DennĂ­ souhrn, seznam objednĂˇvek, detail, zaloĹľenĂ­, Ăşpravy i prĂˇce s PDF.",
+                title = "Import a správa snídaní",
+                subtitle = "Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF.",
                 points = listOf(
-                    "NaÄŤte dennĂ­ pĹ™ehled a rozpracovanĂ© objednĂˇvky.",
-                    "UmoĹľnĂ­ otevĹ™Ă­t detail i upravit objednĂˇvku.",
+                    "Načte denní přehled a rozpracované objednávky.",
+                    "Umožní otevřít detail i upravit objednávku.",
                     "Podporuje import i export PDF pro recepci.",
                 ),
-                actionLabel = "OtevĹ™Ă­t snĂ­danÄ›",
+                actionLabel = "Otevřít snídaně",
                 onAction = onBreakfastClick,
             )
         }
         TabletGridCell {
             ReceptionActionCard(
-                title = "PĹ™ehled hlĂˇĹˇenĂ­",
-                subtitle = "ProvoznĂ­ hlĂˇĹˇenĂ­ s detailem a Ăşpravami dostupnĂ˝mi pro oprĂˇvnÄ›nĂ© role.",
+                title = "Přehled hlášení",
+                subtitle = "Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role.",
                 points = listOf(
-                    "ZobrazĂ­ seznam provoznĂ­ch hlĂˇĹˇenĂ­.",
-                    "OtevĹ™e detail a Ăşpravu podle oprĂˇvnÄ›nĂ­ role.",
-                    "DrĹľĂ­ jednotnĂ˝ tok pro recepci i navazujĂ­cĂ­ provoz.",
+                    "Zobrazí seznam provozních hlášení.",
+                    "Otevře detail a úpravu podle oprávnění role.",
+                    "Drží jednotný tok pro recepci i navazující provoz.",
                 ),
-                actionLabel = "OtevĹ™Ă­t hlĂˇĹˇenĂ­",
+                actionLabel = "Otevřít hlášení",
                 onAction = onReportsClick,
             )
         }
