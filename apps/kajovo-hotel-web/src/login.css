@@ -80,6 +80,24 @@
   justify-self: start;
 }
 
+.k-login-download__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--k-spacing-2);
+}
+
+.k-login-download__meta {
+  margin: 0;
+  font-size: var(--k-font-size-sm);
+  color: var(--k-color-metal);
+}
+
+.k-login-download--android-device {
+  background: color-mix(in srgb, var(--k-color-brand-red) 4%, var(--k-color-surface-raised));
+  border-radius: var(--k-radius-2);
+  padding: var(--k-spacing-4);
+}
+
 .k-login-feedback {
   margin: 0;
   border: 1px solid var(--k-color-error);

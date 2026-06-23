@@ -1,4 +1,4 @@
-﻿# Kajovo Hotel Android
+# Kajovo Hotel Android
 
 Tento adresář je samostatný nativní Android projekt. Aktivní current-state provozní dokumentace pro Android je právě tento soubor.
 
@@ -14,6 +14,8 @@ Tento adresář je samostatný nativní Android projekt. Aktivní current-state 
 - utility stavy `intro`, `offline`, `maintenance`, `not-found`, `access-denied`, `global-blocking-error`
 - feature moduly `recepce`, `pokojská`, `snídaně`, `ztráty a nálezy`, `závady`, `sklad`, `hlášení`, `profil`
 - adaptivní mobilní a tabletové rozložení pro vstupní a profilové veřejné obrazovky
+- deep link handshake mezi webem a Androidem přes `kajovohotel://open/...` a app-link metadata v `apps/kajovo-hotel-web/public/.well-known/assetlinks.json`
+- best-effort update flow podle `/api/app/android-release`
 
 ## Co projekt záměrně neobsahuje
 
@@ -51,6 +53,7 @@ cd android
 - Jediný zdroj pravdy pro Android release metadata je `android/release/android-release.json`.
 - veřejná APK musí být v `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`
 - před releasem je povinné spustit `python scripts/check_android_release_integrity.py`
+- pro podpis nového release artifactu z GitHub secrets slouží workflow `.github/workflows/android-signed-artifact.yml`
 
 ## Parita s webem
 
@@ -59,6 +62,7 @@ cd android
 - web musí být ověřený pro desktop, tablet a mobil
 - Android musí mít samostatné nativní mobilní i tabletové chování, ne jen roztažený telefonní layout
 - wrapper nebo WebView-first model není přípustný
+- veřejný web na Androidu musí umět nabídnout otevření nativní appky a při nedostupnosti appky nabídnout instalaci release APK
 
 ## Historické materiály
 

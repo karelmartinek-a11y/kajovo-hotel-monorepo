@@ -1,11 +1,13 @@
 # Produkční deploy
 
-Aktualni produkcni server pro `https://hotel.hcasc.cz` je `89.221.222.92`.
+Aktuální produkční server pro `https://hotel.hcasc.cz` je `89.221.222.92`.
 
 ## Autoritativní zdroje
 
 - `.github/workflows/ci-gates.yml`
 - `.github/workflows/deploy-production.yml`
+- `.github/workflows/release.yml`
+- `.github/workflows/android-signed-artifact.yml`
 - `infra/ops/deploy-production.sh`
 - `infra/reverse-proxy/production-host.conf`
 - `android/release/android-release.json`
@@ -37,13 +39,13 @@ Toto pravidlo blokují `pnpm ci:policy` a `pnpm ci:policy-test`.
 - Veřejná APK je `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk`.
 - Backend endpoint `/api/app/android-release` vrací data ze stejného manifestu.
 - Před releasem je povinné spustit `python scripts/check_android_release_integrity.py`.
+- Pokud release běží bez lokálního produkčního keystore, podepsaný artifact se vyrábí přes `Android Signed Artifact - Kajovo Hotel` a až jeho výstup se commituje jako veřejná APK.
 
 ## GitHub secrets a variables
 
 Povinné:
 
 - `HOTEL_DEPLOY_HOST`
-- `HOTEL_DEPLOY_HOST` musi po cutoveru smerovat na `89.221.222.92` nebo na alias, ktery se na tuto IP jednoznacne resolvuje.
 - `HOTEL_DEPLOY_PORT`
 - `HOTEL_DEPLOY_USER`
 - `HOTEL_DEPLOY_PASS`
@@ -51,6 +53,8 @@ Povinné:
 - `HOTEL_ADMIN_PASSWORD`
 - `KAJOVO_UPLOAD_STORE_FILE_B64`
 - `KAJOVO_UPLOAD_KEY_ALIAS`
+
+`HOTEL_DEPLOY_HOST` musí po cutoveru směřovat na `89.221.222.92` nebo na alias, který se na tuto IP jednoznačně resolvuje.
 
 Volitelné aliasy:
 

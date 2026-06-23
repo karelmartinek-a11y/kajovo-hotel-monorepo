@@ -398,11 +398,15 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
   await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('3');
 });
 
-test('portal bez session skonci na loginu', async ({ page }) => {
+test('portal bez session skonci na loginu', async ({ page }, testInfo) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Stáhnout APK' })).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
+  await expect(page.getByTestId('portal-android-release-version')).toContainText('Aktuální release:');
+  if (testInfo.project.name === 'phone') {
+    await expect(page.getByRole('link', { name: 'Otevřít aplikaci' })).toBeVisible();
+  }
 });
 
 test('portal auth endpoint funguje nad realnym API a web admin surface zustava retired', async ({ page, request }, testInfo) => {

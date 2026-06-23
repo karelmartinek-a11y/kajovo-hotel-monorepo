@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cz.hcasc.kajovohotel.app",
+      "sha256_cert_fingerprints": [
+        "EA:3A:8F:3A:6A:61:F1:EC:EB:F4:2A:DA:B7:0D:46:26:E3:3B:AD:C4:00:4A:09:39:41:BC:06:13:D6:81:28:30"
+      ]
+    }
+  }
+]

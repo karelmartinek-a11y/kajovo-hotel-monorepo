@@ -1,0 +1,112 @@
+name: Android Signed Artifact - Kajovo Hotel
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'Novy Android versionCode'
+        required: true
+        type: string
+      version_name:
+        description: 'Novy Android versionName'
+        required: true
+        type: string
+      title:
+        description: 'Titulek release promptu'
+        required: false
+        default: 'Je dostupná nová verze aplikace'
+        type: string
+      message:
+        description: 'Text release promptu'
+        required: false
+        default: 'Na serveru je připravená novější verze Android aplikace. Doporučujeme ji nainstalovat ještě před přihlášením.'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-signed-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Materialize Android upload keystore
+        shell: bash
+        env:
+          KAJOVO_UPLOAD_STORE_FILE_B64: ${{ secrets.KAJOVO_UPLOAD_STORE_FILE_B64 }}
+          HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KAJOVO_UPLOAD_STORE_FILE_B64:-}" ]; then
+            echo "Missing KAJOVO_UPLOAD_STORE_FILE_B64 secret." >&2
+            exit 1
+          fi
+          if [ -z "${HOTEL_ADMIN_PASSWORD:-}" ]; then
+            echo "Missing HOTEL_ADMIN_PASSWORD secret/var." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/kajovo-signing"
+          printf '%s' "$KAJOVO_UPLOAD_STORE_FILE_B64" | base64 --decode > "$RUNNER_TEMP/kajovo-signing/kajovo-hotel-upload.jks"
+          echo "KAJOVO_UPLOAD_STORE_FILE=$RUNNER_TEMP/kajovo-signing/kajovo-hotel-upload.jks" >> "$GITHUB_ENV"
+          echo "KAJOVO_UPLOAD_STORE_PASSWORD=${HOTEL_ADMIN_PASSWORD}" >> "$GITHUB_ENV"
+          echo "KAJOVO_UPLOAD_KEY_ALIAS=${{ secrets.KAJOVO_UPLOAD_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "KAJOVO_UPLOAD_KEY_PASSWORD=${HOTEL_ADMIN_PASSWORD}" >> "$GITHUB_ENV"
+
+      - name: Patch release manifest for artifact build
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest_path = Path('android/release/android-release.json')
+          payload = json.loads(manifest_path.read_text(encoding='utf-8'))
+          payload['version_code'] = int('${{ inputs.version_code }}')
+          payload['version_name'] = '${{ inputs.version_name }}'
+          payload['title'] = '${{ inputs.title }}'
+          payload['message'] = '${{ inputs.message }}'
+          manifest_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Build signed Android release APK
+        working-directory: android
+        env:
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_STORE_FILE: ${{ env.KAJOVO_UPLOAD_STORE_FILE }}
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_STORE_PASSWORD: ${{ env.KAJOVO_UPLOAD_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_KEY_ALIAS: ${{ env.KAJOVO_UPLOAD_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_KAJOVO_UPLOAD_KEY_PASSWORD: ${{ env.KAJOVO_UPLOAD_KEY_PASSWORD }}
+        run: sh ./gradlew :app:assembleRelease --console=plain
+
+      - name: Compute artifact SHA256
+        id: artifact_sha
+        shell: bash
+        run: |
+          sha=$(sha256sum android/app/build/outputs/apk/release/app-release.apk | awk '{print $1}')
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+          echo "Artifact SHA256: $sha"
+
+      - name: Upload signed Android release APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: kajovo-hotel-android-signed-${{ inputs.version_code }}
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Workflow summary
+        shell: bash
+        run: |
+          {
+            echo '## Android signed artifact ready'
+            echo ''
+            echo '- version_code: `${{ inputs.version_code }}`'
+            echo '- version_name: `${{ inputs.version_name }}`'
+            echo '- sha256: `${{ steps.artifact_sha.outputs.sha256 }}`'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -24,6 +24,7 @@ pnpm contract:check
 - Přepočítat `sha256` v release manifestu.
 - Spustit `python scripts/check_android_release_integrity.py`.
 - Ověřit, že live `/api/app/android-release` vrací stejná data jako manifest.
+- Pokud lokálně není dostupný produkční signing keystore, vyrobit podepsaný artifact přes `.github/workflows/android-signed-artifact.yml`, stáhnout jej a teprve potom commitnout veřejnou APK a finální hash do manifestu.
 
 ## Když se mění web nebo admin UI
 
