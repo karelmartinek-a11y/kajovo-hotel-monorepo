@@ -3,7 +3,6 @@ import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
 const MODULE_ROOTS = ['/recepce', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni'] as const;
-const LOGIN_PRINCIPAL_LABEL = /email|uživatelské jméno/i;
 
 type RoleScenario = {
   key: string;
@@ -118,9 +117,11 @@ async function loginPortalUser(page: import('@playwright/test').Page, email: str
     localStorage.clear();
     sessionStorage.clear();
   });
-  await page.reload({ waitUntil: 'networkidle' });
-  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
-  await page.getByLabel(/heslo/i).fill(password);
+  const principalInput = page.locator('#portal-email');
+  const passwordInput = page.locator('#portal-password');
+  await principalInput.waitFor({ state: 'visible' });
+  await principalInput.fill(email);
+  await passwordInput.fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
 }
 
@@ -157,7 +158,7 @@ async function expectAllowedRoute(page: import('@playwright/test').Page, route: 
 }
 
 async function expectDeniedRoute(page: import('@playwright/test').Page, route: string) {
-  await page.goto(route, { waitUntil: 'networkidle' });
+  await page.goto(route, { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveURL(new RegExp(`${route.replace(/\//g, '\\/')}$`));
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
 }
@@ -302,9 +303,9 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
           service_date: '2026-06-08',
           status: 'queued',
           progress: [
-            { at: '2026-06-08T08:00:00Z', step: 'queued', message: 'Ĺ˝Ăˇdost byla zaĹ™azena do fronty.' },
+            { at: '2026-06-08T08:00:00Z', step: 'queued', message: 'Žádost byla zařazena do fronty.' },
           ],
-          message: 'Ĺ˝Ăˇdost byla zaĹ™azena do fronty.',
+          message: 'Žádost byla zařazena do fronty.',
           error_message: null,
           imported_count: 0,
           created_at: '2026-06-08T08:00:00Z',
@@ -327,9 +328,9 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
             service_date: '2026-06-08',
             status: 'running',
             progress: [
-              { at: '2026-06-08T08:00:00Z', step: 'login', message: 'PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.' },
+              { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
             ],
-            message: 'PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.',
+            message: 'Přihlášení do Better Hotelu proběhlo.',
             error_message: null,
             imported_count: 0,
             created_at: '2026-06-08T08:00:00Z',
@@ -349,10 +350,10 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
           service_date: '2026-06-08',
           status: 'succeeded',
           progress: [
-            { at: '2026-06-08T08:00:00Z', step: 'login', message: 'PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.' },
-            { at: '2026-06-08T08:00:02Z', step: 'download', message: 'PDF bylo staĹľeno.' },
+            { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
+            { at: '2026-06-08T08:00:02Z', step: 'download', message: 'PDF bylo staženo.' },
           ],
-          message: 'RuÄŤnĂ­ import dokonÄŤen.',
+          message: 'Ruční import dokončen.',
           error_message: null,
           imported_count: 2,
           created_at: '2026-06-08T08:00:00Z',
