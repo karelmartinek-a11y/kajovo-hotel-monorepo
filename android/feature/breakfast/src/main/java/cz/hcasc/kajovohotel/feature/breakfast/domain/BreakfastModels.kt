@@ -63,9 +63,6 @@ data class BreakfastServiceStats(
     val totalBreakfasts: Int,
     val servedBreakfasts: Int,
     val remainingBreakfasts: Int,
-    val totalRooms: Int,
-    val servedRooms: Int,
-    val remainingRooms: Int,
 )
 
 data class BreakfastImportPreview(
@@ -200,15 +197,10 @@ fun List<BreakfastOrder>.sortedForService(): List<BreakfastOrder> {
 fun List<BreakfastOrder>.serviceStats(summary: BreakfastSummary?): BreakfastServiceStats {
     val totalBreakfasts = summary?.totalGuests ?: sumOf { it.guestCount }
     val servedBreakfasts = filter { it.status == BreakfastStatus.SERVED }.sumOf { it.guestCount }
-    val totalRooms = size
-    val servedRooms = count { it.status == BreakfastStatus.SERVED }
     return BreakfastServiceStats(
         totalBreakfasts = totalBreakfasts,
         servedBreakfasts = servedBreakfasts,
         remainingBreakfasts = (totalBreakfasts - servedBreakfasts).coerceAtLeast(0),
-        totalRooms = totalRooms,
-        servedRooms = servedRooms,
-        remainingRooms = (totalRooms - servedRooms).coerceAtLeast(0),
     )
 }
 

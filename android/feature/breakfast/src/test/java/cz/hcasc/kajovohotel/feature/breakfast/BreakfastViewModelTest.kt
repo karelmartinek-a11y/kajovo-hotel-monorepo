@@ -16,6 +16,9 @@ import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderUpdateDto
 import cz.hcasc.kajovohotel.feature.breakfast.data.BreakfastRepository
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDietKey
+import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
+import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastSummary
+import cz.hcasc.kajovohotel.feature.breakfast.domain.serviceStats
 import cz.hcasc.kajovohotel.feature.breakfast.presentation.BreakfastViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,6 +51,50 @@ class BreakfastViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @Test
+    fun serviceStatsUsesGuestCountsForServedAndRemainingBreakfasts() {
+        val orders = listOf(
+            BreakfastOrder(
+                id = 1,
+                serviceDate = "2026-06-23",
+                roomNumber = "101",
+                guestName = "První host",
+                guestCount = 2,
+                note = "",
+                noGluten = false,
+                noMilk = false,
+                noPork = false,
+                status = cz.hcasc.kajovohotel.core.model.BreakfastStatus.SERVED,
+            ),
+            BreakfastOrder(
+                id = 2,
+                serviceDate = "2026-06-23",
+                roomNumber = "102",
+                guestName = "Druhý host",
+                guestCount = 3,
+                note = "",
+                noGluten = false,
+                noMilk = false,
+                noPork = false,
+                status = cz.hcasc.kajovohotel.core.model.BreakfastStatus.PENDING,
+            ),
+        )
+
+        val stats = orders.serviceStats(
+            BreakfastSummary(
+                serviceDate = "2026-06-23",
+                totalOrders = 2,
+                totalGuests = 5,
+                statusCounts = mapOf("served" to 1, "pending" to 1),
+                sourceImportedAt = "2026-06-23T06:30:00Z",
+            ),
+        )
+
+        assertEquals(5, stats.totalBreakfasts)
+        assertEquals(2, stats.servedBreakfasts)
+        assertEquals(3, stats.remainingBreakfasts)
+    }
 
     @Test
     fun receptionBatchSavePersistsQueuedBreakfastChanges() = runTest {

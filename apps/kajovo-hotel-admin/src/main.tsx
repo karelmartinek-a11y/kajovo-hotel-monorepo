@@ -633,11 +633,6 @@ function reportStatusLabel(status: string | null | undefined): string {
   return status ?? '-';
 }
 
-function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStatus): number {
-  const value = summary?.status_counts?.[status];
-  return typeof value === 'number' ? value : 0;
-}
-
 function compareRoomNumbers(left: string, right: string): number {
   const leftMatch = left.match(/\d+/);
   const rightMatch = right.match(/\d+/);
@@ -658,6 +653,38 @@ function prepareBreakfastListItems(items: BreakfastOrder[]): BreakfastOrder[] {
   return [...items]
     .filter((item) => item.guest_count > 0)
     .sort((left, right) => compareRoomNumbers(left.room_number, right.room_number));
+}
+
+type BreakfastOverviewStats = {
+  totalBreakfasts: number;
+  servedBreakfasts: number;
+  remainingBreakfasts: number;
+};
+
+function buildBreakfastOverviewStats(items: BreakfastOrder[]): BreakfastOverviewStats {
+  const totalBreakfasts = items.reduce((sum, item) => sum + item.guest_count, 0);
+  const servedBreakfasts = items
+    .filter((item) => item.status === 'served')
+    .reduce((sum, item) => sum + item.guest_count, 0);
+  return {
+    totalBreakfasts,
+    servedBreakfasts,
+    remainingBreakfasts: Math.max(0, totalBreakfasts - servedBreakfasts),
+  };
+}
+
+function formatBreakfastHeadlineDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    return value;
+  }
+  return new Intl.DateTimeFormat('cs-CZ', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function countOpenIssues(items: Issue[]): number {
@@ -1374,7 +1401,6 @@ function BreakfastList(): JSX.Element {
   }, [loadDay, serviceDate]);
 
   const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
-  const editedRowsCount = Object.keys(drafts).length;
 
   const mergeOrderWithDraft = React.useCallback((order: BreakfastOrder): BreakfastOrder => {
     const draft = drafts[order.id];
@@ -1387,8 +1413,18 @@ function BreakfastList(): JSX.Element {
       diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
       diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
       diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
-    };
-  }, [drafts]);
+      };
+    }, [drafts]);
+
+  const effectiveVisibleItems = React.useMemo(
+    () => visibleItems.map((item) => mergeOrderWithDraft(item)),
+    [mergeOrderWithDraft, visibleItems],
+  );
+  const overviewStats = React.useMemo(
+    () => buildBreakfastOverviewStats(effectiveVisibleItems),
+    [effectiveVisibleItems],
+  );
+  const editedRowsCount = Object.keys(drafts).length;
 
   const filteredItems = visibleItems.filter((item) => {
     const effectiveItem = mergeOrderWithDraft(item);
@@ -1714,6 +1750,7 @@ function BreakfastList(): JSX.Element {
   const breakfastImportStamp = summary?.source_imported_at
     ? formatShortDateTime(summary.source_imported_at)
     : 'nenalezeno';
+  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -1724,10 +1761,11 @@ function BreakfastList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <>
-          <div className="k-grid cards-3">
-            <Card title="Objednávky dne"><strong>{summary?.total_orders ?? 0}</strong></Card>
-            <Card title="Hosté dne"><strong>{summary?.total_guests ?? 0}</strong></Card>
-            <Card title="Čekající"><strong>{getSummaryCount(summary, 'pending')}</strong></Card>
+          <div className="k-card">
+            <p className="k-text-muted" style={{ margin: 0 }}>Datum přehledu snídaní</p>
+            <h2 style={{ margin: '0.35rem 0 0', fontSize: 'clamp(1.75rem, 4vw, 2.5rem)' }}>
+              {formatBreakfastHeadlineDate(breakfastSummaryDate)}
+            </h2>
           </div>
           {breakfastToolbar}
           {isAdmin ? (
@@ -1745,7 +1783,7 @@ function BreakfastList(): JSX.Element {
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
             <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Datum', 'Pokoj', 'Host', 'Počet', 'Diety', 'Stav', 'Akce']}
+              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Stav', 'Akce']}
               rows={listItems.map((item) => {
                 const effectiveItem = mergeOrderWithDraft(item);
                 const isDirty = Boolean(drafts[item.id]);
@@ -1769,7 +1807,6 @@ function BreakfastList(): JSX.Element {
                 }
 
                 return [
-                  <span className={rowClass}>{effectiveItem.service_date}</span>,
                   <span className={rowClass}>{effectiveItem.room_number}</span>,
                   <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                   <span className={rowClass}>{effectiveItem.guest_count}</span>,
@@ -1780,7 +1817,14 @@ function BreakfastList(): JSX.Element {
               })}
             />
           )}
-          <p className="k-text-muted">Zdroj dat importu snídaní: {breakfastImportStamp}</p>
+          <div className="k-grid cards-3">
+            <Card title="Snídaní celkem"><strong>{overviewStats.totalBreakfasts}</strong></Card>
+            <Card title="Vydáno"><strong>{overviewStats.servedBreakfasts}</strong></Card>
+            <Card title="Zbývá vydat"><strong>{overviewStats.remainingBreakfasts}</strong></Card>
+          </div>
+          <p className="k-text-muted" style={{ fontStyle: 'italic', fontSize: '0.95rem' }}>
+            Data aktualizována: {breakfastImportStamp}
+          </p>
         </>
       )}
     </main>

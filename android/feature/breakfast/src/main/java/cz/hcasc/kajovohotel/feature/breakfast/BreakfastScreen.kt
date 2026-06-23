@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -70,6 +71,8 @@ import cz.hcasc.kajovohotel.feature.breakfast.presentation.BreakfastUiState
 import cz.hcasc.kajovohotel.feature.breakfast.presentation.BreakfastViewModel
 import java.io.File
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 enum class BreakfastSection {
     LIST,
@@ -235,26 +238,46 @@ fun BreakfastScreen(
                 FeatureCard(title = "Modul snídaní není dostupný", subtitle = state.errorMessage ?: "")
             }
 
-            state.orders.isEmpty() -> item {
-                FeatureCard(
-                    title = "Pro zvolené datum nejsou objednávky",
-                    subtitle = if (isReceptionMode) {
-                        "Můžete založit první objednávku nebo naimportovat PDF."
-                    } else {
-                        "Na vybrané datum není co vydávat."
-                    },
-                )
+            state.orders.isEmpty() -> {
+                item {
+                    BreakfastDateHeadline(serviceDate = state.summary?.serviceDate ?: state.serviceDate)
+                }
+                item {
+                    FeatureCard(
+                        title = "Pro zvolené datum nejsou objednávky",
+                        subtitle = if (isReceptionMode) {
+                            "Můžete založit první objednávku nebo naimportovat PDF."
+                        } else {
+                            "Na vybrané datum není co vydávat."
+                        },
+                    )
+                }
+                if (section == BreakfastSection.LIST || isBreakfastMode) {
+                    item { BreakfastSummaryCard(state = state) }
+                    item { BreakfastRefreshFootnote(sourceImportedAt = state.summary?.sourceImportedAt) }
+                }
             }
 
-            visibleOrders.isEmpty() -> item {
-                FeatureCard(
-                    title = "Vyhledávání nenašlo žádnou snídani",
-                    subtitle = "Zkuste jiný pokoj nebo jméno hosta.",
-                )
+            visibleOrders.isEmpty() -> {
+                item {
+                    BreakfastDateHeadline(serviceDate = state.summary?.serviceDate ?: state.serviceDate)
+                }
+                item {
+                    FeatureCard(
+                        title = "Vyhledávání nenašlo žádnou snídani",
+                        subtitle = "Zkuste jiný pokoj nebo jméno hosta.",
+                    )
+                }
+                if (section == BreakfastSection.LIST || isBreakfastMode) {
+                    item { BreakfastSummaryCard(state = state) }
+                    item { BreakfastRefreshFootnote(sourceImportedAt = state.summary?.sourceImportedAt) }
+                }
             }
 
             else -> {
-                item { BreakfastSummaryCard(state = state) }
+                if (section == BreakfastSection.LIST || isBreakfastMode) {
+                    item { BreakfastDateHeadline(serviceDate = state.summary?.serviceDate ?: state.serviceDate) }
+                }
                 if (isReceptionMode && section == BreakfastSection.DETAIL) {
                     item {
                         ReceptionDetailCard(
@@ -319,6 +342,8 @@ fun BreakfastScreen(
                             onToggleDiet = viewModel::toggleQueuedDiet,
                         )
                     }
+                    item { BreakfastSummaryCard(state = state) }
+                    item { BreakfastRefreshFootnote(sourceImportedAt = state.summary?.sourceImportedAt) }
                 }
                 if (state.isRefreshing || state.manualRefreshJob != null || state.manualRefreshError != null) {
                     item {
@@ -498,6 +523,14 @@ private fun ManualRefreshDialog(
 }
 
 @Composable
+private fun BreakfastDateHeadline(serviceDate: String) {
+    FeatureCard(
+        title = "Datum přehledu snídaní",
+        subtitle = formatBreakfastHeadlineDate(serviceDate),
+    )
+}
+
+@Composable
 private fun BreakfastDateSelector(
     serviceDate: String,
     onDateChange: (String) -> Unit,
@@ -543,11 +576,20 @@ private fun BreakfastDateSelector(
 private fun BreakfastSummaryCard(state: BreakfastUiState) {
     val stats = state.orders.serviceStats(state.summary)
     val summaryDate = state.summary?.serviceDate ?: state.serviceDate
-    val importedAt = state.summary?.sourceImportedAt?.let(::formatDetailDateTime) ?: "nenalezeno"
 
     FeatureCard(
-        title = "Denní souhrn $summaryDate",
-        subtitle = "Snídaně ${stats.totalBreakfasts} · vydáno ${stats.servedBreakfasts} · zbývá ${stats.remainingBreakfasts}\nPokoje ${stats.totalRooms} · vydáno ${stats.servedRooms} · zbývá ${stats.remainingRooms}\nZdroj uložen: $importedAt",
+        title = "Souhrn pro $summaryDate",
+        subtitle = "Snídaně ${stats.totalBreakfasts} · vydáno ${stats.servedBreakfasts} · zbývá ${stats.remainingBreakfasts}",
+    )
+}
+
+@Composable
+private fun BreakfastRefreshFootnote(sourceImportedAt: String?) {
+    val importedAt = sourceImportedAt?.let(::formatDetailDateTime) ?: "nenalezeno"
+    Text(
+        text = "Data aktualizována: $importedAt",
+        style = MaterialTheme.typography.labelMedium,
+        fontStyle = FontStyle.Italic,
     )
 }
 
@@ -1043,4 +1085,10 @@ private fun cacheBinaryPayload(context: Context, payload: BinaryPayload): Uri {
 
 private fun formatDetailDateTime(value: String): String {
     return value.replace('T', ' ').substringBefore('.')
+}
+
+private fun formatBreakfastHeadlineDate(value: String): String {
+    return runCatching {
+        LocalDate.parse(value).format(DateTimeFormatter.ofPattern("EEEE d. MMMM yyyy", Locale.forLanguageTag("cs-CZ")))
+    }.getOrElse { value }
 }

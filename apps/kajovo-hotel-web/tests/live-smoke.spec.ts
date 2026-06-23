@@ -3,7 +3,7 @@ import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
 const MODULE_ROOTS = ['/recepce', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni'] as const;
-const LOGIN_PRINCIPAL_LABEL = /email|uživatelské jméno/i;
+const LOGIN_PRINCIPAL_LABEL = /email|uĹľivatelskĂ© jmĂ©no/i;
 
 type RoleScenario = {
   key: string;
@@ -24,7 +24,7 @@ const ROLE_SCENARIOS: RoleScenario[] = [
     deniedRoutes: ['/pokojska', '/zavady', '/sklad'],
   },
   {
-    key: 'pokojská',
+    key: 'pokojskĂˇ',
     apiRole: 'pokojska',
     startRoute: '/pokojska',
     visibleModules: ['/pokojska'],
@@ -32,7 +32,7 @@ const ROLE_SCENARIOS: RoleScenario[] = [
     deniedRoutes: ['/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni'],
   },
   {
-    key: 'údržba',
+    key: 'ĂşdrĹľba',
     apiRole: 'udrzba',
     startRoute: '/zavady',
     visibleModules: ['/zavady'],
@@ -40,7 +40,7 @@ const ROLE_SCENARIOS: RoleScenario[] = [
     deniedRoutes: ['/pokojska', '/snidane', '/ztraty-a-nalezy', '/sklad', '/hlaseni'],
   },
   {
-    key: 'snídaně',
+    key: 'snĂ­danÄ›',
     apiRole: 'snidane',
     startRoute: '/snidane',
     visibleModules: ['/snidane'],
@@ -121,7 +121,7 @@ async function loginPortalUser(page: import('@playwright/test').Page, email: str
   await page.reload({ waitUntil: 'networkidle' });
   await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
-  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+  await page.getByRole('button', { name: /prihlasit|pĹ™ihlĂˇsit/i }).click();
 }
 
 async function collectVisibleModuleRoutes(page: import('@playwright/test').Page) {
@@ -195,7 +195,7 @@ test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, reques
   await page.goto('/recepce', { waitUntil: 'networkidle' });
 
   await expect(page).toHaveURL(/\/recepce$/);
-  await page.getByRole('link', { name: /otevrit snidane|otevřít snídaně/i }).click();
+  await page.getByRole('link', { name: /otevrit snidane|otevĹ™Ă­t snĂ­danÄ›/i }).click();
   await expect(page).toHaveURL(/\/snidane$/);
 
   const samplePdfPath = `${testInfo.config.rootDir}/../../../docs/breakfast/breakfast-sample.pdf`;
@@ -220,7 +220,7 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
     data: {
       email: portalEmail,
       password: portalPassword,
-      first_name: 'Ruční',
+      first_name: 'RuÄŤnĂ­',
       last_name: 'Aktualizace',
       roles: ['snidane'],
     },
@@ -238,7 +238,7 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
         id: 1,
         service_date: '2026-06-08',
         room_number: '101',
-        guest_name: 'Původní host',
+        guest_name: 'PĹŻvodnĂ­ host',
         guest_count: 1,
         note: null,
         diet_no_gluten: false,
@@ -255,7 +255,7 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
         id: 2,
         service_date: '2026-06-08',
         room_number: '102',
-        guest_name: 'Nový host',
+        guest_name: 'NovĂ˝ host',
         guest_count: 2,
         note: null,
         diet_no_gluten: false,
@@ -302,9 +302,9 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
           service_date: '2026-06-08',
           status: 'queued',
           progress: [
-            { at: '2026-06-08T08:00:00Z', step: 'queued', message: 'Žádost byla zařazena do fronty.' },
+            { at: '2026-06-08T08:00:00Z', step: 'queued', message: 'Ĺ˝Ăˇdost byla zaĹ™azena do fronty.' },
           ],
-          message: 'Žádost byla zařazena do fronty.',
+          message: 'Ĺ˝Ăˇdost byla zaĹ™azena do fronty.',
           error_message: null,
           imported_count: 0,
           created_at: '2026-06-08T08:00:00Z',
@@ -327,9 +327,9 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
             service_date: '2026-06-08',
             status: 'running',
             progress: [
-              { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
+              { at: '2026-06-08T08:00:00Z', step: 'login', message: 'PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.' },
             ],
-            message: 'Přihlášení do Better Hotelu proběhlo.',
+            message: 'PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.',
             error_message: null,
             imported_count: 0,
             created_at: '2026-06-08T08:00:00Z',
@@ -349,10 +349,10 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
           service_date: '2026-06-08',
           status: 'succeeded',
           progress: [
-            { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
-            { at: '2026-06-08T08:00:02Z', step: 'download', message: 'PDF bylo staženo.' },
+            { at: '2026-06-08T08:00:00Z', step: 'login', message: 'PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.' },
+            { at: '2026-06-08T08:00:02Z', step: 'download', message: 'PDF bylo staĹľeno.' },
           ],
-          message: 'Ruční import dokončen.',
+          message: 'RuÄŤnĂ­ import dokonÄŤen.',
           error_message: null,
           imported_count: 2,
           created_at: '2026-06-08T08:00:00Z',
@@ -378,20 +378,30 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
   await expect(page).toHaveURL(/\/snidane$/);
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Aktualizovat' })).toBeVisible();
+  await expect(page.getByText(/Datum pĹ™ehledu snĂ­danĂ­/i)).toBeVisible();
+  await expect(page.locator('section').filter({ hasText: 'SnĂ­danĂ­ celkem' }).getByRole('strong')).toHaveText('1');
+  await expect(page.locator('section').filter({ hasText: 'VydĂˇno' }).getByRole('strong')).toHaveText('0');
+  await expect(page.locator('section').filter({ hasText: 'ZbĂ˝vĂˇ vydat' }).getByRole('strong')).toHaveText('1');
+  await expect(page.getByText(/ObjednĂˇvky dne/i)).toHaveCount(0);
+  await expect(page.getByText(/HostĂ© dne/i)).toHaveCount(0);
+  await expect(page.getByText(/Pokoje /i)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Aktualizovat' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('dialog').locator('.k-modal-progress__item').first()).toContainText('Přihlášení do Better Hotelu proběhlo.');
+  await expect(page.getByRole('dialog').locator('.k-modal-progress__item').first()).toContainText('PĹ™ihlĂˇĹˇenĂ­ do Better Hotelu probÄ›hlo.');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('cell', { name: '102' }).first()).toBeVisible();
-  await expect(page.getByText(/Zdroj dat importu snídaní:/i)).toBeVisible();
+  await expect(page.getByText(/Data aktualizovĂˇna:/i)).toBeVisible();
+  await expect(page.locator('section').filter({ hasText: 'SnĂ­danĂ­ celkem' }).getByRole('strong')).toHaveText('3');
+  await expect(page.locator('section').filter({ hasText: 'VydĂˇno' }).getByRole('strong')).toHaveText('0');
+  await expect(page.locator('section').filter({ hasText: 'ZbĂ˝vĂˇ vydat' }).getByRole('strong')).toHaveText('3');
 });
 
 test('portal bez session skonci na loginu', async ({ page }) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Stáhnout APK' })).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
+  await expect(page.getByRole('link', { name: 'StĂˇhnout APK' })).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
 });
 
 test('portal auth endpoint funguje nad realnym API a web admin surface zustava retired', async ({ page, request }, testInfo) => {
@@ -447,7 +457,7 @@ test('multirolni portal uzivatel vidi po vyberu role prepinac ostatnich roli v z
       password: portalPassword,
       first_name: 'Multi',
       last_name: 'Role',
-      roles: ['recepce', 'pokojská'],
+      roles: ['recepce', 'pokojskĂˇ'],
     },
     headers: csrfHeaders,
   });
@@ -463,10 +473,10 @@ test('multirolni portal uzivatel vidi po vyberu role prepinac ostatnich roli v z
   await page.goto('/snidane', { waitUntil: 'networkidle' });
 
   await expect(page.getByTestId('role-select-page')).toBeVisible();
-  await page.getByRole('button', { name: /pokračovat jako pokojská/i }).click();
+  await page.getByRole('button', { name: /pokraÄŤovat jako pokojskĂˇ/i }).click();
 
   await expect(page).toHaveURL(/\/pokojska$/);
-  await expect(page.locator('.k-role-switcher__active')).toHaveText(/pokojská/i);
+  await expect(page.locator('.k-role-switcher__active')).toHaveText(/pokojskĂˇ/i);
   await expect(page.getByRole('button', { name: /recepce/i })).toBeVisible();
 });
 
@@ -499,11 +509,11 @@ test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na 
   await page.getByTestId('role-select-page').getByRole('button').first().click();
 
   await expect(page).toHaveURL(/\/pokojska$/);
-  await expect(page.locator('.k-role-switcher__active')).toHaveText(/pokojská/i);
+  await expect(page.locator('.k-role-switcher__active')).toHaveText(/pokojskĂˇ/i);
   await page.locator('.k-role-switcher__button').first().click();
 
   await expect(page).toHaveURL(/\/snidane$/);
-  await expect(page.locator('.k-role-switcher__active')).toHaveText(/snídaně/i);
+  await expect(page.locator('.k-role-switcher__active')).toHaveText(/snĂ­danÄ›/i);
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
 });
 
