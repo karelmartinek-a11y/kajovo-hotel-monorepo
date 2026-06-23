@@ -524,10 +524,27 @@ private fun ManualRefreshDialog(
 
 @Composable
 private fun BreakfastDateHeadline(serviceDate: String) {
-    FeatureCard(
-        title = "Datum přehledu snídaní",
-        subtitle = formatBreakfastHeadlineDate(serviceDate),
-    )
+    Card(
+        shape = RoundedCornerShape(KajovoRadiusTokens.R16),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(KajovoSpacingTokens.S4),
+            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S1),
+        ) {
+            Text(
+                text = "Datum přehledu snídaní",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = formatBreakfastHeadlineDate(serviceDate),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
 }
 
 @Composable
@@ -577,10 +594,34 @@ private fun BreakfastSummaryCard(state: BreakfastUiState) {
     val stats = state.orders.serviceStats(state.summary)
     val summaryDate = state.summary?.serviceDate ?: state.serviceDate
 
-    FeatureCard(
-        title = "Souhrn pro $summaryDate",
-        subtitle = "Snídaně ${stats.totalBreakfasts} · vydáno ${stats.servedBreakfasts} · zbývá ${stats.remainingBreakfasts}",
-    )
+    Card(
+        shape = RoundedCornerShape(KajovoRadiusTokens.R16),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(KajovoSpacingTokens.S4),
+            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
+        ) {
+            Text(
+                text = "Souhrn pro $summaryDate",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Snídaní celkem: ${stats.totalBreakfasts}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Vydáno: ${stats.servedBreakfasts}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Zbývá vydat: ${stats.remainingBreakfasts}",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
 }
 
 @Composable
