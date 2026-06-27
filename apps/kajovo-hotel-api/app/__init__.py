@@ -1,0 +1,1 @@
+"""Balíček backendové API aplikace."""

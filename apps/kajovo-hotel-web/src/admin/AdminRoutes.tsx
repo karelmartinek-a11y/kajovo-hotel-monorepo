@@ -10,16 +10,16 @@ function AdminSurfaceRetiredPage(): JSX.Element {
       <h1>Admin aplikace</h1>
       <div className="k-card">
         <StateView
-          title="Pouzijte samostatny admin"
-          description="Sprava uzivatelu a dalsi administrace uz ve webovem portalu nejsou dostupne."
+          title="Použijte samostatnou administraci"
+          description="Správa uživatelů a další administrace už ve webovém portálu nejsou dostupné."
           stateKey="info"
           action={
             <div className="k-toolbar">
               <Link className="k-button" to="/admin/login">
-                Otevrit admin aplikaci
+                Otevřít administraci
               </Link>
               <Link className="k-button secondary" to="/login">
-                Portal login
+                Přihlášení do portálu
               </Link>
             </div>
           }

@@ -1,0 +1,1140 @@
+  1270	    const tomorrow = currentDateForTimeZone(tomorrowDate);
+  1271	
+  1272	    let active = true;
+  1273	    Promise.all([
+  1274	      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${today}`),
+  1275	      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${tomorrow}`),
+  1276	      fetchJson<Issue[]>('/api/v1/issues'),
+  1277	      fetchJson<LostFoundItem[]>('/api/v1/lost-found?status=new'),
+  1278	      fetchJson<InventoryItem[]>('/api/v1/inventory'),
+  1279	    ])
+  1280	      .then(([todaySummary, tomorrowSummary, issues, lostFoundItems, inventoryItems]) => {
+  1281	        if (!active) {
+  1282	          return;
+  1283	        }
+  1284	        setTodayCount(todaySummary.total_guests);
+  1285	        setTomorrowCount(tomorrowSummary.total_guests);
+  1286	        setUnresolvedIssuesCount(issues.filter((item) => item.status !== 'resolved').length);
+  1287	        setUnprocessedLostFoundCount(lostFoundItems.length);
+  1288	        setStockTotal(inventoryItems.reduce((total, item) => total + item.current_stock, 0));
+  1289	        setStockItemCount(inventoryItems.length);
+  1290	      })
+  1291	      .catch(() => {
+  1292	        if (!active) {
+  1293	          return;
+  1294	        }
+  1295	        setTodayCount(null);
+  1296	        setTomorrowCount(null);
+  1297	        setUnresolvedIssuesCount(null);
+  1298	        setUnprocessedLostFoundCount(null);
+  1299	        setStockTotal(null);
+  1300	        setStockItemCount(null);
+  1301	      });
+  1302	
+  1303	    return () => {
+  1304	      active = false;
+  1305	    };
+  1306	  }, []);
+  1307	
+  1308	  return (
+  1309	    <main className="k-page" data-testid="dashboard-page">
+  1310	      
+  1311	      <h1>Přehled</h1>
+  1312	      
+  1313	      {(
+  1314	        <div className="k-grid cards-4 k-dashboard-cards">
+  1315	          <Card title="Snídaně dnes a zítra">
+  1316	            <strong>{metricValue(todayCount)}</strong>
+  1317	            <p>Zítra: {metricValue(tomorrowCount)}</p>
+  1318	          </Card>
+  1319	          <Card title="Neopravené závady">
+  1320	            <strong>{metricValue(unresolvedIssuesCount)}</strong>
+  1321	            <p>Aktuálně otevřené závady</p>
+  1322	          </Card>
+  1323	          <Card title="Nezpracované nálezy">
+  1324	            <strong>{metricValue(unprocessedLostFoundCount)}</strong>
+  1325	            <p>Položky čekající na zpracování</p>
+  1326	          </Card>
+  1327	          <Card title="Stav skladu">
+  1328	            <strong>{metricValue(stockTotal)}</strong>
+  1329	            <p>Položek v evidenci: {metricValue(stockItemCount)}</p>
+  1330	          </Card>
+  1331	        </div>
+  1332	      )}
+  1333	    </main>
+  1334	  );
+  1335	}
+  1420	    () => visibleItems.map((item) => mergeOrderWithDraft(item)),
+  1421	    [mergeOrderWithDraft, visibleItems],
+  1422	  );
+  1423	  const overviewStats = React.useMemo(
+  1424	    () => buildBreakfastOverviewStats(effectiveVisibleItems),
+  1425	    [effectiveVisibleItems],
+  1426	  );
+  1427	  const editedRowsCount = Object.keys(drafts).length;
+  1428	
+  1429	  const filteredItems = visibleItems.filter((item) => {
+  1430	    const effectiveItem = mergeOrderWithDraft(item);
+  1431	    const term = search.trim().toLowerCase();
+  1432	    if (!term || isServingView) {
+  1433	      return true;
+  1434	    }
+  1435	    return effectiveItem.room_number.toLowerCase().includes(term) || (effectiveItem.guest_name ?? '').toLowerCase().includes(term);
+  1436	  });
+  1437	
+  1438	  const updateOrder = async (order: BreakfastOrder, updates: Partial<BreakfastPayload>): Promise<void> => {
+  1439	    const payload: BreakfastPayload = {
+  1440	      service_date: order.service_date,
+  1441	      room_number: order.room_number,
+  1442	      guest_name: order.guest_name,
+  1443	      guest_count: order.guest_count,
+  1444	      status: updates.status ?? order.status,
+  1445	      note: order.note ?? null,
+  1446	      diet_no_gluten: updates.diet_no_gluten ?? order.diet_no_gluten ?? false,
+  1447	      diet_no_milk: updates.diet_no_milk ?? order.diet_no_milk ?? false,
+  1448	      diet_no_pork: updates.diet_no_pork ?? order.diet_no_pork ?? false,
+  1449	    };
+  1450	
+  1451	    const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
+  1452	      method: 'PUT',
+  1453	      headers: { 'Content-Type': 'application/json' },
+  1454	      body: JSON.stringify(payload),
+  1455	    });
+  1456	    setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
+  1457	  };
+  1458	
+  1459	  const queueOrderDraft = React.useCallback((order: BreakfastOrder, updates: Partial<BreakfastPayload>): void => {
+  1460	    setDrafts((prev) => {
+  1461	      const base = prev[order.id] ?? {};
+  1462	      const nextDraft: Partial<BreakfastPayload> = {
+  1463	        ...base,
+  1464	        ...updates,
+  1465	      };
+  1466	      const effective = {
+  1467	        status: nextDraft.status ?? order.status,
+  1468	        diet_no_gluten: nextDraft.diet_no_gluten ?? order.diet_no_gluten ?? false,
+  1469	        diet_no_milk: nextDraft.diet_no_milk ?? order.diet_no_milk ?? false,
+  1470	        diet_no_pork: nextDraft.diet_no_pork ?? order.diet_no_pork ?? false,
+  1471	      };
+  1472	      if (
+  1473	        effective.status === order.status &&
+  1474	        effective.diet_no_gluten === (order.diet_no_gluten ?? false) &&
+  1475	        effective.diet_no_milk === (order.diet_no_milk ?? false) &&
+  1476	        effective.diet_no_pork === (order.diet_no_pork ?? false)
+  1477	      ) {
+  1478	        const cleaned = { ...prev };
+  1479	        delete cleaned[order.id];
+  1480	        return cleaned;
+  1481	      }
+  1482	      return {
+  1483	        ...prev,
+  1484	        [order.id]: nextDraft,
+  1485	      };
+  1486	    });
+  1487	    setSaveInfo(null);
+  1488	  }, []);
+  1489	
+  1490	  const toggleDiet = (order: BreakfastOrder, key: DietKey): void => {
+  1491	    if (!canEditDiet) {
+  1492	      return;
+  1493	    }
+  1494	    const effectiveOrder = mergeOrderWithDraft(order);
+  1495	    const updates: Partial<BreakfastPayload> = {};
+  1496	    if (key === 'diet_no_gluten') updates.diet_no_gluten = !effectiveOrder.diet_no_gluten;
+  1497	    if (key === 'diet_no_milk') updates.diet_no_milk = !effectiveOrder.diet_no_milk;
+  1498	    if (key === 'diet_no_pork') updates.diet_no_pork = !effectiveOrder.diet_no_pork;
+  1499	    queueOrderDraft(order, updates);
+  1500	  };
+  1501	
+  1502	  const markServed = (order: BreakfastOrder): void => {
+  1503	    const effectiveOrder = mergeOrderWithDraft(order);
+  1504	    if (!canServe || effectiveOrder.status === 'served') {
+  1505	      return;
+  1506	    }
+  1507	    queueOrderDraft(order, { status: 'served' });
+  1508	  };
+  1509	
+  1510	  const reactivate = (order: BreakfastOrder): void => {
+  1510	  const reactivate = (order: BreakfastOrder): void => {
+  1511	    const effectiveOrder = mergeOrderWithDraft(order);
+  1512	    if (!canReactivate || effectiveOrder.status !== 'served') {
+  1513	      return;
+  1514	    }
+  1515	    queueOrderDraft(order, { status: 'pending' });
+  1516	  };
+  1517	
+  1518	  const saveDraftChanges = async (): Promise<void> => {
+  1519	    const entries = visibleItems.filter((item) => drafts[item.id]);
+  1520	    if (entries.length === 0) {
+  1521	      return;
+  1522	    }
+  1523	    setSaveBusy(true);
+  1524	    setError(null);
+  1525	    try {
+  1526	      for (const order of entries) {
+  1527	        await updateOrder(order, drafts[order.id] ?? {});
+  1528	      }
+  1529	      setDrafts({});
+  1530	      setSaveInfo(`Uloženo ${entries.length} změn pro ${serviceDate}.`);
+  1531	      loadDay(serviceDate);
+  1532	    } catch (saveError) {
+  1533	      setError(saveError instanceof Error ? saveError.message : 'Uložení změn snídaní selhalo.');
+  1534	    } finally {
+  1535	      setSaveBusy(false);
+  1536	    }
+  1537	  };
+  1538	
+  1539	  const reactivateAll = async (): Promise<void> => {
+  1540	    if (!canReactivate) {
+  1541	      return;
+  1542	    }
+  1543	    const csrf = readCsrfToken();
+  1544	    await fetchJson<void>(`/api/v1/breakfast/reactivate-all?service_date=${serviceDate}`, {
+  1545	      method: 'POST',
+  1546	      headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+  1547	    });
+  1548	    loadDay(serviceDate);
+  1549	  };
+  1550	
+  1551	  const clearDay = async (): Promise<void> => {
+  1552	    if (!canClearDay) {
+  1553	      return;
+  1554	    }
+  1555	    const confirmed = window.confirm(`Opravdu chcete smazat všechny snídaně pro den ${serviceDate}? Operaci nelze vrátit.`);
+  1556	    if (!confirmed) return;
+  1557	    const csrf = readCsrfToken();
+  1558	    await fetchJson<void>(`/api/v1/breakfast/day/delete?service_date=${serviceDate}`, {
+  1559	      method: 'DELETE',
+  1560	      headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+  1561	    });
+  1562	    setItems([]);
+  1563	    setSummary({
+  1564	      service_date: serviceDate,
+  1565	      total_orders: 0,
+  1566	      total_guests: 0,
+  1567	      status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 },
+  1568	    });
+  1569	  };
+  1570	
+  1571	  const clearPeriod = async (): Promise<void> => {
+  1572	    if (!isAdmin) {
+  1573	      return;
+  1574	    }
+  1575	    const confirmed = window.confirm(`Opravdu chcete smazat snídaně v období ${rangeDeleteFrom} až ${rangeDeleteTo}? Operaci nelze vrátit.`);
+  1576	    if (!confirmed) return;
+  1577	    const csrf = readCsrfToken();
+  1578	    await fetchJson<void>(`/api/v1/breakfast/period/delete?date_from=${encodeURIComponent(rangeDeleteFrom)}&date_to=${encodeURIComponent(rangeDeleteTo)}`, {
+  1579	      method: 'DELETE',
+  1580	      headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+  1581	    });
+  1582	    setSaveInfo(`Smazáno období ${rangeDeleteFrom} až ${rangeDeleteTo}.`);
+  1583	    if (serviceDate >= rangeDeleteFrom && serviceDate <= rangeDeleteTo) {
+  1584	      setItems([]);
+  1585	      setSummary({
+  1586	        service_date: serviceDate,
+  1587	        total_orders: 0,
+  1588	        total_guests: 0,
+  1589	        status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 },
+  1590	      });
+  1591	      setDrafts({});
+  1592	      return;
+  1593	    }
+  1594	    loadDay(serviceDate);
+  1595	  };
+  1596	
+  1597	  const renderDietToggles = (
+  1598	    data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean },
+  1599	    onToggle: (key: DietKey) => void,
+  1600	    disabled: boolean,
+  1601	  ): JSX.Element => (
+  1602	    <div className="k-diet-toggle-group">
+  1603	      <DietToggleButton active={Boolean(data.diet_no_gluten)} label="Bez lepku" disabled={disabled} onToggle={() => onToggle('diet_no_gluten')}>
+  1604	        <DietIconGluten />
+  1605	      </DietToggleButton>
+  1606	      <DietToggleButton active={Boolean(data.diet_no_milk)} label="Bez mléka" disabled={disabled} onToggle={() => onToggle('diet_no_milk')}>
+  1607	        <DietIconMilk />
+  1608	      </DietToggleButton>
+  1609	      <DietToggleButton active={Boolean(data.diet_no_pork)} label="Bez vepřového" disabled={disabled} onToggle={() => onToggle('diet_no_pork')}>
+  1610	        <DietIconPork />
+  1611	      </DietToggleButton>
+  1612	    </div>
+  1613	  );
+  1614	
+  1615	  const previewImport = async (file: File): Promise<void> => {
+  1616	    setImportBusy(true);
+  1617	    setImportError(null);
+  1618	    setImportInfo(null);
+  1619	    setImportPreview(null);
+  1620	    setImportDate(null);
+  1720	              if (key === 'diet_no_gluten') return { ...row, diet_no_gluten: !row.diet_no_gluten };
+  1721	              if (key === 'diet_no_milk') return { ...row, diet_no_milk: !row.diet_no_milk };
+  1722	              return { ...row, diet_no_pork: !row.diet_no_pork };
+  1723	            });
+  1724	          }), false),
+  1725	        ])}
+  1726	      />
+  1727	      <div className="k-toolbar">
+  1728	        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy || importPreview.length === 0}>Potvrdit import</button>
+  1729	        <button className="k-button secondary" type="button" onClick={() => setImportPreview(null)}>Zavřít náhled</button>
+  1730	      </div>
+  1731	    </div>
+  1732	  ) : null;
+  1733	
+  1734	  const breakfastToolbar = isServingView ? (
+  1735	    <div className="k-toolbar">
+  1736	      <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
+  1737	    </div>
+  1738	  ) : (
+  1739	    <div className="k-toolbar">
+  1740	      <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
+  1741	      <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} />
+  1742	      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label="Import PDF" onChange={(event) => {
+  1743	        handleImportFile(event.target.files?.[0] ?? null);
+  1744	        event.currentTarget.value = '';
+  1745	      }} /> : null}
+  1746	      {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
+  1747	      {canReactivate ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
+  1748	      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
+  1749	      {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
+  1750	    </div>
+  1751	  );
+  1752	
+  1753	  const listItems = isServingView ? visibleItems : filteredItems;
+  1754	  const breakfastImportStamp = summary?.source_imported_at
+  1755	    ? formatShortDateTime(summary.source_imported_at)
+  1756	    : 'nenalezeno';
+  1757	  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
+  1758	
+  1759	  return (
+  1760	    <main className="k-page" data-testid="breakfast-list-page">
+  1761	      
+  1762	      <h1>Snídaně</h1>
+  1763	      
+  1764	      {error ? (
+  1765	        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+  1766	      ) : (
+  1767	        <>
+  1768	          <div className="k-card k-breakfast-overview-date">
+  1769	            <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
+  1770	            <h2 className="k-breakfast-overview-date__value">
+  1771	              {formatBreakfastHeadlineDate(breakfastSummaryDate)}
+  1772	            </h2>
+  1773	          </div>
+  1774	          {breakfastToolbar}
+  1775	          {isAdmin ? (
+  1776	            <div className="k-toolbar">
+  1777	              <input className="k-input" type="date" aria-label="Smazat období od" value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
+  1778	              <input className="k-input" type="date" aria-label="Smazat období do" value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
+  1779	              <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
+  1780	            </div>
+  1781	          ) : null}
+  1782	          {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
+  1783	          {canImport && (importError || importInfo) ? <p className={importError ? 'k-text-error' : 'k-text-success'}>{importError ?? importInfo}</p> : null}
+  1784	          {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
+  1785	          {importPreviewTable}
+  1786	          {listItems.length === 0 ? (
+  1787	            <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
+  1788	          ) : (
+  1789	            <DataTable
+  1790	              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Stav', 'Akce']}
+  1791	              rows={listItems.map((item) => {
+  1792	                const effectiveItem = mergeOrderWithDraft(item);
+  1793	                const isDirty = Boolean(drafts[item.id]);
+  1794	                const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
+  1795	                const action = effectiveItem.status === 'served'
+  1796	                  ? canReactivate
+  1797	                    ? <button className="k-button secondary" type="button" onClick={() => reactivate(item)}>Vrátit</button>
+  1798	                    : <span className="k-text-muted">Vydáno</span>
+  1799	                  : canServe
+  1800	                    ? <button className="k-button" type="button" onClick={() => markServed(item)}>Vydáno</button>
+  1801	                    : <span className="k-text-muted">-</span>;
+  1802	
+  1803	                if (isServingView) {
+  1804	                  return [
+  1805	                    <span className={rowClass}>{effectiveItem.room_number}</span>,
+  1806	                    <span className={rowClass}>{effectiveItem.guest_count}</span>,
+  1807	                    <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
+  1808	                    <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), true)}</span>,
+  1809	                    action,
+  1810	                  ];
+  1811	                }
+  1812	
+  1813	                return [
+  1814	                  <span className={rowClass}>{effectiveItem.room_number}</span>,
+  1815	                  <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
+  2050	    </main>
+  2051	  );
+  2052	}
+  2053	
+  2054	function HousekeepingAdmin(): JSX.Element {
+  2055	  const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
+  2056	  const [selectedRoom, setSelectedRoom] = React.useState('');
+  2057	  const [description, setDescription] = React.useState('');
+  2058	  const [photos, setPhotos] = React.useState<File[]>([]);
+  2059	  const [error, setError] = React.useState<string | null>(null);
+  2060	  const [success, setSuccess] = React.useState<string | null>(null);
+  2061	  const [saving, setSaving] = React.useState(false);
+  2062	  const galleryInputRef = React.useRef<HTMLInputElement | null>(null);
+  2063	  const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
+  2064	
+  2065	  const resetForm = React.useCallback(() => {
+  2066	    setSelectedRoom('');
+  2067	    setDescription('');
+  2068	    setPhotos([]);
+  2069	    setError(null);
+  2070	    setSuccess(null);
+  2071	  }, []);
+  2072	
+  2073	  const updatePhotos = React.useCallback((files: File[], append: boolean): void => {
+  2074	    setPhotos((current) => {
+  2075	      const merged = append ? [...current, ...files] : files;
+  2076	      if (merged.length > 3) {
+  2077	        setError('Lze připojit nejvýše 3 fotografie.');
+  2078	        return merged.slice(0, 3);
+  2079	      }
+  2080	      setError((previous) => (previous === 'Lze připojit nejvýše 3 fotografie.' ? null : previous));
+  2081	      return merged;
+  2082	    });
+  2083	  }, []);
+  2084	
+  2085	  const onGalleryChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  2086	    updatePhotos(Array.from(event.target.files ?? []), true);
+  2087	    event.target.value = '';
+  2088	  };
+  2089	
+  2090	  const onCameraChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  2091	    updatePhotos(Array.from(event.target.files ?? []), true);
+  2092	    event.target.value = '';
+  2093	  };
+  2094	
+  2095	  const submit = async (): Promise<void> => {
+  2096	    const shortDescription = description.trim();
+  2097	    const roomValue = selectedRoom.trim();
+  2098	    if (!roomValue) {
+  2099	      setError('Vyberte pokoj.');
+  2100	      return;
+  2101	    }
+  2102	    if (!shortDescription) {
+  2103	      setError('Vyplňte krátký popis.');
+  2104	      return;
+  2105	    }
+  2106	    setSaving(true);
+  2107	    setError(null);
+  2108	    try {
+  2109	      if (mode === 'issue') {
+  2110	        const created = await fetchJson<Issue>('/api/v1/issues', {
+  2111	          method: 'POST',
+  2112	          headers: { 'Content-Type': 'application/json' },
+  2113	          body: JSON.stringify({
+  2114	            title: shortDescription,
+  2115	            description: shortDescription,
+  2116	            location: `Pokoj ${roomValue}`,
+  2117	            room_number: roomValue,
+  2118	            status: 'new',
+  2119	            priority: 'medium',
+  2120	          }),
+  2121	        });
+  2122	        if (photos.length > 0) {
+  2123	          const formData = new FormData();
+  2124	          photos.forEach((file) => formData.append('photos', file));
+  2125	          await fetchJson<MediaPhoto[]>(`/api/v1/issues/${created.id}/photos`, { method: 'POST', body: formData });
+  2126	        }
+  2127	      } else {
+  2128	        const created = await fetchJson<LostFoundItem>('/api/v1/lost-found', {
+  2129	          method: 'POST',
+  2130	          headers: { 'Content-Type': 'application/json' },
+  2131	          body: JSON.stringify({
+  2132	            item_type: 'found',
+  2133	            category: 'Nález',
+  2134	            description: shortDescription,
+  2135	            location: `Pokoj ${roomValue}`,
+  2136	            room_number: roomValue,
+  2137	            event_at: new Date().toISOString(),
+  2138	            status: 'new',
+  2139	            tags: [],
+  2140	          }),
+  2141	        });
+  2142	        if (photos.length > 0) {
+  2143	          const formData = new FormData();
+  2144	          photos.forEach((file) => formData.append('photos', file));
+  2145	          await fetchJson<MediaPhoto[]>(`/api/v1/lost-found/${created.id}/photos`, { method: 'POST', body: formData });
+  2180	              aria-pressed={mode === 'lost_found'}
+  2181	            >
+  2182	              Nález
+  2183	            </button>
+  2184	            <button
+  2185	              className={`k-housekeeping-toggle__button${mode === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`}
+  2186	              type="button"
+  2187	              onClick={() => setMode('issue')}
+  2188	              aria-pressed={mode === 'issue'}
+  2189	            >
+  2190	              Závada
+  2191	            </button>
+  2192	          </div>
+  2193	          {error ? <p className="k-text-error">{error}</p> : null}
+  2194	          <div className="k-form-grid">
+  2195	            <FormField id="housekeeping_room" label="Pokoj">
+  2196	              <div className="k-housekeeping-room-grid" role="group" aria-label="Výběr pokoje">
+  2197	                {HOUSEKEEPING_ROOMS.map((room) => (
+  2198	                  <button
+  2199	                    key={room}
+  2200	                    className={`k-housekeeping-room-grid__button${selectedRoom === room ? ' k-housekeeping-room-grid__button--active' : ''}`}
+  2201	                    type="button"
+  2202	                    onClick={() => setSelectedRoom(room)}
+  2203	                    aria-pressed={selectedRoom === room}
+  2204	                  >
+  2205	                    {room}
+  2206	                  </button>
+  2207	                ))}
+  2208	              </div>
+  2209	            </FormField>
+  2210	            <FormField id="housekeeping_description" label={mode === 'issue' ? 'Krátký popis závady' : 'Krátký popis nálezu'}>
+  2211	              <input id="housekeeping_description" className="k-input" maxLength={160} value={description} onChange={(event) => setDescription(event.target.value)} />
+  2212	            </FormField>
+  2213	            <FormField id="housekeeping_photos" label="Fotografie (max. 3)">
+  2214	              <>
+  2215	                <input ref={galleryInputRef} id="housekeeping_photos" type="file" className="k-input" multiple accept="image/*" onChange={onGalleryChange} hidden />
+  2216	                <input ref={cameraInputRef} id="housekeeping_camera" type="file" className="k-input" accept="image/*" capture="environment" onChange={onCameraChange} hidden />
+  2217	                <div className="k-toolbar">
+  2218	                  <button className="k-button secondary" type="button" onClick={() => galleryInputRef.current?.click()} disabled={photos.length >= 3 || saving}>Vybrat fotografie</button>
+  2219	                  <button className="k-button secondary" type="button" onClick={() => cameraInputRef.current?.click()} disabled={photos.length >= 3 || saving}>Vyfotit</button>
+  2220	                </div>
+  2221	              </>
+  2222	            </FormField>
+  2223	            {photos.length > 0 ? <p className="k-subtle">Vybráno fotografií: {photos.length}</p> : null}
+  2224	          </div>
+  2225	          <div className="k-toolbar">
+  2226	            <button className="k-button" type="button" onClick={() => void submit()} disabled={saving}>Odeslat</button>
+  2227	            <button className="k-button secondary" type="button" onClick={resetForm} disabled={saving}>Vyčistit</button>
+  2228	          </div>
+  2229	        </div>
+  2230	      )}
+  2231	    </main>
+  2232	  );
+  2233	}
+  2234	
+  2235	function LostFoundList(): JSX.Element {
+  2236	  const [items, setItems] = React.useState<LostFoundItem[]>([]);
+  2237	  const [statusFilter, setStatusFilter] = React.useState<'all' | LostFoundStatus>('all');
+  2238	  const [error, setError] = React.useState<string | null>(null);
+  2239	
+  2240	  React.useEffect(() => {
+  2241	    const params = new URLSearchParams();
+  2242	    if (statusFilter !== 'all') {
+  2243	      params.set('status', statusFilter);
+  2244	    }
+  2245	    const query = params.toString();
+  2246	    const url = query ? `/api/v1/lost-found?${query}` : '/api/v1/lost-found';
+  2247	    fetchJson<LostFoundItem[]>(url)
+  2248	      .then((response) => {
+  2249	        setItems(response);
+  2250	        setError(null);
+  2251	      })
+  2252	      .catch(() => setError('Nepodařilo se načíst nálezy.'));
+  2253	  }, [statusFilter]);
+  2254	
+  2255	  return (
+  2256	    <main className="k-page" data-testid="lost-found-list-page">
+  2257	      
+  2258	      <h1>Ztráty a nálezy</h1>
+  2259	      
+  2260	      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Žádný evidovaný nález." stateKey="empty" /> : (
+  2261	        <>
+  2262	          <div className="k-toolbar">
+  2263	            <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}>
+  2264	              <option value="all">Všechny stavy</option>
+  2265	              <option value="new">Nezpracováno</option>
+  2266	              <option value="claimed">Zpracováno</option>
+  2267	            </select>
+  2268	          </div>
+  2269	          <DataTable headers={['Stav', 'Pokoj', 'Popis', 'Vznik', 'Akce']} rows={items.map((item) => [lostFoundStatusLabel(item.status), item.room_number ?? '-', item.description, formatShortDateTime(item.event_at), <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>Detail</Link>])} />
+  2270	        </>
+  2271	      )}
+  2272	    </main>
+  2273	  );
+  2274	}
+  2275	
+  2276	function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
+  2277	  const { id } = useParams();
+  2278	  const navigate = useNavigate();
+  2279	  const [payload, setPayload] = React.useState<LostFoundPayload>({
+  2280	    item_type: 'found',
+  2281	    description: '',
+  2282	    category: '',
+  2283	    location: '',
+  2284	    room_number: '',
+  2285	    event_at: localDateTimeInputToIsoUtc(currentDateTimeInputValue()),
+  2286	    status: 'new',
+  2287	    tags: [],
+  2288	    claimant_name: '',
+  2289	    claimant_contact: '',
+  2290	    handover_note: '',
+  2291	    claimed_at: null,
+  2292	    returned_at: null,
+  2293	  });
+  2294	  const [error, setError] = React.useState<string | null>(null);
+  2295	  const [photos, setPhotos] = React.useState<File[]>([]);
+  2340	        });
+  2341	      }
+  2342	      navigate(`/ztraty-a-nalezy/${saved.id}`);
+  2343	    } catch {
+  2344	      setError('Položku se nepodařilo uložit.');
+  2345	    }
+  2346	  };
+  2347	
+  2348	  return (
+  2349	    <main className="k-page" data-testid={mode === 'create' ? 'lost-found-create-page' : 'lost-found-edit-page'}>
+  2350	      
+  2351	      <h1>{mode === 'create' ? 'Nová položka' : 'Upravit položku'}</h1>
+  2352	      
+  2353	      {error ? (
+  2354	        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+  2355	      ) : (
+  2356	        <div className="k-card">
+  2357	          <div className="k-toolbar">
+  2358	            <Link className="k-nav-link" to="/ztraty-a-nalezy">
+  2359	              Zpět na seznam
+  2360	            </Link>
+  2361	            <button className="k-button" type="button" onClick={() => void save()}>
+  2362	              Uložit
+  2363	            </button>
+  2364	          </div>
+  2365	          <div className="k-form-grid">
+  2366	            <FormField id="item_type" label="Typ záznamu">
+  2367	              <select
+  2368	                id="item_type"
+  2369	                className="k-select"
+  2370	                value={payload.item_type}
+  2371	                onChange={(event) => setPayload((prev) => ({ ...prev, item_type: event.target.value as LostFoundType }))}
+  2372	              >
+  2373	                <option value="found">Nalezeno</option>
+  2374	                <option value="lost">Ztraceno</option>
+  2375	              </select>
+  2376	            </FormField>
+  2377	            <FormField id="category" label="Kategorie">
+  2378	              <input
+  2379	                id="category"
+  2380	                className="k-input"
+  2381	                value={payload.category}
+  2382	                onChange={(event) => setPayload((prev) => ({ ...prev, category: event.target.value }))}
+  2383	              />
+  2384	            </FormField>
+  2385	            <FormField id="location" label="Místo nálezu/ztráty">
+  2386	              <input
+  2387	                id="location"
+  2388	                className="k-input"
+  2389	                value={payload.location}
+  2390	                onChange={(event) => setPayload((prev) => ({ ...prev, location: event.target.value }))}
+  2391	              />
+  2392	            </FormField>
+  2393	            <FormField id="room_number" label="Číslo pokoje (volitelné)">
+  2394	              <input
+  2395	                id="room_number"
+  2396	                className="k-input"
+  2397	                value={payload.room_number ?? ''}
+  2398	                onChange={(event) => setPayload((prev) => ({ ...prev, room_number: event.target.value }))}
+  2399	              />
+  2400	            </FormField>
+  2401	            <FormField id="event_at" label="Datum a čas">
+  2402	              <input
+  2403	                id="event_at"
+  2404	                type="datetime-local"
+  2405	                className="k-input"
+  2406	                value={isoUtcToLocalDateTimeInput(payload.event_at)}
+  2407	                onChange={(event) =>
+  2408	                  setPayload((prev) => ({ ...prev, event_at: localDateTimeInputToIsoUtc(event.target.value) }))
+  2409	                }
+  2410	              />
+  2411	            </FormField>
+  2412	            <FormField id="status" label="Stav workflow">
+  2413	              <select
+  2414	                id="status"
+  2415	                className="k-select"
+  2416	                value={payload.status}
+  2417	                onChange={(event) =>
+  2418	                  setPayload((prev) => ({ ...prev, status: event.target.value as LostFoundStatus }))
+  2419	                }
+  2420	              >
+  2421	                <option value="new">Nová</option>
+  2422	                <option value="stored">Uskladněno</option>
+  2423	                <option value="disposed">Zlikvidovat</option>
+  2424	                <option value="claimed">Nárokováno</option>
+  2425	                <option value="returned">Vráceno</option>
+  2426	              </select>
+  2427	            </FormField>
+  2428	            <FormField id="tags" label="Tagy">
+  2429	              <div className="k-toolbar">
+  2430	                {Object.keys(lostFoundTagLabels).map((tag) => (
+  2431	                  <label className="k-role-label" key={tag}>
+  2432	                    <input
+  2433	                      type="checkbox"
+  2434	                      checked={(payload.tags ?? []).includes(tag)}
+  2435	                      onChange={(event) => {
+  2436	                        setPayload((prev) => {
+  2437	                          const current = new Set(prev.tags ?? []);
+  2438	                          if (event.target.checked) {
+  2439	                            current.add(tag);
+  2440	                          } else {
+  2441	                            current.delete(tag);
+  2442	                          }
+  2443	                          return { ...prev, tags: Array.from(current) };
+  2444	                        });
+  2445	                      }}
+  2446	                    />
+  2447	                    {lostFoundTagLabel(tag)}
+  2448	                  </label>
+  2449	                ))}
+  2450	              </div>
+  2451	            </FormField>
+  2452	            <FormField id="description" label="Popis položky">
+  2453	              <textarea
+  2454	                id="description"
+  2455	                className="k-textarea"
+  2456	                rows={3}
+  2457	                value={payload.description}
+  2458	                onChange={(event) => setPayload((prev) => ({ ...prev, description: event.target.value }))}
+  2459	              />
+  2460	            </FormField>
+  2461	            <FormField id="claimant_name" label="Jméno nálezce/žadatele (volitelné)">
+  2462	              <input
+  2463	                id="claimant_name"
+  2464	                className="k-input"
+  2465	                value={payload.claimant_name ?? ''}
+  2466	                onChange={(event) => setPayload((prev) => ({ ...prev, claimant_name: event.target.value }))}
+  2467	              />
+  2468	            </FormField>
+  2469	            <FormField id="claimant_contact" label="Kontakt (volitelné)">
+  2470	              <input
+  2471	                id="claimant_contact"
+  2472	                className="k-input"
+  2473	                value={payload.claimant_contact ?? ''}
+  2474	                onChange={(event) => setPayload((prev) => ({ ...prev, claimant_contact: event.target.value }))}
+  2475	              />
+  2476	            </FormField>
+  2477	            <FormField id="handover_note" label="Předávací záznam (volitelné)">
+  2478	              <textarea
+  2479	                id="handover_note"
+  2480	                className="k-textarea"
+  2481	                rows={2}
+  2482	                value={payload.handover_note ?? ''}
+  2483	                onChange={(event) => setPayload((prev) => ({ ...prev, handover_note: event.target.value }))}
+  2484	              />
+  2485	            </FormField>
+  2510	    if (!id) {
+  2511	      return;
+  2512	    }
+  2513	    fetchJson<LostFoundItem>(`/api/v1/lost-found/${id}`)
+  2514	      .then((response) => {
+  2515	        setItem(response);
+  2516	        setError(null);
+  2517	        return fetchJson<MediaPhoto[]>(`/api/v1/lost-found/${id}/photos`);
+  2518	      })
+  2519	      .then((media) => setPhotos(media ?? []))
+  2520	      .catch(() => setError('Položka nebyla nalezena.'));
+  2521	  }, [id]);
+  2522	
+  2523	  const setWorkflowStatus = async (status: LostFoundStatus): Promise<void> => {
+  2524	    if (!id) return;
+  2525	    try {
+  2526	      const updated = await fetchJson<LostFoundItem>(`/api/v1/lost-found/${id}`, {
+  2527	        method: 'PUT',
+  2528	        headers: { 'Content-Type': 'application/json' },
+  2529	        body: JSON.stringify({ status }),
+  2530	      });
+  2531	      setItem(updated);
+  2532	    } catch {
+  2533	      setError('Změna stavu nálezu selhala.');
+  2534	    }
+  2535	  };
+  2536	
+  2537	  const deleteItem = async (): Promise<void> => {
+  2538	    if (!id) return;
+  2539	    const confirmed = window.confirm('Opravdu chcete smazat tento nález? Záznam zmizí ze seznamu nálezů a operaci nelze vrátit.');
+  2540	    if (!confirmed) return;
+  2541	    try {
+  2542	      await fetchJson(`/api/v1/lost-found/${id}`, { method: 'DELETE' });
+  2543	      window.location.assign('/admin/ztraty-a-nalezy');
+  2544	    } catch {
+  2545	      setError('Smazání položky selhalo.');
+  2546	    }
+  2547	  };
+  2548	
+  2549	  return (
+  2550	    <main className="k-page" data-testid="lost-found-detail-page">
+  2551	      
+  2552	      <h1>Detail nálezu</h1>
+  2553	      
+  2554	      {error ? <StateView title="404" description={error} /> : item ? (
+  2555	        <div className="k-card">
+  2556	          <div className="k-toolbar">
+  2557	            <Link className="k-nav-link" to="/ztraty-a-nalezy">Zpět na seznam</Link>
+  2558	            {item.status !== 'claimed' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('claimed')}>Označit jako zpracováno</button> : null}
+  2559	            {item.status !== 'new' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('new')}>Vrátit do nezpracovaných</button> : null}
+  2560	            <button className="k-button secondary danger" type="button" onClick={() => void deleteItem()}>Smazat</button>
+  2736	
+  2737	  return (
+  2738	    <main className="k-page" data-testid="issues-detail-page">
+  2739	      
+  2740	      <h1>Detail závady</h1>
+  2741	      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Označit jako odstraněnou</button> : null}{item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}<button className="k-button secondary danger" type="button" onClick={() => void deleteIssue()}>Smazat</button></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+  2742	    </main>
+  2743	  );
+  2744	}
+  2745	
+  3010	  };
+  3011	
+  3012	  return (
+  3013	    <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}>
+  3014	      
+  3015	      <h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1>
+  3016	      
+  3017	      {error ? (
+  3018	        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+  3019	      ) : (
+  3020	        <div className="k-card">
+  3021	          <div className="k-toolbar">
+  3022	            <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
+  3023	            <button className="k-button" type="button" onClick={() => void save()}>Uložit</button>
+  3024	          </div>
+  3025	          <div className="k-inventory-form-media">
+  3026	            {pictogramPreview ? (
+  3027	              <img className="k-inventory-thumb-preview" src={pictogramPreview} alt={payload.name ? `Náhled položky ${payload.name}` : 'Náhled položky'} />
+  3028	            ) : (
+  3029	              <InventoryThumb item={{ id: Number(id ?? 0), name: payload.name || 'Položka', pictogram_thumb_path: payload.pictogram_thumb_path }} size="form" />
+  3030	            )}
+  3031	          </div>
+  3032	          <div className="k-form-grid">
+  3033	            <FormField id="inventory_name" label="Název">
+  3034	              <input id="inventory_name" className="k-input" value={payload.name} onChange={(event) => setPayload((prev) => ({ ...prev, name: event.target.value }))} />
+  3035	            </FormField>
+  3036	            <FormField id="inventory_unit" label="Veličina v 1 ks">
+  3037	              <select id="inventory_unit" className="k-select" value={payload.unit} onChange={(event) => setPayload((prev) => ({ ...prev, unit: event.target.value }))}>
+  3038	                <option value="g">g</option>
+  3039	                <option value="l">l</option>
+  3040	                <option value="ks">ks</option>
+  3041	              </select>
+  3042	            </FormField>
+  3043	            <FormField id="inventory_amount_per_piece_base" label="Hodnota veličiny v 1 ks">
+  3044	              <input id="inventory_amount_per_piece_base" type="number" min={1} step={1} className="k-input" value={payload.amount_per_piece_base ?? 1} onChange={(event) => setPayload((prev) => ({ ...prev, amount_per_piece_base: Number(event.target.value) }))} />
+  3045	            </FormField>
+  3046	            <FormField id="inventory_min_stock" label="Minimální stav">
+  3047	              <input id="inventory_min_stock" type="number" min={0} step={1} className="k-input" value={payload.min_stock} onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))} />
+  3048	            </FormField>
+  3049	            <FormField id="inventory_pictogram" label="Miniatura položky">
+  3050	              <input id="inventory_pictogram" type="file" className="k-input" accept="image/*" onChange={(event) => setPictogramFile(event.target.files?.[0] ?? null)} />
+  3051	            </FormField>
+  3052	          </div>
+  3053	        </div>
+  3054	      )}
+  3055	    </main>
+  3056	  );
+  3057	}
+  3058	
+  3059	function InventoryDetail(): JSX.Element {
+  3060	  const { id } = useParams();
+  3061	  const [item, setItem] = React.useState<InventoryDetail | null>(null);
+  3062	  const [error, setError] = React.useState<string | null>(null);
+  3063	
+  3064	  const loadDetail = React.useCallback(() => {
+  3065	    if (!id) return;
+  3066	    fetchJson<InventoryDetail>(`/api/v1/inventory/${id}`)
+  3067	      .then((response) => {
+  3068	        setItem(response);
+  3069	        setError(null);
+  3070	      })
+  3071	      .catch((err) => {
+  3072	        if (err instanceof HttpError) {
+  3073	          if (err.status === 404) {
+  3074	            setError('Skladová položka nebyla nalezena. Zkontrolujte seznam skladu nebo se vraťte zpět.');
+  3075	          } else if (err.status === 403) {
+  3076	            setError('Nemáte oprávnění zobrazit detail skladové položky.');
+  3077	          } else if (err.status === 422) {
+  3078	            setError('Neplatný identifikátor skladové položky.');
+  3079	          } else {
+  3080	            setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+  3081	          }
+  3082	        } else {
+  3083	          setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+  3084	        }
+  3085	      });
+  3086	  }, [id]);
+  3087	
+  3088	  React.useEffect(() => {
+  3089	    loadDetail();
+  3090	  }, [loadDetail]);
+  3091	
+  3092	  const deleteMovement = async (movementId: number): Promise<void> => {
+  3093	    if (!id) return;
+  3094	    const confirmed = window.confirm('Opravdu chcete smazat tento skladový pohyb? Množství položky se přepočítá opačným pohybem a operaci nelze vrátit bez nového zápisu.');
+  3095	    if (!confirmed) return;
+  3096	    const csrf = readCsrfToken();
+  3097	    try {
+  3098	      await fetchJson<void>(`/api/v1/inventory/${id}/movements/${movementId}`, {
+  3099	        method: 'DELETE',
+  3100	        headers: csrf ? { 'x-csrf-token': csrf } : undefined,
+  3101	      });
+  3102	      loadDetail();
+  3103	    } catch {
+  3104	      setError('Pohyb se nepodařilo smazat.');
+  3105	    }
+  3106	  };
+  3107	
+  3108	  const normalizedError = error?.toLowerCase() ?? '';
+  3109	  const isAccessDenied = normalizedError.includes('missing role') || normalizedError.includes('missing actor type') || normalizedError.includes('not authenticated');
+  3110	  const isNotFound = normalizedError.includes('not found') || normalizedError.includes('nenalez');
+  3111	
+  3112	  return (
+  3113	    <main className="k-page" data-testid="inventory-detail-page">
+  3114	      
+  3115	      <h1>{item ? `Detail skladové položky: ${item.name}` : 'Detail skladové položky'}</h1>
+  3116	      
+  3117	      {error ? (
+  3118	        <StateView
+  3119	          title={isAccessDenied ? 'Přístup odepřen' : isNotFound ? '404' : 'Chyba'}
+  3120	          description={error}
+  3121	          stateKey={isNotFound ? '404' : 'error'}
+  3122	          action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>}
+  3123	        />
+  3124	      ) : item ? (
+  3125	        <>
+  3126	          <div className="k-card">
+  3127	            <div className="k-toolbar">
+  3128	              <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
+  3129	              <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link>
+  3130	            </div>
+  3131	            <div className="k-inventory-detail-hero">
+  3132	              <InventoryThumb item={item} size="detail" />
+  3133	              <div>
+  3134	                <h2>{item.name}</h2>
+  3135	                <p className="k-subtle">Aktuální množství a historie pohybů zůstávají dostupné jen adminovi.</p>
+  3136	              </div>
+  3137	            </div>
+  3138	            <DataTable
+  3139	              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Hodnota veličiny v 1 ks']}
+  3140	              rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.amount_per_piece_base ?? 0]]}
+  3141	            />
+  3142	          </div>
+  3143	          <div className="k-card">
+  3144	            <h2>Pohyby</h2>
+  3145	            <DataTable
+  3146	              headers={['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka', 'Akce']}
+  3147	              rows={item.movements.map((movement) => [
+  3148	                movement.document_number ?? '-',
+  3149	                formatDateTime(movement.document_date ?? movement.created_at),
+  3150	                inventoryMovementLabel(movement.movement_type),
+  3151	                movement.quantity,
+  3152	                movement.document_reference ?? '-',
+  3153	                movement.note ?? '-',
+  3154	                <button className="k-button secondary danger" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>,
+  3155	              ])}
+  3156	            />
+  3157	          </div>
+  3158	        </>
+  3159	      ) : (
+  3160	        <SkeletonPage />
+  3161	      )}
+  3162	    </main>
+  3163	  );
+  3164	}
+  3165	
+  3890	    selectedRoles: ManagedPortalRole[],
+  3891	    setter: (value: ManagedPortalRole[]) => void,
+  3892	    role: ManagedPortalRole
+  3893	  ): void => {
+  3894	    setter(selectedRoles.includes(role) ? selectedRoles.filter((item) => item !== role) : [...selectedRoles, role]);
+  3895	  };
+  3896	
+  3897	  const roleLabel = (role: string): string => managedPortalRoleLabels[role as ManagedPortalRole] ?? role;
+  3898	
+  3899	  const normalizeSearchValue = (value: string): string =>
+  3900	    value
+  3901	      .toLocaleLowerCase('cs-CZ')
+  3902	      .normalize('NFD')
+  3903	      .replace(/[\u0300-\u036f]/g, '')
+  3904	      .trim();
+  3905	
+  3906	  const normalizedFilter = normalizeSearchValue(filterQuery);
+  3907	
+  3908	  const filteredUsers = React.useMemo(() => {
+  3909	    if (!users) {
+  3910	      return [];
+  3911	    }
+  3912	    if (!normalizedFilter) {
+  3913	      return users;
+  3914	    }
+  3915	    return users.filter((user) => {
+  3916	      const haystack = normalizeSearchValue(
+  3917	        [
+  3918	          user.first_name,
+  3919	          user.last_name,
+  3920	          `${user.first_name} ${user.last_name}`,
+  3921	          user.email,
+  3922	          user.roles.map((role) => roleLabel(role)).join(' '),
+  3923	        ].join(' ')
+  3924	      );
+  3925	      return haystack.includes(normalizedFilter);
+  3926	    });
+  3927	  }, [normalizedFilter, users]);
+  3928	
+  3929	  const hasFilter = Boolean(normalizedFilter);
+  3930	
+  3931	  const normalizePhoneInput = (value: string): string => {
+  3932	    const trimmed = value.trim();
+  3933	    if (trimmed === '') return '';
+  3934	    if (trimmed.startsWith('+')) return trimmed;
+  3935	    if (trimmed.startsWith('00')) return `+${trimmed.slice(2)}`;
+  3936	    if (/^\d+$/.test(trimmed)) {
+  3937	      // Pokud uživatel píše lokální číslo bez předvolby, doplníme +420.
+  3938	      if (trimmed.startsWith('420')) return `+${trimmed}`;
+  3939	      return `+420${trimmed}`;
+  3940	    }
+  3941	    return trimmed;
+  3942	  };
+  3943	
+  3944	  function requestDelete(event: React.MouseEvent<HTMLButtonElement>, user: PortalUser): void {
+  3945	    deleteTriggerRef.current = event.currentTarget;
+  3946	    setPendingDelete(user);
+  3947	  }
+  3948	
+  3949	  function cancelDelete(): void {
+  3950	    setPendingDelete(null);
+  3951	  }
+  3952	
+  3953	  async function confirmDelete(): Promise<void> {
+  3954	    if (!pendingDelete) return;
+  3955	    setSaving(true);
+  3956	    setError(null);
+  3957	    setMessage(null);
+  3958	    try {
+  3959	      const targetId = pendingDelete.id;
+  3960	      await fetchJson<void>(`/api/v1/users/${targetId}`, {
+  3961	        method: 'DELETE',
+  3962	      });
+  3963	      setMessage(`Uživatel ${pendingDelete.email} byl smazán.`);
+  3964	      setPendingDelete(null);
+  3965	      setSelected((prev) => (prev && prev.id === targetId ? null : prev));
+  3966	      syncEdit(null);
+  3967	      load();
+  3968	    } catch (err) {
+  3969	      if (err instanceof HttpError) {
+  3970	        if (err.status === 403) {
+  3971	          setError('Nemáte oprávnění smazat tohoto uživatele.');
+  3972	        } else if (err.status === 404) {
+  3973	          setError('Uživatel nebyl nalezen – mohl být mezitím odstraněn.');
+  3974	        } else if (err.status === 409) {
+  3975	          setError('Primární administrátorský účet nelze smazat.');
+  3976	        } else {
+  3977	          setError('Smazání uživatele se nepodařilo.');
+  3978	        }
+  3979	      } else {
+  3980	        setError('Smazání uživatele se nepodařilo.');
+  3981	      }
+  3982	    } finally {
+  3983	      setSaving(false);
+  3984	    }
+  3985	  }
+  3986	
+  3987	  React.useEffect(() => {
+  3988	    if (pendingDelete) {
+  3989	      const frame = window.requestAnimationFrame(() => {
+  3990	        confirmDeleteRef.current?.focus();
+  3991	      });
+  3992	      return () => {
+  3993	        window.cancelAnimationFrame(frame);
+  3994	      };
+  3995	    }
+  3996	    if (deleteTriggerRef.current) {
+  3997	      deleteTriggerRef.current.focus();
+  3998	    }
+  3999	    return undefined;
+  4000	  }, [pendingDelete]);
+  4001	
+  4002	  const handleDeleteDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+  4003	    if (event.key === 'Escape') {
+  4004	      event.preventDefault();
+  4005	      cancelDelete();
+  4006	    }
+  4007	  };
+  4008	
+  4009	  const scrollToSection = (id: string): void => {
+  4010	    if (typeof document === 'undefined') return;
+  4011	    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  4012	  };
+  4013	
+  4014	  const selectUser = (user: PortalUser): void => {
+  4015	    setSelected(user);
+  4016	    syncEdit(user);
+  4017	    scrollToSection('users-detail');
+  4018	  };
+  4019	
+  4020	  return (
+  4021	    <main className="k-page" data-testid="users-admin-page">
+  4022	      <h1>Uživatelé</h1>
+  4023	      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button secondary" type="button" onClick={() => load()}>Zkusit znovu</button>} /> : null}
+  4024	      {message ? <StateView title="Info" description={message} stateKey="info" /> : null}
+  4025	      {users === null ? <SkeletonPage /> : (
+  4026	        <div className="k-grid cards-2">
+  4027	          <Card title="Seznam uživatelů">
+  4028	            <div className="k-toolbar">
+  4029	              <button className="k-button" type="button" onClick={() => scrollToSection('users-create')}>Nový</button>
+  4030	              <input
+  4031	                className="k-input"
+  4032	                type="search"
+  4033	                value={filterQuery}
+  4034	                onChange={(event) => setFilterQuery(event.target.value)}
+  4035	                placeholder="Hledat jméno, email nebo roli"
+  4036	                aria-label="Filtrovat uživatele"
+  4037	              />
+  4038	              {hasFilter ? (
+  4039	                <button className="k-button secondary" type="button" onClick={() => setFilterQuery('')}>
+  4040	                  Zrušit filtr
+  4041	                </button>
+  4042	              ) : null}
+  4043	            </div>
+  4044	            {users.length === 0 ? (
+  4045	              <StateView title="Prázdný stav" description="Zatím neexistují žádní uživatelé portálu." stateKey="empty" />
+  4046	            ) : filteredUsers.length === 0 ? (
+  4047	              <StateView title="Nenalezeno" description="Filtru neodpovídá žádný uživatel." stateKey="empty" />
+  4048	            ) : (
+  4049	              <DataTable
+  4050	                headers={['Jméno', 'Příjmení', 'Email', 'Role', 'Poslední přihlášení', 'Přístup', 'Blokace', 'Akce']}
+  4051	                rows={filteredUsers.map((u) => [
+  4052	                  <button key={u.id} className="k-nav-link" type="button" onClick={() => selectUser(u)}>{u.first_name}</button>,
+  4053	                  u.last_name,
+  4054	                  u.email,
+  4055	                  u.roles.map(roleLabel).join(', '),
+  4056	                  formatDateTime(u.last_login_at),
+  4057	                  u.is_active ? 'Aktivní' : 'Neaktivní',
+  4058	                  describeLockState(u),
+  4059	                  <button key={`edit-${u.id}`} className="k-button secondary" type="button" onClick={() => selectUser(u)}>Upravit</button>,
+  4060	                ])}
+  4061	              />
+  4062	            )}
+  4063	          </Card>
+  4064	
+  4065	          <div id="users-detail">
+  4066	            <Card title="Detail / Úprava">
+  4067	              {!selected ? <p>Vyberte uživatele.</p> : (
+  4068	                <div className="k-form-grid">
+  4069	                  <fieldset className="k-card">
+  4070	                    <legend>Povinné údaje</legend>
+  4071	                    <div className="k-form-grid">
+  4072	                      <FormField id="edit_first_name" label="Jméno">
+  4073	                        <input id="edit_first_name" className="k-input" value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
+  4074	                      </FormField>
+  4075	                      <FormField id="edit_last_name" label="Příjmení">
+  4076	                        <input id="edit_last_name" className="k-input" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
+  4077	                      </FormField>
+  4078	                      <FormField id="edit_email" label="E-mail">
+  4079	                        <input
+  4080	                          id="edit_email"
+  4081	                          className="k-input"
+  4082	                          type="email"
+  4083	                          value={editEmail}
+  4084	                          onChange={(e) => setEditEmail(e.target.value)}
+  4085	                          onBlur={() => setEditEmailTouched(true)}
+  4086	                          aria-invalid={editEmailError ? 'true' : 'false'}
+  4087	                        />
+  4088	                      </FormField>
+  4089	                      {editEmailError ? <small>{editEmailError}</small> : null}
+  4090	                      <fieldset className="k-card">

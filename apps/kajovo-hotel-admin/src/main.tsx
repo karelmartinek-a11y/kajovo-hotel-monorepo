@@ -198,6 +198,10 @@ function readCsrfToken(): string {
     .find((item) => item.startsWith('kajovo_csrf='))
     ?.split('=')[1] ?? '';
 }
+
+function hasAuthCookieHint(): boolean {
+  return readCsrfToken().length > 0;
+}
 const portalRoleLabels: Record<PortalRole, string> = {
   'pokojská': 'Pokojská',
   'údržba': 'Údržba',
@@ -210,7 +214,7 @@ type ManagedPortalRole = PortalRole | 'admin';
 
 const managedPortalRoleOptions: ManagedPortalRole[] = ['admin', ...portalRoleOptions];
 const managedPortalRoleLabels: Record<ManagedPortalRole, string> = {
-  admin: 'Administrator',
+  admin: 'Administrátor',
   ...portalRoleLabels,
 };
 
@@ -317,6 +321,57 @@ type SmtpOperationalStatusReadModel = {
   last_test_success: boolean | null;
   last_test_recipient: string | null;
   last_test_error: string | null;
+};
+
+type BreakfastSyncRuntimeStatusReadModel = {
+  ok: boolean;
+  range_start: string;
+  range_end: string;
+  attempt: number;
+  imported: boolean;
+  imported_days: number;
+  imported_rows: number;
+  replaced_future_count: number;
+  reservations_count: number;
+  processed_days: number;
+  generated_at?: string | null;
+  error?: string | null;
+};
+
+type BreakfastSyncSettingsReadModel = {
+  provider: string;
+  connector_base_url: string;
+  scheduler_enabled: boolean;
+  access_token_configured: boolean;
+  client_token_configured: boolean;
+  breakfast_window_days_forward: number;
+  breakfast_food_codes: number[];
+  scheduler_interval_seconds: number;
+  scheduler_retry_seconds: number;
+  scheduler_max_retries: number;
+  schedule_times: string[];
+  runtime_status?: BreakfastSyncRuntimeStatusReadModel | null;
+};
+
+type BreakfastImportLogEntryReadModel = {
+  id: number;
+  started_at: string;
+  finished_at: string;
+  ok: boolean;
+  trigger: string;
+  details_json: string;
+};
+
+type BreakfastImportRunResponseModel = {
+  ok: boolean;
+  imported_count: number;
+  imported_days: number;
+  processed_days: number;
+  range_start: string;
+  range_end: string;
+  replaced_future_count: number;
+  reservations_count: number;
+  errors: string[];
 };
 
 function smtpSecurityHint(port: number, useTls: boolean, useSsl: boolean): string {
@@ -578,11 +633,6 @@ function reportStatusLabel(status: string | null | undefined): string {
   return status ?? '-';
 }
 
-function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStatus): number {
-  const value = summary?.status_counts?.[status];
-  return typeof value === 'number' ? value : 0;
-}
-
 function compareRoomNumbers(left: string, right: string): number {
   const leftMatch = left.match(/\d+/);
   const rightMatch = right.match(/\d+/);
@@ -603,6 +653,38 @@ function prepareBreakfastListItems(items: BreakfastOrder[]): BreakfastOrder[] {
   return [...items]
     .filter((item) => item.guest_count > 0)
     .sort((left, right) => compareRoomNumbers(left.room_number, right.room_number));
+}
+
+type BreakfastOverviewStats = {
+  totalBreakfasts: number;
+  servedBreakfasts: number;
+  remainingBreakfasts: number;
+};
+
+function buildBreakfastOverviewStats(items: BreakfastOrder[]): BreakfastOverviewStats {
+  const totalBreakfasts = items.reduce((sum, item) => sum + item.guest_count, 0);
+  const servedBreakfasts = items
+    .filter((item) => item.status === 'served')
+    .reduce((sum, item) => sum + item.guest_count, 0);
+  return {
+    totalBreakfasts,
+    servedBreakfasts,
+    remainingBreakfasts: Math.max(0, totalBreakfasts - servedBreakfasts),
+  };
+}
+
+function formatBreakfastHeadlineDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    return value;
+  }
+  return new Intl.DateTimeFormat('cs-CZ', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function countOpenIssues(items: Issue[]): number {
@@ -920,6 +1002,30 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
       credentials: 'include',
       headers,
       body: JSON.stringify(body),
+    });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-sync' && method === 'GET') {
+    const response = await fetch(path, { credentials: 'include' });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-import-logs' && method === 'GET') {
+    const response = await fetch(`${path}${url.search}`, { credentials: 'include' });
+    if (!response.ok) throw await buildHttpError(response);
+    return (await response.json()) as T;
+  }
+  if (path === '/api/v1/admin/settings/breakfast-import-run' && method === 'POST') {
+    const csrf = readCsrfToken();
+    const headers: Record<string, string> = {};
+    if (csrf) {
+      headers['x-csrf-token'] = csrf;
+    }
+    const response = await fetch(path, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
     });
     if (!response.ok) throw await buildHttpError(response);
     return (await response.json()) as T;
@@ -1295,7 +1401,6 @@ function BreakfastList(): JSX.Element {
   }, [loadDay, serviceDate]);
 
   const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
-  const editedRowsCount = Object.keys(drafts).length;
 
   const mergeOrderWithDraft = React.useCallback((order: BreakfastOrder): BreakfastOrder => {
     const draft = drafts[order.id];
@@ -1308,8 +1413,18 @@ function BreakfastList(): JSX.Element {
       diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
       diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
       diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
-    };
-  }, [drafts]);
+      };
+    }, [drafts]);
+
+  const effectiveVisibleItems = React.useMemo(
+    () => visibleItems.map((item) => mergeOrderWithDraft(item)),
+    [mergeOrderWithDraft, visibleItems],
+  );
+  const overviewStats = React.useMemo(
+    () => buildBreakfastOverviewStats(effectiveVisibleItems),
+    [effectiveVisibleItems],
+  );
+  const editedRowsCount = Object.keys(drafts).length;
 
   const filteredItems = visibleItems.filter((item) => {
     const effectiveItem = mergeOrderWithDraft(item);
@@ -1437,6 +1552,8 @@ function BreakfastList(): JSX.Element {
     if (!canClearDay) {
       return;
     }
+    const confirmed = window.confirm(`Opravdu chcete smazat všechny snídaně pro den ${serviceDate}? Operaci nelze vrátit.`);
+    if (!confirmed) return;
     const csrf = readCsrfToken();
     await fetchJson<void>(`/api/v1/breakfast/day/delete?service_date=${serviceDate}`, {
       method: 'DELETE',
@@ -1455,6 +1572,8 @@ function BreakfastList(): JSX.Element {
     if (!isAdmin) {
       return;
     }
+    const confirmed = window.confirm(`Opravdu chcete smazat snídaně v období ${rangeDeleteFrom} až ${rangeDeleteTo}? Operaci nelze vrátit.`);
+    if (!confirmed) return;
     const csrf = readCsrfToken();
     await fetchJson<void>(`/api/v1/breakfast/period/delete?date_from=${encodeURIComponent(rangeDeleteFrom)}&date_to=${encodeURIComponent(rangeDeleteTo)}`, {
       method: 'DELETE',
@@ -1626,12 +1745,16 @@ function BreakfastList(): JSX.Element {
       }} /> : null}
       {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
       {canReactivate ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
-      {canClearDay ? <button className="k-button secondary" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
+      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
       {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
     </div>
   );
 
   const listItems = isServingView ? visibleItems : filteredItems;
+  const breakfastImportStamp = summary?.source_imported_at
+    ? formatShortDateTime(summary.source_imported_at)
+    : 'nenalezeno';
+  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -1642,17 +1765,18 @@ function BreakfastList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <>
-          <div className="k-grid cards-3">
-            <Card title="Objednávky dne"><strong>{summary?.total_orders ?? 0}</strong></Card>
-            <Card title="Hosté dne"><strong>{summary?.total_guests ?? 0}</strong></Card>
-            <Card title="Čekající"><strong>{getSummaryCount(summary, 'pending')}</strong></Card>
+          <div className="k-card k-breakfast-overview-date">
+            <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
+            <h2 className="k-breakfast-overview-date__value">
+              {formatBreakfastHeadlineDate(breakfastSummaryDate)}
+            </h2>
           </div>
           {breakfastToolbar}
           {isAdmin ? (
             <div className="k-toolbar">
               <input className="k-input" type="date" aria-label="Smazat období od" value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
               <input className="k-input" type="date" aria-label="Smazat období do" value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
-              <button className="k-button secondary" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
+              <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
             </div>
           ) : null}
           {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
@@ -1663,7 +1787,7 @@ function BreakfastList(): JSX.Element {
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
             <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Datum', 'Pokoj', 'Host', 'Počet', 'Diety', 'Stav', 'Akce']}
+              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Stav', 'Akce']}
               rows={listItems.map((item) => {
                 const effectiveItem = mergeOrderWithDraft(item);
                 const isDirty = Boolean(drafts[item.id]);
@@ -1687,7 +1811,6 @@ function BreakfastList(): JSX.Element {
                 }
 
                 return [
-                  <span className={rowClass}>{effectiveItem.service_date}</span>,
                   <span className={rowClass}>{effectiveItem.room_number}</span>,
                   <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                   <span className={rowClass}>{effectiveItem.guest_count}</span>,
@@ -1698,6 +1821,14 @@ function BreakfastList(): JSX.Element {
               })}
             />
           )}
+          <div className="k-grid cards-3">
+            <Card title="Snídaní celkem"><strong>{overviewStats.totalBreakfasts}</strong></Card>
+            <Card title="Vydáno"><strong>{overviewStats.servedBreakfasts}</strong></Card>
+            <Card title="Zbývá vydat"><strong>{overviewStats.remainingBreakfasts}</strong></Card>
+          </div>
+          <p className="k-text-muted k-breakfast-overview-updated-at">
+            Data aktualizována: {breakfastImportStamp}
+          </p>
         </>
       )}
     </main>
@@ -2405,6 +2536,8 @@ function LostFoundDetail(): JSX.Element {
 
   const deleteItem = async (): Promise<void> => {
     if (!id) return;
+    const confirmed = window.confirm('Opravdu chcete smazat tento nález? Záznam zmizí ze seznamu nálezů a operaci nelze vrátit.');
+    if (!confirmed) return;
     try {
       await fetchJson(`/api/v1/lost-found/${id}`, { method: 'DELETE' });
       window.location.assign('/admin/ztraty-a-nalezy');
@@ -2424,7 +2557,7 @@ function LostFoundDetail(): JSX.Element {
             <Link className="k-nav-link" to="/ztraty-a-nalezy">Zpět na seznam</Link>
             {item.status !== 'claimed' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('claimed')}>Označit jako zpracováno</button> : null}
             {item.status !== 'new' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('new')}>Vrátit do nezpracovaných</button> : null}
-            <button className="k-button secondary" type="button" onClick={() => void deleteItem()}>Smazat</button>
+            <button className="k-button secondary danger" type="button" onClick={() => void deleteItem()}>Smazat</button>
           </div>
           <DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description],[ 'Vznik', formatDateTime(item.event_at)],[ 'Stav', lostFoundStatusLabel(item.status)] ]} />
           {photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie nálezu ${photo.id}`} className="k-photo-thumb" />)}</div> : null}
@@ -2576,6 +2709,8 @@ function IssuesDetail(): JSX.Element {
 
   const deleteIssue = async (): Promise<void> => {
     if (!id) return;
+    const confirmed = window.confirm('Opravdu chcete smazat tuto závadu? Záznam a připojené informace se odstraní a operaci nelze vrátit.');
+    if (!confirmed) return;
     try {
       await fetchJson(`/api/v1/issues/${id}`, { method: 'DELETE' });
       window.location.assign('/admin/zavady');
@@ -2603,7 +2738,7 @@ function IssuesDetail(): JSX.Element {
     <main className="k-page" data-testid="issues-detail-page">
       
       <h1>Detail závady</h1>
-      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Označit jako odstraněnou</button> : null}{item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}<button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Označit jako odstraněnou</button> : null}{item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}<button className="k-button secondary danger" type="button" onClick={() => void deleteIssue()}>Smazat</button></div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -2621,6 +2756,7 @@ function InventoryList(): JSX.Element {
   const [movementReference, setMovementReference] = React.useState<string>('');
   const [movementNote, setMovementNote] = React.useState<string>('');
   const [movementInfo, setMovementInfo] = React.useState<string | null>(null);
+  const [savingMovement, setSavingMovement] = React.useState(false);
 
   const loadItems = React.useCallback(() => {
     fetchJson<InventoryItem[]>('/api/v1/inventory')
@@ -2646,14 +2782,29 @@ function InventoryList(): JSX.Element {
   };
 
   const submitMovement = async (): Promise<void> => {
-    if (!movementItemId) {
+    const selectedItem = items.find((item) => String(item.id) === movementItemId);
+    setMovementInfo(null);
+    if (!selectedItem) {
       setError('Vyberte položku skladu.');
       return;
     }
-    if (movementQuantity <= 0) {
-      setError('Množství musí být větší než nula.');
+    if (!Number.isInteger(movementQuantity) || movementQuantity <= 0) {
+      setError('Množství musí být celé číslo větší než nula.');
       return;
     }
+    if (!movementDate) {
+      setError('Vyplňte datum dokladu.');
+      return;
+    }
+    if (movementType === 'in' && movementReference.trim().length === 0) {
+      setError('U příjmu vyplňte číslo dokladu.');
+      return;
+    }
+    if ((movementType === 'out' || movementType === 'adjust') && movementQuantity > selectedItem.current_stock) {
+      setError('Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav.');
+      return;
+    }
+    setSavingMovement(true);
     try {
       const response = await fetchJson<InventoryDetail>(`/api/v1/inventory/${movementItemId}/movements`, {
         method: 'POST',
@@ -2662,11 +2813,12 @@ function InventoryList(): JSX.Element {
           movement_type: movementType,
           quantity: movementQuantity,
           document_date: movementDate,
-          document_reference: movementReference || null,
-          note: movementNote || null,
+          document_reference: movementReference.trim() || null,
+          note: movementNote.trim() || null,
         }),
       });
       const latestMovement = [...response.movements].sort((left, right) => right.id - left.id)[0];
+      setItems((prev) => prev.map((item) => (item.id === response.id ? { ...item, current_stock: response.current_stock } : item)));
       setMovementInfo(latestMovement?.document_number
         ? `Pohyb uložen. Interní číslo ${latestMovement.document_number}.`
         : 'Pohyb uložen.');
@@ -2675,8 +2827,14 @@ function InventoryList(): JSX.Element {
       setMovementNote('');
       loadItems();
       setError(null);
-    } catch {
-      setError('Pohyb skladu se nepodařilo uložit.');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        setError(err.status === 422 ? 'Zadaná data skladového pohybu nejsou platná.' : err.message || 'Pohyb skladu se nepodařilo uložit.');
+      } else {
+        setError('Pohyb skladu se nepodařilo uložit.');
+      }
+    } finally {
+      setSavingMovement(false);
     }
   };
 
@@ -2684,27 +2842,27 @@ function InventoryList(): JSX.Element {
     <div className="k-card">
       <h2>Nový pohyb skladu</h2>
       <div className="k-form-grid">
-        <FormField id="inventory_movement_type" label="Druh pohybu">
+        <FormField id="inventory_movement_type" label="Druh pohybu *">
           <select id="inventory_movement_type" className="k-select" value={movementType} onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}>
             <option value="in">Příjem</option>
             <option value="out">Výdej</option>
             <option value="adjust">Odpis</option>
           </select>
         </FormField>
-        <FormField id="inventory_movement_item" label="Položka">
+        <FormField id="inventory_movement_item" label="Položka *">
           <select id="inventory_movement_item" className="k-select" value={movementItemId} onChange={(event) => setMovementItemId(event.target.value)}>
             {items.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </select>
         </FormField>
-        <FormField id="inventory_movement_quantity" label="Množství">
-          <input id="inventory_movement_quantity" type="number" min={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
+        <FormField id="inventory_movement_quantity" label="Množství *">
+          <input id="inventory_movement_quantity" type="number" min={1} step={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
         </FormField>
-        <FormField id="inventory_movement_date" label="Datum dokladu">
+        <FormField id="inventory_movement_date" label="Datum dokladu *">
           <input id="inventory_movement_date" type="date" className="k-input" value={movementDate} onChange={(event) => setMovementDate(event.target.value)} />
         </FormField>
-        <FormField id="inventory_movement_reference" label="Číslo dokladu (volitelné)">
+        <FormField id="inventory_movement_reference" label={movementType === 'in' ? 'Číslo dokladu *' : 'Číslo dokladu (volitelné)'}>
           <input id="inventory_movement_reference" className="k-input" value={movementReference} onChange={(event) => setMovementReference(event.target.value)} />
         </FormField>
         <FormField id="inventory_movement_note" label="Poznámka (volitelná)">
@@ -2712,9 +2870,9 @@ function InventoryList(): JSX.Element {
         </FormField>
       </div>
       <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void submitMovement()}>Potvrdit pohyb</button>
+        <button className="k-button" type="button" onClick={() => void submitMovement()} disabled={savingMovement}>{savingMovement ? 'Ukládám pohyb…' : 'Potvrdit pohyb'}</button>
       </div>
-      {movementInfo ? <p className="k-text-success">{movementInfo}</p> : null}
+      {movementInfo ? <p className="k-text-success" aria-live="polite">{movementInfo}</p> : null}
     </div>
   ) : null;
 
@@ -2910,7 +3068,21 @@ function InventoryDetail(): JSX.Element {
         setItem(response);
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Položku se nepodařilo načíst.'));
+      .catch((err) => {
+        if (err instanceof HttpError) {
+          if (err.status === 404) {
+            setError('Skladová položka nebyla nalezena. Zkontrolujte seznam skladu nebo se vraťte zpět.');
+          } else if (err.status === 403) {
+            setError('Nemáte oprávnění zobrazit detail skladové položky.');
+          } else if (err.status === 422) {
+            setError('Neplatný identifikátor skladové položky.');
+          } else {
+            setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+          }
+        } else {
+          setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+        }
+      });
   }, [id]);
 
   React.useEffect(() => {
@@ -2919,6 +3091,8 @@ function InventoryDetail(): JSX.Element {
 
   const deleteMovement = async (movementId: number): Promise<void> => {
     if (!id) return;
+    const confirmed = window.confirm('Opravdu chcete smazat tento skladový pohyb? Množství položky se přepočítá opačným pohybem a operaci nelze vrátit bez nového zápisu.');
+    if (!confirmed) return;
     const csrf = readCsrfToken();
     try {
       await fetchJson<void>(`/api/v1/inventory/${id}/movements/${movementId}`, {
@@ -2938,7 +3112,7 @@ function InventoryDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="inventory-detail-page">
       
-      <h1>Detail skladové položky</h1>
+      <h1>{item ? `Detail skladové položky: ${item.name}` : 'Detail skladové položky'}</h1>
       
       {error ? (
         <StateView
@@ -2977,7 +3151,7 @@ function InventoryDetail(): JSX.Element {
                 movement.quantity,
                 movement.document_reference ?? '-',
                 movement.note ?? '-',
-                <button className="k-button secondary" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>,
+                <button className="k-button secondary danger" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>,
               ])}
             />
           </div>
@@ -3402,6 +3576,7 @@ function UsersAdmin(): JSX.Element {
   const [createPhone, setCreatePhone] = React.useState('');
   const [createNote, setCreateNote] = React.useState('');
   const [createEmailTouched, setCreateEmailTouched] = React.useState(false);
+  const [confirmAdminRole, setConfirmAdminRole] = React.useState(false);
 
   const [pendingDelete, setPendingDelete] = React.useState<PortalUser | null>(null);
   const deleteTriggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -3423,12 +3598,15 @@ function UsersAdmin(): JSX.Element {
   const createPhoneValid = createPhone.trim() === '' || e164Regex.test(createPhone.trim());
   const editPhoneValid = editPhone.trim() === '' || e164Regex.test(editPhone.trim());
 
+  const createAdminSelected = createRoles.includes('admin');
+
   const createValid =
     createFirstName.trim().length > 0
     && createLastName.trim().length > 0
     && createEmailValid
     && (createPassword.trim().length === 0 || createPassword.length >= 8)
     && createRoles.length > 0
+    && (!createAdminSelected || confirmAdminRole)
     && createPhoneValid;
 
   const editValid =
@@ -3449,9 +3627,11 @@ function UsersAdmin(): JSX.Element {
             ? 'Dočasné heslo musí mít alespoň 8 znaků.'
             : createRoles.length === 0
               ? 'Vyberte alespoň jednu roli.'
-              : !createPhoneValid
-                ? 'Telefon musí být ve formátu E.164 nebo prázdný.'
-                : null;
+              : createAdminSelected && !confirmAdminRole
+                ? 'Potvrďte vědomé udělení administrátorských práv.'
+                : !createPhoneValid
+                  ? 'Telefon musí být ve formátu E.164 nebo prázdný.'
+                  : null;
 
   const createEmailError =
     createEmailTouched
@@ -3495,6 +3675,12 @@ function UsersAdmin(): JSX.Element {
     selectedUserIdRef.current = selected?.id ?? null;
     syncEdit(selected);
   }, [selected]);
+
+  React.useEffect(() => {
+    if (!createRoles.includes('admin')) {
+      setConfirmAdminRole(false);
+    }
+  }, [createRoles]);
 
   const load = React.useCallback(() => {
     setError(null);
@@ -3542,6 +3728,7 @@ function UsersAdmin(): JSX.Element {
       setCreateEmail('');
       setCreatePassword('');
       setCreateRoles([]);
+      setConfirmAdminRole(false);
       setCreatePhone('');
       setCreateNote('');
       setCreateEmailTouched(false);
@@ -3901,7 +4088,7 @@ function UsersAdmin(): JSX.Element {
                       </FormField>
                       {editEmailError ? <small>{editEmailError}</small> : null}
                       <fieldset className="k-card">
-                        <legend>Role</legend>
+                        <legend>Role *</legend>
                         {managedPortalRoleOptions.map((role) => (
                           <label key={`edit-role-${role}`} className="k-role-label">
                             <input type="checkbox" checked={editRoles.includes(role)} onChange={() => roleToggle(editRoles, setEditRoles, role)} /> {managedPortalRoleLabels[role]}
@@ -3946,7 +4133,7 @@ function UsersAdmin(): JSX.Element {
                       </button>
                     ) : null}
                     {canDelete ? (
-                      <button className="k-button secondary" type="button" onClick={(event) => requestDelete(event, selected)}>
+                      <button className="k-button secondary danger" type="button" onClick={(event) => requestDelete(event, selected)}>
                         Smazat
                       </button>
                     ) : (
@@ -3964,13 +4151,13 @@ function UsersAdmin(): JSX.Element {
                 <fieldset className="k-card">
                   <legend>Povinné údaje</legend>
                   <div className="k-form-grid">
-                    <FormField id="create_first_name" label="Jméno">
+                    <FormField id="create_first_name" label="Jméno *">
                       <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
                     </FormField>
-                    <FormField id="create_last_name" label="Příjmení">
+                    <FormField id="create_last_name" label="Příjmení *">
                       <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
                     </FormField>
-                    <FormField id="create_email" label="E-mail">
+                    <FormField id="create_email" label="E-mail *">
                       <input
                         id="create_email"
                         className="k-input"
@@ -3983,7 +4170,7 @@ function UsersAdmin(): JSX.Element {
                     </FormField>
                     {createEmailError ? <small>{createEmailError}</small> : null}
                     <fieldset className="k-card">
-                      <legend>Role</legend>
+                      <legend>Role *</legend>
                       {managedPortalRoleOptions.map((role) => (
                         <label key={`create-role-${role}`} className="k-role-label">
                           <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {managedPortalRoleLabels[role]}
@@ -3991,7 +4178,12 @@ function UsersAdmin(): JSX.Element {
                       ))}
                     </fieldset>
                     {createRoles.length === 0 ? <small>Vyberte alespoň jednu roli.</small> : null}
-                    <small>Role administrátora se spravuje stejně jako ostatní role uživatele.</small>
+                    {createAdminSelected ? (
+                      <label className="k-role-label">
+                        <input type="checkbox" checked={confirmAdminRole} onChange={(event) => setConfirmAdminRole(event.target.checked)} /> Potvrzuji, že tento uživatel má vědomě získat administrátorská práva.
+                      </label>
+                    ) : null}
+                    <small>Role Administrátor není výchozí a vyžaduje samostatné potvrzení.</small>
                   </div>
                 </fieldset>
                 <fieldset className="k-card">
@@ -4012,7 +4204,7 @@ function UsersAdmin(): JSX.Element {
                     </FormField>
                   </div>
                 </fieldset>
-                <button className="k-button" type="submit" disabled={saving}>Vytvořit uživatele</button>
+                <button className="k-button" type="submit" disabled={saving || !createValid}>Vytvořit uživatele</button>
               </form>
             </Card>
           </div>
@@ -4036,7 +4228,7 @@ function UsersAdmin(): JSX.Element {
           <div className="k-toolbar">
             <button
               ref={confirmDeleteRef}
-              className="k-button"
+              className="k-button danger"
               type="button"
               onClick={() => { void confirmDelete(); }}
               disabled={saving}
@@ -4069,6 +4261,8 @@ function SettingsAdmin(): JSX.Element {
   const [loadedConfig, setLoadedConfig] = React.useState<SmtpSettingsSnapshot | null>(null);
   const [status, setStatus] = React.useState<SmtpOperationalStatusReadModel | null>(null);
   const [mailDialog, setMailDialog] = React.useState<MailActionDialogState | null>(null);
+  const [breakfastSync, setBreakfastSync] = React.useState<BreakfastSyncSettingsReadModel | null>(null);
+  const [mailboxLogs, setMailboxLogs] = React.useState<BreakfastImportLogEntryReadModel[]>([]);
 
   const load = React.useCallback((options?: { preserveMessage?: boolean }) => {
     setLoading(true);
@@ -4079,13 +4273,21 @@ function SettingsAdmin(): JSX.Element {
     void Promise.allSettled([
       fetchJson<SmtpSettingsReadModel>('/api/v1/admin/settings/smtp'),
       fetchJson<SmtpOperationalStatusReadModel>('/api/v1/admin/settings/smtp/status'),
+      fetchJson<BreakfastSyncSettingsReadModel>('/api/v1/admin/settings/breakfast-sync'),
+      fetchJson<BreakfastImportLogEntryReadModel[]>('/api/v1/admin/settings/breakfast-import-logs?limit=100'),
     ])
-      .then(([settingsResult, statusResult]) => {
+      .then(([settingsResult, statusResult, breakfastSyncResult, logsResult]) => {
         const smtpStatus = statusResult.status === 'fulfilled' ? statusResult.value : null;
         if (statusResult.status === 'fulfilled') {
           setStatus(statusResult.value);
         } else {
           setStatus(null);
+        }
+        setBreakfastSync(breakfastSyncResult.status === 'fulfilled' ? breakfastSyncResult.value : null);
+        if (logsResult.status === 'fulfilled') {
+          setMailboxLogs(logsResult.value);
+        } else {
+          setMailboxLogs([]);
         }
         if (settingsResult.status === 'fulfilled') {
           const data = settingsResult.value;
@@ -4278,6 +4480,28 @@ function SettingsAdmin(): JSX.Element {
     }
   }
 
+  async function runManualBreakfastImport(): Promise<void> {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await fetchJson<BreakfastImportRunResponseModel>('/api/v1/admin/settings/breakfast-import-run', {
+        method: 'POST',
+      });
+      const summary = `Ruční synchronizace dokončena. Rozsah ${result.range_start} až ${result.range_end}, dny ${result.imported_days}/${result.processed_days}, položky ${result.imported_count}, rezervace ${result.reservations_count}, přepsané budoucí dny ${result.replaced_future_count}.`;
+      const details = result.errors.length > 0 ? ` Chyby: ${result.errors.join(' | ')}` : '';
+      setMessage(`${summary}${details}`);
+      load({ preserveMessage: true });
+    } catch (err) {
+      const description = err instanceof Error && err.message.trim()
+        ? err.message.trim()
+        : 'Ruční synchronizaci se nepodařilo spustit.';
+      setError(description);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <main className="k-page" data-testid="settings-admin-page">
       <h1>{'Nastaven\u00ed SMTP'}</h1>
@@ -4351,6 +4575,46 @@ function SettingsAdmin(): JSX.Element {
             </div>
           </div>
         </Card>
+        <Card title="Synchronizace snídaní z Better Hotel API">
+          <DataTable
+            headers={['Položka', 'Stav']}
+            rows={[
+              ['Zdroj', breakfastSync?.provider === 'better_hotel_api' ? 'Better Hotel API' : 'Neznámý'],
+              ['API URL', breakfastSync?.connector_base_url ?? '-'],
+              ['Scheduler aktivní', breakfastSync?.scheduler_enabled ? 'Ano' : 'Ne'],
+              ['Access token', breakfastSync?.access_token_configured ? 'Nastaven' : 'Chybí'],
+              ['Client token', breakfastSync?.client_token_configured ? 'Nastaven' : 'Chybí'],
+              ['Rozsah dopředu', breakfastSync ? `${breakfastSync.breakfast_window_days_forward} dnů` : '-'],
+              ['Kódy snídaně', breakfastSync?.breakfast_food_codes?.length ? breakfastSync.breakfast_food_codes.join(', ') : '-'],
+              ['Sloty běhu', breakfastSync?.schedule_times?.length ? breakfastSync.schedule_times.join(', ') : '-'],
+              ['Interval scheduleru', breakfastSync ? `${breakfastSync.scheduler_interval_seconds} s` : '-'],
+              ['Retry interval', breakfastSync ? `${breakfastSync.scheduler_retry_seconds} s` : '-'],
+              ['Max. retry', breakfastSync ? String(breakfastSync.scheduler_max_retries) : '-'],
+              ['Poslední běh', breakfastSync?.runtime_status?.generated_at ? formatDateTime(breakfastSync.runtime_status.generated_at) : 'Bez runtime artefaktu'],
+              ['Poslední rozsah', breakfastSync?.runtime_status ? `${breakfastSync.runtime_status.range_start} až ${breakfastSync.runtime_status.range_end}` : '-'],
+              ['Poslední výsledek', breakfastSync?.runtime_status ? (breakfastSync.runtime_status.ok ? 'OK' : 'Chyba') : 'Bez záznamu'],
+              ['Poslední import', breakfastSync?.runtime_status ? `${breakfastSync.runtime_status.imported_rows} položek / ${breakfastSync.runtime_status.imported_days} dnů` : '-'],
+              ['Poslední chyba', breakfastSync?.runtime_status?.error ?? '-'],
+            ]}
+          />
+          <div className="k-toolbar">
+            <button className="k-button secondary" type="button" onClick={() => void runManualBreakfastImport()} disabled={saving}>
+              Spustit synchronizaci teď
+            </button>
+          </div>
+        </Card>
+        <Card title="Forenzní log synchronizace snídaní">
+          <DataTable
+            headers={['Start', 'Konec', 'Stav', 'Spouštěč', 'Detaily']}
+            rows={mailboxLogs.map((item) => ([
+              formatDateTime(item.started_at),
+              formatDateTime(item.finished_at),
+              item.ok ? 'OK' : 'CHYBA',
+              item.trigger,
+              item.details_json,
+            ]))}
+          />
+        </Card>
         </>
       )}
       <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="smtp-mail-dialog" />
@@ -4387,6 +4651,7 @@ function AuthSelfServiceProfilePage(): JSX.Element {
   const [displayName, setDisplayName] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const [loggingOut, setLoggingOut] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
 
@@ -4429,6 +4694,27 @@ function AuthSelfServiceProfilePage(): JSX.Element {
     }
   }
 
+  async function logout(): Promise<void> {
+    setLoggingOut(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await fetch('/api/auth/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': readCsrfToken(),
+        },
+      });
+      window.location.assign('/admin/login');
+      return;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Odhlášení se nepodařilo dokončit.');
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <main className="k-page" data-testid="admin-profile-page">
       <h1>Profil administrátora</h1>
@@ -4447,7 +4733,7 @@ function AuthSelfServiceProfilePage(): JSX.Element {
         <div className="k-grid cards-1">
           <Card title="Identita">
             <div className="k-form-grid">
-              <FormField id="admin_profile_email" label="Admin email">
+              <FormField id="admin_profile_email" label="E-mail administrátora">
                 <input id="admin_profile_email" className="k-input" value={profile.email} disabled />
               </FormField>
               <FormField id="admin_profile_display_name" label="Jméno profilu">
@@ -4461,6 +4747,9 @@ function AuthSelfServiceProfilePage(): JSX.Element {
               <div className="k-toolbar">
                 <button className="k-button" type="button" onClick={() => void saveProfile()} disabled={saving}>
                   Uložit profil
+                </button>
+                <button className="k-button secondary" type="button" onClick={() => void logout()} disabled={loggingOut}>
+                  Odhlásit
                 </button>
               </div>
             </div>
@@ -4504,13 +4793,13 @@ function AuthStatusPage({
   return (
     <main className="k-page" data-testid="auth-status-page">
       <StateView
-        title="Overeni prihlaseni selhalo"
+        title="Ověření přihlášení selhalo"
         description={description}
         stateKey="error"
         action={(
           <div className="k-toolbar">
             <button className="k-button" type="button" onClick={onRetry}>Zkusit znovu</button>
-            <Link className="k-button secondary" to={loginPath}>Prejit na prihlaseni</Link>
+            <Link className="k-button secondary" to={loginPath}>Přejít na přihlášení</Link>
           </div>
         )}
       />
@@ -4621,13 +4910,13 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
   return (
     <main className="k-page k-admin-login-page" data-testid="admin-login-page">
       <section className="k-admin-login-layout">
-        <Card title="KájovoHotel Admin login">
-          <img className="k-admin-login-logo" src={brandWordmark} alt="KájovoHotel" data-brand-element="true" />
+        <Card title="Přihlášení do administrace Kájovo Hotel">
+          <img className="k-admin-login-logo" src={brandWordmark} alt="Kájovo Hotel" data-brand-element="true" />
           <form className="k-form-grid" onSubmit={(event) => void submit(event)}>
-            <FormField id="admin_login_email" label="Admin email">
+            <FormField id="admin_login_email" label="E-mail administrátora">
               <input id="admin_login_email" className="k-input" value={email} onChange={(event) => setEmail(event.target.value)} />
             </FormField>
-            <FormField id="admin_login_password" label="Admin heslo">
+            <FormField id="admin_login_password" label="Heslo administrátora">
               <input id="admin_login_password" className="k-input" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
             </FormField>
             {loginError ? (
@@ -4655,8 +4944,16 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
               </button>
             </div>
           </form>
-        </Card>
-      </section>
+          </Card>
+          <Card title="Správa hotelu v jednom vstupu" icon="layout-dashboard" eyebrow="Dnešní provoz">
+            <div className="k-grid">
+              <div className="k-nav-link"><span>Uživatelé a role</span></div>
+              <div className="k-nav-link"><span>Snídaně, závady a sklad</span></div>
+              <div className="k-nav-link"><span>SMTP a systémové nastavení</span></div>
+              <p className="k-subtle">Po přihlášení navážete na dashboard, operační moduly i správu přístupů bez přepínání mezi aplikacemi.</p>
+            </div>
+          </Card>
+        </section>
       <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="admin-hint-dialog" />
     </main>
   );
@@ -4664,7 +4961,9 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
+  const [authState, setAuthState] = React.useState<AuthLoadState>(() => (
+    hasAuthCookieHint() ? { status: 'loading' } : { status: 'unauthenticated' }
+  ));
   const adminLocale = typeof document !== 'undefined' ? document.documentElement.lang : 'cs';
   const roleSwitcherLabels = React.useMemo(() => {
     const bundle = getAuthBundle('admin', adminLocale);
@@ -4681,6 +4980,9 @@ function AppRoutes(): JSX.Element {
   }, []);
 
   React.useEffect(() => {
+    if (!hasAuthCookieHint()) {
+      return;
+    }
     refreshAuth();
   }, [refreshAuth]);
 
@@ -4690,7 +4992,7 @@ function AppRoutes(): JSX.Element {
     return (
       <KajovoStartupSplash
         href="/admin/"
-        eyebrow="KájovoHotel"
+        eyebrow="Kájovo Hotel"
         title="Spouštím administraci"
         description="Ověřuji administrátorskou relaci, role view a připravuji jednotný vstup do celé webové aplikace."
       />

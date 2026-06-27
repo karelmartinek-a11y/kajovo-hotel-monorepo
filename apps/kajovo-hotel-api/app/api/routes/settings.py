@@ -1,12 +1,18 @@
+import json
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, select, text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
+    BreakfastImportLogEntry,
+    BreakfastImportRunResponse,
+    BreakfastSyncRuntimeStatusRead,
+    BreakfastSyncSettingsRead,
     SmtpOperationalStatusRead,
     SmtpSettingsRead,
     SmtpSettingsUpsert,
@@ -14,9 +20,16 @@ from app.api.schemas import (
     SmtpTestEmailResponse,
 )
 from app.config import get_settings
-from app.db.models import PortalSmtpSettings
+from app.db.models import BreakfastImportRunLog, PortalSmtpSettings
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
+from app.services.breakfast.sync import (
+    SCHEDULE_TIMES,
+    BetterHotelSyncError,
+    parse_breakfast_food_codes,
+    prague_today,
+    sync_breakfast_range,
+)
 from app.services.mail import (
     MailMessage,
     SmtpDeliveryError,
@@ -351,7 +364,7 @@ def test_smtp_email(
         result = service.send(
             MailMessage(
                 recipient=payload.recipient,
-                subject="KájovoHotel SMTP test",
+                subject="Kájovo Hotel SMTP test",
                 body="Toto je testovaci email SMTP konfigurace.",
             )
         )
@@ -424,4 +437,116 @@ def test_smtp_email(
         connected=result.connected,
         send_attempted=result.send_attempted,
         message=message,
+    )
+
+
+def _load_breakfast_runtime_status() -> BreakfastSyncRuntimeStatusRead | None:
+    runtime_path = Path(get_settings().breakfast_runtime_artifact_dir) / "breakfast-scheduler-latest.json"
+    if not runtime_path.is_file():
+        return None
+    try:
+        payload = json.loads(runtime_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("breakfast.sync.runtime_artifact_read_failed")
+        return None
+
+    try:
+        generated_at_raw = payload.get("generated_at")
+        generated_at = (
+            datetime.fromisoformat(str(generated_at_raw))
+            if isinstance(generated_at_raw, str) and generated_at_raw
+            else None
+        )
+        return BreakfastSyncRuntimeStatusRead(
+            ok=bool(payload.get("ok")),
+            range_start=date.fromisoformat(str(payload.get("range_start"))),
+            range_end=date.fromisoformat(str(payload.get("range_end"))),
+            attempt=int(payload.get("attempt") or 1),
+            imported=bool(payload.get("imported")),
+            imported_days=int(payload.get("imported_days") or 0),
+            imported_rows=int(payload.get("imported_rows") or 0),
+            replaced_future_count=int(payload.get("replaced_future_count") or 0),
+            reservations_count=int(payload.get("reservations_count") or 0),
+            processed_days=int(payload.get("processed_days") or 0),
+            generated_at=generated_at,
+            error=str(payload.get("error")) if payload.get("error") else None,
+        )
+    except Exception:
+        logger.exception("breakfast.sync.runtime_artifact_parse_failed")
+        return None
+
+
+@router.get("/breakfast-sync", response_model=BreakfastSyncSettingsRead)
+def get_breakfast_sync_settings() -> BreakfastSyncSettingsRead:
+    settings = get_settings()
+    food_codes = sorted(parse_breakfast_food_codes(settings.better_hotel_breakfast_food_codes))
+    return BreakfastSyncSettingsRead(
+        provider="better_hotel_api",
+        connector_base_url=settings.better_hotel_connector_base_url,
+        scheduler_enabled=settings.breakfast_scheduler_enabled,
+        access_token_configured=bool(settings.better_hotel_access_token.strip()),
+        client_token_configured=bool(settings.better_hotel_client_token.strip()),
+        breakfast_window_days_forward=max(0, int(settings.better_hotel_breakfast_window_days_forward)),
+        breakfast_food_codes=food_codes,
+        scheduler_interval_seconds=max(60, int(settings.breakfast_scheduler_interval_seconds)),
+        scheduler_retry_seconds=max(5, int(settings.breakfast_scheduler_retry_seconds)),
+        scheduler_max_retries=max(1, int(settings.breakfast_scheduler_max_retries)),
+        schedule_times=list(SCHEDULE_TIMES),
+        runtime_status=_load_breakfast_runtime_status(),
+    )
+
+
+@router.get("/breakfast-import-logs", response_model=list[BreakfastImportLogEntry])
+def get_breakfast_import_logs(
+    limit: int = 100,
+    db: Session = Depends(get_db),
+) -> list[BreakfastImportLogEntry]:
+    safe_limit = max(1, min(limit, 500))
+    rows = db.scalars(
+        select(BreakfastImportRunLog)
+        .order_by(BreakfastImportRunLog.id.desc())
+        .limit(safe_limit)
+    ).all()
+    return [
+        BreakfastImportLogEntry(
+            id=row.id,
+            started_at=row.started_at,
+            finished_at=row.finished_at,
+            ok=bool(row.ok),
+            trigger=row.trigger,
+            details_json=row.details_json,
+        )
+        for row in rows
+    ]
+
+
+@router.post("/breakfast-import-run", response_model=BreakfastImportRunResponse)
+def run_breakfast_import_now(db: Session = Depends(get_db)) -> BreakfastImportRunResponse:
+    settings = get_settings()
+    today_local = prague_today()
+    range_end = today_local + timedelta(days=max(0, int(settings.better_hotel_breakfast_window_days_forward)))
+    try:
+        result = sync_breakfast_range(
+            db,
+            settings=settings,
+            range_start=today_local,
+            range_end=range_end,
+            trigger="manual_api",
+            note="Ruční synchronizace Better Hotel API",
+        )
+    except BetterHotelSyncError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+    return BreakfastImportRunResponse(
+        ok=result.ok,
+        imported_count=result.imported_rows,
+        imported_days=result.imported_days,
+        processed_days=result.processed_days,
+        range_start=result.range_start,
+        range_end=result.range_end,
+        replaced_future_count=result.replaced_future_count,
+        reservations_count=result.reservations_count,
+        errors=result.errors,
     )

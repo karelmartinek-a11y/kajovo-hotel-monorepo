@@ -1,0 +1,991 @@
+# inventory tests
+     1	import urllib.error
+     2	import urllib.request
+     3	from collections.abc import Callable
+     4	from http.cookiejar import CookieJar
+     5	from pathlib import Path
+     6	
+     7	ResponseData = dict[str, object] | list[dict[str, object]] | None
+     8	ApiRequest = Callable[..., tuple[int, ResponseData]]
+     9	
+    10	
+    11	def create_item(api_request: ApiRequest, **overrides: object) -> dict[str, object]:
+    12	    payload: dict[str, object] = {
+    13	        "name": "Pomerancovy dzus",
+    14	        "unit": "l",
+    15	        "min_stock": 10,
+    16	        "current_stock": 12,
+    17	        "amount_per_piece_base": 1,
+    18	    }
+    19	    payload.update(overrides)
+    20	    status, data = api_request("/api/v1/inventory", method="POST", payload=payload)
+    21	    assert status == 201
+    22	    assert isinstance(data, dict)
+    23	    return data
+    24	
+    25	
+    26	def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
+    27	    created = create_item(api_request)
+    28	
+    29	    status, listed = api_request("/api/v1/inventory")
+    30	    assert status == 200
+    31	    assert isinstance(listed, list)
+    32	    assert len(listed) == 1
+    33	
+    34	    update_status, updated = api_request(
+    35	        f"/api/v1/inventory/{created['id']}",
+    36	        method="PUT",
+    37	        payload={"min_stock": 15, "amount_per_piece_base": 6},
+    38	    )
+    39	    assert update_status == 200
+    40	    assert isinstance(updated, dict)
+    41	    assert updated["min_stock"] == 15
+    42	    assert updated["amount_per_piece_base"] == 6
+    43	
+    44	    movement_status, movement_result = api_request(
+    45	        f"/api/v1/inventory/{created['id']}/movements",
+    46	        method="POST",
+    47	        payload={
+    48	            "movement_type": "out",
+    49	            "quantity": 3,
+    50	            "document_date": "2026-03-05",
+    51	            "note": "Snidane",
+    52	        },
+    53	    )
+    54	    assert movement_status == 200
+    55	    assert isinstance(movement_result, dict)
+    56	    assert movement_result["current_stock"] == 9
+    57	    assert len(movement_result["movements"]) == 1
+    58	
+    59	    adjust_status, adjust_result = api_request(
+    60	        f"/api/v1/inventory/{created['id']}/movements",
+    61	        method="POST",
+    62	        payload={
+    63	            "movement_type": "adjust",
+    64	            "quantity": 2,
+    65	            "document_date": "2026-03-05",
+    66	            "note": "Inventura",
+    67	        },
+    68	    )
+    69	    assert adjust_status == 200
+    70	    assert isinstance(adjust_result, dict)
+    71	    assert adjust_result["current_stock"] == 7
+    72	    assert len(adjust_result["movements"]) == 2
+    73	
+    74	    in_status, in_result = api_request(
+    75	        f"/api/v1/inventory/{created['id']}/movements",
+    76	        method="POST",
+    77	        payload={
+    78	            "movement_type": "in",
+    79	            "quantity": 4,
+    80	            "document_date": "2026-03-05",
+    81	            "document_reference": "DL-TEST-001",
+    82	            "note": "Doplnění",
+    83	        },
+    84	    )
+    85	    assert in_status == 200
+    86	    assert isinstance(in_result, dict)
+    87	    assert in_result["current_stock"] == 11
+    88	    assert len(in_result["movements"]) == 3
+    89	
+    90	    detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
+    91	    assert detail_status == 200
+    92	    assert isinstance(detail, dict)
+    93	    assert detail["current_stock"] == 11
+    94	    assert len(detail["movements"]) == 3
+    95	    assert len(detail["audit_logs"]) >= 5
+    96	
+    97	
+    98	def test_inventory_low_stock_filter_and_validation(api_request: ApiRequest) -> None:
+    99	    low = create_item(api_request, name="Mleko", min_stock=10, current_stock=2)
+   100	    create_item(api_request, name="Kava", min_stock=3, current_stock=8)
+   101	
+   102	    filter_status, filtered = api_request("/api/v1/inventory", params={"low_stock": "true"})
+   103	    assert filter_status == 200
+   104	    assert isinstance(filtered, list)
+   105	    assert any(item["id"] == low["id"] for item in filtered)
+   106	
+   107	    out_status, out_error = api_request(
+   108	        f"/api/v1/inventory/{low['id']}/movements",
+   109	        method="POST",
+   110	        payload={"movement_type": "out", "quantity": 999, "document_date": "2026-03-05"},
+   111	    )
+   112	    assert out_status == 400
+   113	    assert isinstance(out_error, dict)
+   114	    assert out_error["detail"] == "Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav."
+   115	
+   116	
+   117	def test_inventory_document_numbering_and_pdf(api_request: ApiRequest, api_base_url: str) -> None:
+   118	    created = create_item(api_request, name="Sul", unit="g", amount_per_piece_base=1000)
+   119	
+   120	    status_in, data_in = api_request(
+   121	        f"/api/v1/inventory/{created['id']}/movements",
+   122	        method="POST",
+   123	        payload={
+   124	            "movement_type": "in",
+   125	            "quantity": 5,
+   126	            "document_date": "2026-03-05",
+   127	            "document_reference": "DL-2026-0001",
+   128	        },
+   129	    )
+   130	    assert status_in == 200
+   131	    assert isinstance(data_in, dict)
+   132	    first_doc = data_in["movements"][0]["document_number"]
+   133	    assert first_doc.startswith("PR-2026-")
+   134	
+   135	    status_out, data_out = api_request(
+   136	        f"/api/v1/inventory/{created['id']}/movements",
+   137	        method="POST",
+   138	        payload={
+   139	            "movement_type": "out",
+   140	            "quantity": 2,
+   141	            "document_date": "2026-03-05",
+   142	        },
+   143	    )
+   144	    assert status_out == 200
+   145	    assert isinstance(data_out, dict)
+   146	    out_doc = next(
+   147	        movement["document_number"]
+   148	        for movement in data_out["movements"]
+   149	        if movement["movement_type"] == "out"
+   150	    )
+   151	    assert out_doc.startswith("VY-2026-")
+   152	
+   153	    opener = getattr(api_request, "opener", urllib.request.build_opener())
+   154	    request = urllib.request.Request(url=f"{api_base_url}/api/v1/inventory/stocktake/pdf", method="GET")
+   155	    with opener.open(request, timeout=10) as response:
+   156	        assert response.status == 200
+   157	        assert response.headers.get("content-type") == "application/pdf"
+   158	        content = response.read()
+   159	        assert content.startswith(b"%PDF-")
+   160	
+   161	
+   162	def test_inventory_pictogram_upload_requires_csrf_and_persists_media(
+   163	    api_request: ApiRequest, api_base_url: str
+   164	) -> None:
+   165	    created = create_item(api_request, name="Miniatura", unit="ks", amount_per_piece_base=1)
+   166	
+   167	    opener = getattr(api_request, "opener", urllib.request.build_opener())
+   168	    csrf_token = next(
+   169	        (cookie.value for cookie in getattr(api_request, "jar", []) if cookie.name == "kajovo_csrf"),
+   170	        "",
+   171	    )
+   172	    fixture_path = Path(__file__).resolve().parents[3] / "apps" / "kajovo-hotel-admin" / "tests" / "fixtures" / "inventory-thumb.png"
+   173	    boundary = "inventory-boundary"
+   174	    file_bytes = fixture_path.read_bytes()
+   175	    multipart = (
+   176	        b"--" + boundary.encode("ascii") + b"\r\n"
+   177	        + b'Content-Disposition: form-data; name="file"; filename="inventory-thumb.png"\r\n'
+   178	        + b"Content-Type: image/png\r\n\r\n"
+   179	        + file_bytes
+   180	        + b"\r\n--" + boundary.encode("ascii") + b"--\r\n"
+   181	    )
+   182	
+   183	    missing_csrf_request = urllib.request.Request(
+   184	        url=f"{api_base_url}/api/v1/inventory/{created['id']}/pictogram",
+   185	        data=multipart,
+   186	        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+   187	        method="POST",
+   188	    )
+   189	    try:
+   190	        opener.open(missing_csrf_request, timeout=10)
+   191	        assert False, "Expected 403 for pictogram upload without CSRF"
+   192	    except urllib.error.HTTPError as exc:
+   193	        assert exc.code == 403
+   194	
+   195	    upload_request = urllib.request.Request(
+   196	        url=f"{api_base_url}/api/v1/inventory/{created['id']}/pictogram",
+   197	        data=multipart,
+   198	        headers={
+   199	            "Content-Type": f"multipart/form-data; boundary={boundary}",
+   200	            "x-csrf-token": csrf_token,
+   201	        },
+   202	        method="POST",
+   203	    )
+   204	    with opener.open(upload_request, timeout=10) as response:
+   205	        assert response.status == 200
+   206	
+   207	    detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
+   208	    assert detail_status == 200
+   209	    assert isinstance(detail, dict)
+   210	    assert isinstance(detail["pictogram_path"], str)
+   211	    assert isinstance(detail["pictogram_thumb_path"], str)
+   212	
+   213	    thumb_request = urllib.request.Request(
+   214	        url=f"{api_base_url}/api/v1/inventory/{created['id']}/pictogram/thumb",
+   215	        method="GET",
+   216	    )
+   217	    with opener.open(thumb_request, timeout=10) as response:
+   218	        assert response.status == 200
+   219	        assert response.headers.get_content_type().startswith("image/")
+   220	        assert len(response.read()) > 0
+   221	
+   222	
+   223	def test_inventory_delete_requires_admin(api_request: ApiRequest, api_base_url: str) -> None:
+   224	    created = create_item(api_request, name="Test Delete", unit="ks", amount_per_piece_base=1)
+   225	    status_in, data_in = api_request(
+   226	        f"/api/v1/inventory/{created['id']}/movements",
+   227	        method="POST",
+   228	        payload={
+   229	            "movement_type": "in",
+   230	            "quantity": 1,
+   230	            "quantity": 1,
+   231	            "document_date": "2026-03-05",
+   232	            "document_reference": "DL-2026-0002",
+   233	        },
+   234	    )
+   235	    assert status_in == 200
+   236	    assert isinstance(data_in, dict)
+   237	    movement_id = data_in["movements"][0]["id"]
+   238	
+   239	    portal_jar = CookieJar()
+   240	    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+   241	    login_payload = b"{\"email\":\"sklad@example.com\",\"password\":\"sklad-pass\"}"
+   242	    login_request = urllib.request.Request(
+   243	        url=f"{api_base_url}/api/auth/login",
+   244	        data=login_payload,
+   245	        headers={"Content-Type": "application/json"},
+   246	        method="POST",
+   247	    )
+   248	    with portal_opener.open(login_request, timeout=10) as response:
+   249	        assert response.status == 200
+   250	    csrf_token = next((cookie.value for cookie in portal_jar if cookie.name == "kajovo_csrf"), "")
+   251	    delete_request = urllib.request.Request(
+   252	        url=f"{api_base_url}/api/v1/inventory/{created['id']}/movements/{movement_id}",
+   253	        headers={"x-csrf-token": csrf_token},
+   254	        method="DELETE",
+   255	    )
+   256	    try:
+   257	        portal_opener.open(delete_request, timeout=10)
+   258	        assert False, "Expected 403 for portal delete"
+   259	    except urllib.error.HTTPError as exc:
+   260	        assert exc.code == 403
+   261	
+   262	    delete_status, _ = api_request(
+   263	        f"/api/v1/inventory/{created['id']}/movements/{movement_id}",
+   264	        method="DELETE",
+   265	    )
+   266	    assert delete_status == 204
+   267	
+   268	
+   269	def test_inventory_item_management_matches_sklad_scope(
+   270	    api_request: ApiRequest, api_base_url: str
+   271	) -> None:
+   272	    created = create_item(api_request, name="Admin Only Item", unit="ks", amount_per_piece_base=1)
+   273	
+   274	    portal_jar = CookieJar()
+   275	    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+   276	    login_payload = b"{\"email\":\"sklad@example.com\",\"password\":\"sklad-pass\"}"
+   277	    login_request = urllib.request.Request(
+   278	        url=f"{api_base_url}/api/auth/login",
+   279	        data=login_payload,
+   280	        headers={"Content-Type": "application/json"},
+   281	        method="POST",
+   282	    )
+   283	    with portal_opener.open(login_request, timeout=10) as response:
+   284	        assert response.status == 200
+   285	
+   286	    csrf_token = next((cookie.value for cookie in portal_jar if cookie.name == "kajovo_csrf"), "")
+   287	
+   288	    create_request = urllib.request.Request(
+   289	        url=f"{api_base_url}/api/v1/inventory",
+   290	        data=b'{\"name\":\"Portal Item\",\"unit\":\"ks\",\"min_stock\":1,\"current_stock\":0,\"amount_per_piece_base\":1}',
+   291	        headers={"Content-Type": "application/json", "x-csrf-token": csrf_token},
+   292	        method="POST",
+   293	    )
+   294	    with portal_opener.open(create_request, timeout=10) as response:
+   295	        assert response.status == 201
+   296	
+   297	    detail_request = urllib.request.Request(
+   298	        url=f"{api_base_url}/api/v1/inventory/{created['id']}",
+   299	        method="GET",
+   300	    )
+   301	    with portal_opener.open(detail_request, timeout=10) as response:
+   302	        assert response.status == 200
+   303	
+   304	    stocktake_request = urllib.request.Request(
+   305	        url=f"{api_base_url}/api/v1/inventory/stocktake/pdf",
+   306	        method="GET",
+   307	    )
+   308	    try:
+   309	        portal_opener.open(stocktake_request, timeout=10)
+   310	        assert False, "Expected 403 for portal stocktake export"
+   311	    except urllib.error.HTTPError as exc:
+   312	        assert exc.code == 403
+# user tests
+     1	import json
+     2	import sqlite3
+     3	import urllib.error
+     4	import urllib.request
+     5	from datetime import datetime
+     6	from http.cookiejar import CookieJar
+     7	from pathlib import Path
+     8	
+     9	from app.security.passwords import hash_password
+    10	from tests.test_support import admin_email, admin_login_payload, admin_password
+    11	
+    12	REQUEST_TIMEOUT_SECONDS = 30
+    13	ADMIN_EMAIL = admin_email()
+    14	ADMIN_PASSWORD = admin_password()
+    15	
+    16	
+    17	def api_request(
+    18	    opener: urllib.request.OpenerDirector,
+    19	    base_url: str,
+    20	    path: str,
+    21	    method: str = "GET",
+    22	    payload: dict[str, object] | None = None,
+    23	    headers: dict[str, str] | None = None,
+    24	) -> tuple[int, dict[str, object] | list[dict[str, object]] | None]:
+    25	    url = f"{base_url}{path}"
+    26	    data = None
+    27	    request_headers = headers.copy() if headers else {}
+    28	
+    29	    if payload is not None:
+    30	        data = json.dumps(payload).encode("utf-8")
+    31	        request_headers["Content-Type"] = "application/json"
+    32	
+    33	    request = urllib.request.Request(url=url, data=data, headers=request_headers, method=method)
+    34	    try:
+    35	        with opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+    36	            raw = response.read().decode("utf-8")
+    37	            return response.status, json.loads(raw) if raw else None
+    38	    except urllib.error.HTTPError as exc:
+    39	        raw = exc.read().decode("utf-8")
+    40	        parsed = json.loads(raw) if raw else None
+    41	        return exc.code, parsed
+    42	
+    43	
+    44	def csrf_header(cookie_jar: CookieJar) -> dict[str, str]:
+    45	    token = next((cookie.value for cookie in cookie_jar if cookie.name == "kajovo_csrf"), "")
+    46	    return {"x-csrf-token": token} if token else {}
+    47	
+    48	
+    49	def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
+    50	    jar = CookieJar()
+    51	    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    52	
+    53	    status, _ = api_request(
+    54	        opener,
+    55	        api_base_url,
+    56	        "/api/auth/admin/login",
+    57	        method="POST",
+    58	        payload=admin_login_payload(),
+    59	    )
+    60	    assert status == 200
+    61	
+    62	    status, created = api_request(
+    63	        opener,
+    64	        api_base_url,
+    65	        "/api/v1/users",
+    66	        method="POST",
+    67	        payload={"first_name": "Novy", "last_name": "Uzivatel", "email": "new.user@example.com", "roles": ["recepce"]},
+    68	        headers=csrf_header(jar),
+    69	    )
+    70	    assert status == 201
+    71	    assert isinstance(created, dict)
+    72	    user_id = int(created["id"])
+    73	
+    74	    status, users = api_request(opener, api_base_url, "/api/v1/users")
+    75	    assert status == 200
+    76	    assert isinstance(users, list)
+    77	    assert any(
+    78	        isinstance(user, dict) and user.get("email") == "new.user@example.com" for user in users
+    79	    )
+    80	
+    81	    status, detail = api_request(opener, api_base_url, f"/api/v1/users/{user_id}")
+    82	    assert status == 200
+    83	    assert isinstance(detail, dict)
+    84	    assert detail["email"] == "new.user@example.com"
+    85	
+    86	    status, updated = api_request(
+    87	        opener,
+    88	        api_base_url,
+    89	        f"/api/v1/users/{user_id}",
+    90	        method="PATCH",
+    91	        payload={
+    92	            "first_name": "Novy",
+    93	            "last_name": "Uzivatel",
+    94	            "email": "new.user@example.com",
+    95	            "roles": ["recepce", "snídaně"],
+    96	            "phone": "+420123456789",
+    97	            "note": "Poznamka",
+    98	        },
+    99	        headers=csrf_header(jar),
+   100	    )
+   101	    assert status == 200
+   102	    assert isinstance(updated, dict)
+   103	    assert updated["phone"] == "+420123456789"
+   104	    assert "recepce" in updated["roles"]
+   105	
+   106	    status, reset_link = api_request(
+   107	        opener,
+   108	        api_base_url,
+   109	        f"/api/v1/users/{user_id}/password/reset-link",
+   110	        method="POST",
+   111	        headers=csrf_header(jar),
+   112	    )
+   113	    assert status == 200
+   114	    assert isinstance(reset_link, dict)
+   115	    assert reset_link.get("ok") is True
+   116	    assert updated["is_locked"] is False
+   117	    assert updated["portal_locked_until"] is None
+   118	    assert updated["admin_locked_until"] is None
+   119	
+   120	    status, disabled = api_request(
+   121	        opener,
+   122	        api_base_url,
+   123	        f"/api/v1/users/{user_id}/active",
+   124	        method="PATCH",
+   125	        payload={"is_active": False},
+   126	        headers=csrf_header(jar),
+   127	    )
+   128	    assert status == 200
+   129	    assert isinstance(disabled, dict)
+   130	    assert disabled["is_active"] is False
+   131	
+   132	    status, _ = api_request(
+   133	        opener,
+   134	        api_base_url,
+   135	        f"/api/v1/users/{user_id}/active",
+   136	        method="PATCH",
+   137	        payload={"is_active": True},
+   138	        headers=csrf_header(jar),
+   139	    )
+   140	    assert status == 200
+   141	
+   142	    status, admin_reset = api_request(
+   143	        opener,
+   144	        api_base_url,
+   145	        "/api/v1/users/1/password/reset-link",
+   146	        method="POST",
+   147	        headers=csrf_header(jar),
+   148	    )
+   149	    assert status == 409
+   150	    assert isinstance(admin_reset, dict)
+   151	    assert admin_reset.get("detail") == "Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace."
+   152	
+   153	
+   154	def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None:
+   155	    admin_jar = CookieJar()
+   156	    admin_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(admin_jar))
+   157	
+   158	    status, _ = api_request(
+   159	        admin_opener,
+   160	        api_base_url,
+   161	        "/api/auth/admin/login",
+   162	        method="POST",
+   163	        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+   164	    )
+   165	    assert status == 200
+   166	
+   167	    status, created = api_request(
+   168	        admin_opener,
+   169	        api_base_url,
+   170	        "/api/v1/users",
+   171	        method="POST",
+   172	        payload={
+   173	            "first_name": "Role",
+   174	            "last_name": "Revoke",
+   175	            "email": "role.revoke@example.com",
+   176	            "password": "role-revoke-pass",
+   177	            "roles": ["recepce"],
+   178	        },
+   179	        headers=csrf_header(admin_jar),
+   180	    )
+   181	    assert status == 201
+   182	    assert isinstance(created, dict)
+   183	    user_id = int(created["id"])
+   184	
+   185	    portal_jar = CookieJar()
+   186	    portal_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(portal_jar))
+   187	    status, _ = api_request(
+   188	        portal_opener,
+   189	        api_base_url,
+   190	        "/api/auth/login",
+   500	    admin_user_id_status, admin_user_detail = api_request(
+   501	        opener,
+   502	        api_base_url,
+   503	        "/api/v1/users",
+   504	    )
+   505	    assert admin_user_id_status == 200
+   506	    assert isinstance(admin_user_detail, list)
+   507	    admin_user = next(
+   508	        (
+   509	            user
+   510	            for user in admin_user_detail
+   511	            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
+   512	        ),
+   513	        None,
+   514	    )
+   515	    assert isinstance(admin_user, dict)
+   516	    admin_id = int(admin_user["id"])
+   517	
+   518	    status, detail = api_request(
+   519	        opener,
+   520	        api_base_url,
+   521	        f"/api/v1/users/{admin_id}",
+   522	        method="DELETE",
+   523	        headers=csrf_header(jar),
+   524	    )
+   525	    assert status == 403
+   526	    assert isinstance(detail, dict)
+   527	    assert detail.get("detail") == "Nelze smazat vlastní účet."
+   528	
+   529	
+   530	def test_deactivated_admin_session_cannot_delete_remaining_admin(
+   531	    api_base_url: str,
+   532	    api_db_path: Path,
+   533	) -> None:
+   534	    jar = CookieJar()
+   535	    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+   536	
+   537	    status, _ = api_request(
+   538	        opener,
+   539	        api_base_url,
+   540	        "/api/auth/admin/login",
+   541	        method="POST",
+   542	        payload=admin_login_payload(),
+   543	    )
+   544	    assert status == 200
+   545	    csrf = csrf_header(jar)
+   546	
+   547	    status, users = api_request(opener, api_base_url, "/api/v1/users")
+   548	    assert status == 200
+   549	    assert isinstance(users, list)
+   550	    admin_user = next(
+   551	        (
+   552	            user
+   553	            for user in users
+   554	            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
+   555	        ),
+   556	        None,
+   557	    )
+   558	    assert isinstance(admin_user, dict)
+   559	    admin_id = int(admin_user["id"])
+   560	
+   561	    last_admin_email = "solo.admin@example.com"
+   562	    hashed = hash_password("solo-admin-pass")
+   563	    new_user_id = None
+   564	    try:
+   565	        with sqlite3.connect(api_db_path) as connection:
+   566	            cursor = connection.cursor()
+   567	            cursor.execute(
+   568	                """
+   569	                INSERT INTO portal_users (first_name, last_name, email, password_hash, is_active)
+   570	                VALUES (?, ?, ?, ?, 1)
+   571	                """,
+   572	                ("Solo", "Admin", last_admin_email, hashed),
+   573	            )
+   574	            connection.commit()
+   575	            new_user_id = cursor.lastrowid
+   576	            cursor.execute(
+   577	                """
+   578	                INSERT INTO portal_user_roles (user_id, role)
+   579	                VALUES (?, 'admin')
+   580	                """,
+   581	                (new_user_id,),
+   582	            )
+   583	            connection.commit()
+   584	
+   585	        status, _ = api_request(
+   586	            opener,
+   587	            api_base_url,
+   588	            f"/api/v1/users/{admin_id}/active",
+   589	            method="PATCH",
+   590	            payload={"is_active": False},
+   591	            headers=csrf,
+   592	        )
+   593	        assert status == 200
+   594	
+   595	        status, detail = api_request(
+   596	            opener,
+   597	            api_base_url,
+   598	            f"/api/v1/users/{new_user_id}",
+   599	            method="DELETE",
+   600	            headers=csrf,
+   601	        )
+   602	        assert status == 401
+   603	        assert isinstance(detail, dict)
+   604	        assert detail.get("detail") == "Authentication required"
+   605	    finally:
+   606	        with sqlite3.connect(api_db_path) as connection:
+   607	            connection.execute(
+   608	                "UPDATE portal_users SET is_active = 1 WHERE id = ?",
+   609	                (admin_id,),
+   610	            )
+   611	            if new_user_id is not None:
+   612	                connection.execute("DELETE FROM portal_user_roles WHERE user_id = ?", (new_user_id,))
+   613	                connection.execute("DELETE FROM portal_users WHERE id = ?", (new_user_id,))
+   614	            connection.commit()
+   615	
+   616	
+   617	def test_admin_cannot_deactivate_last_active_admin(api_base_url: str) -> None:
+   618	    jar = CookieJar()
+   619	    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+   620	
+   621	    status, _ = api_request(
+   622	        opener,
+   623	        api_base_url,
+   624	        "/api/auth/admin/login",
+   625	        method="POST",
+   626	        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+   627	    )
+   628	    assert status == 200
+   629	
+   630	    status, users = api_request(opener, api_base_url, "/api/v1/users")
+   631	    assert status == 200
+   632	    assert isinstance(users, list)
+   633	    admin_user = next(
+   634	        (
+   635	            user
+   636	            for user in users
+   637	            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
+   638	        ),
+   639	        None,
+   640	    )
+   641	    assert isinstance(admin_user, dict)
+   642	
+   643	    status, detail = api_request(
+   644	        opener,
+   645	        api_base_url,
+   646	        f"/api/v1/users/{int(admin_user['id'])}/active",
+   647	        method="PATCH",
+   648	        payload={"is_active": False},
+   649	        headers=csrf_header(jar),
+   650	    )
+   651	    assert status == 409
+   652	    assert isinstance(detail, dict)
+   653	    assert detail.get("detail") == "Nelze deaktivovat posledního aktivního administrátora."
+   654	
+   655	
+   656	def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> None:
+   657	    jar = CookieJar()
+   658	    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+   659	
+   660	    status, _ = api_request(
+   661	        opener,
+   662	        api_base_url,
+   663	        "/api/auth/admin/login",
+   664	        method="POST",
+   665	        payload={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
+   666	    )
+   667	    assert status == 200
+   668	
+   669	    status, users = api_request(opener, api_base_url, "/api/v1/users")
+   670	    assert status == 200
+   671	    assert isinstance(users, list)
+   672	    admin_user = next(
+   673	        (
+   674	            user
+   675	            for user in users
+   676	            if isinstance(user, dict) and user.get("email") == ADMIN_EMAIL
+   677	        ),
+   678	        None,
+   679	    )
+   680	    assert isinstance(admin_user, dict)
+   681	
+   682	    status, detail = api_request(
+   683	        opener,
+   684	        api_base_url,
+   685	        f"/api/v1/users/{int(admin_user['id'])}",
+   686	        method="PATCH",
+   687	        payload={
+   688	            "first_name": "Admin",
+   689	            "last_name": "User",
+   690	            "email": ADMIN_EMAIL,
+   691	            "roles": ["recepce"],
+   692	            "phone": None,
+   693	            "note": None,
+   694	        },
+   695	        headers=csrf_header(jar),
+   696	    )
+   697	    assert status == 409
+   698	    assert isinstance(detail, dict)
+   699	    assert detail.get("detail") == "Nelze odebrat administrátorskou roli poslednímu aktivnímu administrátorovi."
+   700	
+   701	def test_password_not_logged_in_audit_detail(
+   702	    api_base_url: str, api_db_path: Path
+   703	) -> None:
+   704	    jar = CookieJar()
+   705	    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+   706	    status, _ = api_request(
+   707	        opener,
+   708	        api_base_url,
+   709	        "/api/auth/admin/login",
+   710	        method="POST",
+# self-service profile tests
+    95	            "note": "Self service admin",
+    96	        },
+    97	        headers=csrf_header(jar),
+    98	    )
+    99	    assert status == 200
+   100	    assert isinstance(updated, dict)
+   101	    assert updated["first_name"] == "Updated"
+   102	    assert updated["phone"] == "+420777888999"
+   103	
+   104	    status, body = raw_request(
+   105	        opener,
+   106	        api_base_url,
+   107	        "/api/auth/change-password",
+   108	        method="POST",
+   109	        payload={"old_password": admin_password, "new_password": "ProfileAdmin456"},
+   110	        headers=csrf_header(jar),
+   111	    )
+   112	    assert status == 409
+   113	    assert isinstance(body, dict)
+   114	    assert body["detail"] == "Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace."
+   115	
+   116	    status, me = raw_request(opener, api_base_url, "/api/auth/me")
+   117	    assert status == 200
+   118	    assert isinstance(me, dict)
+   119	    assert me["email"] == admin_email
+   120	
+# visual tests
+     1	import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+     2	import { getAdminCredentials } from '../test-admin-credentials';
+     3	
+     4	const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
+     5	const LOGIN_PRINCIPAL_LABEL = /email|uživatelské jméno/i;
+     6	
+     7	type ViewCheck = {
+     8	  name: string;
+     9	  path: string;
+    10	  readyTestId?: string;
+    11	};
+    12	
+    13	type PortalScenario = {
+    14	  name: string;
+    15	  roles: string[];
+    16	  landingPath: RegExp;
+    17	  views: ViewCheck[];
+    18	};
+    19	
+    20	const utilityViews: ViewCheck[] = [
+    21	  { name: 'login', path: '/login', readyTestId: 'portal-login-page' },
+    22	  { name: 'intro', path: '/intro' },
+    23	  { name: 'offline', path: '/offline' },
+    24	  { name: 'maintenance', path: '/maintenance' },
+    25	  { name: '404', path: '/404' },
+    26	];
+    27	
+    28	const portalScenarios: PortalScenario[] = [
+    29	  {
+    30	    name: 'recepce',
+    31	    roles: ['recepce'],
+    32	    landingPath: /\/recepce$/,
+    33	    views: [
+    34	      { name: 'recepce', path: '/recepce', readyTestId: 'reception-hub-page' },
+    35	      { name: 'snídaně seznam', path: '/snidane', readyTestId: 'breakfast-list-page' },
+    36	      { name: 'snídaně formulář', path: '/snidane/nova', readyTestId: 'breakfast-create-page' },
+    37	      { name: 'ztráty a nálezy seznam', path: '/ztraty-a-nalezy', readyTestId: 'lost-found-list-page' },
+    38	      { name: 'ztráty a nálezy formulář', path: '/ztraty-a-nalezy/novy', readyTestId: 'lost-found-create-page' },
+    39	      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    40	    ],
+    41	  },
+    42	  {
+    43	    name: 'pokojská',
+    44	    roles: ['pokojská'],
+    45	    landingPath: /\/pokojska$/,
+    46	    views: [
+    47	      { name: 'pokojská', path: '/pokojska', readyTestId: 'housekeeping-form-page' },
+    48	      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    49	    ],
+    50	  },
+    51	  {
+    52	    name: 'údržba',
+    53	    roles: ['údržba'],
+    54	    landingPath: /\/zavady$/,
+    55	    views: [
+    56	      { name: 'závady seznam', path: '/zavady', readyTestId: 'issues-list-page' },
+    57	      { name: 'závady formulář', path: '/zavady/nova', readyTestId: 'issues-create-page' },
+    58	      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    59	    ],
+    60	  },
+    61	  {
+    62	    name: 'snídaně',
+    63	    roles: ['snídaně'],
+    64	    landingPath: /\/snidane$/,
+    65	    views: [
+    66	      { name: 'snídaně seznam', path: '/snidane', readyTestId: 'breakfast-list-page' },
+    67	      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    68	    ],
+    69	  },
+    70	  {
+    71	    name: 'sklad',
+    72	    roles: ['sklad'],
+    73	    landingPath: /\/sklad$/,
+    74	    views: [
+    75	      { name: 'sklad seznam', path: '/sklad', readyTestId: 'inventory-list-page' },
+    76	      { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
+    77	    ],
+    78	  },
+    79	];
+    80	
+    81	async function csrfHeaderFor(context: APIRequestContext) {
+    82	  const state = await context.storageState();
+    83	  const csrf = state.cookies.find((cookie: { name: string; value: string }) => cookie.name === 'kajovo_csrf')?.value;
+    84	  expect(csrf, 'Expected CSRF cookie after admin login').toBeTruthy();
+    85	  return { 'x-csrf-token': csrf! };
+    86	}
+    87	
+    88	function uniqueSuffix(projectName: string, parallelIndex: number) {
+    89	  const uuid =
+    90	    globalThis.crypto?.randomUUID?.() ??
+    91	    `${Date.now()}-${parallelIndex}-${Math.random().toString(36).slice(2, 10)}`;
+    92	  return `${projectName}-${parallelIndex}-${uuid}`;
+    93	}
+    94	
+    95	async function createPortalUser(
+    96	  request: APIRequestContext,
+    97	  testInfo: { project: { name: string }; parallelIndex: number },
+    98	  roles: string[],
+    99	) {
+   100	  const adminLoginResponse = await request.post('/api/auth/admin/login', {
+   101	    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+   102	  });
+   103	  expect(adminLoginResponse.ok()).toBeTruthy();
+   104	
+   105	  const csrfHeaders = await csrfHeaderFor(request);
+   106	  const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
+   107	  const email = `visual-${suffix}@kajovohotel.local`;
+   108	  const password = `Visual-${suffix}-pass`;
+   109	
+   110	  const createUserResponse = await request.post('/api/v1/users', {
+   111	    data: {
+   112	      email,
+   113	      password,
+   114	      first_name: 'Visual',
+   115	      last_name: 'Audit',
+   116	      roles,
+   117	    },
+   118	    headers: csrfHeaders,
+   119	  });
+   120	  expect(createUserResponse.status()).toBe(201);
+   121	
+   122	  return { email, password };
+   123	}
+   124	
+   125	async function loginPortal(page: Page, email: string, password: string, landingPath: RegExp, roleName: string) {
+   126	  await page.goto('/login', { waitUntil: 'networkidle' });
+   127	  await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
+   128	  await page.getByLabel(/heslo/i).fill(password);
+   129	  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+   130	  await expect(page).toHaveURL(landingPath, { timeout: 15000 });
+   131	  const roleSelect = page.getByTestId('role-select-page');
+   132	  if (await roleSelect.isVisible().catch(() => false)) {
+   133	    await page.getByRole('button', { name: new RegExp(`pokračovat jako ${roleName}`, 'i') }).click();
+   134	    await expect(page).toHaveURL(landingPath, { timeout: 15000 });
+   135	  }
+   136	}
+   137	
+   138	async function waitForView(page: Page, view: ViewCheck) {
+   139	  await page.goto(view.path, { waitUntil: 'networkidle' });
+   140	  if (view.readyTestId) {
+   141	    await expect(page.getByTestId(view.readyTestId)).toBeVisible();
+   142	  } else {
+   143	    await expect(page.locator('main')).toBeVisible();
+   144	  }
+   145	}
+   146	
+   147	async function visibleBrandCount(page: Page): Promise<number> {
+   148	  return page.locator('[data-brand-element="true"]').evaluateAll((nodes) =>
+   149	    nodes.filter((node) => {
+   150	      const element = node as HTMLElement;
+   151	      const style = window.getComputedStyle(element);
+   152	      const rect = element.getBoundingClientRect();
+   153	      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+   154	    }).length,
+   155	  );
+   156	}
+   157	
+   158	async function interactiveCandidates(page: Page): Promise<Locator[]> {
+   159	  const selectors = [
+   160	    'main button:visible',
+   161	    'main a[href]:visible',
+   162	    'main select:visible',
+   163	    'main input:visible',
+   164	    'main textarea:visible',
+   165	  ];
+   166	  const locators: Locator[] = [];
+   167	  for (const selector of selectors) {
+   168	    const locator = page.locator(selector);
+   169	    const count = await locator.count();
+   170	    for (let i = 0; i < Math.min(count, 6); i += 1) {
+   171	      locators.push(locator.nth(i));
+   172	    }
+   173	  }
+   174	  return locators;
+   175	}
+   176	
+   177	async function expectElementUnobscured(locator: Locator) {
+   178	  await locator.evaluate((element) => {
+   179	    element.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+   180	  });
+   181	  const box = await locator.boundingBox();
+   182	  if (!box) {
+   183	    return;
+   184	  }
+   185	  const x = box.x + box.width / 2;
+   186	  const y = box.y + box.height / 2;
+   187	  const unobscured = await locator.evaluate((element, point) => {
+   188	    const hit = document.elementFromPoint(point.x, point.y);
+   189	    return Boolean(hit && (hit === element || element.contains(hit) || hit.contains(element)));
+   190	  }, { x, y });
+   191	  expect(unobscured).toBeTruthy();
+   192	}
+   193	
+   194	async function assertKdgsGeometry(page: Page, viewName: string) {
+   195	  const brandCount = await visibleBrandCount(page);
+   196	  expect.soft(brandCount, `${viewName}: počet brand prvků musí být 1 až 2`).toBeGreaterThanOrEqual(1);
+   197	  expect.soft(brandCount, `${viewName}: počet brand prvků musí být 1 až 2`).toBeLessThanOrEqual(2);
+   198	
+   199	  const overflow = await page.evaluate(() => {
+   200	    const root = document.documentElement;
+   201	    return {
+   202	      scrollWidth: root.scrollWidth,
+   203	      clientWidth: root.clientWidth,
+   204	      bodyScrollWidth: document.body.scrollWidth,
+   205	      bodyClientWidth: document.body.clientWidth,
+   206	    };
+   207	  });
+   208	  expect.soft(
+   209	    overflow.scrollWidth <= overflow.clientWidth + 1,
+   210	    `${viewName}: root viewport nesmí mít horizontální overflow`,
+   211	  ).toBeTruthy();
+   212	  expect.soft(
+   213	    overflow.bodyScrollWidth <= overflow.bodyClientWidth + 1,
+   214	    `${viewName}: body nesmí mít horizontální overflow`,
+   215	  ).toBeTruthy();
+   216	
+   217	  const candidates = await interactiveCandidates(page);
+   218	  for (const locator of candidates) {
+   219	    await expectElementUnobscured(locator);
+   220	  }
+   221	}
+   222	
+   223	test.describe('KDGS vizuální a geometrická kontrola portálu', () => {
+   224	  for (const view of utilityViews) {
+   225	    test(`utility view ${view.name} drží brand a geometrii`, async ({ page }) => {
+   226	      await waitForView(page, view);
+   227	      await assertKdgsGeometry(page, view.name);
+   228	    });
+   229	  }
+   230	});
+   231	
+   232	test.describe('KDGS role scénáře portálu', () => {
+   233	  test.describe.configure({ mode: 'serial' });
+   234	  test.setTimeout(90000);
+   235	
+   236	  for (const scenario of portalScenarios) {
+   237	    test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
+   238	      const user = await createPortalUser(request, testInfo, scenario.roles);
+   239	      await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
+   240	
+   241	      for (const view of scenario.views) {
+   242	        await waitForView(page, view);
+   243	        await assertKdgsGeometry(page, `${scenario.name} / ${view.name}`);
+   244	      }
+   245	    });
+   246	  }
+   247	});

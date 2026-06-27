@@ -13,9 +13,10 @@ const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\"'\"'`)
 const powerShellQuote = (value: string): string => `'${value.replace(/'/g, "''")}'`;
 
 const dbPathNormalized = isWin ? smokeDbPath.replace(/\\/g, '/') : smokeDbPath;
+const pythonCmd = isWin ? 'python' : 'python3';
 const initDbCommand = isWin
-  ? `powershell -NoLogo -NoProfile -Command "$env:PYTHONPATH='..\\\\kajovo-hotel-api'; python ..\\\\kajovo-hotel-api\\\\scripts\\\\init_smoke_db.py ${smokeDbPath}"`
-  : `PYTHONPATH=../kajovo-hotel-api python ../kajovo-hotel-api/scripts/init_smoke_db.py ${smokeDbPath}`;
+  ? `powershell -NoLogo -NoProfile -Command "$env:PYTHONPATH='..\\\\kajovo-hotel-api'; ${pythonCmd} ..\\\\kajovo-hotel-api\\\\scripts\\\\init_smoke_db.py ${smokeDbPath}"`
+  : `PYTHONPATH=../kajovo-hotel-api ${pythonCmd} ../kajovo-hotel-api/scripts/init_smoke_db.py ${smokeDbPath}`;
 
 const apiEnv = [
   `PYTHONPATH=../kajovo-hotel-api`,
@@ -38,8 +39,8 @@ const apiEnvWin = [
 ].join('; ');
 
 const apiCommand = isWin
-  ? `powershell -NoLogo -NoProfile -Command \"${apiEnvWin}; python -m uvicorn app.main:app --host 127.0.0.1 --port 18000\"`
-  : `${apiEnv} uvicorn app.main:app --host 127.0.0.1 --port 18000`;
+  ? `powershell -NoLogo -NoProfile -Command \"${apiEnvWin}; ${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 18000\"`
+  : `${apiEnv} ${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 18000`;
 
 const appCommand = isWin
   ? `powershell -NoLogo -NoProfile -Command \"$env:PLAYWRIGHT_API_PORT='18000'; corepack pnpm dev --host 127.0.0.1 --port 4174\"`

@@ -1,53 +1,24 @@
-# How to run (developer)
+# Jak spustit Kájovo Hotel lokálně
 
-## Požadavky
+## Aktivní části
 
-- Node.js 20+
-- pnpm 9+
-- Python 3.11+
+- `apps/kajovo-hotel-web` – provozní portál
+- `apps/kajovo-hotel-admin` – administrace
+- `apps/kajovo-hotel-api` – backend
 
-## 1) Instalace závislostí
+## Základní postup
 
-```bash
-cd <repo-root>
-pnpm install
-```
+1. Nainstalujte JavaScript závislosti podle lockfilu:
+   - `pnpm install --frozen-lockfile`
+2. Nainstalujte API závislosti:
+   - `python -m pip install -e ./apps/kajovo-hotel-api[dev]`
+3. Spusťte API:
+   - `uvicorn app.main:app --reload --app-dir apps/kajovo-hotel-api --port 8000`
+4. Spusťte portál:
+   - `pnpm --filter @kajovo/kajovo-hotel-web dev`
+5. Spusťte administraci:
+   - `pnpm --filter @kajovo/kajovo-hotel-admin dev`
 
-## 2) API
+## Poznámka k Androidu
 
-```bash
-cd apps/kajovo-hotel-api
-python -m pip install -e .[dev]
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Health check:
-
-```bash
-curl -fsS http://127.0.0.1:8000/health
-```
-
-## 3) Admin frontend
-
-```bash
-cd apps/kajovo-hotel-admin
-pnpm dev
-```
-
-## 4) Portal frontend
-
-```bash
-cd apps/kajovo-hotel-web
-pnpm dev
-```
-
-## 5) Testy a gate kontroly
-
-Z rootu repozitáře:
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm unit
-pnpm ci:gates
-```
+Legacy Android aplikace byla z tohoto repozitáře vyřazena. Lokální spuštění ani webový deploy se na Android build, APK ani signing již nevážou.

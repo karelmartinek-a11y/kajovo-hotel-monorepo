@@ -76,6 +76,26 @@ type BreakfastImportResponse = {
   items: BreakfastImportItem[];
 };
 
+type BreakfastManualRefreshProgressItem = {
+  at: string;
+  step: string;
+  message: string;
+};
+
+type BreakfastManualRefreshJob = {
+  id: number;
+  job_key: string;
+  service_date: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  progress: BreakfastManualRefreshProgressItem[];
+  message: string | null;
+  error_message: string | null;
+  imported_count: number;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
 type LostFoundItem = LostFoundItemRead;
 
 type LostFoundPayload = LostFoundItemCreate;
@@ -117,6 +137,43 @@ type MediaPhoto = {
 };
 
 type HousekeepingDraftMode = 'issue' | 'lost_found';
+
+class HttpError extends Error {
+  status: number;
+  detail: unknown;
+
+  constructor(status: number, message: string, detail: unknown = null) {
+    super(message);
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+async function buildHttpError(response: Response): Promise<HttpError> {
+  const status = response.status;
+  const raw = await response.text();
+  let detail: unknown = null;
+  let message = raw || `HTTP ${status}`;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { detail?: unknown };
+      detail = parsed;
+      if (typeof parsed.detail === 'string') {
+        message = parsed.detail;
+      } else if (Array.isArray(parsed.detail)) {
+        const messages = parsed.detail
+          .map((item) => (typeof item === 'object' && item && 'msg' in item && typeof item.msg === 'string' ? item.msg : null))
+          .filter((item): item is string => item !== null);
+        if (messages.length > 0) {
+          message = messages.join(' ');
+        }
+      }
+    } catch {
+      detail = raw;
+    }
+  }
+  return new HttpError(status, message, detail);
+}
 
 
 const HOUSEKEEPING_ROOMS = [
@@ -353,11 +410,6 @@ function reportStatusLabel(status: string | null | undefined): string {
   return status ?? '-';
 }
 
-function getSummaryCount(summary: BreakfastSummary | null, status: BreakfastStatus): number {
-  const value = summary?.status_counts?.[status];
-  return typeof value === 'number' ? value : 0;
-}
-
 function compareRoomNumbers(left: string, right: string): number {
   const leftMatch = left.match(/\d+/);
   const rightMatch = right.match(/\d+/);
@@ -379,6 +431,38 @@ function prepareBreakfastListItems(items: BreakfastOrder[]): BreakfastOrder[] {
     .filter((item) => item.guest_count > 0)
     .sort((left, right) => compareRoomNumbers(left.room_number, right.room_number));
 }
+
+type BreakfastOverviewStats = {
+  totalBreakfasts: number;
+  servedBreakfasts: number;
+  remainingBreakfasts: number;
+};
+
+function buildBreakfastOverviewStats(items: BreakfastOrder[]): BreakfastOverviewStats {
+  const totalBreakfasts = items.reduce((sum, item) => sum + item.guest_count, 0);
+  const servedBreakfasts = items
+    .filter((item) => item.status === 'served')
+    .reduce((sum, item) => sum + item.guest_count, 0);
+  return {
+    totalBreakfasts,
+    servedBreakfasts,
+    remainingBreakfasts: Math.max(0, totalBreakfasts - servedBreakfasts),
+  };
+}
+
+function formatBreakfastHeadlineDate(value: string): string {
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    return value;
+  }
+  return new Intl.DateTimeFormat('cs-CZ', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
 function readCsrfToken(): string {
   return document.cookie
     .split('; ')
@@ -386,10 +470,28 @@ function readCsrfToken(): string {
     ?.split('=')[1] ?? '';
 }
 
+function hasAuthCookieHint(): boolean {
+  return readCsrfToken().length > 0;
+}
+
 function normalizePhoneInput(value: string): string | null {
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.startsWith('+')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('00')) {
+    return `+${trimmed.slice(2)}`;
+  }
+  if (/^\d+$/.test(trimmed)) {
+    return trimmed.startsWith('420') ? `+${trimmed}` : `+420${trimmed}`;
+  }
+  return trimmed;
 }
+
+const e164PhoneRegex = /^\+[1-9]\d{1,14}$/;
 
 async function normalizeHousekeepingPhoto(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) {
@@ -540,6 +642,35 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
 
   if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
   if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
+  if (path === '/api/v1/breakfast/manual-refresh' && method === 'POST') {
+    const response = await fetch('/api/v1/breakfast/manual-refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': readCsrfToken(),
+      },
+      body: JSON.stringify(body ?? {}),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `Ruční aktualizace skončila chybou ${response.status}.`);
+    }
+    return (await response.json()) as T;
+  }
+  const manualRefreshId = path.match(/^\/api\/v1\/breakfast\/manual-refresh\/(\d+)$/);
+  if (manualRefreshId && method === 'GET') {
+    const response = await fetch(`/api/v1/breakfast/manual-refresh/${manualRefreshId[1]}`, {
+      method: 'GET',
+      headers: {
+        'X-CSRF-Token': readCsrfToken(),
+      },
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.detail ?? `Ruční aktualizace skončila chybou ${response.status}.`);
+    }
+    return (await response.json()) as T;
+  }
   const breakfastId = path.match(/^\/api\/v1\/breakfast\/(\d+)$/);
   if (breakfastId && method === 'GET') return (await apiClient.getBreakfastOrderApiV1BreakfastOrderIdGet(Number(breakfastId[1]))) as T;
   if (breakfastId && method === 'PUT') return (await apiClient.updateBreakfastOrderApiV1BreakfastOrderIdPut(Number(breakfastId[1]), body as BreakfastOrderCreate)) as T;
@@ -576,26 +707,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
   });
   if (!directResponse.ok) {
-    const raw = await directResponse.text();
-    try {
-      const parsed = JSON.parse(raw) as { detail?: unknown };
-      if (typeof parsed.detail === 'string') {
-        throw new Error(parsed.detail);
-      }
-      if (Array.isArray(parsed.detail)) {
-        const messages = parsed.detail
-          .map((item) => (typeof item === 'object' && item && 'msg' in item && typeof item.msg === 'string' ? item.msg : null))
-          .filter((item): item is string => item !== null);
-        if (messages.length > 0) {
-          throw new Error(messages.join(' '));
-        }
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-    }
-    throw new Error(raw || `HTTP ${directResponse.status}`);
+    throw await buildHttpError(directResponse);
   }
   if (directResponse.status === 204) {
     return undefined as T;
@@ -831,6 +943,7 @@ function BreakfastList(): JSX.Element {
   const canEditDiet = isRecepce || isAdmin;
   const canServe = isBreakfast || isRecepce;
   const canClearDay = isAdmin;
+  const canManualRefresh = isBreakfast || isRecepce || isAdmin;
 
   const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
@@ -843,6 +956,10 @@ function BreakfastList(): JSX.Element {
   const [importInfo, setImportInfo] = React.useState<string | null>(null);
   const [importError, setImportError] = React.useState<string | null>(null);
   const [importBusy, setImportBusy] = React.useState(false);
+  const [manualRefreshBusy, setManualRefreshBusy] = React.useState(false);
+  const [manualRefreshOpen, setManualRefreshOpen] = React.useState(false);
+  const [manualRefreshJob, setManualRefreshJob] = React.useState<BreakfastManualRefreshJob | null>(null);
+  const [manualRefreshError, setManualRefreshError] = React.useState<string | null>(null);
   const [drafts, setDrafts] = React.useState<Record<number, Partial<BreakfastPayload>>>({});
   const [saveBusy, setSaveBusy] = React.useState(false);
   const [saveInfo, setSaveInfo] = React.useState<string | null>(null);
@@ -884,8 +1001,6 @@ function BreakfastList(): JSX.Element {
   }, [loadDay, serviceDate]);
 
   const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
-  const editedRowsCount = Object.keys(drafts).length;
-
   const mergeOrderWithDraft = React.useCallback((order: BreakfastOrder): BreakfastOrder => {
     const draft = drafts[order.id];
     if (!draft) {
@@ -897,8 +1012,18 @@ function BreakfastList(): JSX.Element {
       diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
       diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
       diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
-    };
-  }, [drafts]);
+      };
+    }, [drafts]);
+
+  const effectiveVisibleItems = React.useMemo(
+    () => visibleItems.map((item) => mergeOrderWithDraft(item)),
+    [mergeOrderWithDraft, visibleItems],
+  );
+  const overviewStats = React.useMemo(
+    () => buildBreakfastOverviewStats(effectiveVisibleItems),
+    [effectiveVisibleItems],
+  );
+  const editedRowsCount = Object.keys(drafts).length;
 
   const filteredItems = visibleItems.filter((item) => {
     const effectiveItem = mergeOrderWithDraft(item);
@@ -1026,6 +1151,8 @@ function BreakfastList(): JSX.Element {
     if (!canClearDay) {
       return;
     }
+    const confirmed = window.confirm(`Opravdu chcete smazat všechny snídaně pro den ${serviceDate}? Operaci nelze vrátit.`);
+    if (!confirmed) return;
     const csrf = readCsrfToken();
     await fetchJson<void>(`/api/v1/breakfast/day/delete?service_date=${serviceDate}`, {
       method: 'DELETE',
@@ -1044,6 +1171,8 @@ function BreakfastList(): JSX.Element {
     if (!isAdmin) {
       return;
     }
+    const confirmed = window.confirm(`Opravdu chcete smazat snídaně v období ${rangeDeleteFrom} až ${rangeDeleteTo}? Operaci nelze vrátit.`);
+    if (!confirmed) return;
     const csrf = readCsrfToken();
     await fetchJson<void>(`/api/v1/breakfast/period/delete?date_from=${encodeURIComponent(rangeDeleteFrom)}&date_to=${encodeURIComponent(rangeDeleteTo)}`, {
       method: 'DELETE',
@@ -1164,6 +1293,62 @@ function BreakfastList(): JSX.Element {
     window.open(url, '_blank', 'noopener');
   };
 
+  const pollManualRefreshJob = async (jobId: number): Promise<BreakfastManualRefreshJob> => {
+    for (;;) {
+      const job = await fetchJson<BreakfastManualRefreshJob>(`/api/v1/breakfast/manual-refresh/${jobId}`);
+      setManualRefreshJob(job);
+      if (job.status === 'succeeded' || job.status === 'failed') {
+        return job;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
+  };
+
+  const runManualRefresh = async (): Promise<void> => {
+    if (!canManualRefresh || manualRefreshBusy) {
+      return;
+    }
+    setManualRefreshBusy(true);
+    setManualRefreshOpen(true);
+    setManualRefreshError(null);
+    setManualRefreshJob({
+      id: 0,
+      job_key: '',
+      service_date: serviceDate,
+      status: 'queued',
+      progress: [
+        { at: new Date().toISOString(), step: 'queued', message: 'Žádost se připravuje.' },
+      ],
+      message: 'Žádost se připravuje.',
+      error_message: null,
+      imported_count: 0,
+      created_at: null,
+      started_at: null,
+      finished_at: null,
+    });
+    try {
+      const job = await fetchJson<BreakfastManualRefreshJob>('/api/v1/breakfast/manual-refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service_date: serviceDate }),
+      });
+      setManualRefreshJob(job);
+      const finalJob = await pollManualRefreshJob(job.id);
+      if (finalJob.status === 'succeeded') {
+        setManualRefreshOpen(false);
+        setManualRefreshJob(null);
+        setImportInfo(`Ruční aktualizace pro ${serviceDate} byla dokončena.`);
+        loadDay(serviceDate);
+        return;
+      }
+      setManualRefreshError(finalJob.error_message ?? 'Ruční aktualizace selhala.');
+    } catch (error) {
+      setManualRefreshError(error instanceof Error ? error.message : 'Ruční aktualizaci se nepodařilo spustit.');
+    } finally {
+      setManualRefreshBusy(false);
+    }
+  };
+
   const importPreviewTable = importPreview ? (
     <div className="k-card">
       <div className="k-toolbar">
@@ -1204,6 +1389,7 @@ function BreakfastList(): JSX.Element {
   const breakfastToolbar = isServingView ? (
     <div className="k-toolbar">
       <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
     </div>
   ) : (
     <div className="k-toolbar">
@@ -1214,13 +1400,26 @@ function BreakfastList(): JSX.Element {
         event.currentTarget.value = '';
       }} /> : null}
       {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
       {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
-      {canClearDay ? <button className="k-button secondary" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
+      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
       {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
     </div>
   );
 
   const listItems = isServingView ? visibleItems : filteredItems;
+  const breakfastImportStamp = summary?.source_imported_at
+    ? formatShortDateTime(summary.source_imported_at)
+    : 'nenalezeno';
+  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
+  const manualRefreshProgress = manualRefreshJob?.progress ?? [];
+  const manualRefreshTitle = manualRefreshJob
+    ? manualRefreshJob.status === 'succeeded'
+      ? 'Aktualizace dokončena'
+      : manualRefreshJob.status === 'failed'
+        ? 'Aktualizace selhala'
+        : 'Aktualizace probíhá'
+    : 'Aktualizace snídaní';
 
   return (
     <main className="k-page" data-testid="breakfast-list-page">
@@ -1229,17 +1428,18 @@ function BreakfastList(): JSX.Element {
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
       ) : (
         <>
-          <div className="k-grid cards-3">
-            <Card title="Objednávky dne"><strong>{summary?.total_orders ?? 0}</strong></Card>
-            <Card title="Hosté dne"><strong>{summary?.total_guests ?? 0}</strong></Card>
-            <Card title="Čekající"><strong>{getSummaryCount(summary, 'pending')}</strong></Card>
+          <div className="k-card k-breakfast-overview-date">
+            <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
+            <h2 className="k-breakfast-overview-date__value">
+              {formatBreakfastHeadlineDate(breakfastSummaryDate)}
+            </h2>
           </div>
           {breakfastToolbar}
           {isAdmin ? (
             <div className="k-toolbar">
               <input className="k-input" type="date" aria-label="Smazat období od" value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
               <input className="k-input" type="date" aria-label="Smazat období do" value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
-              <button className="k-button secondary" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
+              <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
             </div>
           ) : null}
           {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
@@ -1250,7 +1450,7 @@ function BreakfastList(): JSX.Element {
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
             <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Datum', 'Pokoj', 'Host', 'Počet', 'Diety', 'Stav', 'Akce']}
+              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Stav', 'Akce']}
               rows={listItems.map((item) => {
                 const effectiveItem = mergeOrderWithDraft(item);
                 const isDirty = Boolean(drafts[item.id]);
@@ -1274,7 +1474,6 @@ function BreakfastList(): JSX.Element {
                 }
 
                 return [
-                  <span className={rowClass}>{effectiveItem.service_date}</span>,
                   <span className={rowClass}>{effectiveItem.room_number}</span>,
                   <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                   <span className={rowClass}>{effectiveItem.guest_count}</span>,
@@ -1285,6 +1484,43 @@ function BreakfastList(): JSX.Element {
               })}
             />
           )}
+          <div className="k-grid cards-3">
+            <Card title="Snídaní celkem"><strong>{overviewStats.totalBreakfasts}</strong></Card>
+            <Card title="Vydáno"><strong>{overviewStats.servedBreakfasts}</strong></Card>
+            <Card title="Zbývá vydat"><strong>{overviewStats.remainingBreakfasts}</strong></Card>
+          </div>
+          <p className="k-text-muted k-breakfast-overview-updated-at">
+            Data aktualizována: {breakfastImportStamp}
+          </p>
+          {manualRefreshOpen ? (
+            <div className="k-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="breakfast-refresh-title">
+              <div className="k-modal-card">
+                <div className="k-modal-header">
+                  <div>
+                    <h2 id="breakfast-refresh-title">{manualRefreshTitle}</h2>
+                    <p className="k-subtle">Ruční synchronizace z API pro den {manualRefreshJob?.service_date ?? serviceDate}.</p>
+                  </div>
+                  <div className="k-modal-spinner" aria-hidden="true" />
+                </div>
+                {manualRefreshError ? <p className="k-text-error">{manualRefreshError}</p> : null}
+                {manualRefreshJob?.message ? <p className="k-text-muted">{manualRefreshJob.message}</p> : null}
+                <div className="k-modal-progress">
+                  {manualRefreshProgress.length > 0 ? manualRefreshProgress.map((item) => (
+                    <div key={`${item.at}-${item.step}-${item.message}`} className="k-modal-progress__item">
+                      <strong>{item.step}</strong>
+                      <span>{item.message}</span>
+                      <small>{formatShortDateTime(item.at)}</small>
+                    </div>
+                  )) : <p className="k-text-muted">Čekám na stav serverového jobu.</p>}
+                </div>
+                <div className="k-toolbar">
+                  <button className="k-button secondary" type="button" onClick={() => setManualRefreshOpen(false)} disabled={manualRefreshBusy}>
+                    Zavřít
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </main>
@@ -1480,6 +1716,11 @@ function BreakfastDetail(): JSX.Element {
               ['Počet hostů', item.guest_count],
               ['Stav', breakfastStatusLabel(item.status)],
               ['Poznámka', item.note ?? '-'],
+              ['Bez lepku', item.diet_no_gluten ? 'Ano' : 'Ne'],
+              ['Bez mléka', item.diet_no_milk ? 'Ano' : 'Ne'],
+              ['Bez vepřového', item.diet_no_pork ? 'Ano' : 'Ne'],
+              ['Vytvořeno', item.created_at ? formatDateTime(item.created_at) : '-'],
+              ['Aktualizováno', item.updated_at ? formatDateTime(item.updated_at) : '-'],
             ]}
           />
         </div>
@@ -1491,6 +1732,10 @@ function BreakfastDetail(): JSX.Element {
 }
 
 function HousekeepingForm(): JSX.Element {
+  const auth = useAuth();
+  const permissions = auth?.permissions ?? new Set<string>();
+  const canCreateIssue = permissions.has('issues:write');
+  const canCreateLostFound = permissions.has('lost_found:write');
   const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
   const [selectedRoom, setSelectedRoom] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -1511,6 +1756,15 @@ function HousekeepingForm(): JSX.Element {
     () => photos.map((photo) => ({ name: photo.name, url: URL.createObjectURL(photo) })),
     [photos],
   );
+
+  React.useEffect(() => {
+    if (mode === 'issue' && !canCreateIssue && canCreateLostFound) {
+      setMode('lost_found');
+    }
+    if (mode === 'lost_found' && !canCreateLostFound && canCreateIssue) {
+      setMode('issue');
+    }
+  }, [canCreateIssue, canCreateLostFound, mode]);
 
   const clearDraftForm = React.useCallback(() => {
     setSelectedRoom('');
@@ -1705,6 +1959,14 @@ function HousekeepingForm(): JSX.Element {
   const submit = async (): Promise<void> => {
     const shortDescription = description.trim();
     const roomValue = selectedRoom.trim();
+    if (mode === 'issue' && !canCreateIssue) {
+      setError('Aktivní role nemá oprávnění pro založení závady.');
+      return;
+    }
+    if (mode === 'lost_found' && !canCreateLostFound) {
+      setError('Aktivní role nemá oprávnění pro založení nálezu.');
+      return;
+    }
     if (!roomValue) {
       setError('Vyberte pokoj.');
       return;
@@ -1717,6 +1979,7 @@ function HousekeepingForm(): JSX.Element {
     setSaving(true);
     setError(null);
     try {
+      let successReference = '';
       if (mode === 'issue') {
         const created = await fetchJson<Issue>('/api/v1/issues', {
           method: 'POST',
@@ -1744,6 +2007,7 @@ function HousekeepingForm(): JSX.Element {
             throw new Error('Fotografie závady se nepodařilo nahrát.');
           }
         }
+        successReference = `#${created.id}`;
       } else {
         const created = await fetchJson<LostFoundItem>('/api/v1/lost-found', {
           method: 'POST',
@@ -1772,17 +2036,31 @@ function HousekeepingForm(): JSX.Element {
           if (!response.ok) {
             throw new Error('Fotografie nálezu se nepodařilo nahrát.');
           }
-      }
+        }
+        successReference = `#${created.id}`;
       }
       stopCamera();
       clearDraftForm();
-      setSuccess(mode === 'issue' ? 'Závada byla odeslána.' : 'Nález byl odeslán.');
+      setSuccess(`Úspěšně byl odeslán záznam ${successReference}.`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Uložení záznamu selhalo.');
     } finally {
       setSaving(false);
     }
   };
+
+  if (!canCreateIssue && !canCreateLostFound) {
+    return (
+      <main className="k-page" data-testid="housekeeping-form-page">
+        <h1>Pokojská</h1>
+        <StateView
+          title="Přístup odepřen"
+          description="Aktivní role nemá oprávnění pro založení závady ani nálezu z toku pokojské."
+          stateKey="error"
+        />
+      </main>
+    );
+  }
 
   if (success) {
     return (
@@ -1811,6 +2089,7 @@ function HousekeepingForm(): JSX.Element {
               type="button"
               onClick={() => setMode('lost_found')}
               aria-pressed={mode === 'lost_found'}
+              disabled={!canCreateLostFound}
             >
               Nález
             </button>
@@ -1819,6 +2098,7 @@ function HousekeepingForm(): JSX.Element {
               type="button"
               onClick={() => setMode('issue')}
               aria-pressed={mode === 'issue'}
+              disabled={!canCreateIssue}
             >
               Závada
             </button>
@@ -1958,19 +2238,19 @@ function LostFoundList(): JSX.Element {
       {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} />
       ) : items.length === 0 ? (
-        <StateView title={isReception ? 'Čekající nálezy' : 'Prázdný stav'} description={isReception ? 'Žádný čekající nález pro recepci.' : 'Žádný evidovaný nález.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/ztraty-a-nalezy/novy">Přidat záznam</Link> : undefined} />
+        <StateView title={isReception ? 'Čekající nálezy' : 'Prázdný stav'} description={isReception ? 'Žádný čekající nález pro recepci.' : 'Žádný evidovaný nález.'} stateKey="empty" action={<Link className="k-button" to="/ztraty-a-nalezy/novy">Přidat záznam</Link>} />
       ) : (
         <>
-          {!isReception ? (
-            <div className="k-toolbar">
+          <div className="k-toolbar">
+            {!isReception ? (
               <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}>
                 <option value="all">Všechny stavy</option>
                 <option value="new">Nezpracováno</option>
                 <option value="claimed">Zpracováno</option>
               </select>
-              {isAdmin ? <Link className="k-button" to="/ztraty-a-nalezy/novy">Nový záznam</Link> : null}
-            </div>
-          ) : null}
+            ) : null}
+            <Link className="k-button" to="/ztraty-a-nalezy/novy">Nový záznam</Link>
+          </div>
           <DataTable
             headers={isReception ? ['Miniatura', 'Pokoj', 'Popis', 'Vznik', 'Akce'] : ['Stav', 'Pokoj', 'Popis', 'Vznik', 'Akce']}
             rows={items.map((item) => (isReception
@@ -2245,6 +2525,8 @@ function LostFoundDetail(): JSX.Element {
 
   const deleteItem = async (): Promise<void> => {
     if (!id) return;
+    const confirmed = window.confirm('Opravdu chcete smazat tento nález? Záznam zmizí ze seznamu nálezů a operaci nelze vrátit.');
+    if (!confirmed) return;
     try {
       await fetchJson(`/api/v1/lost-found/${id}`, { method: 'DELETE' });
       window.location.assign('/ztraty-a-nalezy');
@@ -2261,8 +2543,9 @@ function LostFoundDetail(): JSX.Element {
           <div className="k-toolbar">
             <Link className="k-nav-link" to="/ztraty-a-nalezy">Zpět na seznam</Link>
             {canProcess ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('claimed')}>Označit jako zpracováno</button> : null}
+            <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>Upravit</Link>
             {canAdmin && item.status !== 'new' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('new')}>Vrátit do nezpracovaných</button> : null}
-            {canAdmin ? <button className="k-button secondary" type="button" onClick={() => void deleteItem()}>Smazat</button> : null}
+            {canAdmin ? <button className="k-button secondary danger" type="button" onClick={() => void deleteItem()}>Smazat</button> : null}
           </div>
           <DataTable
             headers={['Položka', 'Hodnota']}
@@ -2326,7 +2609,7 @@ function IssuesList(): JSX.Element {
     <main className="k-page" data-testid="issues-list-page">
       <h1>{isMaintenance ? 'Závady pro údržbu' : 'Závady'}</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} /> : items.length === 0 ? (
-        <StateView title="Prázdný stav" description={isMaintenance ? 'Žádná otevřená závada.' : 'Zatím nejsou evidované žádné závady.'} stateKey="empty" action={isAdmin ? <Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link> : undefined} />
+        <StateView title="Prázdný stav" description={isMaintenance ? 'Žádná otevřená závada.' : 'Zatím nejsou evidované žádné závady.'} stateKey="empty" action={<Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link>} />
       ) : isMaintenance ? (
         <DataTable
           headers={['Miniatura', 'Pokoj', 'Popis', 'Zadáno', 'Hodin', 'Akce']}
@@ -2349,7 +2632,7 @@ function IssuesList(): JSX.Element {
               <option value="new">Otevřené</option>
               <option value="resolved">Odstraněné</option>
             </select>
-            {isAdmin ? <Link className="k-button" to="/zavady/nova">Nová závada</Link> : null}
+            <Link className="k-button" to="/zavady/nova">Nová závada</Link>
           </div>
           <DataTable headers={['Stav', 'Pokoj', 'Popis', 'Vznik', 'Otevřeno', 'Akce']} rows={items.map((item) => [
             issueStatusLabel(item.status), item.room_number ?? '-', item.description ?? item.title, formatShortDateTime(item.created_at), hoursOpenSince(item.created_at),
@@ -2444,6 +2727,8 @@ function IssuesDetail(): JSX.Element {
 
   const deleteIssue = async (): Promise<void> => {
     if (!id) return;
+    const confirmed = window.confirm('Opravdu chcete smazat tuto závadu? Záznam a připojené informace se odstraní a operaci nelze vrátit.');
+    if (!confirmed) return;
     try {
       await fetchJson(`/api/v1/issues/${id}`, { method: 'DELETE' });
       window.location.assign('/zavady');
@@ -2461,7 +2746,7 @@ function IssuesDetail(): JSX.Element {
   return (
     <main className="k-page" data-testid="issues-detail-page">
       <h1>Detail závady</h1>
-      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Odstraněno</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Odstraněno</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary danger" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -2480,6 +2765,7 @@ function InventoryList(): JSX.Element {
   const [movementReference, setMovementReference] = React.useState<string>('');
   const [movementNote, setMovementNote] = React.useState<string>('');
   const [movementInfo, setMovementInfo] = React.useState<string | null>(null);
+  const [savingMovement, setSavingMovement] = React.useState(false);
 
   const loadItems = React.useCallback(() => {
     fetchJson<InventoryItem[]>('/api/v1/inventory')
@@ -2505,14 +2791,29 @@ function InventoryList(): JSX.Element {
   };
 
   const submitMovement = async (): Promise<void> => {
-    if (!movementItemId) {
+    const selectedItem = items.find((item) => String(item.id) === movementItemId);
+    setMovementInfo(null);
+    if (!selectedItem) {
       setError('Vyberte položku skladu.');
       return;
     }
-    if (movementQuantity <= 0) {
-      setError('Množství musí být větší než nula.');
+    if (!Number.isInteger(movementQuantity) || movementQuantity <= 0) {
+      setError('Množství musí být celé číslo větší než nula.');
       return;
     }
+    if (!movementDate) {
+      setError('Vyplňte datum dokladu.');
+      return;
+    }
+    if (movementType === 'in' && movementReference.trim().length === 0) {
+      setError('U příjmu vyplňte číslo dokladu.');
+      return;
+    }
+    if ((movementType === 'out' || movementType === 'adjust') && movementQuantity > selectedItem.current_stock) {
+      setError('Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav.');
+      return;
+    }
+    setSavingMovement(true);
     try {
       const response = await fetchJson<InventoryDetail>(`/api/v1/inventory/${movementItemId}/movements`, {
         method: 'POST',
@@ -2521,11 +2822,12 @@ function InventoryList(): JSX.Element {
           movement_type: movementType,
           quantity: movementQuantity,
           document_date: movementDate,
-          document_reference: movementReference || null,
-          note: movementNote || null,
+          document_reference: movementReference.trim() || null,
+          note: movementNote.trim() || null,
         }),
       });
       const latestMovement = [...response.movements].sort((left, right) => right.id - left.id)[0];
+      setItems((prev) => prev.map((item) => (item.id === response.id ? { ...item, current_stock: response.current_stock } : item)));
       setMovementInfo(latestMovement?.document_number
         ? `Pohyb uložen. Interní číslo ${latestMovement.document_number}.`
         : 'Pohyb uložen.');
@@ -2534,8 +2836,10 @@ function InventoryList(): JSX.Element {
       setMovementNote('');
       loadItems();
       setError(null);
-    } catch {
-      setError('Pohyb skladu se nepodařilo uložit.');
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : 'Pohyb skladu se nepodařilo uložit.');
+    } finally {
+      setSavingMovement(false);
     }
   };
 
@@ -2543,27 +2847,27 @@ function InventoryList(): JSX.Element {
     <div className="k-card">
       <h2>Nový pohyb skladu</h2>
       <div className="k-form-grid">
-        <FormField id="inventory_movement_type" label="Druh pohybu">
+        <FormField id="inventory_movement_type" label="Druh pohybu *">
           <select id="inventory_movement_type" className="k-select" value={movementType} onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}>
             <option value="in">Příjem</option>
             <option value="out">Výdej</option>
             <option value="adjust">Odpis</option>
           </select>
         </FormField>
-        <FormField id="inventory_movement_item" label="Položka">
+        <FormField id="inventory_movement_item" label="Položka *">
           <select id="inventory_movement_item" className="k-select" value={movementItemId} onChange={(event) => setMovementItemId(event.target.value)}>
             {items.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </select>
         </FormField>
-        <FormField id="inventory_movement_quantity" label="Množství">
-          <input id="inventory_movement_quantity" type="number" min={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
+        <FormField id="inventory_movement_quantity" label="Množství *">
+          <input id="inventory_movement_quantity" type="number" min={1} step={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
         </FormField>
-        <FormField id="inventory_movement_date" label="Datum dokladu">
+        <FormField id="inventory_movement_date" label="Datum dokladu *">
           <input id="inventory_movement_date" type="date" className="k-input" value={movementDate} onChange={(event) => setMovementDate(event.target.value)} />
         </FormField>
-        <FormField id="inventory_movement_reference" label="Číslo dokladu (volitelné)">
+        <FormField id="inventory_movement_reference" label={movementType === 'in' ? 'Číslo dokladu *' : 'Číslo dokladu (volitelné)'}>
           <input id="inventory_movement_reference" className="k-input" value={movementReference} onChange={(event) => setMovementReference(event.target.value)} />
         </FormField>
         <FormField id="inventory_movement_note" label="Poznámka (volitelná)">
@@ -2571,9 +2875,9 @@ function InventoryList(): JSX.Element {
         </FormField>
       </div>
       <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void submitMovement()}>Potvrdit pohyb</button>
+        <button className="k-button" type="button" onClick={() => void submitMovement()} disabled={savingMovement}>{savingMovement ? 'Ukládám pohyb…' : 'Potvrdit pohyb'}</button>
       </div>
-      {movementInfo ? <p className="k-text-success">{movementInfo}</p> : null}
+      {movementInfo ? <p className="k-text-success" aria-live="polite">{movementInfo}</p> : null}
     </div>
   ) : null;
 
@@ -2768,7 +3072,15 @@ function InventoryDetail(): JSX.Element {
         setItem(response);
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Položka nebyla nalezena.'));
+      .catch((err) => {
+        if (err instanceof HttpError) {
+          if (err.status === 404) setError('Skladová položka nebyla nalezena. Zkontrolujte seznam skladu nebo se vraťte zpět.');
+          else if (err.status === 403) setError('Nemáte oprávnění zobrazit detail skladové položky.');
+          else setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+        } else {
+          setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+        }
+      });
   }, [id]);
 
   React.useEffect(() => {
@@ -2777,6 +3089,8 @@ function InventoryDetail(): JSX.Element {
 
   const deleteMovement = async (movementId: number): Promise<void> => {
     if (!id) return;
+    const confirmed = window.confirm('Opravdu chcete smazat tento skladový pohyb? Množství položky se přepočítá opačným pohybem a operaci nelze vrátit bez nového zápisu.');
+    if (!confirmed) return;
     const csrf = readCsrfToken();
     try {
       await fetchJson<void>(`/api/v1/inventory/${id}/movements/${movementId}`, {
@@ -2791,7 +3105,7 @@ function InventoryDetail(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="inventory-detail-page">
-      <h1>Detail skladové položky</h1>
+      <h1>{item ? `Detail skladové položky: ${item.name}` : 'Detail skladové položky'}</h1>
       {error ? (
         <StateView title={error.includes('Missing role') || error.includes('Missing actor type') ? 'Přístup odepřen' : '404'} description={error} stateKey={error.includes('Missing role') || error.includes('Missing actor type') ? 'error' : '404'} action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>} />
       ) : item ? (
@@ -2824,7 +3138,7 @@ function InventoryDetail(): JSX.Element {
                  movement.quantity,
                  movement.document_reference ?? '-',
                  movement.note ?? '-',
-                 ...(isAdmin ? [<button className="k-button secondary" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>] : []),
+                 ...(isAdmin ? [<button className="k-button secondary danger" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>] : []),
                ])}
              />
           </div>
@@ -2915,6 +3229,7 @@ function PortalProfilePage(): JSX.Element {
   const [info, setInfo] = React.useState<string | null>(null);
   const [savingProfile, setSavingProfile] = React.useState(false);
   const [changingPassword, setChangingPassword] = React.useState(false);
+  const [loggingOut, setLoggingOut] = React.useState(false);
   const [profileForm, setProfileForm] = React.useState({
     first_name: '',
     last_name: '',
@@ -2925,6 +3240,8 @@ function PortalProfilePage(): JSX.Element {
     current_password: '',
     new_password: '',
   });
+  const normalizedPhone = normalizePhoneInput(profileForm.phone);
+  const isPhoneValid = !normalizedPhone || e164PhoneRegex.test(normalizedPhone);
 
   React.useEffect(() => {
     fetchJson('/api/auth/profile')
@@ -2970,7 +3287,7 @@ function PortalProfilePage(): JSX.Element {
         body: JSON.stringify({
           first_name: profileForm.first_name.trim(),
           last_name: profileForm.last_name.trim(),
-          phone: normalizePhoneInput(profileForm.phone),
+          phone: normalizedPhone,
           note: profileForm.note.trim() || null,
         }),
       });
@@ -2981,11 +3298,31 @@ function PortalProfilePage(): JSX.Element {
         phone: nextProfile.phone ?? '',
         note: nextProfile.note ?? '',
       });
-      setInfo('Profil byl ulozen.');
+      setInfo('Profil byl uložen.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Profil se nepodařilo uložit.');
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    setLoggingOut(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'X-CSRF-Token': readCsrfToken(),
+        },
+      });
+      await navigate('/login');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Odhlášení se nepodařilo dokončit.');
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -3015,7 +3352,7 @@ function PortalProfilePage(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="portal-profile-page">
-      <h1>Profil</h1>
+      <h1>Můj profil</h1>
       {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
       {info ? <p className="k-text-success">{info}</p> : null}
       {profile ? (
@@ -3025,6 +3362,7 @@ function PortalProfilePage(): JSX.Element {
               <strong>{profile.email}</strong>
               <span className="k-text-muted">{profile.roles.join(', ') || '-'}</span>
             </div>
+            <p className="k-text-muted">Správa kontaktních údajů a provozní poznámky k účtu {profile.email}</p>
             <div className="k-form-grid">
               <FormField id="portal_profile_first_name" label="Jméno">
                 <input
@@ -3042,7 +3380,7 @@ function PortalProfilePage(): JSX.Element {
                   onChange={(event) => setProfileForm((prev) => ({ ...prev, last_name: event.target.value }))}
                 />
               </FormField>
-              <FormField id="portal_profile_phone" label="Telefon">
+              <FormField id="portal_profile_phone" label="Telefon (E.164, volitelně)">
                 <input
                   id="portal_profile_phone"
                   className="k-input"
@@ -3059,9 +3397,14 @@ function PortalProfilePage(): JSX.Element {
                 />
               </FormField>
             </div>
+            <p className="k-text-muted">Telefon zadávej ve formátu E.164, například +420123456789.</p>
+            {!isPhoneValid ? <p className="k-text-error">Telefon musí být ve formátu E.164.</p> : null}
             <div className="k-toolbar">
-              <button className="k-button" type="button" disabled={savingProfile} onClick={() => void saveProfile()}>
-                Ulozit profil
+              <button className="k-button" type="button" disabled={savingProfile || !isPhoneValid || !profileForm.first_name.trim() || !profileForm.last_name.trim()} onClick={() => void saveProfile()}>
+                Uložit profil
+              </button>
+              <button className="k-button secondary" type="button" disabled={loggingOut} onClick={() => void logout()}>
+                Odhlásit
               </button>
             </div>
           </div>
@@ -3089,7 +3432,7 @@ function PortalProfilePage(): JSX.Element {
             </div>
             <div className="k-toolbar">
               <button className="k-button" type="button" disabled={changingPassword} onClick={() => void changePassword()}>
-                Zmenit heslo
+                Potvrdit změnu
               </button>
             </div>
           </div>
@@ -3102,17 +3445,27 @@ function PortalProfilePage(): JSX.Element {
 type AuthLoadState =
   | { status: 'loading' }
   | { status: 'authenticated'; profile: AuthProfile }
+  | { status: 'error'; message: string }
   | { status: 'unauthenticated' };
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
-  const [authState, setAuthState] = React.useState<AuthLoadState>({ status: 'loading' });
+  const [authState, setAuthState] = React.useState<AuthLoadState>(() => (
+    hasAuthCookieHint() ? { status: 'loading' } : { status: 'unauthenticated' }
+  ));
 
   React.useEffect(() => {
+    if (!hasAuthCookieHint()) {
+      return;
+    }
     void resolveAuthProfile()
       .then((resolved) => {
         if (resolved.status === 'authenticated') {
           setAuthState({ status: 'authenticated', profile: resolved.profile });
+          return;
+        }
+        if (resolved.status === 'error') {
+          setAuthState({ status: 'error', message: resolved.message });
           return;
         }
         setAuthState({ status: 'unauthenticated' });
@@ -3126,19 +3479,21 @@ function AppRoutes(): JSX.Element {
     return (
       <KajovoStartupSplash
         href="/"
-        eyebrow="KájovoHotel"
-        title="Spouštím provozní portál"
-        description="Ověřuji přihlášení, dostupné role a navazuji na poslední bezpečnou relaci."
+        eyebrow="Kájovo Hotel"
+        title="Provoz hotelu bez zbytečných přepínačů"
+        description="Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a bezpečný přístup k tomu, co právě potřebují."
       />
     );
   }
+
+  const loginError = authState.status === 'error' ? authState.message : null;
 
   if (authState.status !== 'authenticated') {
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
-        <Route path="/login" element={<PortalLoginPage />} />
+        <Route path="/login" element={<PortalLoginPage initialError={loginError} />} />
         <Route path="/login/reset" element={<PortalResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

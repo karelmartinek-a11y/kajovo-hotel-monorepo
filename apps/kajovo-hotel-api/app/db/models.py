@@ -75,6 +75,66 @@ class BreakfastOrder(Base):
     )
 
 
+class BreakfastImportMailboxSettings(Base):
+    __tablename__ = "breakfast_import_mailbox_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    host: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    port: Mapped[int] = mapped_column(Integer, nullable=False, default=993)
+    use_ssl: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    mailbox: Mapped[str] = mapped_column(String(128), nullable=False, default="INBOX")
+    username: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    password_encrypted: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    from_contains: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="noreply=better-hotel.com@mg2.better-hotel.com"
+    )
+    subject_contains: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class BreakfastImportProcessedAttachment(Base):
+    __tablename__ = "breakfast_import_processed_attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    message_uid: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    attachment_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    parsed_day: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BreakfastImportRunLog(Base):
+    __tablename__ = "breakfast_import_run_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ok: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    trigger: Mapped[str] = mapped_column(String(32), nullable=False, default="scheduler")
+    details_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BreakfastManualRefreshJob(Base):
+    __tablename__ = "breakfast_manual_refresh_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    job_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    service_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued", index=True)
+    progress_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imported_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class LostFoundItemType(StrEnum):
     LOST = "lost"
     FOUND = "found"

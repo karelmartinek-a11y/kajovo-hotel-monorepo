@@ -25,16 +25,6 @@ class ApiErrorEnvelope(BaseModel):
     error: ApiErrorDetail
 
 
-class AndroidAppReleaseRead(BaseModel):
-    version_code: int
-    version: str
-    download_url: str
-    sha256: str
-    title: str
-    message: str
-    required: bool = False
-
-
 class ReportCreate(BaseModel):
     title: str = Field(min_length=3, max_length=255)
     description: str | None = Field(default=None, max_length=4000)
@@ -107,6 +97,7 @@ class BreakfastDailySummary(BaseModel):
     total_orders: int
     total_guests: int
     status_counts: dict[BreakfastStatus, int]
+    source_imported_at: datetime | None = None
 
 
 class BreakfastImportItem(BaseModel):
@@ -124,6 +115,37 @@ class BreakfastImportResponse(BaseModel):
     status: str
     saved: bool = False
     items: list[BreakfastImportItem]
+
+
+class BreakfastManualRefreshStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class BreakfastManualRefreshProgressItem(BaseModel):
+    at: datetime
+    step: str
+    message: str
+
+
+class BreakfastManualRefreshRequest(BaseModel):
+    service_date: date
+
+
+class BreakfastManualRefreshJobRead(BaseModel):
+    id: int
+    job_key: str
+    service_date: date
+    status: BreakfastManualRefreshStatus
+    progress: list[BreakfastManualRefreshProgressItem] = Field(default_factory=list)
+    message: str | None = None
+    error_message: str | None = None
+    imported_count: int
+    created_at: datetime | None
+    started_at: datetime | None
+    finished_at: datetime | None
 
 
 class LostFoundItemType(StrEnum):
@@ -297,7 +319,7 @@ class InventoryItemBase(BaseModel):
     def validate_unit(cls, value: str) -> str:
         unit = value.strip().lower()
         if unit not in {"g", "l", "ks"}:
-            raise ValueError("Unit must be one of: g, l, ks")
+            raise ValueError("Jednotka musí být jedna z hodnot: g, l, ks")
         return unit
 
 
@@ -321,7 +343,7 @@ class InventoryItemUpdate(BaseModel):
             return None
         unit = value.strip().lower()
         if unit not in {"g", "l", "ks"}:
-            raise ValueError("Unit must be one of: g, l, ks")
+            raise ValueError("Jednotka musí být jedna z hodnot: g, l, ks")
         return unit
 
 
@@ -458,6 +480,14 @@ class PortalUserBasePayload(BaseModel):
     phone: str | None = Field(default=None, max_length=16)
     note: str | None = Field(default=None, max_length=4000)
 
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_required_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Jméno a příjmení jsou povinné")
+        return cleaned
+
     @field_validator("roles")
     @classmethod
     def validate_roles(cls, value: list[str]) -> list[str]:
@@ -465,12 +495,12 @@ class PortalUserBasePayload(BaseModel):
         for role in value:
             normalized = role.strip().lower()
             if normalized not in ALLOWED_PORTAL_ROLES:
-                raise ValueError(f"Role must be one of: {', '.join(sorted(ALLOWED_PORTAL_ROLES))}")
+                raise ValueError(f"Role musí být jedna z hodnot: {', '.join(sorted(ALLOWED_PORTAL_ROLES))}")
             canonical = normalize_role(normalized)
             if canonical not in cleaned:
                 cleaned.append(canonical)
         if not cleaned:
-            raise ValueError("At least one role is required")
+            raise ValueError("Vyberte alespoň jednu roli")
         return cleaned
 
     @field_validator("email")
@@ -480,7 +510,7 @@ class PortalUserBasePayload(BaseModel):
         import re
 
         if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
-            raise ValueError("Email must be valid")
+            raise ValueError("E-mail musí být platný")
         return email
 
     @field_validator("phone")
@@ -494,13 +524,13 @@ class PortalUserBasePayload(BaseModel):
         import re
 
         if not re.match(r"^\+[1-9]\d{1,14}$", phone):
-            raise ValueError("Phone must be in E.164 format")
+            raise ValueError("Telefon musí být ve formátu E.164")
         return phone
 
 
 class PortalUserCreate(PortalUserBasePayload):
-    first_name: str = Field(default="New", min_length=1, max_length=120)
-    last_name: str = Field(default="User", min_length=1, max_length=120)
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
     roles: list[str] = Field(min_length=1)
     password: str | None = Field(default=None, max_length=255)
 
@@ -513,12 +543,24 @@ class PortalUserCreate(PortalUserBasePayload):
         if not password:
             return None
         if len(password) < 8:
-            raise ValueError("Password must have at least 8 characters")
+            raise ValueError("Heslo musí mít alespoň 8 znaků")
         return password
 
 
 class PortalUserUpdate(PortalUserBasePayload):
-    pass
+    password: str | None = Field(default=None, max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        password = value.strip()
+        if not password:
+            return None
+        if len(password) < 8:
+            raise ValueError("Heslo musí mít alespoň 8 znaků")
+        return password
 
 
 class PortalUserPasswordSet(BaseModel):
@@ -605,7 +647,7 @@ class AuthProfileUpdate(BaseModel):
         import re
 
         if not re.match(r"^\+[1-9]\d{1,14}$", phone):
-            raise ValueError("Phone must be in E.164 format")
+            raise ValueError("Telefon musí být ve formátu E.164")
         return phone
 
 
@@ -733,6 +775,57 @@ class SmtpTestEmailResponse(BaseModel):
     connected: bool
     send_attempted: bool
     message: str
+
+
+class BreakfastSyncRuntimeStatusRead(BaseModel):
+    ok: bool
+    range_start: date
+    range_end: date
+    attempt: int
+    imported: bool
+    imported_days: int = 0
+    imported_rows: int = 0
+    replaced_future_count: int = 0
+    reservations_count: int = 0
+    processed_days: int = 0
+    generated_at: datetime | None = None
+    error: str | None = None
+
+
+class BreakfastSyncSettingsRead(BaseModel):
+    provider: str
+    connector_base_url: str
+    scheduler_enabled: bool
+    access_token_configured: bool
+    client_token_configured: bool
+    breakfast_window_days_forward: int
+    breakfast_food_codes: list[int]
+    scheduler_interval_seconds: int
+    scheduler_retry_seconds: int
+    scheduler_max_retries: int
+    schedule_times: list[str]
+    runtime_status: BreakfastSyncRuntimeStatusRead | None = None
+
+
+class BreakfastImportLogEntry(BaseModel):
+    id: int
+    started_at: datetime
+    finished_at: datetime
+    ok: bool
+    trigger: str
+    details_json: str
+
+
+class BreakfastImportRunResponse(BaseModel):
+    ok: bool
+    imported_count: int
+    imported_days: int
+    processed_days: int
+    range_start: date
+    range_end: date
+    replaced_future_count: int
+    reservations_count: int
+    errors: list[str]
 
 
 class MailDispatchResponse(BaseModel):

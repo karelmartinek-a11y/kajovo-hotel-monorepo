@@ -1,4 +1,4 @@
-﻿from collections.abc import Callable
+from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
 

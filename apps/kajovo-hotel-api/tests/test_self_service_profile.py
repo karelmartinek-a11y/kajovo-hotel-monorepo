@@ -111,7 +111,7 @@ def test_admin_role_user_can_access_admin_surface_but_cannot_change_password(
     )
     assert status == 409
     assert isinstance(body, dict)
-    assert body["detail"] == "Admin account password reminder is handled only via admin login hint"
+    assert body["detail"] == "Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace."
 
     status, me = raw_request(opener, api_base_url, "/api/auth/me")
     assert status == 200

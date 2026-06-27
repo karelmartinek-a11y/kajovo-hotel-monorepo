@@ -1,53 +1,62 @@
-# KájovoHotel cutover runbook (primární)
+# Post-cutover runbook pro `hotel.hcasc.cz`
 
-Primární runbook pro produkční cutover. Každý krok obsahuje příkaz, očekávaný výsledek a rollback akci.
+Tento runbook popisuje aktualni produkcni stav po DNS cutoveru.
 
-## 1) Preflight (GO/NO-GO)
+## Produkcni identita
 
-| Krok | Příkaz | Očekávaný výsledek | Rollback |
-|---|---|---|---|
-| 1.1 Aktualizace workspace | `git pull --ff-only` | Bez konfliktů, pracovní strom čistý | Zastavit cutover; vyřešit drift mimo okno |
-| 1.2 Deploy verifikace | `./infra/verify/verify-deploy.sh` | Exit 0, všechny kontroly PASS | Neprovádět switch, opravit chyby a znovu spustit |
-| 1.3 UAT smoke | `UAT_ACCOUNTS_CHECK=1 ./infra/uat/run-uat.sh` | Exit 0, klíčové scénáře PASS | NO-GO, ponechat legacy jako primární |
+- Produkcni domena: `https://hotel.hcasc.cz`
+- Produkcni admin: `https://hotel.hcasc.cz/admin`
+- Produkcni server: `89.221.222.92`
+- Produkcni deploy target: GitHub Actions workflow `Deploy - hotel.hcasc.cz`
 
-## 2) Backup
+`oko1` ani jiny legacy host uz neni aktivni produkcni nebo deploy target. Pokud je potreba historicke porovnani, pouziva se pouze read-only.
 
-| Krok | Příkaz | Očekávaný výsledek | Rollback |
-|---|---|---|---|
-| 2.1 Export DB snapshotu | `COMPOSE_PROJECT_NAME=kajovo-prod docker compose -f infra/compose.prod.yml --env-file infra/.env exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > /tmp/kajovo-prod-backup.sql` | Soubor `/tmp/kajovo-prod-backup.sql` existuje a není prázdný | Bez platného snapshotu nepokračovat |
-| 2.2 Kontrola snapshotu | `test -s /tmp/kajovo-prod-backup.sql` | Exit 0 | Zopakovat export, případně eskalace DBA |
+## Autoritativni zdroje
 
-## 3) Migrace dat
+- `.github/workflows/deploy-production.yml`
+- `infra/ops/deploy-production.sh`
+- `infra/reverse-proxy/production-host.conf`
+- `infra/verify/verify-deploy.sh`
 
-| Krok | Příkaz | Očekávaný výsledek | Rollback |
-|---|---|---|---|
-| 3.1 Migrační běh | `python apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py --report-json apps/kajovo-hotel-api/tools/migrate_legacy/report.json --report-csv apps/kajovo-hotel-api/tools/migrate_legacy/report.csv` | Exit 0, reporty vygenerované | Stop cutover; obnovit DB ze snapshotu |
-| 3.2 Kontrola reportu | `python -m json.tool apps/kajovo-hotel-api/tools/migrate_legacy/report.json > /dev/null` | Exit 0, validní JSON | Re-run migrace po opravě vstupů |
+Kdyz je dokumentace v rozporu s temito soubory, plati kod a workflow.
 
-## 4) Produkční switch
+## Produkcni overeni po deployi
 
-| Krok | Příkaz | Očekávaný výsledek | Rollback |
-|---|---|---|---|
-| 4.1 Přepnutí reverse proxy | `NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf ./infra/reverse-proxy/switch-to-new.sh` | Exit 0, Nginx reload bez chyby | `./infra/reverse-proxy/rollback-to-legacy.sh` |
-| 4.2 Health check API/UI | `curl -fsS https://kajovohotel.hcasc.cz/health && curl -fsS https://kajovohotel.hcasc.cz/ready && curl -fsS https://kajovohotel.hcasc.cz/healthz` | HTTP 200 pro všechny endpointy | Okamžitý rollback na legacy |
+```bash
+curl -fsS https://hotel.hcasc.cz/health
+curl -fsS https://hotel.hcasc.cz/ready
+curl -fsS https://hotel.hcasc.cz/healthz
+curl -I https://hotel.hcasc.cz/admin
+curl -I https://hotel.hcasc.cz/Admin
+```
 
-## 5) Post-switch ověření
+```bash
+WEB_BASE_URL="https://hotel.hcasc.cz" API_BASE_URL="https://hotel.hcasc.cz" ./infra/smoke/smoke.sh
+```
 
-| Krok | Příkaz | Očekávaný výsledek | Rollback |
-|---|---|---|---|
-| 5.1 Produkční smoke | `WEB_BASE_URL="https://kajovohotel.hcasc.cz" API_BASE_URL="https://kajovohotel.hcasc.cz" ./infra/smoke/smoke.sh` | Exit 0, smoke scénáře PASS | Rollback na legacy + incident ticket |
-| 5.2 Kontrola deploy integrity | `./infra/verify/verify-deploy.sh` | Exit 0 | Rollback při opakovaném FAIL |
+```bash
+./infra/verify/verify-deploy.sh
+```
 
-## 6) Stabilizační monitoring (30–60 min)
+## Post-cutover audit checklist
 
-| Krok | Příkaz | Očekávaný výsledek | Rollback |
-|---|---|---|---|
-| 6.1 Stack logs | `COMPOSE_PROJECT_NAME=kajovo-prod docker compose -f infra/compose.prod.yml --env-file infra/.env logs -f --tail=200` | Bez opakovaných 5xx/traceback | Rollback při systémové degradaci |
-| 6.2 Nginx access | `tail -f /var/log/nginx/access.log` | Chybovost v limitu, response times stabilní | Rollback při zvýšené chybovosti |
+1. `Resolve-DnsName hotel.hcasc.cz` vraci `89.221.222.92` a produkcni IPv6 noveho serveru.
+2. Runtime artifact na serveru sedi s poslednim deploy SHA:
 
-## 7) Rollback procedura (tvrdý NO-GO)
+```bash
+ssh temp "sudo cat /opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json"
+```
 
-1. `NGINX_SITE_PATH=/etc/nginx/conf.d/kajovohotel.conf ./infra/reverse-proxy/rollback-to-legacy.sh`
-2. `curl -fsS https://kajovohotel.hcasc.cz/health`
-3. Incident evidence: uložit časy, příkaz a log výstupy do release ticketu.
+3. Host-level Nginx config je synchronizovany z repa:
 
+```bash
+ssh temp "sudo nginx -t && sudo grep -nE 'location = /admin|location ~\\* \\^/admin' /etc/nginx/sites-available/hotel.hcasc.cz.conf"
+```
+
+4. Produkcni deploy uzivatel musi mit na serveru povoleny `sudo -n /usr/local/bin/kajovo-sync-hotel-nginx`, jinak workflow nedokaze bezpecne synchronizovat host-level Nginx konfiguraci z repa.
+
+4. Browser smoke na ostre domene pro web i admin probehne bez relevantnich console/network chyb.
+
+## Poznamka k rollbacku
+
+Historicke pre-cutover rollback kroky na legacy stack uz nejsou soucasti aktivniho provozniho navodu. Pokud by bylo potreba obnovit starsi topologii, musi vzniknout novy, explicitne schvaleny incident runbook mimo tento dokument.

@@ -13,7 +13,7 @@ function UtilityLayout({ children }: { children: React.ReactNode }): JSX.Element
 export function IntroRoute(): JSX.Element {
   return (
     <UtilityLayout>
-      <KajovoFullLockup title="KájovoHotel" subtitle="Provozní portál" href="/" />
+      <KajovoFullLockup title="Kájovo Hotel" subtitle="Provozní portál" href="/" />
       <section className="k-utility-meta" aria-labelledby="portal-intro-title">
         <p className="k-utility-eyebrow">Připraveno pro telefon, tablet i desktop</p>
         <h1 id="portal-intro-title">Provoz hotelu bez zbytečných přepínačů</h1>

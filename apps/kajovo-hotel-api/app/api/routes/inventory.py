@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 from datetime import date
 from io import BytesIO
@@ -35,6 +36,8 @@ from app.db.session import get_db
 from app.media.storage import InventoryMediaStorage
 from app.security.rbac import module_access_dependency, require_role
 from app.services.pdf.inventory import build_inventory_stocktake_pdf
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/inventory",
@@ -82,7 +85,7 @@ def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
 def _load_item_or_404(db: Session, item_id: int) -> InventoryItem:
     item = db.get(InventoryItem, item_id)
     if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladová položka nebyla nalezena.")
     return item
 
 
@@ -149,7 +152,7 @@ def _load_card_or_404(db: Session, card_id: int) -> InventoryCard:
         .options(selectinload(InventoryCard.movements).selectinload(InventoryMovement.item))
     )
     if not card:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory card not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladový doklad nebyl nalezen.")
     return card
 
 
@@ -163,7 +166,7 @@ def _load_item_detail(db: Session, item_id: int) -> InventoryItem:
         )
     )
     if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladová položka nebyla nalezena.")
     return item
 
 
@@ -215,7 +218,7 @@ def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> 
     if missing_ids:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Inventory ingredient not found: {missing_ids[0]}",
+            detail=f"Skladová surovina nebyla nalezena: {missing_ids[0]}",
         )
 
     if payload.card_type in {InventoryCardType.OUT, InventoryCardType.ADJUST}:
@@ -224,7 +227,7 @@ def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> 
             if line.quantity_base > item.current_stock:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insufficient stock for ingredient '{item.name}'",
+                    detail=f"Nedostatečný skladový stav u položky '{item.name}'",
                 )
 
     card = InventoryCard(
@@ -301,7 +304,7 @@ def delete_card(
             if movement.quantity > item.current_stock:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insufficient stock to revert card {card.number}",
+                    detail=f"Nedostatečný skladový stav pro vrácení dokladu {card.number}",
                 )
             item.current_stock -= movement.quantity
         else:
@@ -337,30 +340,29 @@ def get_item(
     item_id: int,
     db: Session = Depends(get_db),
 ) -> InventoryItemWithAuditRead:
-    item = db.scalar(
-        select(InventoryItem)
-        .where(InventoryItem.id == item_id)
-        .options(selectinload(InventoryItem.movements))
-    )
-    if not item:
+    try:
+        item = _load_item_detail(db, item_id)
+        audit_logs = list(
+            db.scalars(
+                select(InventoryAuditLog)
+                .where(InventoryAuditLog.entity == "item", InventoryAuditLog.resource_id == item.id)
+                .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
+            )
+        )
+        item_payload = InventoryItemRead.model_validate(item).model_dump()
+        return InventoryItemWithAuditRead(
+            **item_payload,
+            movements=[_serialize_movement(movement) for movement in item.movements],
+            audit_logs=[InventoryAuditLogRead.model_validate(log) for log in audit_logs],
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Inventory item detail failed", extra={"inventory_item_id": item_id})
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found"
-        )
-
-    audit_logs = list(
-        db.scalars(
-            select(InventoryAuditLog)
-            .where(InventoryAuditLog.entity == "item", InventoryAuditLog.resource_id == item.id)
-            .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
-        )
-    )
-    item_payload = InventoryItemDetailRead.model_validate(item).model_dump(exclude={"movements"})
-
-    return InventoryItemWithAuditRead(
-        **item_payload,
-        movements=[_serialize_movement(movement) for movement in item.movements],
-        audit_logs=[InventoryAuditLogRead.model_validate(log) for log in audit_logs],
-    )
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Detail skladové položky se nepodařilo načíst.",
+        ) from exc
 
 
 @router.put("/{item_id}", response_model=InventoryItemRead)
@@ -396,14 +398,14 @@ def add_movement(
         if not payload.document_reference:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Document reference is required for IN movement",
+                detail="U příjmu skladu je povinné číslo dokladu.",
             )
         item.current_stock += payload.quantity
     else:
         if payload.quantity > item.current_stock:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Insufficient stock for OUT movement",
+                detail="Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav.",
             )
         item.current_stock -= payload.quantity
 
@@ -418,16 +420,24 @@ def add_movement(
         note=payload.note,
     )
 
-    db.add(movement)
-    db.add(item)
-    _log_audit(
-        db,
-        "item",
-        item.id,
-        "movement",
-        f"Recorded movement {payload.movement_type.value} ({payload.quantity}).",
-    )
-    db.commit()
+    try:
+        db.add(movement)
+        db.add(item)
+        _log_audit(
+            db,
+            "item",
+            item.id,
+            "movement",
+            f"Recorded movement {payload.movement_type.value} ({payload.quantity}).",
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Inventory movement save failed", extra={"inventory_item_id": item_id})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Pohyb skladu se nepodařilo uložit.",
+        )
     return _load_item_detail(db, item_id)
 
 
@@ -447,7 +457,7 @@ def delete_item(
     if item.movements or item.card_lines or has_history:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inventory item with history cannot be deleted",
+            detail="Skladovou položku s historií nelze smazat.",
         )
 
     _log_audit(db, "item", item.id, "delete", f"Deleted inventory item '{item.name}'.")
@@ -469,17 +479,17 @@ def delete_movement(
         .options(selectinload(InventoryMovement.card))
     )
     if not movement or movement.item_id != item.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory movement not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladový pohyb nebyl nalezen.")
     if movement.card_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Delete the inventory card instead of an attached movement",
+            detail="Smažte skladový doklad místo připojeného pohybu.",
         )
     if movement.movement_type == InventoryMovementType.IN.value:
         if movement.quantity > item.current_stock:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Insufficient stock to revert IN movement",
+                detail="Nedostatečný skladový stav pro vrácení příjmu.",
             )
         item.current_stock -= movement.quantity
     else:
@@ -522,14 +532,16 @@ def upload_item_pictogram(
 def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
     item = _load_item_or_404(db, item_id)
     if kind not in {"thumb", "original"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported kind")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nepodporovaný typ obrázku.")
     rel = item.pictogram_thumb_path if kind == "thumb" else item.pictogram_path
     if not rel:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pictogram not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Piktogram nebyl nalezen.")
     storage = InventoryMediaStorage(get_settings().media_root)
     path = storage.resolve(rel)
     if not path.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
+        if kind == "thumb":
+            return storage.placeholder_thumb_response("SK")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Soubor média nebyl nalezen.")
     media_type = "image/jpeg" if kind == "thumb" else (mimetypes.guess_type(path.name)[0] or "image/jpeg")
     return FileResponse(path, media_type=media_type)
 

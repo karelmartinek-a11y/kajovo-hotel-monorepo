@@ -16,13 +16,13 @@ export function KajovoWordmark({
     variant === 'admin'
       ? {
           label: 'Administrace',
-          defaultTitle: 'KájovoHotel Administrace',
-          alt: 'Wordmark KájovoHotel Administrace',
+          defaultTitle: 'Kájovo Hotel Administrace',
+          alt: 'Wordmark Kájovo Hotel Administrace',
         }
       : {
           label: 'Portál',
-          defaultTitle: 'KájovoHotel Portál',
-          alt: 'Wordmark KájovoHotel Portál',
+          defaultTitle: 'Kájovo Hotel Portál',
+          alt: 'Wordmark Kájovo Hotel Portál',
         };
   const resolvedTitle = title ?? config.defaultTitle;
 

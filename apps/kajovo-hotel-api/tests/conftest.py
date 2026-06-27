@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import http.cookiejar
 import json
 import os
@@ -241,8 +241,6 @@ def api_request(api_base_url: str) -> ApiRequest:
     _request.opener = opener  # type: ignore[attr-defined]
     _request.jar = jar  # type: ignore[attr-defined]
     return _request
-
-
 
 
 

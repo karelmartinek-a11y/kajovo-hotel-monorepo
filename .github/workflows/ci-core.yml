@@ -78,9 +78,6 @@ jobs:
       - name: Run backend unit tests
         run: pnpm unit
 
-      - name: Android smoke gate
-        run: pnpm ci:android-smoke
-
       - name: Build portal client
         run: pnpm --filter @kajovo/kajovo-hotel-web build
 

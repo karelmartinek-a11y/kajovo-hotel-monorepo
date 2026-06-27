@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { KajovoFullLockup, KajovoSign } from '@kajovo/ui';
+import { Icon, KajovoFullLockup } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -37,7 +37,7 @@ export function PortalResetPasswordPage(): JSX.Element {
       return;
     }
     document.documentElement.lang = bundle.locale;
-    document.title = 'KájovoHotel · Reset hesla';
+    document.title = 'Kájovo Hotel · Dokončení resetu hesla';
   }, [bundle.locale]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -88,11 +88,11 @@ export function PortalResetPasswordPage(): JSX.Element {
   return (
     <main className="k-login-page" data-testid="portal-reset-password-page">
       <section className="k-login-card" aria-labelledby="portal-reset-title">
-        <KajovoFullLockup href="/" title="KájovoHotel" subtitle="Obnova přístupu" />
+        <KajovoFullLockup href="/" title="Kájovo Hotel" subtitle="Obnova přístupu" />
         <p className="k-login-eyebrow">{bundle.copy.eyebrow}</p>
-        <h1 id="portal-reset-title">Nastavení nového hesla</h1>
+        <h1 id="portal-reset-title">Dokončení resetu hesla</h1>
         <p className="k-login-copy">
-          Zadejte nové heslo pro svůj pracovní účet. Resetovací odkaz je jednorázový.
+          Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.
         </p>
         <form className="k-login-form" onSubmit={(event) => void submit(event)}>
           <label className="k-login-label" htmlFor="portal-reset-password">
@@ -106,7 +106,7 @@ export function PortalResetPasswordPage(): JSX.Element {
             onChange={(event) => setPassword(event.target.value)}
           />
           <label className="k-login-label" htmlFor="portal-reset-password-confirm">
-            Potvrzení nového hesla
+            Potvrzení hesla
           </label>
           <input
             id="portal-reset-password-confirm"
@@ -116,7 +116,7 @@ export function PortalResetPasswordPage(): JSX.Element {
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
           <button className="k-button" type="submit" disabled={busy}>
-            Uložit nové heslo
+            Nastavit nové heslo
           </button>
           <Link className="k-button secondary" to="/login">
             Zpět na přihlášení
@@ -133,7 +133,22 @@ export function PortalResetPasswordPage(): JSX.Element {
           ) : null}
         </form>
       </section>
-      <KajovoSign href="/" />
+      <aside className="k-login-preview" aria-label="Instrukce k obnoveni pristupu">
+        <div className="k-card">
+          <div className="k-card__header">
+            <div className="k-card__title-wrap">
+              <p className="k-card__eyebrow">Obnova pristupu</p>
+              <h3>Po zmene hesla se vratite zpet do smeny</h3>
+            </div>
+            <Icon name="profile" className="k-card__icon" title="Obnova pristupu" />
+          </div>
+          <div className="k-card__body k-grid">
+            <p className="k-text-muted">Použijte odkaz ze správcovského e-mailu a nastavte nové heslo alespoň o 8 znacích.</p>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Token z odkazu</span></div>
+            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>Nova hesla musi souhlasit</span></div>
+          </div>
+        </div>
+      </aside>
     </main>
   );
 }

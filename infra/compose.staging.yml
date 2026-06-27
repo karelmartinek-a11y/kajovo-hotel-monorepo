@@ -27,7 +27,7 @@ services:
     env_file:
       - .env.staging
     environment:
-      KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-KájovoHotel API}
+      KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-Kájovo Hotel API}
       KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
       KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-staging}
       KAJOVO_API_DATABASE_URL: ${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://kajovo:kajovo_staging_password@postgres:5432/kajovo_hotel_staging}

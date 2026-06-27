@@ -9,7 +9,6 @@ import {
   resolveActiveRoleForPermissions,
   type AuthProfile,
   type Role,
-  visibleRolesForPermissions,
 } from '../rbac';
 import { getAuthBundle, type AuthBundle } from '@kajovo/shared';
 
@@ -121,18 +120,27 @@ function ReceptionHubPage(): JSX.Element {
   return (
     <main className="k-page" data-testid="reception-hub-page">
       <h1>Recepce</h1>
-      <div className="k-grid cards-2">
+      <p className="k-login-copy">
+        Vyberte provozní tok, který chcete otevřít. Každá karta vede do plnohodnotného pracovního vstupu, ne jen do stručné zkratky.
+      </p>
+      <div className="k-grid cards-3">
         <StateView
           title="Zpracování nálezů"
-          description="Zobrazí jen čekající nálezy. Po označení jako zpracované ze seznamu zmizí."
+          description="Seznam čekajících nálezů, detail položky a převzetí po recepci."
           stateKey="empty"
           action={<Link className="k-button" to="/ztraty-a-nalezy">Otevřít nálezy</Link>}
         />
         <StateView
           title="Import a správa snídaní"
-          description="Import PDF, správa diet a vrácení jednotlivé spotřebované snídaně."
+          description="Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF."
           stateKey="empty"
           action={<Link className="k-button" to="/snidane">Otevřít snídaně</Link>}
+        />
+        <StateView
+          title="Přehled hlášení"
+          description="Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role."
+          stateKey="empty"
+          action={<Link className="k-button" to="/hlaseni">Otevřít hlášení</Link>}
         />
       </div>
     </main>
@@ -250,9 +258,9 @@ export function PortalRoutes({
     return <Navigate to="/login" replace />;
   }
 
-  const visibleRoles = visibleRolesForPermissions(auth.roles, auth.permissions);
-  const activeRole = resolveActiveRoleForPermissions(visibleRoles, auth.activeRole, auth.permissions);
-  if (visibleRoles.length === 0) {
+  const assignedRoles = auth.roles;
+  const activeRole = resolveActiveRoleForPermissions(assignedRoles, auth.activeRole, auth.permissions);
+  if (assignedRoles.length === 0) {
     return (
       <main className="k-page" data-testid="access-denied-page">
         <StateView
@@ -268,7 +276,7 @@ export function PortalRoutes({
     );
   }
   if (!activeRole) {
-    return <RoleSelectPage roles={visibleRoles} copy={copy} roleLabel={localizedRoleLabel} />;
+    return <RoleSelectPage roles={assignedRoles} copy={copy} roleLabel={localizedRoleLabel} />;
   }
   const activeRoleLabel = localizedRoleLabel(activeRole);
   const switchRoleFromHeader = React.useCallback(async (role: string) => {
@@ -359,7 +367,7 @@ export function PortalRoutes({
       headerControls={(
         <RoleSwitcher
           activeLabel={localizedRoleLabel(activeRole)}
-          alternatives={visibleRoles
+          alternatives={assignedRoles
             .filter((role) => role !== activeRole)
             .map((role) => ({ key: role, label: localizedRoleLabel(role) }))}
           busy={switchBusy}

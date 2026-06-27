@@ -193,9 +193,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
-      - name: Android smoke gate
-        run: pnpm ci:android-smoke
-
   e2e-auth-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 12

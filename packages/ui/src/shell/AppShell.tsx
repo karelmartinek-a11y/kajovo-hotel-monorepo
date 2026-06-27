@@ -1,7 +1,7 @@
 import React from 'react';
 import '../tokens.css';
-import { KajovoSign } from './KajovoSign';
 import { KajovoWordmark } from './KajovoWordmark';
+import { Icon } from '../components/Icon';
 import type { PanelLayout } from './panelLayout';
 import { ModuleNavigation } from '../navigation/ModuleNavigation';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
@@ -22,7 +22,6 @@ const MAIN_TARGET_ID = 'main-content';
 
 export function AppShell({
   children,
-  isPopup,
   panelLayout = 'admin',
   modules,
   navigationRules,
@@ -32,7 +31,6 @@ export function AppShell({
   headerControls,
 }: AppShellProps): JSX.Element {
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
-  const signHref = wordmarkHref;
   const wordmarkVariant = panelLayout === 'admin' ? 'admin' : 'portal';
   const isIntroView = currentPath === '/intro' || currentPath.endsWith('/intro');
 
@@ -67,6 +65,18 @@ export function AppShell({
   return (
     <div className="k-app-shell" data-panel-layout={panelLayout}>
       <header className="k-app-header">
+        <div className="k-app-header__ribbon">
+          <div className="k-shell-inner k-app-header__ribbon-inner">
+            <span className="k-app-header__ribbon-item">
+              <Icon name="briefcase" className="k-app-header__ribbon-icon" />
+              <span>{panelLayout === 'admin' ? 'Administrace hotelu' : 'Provozní portál hotelu'}</span>
+            </span>
+            <span className="k-app-header__ribbon-item">
+              <Icon name="tool" className="k-app-header__ribbon-icon" />
+              <span>Navigace podle aktuální role</span>
+            </span>
+          </div>
+        </div>
         <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>
           Přeskočit na obsah
         </a>
@@ -82,7 +92,6 @@ export function AppShell({
         </div>
       </header>
       {children}
-      {!isPopup ? <KajovoSign href={signHref} /> : null}
     </div>
   );
 }

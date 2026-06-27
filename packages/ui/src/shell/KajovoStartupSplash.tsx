@@ -10,7 +10,7 @@ type KajovoStartupSplashProps = {
 };
 
 export function KajovoStartupSplash({
-  eyebrow = 'KájovoHotel',
+  eyebrow = 'Kájovo Hotel',
   title,
   description,
   href = '/',

@@ -9,7 +9,7 @@ type KajovoFullLockupProps = {
 
 export function KajovoFullLockup({
   href = '/',
-  title = 'KájovoHotel',
+  title = 'Kájovo Hotel',
   subtitle = null,
 }: KajovoFullLockupProps): JSX.Element {
   const accessibleTitle = subtitle ? `${title} - ${subtitle}` : title;

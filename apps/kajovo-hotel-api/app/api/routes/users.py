@@ -212,16 +212,16 @@ def list_users(db: Session = Depends(get_db)) -> list[PortalUserRead]:
 def get_user(user_id: int, db: Session = Depends(get_db)) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
     return _to_read_model(user, _lockout_map_for_user(db, user.email))
 
 
 @router.post("", response_model=PortalUserRead, status_code=status.HTTP_201_CREATED)
-def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> PortalUserRead:
+def create_user(payload: PortalUserCreate, request: Request, db: Session = Depends(get_db)) -> PortalUserRead:
     email = _normalize_email(payload.email)
     existing = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail už používá jiný uživatel.")
     password = payload.password or secrets.token_urlsafe(24)
     user = PortalUser(
         first_name=payload.first_name,
@@ -237,6 +237,13 @@ def create_user(payload: PortalUserCreate, db: Session = Depends(get_db)) -> Por
     db.commit()
     db.refresh(user)
     response_model = _to_read_model(user, _lockout_map_for_user(db, user.email))
+    normalized_roles = sorted(normalize_role(role) for role in payload.roles)
+    request.state.audit_detail_override = json.dumps({
+        "user_id": user.id,
+        "email": user.email,
+        "roles": normalized_roles,
+        "admin_role": "admin" in normalized_roles,
+    })
     settings = get_settings()
     try:
         service = build_email_service(settings, _stored_smtp_config(db))
@@ -255,7 +262,7 @@ def update_user(
 ) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
     previous_roles = sorted(normalize_role(role.role) for role in user.roles)
     was_admin = "admin" in previous_roles
     new_roles = [normalize_role(role) for role in payload.roles]
@@ -264,11 +271,11 @@ def update_user(
         select(PortalUser).where(PortalUser.email == email, PortalUser.id != user_id)
     ).scalar_one_or_none()
     if conflict is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail už používá jiný uživatel.")
     if was_admin and "admin" not in new_roles and user.is_active and _count_active_admins(db) <= 1:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot remove admin role from the last admin user",
+            detail="Nelze odebrat administrátorskou roli poslednímu aktivnímu administrátorovi.",
         )
     user.first_name = payload.first_name
     user.last_name = payload.last_name
@@ -276,6 +283,9 @@ def update_user(
     user.phone = payload.phone
     user.note = payload.note
     user.roles = [PortalUserRole(role=role) for role in new_roles]
+    if payload.password is not None:
+        user.password_hash = hash_password(payload.password)
+        revoke_sessions_for_portal_user(db, user.id)
     user.updated_at = utc_now()
     db.add(user)
     db.commit()
@@ -291,13 +301,15 @@ def set_user_active(
 ) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
     if _is_admin_user(user) and user.is_active and not payload.is_active and _count_active_admins(db) <= 1:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot deactivate the last admin user",
+            detail="Nelze deaktivovat posledního aktivního administrátora.",
         )
     user.is_active = payload.is_active
+    if not payload.is_active:
+        revoke_sessions_for_portal_user(db, user.id)
     user.updated_at = utc_now()
     db.add(user)
     db.commit()
@@ -313,11 +325,11 @@ def send_user_reset_link(
 ) -> UserPasswordResetLinkResponse:
     user = db.get(PortalUser, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
     if _is_admin_user(user):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Admin account password reminder is handled only via admin login hint",
+            detail="Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace.",
         )
     settings = get_settings()
     token = _issue_portal_reset_token(db, _normalize_email(user.email))
@@ -369,7 +381,7 @@ def unlock_user_account(
 ) -> PortalUserRead:
     user = db.get(PortalUser, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
     principal = _normalize_email(user.email)
     _reset_lockout(db, actor_type="portal", principal=principal)
     if _is_admin_user(user):
@@ -389,20 +401,20 @@ def delete_user(
 ) -> None:
     user = db.get(PortalUser, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
     actor_email, _, _ = parse_identity(request)
     target_email = user.email.strip().lower()
 
     if actor_email and actor_email.strip().lower() == target_email:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cannot delete your own account",
+            detail="Nelze smazat vlastní účet.",
         )
 
     if _is_admin_user(user) and user.is_active and _count_active_admins(db) <= 1:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete the last admin user",
+            detail="Nelze smazat posledního aktivního administrátora.",
         )
 
     audit_payload = json.dumps({"user_id": user.id, "email": user.email})

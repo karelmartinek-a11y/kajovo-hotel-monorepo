@@ -3,6 +3,8 @@
 Date: 2026-03-12
 Purpose: authoritative checklist for repository-level GitHub `Secrets` and `Variables` used by CI, release, and production deploy.
 
+Aktualni produkcni deploy target po DNS cutoveru je server `89.221.222.92` pro `https://hotel.hcasc.cz`.
+
 ## Admin credentials policy
 
 - Admin username is the same value as the admin email.
@@ -17,7 +19,7 @@ Purpose: authoritative checklist for repository-level GitHub `Secrets` and `Vari
 ### Repository Variables
 
 - `HOTEL_DEPLOY_HOST`
-  - Production host for password-based SSH deploy.
+  - Production host for password-based SSH deploy. Aktualne musi smerovat na `89.221.222.92` nebo na alias, ktery se jednoznacne resolvuje na `89.221.222.92`.
 - `HOTEL_DEPLOY_PORT`
   - SSH port.
 - `HOTEL_DEPLOY_USER`

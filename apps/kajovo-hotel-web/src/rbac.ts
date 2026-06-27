@@ -7,12 +7,11 @@ import {
   normalizeRole,
   resolveActiveRoleForPermissions,
   rolePermissionSet,
-  visibleRolesForPermissions,
   type Role,
 } from '@kajovo/shared';
 
 export type { Role };
-export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole, resolveActiveRoleForPermissions, visibleRolesForPermissions };
+export { ROLE_MODULES, ADMIN_SWITCHABLE_ROLES, normalizeRole, resolveActiveRoleForPermissions };
 
 export type AuthProfile = {
   userId: string;
@@ -42,7 +41,7 @@ type AuthMeResponse = {
 };
 
 async function readAuthErrorMessage(response: Response): Promise<string> {
-  const fallback = 'Nepodarilo se overit prihlaseni.';
+  const fallback = 'Nepodařilo se ověřit přihlášení.';
   const raw = await response.text();
   if (!raw) {
     return fallback;
@@ -73,29 +72,29 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
     const payload = (await response.json()) as AuthMeResponse;
     const role = parseRole(payload.role);
     if (!role) {
-      return { status: 'error', message: 'Auth service returned an invalid role.' };
+      return { status: 'error', message: 'Nepodařilo se načíst přiřazené role účtu.' };
     }
     const roles = Array.isArray(payload.roles) && payload.roles.length > 0
       ? payload.roles.map((item) => parseRole(item)).filter((item): item is Role => item !== null)
       : [role];
     if (roles.length === 0) {
-      return { status: 'error', message: 'Auth service returned no valid roles.' };
+      return { status: 'error', message: 'Nepodařilo se načíst přiřazené role účtu.' };
     }
+    const assignedRoles = Array.from(new Set(roles));
     const activeRole = payload.active_role ? parseRole(payload.active_role) : null;
     if (payload.active_role && !activeRole) {
-      return { status: 'error', message: 'Auth service returned an invalid active role.' };
+      return { status: 'error', message: 'Nepodařilo se určit aktivní roli účtu.' };
     }
     const permissions = Array.isArray(payload.permissions) && payload.permissions.length > 0
       ? new Set(payload.permissions)
-      : new Set(rolePermissions(activeRole ?? role));
-    const visibleRoles = visibleRolesForPermissions(roles, permissions);
-    const resolvedActiveRole = resolveActiveRoleForPermissions(roles, activeRole, permissions);
+      : new Set(activeRole ? rolePermissions(activeRole) : []);
+    const resolvedActiveRole = resolveActiveRoleForPermissions(assignedRoles, activeRole, permissions);
     return {
       status: 'authenticated',
       profile: {
         userId: payload.email,
         role,
-        roles: visibleRoles,
+        roles: assignedRoles,
         activeRole: resolvedActiveRole,
         permissions,
         actorType: payload.actor_type,
@@ -106,7 +105,7 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
       status: 'error',
       message: error instanceof Error && error.message
         ? error.message
-        : 'Nepodarilo se overit prihlaseni.',
+        : 'Nepodařilo se ověřit přihlášení.',
     };
   }
 }

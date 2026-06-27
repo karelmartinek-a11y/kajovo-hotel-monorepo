@@ -14,6 +14,22 @@ const TMP_DIR = path.join(ROOT, ".tmp");
 
 const pnpmCmd = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 
+function pickPythonCommand() {
+  if (process.platform === "win32") {
+    return "python.exe";
+  }
+  for (const candidate of ["python3.11", "python3", "python"]) {
+    const probe = spawnSync(candidate, ["-V"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    if (!probe.error && probe.status === 0) {
+      return candidate;
+    }
+  }
+  throw new Error("No suitable Python interpreter found. Expected python3.11, python3, or python.");
+}
+
 function resolveAdminCredentials() {
   const email = process.env.KAJOVO_API_ADMIN_EMAIL || process.env.HOTEL_ADMIN_EMAIL;
   const password = process.env.KAJOVO_API_ADMIN_PASSWORD || process.env.HOTEL_ADMIN_PASSWORD;
@@ -139,7 +155,7 @@ function startBackend(port, envOverrides = {}) {
     ...envOverrides,
   };
 
-  const pythonCmd = process.platform === "win32" ? "python.exe" : "python";
+  const pythonCmd = pickPythonCommand();
   const initScript = `
 import hashlib
 import os

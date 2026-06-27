@@ -1,0 +1,172 @@
+[
+  {
+    "width": 1440,
+    "brandOverlapsButton": false,
+    "brandRect": {
+      "bottom": 99.890625,
+      "height": 38,
+      "left": 24,
+      "right": 299.796875,
+      "top": 61.890625,
+      "width": 275.796875
+    },
+    "buttonRect": {
+      "bottom": 627.453125,
+      "height": 46,
+      "left": 49,
+      "right": 195.4375,
+      "top": 581.453125,
+      "width": 146.4375
+    },
+    "buttonText": "Potvrdit pohyb",
+    "hasHorizontalOverflow": false,
+    "innerWidth": 1440,
+    "mainRect": {
+      "bottom": 902.84375,
+      "height": 772.953125,
+      "left": 0,
+      "right": 1440,
+      "top": 129.890625,
+      "width": 1440
+    },
+    "scrollWidth": 1440,
+    "title": "Kájovo Hotel · Portál",
+    "screenshot": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/audit-evidence/sklad-live-1440.png"
+  },
+  {
+    "width": 1024,
+    "brandOverlapsButton": false,
+    "brandRect": {
+      "bottom": 115.78125,
+      "height": 38,
+      "left": 16,
+      "right": 291.796875,
+      "top": 77.78125,
+      "width": 275.796875
+    },
+    "buttonRect": {
+      "bottom": 816.953125,
+      "height": 46,
+      "left": 41,
+      "right": 187.4375,
+      "top": 770.953125,
+      "width": 146.4375
+    },
+    "buttonText": "Potvrdit pohyb",
+    "hasHorizontalOverflow": false,
+    "innerWidth": 1024,
+    "mainRect": {
+      "bottom": 1092.34375,
+      "height": 769.5625,
+      "left": 0,
+      "right": 1024,
+      "top": 322.78125,
+      "width": 1024
+    },
+    "scrollWidth": 1024,
+    "title": "Kájovo Hotel · Portál",
+    "screenshot": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/audit-evidence/sklad-live-1024.png"
+  },
+  {
+    "width": 768,
+    "brandOverlapsButton": false,
+    "brandRect": {
+      "bottom": 111.78125,
+      "height": 38,
+      "left": 12,
+      "right": 287.796875,
+      "top": 73.78125,
+      "width": 275.796875
+    },
+    "buttonRect": {
+      "bottom": 1024.859375,
+      "height": 44,
+      "left": 37,
+      "right": 183.4375,
+      "top": 980.859375,
+      "width": 146.4375
+    },
+    "buttonText": "Potvrdit pohyb",
+    "hasHorizontalOverflow": false,
+    "innerWidth": 768,
+    "mainRect": {
+      "bottom": 1300.25,
+      "height": 1041.46875,
+      "left": 0,
+      "right": 753,
+      "top": 258.78125,
+      "width": 753
+    },
+    "scrollWidth": 753,
+    "title": "Kájovo Hotel · Portál",
+    "screenshot": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/audit-evidence/sklad-live-768.png"
+  },
+  {
+    "width": 430,
+    "brandOverlapsButton": false,
+    "brandRect": {
+      "bottom": 111.78125,
+      "height": 38,
+      "left": 12,
+      "right": 287.796875,
+      "top": 73.78125,
+      "width": 275.796875
+    },
+    "buttonRect": {
+      "bottom": 1072.109375,
+      "height": 44,
+      "left": 37,
+      "right": 183.4375,
+      "top": 1028.109375,
+      "width": 146.4375
+    },
+    "buttonText": "Potvrdit pohyb",
+    "hasHorizontalOverflow": false,
+    "innerWidth": 430,
+    "mainRect": {
+      "bottom": 1362.5,
+      "height": 1053.71875,
+      "left": 0,
+      "right": 415,
+      "top": 308.78125,
+      "width": 415
+    },
+    "scrollWidth": 415,
+    "title": "Kájovo Hotel · Portál",
+    "screenshot": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/audit-evidence/sklad-live-430.png"
+  },
+  {
+    "width": 360,
+    "brandOverlapsButton": false,
+    "brandRect": {
+      "bottom": 111.78125,
+      "height": 38,
+      "left": 12,
+      "right": 287.796875,
+      "top": 73.78125,
+      "width": 275.796875
+    },
+    "buttonRect": {
+      "bottom": 1106.125,
+      "height": 44,
+      "left": 37,
+      "right": 183.4375,
+      "top": 1062.125,
+      "width": 146.4375
+    },
+    "buttonText": "Potvrdit pohyb",
+    "hasHorizontalOverflow": false,
+    "innerWidth": 360,
+    "mainRect": {
+      "bottom": 1396.515625,
+      "height": 1087.734375,
+      "left": 0,
+      "right": 345,
+      "top": 308.78125,
+      "width": 345
+    },
+    "scrollWidth": 345,
+    "title": "Kájovo Hotel · Portál",
+    "screenshot": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/audit-evidence/sklad-live-360.png"
+  }
+]

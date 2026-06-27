@@ -17,6 +17,10 @@ RUN_VERIFY_SCRIPT="${RUN_VERIFY_SCRIPT:-1}"
 RESET_DB_ON_DEPLOY="${RESET_DB_ON_DEPLOY:-false}"
 SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-false}"
 DEPLOY_SOURCE_SHA="${DEPLOY_SOURCE_SHA:-}"
+HOST_NGINX_TEMPLATE="${HOST_NGINX_TEMPLATE:-$ROOT_DIR/infra/reverse-proxy/production-host.conf}"
+HOST_NGINX_SITE_PATH="${HOST_NGINX_SITE_PATH:-/etc/nginx/sites-available/hotel.hcasc.cz.conf}"
+HOST_NGINX_ENABLED_PATH="${HOST_NGINX_ENABLED_PATH:-/etc/nginx/sites-enabled/hotel.hcasc.cz.conf}"
+HOST_NGINX_SYNC_HELPER="${HOST_NGINX_SYNC_HELPER:-/usr/local/bin/kajovo-sync-hotel-nginx}"
 
 require_cmd() {
   local name="$1"
@@ -90,6 +94,15 @@ wait_for_container_health() {
   return 1
 }
 
+prepare_api_media_volume() {
+  echo "Pripravuji zapisovatelny /app/data volume pro API..."
+  compose_cmd up -d api
+  compose_cmd exec -T --user root api sh -lc '
+    mkdir -p /app/data/media/issues /app/data/media/lost-found /app/data/media/reports /app/data/media/inventory
+    chown -R appuser:appuser /app/data
+  '
+}
+
 reconcile_runtime_schema() {
   local sql
   # Dorovname stary produkcni schema drift u SMTP tabulky i v pripade,
@@ -111,6 +124,17 @@ BEGIN
       ADD COLUMN IF NOT EXISTS last_test_recipient VARCHAR(255) NULL,
       ADD COLUMN IF NOT EXISTS last_test_error TEXT NULL;
   END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'inventory_movements'
+  ) THEN
+    ALTER TABLE public.inventory_movements
+      ADD COLUMN IF NOT EXISTS card_id INTEGER NULL,
+      ADD COLUMN IF NOT EXISTS card_item_id INTEGER NULL;
+  END IF;
 END
 $$;
 SQL
@@ -120,6 +144,77 @@ SQL
   PGPASSWORD="${POSTGRES_PASSWORD:-}" \
     compose_cmd exec -T postgres \
     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
+
+  PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+    compose_cmd exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 <<'SQL'
+CREATE INDEX IF NOT EXISTS ix_inventory_movements_card_id
+  ON public.inventory_movements (card_id);
+CREATE INDEX IF NOT EXISTS ix_inventory_movements_card_item_id
+  ON public.inventory_movements (card_item_id);
+SQL
+}
+
+reconcile_alembic_version_storage() {
+  local sql
+  sql="$(cat <<'SQL'
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = 'alembic_version'
+  ) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'alembic_version'
+        AND column_name = 'version_num'
+        AND COALESCE(character_maximum_length, 0) < 128
+    ) THEN
+      ALTER TABLE public.alembic_version
+        ALTER COLUMN version_num TYPE VARCHAR(128);
+    END IF;
+  END IF;
+END
+$$;
+SQL
+)"
+
+  echo "Dorovnavam uloziste Alembic revizi pro delsi revision ID..."
+  PGPASSWORD="${POSTGRES_PASSWORD:-}" \
+    compose_cmd exec -T postgres \
+    psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
+}
+
+sync_host_nginx_config() {
+  if [[ ! -f "$HOST_NGINX_TEMPLATE" ]]; then
+    echo "Chybi host-level Nginx sablona: $HOST_NGINX_TEMPLATE" >&2
+    exit 1
+  fi
+
+  echo "Synchronizuji host-level Nginx konfiguraci pro hotel.hcasc.cz..."
+  if [[ "$(id -u)" -eq 0 ]]; then
+    install -D -m 0644 "$HOST_NGINX_TEMPLATE" "$HOST_NGINX_SITE_PATH"
+    if [[ ! -L "$HOST_NGINX_ENABLED_PATH" ]]; then
+      ln -sfn "$HOST_NGINX_SITE_PATH" "$HOST_NGINX_ENABLED_PATH"
+    fi
+    nginx -t
+    systemctl reload nginx
+    return 0
+  fi
+
+  if [[ -x "$HOST_NGINX_SYNC_HELPER" ]] && sudo -n "$HOST_NGINX_SYNC_HELPER" \
+    "$HOST_NGINX_TEMPLATE" \
+    "$HOST_NGINX_SITE_PATH" \
+    "$HOST_NGINX_ENABLED_PATH"; then
+    return 0
+  fi
+
+  echo "Deploy uzivatel nema prava pro host-level Nginx sync a helper $HOST_NGINX_SYNC_HELPER neni dostupny pres sudo -n." >&2
+  exit 1
 }
 
 http_check() {
@@ -290,6 +385,12 @@ for i in {1..10}; do
       continue
     fi
   fi
+  if [[ "$has_alembic_version" == "t" ]]; then
+    if ! reconcile_alembic_version_storage; then
+      sleep 2
+      continue
+    fi
+  fi
   if compose_cmd run --rm api alembic upgrade head; then
     migration_ok=1
     break
@@ -347,6 +448,8 @@ if [[ "$sql_ok" -ne 1 ]]; then
 fi
 
 compose_cmd up -d --force-recreate api web admin
+prepare_api_media_volume
+sync_host_nginx_config
 
 wait_for_container_health postgres 180
 wait_for_container_health api 180
@@ -357,42 +460,6 @@ http_check "http://127.0.0.1:${API_PORT:-8202}/ready" "API readiness"
 http_check "http://127.0.0.1:${API_PORT:-8202}/api/health" "API health"
 http_check "http://127.0.0.1:${WEB_PORT:-8080}/healthz" "Web health"
 http_check "http://127.0.0.1:${ADMIN_PORT:-8083}/healthz" "Admin health"
-
-android_release_json="$ROOT_DIR/android/release/android-release.json"
-android_release_apk="$ROOT_DIR/apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk"
-if [[ ! -f "$android_release_json" ]]; then
-  echo "Chybi Android release manifest: $android_release_json" >&2
-  exit 1
-fi
-if [[ ! -f "$android_release_apk" ]]; then
-  echo "Chybi produkcni Android APK: $android_release_apk" >&2
-  exit 1
-fi
-
-android_release_runtime_json="$(
-  python3 - <<'PY' "$android_release_json" "$android_release_apk"
-from hashlib import sha256
-from pathlib import Path
-import json
-import sys
-
-manifest_path = Path(sys.argv[1])
-apk_path = Path(sys.argv[2])
-manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-apk_hash = sha256(apk_path.read_bytes()).hexdigest().lower()
-expected_hash = str(manifest["sha256"]).lower()
-if apk_hash != expected_hash:
-    raise SystemExit(f"Android APK hash mismatch: expected {expected_hash}, got {apk_hash}")
-print(json.dumps({
-    "version_code": int(manifest["version_code"]),
-    "version": str(manifest["version_name"]),
-    "download_url": str(manifest["download_url"]),
-    "sha256": expected_hash,
-    "required": bool(manifest["required"]),
-    "apk_path": str(apk_path),
-}))
-PY
-)"
 
 deploy_artifact_dir="$ROOT_DIR/artifacts/deploy-runtime"
 mkdir -p "$deploy_artifact_dir"
@@ -408,8 +475,7 @@ cat > "$deploy_artifact_dir/latest.json" <<JSON
     "api_health": "200",
     "web_healthz": "200",
     "admin_healthz": "200"
-  },
-  "android_release": $android_release_runtime_json
+  }
 }
 JSON
 

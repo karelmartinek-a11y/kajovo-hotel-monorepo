@@ -1,8 +1,9 @@
-﻿import json
+import json
 import os
 import re
-from datetime import date
+from datetime import date, datetime
 from io import BytesIO
+from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
@@ -16,24 +17,36 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     BreakfastDailySummary,
     BreakfastImportItem,
     BreakfastImportResponse,
+    BreakfastManualRefreshJobRead,
+    BreakfastManualRefreshProgressItem,
+    BreakfastManualRefreshRequest,
     BreakfastOrderCreate,
     BreakfastOrderRead,
     BreakfastOrderUpdate,
     BreakfastStatus,
 )
 from app.config import get_settings
-from app.db.models import BreakfastOrder
+from app.db.models import (
+    BreakfastImportProcessedAttachment,
+    BreakfastManualRefreshJob,
+    BreakfastOrder,
+)
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
+from app.services.breakfast.manual_refresh import (
+    get_manual_breakfast_refresh_job,
+    start_manual_breakfast_refresh,
+)
 from app.services.breakfast.parser import parse_breakfast_pdf
 from app.services.pdf.breakfast import build_breakfast_schedule_pdf
+from app.time_utils import utc_now
 
 router = APIRouter(
     prefix="/api/v1/breakfast",
@@ -58,7 +71,12 @@ def _visible_breakfast_orders(orders: list[BreakfastOrder]) -> list[BreakfastOrd
     )
 
 
-def _build_daily_summary(service_date: date, orders: list[BreakfastOrder]) -> BreakfastDailySummary:
+def _build_daily_summary(
+    service_date: date,
+    orders: list[BreakfastOrder],
+    *,
+    source_imported_at: datetime | None = None,
+) -> BreakfastDailySummary:
     counts = {status: 0 for status in BreakfastStatus}
     for order in orders:
         counts[BreakfastStatus(order.status)] += 1
@@ -68,6 +86,7 @@ def _build_daily_summary(service_date: date, orders: list[BreakfastOrder]) -> Br
         total_orders=len(orders),
         total_guests=sum(order.guest_count for order in orders),
         status_counts=counts,
+        source_imported_at=source_imported_at,
     )
 
 
@@ -109,6 +128,46 @@ def _parse_diet_overrides(raw: str | None) -> dict[str, dict[str, bool]]:
     return overrides
 
 
+def _today_prague() -> date:
+    return utc_now().astimezone(ZoneInfo("Europe/Prague")).date()
+
+
+def _read_manual_refresh_job(job: BreakfastManualRefreshJob) -> BreakfastManualRefreshJobRead:
+    progress: list[BreakfastManualRefreshProgressItem] = []
+    if job.progress_json:
+        try:
+            payload = json.loads(job.progress_json)
+        except json.JSONDecodeError:
+            payload = []
+        if isinstance(payload, list):
+            for item in payload:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    progress.append(
+                        BreakfastManualRefreshProgressItem(
+                            at=datetime.fromisoformat(str(item.get("at"))),
+                            step=str(item.get("step") or "runner"),
+                            message=str(item.get("message") or ""),
+                        )
+                    )
+                except ValueError:
+                    continue
+    return BreakfastManualRefreshJobRead(
+        id=job.id,
+        job_key=job.job_key,
+        service_date=job.service_date,
+        status=job.status,
+        progress=progress,
+        message=job.message,
+        error_message=job.error_message,
+        imported_count=job.imported_count,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+    )
+
+
 @router.get("", response_model=list[BreakfastOrderRead])
 def list_breakfast_orders(
     service_date: date | None = Query(default=None),
@@ -141,7 +200,32 @@ def get_daily_summary(
             .order_by(BreakfastOrder.id.desc())
         )
     ))
-    return _build_daily_summary(service_date, orders)
+    source_imported_at = db.scalar(
+        select(func.max(BreakfastImportProcessedAttachment.imported_at)).where(
+            BreakfastImportProcessedAttachment.parsed_day == service_date
+        )
+    )
+    return _build_daily_summary(service_date, orders, source_imported_at=source_imported_at)
+
+
+@router.post("/manual-refresh", response_model=BreakfastManualRefreshJobRead, status_code=status.HTTP_202_ACCEPTED)
+def manual_refresh_breakfast(
+    payload: BreakfastManualRefreshRequest,
+    db: Session = Depends(get_db),
+) -> BreakfastManualRefreshJobRead:
+    job = start_manual_breakfast_refresh(db, payload.service_date)
+    return _read_manual_refresh_job(job)
+
+
+@router.get("/manual-refresh/{job_id}", response_model=BreakfastManualRefreshJobRead)
+def get_manual_refresh_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> BreakfastManualRefreshJobRead:
+    job = get_manual_breakfast_refresh_job(db, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manual refresh job not found")
+    return _read_manual_refresh_job(job)
 
 
 @router.get("/{order_id}", response_model=BreakfastOrderRead)
@@ -396,14 +480,19 @@ def import_breakfast_pdf(
         )
 
     if save:
-        db.query(BreakfastOrder).filter(BreakfastOrder.service_date == parsed_day).delete(
-            synchronize_session=False
-        )
+        today = _today_prague()
+        target_days = sorted({row.day for row in rows if row.day >= today})
+        for target_day in target_days:
+            db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
+                synchronize_session=False
+            )
         for row in rows:
+            if row.day < today:
+                continue
             override = diet_overrides.get(str(row.room), {})
             db.add(
                 BreakfastOrder(
-                    service_date=parsed_day,
+                    service_date=row.day,
                     room_number=row.room,
                     guest_name=row.guest_name or f"Pokoj {row.room}",
                     guest_count=max(1, int(row.breakfast_count)),

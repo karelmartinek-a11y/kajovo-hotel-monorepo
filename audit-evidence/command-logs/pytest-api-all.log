@@ -1,0 +1,37 @@
+
+==================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_admin_profile.py _________________
+apps/kajovo-hotel-api/tests/test_admin_profile.py:3: in <module>
+    ADMIN_EMAIL = admin_email()
+                  ^^^^^^^^^^^^^
+apps/kajovo-hotel-api/tests/test_support.py:13: in admin_email
+    raise RuntimeError(
+E   RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+_______________ ERROR collecting tests/test_auth_constraints.py ________________
+apps/kajovo-hotel-api/tests/test_auth_constraints.py:8: in <module>
+    ADMIN_EMAIL = admin_email()
+                  ^^^^^^^^^^^^^
+apps/kajovo-hotel-api/tests/test_support.py:13: in admin_email
+    raise RuntimeError(
+E   RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+_________________ ERROR collecting tests/test_auth_lockout.py __________________
+apps/kajovo-hotel-api/tests/test_auth_lockout.py:11: in <module>
+    ADMIN_EMAIL = admin_email()
+                  ^^^^^^^^^^^^^
+apps/kajovo-hotel-api/tests/test_support.py:13: in admin_email
+    raise RuntimeError(
+E   RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+_____________________ ERROR collecting tests/test_users.py _____________________
+apps/kajovo-hotel-api/tests/test_users.py:13: in <module>
+    ADMIN_EMAIL = admin_email()
+                  ^^^^^^^^^^^^^
+apps/kajovo-hotel-api/tests/test_support.py:13: in admin_email
+    raise RuntimeError(
+E   RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+=========================== short test summary info ============================
+ERROR apps/kajovo-hotel-api/tests/test_admin_profile.py - RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+ERROR apps/kajovo-hotel-api/tests/test_auth_constraints.py - RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+ERROR apps/kajovo-hotel-api/tests/test_auth_lockout.py - RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+ERROR apps/kajovo-hotel-api/tests/test_users.py - RuntimeError: Missing admin email for tests. Set HOTEL_ADMIN_EMAIL or KAJOVO_API_ADMIN_EMAIL.
+!!!!!!!!!!!!!!!!!!! Interrupted: 4 errors during collection !!!!!!!!!!!!!!!!!!!!
+4 errors in 1.53s

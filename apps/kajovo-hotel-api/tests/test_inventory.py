@@ -69,11 +69,30 @@ def test_inventory_crud_movements_and_audit(api_request: ApiRequest) -> None:
     assert adjust_status == 200
     assert isinstance(adjust_result, dict)
     assert adjust_result["current_stock"] == 7
+    assert len(adjust_result["movements"]) == 2
+
+    in_status, in_result = api_request(
+        f"/api/v1/inventory/{created['id']}/movements",
+        method="POST",
+        payload={
+            "movement_type": "in",
+            "quantity": 4,
+            "document_date": "2026-03-05",
+            "document_reference": "DL-TEST-001",
+            "note": "Doplnění",
+        },
+    )
+    assert in_status == 200
+    assert isinstance(in_result, dict)
+    assert in_result["current_stock"] == 11
+    assert len(in_result["movements"]) == 3
 
     detail_status, detail = api_request(f"/api/v1/inventory/{created['id']}")
     assert detail_status == 200
     assert isinstance(detail, dict)
-    assert len(detail["audit_logs"]) >= 4
+    assert detail["current_stock"] == 11
+    assert len(detail["movements"]) == 3
+    assert len(detail["audit_logs"]) >= 5
 
 
 def test_inventory_low_stock_filter_and_validation(api_request: ApiRequest) -> None:
@@ -92,7 +111,7 @@ def test_inventory_low_stock_filter_and_validation(api_request: ApiRequest) -> N
     )
     assert out_status == 400
     assert isinstance(out_error, dict)
-    assert out_error["detail"] == "Insufficient stock for OUT movement"
+    assert out_error["detail"] == "Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav."
 
 
 def test_inventory_document_numbering_and_pdf(api_request: ApiRequest, api_base_url: str) -> None:

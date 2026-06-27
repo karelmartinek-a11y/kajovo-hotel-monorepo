@@ -2,7 +2,7 @@ name: Deploy - hotel.hcasc.cz
 
 on:
   workflow_run:
-    workflows: ["CI Gates - KajovoHotel"]
+    workflows: ["CI Gates - Kajovo Hotel"]
     types:
       - completed
     branches:
@@ -23,14 +23,19 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       DEPLOY_BASE_URL: https://hotel.hcasc.cz
+      PRODUCTION_SERVER_IPV4: 89.221.222.92
       HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
       HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
       HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
       HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
+      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
       HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
       KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+      BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1' }}
+      BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_token }}
+      BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_token }}
     steps:
       - name: Checkout deploy SHA
         uses: actions/checkout@v5
@@ -63,8 +68,22 @@ jobs:
             echo "Missing HOTEL_DEPLOY_USER in GitHub secrets or variables." >&2
             exit 1
           fi
-          if [ -z "${HOTEL_DEPLOY_PASS:-}" ]; then
-            echo "Missing HOTEL_DEPLOY_PASS in GitHub secrets or variables." >&2
+          if [ -z "${HOTEL_DEPLOY_PASS:-}" ] && [ -z "${HOTEL_DEPLOY_KEY:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_PASS or HOTEL_DEPLOY_KEY in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          resolved_ipv4=""
+          if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            resolved_ipv4="$HOTEL_DEPLOY_HOST"
+          else
+            resolved_ipv4="$(getent ahostsv4 "$HOTEL_DEPLOY_HOST" | awk '{print $1}' | sort -u | paste -sd ',' -)"
+          fi
+          if [[ -z "$resolved_ipv4" ]]; then
+            echo "Nepodarilo se zjistit IPv4 adresu pro HOTEL_DEPLOY_HOST=$HOTEL_DEPLOY_HOST" >&2
+            exit 1
+          fi
+          if [[ ",$resolved_ipv4," != *",${PRODUCTION_SERVER_IPV4},"* ]]; then
+            echo "HOTEL_DEPLOY_HOST nemiri na produkcni server ${PRODUCTION_SERVER_IPV4}. Resolved IPv4: ${resolved_ipv4}" >&2
             exit 1
           fi
           echo "Deploy target environment check: PASS"
@@ -72,8 +91,8 @@ jobs:
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
 
-      - name: Android release integrity gate
-        run: python scripts/check_android_release_integrity.py
+      - name: Validate Better Hotel credential environment
+        run: python scripts/check_better_hotel_credentials_env.py
 
       - name: Build release archive
         shell: bash
@@ -89,10 +108,24 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           source: ${{ env.RELEASE_ARCHIVE }}
           target: /tmp/
           overwrite: true
+
+      - name: Verify remote nginx sync helper
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null
+            echo "Remote nginx sync helper: PASS"
 
       - name: Deploy uploaded release via SSH password
         uses: appleboy/ssh-action@v1.2.0
@@ -100,8 +133,9 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
-          envs: DEPLOY_SHA,RELEASE_ARCHIVE,HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD
+          envs: DEPLOY_SHA,RELEASE_ARCHIVE,HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD,BETTER_HOTEL_CONNECTOR_BASE_URL,BETTER_HOTEL_ACCESS_TOKEN,BETTER_HOTEL_CLIENT_TOKEN
           script: |
             set -euo pipefail
             set -x
@@ -147,6 +181,7 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           envs: DEPLOY_SHA
           script: |
@@ -167,13 +202,6 @@ jobs:
             actual = str(payload.get("sha") or "")
             if actual not in {expected, expected[:7]}:
                 raise SystemExit(f"deploy artifact SHA mismatch: expected {expected}, got {actual}")
-            android_release = payload.get("android_release") or {}
-            if not android_release.get("version"):
-                raise SystemExit("deploy runtime artifact missing android_release.version")
-            if not android_release.get("version_code"):
-                raise SystemExit("deploy runtime artifact missing android_release.version_code")
-            if not android_release.get("sha256"):
-                raise SystemExit("deploy runtime artifact missing android_release.sha256")
             print("Deploy runtime artifact SHA on server: PASS")
             PY
 
@@ -202,6 +230,17 @@ jobs:
           )
           PY
 
+      - name: Route deploy verification to target host
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$HOTEL_DEPLOY_HOST hotel.hcasc.cz" | sudo tee -a /etc/hosts >/dev/null
+            getent hosts hotel.hcasc.cz
+          else
+            echo "HOTEL_DEPLOY_HOST is not an IPv4 address; live verification will use DNS."
+          fi
+
       - name: Post-deploy HTTP gate
         shell: bash
         run: |
@@ -228,25 +267,13 @@ jobs:
           check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
           check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
 
-      - name: Verify live Android release metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import urllib.request
-          from pathlib import Path
-
-          manifest_path = Path("android/release/android-release.json")
-          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-          with urllib.request.urlopen("https://hotel.hcasc.cz/api/app/android-release", timeout=20) as response:
-              payload = json.loads(response.read().decode("utf-8"))
-          assert payload["version_code"] == manifest["version_code"], payload
-          assert payload["version"] == manifest["version_name"], payload
-          assert payload["download_url"] == manifest["download_url"], payload
-          assert payload["sha256"] == manifest["sha256"], payload
-          print("Live Android release metadata: PASS")
-          PY
+      - name: Verify live breakfast manual refresh
+        run: node scripts/verify_live_breakfast_manual_refresh.mjs
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD }}
+          VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
 
       - name: Verify live admin login with GitHub credentials
         env:
@@ -270,6 +297,7 @@ jobs:
           host: ${{ env.HOTEL_DEPLOY_HOST }}
           username: ${{ env.HOTEL_DEPLOY_USER }}
           password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
           port: ${{ env.HOTEL_DEPLOY_PORT }}
           script: |
             set -euo pipefail

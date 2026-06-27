@@ -1,25 +1,15 @@
-## Povinny Release Proces Androidu A Produkce
+## Webovy Release A Produkcni Provoz
 
-- Kazda uzivatelsky viditelna zmena nativni Android appky musi byt vydana jako nova Android verze.
-- Jedinym zdrojem pravdy pro Android release metadata je `android/release/android-release.json`.
-- `android/app/build.gradle.kts` musi cist `versionCode` a `versionName` z release manifestu; rucni prepis verze mimo manifest je zakazany.
-- Produkcni APK v `apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk` musi pri kazdem releasu odpovidat hashi `sha256` v release manifestu.
-- Backend endpoint `/api/app/android-release` musi cist metadata z release manifestu a nesmi mit vlastni rucne udrzovanou verzi bokem.
-- Produkcni deploy musi po nasazeni overit shodu mezi:
-  - release manifestem v deploynutem repu,
-  - produkcnim APK souborem,
-  - live API endpointem `/api/app/android-release`,
-  - runtime deploy artifactem na serveru.
-- CI a GitHub workflow musi release integrity blokovat. Pokud release manifest, APK, build konfigurace, API metadata nebo deploy verification nejsou ve shode, release ani deploy nesmi projit.
-- Android appka musi pri kazdem kontaktu s produkcnim serverem vyhodnocovat release metadata z odpovedi a pri nalezu nove verze spustit best-effort update flow.
-- Ticha instalace bez systemovych opravneni neni povolena Android platformou. Povinnym minimem je automaticke stazeni APK, kontrola hashe a predani systemovemu installeru nebo jeho legalni fallback.
-- Produkcni release signing Androidu pouziva keystore mimo git. GitHub musi mit secrets `KAJOVO_UPLOAD_STORE_FILE_B64` a `KAJOVO_UPLOAD_KEY_ALIAS`; store i key password se berou z existujiciho `HOTEL_ADMIN_PASSWORD`.
+- Kazda uzivatelsky viditelna zmena webu nebo adminu musi byt overena pro desktop, tablet a mobil.
+- Za jediny zdroj pravdy pro produkcni chovani se povazuje aktualni kod v repozitari a bezici runtime na `https://hotel.hcasc.cz` a `https://hotel.hcasc.cz/admin`.
+- Produkcni deploy musi overit shodu mezi nasazenym commitem, runtime artifactem na serveru, bezicimi sluzbami a verejnou domenou `hotel.hcasc.cz`.
+- Aktivni deploy ani produkcni validace nesmi byt smerovany na historicky server jen podle stare dokumentace; cilovy server se overuje podle aktualni DNS, deploy konfigurace a beziciho runtime.
+- Secrets, hesla, tokeny, klice ani citlive produkcni udaje se nesmi commitovat, vypisovat do reportu ani ponechavat v pracovnim stromu.
 
-## Neporusitelne Pravidlo Web Android Parity
+## Legacy Android Stav
 
-- Kazda runtime zmena webove aplikace musi byt spojena i s adekvatni runtime zmenou nativni Android appky.
-- Kazda runtime zmena nativni Android appky musi byt spojena i s adekvatni runtime zmenou webove aplikace.
-- Webova cast se povazuje za hotovou jen tehdy, kdyz je odladena pro vsechny tri povinne tridy zobrazeni: desktop, tablet a mobil.
-- Android cast se povazuje za hotovou jen tehdy, kdyz zustava plne nativni. WebView-first, wrapper nebo pouhe zabaleni webu nejsou pripustne.
-- Toto pravidlo je blokujici pro CI guardy i pro deploy rozhodnuti. Zmena jen na jedne platforme bez vedome navazane zmeny na druhe platforme nesmi projit.
-- Povinne parity kontroly jsou `pnpm ci:policy` a `pnpm ci:policy-test`. Obe musi projit v GitHub Actions i pred releasem.
+- Stavajici Android aplikace je vyrazena z provozu a neni soucasti aktualniho release zavazku.
+- Stavajici Android zdrojaky, build skripty, signing pravidla, release metadata ani APK artefakty se nesmi udrzovat jako podminka pro webovy runtime nebo deploy.
+- Webove opravy `hotel.hcasc.cz` a `hotel.hcasc.cz/admin` nesmi byt blokovany Androidem, Android parity gate ani Android smoke kontrolami.
+- Pokud repozitar obsahuje historicke Android materialy, povazuji se za archivni a nesmi se pouzivat jako aktivni instrukce pro vyvoj, CI ani deploy.
+- Nova nativni Android aplikace muze vzniknout pozdeji jako samostatny projekt; neni soucasti tohoto repozitare ani aktualniho weboveho deploye.

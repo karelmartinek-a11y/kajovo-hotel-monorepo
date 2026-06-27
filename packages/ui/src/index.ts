@@ -1,5 +1,4 @@
 export * from './shell/AppShell';
-export * from './shell/KajovoSign';
 export * from './shell/KajovoWordmark';
 export * from './shell/KajovoFullLockup';
 export * from './shell/KajovoStartupSplash';
@@ -12,6 +11,7 @@ export * from './types/navigation';
 export * from './components/Timeline';
 export * from './components/Badge';
 export * from './components/RoleSwitcher';
+export * from './components/Icon';
 
 export * from './components/Skeleton';
 

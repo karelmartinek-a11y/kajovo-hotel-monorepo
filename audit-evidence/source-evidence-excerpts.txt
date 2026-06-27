@@ -1,0 +1,1271 @@
+# inventory.py selected evidence
+    45	    dependencies=[Depends(module_access_dependency("inventory"))],
+    46	)
+    47	
+    48	
+    49	def _log_audit(db: Session, entity: str, resource_id: int, action: str, detail: str) -> None:
+    50	    db.add(
+    51	        InventoryAuditLog(
+    52	            entity=entity,
+    53	            resource_id=resource_id,
+    54	            action=action,
+    55	            detail=detail,
+    56	        )
+    57	    )
+    58	
+    59	
+    60	def _movement_prefix(movement_type: str) -> str:
+    61	    if movement_type == InventoryMovementType.IN.value:
+    62	        return "PR"
+    63	    if movement_type == InventoryMovementType.ADJUST.value:
+    64	        return "OD"
+    65	    return "VY"
+    66	
+    67	
+    68	def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
+    69	    year = doc_date.year
+    70	    like = f"{prefix}-{year}-%"
+    71	    last = db.execute(
+    72	        select(InventoryMovement.document_number)
+    73	        .where(InventoryMovement.document_number.like(like))
+    74	        .order_by(InventoryMovement.document_number.desc())
+    75	        .limit(1)
+   210	@router.post("/cards", response_model=InventoryCardDetailRead, status_code=status.HTTP_201_CREATED)
+   211	def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> InventoryCardDetailRead:
+   212	    ingredient_ids = sorted({item.ingredient_id for item in payload.items})
+   213	    ingredients = {
+   214	        item.id: item
+   215	        for item in db.scalars(select(InventoryItem).where(InventoryItem.id.in_(ingredient_ids)))
+   216	    }
+   217	    missing_ids = [ingredient_id for ingredient_id in ingredient_ids if ingredient_id not in ingredients]
+   218	    if missing_ids:
+   219	        raise HTTPException(
+   220	            status_code=status.HTTP_404_NOT_FOUND,
+   221	            detail=f"Skladová surovina nebyla nalezena: {missing_ids[0]}",
+   222	        )
+   223	
+   224	    if payload.card_type in {InventoryCardType.OUT, InventoryCardType.ADJUST}:
+   225	        for line in payload.items:
+   226	            item = ingredients[line.ingredient_id]
+   227	            if line.quantity_base > item.current_stock:
+   228	                raise HTTPException(
+   229	                    status_code=status.HTTP_400_BAD_REQUEST,
+   230	                    detail=f"Nedostatečný skladový stav u položky '{item.name}'",
+   231	                )
+   232	
+   233	    card = InventoryCard(
+   234	        card_type=payload.card_type.value,
+   235	        number=_next_document_number(db, _movement_prefix(payload.card_type.value), payload.card_date),
+   236	        card_date=payload.card_date,
+   237	        supplier=payload.supplier,
+   238	        reference=payload.reference,
+   239	        note=payload.note,
+   240	    )
+   241	    db.add(card)
+   242	    db.flush()
+   243	
+   244	    for line in payload.items:
+   245	        ingredient = ingredients[line.ingredient_id]
+   245	        ingredient = ingredients[line.ingredient_id]
+   246	        card_item = InventoryCardItem(
+   247	            card_id=card.id,
+   248	            ingredient_id=ingredient.id,
+   249	            quantity_base=line.quantity_base,
+   250	            quantity_pieces=line.quantity_pieces,
+   251	            note=line.note,
+   252	        )
+   253	        db.add(card_item)
+   254	        db.flush()
+   255	
+   256	        if payload.card_type == InventoryCardType.IN:
+   257	            ingredient.current_stock += line.quantity_base
+   258	        else:
+   259	            ingredient.current_stock -= line.quantity_base
+   260	        db.add(ingredient)
+   261	
+   262	        movement = InventoryMovement(
+   263	            item_id=ingredient.id,
+   264	            card_id=card.id,
+   265	            card_item_id=card_item.id,
+   266	            movement_type=payload.card_type.value,
+   267	            document_number=card.number,
+   268	            document_reference=payload.reference,
+   269	            document_date=payload.card_date,
+   270	            quantity=line.quantity_base,
+   271	            quantity_pieces=line.quantity_pieces,
+   272	            note=line.note or payload.note,
+   273	        )
+   274	        db.add(movement)
+   275	        _log_audit(
+   276	            db,
+   277	            "item",
+   278	            ingredient.id,
+   279	            "card",
+   280	            f"Card {card.number} ({payload.card_type.value}) changed stock by {line.quantity_base}.",
+   281	        )
+   282	
+   283	    _log_audit(db, "card", card.id, "create", f"Created inventory card {card.number}.")
+   284	    db.commit()
+   285	    db.refresh(card)
+   339	def get_item(
+   340	    item_id: int,
+   341	    db: Session = Depends(get_db),
+   342	) -> InventoryItemWithAuditRead:
+   343	    try:
+   344	        item = _load_item_detail(db, item_id)
+   345	        audit_logs = list(
+   346	            db.scalars(
+   347	                select(InventoryAuditLog)
+   348	                .where(InventoryAuditLog.entity == "item", InventoryAuditLog.resource_id == item.id)
+   349	                .order_by(InventoryAuditLog.created_at.desc(), InventoryAuditLog.id.desc())
+   350	            )
+   351	        )
+   352	        item_payload = InventoryItemRead.model_validate(item).model_dump()
+   353	        return InventoryItemWithAuditRead(
+   354	            **item_payload,
+   355	            movements=[_serialize_movement(movement) for movement in item.movements],
+   356	            audit_logs=[InventoryAuditLogRead.model_validate(log) for log in audit_logs],
+   357	        )
+   358	    except HTTPException:
+   359	        raise
+   360	    except Exception as exc:
+   361	        logger.exception("Inventory item detail failed", extra={"inventory_item_id": item_id})
+   362	        raise HTTPException(
+   363	            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+   364	            detail="Detail skladové položky se nepodařilo načíst.",
+   365	        ) from exc
+   366	
+   391	def add_movement(
+   392	    item_id: int, payload: InventoryMovementCreate, db: Session = Depends(get_db)
+   393	) -> InventoryItem:
+   394	    item = _load_item_or_404(db, item_id)
+   395	
+   396	    doc_date = payload.document_date
+   397	    if payload.movement_type == InventoryMovementType.IN:
+   398	        if not payload.document_reference:
+   399	            raise HTTPException(
+   400	                status_code=status.HTTP_400_BAD_REQUEST,
+   401	                detail="U příjmu skladu je povinné číslo dokladu.",
+   402	            )
+   403	        item.current_stock += payload.quantity
+   404	    else:
+   405	        if payload.quantity > item.current_stock:
+   406	            raise HTTPException(
+   407	                status_code=status.HTTP_400_BAD_REQUEST,
+   408	                detail="Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav.",
+   409	            )
+   410	        item.current_stock -= payload.quantity
+   411	
+   412	    movement = InventoryMovement(
+   413	        item_id=item.id,
+   414	        movement_type=payload.movement_type.value,
+   415	        document_number=_next_document_number(db, _movement_prefix(payload.movement_type.value), doc_date),
+   416	        document_reference=payload.document_reference,
+   417	        document_date=doc_date,
+   418	        quantity=payload.quantity,
+   419	        quantity_pieces=payload.quantity_pieces,
+   420	        note=payload.note,
+   421	    )
+   422	
+   423	    try:
+   424	        db.add(movement)
+   425	        db.add(item)
+   426	        _log_audit(
+   427	            db,
+   428	            "item",
+   429	            item.id,
+   430	            "movement",
+   431	            f"Recorded movement {payload.movement_type.value} ({payload.quantity}).",
+   432	        )
+   433	        db.commit()
+   434	    except Exception:
+   435	        db.rollback()
+   436	        logger.exception("Inventory movement save failed", extra={"inventory_item_id": item_id})
+   437	        raise HTTPException(
+   438	            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+   439	            detail="Pohyb skladu se nepodařilo uložit.",
+   440	        )
+   441	    return _load_item_detail(db, item_id)
+   452	        select(InventoryAuditLog.id)
+   453	        .where(InventoryAuditLog.entity == "item", InventoryAuditLog.resource_id == item.id)
+   454	        .where(InventoryAuditLog.action.in_(["movement", "movement_delete", "card"]))
+   455	        .limit(1)
+   456	    )
+   457	    if item.movements or item.card_lines or has_history:
+   458	        raise HTTPException(
+   459	            status_code=status.HTTP_400_BAD_REQUEST,
+   460	            detail="Skladovou položku s historií nelze smazat.",
+   461	        )
+   462	
+   463	    _log_audit(db, "item", item.id, "delete", f"Deleted inventory item '{item.name}'.")
+   464	    db.delete(item)
+   465	    db.commit()
+   466	
+   467	
+   468	@router.delete("/{item_id}/movements/{movement_id}", status_code=status.HTTP_204_NO_CONTENT)
+   469	def delete_movement(
+   470	    item_id: int,
+   471	    movement_id: int,
+   472	    db: Session = Depends(get_db),
+   473	    _admin: None = Depends(require_role("admin")),
+   474	) -> None:
+   475	    item = _load_item_or_404(db, item_id)
+   476	    movement = db.scalar(
+   477	        select(InventoryMovement)
+   478	        .where(InventoryMovement.id == movement_id)
+   479	        .options(selectinload(InventoryMovement.card))
+   480	    )
+   481	    if not movement or movement.item_id != item.id:
+   482	        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladový pohyb nebyl nalezen.")
+   483	    if movement.card_id:
+   484	        raise HTTPException(
+   485	            status_code=status.HTTP_400_BAD_REQUEST,
+   486	            detail="Smažte skladový doklad místo připojeného pohybu.",
+   487	        )
+   488	    if movement.movement_type == InventoryMovementType.IN.value:
+   489	        if movement.quantity > item.current_stock:
+   490	            raise HTTPException(
+   491	                status_code=status.HTTP_400_BAD_REQUEST,
+   492	                detail="Nedostatečný skladový stav pro vrácení příjmu.",
+   493	            )
+   494	        item.current_stock -= movement.quantity
+   495	    else:
+   496	        item.current_stock += movement.quantity
+   497	    db.add(item)
+   498	    _log_audit(
+   499	        db,
+   500	        "item",
+   501	        item.id,
+   502	        "movement_delete",
+   503	        f"Deleted movement {movement.id} ({movement.movement_type}).",
+   504	    )
+   505	    db.delete(movement)
+# users UI selected evidence
+  3570	
+  3571	  const [createFirstName, setCreateFirstName] = React.useState('');
+  3572	  const [createLastName, setCreateLastName] = React.useState('');
+  3573	  const [createEmail, setCreateEmail] = React.useState('');
+  3574	  const [createPassword, setCreatePassword] = React.useState('');
+  3575	  const [createRoles, setCreateRoles] = React.useState<ManagedPortalRole[]>([]);
+  3576	  const [createPhone, setCreatePhone] = React.useState('');
+  3577	  const [createNote, setCreateNote] = React.useState('');
+  3578	  const [createEmailTouched, setCreateEmailTouched] = React.useState(false);
+  3579	  const [confirmAdminRole, setConfirmAdminRole] = React.useState(false);
+  3580	
+  3581	  const [pendingDelete, setPendingDelete] = React.useState<PortalUser | null>(null);
+  3582	  const deleteTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  3583	  const confirmDeleteRef = React.useRef<HTMLButtonElement | null>(null);
+  3584	
+  3585	  const [editFirstName, setEditFirstName] = React.useState('');
+  3586	  const [editLastName, setEditLastName] = React.useState('');
+  3587	  const [editEmail, setEditEmail] = React.useState('');
+  3588	  const [editRoles, setEditRoles] = React.useState<ManagedPortalRole[]>([]);
+  3589	  const [editPhone, setEditPhone] = React.useState('');
+  3590	  const [editNote, setEditNote] = React.useState('');
+  3591	  const [editEmailTouched, setEditEmailTouched] = React.useState(false);
+  3592	
+  3593	  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  3594	  const e164Regex = /^\+[1-9]\d{1,14}$/;
+  3595	
+  3596	  const createEmailValid = emailRegex.test(createEmail.trim().toLowerCase());
+  3597	  const editEmailValid = emailRegex.test(editEmail.trim().toLowerCase());
+  3598	  const createPhoneValid = createPhone.trim() === '' || e164Regex.test(createPhone.trim());
+  3599	  const editPhoneValid = editPhone.trim() === '' || e164Regex.test(editPhone.trim());
+  3600	
+  3601	  const createAdminSelected = createRoles.includes('admin');
+  3602	
+  3603	  const createValid =
+  3604	    createFirstName.trim().length > 0
+  3605	    && createLastName.trim().length > 0
+  3606	    && createEmailValid
+  3607	    && (createPassword.trim().length === 0 || createPassword.length >= 8)
+  3608	    && createRoles.length > 0
+  3609	    && (!createAdminSelected || confirmAdminRole)
+  3610	    && createPhoneValid;
+  3611	
+  3612	  const editValid =
+  3613	    editFirstName.trim().length > 0
+  3614	    && editLastName.trim().length > 0
+  3615	    && editEmailValid
+  3616	    && editRoles.length > 0
+  3617	    && editPhoneValid;
+  3618	
+  3619	  const createValidationMessage =
+  3620	    !createFirstName.trim() || !createLastName.trim()
+  3621	      ? 'Vyplňte jméno i příjmení.'
+  3622	      : !createEmail.trim()
+  3623	        ? 'E-mail je povinný.'
+  3624	        : !createEmailValid
+  3625	          ? 'Zadejte platný e-mail.'
+  3626	          : createPassword.trim().length > 0 && createPassword.length < 8
+  3627	            ? 'Dočasné heslo musí mít alespoň 8 znaků.'
+  3628	            : createRoles.length === 0
+  3629	              ? 'Vyberte alespoň jednu roli.'
+  3630	              : createAdminSelected && !confirmAdminRole
+  3631	                ? 'Potvrďte vědomé udělení administrátorských práv.'
+  3632	                : !createPhoneValid
+  3633	                  ? 'Telefon musí být ve formátu E.164 nebo prázdný.'
+  3634	                  : null;
+  3635	
+  3690	        const nextSelected = selectedUserIdRef.current != null
+  3691	          ? items.find((item) => item.id === selectedUserIdRef.current) ?? items[0] ?? null
+  3692	          : items[0] ?? null;
+  3693	        setSelected(nextSelected);
+  3694	      })
+  3695	      .catch(() => setError('Nepodařilo se načíst uživatele.'));
+  3696	  }, []);
+  3697	
+  3698	  React.useEffect(() => {
+  3699	    load();
+  3700	  }, [load]);
+  3701	
+  3702	  async function createUser(): Promise<void> {
+  3703	    if (!createValid) {
+  3704	      setMessage(null);
+  3705	      setCreateEmailTouched(true);
+  3706	      setError(createValidationMessage ?? 'Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+  3707	      return;
+  3708	    }
+  3709	    setSaving(true);
+  3710	    setError(null);
+  3711	    setMessage(null);
+  3712	    try {
+  3713	      const payload: PortalUserCreatePayload = {
+  3714	        first_name: createFirstName.trim(),
+  3715	        last_name: createLastName.trim(),
+  3716	        email: createEmail.trim().toLowerCase(),
+  3717	        roles: createRoles,
+  3718	        ...(createPassword.trim() ? { password: createPassword } : {}),
+  3719	        ...(createPhone.trim() ? { phone: createPhone.trim() } : {}),
+  3720	        ...(createNote.trim() ? { note: createNote.trim() } : {}),
+  3721	      };
+  3722	      const created = await fetchJson<PortalUser>('/api/v1/users', { method: 'POST', body: JSON.stringify(payload) });
+  3723	      setUsers((prev) => (prev ? [...prev, created] : [created]));
+  3724	      setSelected(created);
+  3725	      syncEdit(created);
+  3726	      setCreateFirstName('');
+  3727	      setCreateLastName('');
+  3728	      setCreateEmail('');
+  3729	      setCreatePassword('');
+  3730	      setCreateRoles([]);
+  3731	      setConfirmAdminRole(false);
+  3732	      setCreatePhone('');
+  3733	      setCreateNote('');
+  3734	      setCreateEmailTouched(false);
+  3735	      setMessage(
+  3736	        createPassword.trim()
+  3737	          ? `Uživatel ${created.email} byl vytvořen.`
+  3738	          : `Uživatel ${created.email} byl vytvořen bez dočasného hesla.`
+  3739	      );
+  3740	    } catch (err) {
+  3741	      if (err instanceof HttpError) {
+  3742	        if (err.status === 409) {
+  3743	          setError('Uživatel s tímto e‑mailem už existuje.');
+  3744	        } else if (err.status === 403) {
+  3745	          setError('Nemáte oprávnění vytvářet uživatele.');
+  3746	        } else if (err.status === 422) {
+  3747	          setError('Zadaná data nejsou platná. Zkontrolujte prosím formulář.');
+  3748	        } else {
+  3749	          setError('Uživatele se nepodařilo vytvořit.');
+  3750	        }
+  3751	      } else {
+  3752	        setError('Uživatele se nepodařilo vytvořit.');
+  3753	      }
+  3754	    } finally {
+  3755	      setSaving(false);
+  3756	    }
+  3757	  }
+  3758	
+  3759	  async function saveSelectedUser(): Promise<void> {
+  3760	    if (!selected) return;
+  4130	                    {selected.is_locked ? (
+  4131	                      <button className="k-button secondary" type="button" onClick={() => void unlockAccount(selected)}>
+  4132	                        Odblokovat účet
+  4133	                      </button>
+  4134	                    ) : null}
+  4135	                    {canDelete ? (
+  4136	                      <button className="k-button secondary danger" type="button" onClick={(event) => requestDelete(event, selected)}>
+  4137	                        Smazat
+  4138	                      </button>
+  4139	                    ) : (
+  4140	                      <small>Smazání je dostupné pouze pro admina.</small>
+  4141	                    )}
+  4142	                  </div>
+  4143	                </div>
+  4144	              )}
+  4145	            </Card>
+  4146	          </div>
+  4147	
+  4148	          <div id="users-create">
+  4149	            <Card title="Vytvořit uživatele">
+  4150	              <form className="k-form-grid" onSubmit={(event) => { event.preventDefault(); void createUser(); }}>
+  4151	                <fieldset className="k-card">
+  4152	                  <legend>Povinné údaje</legend>
+  4153	                  <div className="k-form-grid">
+  4154	                    <FormField id="create_first_name" label="Jméno *">
+  4155	                      <input id="create_first_name" className="k-input" value={createFirstName} onChange={(e) => setCreateFirstName(e.target.value)} />
+  4156	                    </FormField>
+  4157	                    <FormField id="create_last_name" label="Příjmení *">
+  4158	                      <input id="create_last_name" className="k-input" value={createLastName} onChange={(e) => setCreateLastName(e.target.value)} />
+  4159	                    </FormField>
+  4160	                    <FormField id="create_email" label="E-mail *">
+  4161	                      <input
+  4162	                        id="create_email"
+  4163	                        className="k-input"
+  4164	                        type="email"
+  4165	                        value={createEmail}
+  4166	                        onChange={(e) => setCreateEmail(e.target.value)}
+  4167	                        onBlur={() => setCreateEmailTouched(true)}
+  4168	                        aria-invalid={createEmailError ? 'true' : 'false'}
+  4169	                      />
+  4170	                    </FormField>
+  4171	                    {createEmailError ? <small>{createEmailError}</small> : null}
+  4172	                    <fieldset className="k-card">
+  4173	                      <legend>Role *</legend>
+  4174	                      {managedPortalRoleOptions.map((role) => (
+  4175	                        <label key={`create-role-${role}`} className="k-role-label">
+  4176	                          <input type="checkbox" checked={createRoles.includes(role)} onChange={() => roleToggle(createRoles, setCreateRoles, role)} /> {managedPortalRoleLabels[role]}
+  4177	                        </label>
+  4178	                      ))}
+  4179	                    </fieldset>
+  4180	                    {createRoles.length === 0 ? <small>Vyberte alespoň jednu roli.</small> : null}
+  4181	                    {createAdminSelected ? (
+  4182	                      <label className="k-role-label">
+  4183	                        <input type="checkbox" checked={confirmAdminRole} onChange={(event) => setConfirmAdminRole(event.target.checked)} /> Potvrzuji, že tento uživatel má vědomě získat administrátorská práva.
+  4184	                      </label>
+  4185	                    ) : null}
+  4186	                    <small>Role Administrátor není výchozí a vyžaduje samostatné potvrzení.</small>
+  4187	                  </div>
+  4188	                </fieldset>
+  4189	                <fieldset className="k-card">
+  4190	                  <legend>Volitelné údaje</legend>
+  4191	                  <div className="k-form-grid">
+  4192	                    <FormField id="create_password" label="Dočasné heslo">
+  4193	                      <input id="create_password" className="k-input" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
+  4194	                    </FormField>
+  4195	                    <small>Pokud pole necháte prázdné, účet se vytvoří bez dočasného hesla.</small>
+  4196	                    {createPassword.trim().length > 0 && createPassword.length < 8 ? <small>Dočasné heslo musí mít alespoň 8 znaků.</small> : null}
+  4197	                    <FormField id="create_phone" label="Telefon">
+  4198	                      <input id="create_phone" className="k-input" value={createPhone} onChange={(e) => setCreatePhone(normalizePhoneInput(e.target.value))} placeholder="+420123456789" />
+  4199	                    </FormField>
+  4200	                    <small>Např. +420123456789. Při zadání bez předvolby doplníme +420.</small>
+  4201	                    {!createPhoneValid ? <small>Telefon musí být ve formátu E.164.</small> : null}
+  4202	                    <FormField id="create_note" label="Poznámka">
+  4203	                      <textarea id="create_note" className="k-input" value={createNote} onChange={(e) => setCreateNote(e.target.value)} />
+  4204	                    </FormField>
+  4205	                  </div>
+  4206	                </fieldset>
+  4207	                <button className="k-button" type="submit" disabled={saving || !createValid}>Vytvořit uživatele</button>
+  4208	              </form>
+  4209	            </Card>
+  4210	          </div>
+  4211	        </div>
+  4212	      )}
+  4213	      <MailActionDialog dialog={mailDialog} onClose={() => setMailDialog(null)} idBase="user-mail-dialog" />
+  4214	      {pendingDelete ? (
+  4215	        <div
+  4216	          className="k-card"
+  4217	          data-testid="confirm-delete-card"
+  4218	          aria-labelledby="confirm-delete-title"
+  4219	          aria-describedby="confirm-delete-description"
+  4220	          role="alertdialog"
+  4221	          aria-modal="true"
+  4222	          onKeyDown={handleDeleteDialogKeyDown}
+  4223	        >
+  4224	          <h2 id="confirm-delete-title">Potvrdit smazání</h2>
+  4225	          <p id="confirm-delete-description">
+  4226	            Opravdu chcete smazat uživatele <strong>{pendingDelete.email}</strong>? Operaci nelze vrátit, ale účet je možné vytvořit znovu.
+  4227	          </p>
+  4228	          <div className="k-toolbar">
+  4229	            <button
+  4230	              ref={confirmDeleteRef}
+  4231	              className="k-button danger"
+  4232	              type="button"
+  4233	              onClick={() => { void confirmDelete(); }}
+  4234	              disabled={saving}
+  4235	            >
+  4236	              Smazat
+  4237	            </button>
+  4238	            <button className="k-button secondary" type="button" onClick={cancelDelete} disabled={saving}>
+  4239	              Zrušit
+  4240	            </button>
+  4241	          </div>
+  4242	        </div>
+  4243	      ) : null}
+  4244	    </main>
+  4245	  );
+  4246	}
+  4247	
+  4248	function SettingsAdmin(): JSX.Element {
+  4249	  const [fromEmail, setFromEmail] = React.useState('');
+  4250	  const [host, setHost] = React.useState('');
+# users API selected evidence
+   215	        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
+   216	    return _to_read_model(user, _lockout_map_for_user(db, user.email))
+   217	
+   218	
+   219	@router.post("", response_model=PortalUserRead, status_code=status.HTTP_201_CREATED)
+   220	def create_user(payload: PortalUserCreate, request: Request, db: Session = Depends(get_db)) -> PortalUserRead:
+   221	    email = _normalize_email(payload.email)
+   222	    existing = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
+   223	    if existing:
+   224	        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail už používá jiný uživatel.")
+   225	    password = payload.password or secrets.token_urlsafe(24)
+   226	    user = PortalUser(
+   227	        first_name=payload.first_name,
+   228	        last_name=payload.last_name,
+   229	        email=email,
+   230	        phone=payload.phone,
+   231	        note=payload.note,
+   232	        password_hash=hash_password(password),
+   233	        is_active=True,
+   234	        roles=[PortalUserRole(role=role) for role in payload.roles],
+   235	    )
+   236	    db.add(user)
+   237	    db.commit()
+   238	    db.refresh(user)
+   239	    response_model = _to_read_model(user, _lockout_map_for_user(db, user.email))
+   240	    normalized_roles = sorted(normalize_role(role) for role in payload.roles)
+   241	    request.state.audit_detail_override = json.dumps({
+   242	        "user_id": user.id,
+   243	        "email": user.email,
+   244	        "roles": normalized_roles,
+   245	        "admin_role": "admin" in normalized_roles,
+   246	    })
+   247	    settings = get_settings()
+   248	    try:
+   249	        service = build_email_service(settings, _stored_smtp_config(db))
+   250	        send_portal_onboarding(service=service, recipient=user.email)
+   251	    except Exception:
+   252	        # CRUD uzivatele nesmi spadnout na volitelnem onboarding e-mailu.
+   253	        db.rollback()
+   254	    return response_model
+   255	
+   256	
+   257	@router.patch("/{user_id}", response_model=PortalUserRead)
+   258	def update_user(
+   260	    payload: PortalUserUpdate,
+   261	    db: Session = Depends(get_db),
+   262	) -> PortalUserRead:
+   263	    user = db.get(PortalUser, user_id)
+   264	    if user is None:
+   265	        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
+   266	    previous_roles = sorted(normalize_role(role.role) for role in user.roles)
+   267	    was_admin = "admin" in previous_roles
+   268	    new_roles = [normalize_role(role) for role in payload.roles]
+   269	    email = _normalize_email(payload.email)
+   270	    conflict = db.execute(
+   271	        select(PortalUser).where(PortalUser.email == email, PortalUser.id != user_id)
+   272	    ).scalar_one_or_none()
+   273	    if conflict is not None:
+   274	        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail už používá jiný uživatel.")
+   275	    if was_admin and "admin" not in new_roles and user.is_active and _count_active_admins(db) <= 1:
+   276	        raise HTTPException(
+   277	            status_code=status.HTTP_409_CONFLICT,
+   278	            detail="Nelze odebrat administrátorskou roli poslednímu aktivnímu administrátorovi.",
+   279	        )
+   280	    user.first_name = payload.first_name
+   281	    user.last_name = payload.last_name
+   282	    user.email = email
+   283	    user.phone = payload.phone
+   284	    user.note = payload.note
+   285	    user.roles = [PortalUserRole(role=role) for role in new_roles]
+   286	    if payload.password is not None:
+   287	        user.password_hash = hash_password(payload.password)
+   288	        revoke_sessions_for_portal_user(db, user.id)
+   289	    user.updated_at = utc_now()
+   290	    db.add(user)
+   320	@router.post("/{user_id}/password/reset-link", response_model=UserPasswordResetLinkResponse)
+   321	def send_user_reset_link(
+   322	    user_id: int,
+   323	    request: Request,
+   324	    db: Session = Depends(get_db),
+   325	) -> UserPasswordResetLinkResponse:
+   326	    user = db.get(PortalUser, user_id)
+   327	    if user is None:
+   328	        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
+   329	    if _is_admin_user(user):
+   330	        raise HTTPException(
+   331	            status_code=status.HTTP_409_CONFLICT,
+   332	            detail="Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace.",
+   333	        )
+   334	    settings = get_settings()
+   335	    token = _issue_portal_reset_token(db, _normalize_email(user.email))
+   336	    reset_link = (
+   337	        f"{str(request.base_url).rstrip('/')}/login/reset?"
+   338	        f"{urlencode({'token': token})}"
+   339	    )
+   340	    try:
+   341	        service = build_email_service(settings, _stored_smtp_config(db))
+   342	        result = send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+   343	        db.commit()
+   344	        return UserPasswordResetLinkResponse(
+   345	            ok=True,
+   346	            connected=result.connected,
+   347	            send_attempted=result.send_attempted,
+   348	            message=f"Resetovací odkaz byl reálně odeslán na {user.email}.",
+   349	        )
+   350	    except SmtpNotConfiguredError:
+   351	        db.commit()
+   352	        raise HTTPException(
+   353	            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+   354	            detail="SMTP není aktivní. Resetovací token byl vytvořen, ale e-mail nebyl odeslán.",
+   355	        )
+   356	    except SmtpDeliveryError as exc:
+   357	        db.commit()
+   358	        if exc.connected and exc.send_attempted:
+   359	            detail = "SMTP je aktivní, proběhl reálný pokus o odeslání, ale resetovací odkaz se nepodařilo doručit."
+   360	        elif exc.connected:
+   400	    _admin: None = Depends(require_actor_type("admin")),
+   401	) -> None:
+   402	    user = db.get(PortalUser, user_id)
+   403	    if user is None:
+   404	        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Uživatel nebyl nalezen.")
+   405	    actor_email, _, _ = parse_identity(request)
+   406	    target_email = user.email.strip().lower()
+   407	
+   408	    if actor_email and actor_email.strip().lower() == target_email:
+   409	        raise HTTPException(
+   410	            status_code=status.HTTP_403_FORBIDDEN,
+   411	            detail="Nelze smazat vlastní účet.",
+   412	        )
+   413	
+   414	    if _is_admin_user(user) and user.is_active and _count_active_admins(db) <= 1:
+   415	        raise HTTPException(
+   416	            status_code=status.HTTP_409_CONFLICT,
+   417	            detail="Nelze smazat posledního aktivního administrátora.",
+   418	        )
+   419	
+   420	    audit_payload = json.dumps({"user_id": user.id, "email": user.email})
+   421	    revoke_sessions_for_portal_user(db, user.id)
+   422	    db.delete(user)
+   423	    db.commit()
+   424	    request.state.audit_detail_override = audit_payload
+# auth API selected evidence
+   705	
+   706	@router.post("/change-password", response_model=LogoutResponse)
+   707	def change_own_password(
+   708	    payload: PortalPasswordChangeRequest,
+   709	    request: Request,
+   710	    response: Response,
+   711	    db: Session = Depends(get_db),
+   712	) -> LogoutResponse:
+   713	    _, user = _current_user_from_session(request, db)
+   714	    if _is_admin_user(user):
+   715	        raise HTTPException(
+   716	            status_code=status.HTTP_409_CONFLICT,
+   717	            detail="Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace.",
+   718	        )
+   719	    if not verify_password(payload.old_password, user.password_hash):
+   720	        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid credentials")
+   721	    user.password_hash = hash_password(payload.new_password)
+   722	    user.updated_at = _utc_now()
+   723	    revoke_sessions_for_portal_user(db, user.id)
+   724	    db.add(user)
+   725	    db.commit()
+# schemas selected evidence
+   306	class InventoryMovementType(StrEnum):
+   307	    IN = "in"
+   308	    OUT = "out"
+   309	    ADJUST = "adjust"
+   310	
+   311	
+   312	class InventoryCardType(StrEnum):
+   313	    IN = "in"
+   314	    OUT = "out"
+   315	    ADJUST = "adjust"
+   316	
+   317	
+   318	class InventoryItemBase(BaseModel):
+   319	    name: str = Field(min_length=1, max_length=255)
+   320	    unit: str = Field(min_length=1, max_length=32)
+   321	    min_stock: int = Field(ge=0)
+   322	    current_stock: int = Field(ge=0)
+   323	    amount_per_piece_base: int = Field(default=1, ge=1)
+   324	    pictogram_path: str | None = None
+   325	    pictogram_thumb_path: str | None = None
+   326	
+   327	    @field_validator("unit")
+   328	    @classmethod
+   329	    def validate_unit(cls, value: str) -> str:
+   330	        unit = value.strip().lower()
+   331	        if unit not in {"g", "l", "ks"}:
+   332	            raise ValueError("Jednotka musí být jedna z hodnot: g, l, ks")
+   333	        return unit
+   334	
+   335	
+   336	class InventoryItemCreate(InventoryItemBase):
+   337	    pass
+   338	
+   339	
+   340	class InventoryItemUpdate(BaseModel):
+   341	    name: str | None = Field(default=None, min_length=1, max_length=255)
+   342	    unit: str | None = Field(default=None, min_length=1, max_length=32)
+   343	    min_stock: int | None = Field(default=None, ge=0)
+   344	    current_stock: int | None = Field(default=None, ge=0)
+   345	    amount_per_piece_base: int | None = Field(default=None, ge=1)
+   346	    pictogram_path: str | None = None
+   347	    pictogram_thumb_path: str | None = None
+   348	
+   349	    @field_validator("unit")
+   350	    @classmethod
+   351	    def validate_unit(cls, value: str | None) -> str | None:
+   352	        if value is None:
+   353	            return None
+   354	        unit = value.strip().lower()
+   355	        if unit not in {"g", "l", "ks"}:
+   356	            raise ValueError("Jednotka musí být jedna z hodnot: g, l, ks")
+   357	        return unit
+   358	
+   359	
+   360	class MediaPhotoRead(BaseModel):
+   361	    model_config = ConfigDict(from_attributes=True)
+   362	
+   363	    id: int
+   364	    sort_order: int
+   365	    mime_type: str
+   366	    size_bytes: int
+   367	    file_path: str
+   368	    thumb_path: str
+   369	    created_at: datetime | None
+   370	
+   371	
+   372	class InventoryMovementBase(BaseModel):
+   373	    movement_type: InventoryMovementType
+   374	    quantity: int = Field(ge=1)
+   375	    quantity_pieces: int = Field(default=0, ge=0)
+   376	    document_date: date | None = None
+   377	    document_reference: str | None = Field(default=None, max_length=64)
+   378	    note: str | None = Field(default=None, max_length=2000)
+   379	
+   380	
+   381	class InventoryMovementCreate(InventoryMovementBase):
+   382	    document_date: date
+   383	
+   384	
+   385	class InventoryMovementRead(InventoryMovementBase):
+   386	    model_config = ConfigDict(from_attributes=True)
+   387	
+   388	    id: int
+   389	    item_id: int
+   390	    item_name: str | None = None
+   391	    unit: str | None = None
+   392	    card_id: int | None = None
+   485	class PortalUserBasePayload(BaseModel):
+   486	    first_name: str = Field(min_length=1, max_length=120)
+   487	    last_name: str = Field(min_length=1, max_length=120)
+   488	    email: str = Field(min_length=3, max_length=255)
+   489	    roles: list[str] = Field(min_length=1)
+   490	    phone: str | None = Field(default=None, max_length=16)
+   491	    note: str | None = Field(default=None, max_length=4000)
+   492	
+   493	    @field_validator("first_name", "last_name")
+   494	    @classmethod
+   495	    def validate_required_name(cls, value: str) -> str:
+   496	        cleaned = value.strip()
+   497	        if not cleaned:
+   498	            raise ValueError("Jméno a příjmení jsou povinné")
+   499	        return cleaned
+   500	
+   501	    @field_validator("roles")
+   502	    @classmethod
+   503	    def validate_roles(cls, value: list[str]) -> list[str]:
+   504	        cleaned: list[str] = []
+   505	        for role in value:
+   506	            normalized = role.strip().lower()
+   507	            if normalized not in ALLOWED_PORTAL_ROLES:
+   508	                raise ValueError(f"Role musí být jedna z hodnot: {', '.join(sorted(ALLOWED_PORTAL_ROLES))}")
+   509	            canonical = normalize_role(normalized)
+   510	            if canonical not in cleaned:
+   511	                cleaned.append(canonical)
+   512	        if not cleaned:
+   513	            raise ValueError("Vyberte alespoň jednu roli")
+   514	        return cleaned
+   515	
+   516	    @field_validator("email")
+   517	    @classmethod
+   518	    def validate_email(cls, value: str) -> str:
+   519	        email = value.strip().lower()
+   520	        import re
+   521	
+   522	        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+   523	            raise ValueError("E-mail musí být platný")
+   524	        return email
+   525	
+   526	    @field_validator("phone")
+   527	    @classmethod
+   528	    def validate_phone(cls, value: str | None) -> str | None:
+   529	        if value is None:
+   530	            return None
+   531	        phone = value.strip()
+   532	        if not phone:
+   533	            return None
+   534	        import re
+   535	
+   536	        if not re.match(r"^\+[1-9]\d{1,14}$", phone):
+   537	            raise ValueError("Telefon musí být ve formátu E.164")
+   538	        return phone
+   539	
+   540	
+   541	class PortalUserCreate(PortalUserBasePayload):
+   542	    first_name: str = Field(min_length=1, max_length=120)
+   543	    last_name: str = Field(min_length=1, max_length=120)
+   544	    roles: list[str] = Field(min_length=1)
+   545	    password: str | None = Field(default=None, max_length=255)
+   546	
+   547	    @field_validator("password")
+   548	    @classmethod
+   549	    def validate_password(cls, value: str | None) -> str | None:
+   550	        if value is None:
+   551	            return None
+   552	        password = value.strip()
+   553	        if not password:
+   554	            return None
+   555	        if len(password) < 8:
+   556	            raise ValueError("Heslo musí mít alespoň 8 znaků")
+   557	        return password
+   558	
+# navigation selected evidence
+   180	  }, [rules.grouping, sectionMap, visibleItems]);
+   181	
+   182	  const searchableItems = React.useMemo(() => {
+   183	    if (!rules.enableSearchInMenuOnPhone || !search.trim()) {
+   184	      return active;
+   185	    }
+   186	
+   187	    const needle = normalize(search.trim());
+   188	    return active.filter((module) => normalize(module.label).includes(needle));
+   189	  }, [active, rules.enableSearchInMenuOnPhone, search]);
+   190	
+   191	  const handleOverflowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+   192	    if (event.key === 'Escape') {
+   193	      event.preventDefault();
+   194	      setOverflowOpen(false);
+   195	      const button = event.currentTarget.closest('.k-nav-overflow')?.querySelector<HTMLButtonElement>('button');
+   196	      button?.focus();
+   197	    }
+   198	  };
+   199	
+   200	  return (
+   201	    <nav
+   202	      role="navigation"
+   203	      aria-label={rules.ariaLabel ?? 'Hlavní navigace'}
+   204	      className="k-nav"
+   205	      data-testid="module-navigation"
+   206	    >
+   207	      <div className="k-nav-desktop" data-testid="module-navigation-desktop">
+   208	        <div className="k-nav-row">
+   209	          {grouped.map((group) => (
+   210	            <React.Fragment key={group.key}>
+   211	              {group.label ? <span className="k-nav-group-label">{group.label}</span> : null}
+   212	              {group.items.map((module) => (
+   213	                <Link
+   214	                  key={module.key}
+   215	                  className="k-nav-link"
+   216	                  to={module.route}
+   217	                  aria-current={currentPath === module.route ? 'page' : undefined}
+   218	                  onClick={() => setOverflowOpen(false)}
+   219	                >
+   220	                  <Icon name={module.icon} className="k-nav-link__icon" />
+   221	                  <span>{module.label}</span>
+   222	                </Link>
+   223	              ))}
+   224	            </React.Fragment>
+   225	          ))}
+   226	          {overflow.length > 0 ? (
+   227	            <div className="k-nav-overflow">
+   228	              <button
+   229	                className="k-button secondary"
+   230	                type="button"
+   231	                aria-haspopup="menu"
+   232	                aria-expanded={overflowOpen}
+   233	                onClick={() => setOverflowOpen((value) => !value)}
+   234	              >
+   235	                {rules.overflowLabel}
+   236	              </button>
+   237	              {overflowOpen ? (
+   238	                <div
+   239	                  className="k-nav-overflow-menu"
+   240	                  role="menu"
+   241	                  aria-label={rules.overflowLabel}
+   242	                  onKeyDown={handleOverflowKeyDown}
+   243	                >
+   244	                  {overflow.map((module) => (
+   245	                    <Link
+   246	                      className="k-nav-overflow-item"
+   247	                      to={module.route}
+   248	                      key={module.key}
+   249	                      role="menuitem"
+   250	                      onClick={() => setOverflowOpen(false)}
+   251	                    >
+   252	                      <Icon name={module.icon} className="k-nav-link__icon" />
+   253	                      <span>{module.label}</span>
+   254	                    </Link>
+   255	                  ))}
+   256	                </div>
+   257	              ) : null}
+   258	            </div>
+   259	          ) : null}
+   260	        </div>
+   261	      </div>
+   262	
+   263	      <div className="k-nav-phone" data-testid="module-navigation-phone">
+   264	        <button
+   265	          ref={drawerButtonRef}
+   266	          className="k-button secondary"
+   267	          type="button"
+   268	          aria-expanded={drawerOpen}
+   269	          aria-controls="k-nav-drawer"
+   270	          onClick={() => setDrawerOpen((value) => !value)}
+   271	        >
+   272	          {rules.phoneDrawerLabel ?? 'Menu'}
+   273	        </button>
+   274	        {drawerOpen ? (
+   275	          <div
+   276	            ref={drawerContainerRef}
+   277	            className="k-nav-drawer"
+   278	            id="k-nav-drawer"
+   279	            role="dialog"
+   280	            aria-modal="true"
+# role switcher selected evidence
+     1	import React from 'react';
+     2	import { Icon } from './Icon';
+     3	
+     4	type RoleSwitcherItem = {
+     5	  key: string;
+     6	  label: string;
+     7	};
+     8	
+     9	type RoleSwitcherProps = {
+    10	  activeLabel: string;
+    11	  alternatives: RoleSwitcherItem[];
+    12	  busy?: boolean;
+    13	  ariaLabel?: string;
+    14	  onSelect: (key: string) => void;
+    15	};
+    16	
+    17	export function RoleSwitcher({
+    18	  activeLabel,
+    19	  alternatives,
+    20	  busy = false,
+    21	  ariaLabel = 'Přepínač rolí',
+    22	  onSelect,
+    23	}: RoleSwitcherProps): JSX.Element | null {
+    24	  if (alternatives.length === 0) {
+    25	    return null;
+    26	  }
+    27	
+    28	  return (
+    29	    <div className="k-role-switcher" role="group" aria-label={ariaLabel}>
+    30	      <span className="k-role-switcher__active">
+    31	        <Icon name="profile" className="k-role-switcher__icon" />
+    32	        <span>{activeLabel}</span>
+    33	      </span>
+    34	      {alternatives.map((item) => (
+    35	        <button
+    36	          key={item.key}
+    37	          className="k-role-switcher__button"
+    38	          type="button"
+    39	          disabled={busy}
+    40	          aria-label={`Přepnout roli na ${item.label}`}
+    41	          onClick={() => onSelect(item.key)}
+    42	        >
+    43	          <Icon name="grid" className="k-role-switcher__icon" />
+    44	          <span>{item.label}</span>
+    45	        </button>
+    46	      ))}
+    47	    </div>
+    48	  );
+    49	}
+# ui css selected evidence
+   140	  z-index: var(--k-z-header);
+   141	  text-decoration: none;
+   142	  box-shadow: var(--k-shadow-elevated);
+   143	}
+   144	
+   145	.k-skip-link:focus {
+   146	  transform: translateY(var(--k-spacing-3));
+   147	}
+   148	
+   149	:focus-visible {
+   150	  outline: var(--k-focus-ring-width) solid var(--k-focus-ring-color);
+   151	  outline-offset: var(--k-focus-ring-offset);
+   152	}
+   153	
+   154	.k-app-shell {
+   155	  min-height: 100vh;
+   156	  padding-bottom: calc(var(--k-spacing-8) + var(--k-sign-min-thickness) + 220px);
+   157	}
+   158	
+   159	.k-app-header {
+   160	  position: sticky;
+   161	  top: 0;
+   162	  z-index: var(--k-z-header);
+   163	  background: var(--k-color-surface-raised);
+   164	  border-bottom: 1px solid var(--k-color-border);
+   165	}
+   166	
+   167	.k-shell-inner {
+   168	  max-width: var(--k-shell-max-width);
+   169	  margin: 0 auto;
+   170	  padding: var(--k-spacing-4);
+  2135	  align-items: center;
+  2136	  margin-bottom: var(--k-spacing-5);
+  2137	}
+  2138	
+  2139	.k-button {
+  2140	  display: inline-flex;
+  2141	  align-items: center;
+  2142	  justify-content: center;
+  2143	  gap: var(--k-spacing-2);
+  2144	  min-height: 46px;
+  2145	  padding: 0 var(--k-spacing-4-5);
+  2146	  border-radius: var(--k-radius-pill);
+  2147	  border: 1px solid var(--k-color-brand-red-deep);
+  2148	  background: linear-gradient(180deg, var(--k-color-brand-red) 0%, var(--k-color-brand-red-deep) 100%);
+  2149	  color: var(--k-color-brand-white-soft);
+  2150	  font-size: 14px;
+  2151	  font-weight: 700;
+  2152	  letter-spacing: 0.02em;
+  2153	  box-shadow: 0 14px 26px rgba(196, 39, 29, 0.18);
+  2154	}
+  2155	
+  2156	.k-button.secondary {
+  2157	  border-color: rgba(103, 78, 70, 0.16);
+  2158	  background: rgba(255, 253, 248, 0.92);
+  2159	  color: var(--k-color-ink);
+  2160	  box-shadow: 0 10px 18px rgba(83, 56, 46, 0.08);
+  2161	}
+  2162	
+  2163	.k-input,
+  2164	.k-select,
+  2165	.k-textarea {
+  2166	  min-height: 48px;
+  2167	  border: 1px solid rgba(103, 78, 70, 0.16);
+  2168	  border-radius: var(--k-radius-4);
+  2169	  background: rgba(255, 253, 249, 0.96);
+  2170	  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  2320	  .k-table-wrap {
+  2321	    border-radius: var(--k-radius-5);
+  2322	  }
+  2323	}
+  2324	
+  2325	/* Audit 2026: neblokující branding, mobilní tabulky a bezpečnější akce. */
+  2326	.k-app-shell {
+  2327	  padding-bottom: var(--k-spacing-8);
+  2328	}
+  2329	
+  2330	.kajovo-sign {
+  2331	  position: static;
+  2332	  left: auto;
+  2333	  bottom: auto;
+  2334	  z-index: auto;
+  2335	  max-width: calc(100% - 2 * var(--k-spacing-4));
+  2336	  width: fit-content;
+  2337	  margin: var(--k-spacing-6) auto var(--k-spacing-4);
+  2338	  pointer-events: auto;
+  2339	}
+  2340	
+  2341	.kajovo-sign img {
+  2342	  max-width: min(var(--k-sign-img-width), 100%);
+  2343	}
+  2344	
+  2345	.kajovo-mascot {
+  2346	  pointer-events: none;
+  2347	}
+  2348	
+  2349	.k-button.danger,
+  2350	.k-button[aria-label*="Smazat"].danger {
+  2351	  border-color: #8f1d16;
+  2352	  background: #8f1d16;
+  2353	  color: var(--k-color-brand-white);
+  2354	}
+  2355	
+  2356	.k-button.danger.secondary {
+  2357	  border-color: #8f1d16;
+  2358	  background: #fff8f7;
+  2359	  color: #8f1d16;
+  2360	}
+  2361	
+  2362	.k-button:disabled,
+  2363	.k-role-switcher__button:disabled {
+  2364	  cursor: not-allowed;
+  2365	  opacity: 0.65;
+  2366	}
+  2367	
+  2368	@media (max-width: 768px) {
+  2369	  .k-admin-login-layout,
+  2370	  .k-login-layout,
+  2371	  .k-form-grid {
+  2372	    grid-template-columns: minmax(0, 1fr);
+  2373	  }
+  2374	
+  2375	  .k-admin-login-figure,
+  2376	  .k-login-figure,
+  2377	  .k-login-page::before,
+  2378	  .k-admin-login-page::before,
+  2379	  .kajovo-mascot {
+  2380	    display: none;
+  2381	  }
+  2382	
+  2383	  .kajovo-sign {
+  2384	    margin: var(--k-spacing-4) auto var(--k-spacing-3);
+  2385	    min-height: 44px;
+  2386	  }
+  2387	
+  2388	  .k-table-wrap {
+  2389	    overflow-x: visible;
+  2390	    scrollbar-gutter: auto;
+  2391	  }
+  2392	
+  2393	  .k-table {
+  2394	    min-width: 0;
+  2395	    border-collapse: separate;
+  2396	    border-spacing: 0 var(--k-spacing-3);
+  2397	  }
+  2398	
+  2399	  .k-table thead {
+  2400	    position: absolute;
+  2401	    width: 1px;
+  2402	    height: 1px;
+  2403	    overflow: hidden;
+  2404	    clip: rect(0 0 0 0);
+  2405	    white-space: nowrap;
+  2406	  }
+  2407	
+  2408	  .k-table,
+  2409	  .k-table tbody,
+  2410	  .k-table tr,
+  2411	  .k-table td {
+  2412	    display: block;
+  2413	    width: 100%;
+  2414	  }
+  2415	
+  2416	  .k-table tr {
+  2417	    border: 1px solid var(--k-color-border);
+  2418	    border-radius: var(--k-radius-4);
+  2419	    background: var(--k-color-surface-raised);
+  2420	    padding: var(--k-spacing-2);
+  2421	    box-shadow: 0 8px 16px rgba(83, 56, 46, 0.08);
+  2422	  }
+  2423	
+  2424	  .k-table td {
+  2425	    display: grid;
+  2426	    grid-template-columns: minmax(7.5rem, 40%) minmax(0, 1fr);
+  2427	    gap: var(--k-spacing-2);
+  2428	    align-items: start;
+  2429	    min-height: 44px;
+  2430	    border-bottom: 1px solid var(--k-color-border);
+  2431	    background: transparent !important;
+  2432	  }
+  2433	
+  2434	  .k-table td:last-child {
+  2435	    border-bottom: 0;
+  2436	  }
+  2437	
+  2438	  .k-table td::before {
+  2439	    content: attr(data-label);
+  2440	    color: var(--k-color-ink);
+  2441	    font-weight: 700;
+  2442	  }
+  2443	}
+  2444	
+  2445	@media (max-width: 430px) {
+  2446	  .k-shell-inner,
+  2447	  .k-page {
+  2448	    padding-left: var(--k-spacing-2);
+  2449	    padding-right: var(--k-spacing-2);
+  2450	  }
+# datatable selected evidence
+     1	import React from 'react';
+     2	
+     3	type Props = {
+     4	  headers: string[];
+     5	  rows: Array<Array<React.ReactNode>>;
+     6	  caption?: string;
+     7	};
+     8	
+     9	export function DataTable({ headers, rows, caption = 'Tabulka' }: Props): JSX.Element {
+    10	  return (
+    11	    <div className="k-table-wrap" role="region" aria-label={caption} tabIndex={0}>
+    12	      <table className="k-table">
+    13	        <caption className="k-nav-sr-only">{caption}</caption>
+    14	        <thead>
+    15	          <tr>
+    16	            {headers.map((header) => (
+    17	              <th key={header}>{header}</th>
+    18	            ))}
+    19	          </tr>
+    20	        </thead>
+    21	        <tbody>
+    22	          {rows.map((row, rowIndex) => (
+    23	            <tr key={`row-${rowIndex}`}>
+    24	              {row.map((cell, cellIndex) => (
+    25	                <td key={`cell-${rowIndex}-${cellIndex}`} data-label={headers[cellIndex] ?? ''}>{cell}</td>
+    26	              ))}
+    27	            </tr>
+    28	          ))}
+    29	        </tbody>
+    30	      </table>
+    31	    </div>
+    32	  );
+    33	}
+# branding selected evidence
+   255	        return MailDeliveryResult(connected=True, send_attempted=True)
+   256	
+   257	
+   258	def send_portal_onboarding(*, service: EmailService, recipient: str) -> MailDeliveryResult:
+   259	    return service.send(
+   260	        MailMessage(
+   261	            recipient=recipient,
+   262	            subject="Kájovo Hotel onboarding",
+   263	            body="Váš účet v Kájovo Hotel byl vytvořen.",
+   264	        )
+   265	    )
+   266	
+   267	
+   268	def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> MailDeliveryResult:
+   269	    return service.send(
+   270	        MailMessage(
+   271	            recipient=recipient,
+   272	            subject="Kájovo Hotel odblokování admin účtu",
+   273	            body=f"Pro odblokování admin účtu použijte odkaz: {unlock_link}",
+   274	        )
+   275	    )
+   276	
+   277	
+   278	def send_admin_password_hint(*, service: EmailService, recipient: str) -> MailDeliveryResult:
+   279	    return service.send(
+   280	        MailMessage(
+   281	            recipient=recipient,
+   282	            subject="Kájovo Hotel připomenutí admin hesla",
+   283	            body=(
+   284	                "Zapomenuté admin heslo se neresetuje. "
+   285	                "Heslo najdete v provozním správci hesel nebo v bezpečně uložené provozní dokumentaci."
+   286	            ),
+   287	        )
+   288	    )
+   289	
+   290	
+   291	def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link: str) -> MailDeliveryResult:
+   292	    return service.send(
+   293	        MailMessage(
+   294	            recipient=recipient,
+   295	            subject="Kájovo Hotel unlock účtu",
+   296	            body=f"Pro odblokování účtu použijte odkaz: {unlock_link}",
+   297	        )
+   298	    )
+   299	
+   300	
+   301	def send_user_password_reset_link(
+   302	    *, service: EmailService, recipient: str, reset_link: str
+   303	) -> MailDeliveryResult:
+   304	    return service.send(
+   305	        MailMessage(
+   306	            recipient=recipient,
+   307	            subject="Kájovo Hotel reset hesla",
+   308	            body=f"Pro reset hesla použijte odkaz: {reset_link}",
+   309	        )
+   310	    )
+   311	
+   312	

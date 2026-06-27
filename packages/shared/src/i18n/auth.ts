@@ -41,7 +41,7 @@ type AuthDictionary = Record<AuthContext, Record<AuthLocale, AuthCopy>>;
 const AUTH_STRINGS: AuthDictionary = {
   portal: {
     cs: {
-      eyebrow: 'KájovoHotel · Portál',
+      eyebrow: 'Kájovo Hotel · Portál',
       title: 'Přihlášení uživatele',
       description: 'Přihlaste se pracovním účtem. Uživatelské jméno je vždy emailová adresa.',
       emailLabel: 'Email',
@@ -67,7 +67,7 @@ const AUTH_STRINGS: AuthDictionary = {
         `Role ${roleLabel} (uživatel ${userId}) nemá žádné dostupné moduly.`,
     },
     en: {
-      eyebrow: 'KájovoHotel · Portal',
+      eyebrow: 'Kájovo Hotel · Portál',
       title: 'User sign-in',
       description: 'Sign in with your work account. The username is always your email address.',
       emailLabel: 'Email',
@@ -95,7 +95,7 @@ const AUTH_STRINGS: AuthDictionary = {
   },
   admin: {
     cs: {
-      eyebrow: 'KájovoHotel · Admin',
+      eyebrow: 'Kájovo Hotel · Admin',
       title: 'Přihlášení administrace',
       description: 'Použijte pevný admin účet pro správu uživatelů a nastavení provozu.',
       emailLabel: 'Email',
@@ -113,7 +113,7 @@ const AUTH_STRINGS: AuthDictionary = {
       hintInfo: 'Pokud účet existuje, byl odeslán e-mail s připomenutím, kde admin heslo najdete.',
     },
     en: {
-      eyebrow: 'KájovoHotel · Admin',
+      eyebrow: 'Kájovo Hotel · Admin',
       title: 'Administration sign-in',
       description: 'Use the dedicated admin account to manage users and operational settings.',
       emailLabel: 'Email',

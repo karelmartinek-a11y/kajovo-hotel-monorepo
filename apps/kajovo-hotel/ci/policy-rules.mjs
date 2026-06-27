@@ -1,14 +1,7 @@
 const webRuntimePrefixes = [
   'apps/kajovo-hotel-web/src/',
   'apps/kajovo-hotel-web/index.html',
-  'apps/kajovo-hotel-web/public/downloads/',
   'packages/ui/src/',
-];
-
-const androidRuntimePrefixes = [
-  'android/app/src/',
-  'android/core/',
-  'android/feature/',
 ];
 
 const bannedPatterns = [
@@ -45,16 +38,6 @@ const isCrossAppViolation = (filePath, statement) => {
 
 export const collectPolicyErrors = ({ allChangedFiles, filesToScan, readSource }) => {
   const errors = [];
-  const touchesWebRuntime = allChangedFiles.some((file) => touchesRuntimePrefix(file, webRuntimePrefixes));
-  const touchesAndroidRuntime = allChangedFiles.some((file) => touchesRuntimePrefix(file, androidRuntimePrefixes));
-
-  if (touchesWebRuntime && !touchesAndroidRuntime) {
-    errors.push('Runtime zmena webu bez adekvatni runtime zmeny Android appky je zakazana.');
-  }
-
-  if (touchesAndroidRuntime && !touchesWebRuntime) {
-    errors.push('Runtime zmena Android appky bez adekvatni runtime zmeny webu je zakazana.');
-  }
 
   for (const rel of filesToScan) {
     if (rel === 'apps/kajovo-hotel/ci/policy-sentinel.mjs' || rel === 'apps/kajovo-hotel/ci/policy-rules.mjs') {

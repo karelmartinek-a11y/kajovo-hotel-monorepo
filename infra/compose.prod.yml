@@ -25,15 +25,20 @@ services:
       context: ..
       dockerfile: apps/kajovo-hotel-api/Dockerfile
     restart: unless-stopped
+    volumes:
+      - api_data:/app/data
     environment:
-      KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-KájovoHotel API}
+      KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-Kájovo Hotel API}
       KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
       KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-production}
       KAJOVO_API_DATABASE_URL: ${KAJOVO_API_DATABASE_URL:-postgresql+psycopg://kajovo:kajovo_dev_password@postgres:5432/kajovo_hotel}
-      KAJOVO_API_ADMIN_EMAIL: ${KAJOVO_API_ADMIN_EMAIL:?KAJOVO_API_ADMIN_EMAIL is required}
-      KAJOVO_API_ADMIN_PASSWORD: ${KAJOVO_API_ADMIN_PASSWORD:?KAJOVO_API_ADMIN_PASSWORD is required}
+      KAJOVO_API_ADMIN_EMAIL: ${KAJOVO_API_ADMIN_EMAIL:-}
+      KAJOVO_API_ADMIN_PASSWORD: ${KAJOVO_API_ADMIN_PASSWORD:-}
       HOTEL_ADMIN_EMAIL: ${HOTEL_ADMIN_EMAIL:-}
       HOTEL_ADMIN_PASSWORD: ${HOTEL_ADMIN_PASSWORD:-}
+      BETTER_HOTEL_CONNECTOR_BASE_URL: ${BETTER_HOTEL_CONNECTOR_BASE_URL:-https://api.better-hotel.com/api/connector/v/1}
+      BETTER_HOTEL_ACCESS_TOKEN: ${BETTER_HOTEL_ACCESS_TOKEN:-}
+      BETTER_HOTEL_CLIENT_TOKEN: ${BETTER_HOTEL_CLIENT_TOKEN:-}
       KAJOVO_API_SMTP_ENABLED: ${KAJOVO_API_SMTP_ENABLED:-false}
       KAJOVO_API_SMTP_FROM_EMAIL: ${KAJOVO_API_SMTP_FROM_EMAIL:-noreply@kajovohotel.local}
       KAJOVO_API_SMTP_ENCRYPTION_KEY: ${KAJOVO_API_SMTP_ENCRYPTION_KEY:-dev-only-smtp-key-change-in-production}
@@ -92,4 +97,5 @@ networks:
     driver: bridge
 
 volumes:
+  api_data:
   postgres_data:

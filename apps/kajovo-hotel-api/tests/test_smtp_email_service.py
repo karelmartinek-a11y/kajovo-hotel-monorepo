@@ -96,18 +96,21 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         response = send_test_email(SmtpTestEmailRequest(recipient=admin_email), db=db)
         create_user(
             PortalUserCreate(
+                first_name="New",
+                last_name="User",
                 email="new.user@example.com",
                 password="new-user-pass",
                 roles=["recepce"],
             ),
+            request=SimpleNamespace(state=SimpleNamespace()),
             db=db,
         )
         status = get_smtp_status(db=db)
 
     assert [message.subject for message in transport.sent_messages] == [
-        "KájovoHotel připomenutí admin hesla",
-        "KájovoHotel SMTP test",
-        "KájovoHotel onboarding",
+        "Kájovo Hotel připomenutí admin hesla",
+        "Kájovo Hotel SMTP test",
+        "Kájovo Hotel onboarding",
     ]
     assert response.delivery_mode == "smtp"
     assert status.configured is True

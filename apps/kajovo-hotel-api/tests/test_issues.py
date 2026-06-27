@@ -5,6 +5,7 @@ import urllib.request
 import uuid
 from collections.abc import Callable
 from http.cookiejar import CookieJar
+from pathlib import Path
 
 ResponseData = dict[str, object] | list[dict[str, object]] | None
 ApiRequest = Callable[..., tuple[int, ResponseData]]
@@ -303,3 +304,32 @@ def test_maintenance_can_upload_issue_photos(api_request: ApiRequest, api_base_u
     assert photo_status == 200
     assert isinstance(photo_data, list)
     assert len(photo_data) == 1
+
+
+def test_missing_issue_thumb_returns_placeholder(
+    api_request: ApiRequest,
+    api_base_url: str,
+    api_db_path: Path,
+) -> None:
+    created = create_issue(api_request, title="Rozbitá miniatura", room_number="225", location="Pokoj 225")
+    opener = getattr(api_request, "opener", urllib.request.build_opener())
+    jar = getattr(api_request, "jar", CookieJar())
+    upload_status, upload_data = upload_photos(
+        opener,
+        f"{api_base_url}/api/v1/issues/{created['id']}/photos",
+        jar,
+        [("photos", "photo-1.jpg", b"one")],
+    )
+    assert upload_status == 200
+    assert isinstance(upload_data, list)
+    thumb_rel = str(upload_data[0]["thumb_path"])
+    thumb_path = api_db_path.parent / "media" / Path(thumb_rel)
+    thumb_path.unlink()
+
+    thumb_request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/issues/{created['id']}/photos/{upload_data[0]['id']}/thumb",
+        headers=csrf_header(jar),
+    )
+    with opener.open(thumb_request, timeout=10) as response:
+        assert response.status == 200
+        assert response.headers.get_content_type() == "image/svg+xml"

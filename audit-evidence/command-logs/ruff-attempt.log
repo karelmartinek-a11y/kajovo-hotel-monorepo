@@ -1,0 +1,2 @@
+$ python -m ruff check apps/kajovo-hotel-api
+/opt/pyvenv/bin/python: No module named ruff

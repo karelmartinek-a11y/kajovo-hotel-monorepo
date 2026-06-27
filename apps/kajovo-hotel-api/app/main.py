@@ -1,13 +1,12 @@
 import asyncio
 import contextlib
+import os
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app.android_release import get_android_release_manifest
-from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
 from app.api.routes.device import router as device_router
@@ -27,6 +26,13 @@ from app.services.admin_credentials import ensure_admin_profile
 from app.services.breakfast.scheduler import breakfast_scheduler_loop
 
 settings = get_settings()
+
+
+def has_explicit_admin_env() -> bool:
+    return bool(
+        (os.getenv("KAJOVO_API_ADMIN_EMAIL") or os.getenv("HOTEL_ADMIN_EMAIL"))
+        and (os.getenv("KAJOVO_API_ADMIN_PASSWORD") or os.getenv("HOTEL_ADMIN_PASSWORD"))
+    )
 
 
 def create_app() -> FastAPI:
@@ -62,16 +68,11 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Permissions-Policy", "geolocation=()")
-        android_release = get_android_release_manifest()
-        response.headers.setdefault("X-Kajovo-Android-Version", android_release.version_name)
-        response.headers.setdefault("X-Kajovo-Android-Version-Code", str(android_release.version_code))
-        response.headers.setdefault("X-Kajovo-Android-Update-Required", "true" if android_release.required else "false")
         if settings.environment.lower() == "production":
             response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
         return response
 
     app.include_router(auth_router)
-    app.include_router(app_meta_router)
     app.include_router(health_router)
     app.include_router(reports_router)
     app.include_router(breakfast_router)
@@ -87,7 +88,7 @@ def create_app() -> FastAPI:
     async def startup_scheduler() -> None:
         initialize_database()
         with SessionLocal() as db:
-            ensure_admin_profile(db, settings, sync_from_env=True)
+            ensure_admin_profile(db, settings, sync_from_env=has_explicit_admin_env())
         if settings.breakfast_scheduler_enabled:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
 
@@ -96,7 +97,7 @@ def create_app() -> FastAPI:
         task = getattr(app.state, "breakfast_scheduler_task", None)
         if task is not None:
             task.cancel()
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
 
     return app

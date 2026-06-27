@@ -14,15 +14,6 @@ export type AdminProfileRead = {
 export type AdminProfileUpdate = {
   "display_name": string;
 };
-export type AndroidAppReleaseRead = {
-  "download_url": string;
-  "message": string;
-  "required"?: boolean;
-  "sha256": string;
-  "title": string;
-  "version": string;
-  "version_code": number;
-};
 export type AuthIdentityResponse = {
   "active_role"?: string | null;
   "actor_type": string;
@@ -65,6 +56,7 @@ export type Body_upload_report_photos_api_v1_reports__report_id__photos_post = {
 };
 export type BreakfastDailySummary = {
   "service_date": string;
+  "source_imported_at"?: string | null;
   "status_counts": Record<string, unknown>;
   "total_guests": number;
   "total_orders": number;
@@ -77,6 +69,14 @@ export type BreakfastImportItem = {
   "guest_name"?: string | null;
   "room": number;
 };
+export type BreakfastImportLogEntry = {
+  "details_json": string;
+  "finished_at": string;
+  "id": number;
+  "ok": boolean;
+  "started_at": string;
+  "trigger": string;
+};
 export type BreakfastImportResponse = {
   "date": string;
   "items": Array<BreakfastImportItem>;
@@ -84,6 +84,39 @@ export type BreakfastImportResponse = {
   "saved"?: boolean;
   "status": string;
 };
+export type BreakfastImportRunResponse = {
+  "errors": Array<string>;
+  "imported_count": number;
+  "imported_days": number;
+  "ok": boolean;
+  "processed_days": number;
+  "range_end": string;
+  "range_start": string;
+  "replaced_future_count": number;
+  "reservations_count": number;
+};
+export type BreakfastManualRefreshJobRead = {
+  "created_at": string | null;
+  "error_message"?: string | null;
+  "finished_at": string | null;
+  "id": number;
+  "imported_count": number;
+  "job_key": string;
+  "message"?: string | null;
+  "progress"?: Array<BreakfastManualRefreshProgressItem>;
+  "service_date": string;
+  "started_at": string | null;
+  "status": BreakfastManualRefreshStatus;
+};
+export type BreakfastManualRefreshProgressItem = {
+  "at": string;
+  "message": string;
+  "step": string;
+};
+export type BreakfastManualRefreshRequest = {
+  "service_date": string;
+};
+export type BreakfastManualRefreshStatus = "queued" | "running" | "succeeded" | "failed";
 export type BreakfastOrderCreate = {
   "diet_no_gluten"?: boolean;
   "diet_no_milk"?: boolean;
@@ -121,6 +154,34 @@ export type BreakfastOrderUpdate = {
   "status"?: BreakfastStatus | null;
 };
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
+export type BreakfastSyncRuntimeStatusRead = {
+  "attempt": number;
+  "error"?: string | null;
+  "generated_at"?: string | null;
+  "imported": boolean;
+  "imported_days"?: number;
+  "imported_rows"?: number;
+  "ok": boolean;
+  "processed_days"?: number;
+  "range_end": string;
+  "range_start": string;
+  "replaced_future_count"?: number;
+  "reservations_count"?: number;
+};
+export type BreakfastSyncSettingsRead = {
+  "access_token_configured": boolean;
+  "breakfast_food_codes": Array<number>;
+  "breakfast_window_days_forward": number;
+  "client_token_configured": boolean;
+  "connector_base_url": string;
+  "provider": string;
+  "runtime_status"?: BreakfastSyncRuntimeStatusRead | null;
+  "schedule_times": Array<string>;
+  "scheduler_enabled": boolean;
+  "scheduler_interval_seconds": number;
+  "scheduler_max_retries": number;
+  "scheduler_retry_seconds": number;
+};
 export type DeviceChallengeRequest = {
   "device_id": string;
   "device_secret": string;
@@ -427,8 +488,8 @@ export type PortalPasswordResetRequest = {
 };
 export type PortalUserCreate = {
   "email": string;
-  "first_name"?: string;
-  "last_name"?: string;
+  "first_name": string;
+  "last_name": string;
   "note"?: string | null;
   "password"?: string | null;
   "phone"?: string | null;
@@ -459,6 +520,7 @@ export type PortalUserUpdate = {
   "first_name": string;
   "last_name": string;
   "note"?: string | null;
+  "password"?: string | null;
   "phone"?: string | null;
   "roles": Array<string>;
 };
@@ -579,9 +641,6 @@ async function request<T>(method: string, path: string, query?: Record<string, Q
 }
 
 export const apiClient = {
-  async getAndroidReleaseApiAppAndroidReleaseGet(): Promise<AndroidAppReleaseRead> {
-    return request<AndroidAppReleaseRead>('GET', `/api/app/android-release`, undefined, undefined);
-  },
   async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<MailDispatchResponse> {
     return request<MailDispatchResponse>('POST', `/api/auth/admin/hint`, undefined, body);
   },
@@ -624,6 +683,15 @@ export const apiClient = {
   async updateAdminProfileApiV1AdminProfilePut(body: AdminProfileUpdate): Promise<AdminProfileRead> {
     return request<AdminProfileRead>('PUT', `/api/v1/admin/profile`, undefined, body);
   },
+  async getBreakfastImportLogsApiV1AdminSettingsBreakfastImportLogsGet(query: { "limit"?: number; }): Promise<Array<BreakfastImportLogEntry>> {
+    return request<Array<BreakfastImportLogEntry>>('GET', `/api/v1/admin/settings/breakfast-import-logs`, query, undefined);
+  },
+  async runBreakfastImportNowApiV1AdminSettingsBreakfastImportRunPost(): Promise<BreakfastImportRunResponse> {
+    return request<BreakfastImportRunResponse>('POST', `/api/v1/admin/settings/breakfast-import-run`, undefined, undefined);
+  },
+  async getBreakfastSyncSettingsApiV1AdminSettingsBreakfastSyncGet(): Promise<BreakfastSyncSettingsRead> {
+    return request<BreakfastSyncSettingsRead>('GET', `/api/v1/admin/settings/breakfast-sync`, undefined, undefined);
+  },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);
   },
@@ -653,6 +721,12 @@ export const apiClient = {
   },
   async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
     return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
+  },
+  async manualRefreshBreakfastApiV1BreakfastManualRefreshPost(body: BreakfastManualRefreshRequest): Promise<void> {
+    return request<void>('POST', `/api/v1/breakfast/manual-refresh`, undefined, body);
+  },
+  async getManualRefreshJobApiV1BreakfastManualRefreshJobIdGet(job_id: number): Promise<BreakfastManualRefreshJobRead> {
+    return request<BreakfastManualRefreshJobRead>('GET', `/api/v1/breakfast/manual-refresh/${job_id}`, undefined, undefined);
   },
   async deleteBreakfastOrdersForPeriodApiV1BreakfastPeriodDeleteDelete(query: { "date_from": string; "date_to": string; }): Promise<void> {
     return request<void>('DELETE', `/api/v1/breakfast/period/delete`, query, undefined);

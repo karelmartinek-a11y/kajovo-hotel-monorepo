@@ -1,0 +1,60 @@
+Live runtime findings captured on 2026-06-27 (Europe/Prague)
+
+Target host
+- SSH alias `produkce` vede na `89.221.222.92`.
+- `getent ahostsv4 hotel.hcasc.cz` na target hostu vrací `89.221.222.92`.
+- Aktivní runtime artifact po dnešním deployi:
+  - `sha`: `manual-20260627-remediation`
+  - `branch`: `main`
+  - `deployed_at`: `2026-06-27T20:15:51Z`
+  - `checks.postgres`: `healthy`
+  - `checks.api_ready`: `200`
+  - `checks.web_healthz`: `200`
+  - `checks.admin_healthz`: `200`
+
+Live HTTP/runtime checks from the target host
+- `GET https://hotel.hcasc.cz` => HTTP 200
+- `GET https://hotel.hcasc.cz/admin/login` => HTTP 200
+- `GET https://hotel.hcasc.cz/api/app/android-release` => HTTP 404 `{ "detail": "Not Found" }`
+- Docker stack `kajovo-prod` běží zdravě pro `web`, `admin`, `api`, `postgres`.
+
+Browser runtime findings
+- Public runtime title po reloadu: `Kájovo Hotel · Portál`
+- Admin runtime title po reloadu: `Kájovo Hotel · Administrace`
+- Admin login shell zobrazuje:
+  - `E-mail administrátora`
+  - `Heslo administrátora`
+  - `Dnešní provoz`
+  - `Správa hotelu v jednom vstupu`
+- Portal role chooser po přihlášení zobrazuje role:
+  - `Pokračovat jako Sklad`
+  - `Pokračovat jako Snídaně`
+  - `Pokračovat jako Recepce`
+  - `Pokračovat jako Údržba`
+  - `Pokračovat jako Pokojská`
+
+Inventory / K05 geometry audit
+- Soubor `audit-evidence/sklad-live-breakpoints.json` potvrzuje pro 1440 / 1024 / 768 / 430 / 360 px:
+  - `title = Kájovo Hotel · Portál`
+  - `hasHorizontalOverflow = false`
+  - `buttonText = Potvrdit pohyb`
+  - `brandOverlapsButton = false`
+- Screenshoty byly uloženy do:
+  - `audit-evidence/sklad-live-1440.png`
+  - `audit-evidence/sklad-live-1024.png`
+  - `audit-evidence/sklad-live-768.png`
+  - `audit-evidence/sklad-live-430.png`
+  - `audit-evidence/sklad-live-360.png`
+
+Branding / N02 findings
+- Aktivní runtime už nepoužívá titulky `KájovoHotel Portál` ani `KájovoHotel Administrace`.
+- Android release endpoint byl odstraněn; starý Android runtime branding už není živou součástí systému.
+
+Admin runtime smoke
+- Bezpečný server-side login s runtime admin credentials proběhl bez výpisu secretů.
+- `https://hotel.hcasc.cz/admin/` po autentizaci vrací admin runtime HTML s titulkem `Kájovo Hotel · Administrace`.
+
+Implications
+- `K05` je po dnešním live breakpoint auditu odstraněno.
+- `N02` je po dnešním deployi a live reloadu odstraněno.
+- Legacy Android už není blocker a není aktivní součást webového runtime ani deploye.

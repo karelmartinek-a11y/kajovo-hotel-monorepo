@@ -1,4 +1,5 @@
 import React from 'react';
+import { Icon } from './Icon';
 
 type RoleSwitcherItem = {
   key: string;
@@ -25,17 +26,22 @@ export function RoleSwitcher({
   }
 
   return (
-    <div className="k-role-switcher" aria-label={ariaLabel}>
-      <span className="k-role-switcher__active">{activeLabel}</span>
+    <div className="k-role-switcher" role="group" aria-label={ariaLabel}>
+      <span className="k-role-switcher__active">
+        <Icon name="profile" className="k-role-switcher__icon" />
+        <span>{activeLabel}</span>
+      </span>
       {alternatives.map((item) => (
         <button
           key={item.key}
           className="k-role-switcher__button"
           type="button"
           disabled={busy}
+          aria-label={`Přepnout roli na ${item.label}`}
           onClick={() => onSelect(item.key)}
         >
-          {item.label}
+          <Icon name="grid" className="k-role-switcher__icon" />
+          <span>{item.label}</span>
         </button>
       ))}
     </div>

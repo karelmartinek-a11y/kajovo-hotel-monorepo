@@ -1,3 +1,18 @@
+# Vychozi normalizace textovych souboru v repozitari.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.docx binary
+*.apk binary
+*.zip binary
+*.exe binary
+*.jar binary
+
 # ORF conflict guardrails for repeatedly conflicting PR files
 .github/workflows/ci-gates.yml merge=ours
 package.json merge=ours

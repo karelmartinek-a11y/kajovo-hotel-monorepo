@@ -259,8 +259,8 @@ def send_portal_onboarding(*, service: EmailService, recipient: str) -> MailDeli
     return service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel onboarding",
-            body="Váš účet v KájovoHotel byl vytvořen.",
+            subject="Kájovo Hotel onboarding",
+            body="Váš účet v Kájovo Hotel byl vytvořen.",
         )
     )
 
@@ -269,7 +269,7 @@ def send_admin_unlock_link(*, service: EmailService, recipient: str, unlock_link
     return service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel odblokování admin účtu",
+            subject="Kájovo Hotel odblokování admin účtu",
             body=f"Pro odblokování admin účtu použijte odkaz: {unlock_link}",
         )
     )
@@ -279,7 +279,7 @@ def send_admin_password_hint(*, service: EmailService, recipient: str) -> MailDe
     return service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel připomenutí admin hesla",
+            subject="Kájovo Hotel připomenutí admin hesla",
             body=(
                 "Zapomenuté admin heslo se neresetuje. "
                 "Heslo najdete v provozním správci hesel nebo v bezpečně uložené provozní dokumentaci."
@@ -292,7 +292,7 @@ def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link:
     return service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel unlock účtu",
+            subject="Kájovo Hotel unlock účtu",
             body=f"Pro odblokování účtu použijte odkaz: {unlock_link}",
         )
     )
@@ -304,7 +304,7 @@ def send_user_password_reset_link(
     return service.send(
         MailMessage(
             recipient=recipient,
-            subject="KájovoHotel reset hesla",
+            subject="Kájovo Hotel reset hesla",
             body=f"Pro reset hesla použijte odkaz: {reset_link}",
         )
     )

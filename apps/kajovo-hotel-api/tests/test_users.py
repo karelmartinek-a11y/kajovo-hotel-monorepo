@@ -64,7 +64,7 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "new.user@example.com", "roles": ["recepce"]},
+        payload={"first_name": "Novy", "last_name": "Uzivatel", "email": "new.user@example.com", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -148,7 +148,7 @@ def test_admin_can_crud_and_portal_login(api_base_url: str) -> None:
     )
     assert status == 409
     assert isinstance(admin_reset, dict)
-    assert admin_reset.get("detail") == "Admin account password reminder is handled only via admin login hint"
+    assert admin_reset.get("detail") == "Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace."
 
 
 def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None:
@@ -170,6 +170,8 @@ def test_role_change_revokes_existing_portal_sessions(api_base_url: str) -> None
         "/api/v1/users",
         method="POST",
         payload={
+            "first_name": "Role",
+            "last_name": "Revoke",
             "email": "role.revoke@example.com",
             "password": "role-revoke-pass",
             "roles": ["recepce"],
@@ -284,6 +286,8 @@ def test_disabling_user_revokes_existing_portal_sessions(api_base_url: str) -> N
         "/api/v1/users",
         method="POST",
         payload={
+            "first_name": "Disable",
+            "last_name": "Revoke",
             "email": "disable.revoke@example.com",
             "password": "disable-revoke-pass",
             "roles": ["recepce"],
@@ -339,7 +343,7 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "neplatny-email", "password": "valid-pass-123", "roles": ["recepce"]},
+        payload={"first_name": "Test", "last_name": "Email", "email": "neplatny-email", "password": "valid-pass-123", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 422
@@ -349,7 +353,7 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "", "roles": ["recepce"]},
+        payload={"first_name": "Test", "last_name": "Email", "email": "", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 422
@@ -359,7 +363,17 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "kratke.heslo@example.com", "password": "kratke", "roles": ["recepce"]},
+        payload={"email": "bez.jmena@example.com", "password": "valid-pass-123", "roles": ["recepce"]},
+        headers=csrf_header(jar),
+    )
+    assert status == 422
+
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/users",
+        method="POST",
+        payload={"first_name": "Kratke", "last_name": "Heslo", "email": "kratke.heslo@example.com", "password": "kratke", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 422
@@ -370,6 +384,8 @@ def test_user_validation_rejects_invalid_email_and_phone(api_base_url: str) -> N
         "/api/v1/users",
         method="POST",
         payload={
+            "first_name": "Valid",
+            "last_name": "Phone",
             "email": "valid@example.com",
             "password": "valid-pass-123",
             "roles": ["recepce"],
@@ -398,7 +414,7 @@ def test_portal_user_cannot_delete_users(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "portal.delete@example.com", "password": "portal-pass-123", "roles": ["recepce"]},
+        payload={"first_name": "Portal", "last_name": "Delete", "email": "portal.delete@example.com", "password": "portal-pass-123", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -444,7 +460,7 @@ def test_admin_can_delete_user(api_base_url: str) -> None:
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "delete.me@example.com", "password": "delete-user-pass", "roles": ["recepce"]},
+        payload={"first_name": "Delete", "last_name": "Me", "email": "delete.me@example.com", "password": "delete-user-pass", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201
@@ -508,7 +524,7 @@ def test_admin_cannot_delete_own_account(api_base_url: str) -> None:
     )
     assert status == 403
     assert isinstance(detail, dict)
-    assert detail.get("detail") == "Cannot delete your own account"
+    assert detail.get("detail") == "Nelze smazat vlastní účet."
 
 
 def test_deactivated_admin_session_cannot_delete_remaining_admin(
@@ -634,7 +650,7 @@ def test_admin_cannot_deactivate_last_active_admin(api_base_url: str) -> None:
     )
     assert status == 409
     assert isinstance(detail, dict)
-    assert detail.get("detail") == "Cannot deactivate the last admin user"
+    assert detail.get("detail") == "Nelze deaktivovat posledního aktivního administrátora."
 
 
 def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> None:
@@ -680,7 +696,7 @@ def test_admin_cannot_remove_admin_role_from_last_admin(api_base_url: str) -> No
     )
     assert status == 409
     assert isinstance(detail, dict)
-    assert detail.get("detail") == "Cannot remove admin role from the last admin user"
+    assert detail.get("detail") == "Nelze odebrat administrátorskou roli poslednímu aktivnímu administrátorovi."
 
 def test_password_not_logged_in_audit_detail(
     api_base_url: str, api_db_path: Path
@@ -701,7 +717,7 @@ def test_password_not_logged_in_audit_detail(
         api_base_url,
         "/api/v1/users",
         method="POST",
-        payload={"email": "audit.user@example.com", "password": "audit-user-pass", "roles": ["recepce"]},
+        payload={"first_name": "Audit", "last_name": "User", "email": "audit.user@example.com", "password": "audit-user-pass", "roles": ["recepce"]},
         headers=csrf_header(jar),
     )
     assert status == 201

@@ -1,5 +1,5 @@
 import React from 'react';
-import { KajovoFullLockup, KajovoSign, StateView } from '@kajovo/ui';
+import { Icon, KajovoFullLockup, StateView } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
 type LoginErrorState = {
@@ -77,9 +77,9 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
   return (
     <main className="k-login-page" data-testid="admin-login-page">
       <section className="k-login-card" aria-labelledby="admin-login-title">
-        <KajovoFullLockup href="/admin/" title="KájovoHotel" subtitle="Administrace" />
+        <KajovoFullLockup href="/admin/" title="Kájovo Hotel" subtitle="Administrace" />
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
-        <h1 id="admin-login-title">Vítejte v administraci KájovoHotel</h1>
+        <h1 id="admin-login-title">Vítejte v administraci Kájovo Hotel</h1>
         <p className="k-login-copy" id="admin-login-description">
           Přihlaste se do administrace a pokračujte do správy provozu, účtů a nastavení bez přepínání mezi odlišnými vstupy.
         </p>
@@ -144,7 +144,23 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
           {authError ? <StateView title="Ověření přihlášení selhalo" description={authError} stateKey="error" /> : null}
         </form>
       </section>
-      <KajovoSign href="/admin/" />
+      <aside className="k-login-preview" aria-label="Prehled administrace">
+        <div className="k-card">
+          <div className="k-card__header">
+            <div className="k-card__title-wrap">
+              <p className="k-card__eyebrow">Administrace</p>
+              <h3>Správa hotelu, uživatelů a nastavení</h3>
+            </div>
+            <Icon name="settings" className="k-card__icon" title="Administrace" />
+          </div>
+          <div className="k-card__body k-grid">
+            <div className="k-nav-link"><Icon name="users" className="k-nav-link__icon" /><span>Uživatelé a role</span></div>
+            <div className="k-nav-link"><Icon name="layout-dashboard" className="k-nav-link__icon" /><span>Operacni prehled</span></div>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Hlaseni a snidane</span></div>
+            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>SMTP a systémové nastavení</span></div>
+          </div>
+        </div>
+      </aside>
     </main>
   );
 }

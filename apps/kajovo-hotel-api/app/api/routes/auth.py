@@ -714,7 +714,7 @@ def change_own_password(
     if _is_admin_user(user):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Admin account password reminder is handled only via admin login hint",
+            detail="Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace.",
         )
     if not verify_password(payload.old_password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid credentials")
