@@ -51,3 +51,7 @@
 - 2026-06-27 22:55 CEST: produkční deploy na serveru selhal v Docker buildu na `pnpm install --frozen-lockfile` kvůli nesouladu overrides/lockfile; opraveno přesunem overrides do `pnpm-workspace.yaml` a regenerací lockfile.
 - 2026-06-27 23:00 CEST: `CI=1 corepack pnpm@9.15.0 install --frozen-lockfile` lokalne proslo; produkcni Docker build pouziva stejnou verzi a byl timto forenzne sladěn.
 - 2026-06-27 23:10 CEST: produkční detail skladu padal na chybějícím DB sloupci `inventory_movements.quantity_pieces`; doplněn do `infra/ops/deploy-production.sh` jako nedestruktivní schema reconcile.
+
+- 2026-06-27 23:12 CEST: živý inventory smoke na `https://hotel.hcasc.cz/api/v1/inventory/2` po deploy hotfixu potvrdil `detailBeforeStatus=200`, tři pohyby (`in/out/adjust`), audit logy a `missingStatus=404`; důkaz v `audit-evidence/live-inventory-smoke-postdeploy.json`.
+- 2026-06-27 23:03 CEST: živý Better Hotel manual refresh selhal korektní českou chybou o chybějících tokenech; jde o produkční secret blocker mimo zdrojový kód.
+- 2026-06-27 23:07 CEST: browser breakpoint audit po deployi potvrdil na `/admin/sklad` pro 1440/1024/768/430/360 px `hasHorizontalOverflow=false`, `hasVerticalKajovo=false` a titul `Kájovo Hotel · Administrace`; důkaz v `audit-evidence/sklad-live-breakpoints-postdeploy-browser.json`.

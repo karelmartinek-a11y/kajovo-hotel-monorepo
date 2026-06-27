@@ -7,9 +7,9 @@ Verdikty: `ODSTRANĚNO`, `ČÁSTEČNĚ ODSTRANĚNO`, `NEODSTRANĚNO`, `NEOVĚŘI
 | ID | Verdikt | Důkaz | Dotčené soubory / výstupy | Poznámka |
 |---|---|---|---|---|
 | K01 | ODSTRANĚNO | Backend trasy a testy pro IN/OUT/ADJUST; dnešní serverový deploy a živý `/sklad` smoke nic nerozbily. | `apps/kajovo-hotel-api/app/api/routes/inventory.py`, `apps/kajovo-hotel-api/tests/test_inventory.py` | Regresně zachováno. |
-| K02 | ODSTRANĚNO | Detail položky má guardy na chybějící data a nevrací syrový `Internal Server Error`. | `apps/kajovo-hotel-api/app/api/routes/inventory.py`, `apps/kajovo-hotel-admin/src/main.tsx` | Regresně zachováno. |
+| K02 | ODSTRANĚNO | Živý detail `/api/v1/inventory/2` po hotfixu vrací `200`, neexistující položka vrací `404` a produkční 500 bylo odstraněno doplněním drift sloupce `inventory_movements.quantity_pieces`. | `apps/kajovo-hotel-api/app/api/routes/inventory.py`, `infra/ops/deploy-production.sh`, `audit-evidence/live-inventory-smoke-postdeploy.json` | Opraveno na produkci 2026-06-27 večer. |
 | K04 | ODSTRANĚNO | Formulář uživatele vyžaduje roli, validuje e-mail a potvrzuje admin práva. | `apps/kajovo-hotel-admin/src/main.tsx`, `apps/kajovo-hotel-api/app/api/routes/users.py` | Regresně zachováno. |
-| K05 | ODSTRANĚNO | Live breakpoint audit `/sklad` na 1440/1024/768/430/360 px: `brandOverlapsButton=false`, `hasHorizontalOverflow=false`. | `packages/ui/src/shell/AppShell.tsx`, `packages/ui/src/index.ts`, `audit-evidence/sklad-live-breakpoints.json` | Vertikální signace byla odstraněna z aktivního shellu. |
+| K05 | ODSTRANĚNO | Live breakpoint audit `/sklad` na 1440/1024/768/430/360 px: `brandOverlapsButton=false`, `hasHorizontalOverflow=false`. | `packages/ui/src/shell/AppShell.tsx`, `packages/ui/src/index.ts`, `audit-evidence/sklad-live-breakpoints-postdeploy-browser.json` | Vertikální signace byla odstraněna z aktivního shellu. |
 | V01 | ČÁSTEČNĚ ODSTRANĚNO | Login shelly byly zjednodušené a live portál/admin login běží bez starého Android panelu. | `apps/kajovo-hotel-web/src/portal/PortalLoginPage.tsx`, `apps/kajovo-hotel-admin/src/main.tsx` | Dnešní běh neudělal plný screenshot audit všech login breakpointů. |
 | V02 | ODSTRANĚNO | Role chooser a navigace rolí byly živě ověřené v prohlížeči. | `packages/ui/src/navigation/ModuleNavigation.tsx`, `audit-evidence/live-runtime-findings-2026-06-27.txt` | Aktivní role i mobilní menu zůstávají funkční. |
 | V03 | ODSTRANĚNO | Varianty tlačítek zůstávají rozlišené přes sdílené tokeny. | `packages/ui/src/tokens.css` | Regresně zachováno. |
@@ -21,11 +21,11 @@ Verdikty: `ODSTRANĚNO`, `ČÁSTEČNĚ ODSTRANĚNO`, `NEODSTRANĚNO`, `NEOVĚŘI
 | V09 | ČÁSTEČNĚ ODSTRANĚNO | Snídaně mají zdrojové úpravy a refresh smoke prošel. | `apps/kajovo-hotel-admin/src/main.tsx`, `scripts/verify_live_breakfast_manual_refresh.mjs` | Chybí plný živý vizuální audit dietní legendy. |
 | V10 | ČÁSTEČNĚ ODSTRANĚNO | Pokojská zůstává zdrojově upravená; dnešní běh ji neprošel celou v browseru. | `apps/kajovo-hotel-admin/src/main.tsx` | Konzervativní ponechání. |
 | S01 | ČÁSTEČNĚ ODSTRANĚNO | Závady mají čitelné štítky a stáří, ale bez dnešního plného live průchodu. | `apps/kajovo-hotel-admin/src/main.tsx` | Konzervativní ponechání. |
-| S02 | ČÁSTEČNĚ ODSTRANĚNO | Import/sync snídaní prošel refresh smoke, ale ne plný ruční upload flow v browseru. | `scripts/verify_live_breakfast_manual_refresh.mjs` | Konzervativní ponechání. |
+| S02 | NEODSTRANĚNO | Živý ruční refresh snídaní padá korektní českou chybou `Chybí Better Hotel tokeny...`; runtime nemá dostupné produkční tokeny pro Better Hotel. | `scripts/verify_live_breakfast_manual_refresh.mjs`, `audit-evidence/live-runtime-findings-2026-06-27.txt` | Reálný blocker mimo zdrojový kód: chybějící produkční secret pro Better Hotel refresh. |
 | S03 | ČÁSTEČNĚ ODSTRANĚNO | Dashboard zdrojově nabízí stavové karty; dnešní běh ověřil admin shell a auth, ne plný interaktivní průřez. | `apps/kajovo-hotel-admin/src/main.tsx` | Konzervativní ponechání. |
 | S04 | ČÁSTEČNĚ ODSTRANĚNO | Nastavení/logy zůstávají zdrojově členěné; SMTP smoke prošel. | `apps/kajovo-hotel-admin/src/main.tsx`, `scripts/verify_live_admin_settings.mjs` | Konzervativní ponechání. |
 | S05 | ČÁSTEČNĚ ODSTRANĚNO | Nálezy mají stavové štítky a detail, ale ne dnešní plný live průchod. | `apps/kajovo-hotel-admin/src/main.tsx` | Konzervativní ponechání. |
-| S06 | ČÁSTEČNĚ ODSTRANĚNO | Skladový formulář a pohyby jsou oddělené; live ověřeno hlavně K05. | `apps/kajovo-hotel-admin/src/main.tsx`, `apps/kajovo-hotel-api/tests/test_inventory.py` | Konzervativní ponechání. |
+| S06 | ODSTRANĚNO | Živý smoke potvrdil příjem, výdej i odpis na `inventory/2`, správnou změnu stavu skladu, audit logy i detail bez 500. | `apps/kajovo-hotel-admin/src/main.tsx`, `apps/kajovo-hotel-api/tests/test_inventory.py`, `audit-evidence/live-inventory-smoke-postdeploy.json` | Produkčně ověřeno 2026-06-27 večer. |
 | S07 | ČÁSTEČNĚ ODSTRANĚNO | Jednotné návraty/detailové nadpisy jsou ve zdroji, ne plně živě projité. | `apps/kajovo-hotel-admin/src/main.tsx` | Konzervativní ponechání. |
 | S08 | ODSTRANĚNO | Mojibake check prošel a aktivní runtime texty už neobsahují `KájovoHotel` bez mezery. | `scripts/check_mojibake.py`, `apps/kajovo-hotel/ci/legacy-removal.test.mjs` | Aktivní texty sjednoceny. |
 | N01 | ČÁSTEČNĚ ODSTRANĚNO | Sdílená ikona a labely zůstávají, ale bez plného živého průřezu všech ikonových akcí. | `packages/ui/src/components/Icon.tsx` | Konzervativní ponechání. |
@@ -37,8 +37,8 @@ Verdikty: `ODSTRANĚNO`, `ČÁSTEČNĚ ODSTRANĚNO`, `NEODSTRANĚNO`, `NEOVĚŘI
 | KOS02 | ČÁSTEČNĚ ODSTRANĚNO | Login a branding mikrotexty jsou praktičtější; neproběhl plný obsahový audit všech modulů. | `apps/kajovo-hotel-web/src/portal/PortalLoginPage.tsx`, `apps/kajovo-hotel-admin/src/main.tsx` | Konzervativní ponechání. |
 
 ## Součty
-- ODSTRANĚNO: 9
-- ČÁSTEČNĚ ODSTRANĚNO: 20
-- NEODSTRANĚNO: 0
+- ODSTRANĚNO: 10
+- ČÁSTEČNĚ ODSTRANĚNO: 18
+- NEODSTRANĚNO: 1
 - NEOVĚŘITELNÉ ZE ZIPU: 0
 - IRELEVANTNÍ PO ZMĚNĚ ARCHITEKTURY: 0
