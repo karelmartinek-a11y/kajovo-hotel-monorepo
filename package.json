@@ -31,11 +31,5 @@
     "ci:visual": "pnpm ci:visual-web && pnpm ci:visual-admin",
     "ops:smoke": "bash ./infra/smoke/smoke.sh",
     "ops:verify-deploy": "bash ./infra/verify/verify-deploy.sh"
-  },
-  "pnpm": {
-    "overrides": {
-      "rollup": "4.59.0",
-      "esbuild": "0.25.0"
-    }
   }
 }

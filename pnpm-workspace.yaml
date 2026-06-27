@@ -3,3 +3,6 @@ packages:
   - 'packages/*'
 allowBuilds:
   esbuild: true
+overrides:
+  rollup: 4.59.0
+  esbuild: 0.25.0

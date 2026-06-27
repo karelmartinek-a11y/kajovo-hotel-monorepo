@@ -47,3 +47,5 @@
 - `pnpm ci:policy`, `pnpm ci:policy-test`, `pnpm ci:legacy-guards`, `pnpm ci:runtime-integrity` — PROŠLO.
 - `pnpm --filter @kajovo/kajovo-hotel-web test:smoke` — funkční smoke scénáře prošly; starý běh končil na chybějícím Playwright browseru, poté byl lokálně doinstalován Chromium runtime.
 - `pnpm --filter @kajovo/kajovo-hotel-web test:visual` — většina vizuálních scénářů prošla; auditní recepční guard na `1024 px` zůstal lokálně přísnější než live produkční ověření a byl zúžen na skutečné CTA prvky. Produkční live důkazy pro K05 zůstávají rozhodující v `audit-evidence/sklad-live-*.png`.
+
+- 2026-06-27 22:55 CEST: produkční deploy na serveru selhal v Docker buildu na `pnpm install --frozen-lockfile` kvůli nesouladu overrides/lockfile; opraveno přesunem overrides do `pnpm-workspace.yaml` a regenerací lockfile.
