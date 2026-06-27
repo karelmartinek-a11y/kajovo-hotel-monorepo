@@ -6,6 +6,8 @@ const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:18000';
 const appBaseUrl = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:4174';
 const smokeDbPath = process.env.SMOKE_DB_PATH ?? '/tmp/kajovo-smoke-e2e.db';
 const smokeSmtpCapturePath = process.env.SMOKE_SMTP_CAPTURE_PATH ?? '/tmp/kajovo-smoke-e2e-smtp.jsonl';
+const pnpmCliPath = process.env.PLAYWRIGHT_PNPM_CLI ?? `${process.env.HOME ?? ''}/.cache/node/corepack/v1/pnpm/9.15.0/bin/pnpm.cjs`;
+const pnpmCommand = `"${process.execPath}" "${pnpmCliPath}"`;
 const isWin = process.platform === 'win32';
 const { email: adminEmail, password: adminPassword } = getAdminCredentials();
 
@@ -43,8 +45,8 @@ const apiCommand = isWin
   : `${apiEnv} ${pythonCmd} -m uvicorn app.main:app --host 127.0.0.1 --port 18000`;
 
 const appCommand = isWin
-  ? `powershell -NoLogo -NoProfile -Command \"$env:PLAYWRIGHT_API_PORT='18000'; corepack pnpm dev --host 127.0.0.1 --port 4174\"`
-  : `PLAYWRIGHT_API_PORT=18000 corepack pnpm dev --host 127.0.0.1 --port 4174`;
+  ? `powershell -NoLogo -NoProfile -Command \"$env:PLAYWRIGHT_API_PORT='18000'; ${pnpmCommand} dev --host 127.0.0.1 --port 4174\"`
+  : `PLAYWRIGHT_API_PORT=18000 ${pnpmCommand} dev --host 127.0.0.1 --port 4174`;
 
 export default defineConfig({
   testDir: './tests',

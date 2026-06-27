@@ -1,0 +1,9 @@
+
+> @kajovo/kajovo-hotel-admin@0.1.0 test:smoke /Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin
+> playwright test -c playwright.smoke.config.ts
+
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/e2e-smoke.spec.ts:14:7 › CI smoke auth flows › admin login + hint email + user create + portal login (316ms)
+  ✓  2 tests/e2e-smoke.spec.ts:67:7 › CI smoke auth flows › admin profil uz nenabizi zmenu hesla (1.6s)

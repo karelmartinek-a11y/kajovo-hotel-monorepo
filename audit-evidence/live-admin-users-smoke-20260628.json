@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "baseUrl": "https://hotel.hcasc.cz",
+  "smoke": "admin-users",
+  "email": "deploy.users.1782601709380-0vk6e5@kajovohotel.local",
+  "sha": "c945875",
+  "run_id": "local",
+  "reset_link_status": 200
+}

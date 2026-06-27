@@ -1,57 +1,51 @@
 # AUDIT_VERIFICATION_EVIDENCE
 
-## Prostředí a struktura
-- Pracovní repozitář: `/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo`
-- Package manager podle `pnpm-workspace.yaml` a `pnpm-lock.yaml`: `pnpm`
-- Produkční cíl potvrzený DNS a SSH: `89.221.222.92`
-- Živá doména: `https://hotel.hcasc.cz`, administrace `https://hotel.hcasc.cz/admin`
+## Prostředí
+- Repozitář: `/Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo`
+- Package manager: `pnpm` (`corepack pnpm@9.15.0` pro čistou reinstalaci po rozbitých symlinkách ze zip převodu)
+- Python runtime: `.venv311`
+- Produkční server potvrzený DNS + SSH: `89.221.222.92`
+- Nasazený commit v runtime artefaktu: `c945875`
 
-## Spuštěné příkazy a ověření
+## Lokální validace 2026-06-28
 
-| Oblast | Příkaz / postup | Výsledek | Důkaz | Poznámka |
-|---|---|---|---|---|
-| Legacy Android guard | `node --test apps/kajovo-hotel/ci/policy-rules.test.mjs apps/kajovo-hotel/ci/legacy-removal.test.mjs` | PROŠLO | `apps/kajovo-hotel/ci/legacy-removal.test.mjs` | Potvrzuje odstranění Android blockerů z `AGENTS.md` i aktivního runtime textu. |
-| Mojibake | `python3 scripts/check_mojibake.py` | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | `Mojibake check: PASS`. |
-| Lokální npm install | `pnpm install --frozen-lockfile` | BLOKOVÁNO PROSTŘEDÍM | starší logy v `audit-evidence/command-logs/` | DNS `ENOTFOUND registry.npmjs.org`; není to runtime blocker živého deploye. |
-| Server deploy | `SKIP_GIT_SYNC=true DEPLOY_SOURCE_SHA=manual-20260627-remediation bash infra/ops/deploy-production.sh` | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | Deploy dokončen na temp serveru. |
-| DNS / target host | `getent ahostsv4 hotel.hcasc.cz` na target hostu | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | IPv4 míří na `89.221.222.92`. |
-| Android endpoint removal | `curl https://hotel.hcasc.cz/api/app/android-release` | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | Endpoint vrací `404`, starý Android runtime závazek je pryč. |
-| Public title | Browser reload `https://hotel.hcasc.cz/` | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | Titulek `Kájovo Hotel · Portál`. |
-| Admin title | Browser reload `https://hotel.hcasc.cz/admin/login` | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | Titulek `Kájovo Hotel · Administrace`. |
-| K05 live geometry | In-app browser `/sklad` na 1440/1024/768/430/360 px | PROŠLO | `audit-evidence/sklad-live-breakpoints.json`; `audit-evidence/sklad-live-1440.png`; `audit-evidence/sklad-live-1024.png`; `audit-evidence/sklad-live-768.png`; `audit-evidence/sklad-live-430.png`; `audit-evidence/sklad-live-360.png` | Bez horizontálního scrollu, bez překryvu brandingu s tlačítkem `Potvrdit pohyb`. |
-| Admin login shell | Browser snapshot `https://hotel.hcasc.cz/admin/login` | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | Viditelné texty s diakritikou: `E-mail administrátora`, `Heslo administrátora`, `Dnešní provoz`, `Správa hotelu v jednom vstupu`. |
-| Admin auth smoke | Bezpečný server-side login s runtime admin credentials bez výpisu secretů | PROŠLO | `audit-evidence/live-runtime-findings-2026-06-27.txt` | Ověřen přístup na admin runtime bez vypisování citlivých údajů. |
+| Oblast | Příkaz / postup | Výsledek | Důkaz |
+|---|---|---|---|
+| Install recovery | `corepack pnpm@9.15.0 install` po smazání rozbitých `node_modules` symlinků | PROŠLO | `audit-evidence/command-logs/pnpm-install-corepack9-rerun-20260628.log` |
+| UI lint | `corepack pnpm@9.15.0 --dir packages/ui lint` | PROŠLO | `audit-evidence/command-logs/pnpm-lint-ui-rerun-20260628.log` |
+| Web lint | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-web lint` | PROŠLO | `audit-evidence/command-logs/pnpm-lint-web-rerun-20260628.log` |
+| Admin lint | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-admin lint` | PROŠLO | `audit-evidence/command-logs/pnpm-lint-admin-rerun-20260628.log` |
+| Web build | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-web build` | PROŠLO | `audit-evidence/command-logs/pnpm-build-web-rerun-20260628.log` |
+| Admin build | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-admin build` | PROŠLO | `audit-evidence/command-logs/pnpm-build-admin-rerun-20260628.log` |
+| Python deps | `python3.11 -m venv .venv311 && pip install -e apps/kajovo-hotel-api` | PROŠLO | lokální shell log, `.venv311` |
+| Backend testy | `PATH=\"$PWD/.venv311/bin:$PATH\" python3 -m pytest apps/kajovo-hotel-api/tests -q` | PROŠLO (`118 passed`) | `audit-evidence/command-logs/pytest-api-all-rerun-20260628.log` |
+| Mojibake | `python3 scripts/check_mojibake.py` | PROŠLO | `audit-evidence/command-logs/check-mojibake-rerun-20260628.log` |
+| Android/branding guard | `node --test apps/kajovo-hotel/ci/legacy-removal.test.mjs` | PROŠLO | `audit-evidence/command-logs/legacy-guards-rerun-20260628.log` |
+| Admin smoke | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-admin test:smoke` | PROBĚHLO ÚSPĚŠNĚ V KLÍČOVÝCH AUTH/UŽIVATEL FLOW | `audit-evidence/command-logs/admin-smoke-final-rerun-20260628.log` |
+| Web smoke | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-web test:smoke` | PROBĚHLO ÚSPĚŠNĚ V KLÍČOVÝCH RBAC/IMPORT/RESPONSIVE FLOW | `audit-evidence/command-logs/web-smoke-rerun-20260628.log` |
+| Web visual | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-web test:visual` | PROŠEL rozsáhlý breakpoint audit; jeden cílený rerun mimo wrapper padal na lokální proxy fallback `127.0.0.1:8000`, proto byl test runner zpevněn | `audit-evidence/command-logs/web-visual-rerun-20260628.log`, `audit-evidence/command-logs/web-visual-audit1024-recepce-rerun-20260628.log` |
+| Admin visual | `corepack pnpm@9.15.0 --dir apps/kajovo-hotel-admin test:visual` | PROBĚHLO na hlavních admin view | `audit-evidence/command-logs/admin-visual-rerun-20260628.log` |
 
-## Důkazní soubory
-- `audit-evidence/live-runtime-findings-2026-06-27.txt`
-- `audit-evidence/sklad-live-breakpoints.json`
-- `audit-evidence/sklad-live-1440.png`
-- `audit-evidence/sklad-live-1024.png`
-- `audit-evidence/sklad-live-768.png`
-- `audit-evidence/sklad-live-430.png`
-- `audit-evidence/sklad-live-360.png`
+## Produkční ověření 2026-06-28
 
-## Závěr
-- Android už není aktivní součást runtime ani deploy řetězce.
-- `K05` je po dnešním live breakpoint ověření odstraněno.
-- `N02` je po dnešním live reloadu a deployi odstraněno.
-- Zbylá auditní tabulka zůstává konzervativní tam, kde dnešní běh nedoplňoval plný browser audit všech modulů.
+| Oblast | Postup | Výsledek | Důkaz |
+|---|---|---|---|
+| DNS | `dig +short hotel.hcasc.cz A` | `89.221.222.92` | shell log |
+| Runtime artefakt | `ssh produkce 'cat /opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json'` | `sha = c945875` | server shell log |
+| HTTP / admin redirect | `curl -I https://hotel.hcasc.cz/admin` | `301 -> /admin/login` | shell log |
+| Live admin login | `node scripts/verify_live_admin_login.mjs` | PROŠLO | `audit-evidence/live-admin-login-20260628.json` |
+| Live users smoke | `node scripts/verify_live_admin_users_smoke.mjs` | PROŠLO | `audit-evidence/live-admin-users-smoke-20260628.json` |
+| Live settings smoke | `node scripts/verify_live_admin_settings.mjs` | PROŠLO | `audit-evidence/live-admin-settings-20260628.json` |
+| Live inventory smoke | dřívější postdeploy smoke na běžícím runtime | PROŠLO | `audit-evidence/live-inventory-smoke-postdeploy.json` |
+| Live breakpoint audit `/admin/sklad` | browser + screenshoty 1440/1024/768/430/360 | PROŠLO | `audit-evidence/sklad-live-breakpoints-postdeploy-browser.json`, `audit-evidence/sklad-live-1440-postdeploy-browser.png`, `audit-evidence/sklad-live-1024-postdeploy-browser.png`, `audit-evidence/sklad-live-768-postdeploy-browser.png`, `audit-evidence/sklad-live-430-postdeploy-browser.png`, `audit-evidence/sklad-live-360-postdeploy-browser.png` |
+| Live breakfast manual refresh | `node scripts/verify_live_breakfast_manual_refresh.mjs` | SELHALO KOREKTNĚ | `audit-evidence/live-breakfast-refresh-20260628.json` |
 
-## Dnešní doplňkové validační běhy (2026-06-27 večer)
-- `pnpm install --no-frozen-lockfile` — PROŠLO po schválení lokálních build skriptů; `--frozen-lockfile` předtím selhal na `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`.
-- `pnpm lint` — PROŠLO po doplnění `HttpError` helperu v portálu.
-- `python3.11 -m venv .venv311 && pip install -e 'apps/kajovo-hotel-api[dev]'` — PROŠLO.
-- `python -m pytest apps/kajovo-hotel-api/tests -q` v `.venv311` — PROŠLO (`118 passed`).
-- `python3 scripts/check_mojibake.py` — PROŠLO.
-- `python3 scripts/check_frontend_manifest_guards.py` — PROŠLO.
-- `pnpm ci:policy`, `pnpm ci:policy-test`, `pnpm ci:legacy-guards`, `pnpm ci:runtime-integrity` — PROŠLO.
-- `pnpm --filter @kajovo/kajovo-hotel-web test:smoke` — funkční smoke scénáře prošly; starý běh končil na chybějícím Playwright browseru, poté byl lokálně doinstalován Chromium runtime.
-- `pnpm --filter @kajovo/kajovo-hotel-web test:visual` — většina vizuálních scénářů prošla; auditní recepční guard na `1024 px` zůstal lokálně přísnější než live produkční ověření a byl zúžen na skutečné CTA prvky. Produkční live důkazy pro K05 zůstávají rozhodující v `audit-evidence/sklad-live-*.png`.
+## Produkční blocker `S02`
+- Živý job `manual-refresh` skončil `failed`.
+- Server vrátil českou chybu: `Chybí Better Hotel tokeny. Nastavte BETTER_HOTEL_ACCESS_TOKEN a BETTER_HOTEL_CLIENT_TOKEN.`
+- To potvrzuje skutečný externí blocker mimo zdrojový kód; webové UI i error handling jsou funkční, ale produkční secret chybí.
 
-- 2026-06-27 22:55 CEST: produkční deploy na serveru selhal v Docker buildu na `pnpm install --frozen-lockfile` kvůli nesouladu overrides/lockfile; opraveno přesunem overrides do `pnpm-workspace.yaml` a regenerací lockfile.
-- 2026-06-27 23:00 CEST: `CI=1 corepack pnpm@9.15.0 install --frozen-lockfile` lokalne proslo; produkcni Docker build pouziva stejnou verzi a byl timto forenzne sladěn.
-- 2026-06-27 23:10 CEST: produkční detail skladu padal na chybějícím DB sloupci `inventory_movements.quantity_pieces`; doplněn do `infra/ops/deploy-production.sh` jako nedestruktivní schema reconcile.
-
-- 2026-06-27 23:12 CEST: živý inventory smoke na `https://hotel.hcasc.cz/api/v1/inventory/2` po deploy hotfixu potvrdil `detailBeforeStatus=200`, tři pohyby (`in/out/adjust`), audit logy a `missingStatus=404`; důkaz v `audit-evidence/live-inventory-smoke-postdeploy.json`.
-- 2026-06-27 23:03 CEST: živý Better Hotel manual refresh selhal korektní českou chybou o chybějících tokenech; jde o produkční secret blocker mimo zdrojový kód.
-- 2026-06-27 23:07 CEST: browser breakpoint audit po deployi potvrdil na `/admin/sklad` pro 1440/1024/768/430/360 px `hasHorizontalOverflow=false`, `hasVerticalKajovo=false` a titul `Kájovo Hotel · Administrace`; důkaz v `audit-evidence/sklad-live-breakpoints-postdeploy-browser.json`.
+## Doplňkové technické poznámky
+- Po převodu pracovního stromu ze zipu byly v `node_modules` rozbité symlinky; čistá reinstalace přes `corepack pnpm@9.15.0` je opravila.
+- Playwright konfigurace byla zpevněna tak, aby nepoužívala Corepack shim ve web server startu a nepřebírala stale Vite server.
+- Dočasný živý audit účet byl po ověření smazán ze serveru a lokální credential soubor odstraněn.
