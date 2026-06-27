@@ -11,3 +11,5 @@
 | Validace / toolchain | `apps/kajovo-hotel-api/app/main.py`, `apps/kajovo-hotel-web/tests/visual.spec.ts`, `scripts/run-playwright-with-api.js`, `apps/kajovo-hotel-admin/playwright.smoke.config.ts`, `package.json`, `packages/shared/package.json` | Doplněno Python 3.11 testovací prostředí, opraven shutdown scheduleru pro lokální běhy a zpřesněny Playwright guardy na skutečné CTA prvky. | Dokončení dnešních kontrol, aby smoke/backend běhy odpovídaly aktuálnímu runtime. |
 
 - 2026-06-27 večer: přesun `pnpm` overrides z `package.json` do `pnpm-workspace.yaml` a regenerace `pnpm-lock.yaml`, aby Docker build na serveru nepadal na `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH`.
+
+- 2026-06-27 večer: doplněn self-heal pro `inventory_movements.quantity_pieces`, protože živý detail skladu na produkci vracel 500 při driftu schématu.

@@ -50,3 +50,4 @@
 
 - 2026-06-27 22:55 CEST: produkční deploy na serveru selhal v Docker buildu na `pnpm install --frozen-lockfile` kvůli nesouladu overrides/lockfile; opraveno přesunem overrides do `pnpm-workspace.yaml` a regenerací lockfile.
 - 2026-06-27 23:00 CEST: `CI=1 corepack pnpm@9.15.0 install --frozen-lockfile` lokalne proslo; produkcni Docker build pouziva stejnou verzi a byl timto forenzne sladěn.
+- 2026-06-27 23:10 CEST: produkční detail skladu padal na chybějícím DB sloupci `inventory_movements.quantity_pieces`; doplněn do `infra/ops/deploy-production.sh` jako nedestruktivní schema reconcile.

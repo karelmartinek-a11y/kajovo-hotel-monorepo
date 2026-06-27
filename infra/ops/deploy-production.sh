@@ -133,7 +133,8 @@ BEGIN
   ) THEN
     ALTER TABLE public.inventory_movements
       ADD COLUMN IF NOT EXISTS card_id INTEGER NULL,
-      ADD COLUMN IF NOT EXISTS card_item_id INTEGER NULL;
+      ADD COLUMN IF NOT EXISTS card_item_id INTEGER NULL,
+      ADD COLUMN IF NOT EXISTS quantity_pieces INTEGER NOT NULL DEFAULT 0;
   END IF;
 END
 $$;
