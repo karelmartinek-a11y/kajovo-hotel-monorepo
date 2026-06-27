@@ -49,3 +49,4 @@
 - `pnpm --filter @kajovo/kajovo-hotel-web test:visual` — většina vizuálních scénářů prošla; auditní recepční guard na `1024 px` zůstal lokálně přísnější než live produkční ověření a byl zúžen na skutečné CTA prvky. Produkční live důkazy pro K05 zůstávají rozhodující v `audit-evidence/sklad-live-*.png`.
 
 - 2026-06-27 22:55 CEST: produkční deploy na serveru selhal v Docker buildu na `pnpm install --frozen-lockfile` kvůli nesouladu overrides/lockfile; opraveno přesunem overrides do `pnpm-workspace.yaml` a regenerací lockfile.
+- 2026-06-27 23:00 CEST: `CI=1 corepack pnpm@9.15.0 install --frozen-lockfile` lokalne proslo; produkcni Docker build pouziva stejnou verzi a byl timto forenzne sladěn.
