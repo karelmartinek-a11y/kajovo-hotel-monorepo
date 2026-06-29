@@ -40,10 +40,11 @@ def ssh_base() -> tuple[list[str], dict[str, str] | None]:
 def remote_script_text() -> str:
     return """#!/usr/bin/env bash
 set -euo pipefail
-release_archive="${HOME}/${RELEASE_ARCHIVE}"
+upload_home="${DEPLOY_UPLOAD_HOME:?Missing DEPLOY_UPLOAD_HOME}"
+release_archive="${upload_home}/${RELEASE_ARCHIVE}"
 release_root="/opt/kajovo-hotel-monorepo"
 preserve_dir="$(mktemp -d)"
-vars_json="${HOME}/kajovo-deploy-vars.json"
+vars_json="${upload_home}/kajovo-deploy-vars.json"
 if [ ! -f "$release_archive" ]; then
   echo "Missing uploaded archive: $release_archive" >&2
   exit 1
@@ -61,13 +62,14 @@ if [ -f "$preserve_dir/infra/.env" ]; then
 elif [ ! -f "$release_root/infra/.env" ]; then
   : > "$release_root/infra/.env"
 fi
+export DEPLOY_VARS_PATH="$vars_json"
 python3 - <<'PY'
 from pathlib import Path
 import json
 import os
 
 env_path = Path("/opt/kajovo-hotel-monorepo/infra/.env")
-vars_path = Path.home() / "kajovo-deploy-vars.json"
+vars_path = Path(os.environ["DEPLOY_VARS_PATH"])
 current = {}
 for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
     if not raw_line or raw_line.lstrip().startswith("#") or "=" not in raw_line:
@@ -171,7 +173,13 @@ def cmd_deploy() -> None:
         upload(remote_script, "~/kajovo-deploy-remote.sh")
         upload(remote_vars, "~/kajovo-deploy-vars.json")
     quoted_sha = shlex.quote(env("DEPLOY_SHA"))
-    run_remote(f"set -euo pipefail; DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} bash ~/kajovo-deploy-remote.sh; rm -f ~/kajovo-deploy-remote.sh ~/kajovo-deploy-vars.json")
+    run_remote(
+        "set -euo pipefail; "
+        'upload_home="$HOME"; '
+        f"sudo -n env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} "
+        'bash "$upload_home/kajovo-deploy-remote.sh"; '
+        'rm -f "$upload_home/kajovo-deploy-remote.sh"'
+    )
 
 
 def cmd_verify_artifact() -> None:
