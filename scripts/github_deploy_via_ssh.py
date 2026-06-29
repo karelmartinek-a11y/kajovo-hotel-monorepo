@@ -52,7 +52,7 @@ def scp_base() -> tuple[list[str], dict[str, str] | None]:
 def remote_script_text() -> str:
     return """#!/usr/bin/env bash
 set -euo pipefail
-release_archive="/tmp/${RELEASE_ARCHIVE}"
+release_archive="${HOME}/${RELEASE_ARCHIVE}"
 release_root="/opt/kajovo-hotel-monorepo"
 preserve_dir="$(mktemp -d)"
 if [ ! -f "$release_archive" ]; then
@@ -154,7 +154,7 @@ def cmd_deploy() -> None:
     archive = env("RELEASE_ARCHIVE")
     if not archive:
         raise SystemExit("Missing RELEASE_ARCHIVE")
-    upload(Path(archive), f"/tmp/{archive}")
+    upload(Path(archive), f"~/{archive}")
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         remote_script = tmp / "kajovo-deploy-remote.sh"
@@ -164,9 +164,9 @@ def cmd_deploy() -> None:
         write_remote_env(remote_env)
         remote_script.chmod(0o700)
         remote_env.chmod(0o600)
-        upload(remote_script, "/tmp/kajovo-deploy-remote.sh")
-        upload(remote_env, "/tmp/kajovo-deploy-remote.env")
-    run_remote("set -euo pipefail; . /tmp/kajovo-deploy-remote.env; bash /tmp/kajovo-deploy-remote.sh; rm -f /tmp/kajovo-deploy-remote.sh /tmp/kajovo-deploy-remote.env")
+        upload(remote_script, "~/kajovo-deploy-remote.sh")
+        upload(remote_env, "~/kajovo-deploy-remote.env")
+    run_remote("set -euo pipefail; . ~/kajovo-deploy-remote.env; bash ~/kajovo-deploy-remote.sh; rm -f ~/kajovo-deploy-remote.sh ~/kajovo-deploy-remote.env")
 
 
 def cmd_verify_artifact() -> None:

@@ -2,7 +2,7 @@ FROM node:20.18.1-alpine3.20 AS builder
 
 WORKDIR /workspace
 
-RUN npm install -g pnpm@9.15.0
+RUN npm install -g pnpm@10.34.4
 
 COPY package.json pnpm-workspace.yaml tsconfig.base.json /workspace/
 COPY apps/kajovo-hotel-admin/package.json /workspace/apps/kajovo-hotel-admin/package.json
