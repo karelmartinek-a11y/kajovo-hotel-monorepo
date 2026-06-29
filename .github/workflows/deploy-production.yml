@@ -102,108 +102,36 @@ jobs:
           git archive --format=tar.gz --output "$archive" "$DEPLOY_SHA"
           echo "RELEASE_ARCHIVE=$archive" >> "$GITHUB_ENV"
 
-      - name: Upload release archive to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.HOTEL_DEPLOY_HOST }}
-          username: ${{ env.HOTEL_DEPLOY_USER }}
-          password: ${{ env.HOTEL_DEPLOY_PASS }}
-          key: ${{ env.HOTEL_DEPLOY_KEY }}
-          port: ${{ env.HOTEL_DEPLOY_PORT }}
-          source: ${{ env.RELEASE_ARCHIVE }}
-          target: /tmp/
-          overwrite: true
+      - name: Setup SSH deploy tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openssh-client sshpass
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          ssh-keyscan -p "$HOTEL_DEPLOY_PORT" "$HOTEL_DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          if [ -n "${HOTEL_DEPLOY_KEY:-}" ]; then
+            printf '%s\n' "$HOTEL_DEPLOY_KEY" > "$RUNNER_TEMP/hotel_deploy_key"
+            chmod 600 "$RUNNER_TEMP/hotel_deploy_key"
+            echo "SSH_IDENTITY_FILE=$RUNNER_TEMP/hotel_deploy_key" >> "$GITHUB_ENV"
+          fi
 
       - name: Verify remote nginx sync helper
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ env.HOTEL_DEPLOY_HOST }}
-          username: ${{ env.HOTEL_DEPLOY_USER }}
-          password: ${{ env.HOTEL_DEPLOY_PASS }}
-          key: ${{ env.HOTEL_DEPLOY_KEY }}
-          port: ${{ env.HOTEL_DEPLOY_PORT }}
-          script: |
-            set -euo pipefail
-            sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null
-            echo "Remote nginx sync helper: PASS"
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py check-helper
 
-      - name: Deploy uploaded release via SSH password
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ env.HOTEL_DEPLOY_HOST }}
-          username: ${{ env.HOTEL_DEPLOY_USER }}
-          password: ${{ env.HOTEL_DEPLOY_PASS }}
-          key: ${{ env.HOTEL_DEPLOY_KEY }}
-          port: ${{ env.HOTEL_DEPLOY_PORT }}
-          envs: DEPLOY_SHA,RELEASE_ARCHIVE,HOTEL_ADMIN_EMAIL,HOTEL_ADMIN_PASSWORD,KAJOVO_API_ADMIN_EMAIL,KAJOVO_API_ADMIN_PASSWORD,BETTER_HOTEL_CONNECTOR_BASE_URL,BETTER_HOTEL_ACCESS_TOKEN,BETTER_HOTEL_CLIENT_TOKEN
-          script: |
-            set -euo pipefail
-            set -x
-            release_archive="/tmp/${RELEASE_ARCHIVE}"
-            release_root="/opt/kajovo-hotel-monorepo"
-            preserve_dir="$(mktemp -d)"
-            if [ ! -f "$release_archive" ]; then
-              echo "Missing uploaded archive: $release_archive" >&2
-              exit 1
-            fi
-            if [ -f "$release_root/infra/.env" ]; then
-              mkdir -p "$preserve_dir/infra"
-              cp "$release_root/infra/.env" "$preserve_dir/infra/.env"
-            fi
-            mkdir -p "$release_root"
-            find "$release_root" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-            tar -xzf "$release_archive" -C "$release_root"
-            if [ -f "$preserve_dir/infra/.env" ]; then
-              mkdir -p "$release_root/infra"
-              mv "$preserve_dir/infra/.env" "$release_root/infra/.env"
-            fi
-            rm -rf "$preserve_dir"
-            rm -f "$release_archive"
-            export KAJOVO_API_ADMIN_EMAIL="${KAJOVO_API_ADMIN_EMAIL:-$HOTEL_ADMIN_EMAIL}"
-            export KAJOVO_API_ADMIN_PASSWORD="${KAJOVO_API_ADMIN_PASSWORD:-$HOTEL_ADMIN_PASSWORD}"
-            export SKIP_GIT_SYNC=true
-            export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
-            set +e
-            "$release_root/infra/ops/deploy-production.sh"
-            DEPLOY_STATUS=$?
-            cd "$release_root"
-            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=80 || true
-            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=80 || true
-            exit "$DEPLOY_STATUS"
+      - name: Deploy uploaded release via SSH
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py deploy
 
       - name: Verify deploy runtime artifact on server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ env.HOTEL_DEPLOY_HOST }}
-          username: ${{ env.HOTEL_DEPLOY_USER }}
-          password: ${{ env.HOTEL_DEPLOY_PASS }}
-          key: ${{ env.HOTEL_DEPLOY_KEY }}
-          port: ${{ env.HOTEL_DEPLOY_PORT }}
-          envs: DEPLOY_SHA
-          script: |
-            set -euo pipefail
-            runtime_artifact="/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json"
-            if [ ! -f "$runtime_artifact" ]; then
-              echo "Missing runtime artifact on server: $runtime_artifact" >&2
-              exit 1
-            fi
-            python3 - <<'PY'
-            import json
-            import os
-            from pathlib import Path
-
-            path = Path("/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json")
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            expected = os.environ["DEPLOY_SHA"]
-            actual = str(payload.get("sha") or "")
-            if actual not in {expected, expected[:7]}:
-                raise SystemExit(f"deploy artifact SHA mismatch: expected {expected}, got {actual}")
-            print("Deploy runtime artifact SHA on server: PASS")
-            PY
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py verify-artifact
 
       - name: Write deploy verification artifact
         shell: bash
