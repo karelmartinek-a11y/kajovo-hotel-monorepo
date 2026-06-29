@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import subprocess
@@ -55,6 +56,7 @@ set -euo pipefail
 release_archive="${HOME}/${RELEASE_ARCHIVE}"
 release_root="/opt/kajovo-hotel-monorepo"
 preserve_dir="$(mktemp -d)"
+vars_json="${HOME}/kajovo-deploy-vars.json"
 if [ ! -f "$release_archive" ]; then
   echo "Missing uploaded archive: $release_archive" >&2
   exit 1
@@ -74,9 +76,11 @@ elif [ ! -f "$release_root/infra/.env" ]; then
 fi
 python3 - <<'PY'
 from pathlib import Path
+import json
 import os
 
 env_path = Path("/opt/kajovo-hotel-monorepo/infra/.env")
+vars_path = Path.home() / "kajovo-deploy-vars.json"
 current = {}
 for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
     if not raw_line or raw_line.lstrip().startswith("#") or "=" not in raw_line:
@@ -84,14 +88,15 @@ for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines
     key, value = raw_line.split("=", 1)
     current[key] = value
 
+payload = json.loads(vars_path.read_text(encoding="utf-8"))
 updates = {
-    "KAJOVO_API_ADMIN_EMAIL": os.environ.get("KAJOVO_API_ADMIN_EMAIL") or os.environ.get("HOTEL_ADMIN_EMAIL", ""),
-    "KAJOVO_API_ADMIN_PASSWORD": os.environ.get("KAJOVO_API_ADMIN_PASSWORD") or os.environ.get("HOTEL_ADMIN_PASSWORD", ""),
-    "HOTEL_ADMIN_EMAIL": os.environ.get("HOTEL_ADMIN_EMAIL", ""),
-    "HOTEL_ADMIN_PASSWORD": os.environ.get("HOTEL_ADMIN_PASSWORD", ""),
-    "BETTER_HOTEL_CONNECTOR_BASE_URL": os.environ.get("BETTER_HOTEL_CONNECTOR_BASE_URL", ""),
-    "BETTER_HOTEL_ACCESS_TOKEN": os.environ.get("BETTER_HOTEL_ACCESS_TOKEN", ""),
-    "BETTER_HOTEL_CLIENT_TOKEN": os.environ.get("BETTER_HOTEL_CLIENT_TOKEN", ""),
+    "KAJOVO_API_ADMIN_EMAIL": payload.get("KAJOVO_API_ADMIN_EMAIL") or payload.get("HOTEL_ADMIN_EMAIL", ""),
+    "KAJOVO_API_ADMIN_PASSWORD": payload.get("KAJOVO_API_ADMIN_PASSWORD") or payload.get("HOTEL_ADMIN_PASSWORD", ""),
+    "HOTEL_ADMIN_EMAIL": payload.get("HOTEL_ADMIN_EMAIL", ""),
+    "HOTEL_ADMIN_PASSWORD": payload.get("HOTEL_ADMIN_PASSWORD", ""),
+    "BETTER_HOTEL_CONNECTOR_BASE_URL": payload.get("BETTER_HOTEL_CONNECTOR_BASE_URL", ""),
+    "BETTER_HOTEL_ACCESS_TOKEN": payload.get("BETTER_HOTEL_ACCESS_TOKEN", ""),
+    "BETTER_HOTEL_CLIENT_TOKEN": payload.get("BETTER_HOTEL_CLIENT_TOKEN", ""),
 }
 for key, value in updates.items():
     if value:
@@ -101,8 +106,7 @@ env_path.write_text("".join(f"{key}={value}\\n" for key, value in sorted(current
 PY
 rm -rf "$preserve_dir"
 rm -f "$release_archive"
-export KAJOVO_API_ADMIN_EMAIL="${KAJOVO_API_ADMIN_EMAIL:-$HOTEL_ADMIN_EMAIL}"
-export KAJOVO_API_ADMIN_PASSWORD="${KAJOVO_API_ADMIN_PASSWORD:-$HOTEL_ADMIN_PASSWORD}"
+rm -f "$vars_json"
 export SKIP_GIT_SYNC=true
 export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
 "$release_root/infra/ops/deploy-production.sh"
@@ -116,10 +120,8 @@ docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml l
 """
 
 
-def write_remote_env(path: Path) -> None:
+def write_remote_vars(path: Path) -> None:
     keys = [
-        "DEPLOY_SHA",
-        "RELEASE_ARCHIVE",
         "HOTEL_ADMIN_EMAIL",
         "HOTEL_ADMIN_PASSWORD",
         "KAJOVO_API_ADMIN_EMAIL",
@@ -128,10 +130,8 @@ def write_remote_env(path: Path) -> None:
         "BETTER_HOTEL_ACCESS_TOKEN",
         "BETTER_HOTEL_CLIENT_TOKEN",
     ]
-    path.write_text(
-        "".join(f"export {key}={shlex.quote(env(key))}\n" for key in keys),
-        encoding="utf-8",
-    )
+    payload = {key: env(key) for key in keys}
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
 
 def upload(local_path: Path, remote_path: str) -> None:
@@ -158,15 +158,15 @@ def cmd_deploy() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         remote_script = tmp / "kajovo-deploy-remote.sh"
-        remote_env = tmp / "kajovo-deploy-remote.env"
+        remote_vars = tmp / "kajovo-deploy-vars.json"
         remote_script.write_text(remote_script_text(), encoding="utf-8")
-        remote_env.write_text("", encoding="utf-8")
-        write_remote_env(remote_env)
+        write_remote_vars(remote_vars)
         remote_script.chmod(0o700)
-        remote_env.chmod(0o600)
+        remote_vars.chmod(0o600)
         upload(remote_script, "~/kajovo-deploy-remote.sh")
-        upload(remote_env, "~/kajovo-deploy-remote.env")
-    run_remote("set -euo pipefail; . ~/kajovo-deploy-remote.env; bash ~/kajovo-deploy-remote.sh; rm -f ~/kajovo-deploy-remote.sh ~/kajovo-deploy-remote.env")
+        upload(remote_vars, "~/kajovo-deploy-vars.json")
+    quoted_sha = shlex.quote(env("DEPLOY_SHA"))
+    run_remote(f"set -euo pipefail; DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} bash ~/kajovo-deploy-remote.sh; rm -f ~/kajovo-deploy-remote.sh ~/kajovo-deploy-vars.json")
 
 
 def cmd_verify_artifact() -> None:
