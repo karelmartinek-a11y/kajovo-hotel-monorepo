@@ -37,19 +37,6 @@ def ssh_base() -> tuple[list[str], dict[str, str] | None]:
     )
 
 
-def scp_base() -> tuple[list[str], dict[str, str] | None]:
-    host = env("HOTEL_DEPLOY_HOST")
-    user = env("HOTEL_DEPLOY_USER")
-    port = env("HOTEL_DEPLOY_PORT")
-    identity = env("SSH_IDENTITY_FILE")
-    if identity:
-      return (["scp", "-P", port, "-i", identity], None)
-    password = env("HOTEL_DEPLOY_PASS")
-    if not password:
-        raise SystemExit("Missing HOTEL_DEPLOY_PASS/SSH_IDENTITY_FILE for SCP deploy")
-    return (["sshpass", "-e", "scp", "-P", port], {"SSHPASS": password})
-
-
 def remote_script_text() -> str:
     return """#!/usr/bin/env bash
 set -euo pipefail
@@ -135,10 +122,28 @@ def write_remote_vars(path: Path) -> None:
 
 
 def upload(local_path: Path, remote_path: str) -> None:
-    scp_cmd, scp_env = scp_base()
-    host = env("HOTEL_DEPLOY_HOST")
-    user = env("HOTEL_DEPLOY_USER")
-    run([*scp_cmd, str(local_path), f"{user}@{host}:{remote_path}"], env_override=scp_env)
+    ssh_cmd, ssh_env = ssh_base()
+    if remote_path.startswith("~/"):
+        relative_target = remote_path[2:]
+        relative_parent = str(Path(relative_target).parent)
+        remote_target_expr = f"\"$HOME\"/{shlex.quote(relative_target)}"
+        remote_parent_expr = "\"$HOME\"" if relative_parent in {"", "."} else f"\"$HOME\"/{shlex.quote(relative_parent)}"
+    else:
+        remote_target_expr = shlex.quote(remote_path)
+        remote_parent_expr = shlex.quote(str(Path(remote_path).parent))
+    payload = local_path.read_bytes()
+    merged = os.environ.copy()
+    if ssh_env:
+        merged.update(ssh_env)
+    subprocess.run(
+        [
+            *ssh_cmd,
+            f"set -euo pipefail; umask 077; mkdir -p {remote_parent_expr}; cat > {remote_target_expr}",
+        ],
+        check=True,
+        env=merged,
+        input=payload,
+    )
 
 
 def run_remote(command: str) -> None:
