@@ -154,7 +154,12 @@ def run_remote(command: str) -> None:
 
 
 def cmd_check_helper() -> None:
-    run_remote("set -euo pipefail; sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null; echo 'Remote nginx sync helper: PASS'")
+    run_remote(
+        "set -euo pipefail; "
+        "sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null; "
+        "test -w /opt/kajovo-hotel-monorepo; "
+        "echo 'Remote nginx sync helper + deploy tree access: PASS'"
+    )
 
 
 def cmd_deploy() -> None:
@@ -176,7 +181,7 @@ def cmd_deploy() -> None:
     run_remote(
         "set -euo pipefail; "
         'upload_home="$HOME"; '
-        f"sudo -n env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} "
+        f"env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} "
         'bash "$upload_home/kajovo-deploy-remote.sh"; '
         'rm -f "$upload_home/kajovo-deploy-remote.sh"'
     )
