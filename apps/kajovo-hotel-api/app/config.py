@@ -40,6 +40,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "BETTER_HOTEL_ACCESS_TOKEN",
             "KAJOVO_API_BETTER_HOTEL_ACCESS_TOKEN",
+            "A_TOKEN",
             "A_token",
         ),
     )
@@ -48,6 +49,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "BETTER_HOTEL_CLIENT_TOKEN",
             "KAJOVO_API_BETTER_HOTEL_CLIENT_TOKEN",
+            "C_TOKEN",
             "C_token",
         ),
     )

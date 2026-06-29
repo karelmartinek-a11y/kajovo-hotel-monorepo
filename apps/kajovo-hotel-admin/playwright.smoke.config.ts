@@ -9,12 +9,18 @@ const smokeSmtpCapturePath = process.env.SMOKE_SMTP_CAPTURE_PATH ?? '/tmp/kajovo
 const isWin = process.platform === 'win32';
 const { email: adminEmail, password: adminPassword } = getAdminCredentials();
 
+const isUnsupportedPnpmExecPath = (value: string): boolean =>
+  value.includes('/pnpm@11.') || value.includes('\\pnpm@11.');
+
 const resolvePnpmCommand = (): string => {
   const pnpmExecPath = process.env.PLAYWRIGHT_PNPM_CLI ?? process.env.npm_execpath;
-  if (pnpmExecPath) {
+  if (pnpmExecPath && !isUnsupportedPnpmExecPath(pnpmExecPath)) {
     return `"${process.execPath}" "${pnpmExecPath}"`;
   }
-  return isWin ? 'pnpm.cmd' : 'pnpm';
+  if (process.env.COREPACK_ROOT) {
+    return `"${process.execPath}" "${process.env.COREPACK_ROOT}/dist/pnpm.js"`;
+  }
+  return isWin ? 'corepack pnpm.cmd' : 'corepack pnpm';
 };
 
 const pnpmCommand = resolvePnpmCommand();

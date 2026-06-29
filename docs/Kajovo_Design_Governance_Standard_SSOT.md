@@ -465,7 +465,6 @@ Každý produkt musí mít automatizovanou nebo manuální kontrolu, která ově
 - soulad s tokeny,
 - soulad s `NORMA O`,
 - u webových výstupů kódování `UTF-8 bez BOM` a optimalizaci pro povinné třídy zařízení dle `K`,
-- u Android produktů nativní implementační model dle `NORMA L`,
 - a11y minimum,
 - `reduced-motion` chování,
 - absenci neřízeného overflow a kolizí.
@@ -564,49 +563,6 @@ Root viewport nesmí vytvářet horizontální scroll, s výjimkou explicitně p
 Lokalizace nebo personalizace nesmí rozbít brand pravidla ani `NORMA O`.
 
 U webových aplikací jsou optimalizace pro telefon, tablet a desktop dle `K.1` povinné. Nestačí pouze technická responsivita; layout, navigace, hustota informací a klíčové flow musí být pro každou třídu zařízení samostatně odladěné.
-
-## NORMA L — Android aplikace
-
-### L.0 Implementační model Android aplikace
-
-Pokud je produkt dodáván jako Android aplikace, musí být kompletně nativní pro Android.
-
-Hybridní wrappery, `WebView-first` aplikace a pouhé zabalení webu nebo PWA do APK nebo AAB nejsou v souladu s touto normou.
-
-### L.1 Brand prvky v Android UI
-
-Android UI musí používat validní brand prvky dle `NORMA G`.
-
-`MARK-only` je povolen typicky pro:
-
-- launcher icon,
-- splash,
-- malé systémové kontexty.
-
-### L.2 Launcher icon
-
-Launcher icon používá `MARK` bez `SIGNACE`.
-
-### L.3 Adaptivní ikony
-
-- foreground: `MARK`
-- background: neutrální plocha
-
-Dominantní červené pozadí je zakázané.
-
-### L.4 Typografie v aplikaci
-
-Preferovaná je `Montserrat`.
-
-Dočasná náhrada systémovým sans-serif je povolená pouze pro provozní UI texty, nikoliv pro loga a exporty.
-
-### L.5 Přístupnost a systémová nastavení
-
-Musí být respektován:
-
-- font scaling,
-- reduced motion,
-- případný dark mode.
 
 Dark mode nesmí deformovat nebo reinterpretovat brand aktiva.
 

@@ -234,7 +234,7 @@
       "Body_import_breakfast_pdf_api_v1_breakfast_import_post": {
         "properties": {
           "file": {
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File",
             "type": "string"
           },
@@ -265,7 +265,7 @@
         "properties": {
           "photos": {
             "items": {
-              "format": "binary",
+              "contentMediaType": "application/octet-stream",
               "type": "string"
             },
             "title": "Photos",
@@ -281,7 +281,7 @@
       "Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post": {
         "properties": {
           "file": {
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "File",
             "type": "string"
           }
@@ -296,7 +296,7 @@
         "properties": {
           "photos": {
             "items": {
-              "format": "binary",
+              "contentMediaType": "application/octet-stream",
               "type": "string"
             },
             "title": "Photos",
@@ -313,7 +313,7 @@
         "properties": {
           "photos": {
             "items": {
-              "format": "binary",
+              "contentMediaType": "application/octet-stream",
               "type": "string"
             },
             "title": "Photos",
@@ -4221,7 +4221,7 @@
     }
   },
   "info": {
-    "title": "Kájovo Hotel API",
+    "title": "K\u00e1jovo Hotel API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

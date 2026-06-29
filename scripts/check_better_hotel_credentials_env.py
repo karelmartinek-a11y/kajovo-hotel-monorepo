@@ -14,8 +14,8 @@ def _value(*keys: str) -> str:
 
 def main() -> int:
     base_url = _value("BETTER_HOTEL_CONNECTOR_BASE_URL", "KAJOVO_API_BETTER_HOTEL_CONNECTOR_BASE_URL")
-    access_token = _value("BETTER_HOTEL_ACCESS_TOKEN", "KAJOVO_API_BETTER_HOTEL_ACCESS_TOKEN", "A_token")
-    client_token = _value("BETTER_HOTEL_CLIENT_TOKEN", "KAJOVO_API_BETTER_HOTEL_CLIENT_TOKEN", "C_token")
+    access_token = _value("BETTER_HOTEL_ACCESS_TOKEN", "KAJOVO_API_BETTER_HOTEL_ACCESS_TOKEN", "A_TOKEN", "A_token")
+    client_token = _value("BETTER_HOTEL_CLIENT_TOKEN", "KAJOVO_API_BETTER_HOTEL_CLIENT_TOKEN", "C_TOKEN", "C_token")
 
     errors: list[str] = []
     if not access_token:

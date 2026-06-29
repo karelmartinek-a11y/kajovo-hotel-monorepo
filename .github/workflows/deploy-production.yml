@@ -34,8 +34,8 @@ jobs:
       KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
       BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1' }}
-      BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_token }}
-      BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_token }}
+      BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_TOKEN != '' && secrets.A_TOKEN || secrets.A_token }}
+      BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_TOKEN != '' && secrets.C_TOKEN || secrets.C_token }}
     steps:
       - name: Checkout deploy SHA
         uses: actions/checkout@v5

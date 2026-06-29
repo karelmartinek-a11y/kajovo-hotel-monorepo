@@ -28,6 +28,5 @@ Repo používá i Playwright smoke běhy:
 
 - `pnpm ci:web-smoke`
 - `pnpm ci:e2e-smoke`
-- `python scripts/run_android_smoke.py`
 
 Tyto běhy jsou součást current-state ověření a mají přednost před ručně psaným ad hoc smokem.

@@ -2288,6 +2288,10 @@ body::before {
 }
 
 @media (max-width: 1024px) {
+  .k-app-header {
+    position: static;
+  }
+
   .k-shell-inner,
   .k-page {
     padding-left: var(--k-spacing-4);
@@ -2297,6 +2301,10 @@ body::before {
   .k-app-header__ribbon-inner {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .k-shell-header {
+    min-height: 0;
   }
 }
 

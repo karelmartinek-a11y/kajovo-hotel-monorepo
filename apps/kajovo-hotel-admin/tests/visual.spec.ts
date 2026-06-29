@@ -2,6 +2,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
+const ADMIN_EMAIL_LABEL = /e-mail administrátora/i;
+const ADMIN_PASSWORD_LABEL = /heslo administrátora/i;
 
 type ViewCheck = {
   name: string;
@@ -31,8 +33,8 @@ const adminViews: ViewCheck[] = [
 
 async function adminLogin(page: Page) {
   await page.goto('/admin/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/admin email/i).fill(ADMIN_EMAIL);
-  await page.getByLabel(/admin heslo/i).fill(ADMIN_PASSWORD);
+  await page.getByLabel(ADMIN_EMAIL_LABEL).fill(ADMIN_EMAIL);
+  await page.getByLabel(ADMIN_PASSWORD_LABEL).fill(ADMIN_PASSWORD);
   await page.getByRole('button', { name: /přihlásit|prihlasit/i }).click();
   await expect(page).toHaveURL(/\/admin\/?$/);
 }

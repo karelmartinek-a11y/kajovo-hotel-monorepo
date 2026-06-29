@@ -2,6 +2,7 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
+const ADMIN_EMAIL_LABEL = /e-mail administrátora/i;
 
 async function csrfHeaderFor(context: APIRequestContext) {
   const state = await context.storageState();
@@ -84,7 +85,7 @@ test.describe('CI smoke auth flows', () => {
 
   test('admin login hint zobrazi blokujici dialog az do potvrzeni odeslani', async ({ page }) => {
     await page.goto('/admin/login', { waitUntil: 'networkidle' });
-    await page.getByLabel(/admin email/i).fill(ADMIN_EMAIL);
+    await page.getByLabel(ADMIN_EMAIL_LABEL).fill(ADMIN_EMAIL);
     await page.getByRole('button', { name: /zapomenuté heslo/i }).click();
 
     const dialog = page.getByRole('alertdialog');

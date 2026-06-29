@@ -8,12 +8,19 @@ declare const process: {
 
 const webPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? '4173');
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webPort}`;
+
+const isUnsupportedPnpmExecPath = (value: string): boolean =>
+  value.includes('/pnpm@11.') || value.includes('\\pnpm@11.');
+
 const resolvePnpmCommand = (): string => {
   const pnpmExecPath = process.env.PLAYWRIGHT_PNPM_CLI ?? process.env.npm_execpath;
-  if (pnpmExecPath) {
+  if (pnpmExecPath && !isUnsupportedPnpmExecPath(pnpmExecPath)) {
     return `"${process.execPath}" "${pnpmExecPath}"`;
   }
-  return process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  if (process.env.COREPACK_ROOT) {
+    return `"${process.execPath}" "${process.env.COREPACK_ROOT}/dist/pnpm.js"`;
+  }
+  return process.platform === 'win32' ? 'corepack pnpm.cmd' : 'corepack pnpm';
 };
 const pnpmCommand = resolvePnpmCommand();
 const previewCommand = `${pnpmCommand} --filter @kajovo/kajovo-hotel-web preview --host 0.0.0.0 --port ${webPort} --strictPort`;
