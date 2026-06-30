@@ -255,12 +255,16 @@ class FileEmailService:
         return MailDeliveryResult(connected=True, send_attempted=True)
 
 
-def send_portal_onboarding(*, service: EmailService, recipient: str) -> MailDeliveryResult:
+def send_portal_onboarding(*, service: EmailService, recipient: str, login_url: str) -> MailDeliveryResult:
     return service.send(
         MailMessage(
             recipient=recipient,
             subject="Kájovo Hotel onboarding",
-            body="Váš účet v Kájovo Hotel byl vytvořen.",
+            body=(
+                "Váš účet v Kájovo Hotel byl vytvořen.\n\n"
+                f"Přihlášení do portálu: {login_url}\n"
+                "Pokud ještě nemáte heslo, použijte resetovací odkaz od správce."
+            ),
         )
     )
 
@@ -299,13 +303,16 @@ def send_user_unlock_link(*, service: EmailService, recipient: str, unlock_link:
 
 
 def send_user_password_reset_link(
-    *, service: EmailService, recipient: str, reset_link: str
+    *, service: EmailService, recipient: str, reset_link: str, login_url: str
 ) -> MailDeliveryResult:
     return service.send(
         MailMessage(
             recipient=recipient,
             subject="Kájovo Hotel reset hesla",
-            body=f"Pro reset hesla použijte odkaz: {reset_link}",
+            body=(
+                f"Pro nastavení nového hesla použijte odkaz: {reset_link}\n\n"
+                f"Po dokončení se přihlaste zde: {login_url}"
+            ),
         )
     )
 

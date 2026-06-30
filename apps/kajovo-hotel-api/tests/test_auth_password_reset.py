@@ -98,6 +98,7 @@ def test_admin_can_issue_password_reset_link_and_user_can_finish_reset(
     assert isinstance(reset_mail, dict)
 
     body = str(reset_mail.get("body", ""))
+    assert f"{api_base_url}/login" in body
     start = body.find("/login/reset?")
     assert start >= 0
     reset_path = body[start:].split()[0]

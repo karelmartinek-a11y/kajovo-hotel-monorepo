@@ -201,6 +201,10 @@ def _issue_portal_reset_token(db: Session, principal: str) -> str:
     return token
 
 
+def _portal_login_url(request: Request) -> str:
+    return f"{str(request.base_url).rstrip('/')}/login"
+
+
 @router.get("", response_model=list[PortalUserRead])
 def list_users(db: Session = Depends(get_db)) -> list[PortalUserRead]:
     users = db.execute(select(PortalUser).order_by(PortalUser.email.asc())).scalars().all()
@@ -247,7 +251,11 @@ def create_user(payload: PortalUserCreate, request: Request, db: Session = Depen
     settings = get_settings()
     try:
         service = build_email_service(settings, _stored_smtp_config(db))
-        send_portal_onboarding(service=service, recipient=user.email)
+        send_portal_onboarding(
+            service=service,
+            recipient=user.email,
+            login_url=_portal_login_url(request),
+        )
     except Exception:
         # CRUD uzivatele nesmi spadnout na volitelnem onboarding e-mailu.
         db.rollback()
@@ -332,14 +340,20 @@ def send_user_reset_link(
             detail="Připomenutí hesla administrátorského účtu se řeší pouze přes nápovědu přihlášení administrace.",
         )
     settings = get_settings()
+    login_url = _portal_login_url(request)
     token = _issue_portal_reset_token(db, _normalize_email(user.email))
     reset_link = (
-        f"{str(request.base_url).rstrip('/')}/login/reset?"
+        f"{login_url}/reset?"
         f"{urlencode({'token': token})}"
     )
     try:
         service = build_email_service(settings, _stored_smtp_config(db))
-        result = send_user_password_reset_link(service=service, recipient=user.email, reset_link=reset_link)
+        result = send_user_password_reset_link(
+            service=service,
+            recipient=user.email,
+            reset_link=reset_link,
+            login_url=login_url,
+        )
         db.commit()
         return UserPasswordResetLinkResponse(
             ok=True,

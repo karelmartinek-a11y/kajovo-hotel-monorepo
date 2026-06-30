@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon, KajovoFullLockup } from '@kajovo/ui';
 import { getAuthBundle } from '@kajovo/shared';
 
@@ -25,12 +25,14 @@ export function PortalResetPasswordPage(): JSX.Element {
     return getAuthBundle('portal', lang);
   }, []);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get('token')?.trim() ?? '';
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [info, setInfo] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const redirectTimeoutRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     if (typeof document === 'undefined') {
@@ -39,6 +41,12 @@ export function PortalResetPasswordPage(): JSX.Element {
     document.documentElement.lang = bundle.locale;
     document.title = 'Kájovo Hotel · Dokončení resetu hesla';
   }, [bundle.locale]);
+
+  React.useEffect(() => () => {
+    if (redirectTimeoutRef.current !== null) {
+      window.clearTimeout(redirectTimeoutRef.current);
+    }
+  }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -74,7 +82,13 @@ export function PortalResetPasswordPage(): JSX.Element {
       setBusy(false);
       setPassword('');
       setConfirmPassword('');
-      setInfo('Heslo bylo změněno. Můžete se přihlásit novým heslem.');
+      setInfo('Heslo bylo změněno. Za chvíli vás přesměrujeme na přihlášení.');
+      if (redirectTimeoutRef.current !== null) {
+        window.clearTimeout(redirectTimeoutRef.current);
+      }
+      redirectTimeoutRef.current = window.setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 1500);
     } catch (submitError) {
       setBusy(false);
       setError(
@@ -92,7 +106,7 @@ export function PortalResetPasswordPage(): JSX.Element {
         <p className="k-login-eyebrow">{bundle.copy.eyebrow}</p>
         <h1 id="portal-reset-title">Dokončení resetu hesla</h1>
         <p className="k-login-copy">
-          Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.
+          Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení vás přesměrujeme na přihlášení do hotelového portálu.
         </p>
         <form className="k-login-form" onSubmit={(event) => void submit(event)}>
           <label className="k-login-label" htmlFor="portal-reset-password">

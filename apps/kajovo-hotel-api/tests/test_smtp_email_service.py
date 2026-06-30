@@ -102,7 +102,10 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
                 password="new-user-pass",
                 roles=["recepce"],
             ),
-            request=SimpleNamespace(state=SimpleNamespace()),
+            request=SimpleNamespace(
+                state=SimpleNamespace(),
+                base_url="https://hotel.test/",
+            ),
             db=db,
         )
         status = get_smtp_status(db=db)
@@ -112,6 +115,7 @@ def test_hint_test_email_and_onboarding_use_single_email_service(monkeypatch, tm
         "Kájovo Hotel SMTP test",
         "Kájovo Hotel onboarding",
     ]
+    assert "https://hotel.test/login" in transport.sent_messages[2].body
     assert response.delivery_mode == "smtp"
     assert status.configured is True
     assert status.smtp_enabled is True
