@@ -119,8 +119,6 @@ rm -f "$vars_json"
 export SKIP_GIT_SYNC=true
 export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
 "$deploy_root/infra/ops/deploy-production.sh"
-run_release_root_cmd mkdir -p "$release_root/artifacts/deploy-runtime"
-run_release_root_cmd cp "$deploy_root/artifacts/deploy-runtime/latest.json" "$release_root/artifacts/deploy-runtime/latest.json"
 cd "$deploy_root"
 export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
 docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
@@ -217,7 +215,7 @@ def cmd_verify_artifact() -> None:
         f"DEPLOY_SHA={quoted_sha} python3 - <<'PY'\n"
         "import json, os\n"
         "from pathlib import Path\n"
-        "path = Path('/opt/kajovo-hotel-monorepo/artifacts/deploy-runtime/latest.json')\n"
+        "path = Path.home() / 'kajovo-deploy-releases' / os.environ['DEPLOY_SHA'] / 'artifacts/deploy-runtime/latest.json'\n"
         "if not path.exists():\n"
         "    raise SystemExit(f'Missing runtime artifact on server: {path}')\n"
         "payload = json.loads(path.read_text(encoding='utf-8'))\n"
