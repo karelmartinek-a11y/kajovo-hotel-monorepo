@@ -48,6 +48,7 @@ vars_json="${upload_home}/kajovo-deploy-vars.json"
 release_owner="$(id -un)"
 release_group="$(id -gn)"
 can_sudo=0
+trash_root="${upload_home}/kajovo-deploy-trash"
 if sudo -n true >/dev/null 2>&1; then
   can_sudo=1
 fi
@@ -69,7 +70,23 @@ if run_release_root_cmd test -f "$release_root/infra/.env"; then
   run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
 fi
 run_release_root_cmd mkdir -p "$release_root"
-run_release_root_cmd find "$release_root" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+mkdir -p "$trash_root"
+release_dev="$(run_release_root_cmd stat -c %d "$release_root")"
+trash_dev="$(stat -c %d "$trash_root")"
+if [ "$release_dev" = "$trash_dev" ]; then
+  trash_dir="$(mktemp -d "$trash_root/${DEPLOY_SHA}.XXXXXX")"
+else
+  trash_dir="$(mktemp -d "$release_root/.deploy-trash.XXXXXX")"
+fi
+for entry in "$release_root"/* "$release_root"/.[!.]* "$release_root"/..?*; do
+  if [ ! -e "$entry" ]; then
+    continue
+  fi
+  if [ "${entry##*/}" = "${trash_dir##*/}" ]; then
+    continue
+  fi
+  run_release_root_cmd mv "$entry" "$trash_dir"/
+done
 run_release_root_cmd tar -xzf "$release_archive" -C "$release_root"
 run_release_root_cmd mkdir -p "$release_root/infra"
 if [ "$can_sudo" -eq 1 ]; then
@@ -114,6 +131,9 @@ PY
 rm -rf "$preserve_dir"
 rm -f "$release_archive"
 rm -f "$vars_json"
+if [ "$can_sudo" -eq 1 ]; then
+  sudo -n rm -rf "$trash_dir" || true
+fi
 export SKIP_GIT_SYNC=true
 export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
 "$release_root/infra/ops/deploy-production.sh"
