@@ -404,6 +404,14 @@ test('portal bez session skonci na loginu', async ({ page }) => {
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
   await expect(page.locator('[data-brand-element="true"]')).toHaveCount(1);
   await expect(page).toHaveTitle(/Kájovo Hotel/);
+  const brandImages = page.getByTestId('portal-login-page').locator('[data-brand-element="true"] img');
+  const imageCount = await brandImages.count();
+  expect(imageCount).toBeGreaterThan(0);
+  for (let index = 0; index < imageCount; index += 1) {
+    await expect(brandImages.nth(index)).toHaveJSProperty('complete', true);
+    const naturalWidth = await brandImages.nth(index).evaluate((image) => (image as HTMLImageElement).naturalWidth);
+    expect(naturalWidth).toBeGreaterThan(0);
+  }
 });
 
 test('portal auth endpoint funguje nad realnym API a web admin surface zustava retired', async ({ page, request }, testInfo) => {

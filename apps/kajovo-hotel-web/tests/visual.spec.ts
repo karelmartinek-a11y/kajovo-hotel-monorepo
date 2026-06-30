@@ -221,11 +221,24 @@ async function assertKdgsGeometry(page: Page, viewName: string) {
   }
 }
 
+async function expectLoadedImages(scope: Locator, viewName: string) {
+  const images = scope.locator('img');
+  const count = await images.count();
+  for (let index = 0; index < count; index += 1) {
+    await expect(images.nth(index), `${viewName}: obrázek ${index + 1} musí být načtený`).toHaveJSProperty('complete', true);
+    const naturalWidth = await images.nth(index).evaluate((image) => (image as HTMLImageElement).naturalWidth);
+    expect.soft(naturalWidth, `${viewName}: obrázek ${index + 1} nesmí být rozbitý`).toBeGreaterThan(0);
+  }
+}
+
 test.describe('KDGS vizuální a geometrická kontrola portálu', () => {
   for (const view of utilityViews) {
     test(`utility view ${view.name} drží brand a geometrii`, async ({ page }) => {
       await waitForView(page, view);
       await assertKdgsGeometry(page, view.name);
+      if (view.path === '/login') {
+        await expectLoadedImages(page.getByTestId('portal-login-page'), view.name);
+      }
     });
   }
 });

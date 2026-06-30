@@ -22,13 +22,24 @@ export function KajovoFullLockup({
       aria-label={accessibleTitle}
       title={accessibleTitle}
     >
-      <img
-        className="k-full-lockup-image"
-        src="/brand/apps/kajovo-hotel/logo/exports/full/svg/kajovo-hotel_full.svg"
-        alt={accessibleTitle}
-        loading="eager"
-      />
-      {subtitle ? <span className="k-full-lockup-subtitle">{subtitle}</span> : null}
+      <span className="k-full-lockup-row">
+        <img
+          className="k-full-lockup-mark"
+          src="/brand/apps/kajovo-hotel/logo/exports/mark/svg/kajovo-hotel_mark.svg"
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+        />
+        <span className="k-full-lockup-copy">
+          <img
+            className="k-full-lockup-wordmark"
+            src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
+            alt={title}
+            loading="eager"
+          />
+          {subtitle ? <span className="k-full-lockup-subtitle">{subtitle}</span> : null}
+        </span>
+      </span>
     </a>
   );
 }
