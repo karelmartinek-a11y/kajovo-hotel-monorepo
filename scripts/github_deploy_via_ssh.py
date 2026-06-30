@@ -45,18 +45,36 @@ release_archive="${upload_home}/${RELEASE_ARCHIVE}"
 release_root="/opt/kajovo-hotel-monorepo"
 preserve_dir="$(mktemp -d)"
 vars_json="${upload_home}/kajovo-deploy-vars.json"
+release_owner="$(id -un)"
+release_group="$(id -gn)"
+can_sudo=0
+if sudo -n true >/dev/null 2>&1; then
+  can_sudo=1
+fi
+
+run_release_root_cmd() {
+  if [ "$can_sudo" -eq 1 ]; then
+    sudo -n "$@"
+  else
+    "$@"
+  fi
+}
+
 if [ ! -f "$release_archive" ]; then
   echo "Missing uploaded archive: $release_archive" >&2
   exit 1
 fi
-if [ -f "$release_root/infra/.env" ]; then
+if run_release_root_cmd test -f "$release_root/infra/.env"; then
   mkdir -p "$preserve_dir/infra"
-  cp "$release_root/infra/.env" "$preserve_dir/infra/.env"
+  run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
 fi
-mkdir -p "$release_root"
-find "$release_root" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-tar -xzf "$release_archive" -C "$release_root"
-mkdir -p "$release_root/infra"
+run_release_root_cmd mkdir -p "$release_root"
+run_release_root_cmd find "$release_root" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+run_release_root_cmd tar -xzf "$release_archive" -C "$release_root"
+run_release_root_cmd mkdir -p "$release_root/infra"
+if [ "$can_sudo" -eq 1 ]; then
+  sudo -n chown -R "$release_owner:$release_group" "$release_root"
+fi
 if [ -f "$preserve_dir/infra/.env" ]; then
   mv "$preserve_dir/infra/.env" "$release_root/infra/.env"
 elif [ ! -f "$release_root/infra/.env" ]; then
