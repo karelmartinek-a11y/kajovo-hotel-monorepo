@@ -43,6 +43,7 @@ set -euo pipefail
 upload_home="${DEPLOY_UPLOAD_HOME:?Missing DEPLOY_UPLOAD_HOME}"
 release_archive="${upload_home}/${RELEASE_ARCHIVE}"
 release_root="/opt/kajovo-hotel-monorepo"
+deploy_root="${upload_home}/kajovo-deploy-releases/${DEPLOY_SHA}"
 preserve_dir="$(mktemp -d)"
 vars_json="${upload_home}/kajovo-deploy-vars.json"
 release_owner="$(id -un)"
@@ -68,34 +69,26 @@ if run_release_root_cmd test -f "$release_root/infra/.env"; then
   mkdir -p "$preserve_dir/infra"
   run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
 fi
-run_release_root_cmd mkdir -p "$release_root"
-trash_dir="$(run_release_root_cmd mktemp -d "$release_root/.deploy-trash.XXXXXX")"
-for entry in "$release_root"/* "$release_root"/.[!.]* "$release_root"/..?*; do
-  if [ ! -e "$entry" ]; then
-    continue
-  fi
-  if [ "${entry##*/}" = "${trash_dir##*/}" ]; then
-    continue
-  fi
-  run_release_root_cmd mv "$entry" "$trash_dir"/
-done
-run_release_root_cmd tar -xzf "$release_archive" -C "$release_root"
-run_release_root_cmd mkdir -p "$release_root/infra"
+rm -rf "$deploy_root"
+mkdir -p "$deploy_root"
+tar -xzf "$release_archive" -C "$deploy_root"
+mkdir -p "$deploy_root/infra"
 if [ "$can_sudo" -eq 1 ]; then
-  sudo -n chown -R "$release_owner:$release_group" "$release_root"
+  sudo -n chown -R "$release_owner:$release_group" "$deploy_root"
 fi
 if [ -f "$preserve_dir/infra/.env" ]; then
-  mv "$preserve_dir/infra/.env" "$release_root/infra/.env"
-elif [ ! -f "$release_root/infra/.env" ]; then
-  : > "$release_root/infra/.env"
+  mv "$preserve_dir/infra/.env" "$deploy_root/infra/.env"
+elif [ ! -f "$deploy_root/infra/.env" ]; then
+  : > "$deploy_root/infra/.env"
 fi
 export DEPLOY_VARS_PATH="$vars_json"
+export DEPLOY_ROOT="$deploy_root"
 python3 - <<'PY'
 from pathlib import Path
 import json
 import os
 
-env_path = Path("/opt/kajovo-hotel-monorepo/infra/.env")
+env_path = Path(os.environ["DEPLOY_ROOT"]) / "infra/.env"
 vars_path = Path(os.environ["DEPLOY_VARS_PATH"])
 current = {}
 for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -123,13 +116,12 @@ PY
 rm -rf "$preserve_dir"
 rm -f "$release_archive"
 rm -f "$vars_json"
-if [ "$can_sudo" -eq 1 ]; then
-  sudo -n rm -rf "$trash_dir" || true
-fi
 export SKIP_GIT_SYNC=true
 export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
-"$release_root/infra/ops/deploy-production.sh"
-cd "$release_root"
+"$deploy_root/infra/ops/deploy-production.sh"
+run_release_root_cmd mkdir -p "$release_root/artifacts/deploy-runtime"
+run_release_root_cmd cp "$deploy_root/artifacts/deploy-runtime/latest.json" "$release_root/artifacts/deploy-runtime/latest.json"
+cd "$deploy_root"
 export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
 docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
 docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
