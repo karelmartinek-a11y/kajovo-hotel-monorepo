@@ -48,7 +48,6 @@ vars_json="${upload_home}/kajovo-deploy-vars.json"
 release_owner="$(id -un)"
 release_group="$(id -gn)"
 can_sudo=0
-trash_root="${upload_home}/kajovo-deploy-trash"
 if sudo -n true >/dev/null 2>&1; then
   can_sudo=1
 fi
@@ -70,14 +69,7 @@ if run_release_root_cmd test -f "$release_root/infra/.env"; then
   run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
 fi
 run_release_root_cmd mkdir -p "$release_root"
-mkdir -p "$trash_root"
-release_dev="$(run_release_root_cmd stat -c %d "$release_root")"
-trash_dev="$(stat -c %d "$trash_root")"
-if [ "$release_dev" = "$trash_dev" ]; then
-  trash_dir="$(mktemp -d "$trash_root/${DEPLOY_SHA}.XXXXXX")"
-else
-  trash_dir="$(mktemp -d "$release_root/.deploy-trash.XXXXXX")"
-fi
+trash_dir="$(run_release_root_cmd mktemp -d "$release_root/.deploy-trash.XXXXXX")"
 for entry in "$release_root"/* "$release_root"/.[!.]* "$release_root"/..?*; do
   if [ ! -e "$entry" ]; then
     continue
