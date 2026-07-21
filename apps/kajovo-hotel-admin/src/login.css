@@ -308,7 +308,7 @@
 
 .k-diet-toggle,
 .k-diet-icon {
-  color: #27813f;
+  color: var(--k-color-success);
 }
 
 .k-diet-toggle {
@@ -328,7 +328,7 @@
 
 .k-diet-toggle--active,
 .k-diet-icon--active {
-  color: #bd3029;
+  color: var(--k-color-error);
 }
 
 .k-diet-toggle:focus-visible,
