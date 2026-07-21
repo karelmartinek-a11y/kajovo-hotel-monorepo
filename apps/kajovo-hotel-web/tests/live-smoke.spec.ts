@@ -163,7 +163,7 @@ async function expectDeniedRoute(page: import('@playwright/test').Page, route: s
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
 }
 
-test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, request }, testInfo) => {
+test('recepce načte přehled snídaní automaticky', async ({ page, request }, testInfo) => {
   const adminLoginResponse = await request.post('/api/auth/admin/login', {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
@@ -199,11 +199,7 @@ test('recepce vidi po nahrani PDF nahled importu snidani', async ({ page, reques
   await page.getByRole('link', { name: /otevrit snidane|otevřít snídaně/i }).click();
   await expect(page).toHaveURL(/\/snidane$/);
 
-  const samplePdfPath = `${testInfo.config.rootDir}/../../../docs/breakfast/breakfast-sample.pdf`;
-  await page.getByLabel(/import pdf/i).setInputFiles(samplePdfPath);
-
-  await expect(page.getByText(/kontrola importu/i)).toBeVisible();
-  await expect(page.getByRole('cell', { name: '101' }).first()).toBeVisible();
+  await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
 });
 
 test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page, request }, testInfo) => {
