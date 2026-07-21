@@ -33,6 +33,14 @@ function formatDateTimeParts(now: Date, timeZone: string): Record<string, string
   }, {});
 }
 
+export function currentMinutesForTimeZone(
+  now: Date = new Date(),
+  timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): number {
+  const parts = formatDateTimeParts(now, timeZone);
+  return Number(parts.hour) * 60 + Number(parts.minute);
+}
+
 export function currentDateTimeInputValue(
   now: Date = new Date(),
   timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,

@@ -110,8 +110,8 @@ async function loginPortalWithCredentials(page: Page, email: string, password: s
 
 async function loginAdmin(page: Page): Promise<void> {
   await page.goto('/admin/login', { waitUntil: 'networkidle' });
-  await page.getByLabel(/admin email/i).fill(adminEmail);
-  await page.getByLabel(/admin heslo/i).fill(adminPassword);
+  await page.getByLabel(/e-mail administrátora|admin email/i).fill(adminEmail);
+  await page.getByLabel(/heslo administrátora|admin heslo/i).fill(adminPassword);
   await page.getByRole('button', { name: /přihlásit|prihlasit/i }).click();
   await expect(page).toHaveURL(/\/admin\/?$/);
   await expect(page.getByTestId('dashboard-page')).toBeVisible();
@@ -156,6 +156,58 @@ async function deleteTempPortalUser(request: APIRequestContext, userId: number):
   expect(response.status()).toBe(204);
 }
 
+function pragueDateOffset(offsetDays: number): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date()).reduce<Record<string, string>>((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+  const noonUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00Z`);
+  noonUtc.setUTCDate(noonUtc.getUTCDate() + offsetDays);
+  return noonUtc.toISOString().slice(0, 10);
+}
+
+async function createTempBreakfastOrder(request: APIRequestContext, serviceDate: string, suffix: string) {
+  const csrfHeaders = await csrfHeaderFor(request);
+  const response = await request.post('/api/v1/breakfast', {
+    data: {
+      service_date: serviceDate,
+      room_number: `E2E-${suffix.slice(-8)}`,
+      guest_name: 'Forenzní E2E host',
+      guest_count: 2,
+      status: 'pending',
+      note: null,
+      diet_no_gluten: false,
+      diet_no_milk: false,
+      diet_no_pork: false,
+    },
+    headers: csrfHeaders,
+  });
+  expect(response.status()).toBe(201);
+  return await response.json() as { id: number; room_number: string };
+}
+
+async function deleteTempBreakfastOrder(request: APIRequestContext, orderId: number): Promise<void> {
+  const csrfHeaders = await csrfHeaderFor(request);
+  const response = await request.delete(`/api/v1/breakfast/${orderId}`, { headers: csrfHeaders });
+  expect(response.status()).toBe(204);
+}
+
+async function selectBreakfastDate(page: Page, serviceDate: string): Promise<void> {
+  const picker = page.getByLabel(/vybrat datum|^datum$/i).first();
+  await picker.fill(serviceDate);
+  await page.waitForLoadState('networkidle');
+}
+
+async function expectNoViewportOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+}
+
 async function collectNavRoutes(page: Page, testId: string): Promise<string[]> {
   const locator = page.getByTestId(testId);
   if (!(await locator.isVisible())) {
@@ -192,6 +244,79 @@ async function maybeOpenCreateForm(page: Page): Promise<void> {
 }
 
 test.describe('live temp production verification', () => {
+  test('breakfast roles and responsive UI satisfy the production contract', async ({ page, request }, testInfo) => {
+    const createdUsers: TempPortalUser[] = [];
+    let order: { id: number; room_number: string } | null = null;
+
+    const adminLogin = await request.post('/api/auth/admin/login', {
+      data: { email: adminEmail, password: adminPassword },
+    });
+    expect(adminLogin.ok()).toBeTruthy();
+
+    try {
+      const suffix = `${testInfo.project.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const serviceDate = pragueDateOffset(-2);
+      const forensicNote = `Forenzní poznámka ${suffix}`;
+      order = await createTempBreakfastOrder(request, serviceDate, suffix);
+      const receptionUser = await createTempPortalUser(request, ['recepce']);
+      const breakfastUser = await createTempPortalUser(request, ['snidane']);
+      createdUsers.push(receptionUser, breakfastUser);
+
+      await loginAdmin(page);
+      await page.goto('/admin/snidane', { waitUntil: 'networkidle' });
+      await selectBreakfastDate(page, serviceDate);
+      await expect(page.getByText(order.room_number, { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Předchozí den' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Následující den' })).toBeVisible();
+      await expect(page.getByLabel('Vybrat datum')).toBeVisible();
+      await expect(page.getByLabel(/import pdf/i)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /export snídaní|smazat den|aktualizovat z api/i })).toHaveCount(0);
+      const adminRow = page.getByRole('row').filter({ hasText: order.room_number });
+      await adminRow.getByRole('button', { name: 'Bez lepku' }).click();
+      await adminRow.getByRole('button', { name: 'Bez mléka' }).click();
+      await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(forensicNote);
+      await page.getByRole('button', { name: 'Uložit změny' }).click();
+      await expect(page.getByText(/uloženo 1 změn/i)).toBeVisible();
+      await expect(adminRow.getByRole('button', { name: 'Vydáno' })).toBeVisible();
+      await expectNoViewportOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`breakfast-admin-${testInfo.project.name}.png`), fullPage: true });
+
+      await page.context().clearCookies();
+      await loginPortalWithCredentials(page, receptionUser.email, receptionUser.password);
+      await page.goto('/snidane', { waitUntil: 'networkidle' });
+      await selectBreakfastDate(page, serviceDate);
+      const receptionRow = page.getByRole('row').filter({ hasText: order.room_number });
+      await expect(receptionRow).toBeVisible();
+      await expect(receptionRow.getByRole('button', { name: 'Bez lepku' })).toHaveAttribute('aria-pressed', 'true');
+      await receptionRow.getByRole('button', { name: 'Bez vepřového' }).click();
+      await receptionRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(`${forensicNote} · recepce`);
+      await page.getByRole('button', { name: 'Uložit změny' }).click();
+      await expect(page.getByText(/uloženo 1 změn/i)).toBeVisible();
+      await expect(receptionRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
+      await expectNoViewportOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`breakfast-reception-${testInfo.project.name}.png`), fullPage: true });
+
+      await page.context().clearCookies();
+      await loginPortalWithCredentials(page, breakfastUser.email, breakfastUser.password);
+      await page.goto('/snidane', { waitUntil: 'networkidle' });
+      await selectBreakfastDate(page, serviceDate);
+      const breakfastRow = page.getByRole('row').filter({ hasText: order.room_number });
+      await expect(breakfastRow).toBeVisible();
+      await expect(breakfastRow.getByTitle('Bezlepková strava')).toBeVisible();
+      await expect(breakfastRow.getByTitle('Bezlaktozová strava')).toBeVisible();
+      await expect(breakfastRow.getByTitle('Strava bez vepřového masa')).toBeVisible();
+      await expect(breakfastRow.getByText(`${forensicNote} · recepce`, { exact: true })).toBeVisible();
+      await expect(breakfastRow.locator('button.k-diet-toggle')).toHaveCount(0);
+      await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
+      await expectNoViewportOverflow(page);
+      await page.screenshot({ path: testInfo.outputPath(`breakfast-user-${testInfo.project.name}.png`), fullPage: true });
+    } finally {
+      await request.post('/api/auth/admin/login', { data: { email: adminEmail, password: adminPassword } });
+      if (order) await deleteTempBreakfastOrder(request, order.id);
+      for (const user of createdUsers.reverse()) await deleteTempPortalUser(request, user.id);
+    }
+  });
+
   test('unauthenticated public and admin routes keep canonical redirects and no client errors', async ({ page }, testInfo) => {
     const collector = attachClientIssueCollector(page);
 

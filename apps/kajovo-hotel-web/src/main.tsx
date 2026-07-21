@@ -37,7 +37,7 @@ import {
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
 import { canWriteModule, normalizeRole, resolveAuthProfile, type AuthProfile } from './rbac';
-import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
+import { currentDateForTimeZone, currentDateTimeInputValue, currentMinutesForTimeZone, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
 import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
@@ -59,6 +59,11 @@ type BreakfastPayload = BreakfastOrderCreate & {
 };
 
 type BreakfastSummary = BreakfastDailySummary;
+
+type BreakfastDailyOverview = {
+  orders: BreakfastOrder[];
+  summary: BreakfastSummary;
+};
 
 type BreakfastImportItem = {
   room: number;
@@ -291,7 +296,7 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
   }
 }
 
-const defaultServiceDate = currentDateForTimeZone();
+const defaultServiceDate = currentDateForTimeZone(new Date(), 'Europe/Prague');
 
 function metricValue(value: number | null): string {
   return value === null ? '—' : String(value);
@@ -931,21 +936,25 @@ function Dashboard(): JSX.Element {
 }
 
 function BreakfastList(): JSX.Element {
-    const auth = useAuth();
+  const auth = useAuth();
   const actorRole = auth?.activeRole ?? auth?.role ?? null;
+  const roles = (auth?.roles ?? []).map((role) => normalizeRole(role));
   const breakfastRole = normalizeRole('snidane');
   const isAdmin = actorRole === 'admin';
-  const isRecepce = isAdmin || actorRole === 'recepce';
-  const isBreakfast = isAdmin || actorRole === breakfastRole;
+  const isRecepce = isAdmin || actorRole === 'recepce' || roles.includes('recepce');
+  const isBreakfast = isAdmin || actorRole === breakfastRole || roles.includes(breakfastRole);
   const isServingView = actorRole === breakfastRole && !isRecepce && !isAdmin;
   const canImport = isRecepce || isAdmin;
-  const canReactivate = isRecepce || isAdmin;
+  const canReactivate = isAdmin;
   const canEditDiet = isRecepce || isAdmin;
-  const canServe = isBreakfast || isRecepce;
+  const canEditNote = isRecepce || isAdmin;
+  const today = currentDateForTimeZone(new Date(), 'Europe/Prague');
+  const minutesNow = currentMinutesForTimeZone(new Date(), 'Europe/Prague');
   const canClearDay = isAdmin;
   const canManualRefresh = isBreakfast || isRecepce || isAdmin;
 
   const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
+  const canServe = isAdmin || ((isBreakfast || isRecepce) && serviceDate === today && minutesNow >= 300 && minutesNow <= 660);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -968,11 +977,8 @@ function BreakfastList(): JSX.Element {
 
   const loadDay = React.useCallback((targetDate: string) => {
     let active = true;
-    Promise.all([
-      fetchJson<BreakfastOrder[]>(`/api/v1/breakfast?service_date=${targetDate}`),
-      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${targetDate}`),
-    ])
-      .then(([orders, dailySummary]) => {
+    fetchJson<BreakfastDailyOverview>(`/api/v1/breakfast/daily-overview?service_date=${targetDate}`)
+      .then(({ orders, summary: dailySummary }) => {
         if (!active) {
           return;
         }
@@ -1012,6 +1018,7 @@ function BreakfastList(): JSX.Element {
       diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
       diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
       diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
+      note: draft.note ?? order.note,
       };
     }, [drafts]);
 
@@ -1035,22 +1042,23 @@ function BreakfastList(): JSX.Element {
   });
 
   const updateOrder = async (order: BreakfastOrder, updates: Partial<BreakfastPayload>): Promise<void> => {
-    const payload: BreakfastPayload = {
+    const payload: Partial<BreakfastPayload> = {
       service_date: order.service_date,
       room_number: order.room_number,
       guest_name: order.guest_name,
       guest_count: order.guest_count,
       status: updates.status ?? order.status,
-      note: order.note ?? null,
+      note: updates.note ?? order.note ?? null,
       diet_no_gluten: updates.diet_no_gluten ?? order.diet_no_gluten ?? false,
       diet_no_milk: updates.diet_no_milk ?? order.diet_no_milk ?? false,
       diet_no_pork: updates.diet_no_pork ?? order.diet_no_pork ?? false,
     };
 
+    const requestPayload = isServingView ? { status: updates.status } : payload;
     const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(requestPayload),
     });
     setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
   };
@@ -1067,12 +1075,14 @@ function BreakfastList(): JSX.Element {
         diet_no_gluten: nextDraft.diet_no_gluten ?? order.diet_no_gluten ?? false,
         diet_no_milk: nextDraft.diet_no_milk ?? order.diet_no_milk ?? false,
         diet_no_pork: nextDraft.diet_no_pork ?? order.diet_no_pork ?? false,
+        note: nextDraft.note ?? order.note ?? null,
       };
       if (
         effective.status === order.status &&
         effective.diet_no_gluten === (order.diet_no_gluten ?? false) &&
         effective.diet_no_milk === (order.diet_no_milk ?? false) &&
-        effective.diet_no_pork === (order.diet_no_pork ?? false)
+        effective.diet_no_pork === (order.diet_no_pork ?? false) &&
+        effective.note === (order.note ?? null)
       ) {
         const cleaned = { ...prev };
         delete cleaned[order.id];
@@ -1210,6 +1220,15 @@ function BreakfastList(): JSX.Element {
       </DietToggleButton>
     </div>
   );
+
+  const renderActiveDiets = (data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean }): JSX.Element | null => {
+    const active = [
+      data.diet_no_gluten ? <span key="gluten" className="k-diet-icon k-diet-icon--active" title="Bezlepková strava"><DietIconGluten /></span> : null,
+      data.diet_no_milk ? <span key="milk" className="k-diet-icon k-diet-icon--active" title="Bezlaktozová strava"><DietIconMilk /></span> : null,
+      data.diet_no_pork ? <span key="pork" className="k-diet-icon k-diet-icon--active" title="Strava bez vepřového masa"><DietIconPork /></span> : null,
+    ].filter(Boolean);
+    return active.length ? <span className="k-diet-toggle-group">{active}</span> : null;
+  };
 
   const previewImport = async (file: File): Promise<void> => {
     setImportBusy(true);
@@ -1450,7 +1469,7 @@ function BreakfastList(): JSX.Element {
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
             <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Stav', 'Akce']}
+              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Stav', 'Akce']}
               rows={listItems.map((item) => {
                 const effectiveItem = mergeOrderWithDraft(item);
                 const isDirty = Boolean(drafts[item.id]);
@@ -1468,7 +1487,8 @@ function BreakfastList(): JSX.Element {
                     <span className={rowClass}>{effectiveItem.room_number}</span>,
                     <span className={rowClass}>{effectiveItem.guest_count}</span>,
                     <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
-                    <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), true)}</span>,
+                    <span className={rowClass}>{renderActiveDiets(effectiveItem)}</span>,
+                    <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                     action,
                   ];
                 }
@@ -1478,6 +1498,7 @@ function BreakfastList(): JSX.Element {
                   <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                   <span className={rowClass}>{effectiveItem.guest_count}</span>,
                   <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
+                  canEditNote ? <input className="k-input k-breakfast-note" aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                   <span className={rowClass}>{breakfastStatusLabel(effectiveItem.status)}{isDirty ? ' *' : ''}</span>,
                   action,
                 ];

@@ -50,7 +50,7 @@ import {
   type ResolvedAuthState,
   type Role,
 } from './rbac';
-import { currentDateForTimeZone, currentDateTimeInputValue, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
+import { currentDateForTimeZone, currentDateTimeInputValue, currentMinutesForTimeZone, isoUtcToLocalDateTimeInput, localDateTimeInputToIsoUtc } from './lib/date';
 
 const brandWordmark = '/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg';
 
@@ -1341,12 +1341,11 @@ function BreakfastList(): JSX.Element {
   const canReactivate = isAdmin;
   const canEditDiet = isRecepce || isAdmin;
   const canEditNote = isRecepce || isAdmin;
-  const today = currentDateForTimeZone();
-  const now = new Date();
-  const minutesNow = now.getHours() * 60 + now.getMinutes();
+  const today = currentDateForTimeZone(new Date(), 'Europe/Prague');
+  const minutesNow = currentMinutesForTimeZone(new Date(), 'Europe/Prague');
 
   const [serviceDate, setServiceDate] = React.useState(() => toLocalDateInputValue());
-  const canServe = isAdmin || (isBreakfast && serviceDate === today && minutesNow >= 300 && minutesNow <= 660);
+  const canServe = isAdmin || ((isBreakfast || isRecepce) && serviceDate === today && minutesNow >= 300 && minutesNow <= 660);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -1697,14 +1696,13 @@ function BreakfastList(): JSX.Element {
   };
 
   const breakfastToolbar = (
-    <div className="k-toolbar">
+    <div className="k-toolbar k-breakfast-overview-date__controls">
       <button className="k-button secondary" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
       <button className="k-button secondary" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
       <label className="k-date-picker-button" title="Vybrat datum">
         <span aria-hidden="true">▣</span>
         <input className="k-date-picker-button__input" type="date" value={serviceDate} aria-label="Vybrat datum" onChange={(event) => setServiceDate(event.target.value)} />
       </label>
-      {!isServingView ? <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} /> : null}
       {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
     </div>
   );
@@ -1725,12 +1723,14 @@ function BreakfastList(): JSX.Element {
       ) : (
         <>
           <div className="k-card k-breakfast-overview-date">
-            <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
-            <h2 className="k-breakfast-overview-date__value">
-              {formatBreakfastHeadlineDate(breakfastSummaryDate)}
-            </h2>
+            <div>
+              <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
+              <h2 className="k-breakfast-overview-date__value">
+                {formatBreakfastHeadlineDate(breakfastSummaryDate)}
+              </h2>
+            </div>
+            {breakfastToolbar}
           </div>
-          {breakfastToolbar}
           {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
           {listItems.length === 0 ? (
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />

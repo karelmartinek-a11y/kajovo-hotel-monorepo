@@ -1,0 +1,55 @@
+name: Live Production E2E
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  breakfast-forensics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      PLAYWRIGHT_BASE_URL: https://hotel.hcasc.cz
+      HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+      HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+      KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+      KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Enable pnpm via Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Validate admin credential environment
+        run: python3 scripts/check_admin_credentials_env.py
+
+      - name: Install Chromium
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+
+      - name: Run production E2E matrix
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright test --config playwright.live-temp.config.ts --grep "breakfast roles"
+
+      - name: Upload forensic screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: breakfast-production-forensics
+          path: |
+            apps/kajovo-hotel-web/test-results/
+            apps/kajovo-hotel-web/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14

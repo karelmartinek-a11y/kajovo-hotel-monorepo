@@ -284,6 +284,15 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
           source_imported_at: '2026-06-08T07:05:00Z',
         };
 
+    if (method === 'GET' && path === '/api/v1/breakfast/daily-overview') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ orders: currentOrders, summary: currentSummary }),
+      });
+      return;
+    }
+
     if (method === 'GET' && path === '/api/v1/breakfast') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentOrders) });
       return;

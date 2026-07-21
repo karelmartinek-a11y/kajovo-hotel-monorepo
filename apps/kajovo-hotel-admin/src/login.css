@@ -280,8 +280,17 @@
 }
 
 .k-breakfast-overview-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--k-spacing-4);
   background: color-mix(in srgb, var(--k-color-surface) 68%, var(--k-color-primary-soft) 32%);
   border: 1px solid color-mix(in srgb, var(--k-color-primary) 18%, transparent);
+}
+
+.k-breakfast-overview-date__controls {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 .k-breakfast-overview-date__label {
@@ -361,6 +370,11 @@
 }
 
 @media (max-width: 960px) {
+  .k-breakfast-overview-date {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .k-login-page {
     grid-template-columns: 1fr;
   }

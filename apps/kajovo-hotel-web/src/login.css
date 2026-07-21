@@ -478,6 +478,46 @@
   font-style: italic;
 }
 
+.k-diet-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.k-diet-toggle,
+.k-diet-icon {
+  color: var(--k-color-success);
+}
+
+.k-diet-toggle {
+  display: inline-flex;
+  padding: 0.18rem;
+  border: 0;
+  background: transparent;
+  border-radius: var(--k-radius-4);
+}
+
+.k-diet-toggle svg,
+.k-diet-icon svg {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.k-diet-toggle--active,
+.k-diet-icon--active {
+  color: var(--k-color-error);
+}
+
+.k-diet-toggle:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--k-color-primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.k-breakfast-note {
+  min-width: 13rem;
+}
+
 @media (max-width: 960px) {
   .k-login-page {
     grid-template-columns: 1fr;
