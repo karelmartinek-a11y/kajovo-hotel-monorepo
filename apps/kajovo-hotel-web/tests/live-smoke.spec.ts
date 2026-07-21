@@ -137,6 +137,10 @@ async function collectVisibleModuleRoutes(page: import('@playwright/test').Page)
     ))).sort();
   }
 
+  if (await page.getByTestId('breakfast-serving-mobile-header').isVisible()) {
+    return ['/snidane'];
+  }
+
   const desktopNavigation = page.getByTestId('module-navigation-desktop');
   const overflowButton = desktopNavigation.getByRole('button');
   if (await overflowButton.isVisible()) {
@@ -384,10 +388,17 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
   await expect(page).toHaveURL(/\/snidane$/);
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Aktualizovat' })).toBeVisible();
-  await expect(page.getByText(/Datum přehledu snídaní/i)).toBeVisible();
-  await expect(page.locator('section').filter({ hasText: 'Snídaní celkem' }).getByRole('strong')).toHaveText('1');
-  await expect(page.locator('section').filter({ hasText: 'Vydáno' }).getByRole('strong')).toHaveText('0');
-  await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('1');
+  const compactServingHeader = page.getByTestId('breakfast-serving-mobile-header');
+  const usesCompactServingLayout = await compactServingHeader.isVisible();
+  if (usesCompactServingLayout) {
+    await expect(page.getByTestId('breakfast-serving-mobile-list')).toBeVisible();
+    await expect(page.locator('.k-breakfast-serving-page > .k-table-wrap')).toBeHidden();
+  } else {
+    await expect(page.getByText(/Datum přehledu snídaní/i)).toBeVisible();
+    await expect(page.locator('section').filter({ hasText: 'Snídaní celkem' }).getByRole('strong')).toHaveText('1');
+    await expect(page.locator('section').filter({ hasText: 'Vydáno' }).getByRole('strong')).toHaveText('0');
+    await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('1');
+  }
   await expect(page.getByText(/Objednávky dne/i)).toHaveCount(0);
   await expect(page.getByText(/Hosté dne/i)).toHaveCount(0);
   await expect(page.getByText(/Pokoje /i)).toHaveCount(0);
@@ -396,11 +407,15 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('dialog').locator('.k-modal-progress__item').first()).toContainText('Better Hotelu');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('cell', { name: '102' }).first()).toBeVisible();
-  await expect(page.getByText(/Data aktualizována:/i)).toBeVisible();
-  await expect(page.locator('section').filter({ hasText: 'Snídaní celkem' }).getByRole('strong')).toHaveText('3');
-  await expect(page.locator('section').filter({ hasText: 'Vydáno' }).getByRole('strong')).toHaveText('0');
-  await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('3');
+  if (usesCompactServingLayout) {
+    await expect(page.getByTestId('breakfast-serving-mobile-row').filter({ hasText: '102' })).toBeVisible();
+  } else {
+    await expect(page.getByRole('cell', { name: '102' }).first()).toBeVisible();
+    await expect(page.getByText(/Data aktualizována:/i)).toBeVisible();
+    await expect(page.locator('section').filter({ hasText: 'Snídaní celkem' }).getByRole('strong')).toHaveText('3');
+    await expect(page.locator('section').filter({ hasText: 'Vydáno' }).getByRole('strong')).toHaveText('0');
+    await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('3');
+  }
 });
 
 test('portal bez session skonci na loginu', async ({ page }) => {

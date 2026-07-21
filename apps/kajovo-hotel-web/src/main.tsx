@@ -1453,6 +1453,9 @@ function BreakfastList(): JSX.Element {
         <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
         <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
       </div>
+      {canManualRefresh ? (
+        <button className="k-button k-breakfast-serving-header__refresh" type="button" aria-label="Aktualizovat" title="Aktualizovat" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>↻</button>
+      ) : null}
     </div>
   ) : null;
 

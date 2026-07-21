@@ -602,7 +602,7 @@
     top: 0;
     z-index: var(--k-z-header);
     display: grid;
-    grid-template-columns: minmax(4.75rem, 0.75fr) minmax(0, 1.2fr) auto;
+    grid-template-columns: minmax(4.4rem, 0.65fr) minmax(0, 1.2fr) auto auto;
     align-items: center;
     gap: 0.35rem;
     width: 100%;
@@ -624,7 +624,7 @@
   .k-breakfast-serving-header__brand img {
     display: block;
     width: 100%;
-    max-width: 7.5rem;
+    max-width: 6.8rem;
     max-height: 2.35rem;
     object-fit: contain;
     object-position: left center;
@@ -679,6 +679,15 @@
     min-height: 3.1rem;
     padding: 0;
     font-size: 1.75rem;
+  }
+
+  .k-breakfast-serving-page .k-breakfast-serving-header__refresh {
+    width: 2.55rem;
+    min-width: 2.55rem;
+    min-height: 3.1rem;
+    padding: 0;
+    font-size: 1.35rem;
+    line-height: 1;
   }
 
   .k-breakfast-serving-list {
