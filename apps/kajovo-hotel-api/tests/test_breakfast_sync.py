@@ -103,6 +103,19 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
                 diet_no_pork=True,
             )
         )
+        db.add(
+            BreakfastOrder(
+                service_date=target_day,
+                room_number="102",
+                guest_name="Systemovy host",
+                guest_count=1,
+                status="pending",
+                note="Automatická synchronizace Better Hotel API",
+                diet_no_gluten=False,
+                diet_no_milk=True,
+                diet_no_pork=False,
+            )
+        )
         db.commit()
 
     class FakeBetterHotelBreakfastClient:
@@ -158,3 +171,4 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
     ]
     assert rows[0].diet_no_gluten is True
     assert rows[0].diet_no_pork is True
+    assert rows[1].diet_no_milk is True

@@ -31,6 +31,12 @@ log = logging.getLogger("kajovo.breakfast.sync")
 PRAGUE_TZ = ZoneInfo("Europe/Prague")
 SCHEDULE_TIMES = ("14:00", "16:00", "18:00", "20:00", "22:20", "23:50")
 DEFAULT_BREAKFAST_FOOD_CODES = frozenset({1, 2, 3})
+SYSTEM_SYNC_NOTE_PREFIXES = (
+    "Automatická synchronizace Better Hotel",
+    "Automaticka synchronizace Better Hotel",
+    "Ruční synchronizace Better Hotel",
+    "Rucni synchronizace Better Hotel",
+)
 
 
 class BetterHotelSyncError(RuntimeError):
@@ -150,6 +156,17 @@ def _extract_guest_name(item: dict[str, Any]) -> str:
             return label
     label = str(item.get("label") or "").strip()
     return label
+
+
+def normalize_preserved_breakfast_note(note: str | None) -> str | None:
+    if note is None:
+        return None
+    normalized = note.strip()
+    if not normalized:
+        return None
+    if any(normalized.startswith(prefix) for prefix in SYSTEM_SYNC_NOTE_PREFIXES):
+        return None
+    return normalized
 
 
 class BetterHotelBreakfastClient:
@@ -415,7 +432,7 @@ def sync_breakfast_range(
                         "diet_no_gluten": bool(row.diet_no_gluten),
                         "diet_no_milk": bool(row.diet_no_milk),
                         "diet_no_pork": bool(row.diet_no_pork),
-                        "note": row.note,
+                        "note": normalize_preserved_breakfast_note(row.note),
                     }
                     for row in existing_rows
                 }
