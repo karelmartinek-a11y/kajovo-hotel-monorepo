@@ -985,7 +985,6 @@ function BreakfastList(): JSX.Element {
         setItems(orders);
         setSummary(dailySummary);
         setDrafts({});
-        setSaveInfo(null);
         setError(null);
       })
       .catch(() => {
@@ -1000,6 +999,7 @@ function BreakfastList(): JSX.Element {
   }, []);
 
   React.useEffect(() => {
+    setSaveInfo(null);
     const cleanup = loadDay(serviceDate);
     return () => {
       if (cleanup) cleanup();
@@ -1047,12 +1047,15 @@ function BreakfastList(): JSX.Element {
       room_number: order.room_number,
       guest_name: order.guest_name,
       guest_count: order.guest_count,
-      status: updates.status ?? order.status,
       note: updates.note ?? order.note ?? null,
       diet_no_gluten: updates.diet_no_gluten ?? order.diet_no_gluten ?? false,
       diet_no_milk: updates.diet_no_milk ?? order.diet_no_milk ?? false,
       diet_no_pork: updates.diet_no_pork ?? order.diet_no_pork ?? false,
     };
+
+    if (updates.status !== undefined) {
+      payload.status = updates.status;
+    }
 
     const requestPayload = isServingView ? { status: updates.status } : payload;
     const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
