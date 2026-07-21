@@ -300,6 +300,66 @@
   font-style: italic;
 }
 
+.k-diet-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.k-diet-toggle,
+.k-diet-icon {
+  color: #27813f;
+}
+
+.k-diet-toggle {
+  display: inline-flex;
+  padding: 0.18rem;
+  border: 0;
+  background: transparent;
+  border-radius: var(--k-radius-4);
+}
+
+.k-diet-toggle svg,
+.k-diet-icon svg {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.k-diet-toggle--active,
+.k-diet-icon--active {
+  color: #bd3029;
+}
+
+.k-diet-toggle:focus-visible,
+.k-date-picker-button:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--k-color-primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.k-date-picker-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-4);
+}
+
+.k-date-picker-button__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.k-breakfast-note {
+  min-width: 13rem;
+}
+
 @media (max-width: 960px) {
   .k-login-page {
     grid-template-columns: 1fr;

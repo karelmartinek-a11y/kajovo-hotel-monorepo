@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0027_add_breakfast_manual_refresh_jobs"]
+    assert script.get_heads() == ["0028_breakfast_display_overview"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(

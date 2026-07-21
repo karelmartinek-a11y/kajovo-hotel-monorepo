@@ -54,6 +54,10 @@ export type Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_pos
 export type Body_upload_report_photos_api_v1_reports__report_id__photos_post = {
   "photos": Array<string>;
 };
+export type BreakfastDailyOverview = {
+  "orders": Array<BreakfastOrderRead>;
+  "summary": BreakfastDailySummary;
+};
 export type BreakfastDailySummary = {
   "service_date": string;
   "source_imported_at"?: string | null;
@@ -593,6 +597,8 @@ export type UserPasswordResetLinkResponse = {
   "send_attempted": boolean;
 };
 export type ValidationError = {
+  "ctx"?: Record<string, unknown>;
+  "input"?: unknown;
   "loc": Array<string | number>;
   "msg": string;
   "type": string;
@@ -709,6 +715,9 @@ export const apiClient = {
   },
   async createBreakfastOrderApiV1BreakfastPost(body: BreakfastOrderCreate): Promise<BreakfastOrderRead> {
     return request<BreakfastOrderRead>('POST', `/api/v1/breakfast`, undefined, body);
+  },
+  async getDailyOverviewApiV1BreakfastDailyOverviewGet(query: { "service_date": string; }): Promise<BreakfastDailyOverview> {
+    return request<BreakfastDailyOverview>('GET', `/api/v1/breakfast/daily-overview`, query, undefined);
   },
   async getDailySummaryApiV1BreakfastDailySummaryGet(query: { "service_date": string; }): Promise<BreakfastDailySummary> {
     return request<BreakfastDailySummary>('GET', `/api/v1/breakfast/daily-summary`, query, undefined);

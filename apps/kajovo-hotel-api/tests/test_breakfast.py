@@ -4,7 +4,8 @@ import urllib.parse
 import urllib.request
 import uuid
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from http.cookiejar import CookieJar
 from pathlib import Path
 from time import sleep
@@ -21,6 +22,7 @@ from app.db.models import (
     BreakfastOrder,
 )
 from app.services.breakfast import manual_refresh as manual_refresh_service
+from app.api.routes.breakfast import _can_mark_served, _should_refresh_before_display
 from app.services.breakfast.parser import parse_breakfast_pdf, parse_breakfast_text
 from app.time_utils import utc_now
 
@@ -757,9 +759,9 @@ def test_breakfast_reactivation_rbac(api_base_url: str, api_request: ApiRequest)
         method="PUT",
         payload={"status": "pending"},
     )
-    assert status == 200
+    assert status == 403
     assert isinstance(data, dict)
-    assert data["status"] == "pending"
+    assert data["detail"] == "Pouze admin může vracet vydané snídaně zpět."
 
 
 def test_breakfast_role_cannot_import_or_export_pdf(api_base_url: str) -> None:
@@ -786,7 +788,7 @@ def test_breakfast_role_cannot_change_diet_flags(api_base_url: str, api_request:
     assert data["detail"] == "Diet updates are limited to recepce/admin roles"
 
 
-def test_reactivate_all_requires_recepce_or_admin(api_base_url: str, api_request: ApiRequest) -> None:
+def test_reactivate_all_requires_admin(api_base_url: str, api_request: ApiRequest) -> None:
     create_order(api_request, service_date="2026-03-11", room_number="401", status="served")
     snidane_request = portal_request(api_base_url, "snidane@example.com", "snidane-pass")
     status, data = snidane_request(
@@ -796,15 +798,17 @@ def test_reactivate_all_requires_recepce_or_admin(api_base_url: str, api_request
     )
     assert status == 403
     assert isinstance(data, dict)
-    assert data["detail"] == "Breakfast reactivation requires recepce/admin role"
+    assert data["detail"] == "Breakfast reactivation requires admin role"
 
     recepce_request = portal_request(api_base_url, "recepce@example.com", "recepce-pass")
-    status, _ = recepce_request(
+    status, data = recepce_request(
         "/api/v1/breakfast/reactivate-all",
         method="POST",
         params={"service_date": "2026-03-11"},
     )
-    assert status == 204
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Breakfast reactivation requires admin role"
 
     status, _ = api_request(
         "/api/v1/breakfast/reactivate-all",
@@ -812,6 +816,21 @@ def test_reactivate_all_requires_recepce_or_admin(api_base_url: str, api_request
         params={"service_date": "2026-03-11"},
     )
     assert status == 204
+
+
+def test_breakfast_refresh_and_serving_time_rules() -> None:
+    tz = ZoneInfo("Europe/Prague")
+    today = date(2026, 7, 21)
+
+    assert _should_refresh_before_display(today, datetime(2026, 7, 21, 5, 59, tzinfo=tz))
+    assert not _should_refresh_before_display(today, datetime(2026, 7, 21, 6, 0, tzinfo=tz))
+    assert not _should_refresh_before_display(date(2026, 7, 22), datetime(2026, 7, 21, 5, 0, tzinfo=tz))
+
+    assert _can_mark_served("recepce", today, datetime(2026, 7, 21, 5, 0, tzinfo=tz))
+    assert _can_mark_served("snídaně", today, datetime(2026, 7, 21, 11, 0, tzinfo=tz))
+    assert not _can_mark_served("recepce", today, datetime(2026, 7, 21, 11, 1, tzinfo=tz))
+    assert not _can_mark_served("snídaně", date(2026, 7, 20), datetime(2026, 7, 21, 6, 0, tzinfo=tz))
+    assert _can_mark_served("admin", date(2026, 7, 20), datetime(2026, 7, 21, 1, 0, tzinfo=tz))
 
 
 def test_breakfast_delete_day_requires_recepce_or_admin(api_base_url: str, api_request: ApiRequest) -> None:

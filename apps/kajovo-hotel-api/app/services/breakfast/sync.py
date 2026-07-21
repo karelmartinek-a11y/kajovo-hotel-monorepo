@@ -409,16 +409,17 @@ def sync_breakfast_range(
             existing_rows = db.scalars(
                 select(BreakfastOrder).where(BreakfastOrder.service_date == target_day)
             ).all()
-            preserve_diets = (
+            preserved_rows = (
                 {
                     row.room_number: {
                         "diet_no_gluten": bool(row.diet_no_gluten),
                         "diet_no_milk": bool(row.diet_no_milk),
                         "diet_no_pork": bool(row.diet_no_pork),
+                        "note": row.note,
                     }
                     for row in existing_rows
                 }
-                if target_day > today_local
+                if target_day >= today_local
                 else {}
             )
             if target_day > today_local and existing_rows:
@@ -432,7 +433,7 @@ def sync_breakfast_range(
             if day_rows:
                 imported_days += 1
             for row in day_rows:
-                preserved = preserve_diets.get(row.room_number, {})
+                preserved = preserved_rows.get(row.room_number, {})
                 db.add(
                     BreakfastOrder(
                         service_date=row.service_date,
@@ -440,7 +441,7 @@ def sync_breakfast_range(
                         guest_name=row.guest_name or f"Pokoj {row.room_number}",
                         guest_count=max(1, int(row.guest_count)),
                         status=BreakfastStatus.PENDING.value,
-                        note=note,
+                        note=preserved.get("note") or note,
                         diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
                         diet_no_milk=bool(preserved.get("diet_no_milk", False)),
                         diet_no_pork=bool(preserved.get("diet_no_pork", False)),

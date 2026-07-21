@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     BreakfastDailySummary,
+    BreakfastDailyOverview,
     BreakfastImportItem,
     BreakfastImportResponse,
     BreakfastManualRefreshJobRead,
@@ -45,6 +46,7 @@ from app.services.breakfast.manual_refresh import (
     start_manual_breakfast_refresh,
 )
 from app.services.breakfast.parser import parse_breakfast_pdf
+from app.services.breakfast.sync import sync_breakfast_range
 from app.services.pdf.breakfast import build_breakfast_schedule_pdf
 from app.time_utils import utc_now
 
@@ -132,6 +134,38 @@ def _today_prague() -> date:
     return utc_now().astimezone(ZoneInfo("Europe/Prague")).date()
 
 
+def _prague_now() -> datetime:
+    return utc_now().astimezone(ZoneInfo("Europe/Prague"))
+
+
+def _should_refresh_before_display(service_date: date, now_local: datetime) -> bool:
+    return service_date == now_local.date() and now_local.time() < time(6, 0)
+
+
+def _can_mark_served(actor_role: str, service_date: date, now_local: datetime) -> bool:
+    if actor_role == "admin":
+        return True
+    return (
+        actor_role in {"recepce", "snídaně"}
+        and service_date == now_local.date()
+        and time(5, 0) <= now_local.time() <= time(11, 0)
+    )
+
+
+def _refresh_before_display_if_needed(db: Session, service_date: date) -> None:
+    now_local = _prague_now()
+    if not _should_refresh_before_display(service_date, now_local):
+        return
+    sync_breakfast_range(
+        db,
+        settings=get_settings(),
+        range_start=service_date,
+        range_end=service_date,
+        trigger="display_before_0600",
+        note="Automatická synchronizace Better Hotel API",
+    )
+
+
 def _read_manual_refresh_job(job: BreakfastManualRefreshJob) -> BreakfastManualRefreshJobRead:
     progress: list[BreakfastManualRefreshProgressItem] = []
     if job.progress_json:
@@ -174,6 +208,8 @@ def list_breakfast_orders(
     status_filter: BreakfastStatus | None = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
 ) -> list[BreakfastOrder]:
+    if service_date:
+        _refresh_before_display_if_needed(db, service_date)
     query = select(BreakfastOrder).order_by(
         BreakfastOrder.service_date.desc(), BreakfastOrder.id.desc()
     )
@@ -206,6 +242,30 @@ def get_daily_summary(
         )
     )
     return _build_daily_summary(service_date, orders, source_imported_at=source_imported_at)
+
+
+@router.get("/daily-overview", response_model=BreakfastDailyOverview)
+def get_daily_overview(
+    service_date: date = Query(...),
+    db: Session = Depends(get_db),
+) -> BreakfastDailyOverview:
+    _refresh_before_display_if_needed(db, service_date)
+    orders = _visible_breakfast_orders(list(
+        db.scalars(
+            select(BreakfastOrder)
+            .where(BreakfastOrder.service_date == service_date)
+            .order_by(BreakfastOrder.id.desc())
+        )
+    ))
+    source_imported_at = db.scalar(
+        select(func.max(BreakfastImportProcessedAttachment.imported_at)).where(
+            BreakfastImportProcessedAttachment.parsed_day == service_date
+        )
+    )
+    return BreakfastDailyOverview(
+        orders=orders,
+        summary=_build_daily_summary(service_date, orders, source_imported_at=source_imported_at),
+    )
 
 
 @router.post("/manual-refresh", response_model=BreakfastManualRefreshJobRead, status_code=status.HTTP_202_ACCEPTED)
@@ -301,14 +361,15 @@ def update_breakfast_order(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Breakfast role can only mark orders as served",
             )
-        if (
-            order.status == BreakfastStatus.SERVED.value
-            and next_status == BreakfastStatus.PENDING.value
-            and not is_manager
-        ):
+        if actor_role != "admin" and next_status != BreakfastStatus.SERVED.value:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Breakfast reactivation requires recepce/admin role",
+                detail="Pouze admin může vracet vydané snídaně zpět.",
+            )
+        if actor_role != "admin" and not _can_mark_served(actor_role, order.service_date, _prague_now()):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Snídani lze vydat jen pro dnešní den mezi 5:00 a 11:00.",
             )
         updates["status"] = next_status
 
@@ -348,10 +409,10 @@ def reactivate_all_breakfast_orders(
     db: Session = Depends(get_db),
 ) -> None:
     actor_role = _actor_role(request)
-    if actor_role not in {"admin", "recepce"}:
+    if actor_role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Breakfast reactivation requires recepce/admin role",
+            detail="Breakfast reactivation requires admin role",
         )
 
     db.query(BreakfastOrder).filter(

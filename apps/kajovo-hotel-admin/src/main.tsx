@@ -70,6 +70,11 @@ type BreakfastPayload = BreakfastOrderCreate & {
 
 type BreakfastSummary = BreakfastDailySummary;
 
+type BreakfastDailyOverview = {
+  orders: BreakfastOrder[];
+  summary: BreakfastSummary;
+};
+
 type BreakfastImportItem = {
   room: number;
   count: number;
@@ -1168,6 +1173,7 @@ function DietToggleButton({ active, label, disabled, onToggle, children }: DietT
       className={`k-diet-toggle${active ? ' k-diet-toggle--active' : ''}`}
       aria-pressed={active}
       aria-label={label}
+      title={label}
       onClick={onToggle}
       disabled={disabled}
     >
@@ -1189,11 +1195,8 @@ function DietIconBase({ children }: { children: React.ReactNode }): JSX.Element 
 function DietIconGluten(): JSX.Element {
   return (
     <DietIconBase>
-      <path d="M12 6v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 8c-2.6 0-3.6 1.3-3.6 2.8 0 1.4 1 2.5 3.6 2.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M12 10.5c2.6 0 3.6 1.1 3.6 2.5 0 1.5-1 2.8-3.6 2.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      <path d="M12 13.1c-2 0-2.8 0.9-2.8 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M12 15.1c2 0 2.8 0.9 2.8 2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M9 18 12 6l3 12M10.4 12h3.2M8.4 15h7.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M12 8.2 9.4 10M12 10.5l3.1 1.8M11.3 13l-3 1.7M12.8 15.4l2.3 1.2" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
     </DietIconBase>
   );
 }
@@ -1201,12 +1204,8 @@ function DietIconGluten(): JSX.Element {
 function DietIconMilk(): JSX.Element {
   return (
     <DietIconBase>
-      <path d="M8 13.5c0-2 1.6-3.5 3.5-3.5h3.6c1.8 0 3.2 1.4 3.2 3.2v1.1c0 1.5-1.2 2.7-2.7 2.7H11c-1.7 0-3-1.3-3-3V13.5z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 11.3 7.8 9.6M16.6 10.8l1.2-1.4" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <circle cx="11.8" cy="13.7" r="0.55" fill="currentColor" />
-      <circle cx="14.6" cy="13.7" r="0.55" fill="currentColor" />
-      <path d="M12 16.2c.8.5 1.6.5 2.4 0" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-      <path d="M10.1 16.4v1.8M16.1 16.4v1.8" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M9.5 7.2h5l-.5 2.2v7.4H10V9.4l-.5-2.2Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M10 12.5c1.2-.6 2.7-.6 4 0" fill="none" stroke="currentColor" strokeWidth="1.1" />
     </DietIconBase>
   );
 }
@@ -1214,14 +1213,9 @@ function DietIconMilk(): JSX.Element {
 function DietIconPork(): JSX.Element {
   return (
     <DietIconBase>
-      <ellipse cx="12" cy="13" rx="4.6" ry="3.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <ellipse cx="12" cy="13.3" rx="1.9" ry="1.4" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="11.2" cy="13.3" r="0.3" fill="currentColor" />
-      <circle cx="12.8" cy="13.3" r="0.3" fill="currentColor" />
-      <circle cx="10.3" cy="11.7" r="0.45" fill="currentColor" />
-      <circle cx="13.7" cy="11.7" r="0.45" fill="currentColor" />
-      <path d="M9 9.6 7.7 8.2l.7-1.3 1.8 1" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-      <path d="M15 9.6 16.3 8.2l-.7-1.3-1.8 1" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      <path d="M7.5 12.5c0-2.4 2.1-4.1 5.2-4.1 3 0 4.8 1.6 4.8 4.2v1.8c0 1.3-1 2.4-2.4 2.4H10c-1.4 0-2.5-1.1-2.5-2.5v-1.8Z" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M8.6 10 7.4 8.4M10.4 16.6v1.2M15.1 16.6v1.2M17.4 11.6c1.1-.1 1.6-.7 1-1.5-.3-.4-.8-.2-.8.2" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="9.6" cy="11.8" r=".45" fill="currentColor" />
     </DietIconBase>
   );
 }
@@ -1344,12 +1338,15 @@ function BreakfastList(): JSX.Element {
   const isBreakfast = isAdmin || actorRole === breakfastRole || roles.includes(breakfastRole);
   const isServingView = actorRole === breakfastRole && !isRecepce && !isAdmin;
   const canImport = isRecepce || isAdmin;
-  const canReactivate = isRecepce || isAdmin;
+  const canReactivate = isAdmin;
   const canEditDiet = isRecepce || isAdmin;
-  const canServe = isBreakfast;
-  const canClearDay = isAdmin;
+  const canEditNote = isRecepce || isAdmin;
+  const today = currentDateForTimeZone();
+  const now = new Date();
+  const minutesNow = now.getHours() * 60 + now.getMinutes();
 
   const [serviceDate, setServiceDate] = React.useState(() => toLocalDateInputValue());
+  const canServe = isAdmin || (isBreakfast && serviceDate === today && minutesNow >= 300 && minutesNow <= 660);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -1363,16 +1360,11 @@ function BreakfastList(): JSX.Element {
   const [drafts, setDrafts] = React.useState<Record<number, Partial<BreakfastPayload>>>({});
   const [saveBusy, setSaveBusy] = React.useState(false);
   const [saveInfo, setSaveInfo] = React.useState<string | null>(null);
-  const [rangeDeleteFrom, setRangeDeleteFrom] = React.useState(serviceDate);
-  const [rangeDeleteTo, setRangeDeleteTo] = React.useState(serviceDate);
 
   const loadDay = React.useCallback((targetDate: string) => {
     let active = true;
-    Promise.all([
-      fetchJson<BreakfastOrder[]>(`/api/v1/breakfast?service_date=${targetDate}`),
-      fetchJson<BreakfastSummary>(`/api/v1/breakfast/daily-summary?service_date=${targetDate}`),
-    ])
-      .then(([orders, dailySummary]) => {
+    fetchJson<BreakfastDailyOverview>(`/api/v1/breakfast/daily-overview?service_date=${targetDate}`)
+      .then(({ orders, summary: dailySummary }) => {
         if (!active) {
           return;
         }
@@ -1413,6 +1405,7 @@ function BreakfastList(): JSX.Element {
       diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
       diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
       diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
+      note: draft.note ?? order.note,
       };
     }, [drafts]);
 
@@ -1436,22 +1429,23 @@ function BreakfastList(): JSX.Element {
   });
 
   const updateOrder = async (order: BreakfastOrder, updates: Partial<BreakfastPayload>): Promise<void> => {
-    const payload: BreakfastPayload = {
+    const payload: Partial<BreakfastPayload> = {
       service_date: order.service_date,
       room_number: order.room_number,
       guest_name: order.guest_name,
       guest_count: order.guest_count,
       status: updates.status ?? order.status,
-      note: order.note ?? null,
+      note: updates.note ?? order.note ?? null,
       diet_no_gluten: updates.diet_no_gluten ?? order.diet_no_gluten ?? false,
       diet_no_milk: updates.diet_no_milk ?? order.diet_no_milk ?? false,
       diet_no_pork: updates.diet_no_pork ?? order.diet_no_pork ?? false,
     };
 
+    const requestPayload = isServingView ? { status: updates.status } : payload;
     const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(requestPayload),
     });
     setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
   };
@@ -1468,12 +1462,14 @@ function BreakfastList(): JSX.Element {
         diet_no_gluten: nextDraft.diet_no_gluten ?? order.diet_no_gluten ?? false,
         diet_no_milk: nextDraft.diet_no_milk ?? order.diet_no_milk ?? false,
         diet_no_pork: nextDraft.diet_no_pork ?? order.diet_no_pork ?? false,
+        note: nextDraft.note ?? order.note ?? null,
       };
       if (
         effective.status === order.status &&
         effective.diet_no_gluten === (order.diet_no_gluten ?? false) &&
         effective.diet_no_milk === (order.diet_no_milk ?? false) &&
-        effective.diet_no_pork === (order.diet_no_pork ?? false)
+        effective.diet_no_pork === (order.diet_no_pork ?? false) &&
+        effective.note === (order.note ?? null)
       ) {
         const cleaned = { ...prev };
         delete cleaned[order.id];
@@ -1548,52 +1544,6 @@ function BreakfastList(): JSX.Element {
     loadDay(serviceDate);
   };
 
-  const clearDay = async (): Promise<void> => {
-    if (!canClearDay) {
-      return;
-    }
-    const confirmed = window.confirm(`Opravdu chcete smazat všechny snídaně pro den ${serviceDate}? Operaci nelze vrátit.`);
-    if (!confirmed) return;
-    const csrf = readCsrfToken();
-    await fetchJson<void>(`/api/v1/breakfast/day/delete?service_date=${serviceDate}`, {
-      method: 'DELETE',
-      headers: csrf ? { 'x-csrf-token': csrf } : undefined,
-    });
-    setItems([]);
-    setSummary({
-      service_date: serviceDate,
-      total_orders: 0,
-      total_guests: 0,
-      status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 },
-    });
-  };
-
-  const clearPeriod = async (): Promise<void> => {
-    if (!isAdmin) {
-      return;
-    }
-    const confirmed = window.confirm(`Opravdu chcete smazat snídaně v období ${rangeDeleteFrom} až ${rangeDeleteTo}? Operaci nelze vrátit.`);
-    if (!confirmed) return;
-    const csrf = readCsrfToken();
-    await fetchJson<void>(`/api/v1/breakfast/period/delete?date_from=${encodeURIComponent(rangeDeleteFrom)}&date_to=${encodeURIComponent(rangeDeleteTo)}`, {
-      method: 'DELETE',
-      headers: csrf ? { 'x-csrf-token': csrf } : undefined,
-    });
-    setSaveInfo(`Smazáno období ${rangeDeleteFrom} až ${rangeDeleteTo}.`);
-    if (serviceDate >= rangeDeleteFrom && serviceDate <= rangeDeleteTo) {
-      setItems([]);
-      setSummary({
-        service_date: serviceDate,
-        total_orders: 0,
-        total_guests: 0,
-        status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 },
-      });
-      setDrafts({});
-      return;
-    }
-    loadDay(serviceDate);
-  };
-
   const renderDietToggles = (
     data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean },
     onToggle: (key: DietKey) => void,
@@ -1611,6 +1561,15 @@ function BreakfastList(): JSX.Element {
       </DietToggleButton>
     </div>
   );
+
+  const renderActiveDiets = (data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean }): JSX.Element | null => {
+    const active = [
+      data.diet_no_gluten ? <span key="gluten" className="k-diet-icon k-diet-icon--active" title="Bezlepková strava"><DietIconGluten /></span> : null,
+      data.diet_no_milk ? <span key="milk" className="k-diet-icon k-diet-icon--active" title="Bezlaktozová strava"><DietIconMilk /></span> : null,
+      data.diet_no_pork ? <span key="pork" className="k-diet-icon k-diet-icon--active" title="Strava bez vepřového masa"><DietIconPork /></span> : null,
+    ].filter(Boolean);
+    return active.length ? <span className="k-diet-toggle-group">{active}</span> : null;
+  };
 
   const previewImport = async (file: File): Promise<void> => {
     setImportBusy(true);
@@ -1731,21 +1690,21 @@ function BreakfastList(): JSX.Element {
     </div>
   ) : null;
 
-  const breakfastToolbar = isServingView ? (
+  const changeServiceDate = (offset: number): void => {
+    const value = new Date(`${serviceDate}T12:00:00`);
+    value.setDate(value.getDate() + offset);
+    setServiceDate(toLocalDateInputValue(value));
+  };
+
+  const breakfastToolbar = (
     <div className="k-toolbar">
-      <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
-    </div>
-  ) : (
-    <div className="k-toolbar">
-      <input className="k-input" type="date" value={serviceDate} aria-label="Datum" onChange={(event) => setServiceDate(event.target.value)} />
-      <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} />
-      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label="Import PDF" onChange={(event) => {
-        handleImportFile(event.target.files?.[0] ?? null);
-        event.currentTarget.value = '';
-      }} /> : null}
-      {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
-      {canReactivate ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
-      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
+      <button className="k-button secondary" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
+      <button className="k-button secondary" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
+      <label className="k-date-picker-button" title="Vybrat datum">
+        <span aria-hidden="true">▣</span>
+        <input className="k-date-picker-button__input" type="date" value={serviceDate} aria-label="Vybrat datum" onChange={(event) => setServiceDate(event.target.value)} />
+      </label>
+      {!isServingView ? <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} /> : null}
       {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
     </div>
   );
@@ -1772,22 +1731,12 @@ function BreakfastList(): JSX.Element {
             </h2>
           </div>
           {breakfastToolbar}
-          {isAdmin ? (
-            <div className="k-toolbar">
-              <input className="k-input" type="date" aria-label="Smazat období od" value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
-              <input className="k-input" type="date" aria-label="Smazat období do" value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
-              <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
-            </div>
-          ) : null}
-          {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
-          {canImport && (importError || importInfo) ? <p className={importError ? 'k-text-error' : 'k-text-success'}>{importError ?? importInfo}</p> : null}
           {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
-          {importPreviewTable}
           {listItems.length === 0 ? (
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
             <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Stav', 'Akce']}
+              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Stav', 'Akce']}
               rows={listItems.map((item) => {
                 const effectiveItem = mergeOrderWithDraft(item);
                 const isDirty = Boolean(drafts[item.id]);
@@ -1805,7 +1754,8 @@ function BreakfastList(): JSX.Element {
                     <span className={rowClass}>{effectiveItem.room_number}</span>,
                     <span className={rowClass}>{effectiveItem.guest_count}</span>,
                     <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
-                    <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), true)}</span>,
+                    <span className={rowClass}>{renderActiveDiets(effectiveItem)}</span>,
+                    <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                     action,
                   ];
                 }
@@ -1815,6 +1765,7 @@ function BreakfastList(): JSX.Element {
                   <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                   <span className={rowClass}>{effectiveItem.guest_count}</span>,
                   <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
+                  canEditNote ? <input className="k-input k-breakfast-note" aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                   <span className={rowClass}>{breakfastStatusLabel(effectiveItem.status)}{isDirty ? ' *' : ''}</span>,
                   action,
                 ];

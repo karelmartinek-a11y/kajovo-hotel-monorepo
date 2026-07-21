@@ -100,6 +100,11 @@ class BreakfastDailySummary(BaseModel):
     source_imported_at: datetime | None = None
 
 
+class BreakfastDailyOverview(BaseModel):
+    orders: list[BreakfastOrderRead]
+    summary: BreakfastDailySummary
+
+
 class BreakfastImportItem(BaseModel):
     room: int
     count: int
