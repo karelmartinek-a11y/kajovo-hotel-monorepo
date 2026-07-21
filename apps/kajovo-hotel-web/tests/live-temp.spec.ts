@@ -214,6 +214,46 @@ async function expectNoViewportOverflow(page: Page): Promise<void> {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
+async function expectCompactBreakfastPhoneLayout(page: Page, roomNumber: string, note: string): Promise<void> {
+  const header = page.getByTestId('breakfast-serving-mobile-header');
+  await expect(header).toBeVisible();
+  await expect(page.getByTestId('breakfast-serving-mobile-list')).toBeVisible();
+  await expect(page.locator('.k-breakfast-serving-page > .k-table-wrap')).toBeHidden();
+  await expect(page.locator('.k-breakfast-serving-page > .k-toolbar')).toBeHidden();
+  await expect(page.locator('.k-breakfast-serving-page > .k-breakfast-overview-date')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Předchozí den' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Následující den' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Vybrat datum' })).toBeVisible();
+
+  const mobileRow = page.getByTestId('breakfast-serving-mobile-row').filter({ hasText: roomNumber });
+  await expect(mobileRow).toBeVisible();
+  await expect(mobileRow.locator('.k-breakfast-serving-row__main')).toBeVisible();
+  await expect(mobileRow.getByText(note, { exact: true })).toBeVisible();
+  await expect(mobileRow.locator('button.k-diet-toggle')).toHaveCount(0);
+
+  const metrics = await header.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const styles = window.getComputedStyle(element);
+    return {
+      position: styles.position,
+      height: rect.height,
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    };
+  });
+  expect(metrics.position).toBe('sticky');
+  expect(metrics.height).toBeLessThanOrEqual(metrics.viewportHeight * 0.15);
+
+  const rowWidth = await mobileRow.locator('.k-breakfast-serving-row__main').evaluate((element) => element.getBoundingClientRect().width);
+  expect(rowWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+  await expectNoViewportOverflow(page);
+
+  const topBefore = await header.evaluate((element) => Math.round(element.getBoundingClientRect().top));
+  await page.mouse.wheel(0, 500);
+  const topAfter = await header.evaluate((element) => Math.round(element.getBoundingClientRect().top));
+  expect(Math.abs(topAfter - topBefore)).toBeLessThanOrEqual(1);
+}
+
 async function collectNavRoutes(page: Page, testId: string): Promise<string[]> {
   const locator = page.getByTestId(testId);
   if (!(await locator.isVisible())) {
@@ -307,15 +347,19 @@ test.describe('live temp production verification', () => {
       await loginPortalWithCredentials(page, breakfastUser.email, breakfastUser.password);
       await page.goto('/snidane', { waitUntil: 'networkidle' });
       await selectBreakfastDate(page, serviceDate);
-      const breakfastRow = page.getByRole('row').filter({ hasText: order.room_number });
-      await expect(breakfastRow).toBeVisible();
-      await expect(breakfastRow.getByTitle('Bezlepková strava')).toBeVisible();
-      await expect(breakfastRow.getByTitle('Bezlaktozová strava')).toBeVisible();
-      await expect(breakfastRow.getByTitle('Strava bez vepřového masa')).toBeVisible();
-      await expect(breakfastRow.getByText(`${forensicNote} · recepce`, { exact: true })).toBeVisible();
-      await expect(breakfastRow.locator('button.k-diet-toggle')).toHaveCount(0);
-      await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
-      await expectNoViewportOverflow(page);
+      if (testInfo.project.name === 'phone') {
+        await expectCompactBreakfastPhoneLayout(page, order.room_number, `${forensicNote} · recepce`);
+      } else {
+        const breakfastRow = page.getByRole('row').filter({ hasText: order.room_number });
+        await expect(breakfastRow).toBeVisible();
+        await expect(breakfastRow.getByTitle('Bezlepková strava')).toBeVisible();
+        await expect(breakfastRow.getByTitle('Bezlaktozová strava')).toBeVisible();
+        await expect(breakfastRow.getByTitle('Strava bez vepřového masa')).toBeVisible();
+        await expect(breakfastRow.getByText(`${forensicNote} · recepce`, { exact: true })).toBeVisible();
+        await expect(breakfastRow.locator('button.k-diet-toggle')).toHaveCount(0);
+        await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
+        await expectNoViewportOverflow(page);
+      }
       await page.screenshot({ path: testInfo.outputPath(`breakfast-user-${testInfo.project.name}.png`), fullPage: true });
     } finally {
       await request.post('/api/auth/admin/login', { data: { email: adminEmail, password: adminPassword } });

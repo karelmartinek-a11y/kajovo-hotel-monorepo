@@ -471,6 +471,16 @@ function formatBreakfastHeadlineDate(value: string): string {
     timeZone: 'UTC',
   }).format(new Date(Date.UTC(year, month - 1, day)));
 }
+
+function shiftDateInputValue(value: string, offsetDays: number): string {
+  const parsed = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  parsed.setDate(parsed.getDate() + offsetDays);
+  return currentDateForTimeZone(parsed, 'Europe/Prague');
+}
+
 function readCsrfToken(): string {
   return document.cookie
     .split('; ')
@@ -1420,9 +1430,37 @@ function BreakfastList(): JSX.Element {
     </div>
   ) : null;
 
+  const changeServiceDate = (offset: number): void => {
+    setServiceDate((value) => shiftDateInputValue(value, offset));
+  };
+
+  const listItems = isServingView ? visibleItems : filteredItems;
+  const breakfastImportStamp = summary?.source_imported_at
+    ? formatShortDateTime(summary.source_imported_at)
+    : 'nenalezeno';
+  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
+
+  const servingMobileHeader = isServingView ? (
+    <div className="k-breakfast-serving-header" data-testid="breakfast-serving-mobile-header">
+      <a className="k-breakfast-serving-header__brand" href="/" data-brand-element="true" aria-label="Kájovo Hotel">
+        <img src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg" alt="Kájovo Hotel" />
+      </a>
+      <div className="k-breakfast-serving-header__date">
+        <DatePickerButton value={serviceDate} label="Vybrat datum" onChange={setServiceDate} />
+        <span className="k-breakfast-serving-header__date-text">{formatBreakfastHeadlineDate(breakfastSummaryDate)}</span>
+      </div>
+      <div className="k-breakfast-serving-header__nav" aria-label="Posun dne snídaní">
+        <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
+        <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
+      </div>
+    </div>
+  ) : null;
+
   const breakfastToolbar = isServingView ? (
     <div className="k-toolbar">
+      <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
       <DatePickerButton value={serviceDate} label="Vybrat datum" onChange={setServiceDate} />
+      <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
       {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
     </div>
   ) : (
@@ -1441,11 +1479,6 @@ function BreakfastList(): JSX.Element {
     </div>
   );
 
-  const listItems = isServingView ? visibleItems : filteredItems;
-  const breakfastImportStamp = summary?.source_imported_at
-    ? formatShortDateTime(summary.source_imported_at)
-    : 'nenalezeno';
-  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
   const manualRefreshProgress = manualRefreshJob?.progress ?? [];
   const manualRefreshTitle = manualRefreshJob
     ? manualRefreshJob.status === 'succeeded'
@@ -1455,8 +1488,40 @@ function BreakfastList(): JSX.Element {
         : 'Aktualizace probíhá'
     : 'Aktualizace snídaní';
 
+  const compactServingList = isServingView ? (
+    <div className="k-breakfast-serving-list" data-testid="breakfast-serving-mobile-list">
+      {listItems.map((item) => {
+        const effectiveItem = mergeOrderWithDraft(item);
+        const isServed = effectiveItem.status === 'served';
+        const note = effectiveItem.note?.trim();
+        return (
+          <article
+            key={item.id}
+            className={`k-breakfast-serving-row${isServed ? ' k-breakfast-serving-row--served' : ''}`}
+            data-testid="breakfast-serving-mobile-row"
+            data-room-number={effectiveItem.room_number}
+          >
+            <div className="k-breakfast-serving-row__main">
+              <strong className="k-breakfast-serving-row__room">{effectiveItem.room_number}</strong>
+              <span className="k-breakfast-serving-row__guest">{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>
+              <span className="k-breakfast-serving-row__count" aria-label={`${effectiveItem.guest_count} osob`}>{effectiveItem.guest_count}</span>
+              <span className="k-breakfast-serving-row__diets">{renderActiveDiets(effectiveItem)}</span>
+              <span className="k-breakfast-serving-row__action">{isServed
+                ? <span className="k-text-muted">Vydáno</span>
+                : canServe
+                  ? <button className="k-button" type="button" onClick={() => markServed(item)}>Vydáno</button>
+                  : <span className="k-text-muted">-</span>}</span>
+            </div>
+            {note ? <p className="k-breakfast-serving-row__note">{note}</p> : null}
+          </article>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
-    <main className="k-page" data-testid="breakfast-list-page">
+    <main className={`k-page${isServingView ? ' k-breakfast-serving-page' : ''}`} data-testid="breakfast-list-page">
+      {servingMobileHeader}
       <h1>Snídaně</h1>
       {error ? (
         <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
@@ -1483,42 +1548,45 @@ function BreakfastList(): JSX.Element {
           {listItems.length === 0 ? (
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
-            <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Stav', 'Akce']}
-              rows={listItems.map((item) => {
-                const effectiveItem = mergeOrderWithDraft(item);
-                const isDirty = Boolean(drafts[item.id]);
-                const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
-                const action = effectiveItem.status === 'served'
-                  ? canReactivate
-                    ? <button className="k-button secondary" type="button" onClick={() => reactivate(item)}>Vrátit</button>
-                    : <span className="k-text-muted">Vydáno</span>
-                  : canServe
-                    ? <button className="k-button" type="button" onClick={() => markServed(item)}>Vydáno</button>
-                    : <span className="k-text-muted">-</span>;
+            <>
+              {compactServingList}
+              <DataTable
+                headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Stav', 'Akce']}
+                rows={listItems.map((item) => {
+                  const effectiveItem = mergeOrderWithDraft(item);
+                  const isDirty = Boolean(drafts[item.id]);
+                  const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
+                  const action = effectiveItem.status === 'served'
+                    ? canReactivate
+                      ? <button className="k-button secondary" type="button" onClick={() => reactivate(item)}>Vrátit</button>
+                      : <span className="k-text-muted">Vydáno</span>
+                    : canServe
+                      ? <button className="k-button" type="button" onClick={() => markServed(item)}>Vydáno</button>
+                      : <span className="k-text-muted">-</span>;
 
-                if (isServingView) {
+                  if (isServingView) {
+                    return [
+                      <span className={rowClass}>{effectiveItem.room_number}</span>,
+                      <span className={rowClass}>{effectiveItem.guest_count}</span>,
+                      <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
+                      <span className={rowClass}>{renderActiveDiets(effectiveItem)}</span>,
+                      <span className={rowClass}>{effectiveItem.note || '-'}</span>,
+                      action,
+                    ];
+                  }
+
                   return [
                     <span className={rowClass}>{effectiveItem.room_number}</span>,
+                    <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                     <span className={rowClass}>{effectiveItem.guest_count}</span>,
-                    <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
-                    <span className={rowClass}>{renderActiveDiets(effectiveItem)}</span>,
-                    <span className={rowClass}>{effectiveItem.note || '-'}</span>,
+                    <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
+                    canEditNote ? <input className="k-input k-breakfast-note" aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => saveOrderUpdates(item, { note: event.currentTarget.value.trim() || null })} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
+                    <span className={rowClass}>{breakfastStatusLabel(effectiveItem.status)}{isDirty ? ' *' : ''}</span>,
                     action,
                   ];
-                }
-
-                return [
-                  <span className={rowClass}>{effectiveItem.room_number}</span>,
-                  <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
-                  <span className={rowClass}>{effectiveItem.guest_count}</span>,
-                  <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
-                  canEditNote ? <input className="k-input k-breakfast-note" aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => saveOrderUpdates(item, { note: event.currentTarget.value.trim() || null })} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
-                  <span className={rowClass}>{breakfastStatusLabel(effectiveItem.status)}{isDirty ? ' *' : ''}</span>,
-                  action,
-                ];
-              })}
-            />
+                })}
+              />
+            </>
           )}
           <div className="k-grid cards-3">
             <Card title="Snídaní celkem"><strong>{overviewStats.totalBreakfasts}</strong></Card>
