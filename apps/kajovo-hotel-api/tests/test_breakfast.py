@@ -5,15 +5,16 @@ import urllib.request
 import uuid
 from collections.abc import Callable
 from datetime import date, datetime
-from zoneinfo import ZoneInfo
 from http.cookiejar import CookieJar
 from pathlib import Path
 from time import sleep
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from app.api.routes.breakfast import _can_mark_served, _should_refresh_before_display
 from app.db.models import (
     Base,
     BreakfastImportProcessedAttachment,
@@ -22,7 +23,6 @@ from app.db.models import (
     BreakfastOrder,
 )
 from app.services.breakfast import manual_refresh as manual_refresh_service
-from app.api.routes.breakfast import _can_mark_served, _should_refresh_before_display
 from app.services.breakfast.parser import parse_breakfast_pdf, parse_breakfast_text
 from app.time_utils import utc_now
 
