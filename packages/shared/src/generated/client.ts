@@ -597,8 +597,6 @@ export type UserPasswordResetLinkResponse = {
   "send_attempted": boolean;
 };
 export type ValidationError = {
-  "ctx"?: Record<string, unknown>;
-  "input"?: unknown;
   "loc": Array<string | number>;
   "msg": string;
   "type": string;
