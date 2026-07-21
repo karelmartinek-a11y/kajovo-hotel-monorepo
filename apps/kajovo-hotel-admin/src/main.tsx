@@ -1221,7 +1221,7 @@ function DatePickerButton({
   return (
     <span className="k-date-picker-button">
       <button className="k-button secondary k-date-picker-button__trigger" type="button" aria-label={label} title={label} onClick={openPicker}>Vybrat datum</button>
-      <input ref={inputRef} className="k-date-picker-button__input" tabIndex={-1} type="date" value={value} aria-label={label} onChange={(event) => onChange(event.target.value)} />
+      <input ref={inputRef} className="k-date-picker-button__input" tabIndex={-1} type="date" value={value} aria-hidden="true" onChange={(event) => onChange(event.target.value)} />
     </span>
   );
 }

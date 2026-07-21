@@ -198,8 +198,14 @@ async function deleteTempBreakfastOrder(request: APIRequestContext, orderId: num
 }
 
 async function selectBreakfastDate(page: Page, serviceDate: string): Promise<void> {
-  const picker = page.getByLabel(/vybrat datum|^datum$/i).first();
-  await picker.fill(serviceDate);
+  const nativePicker = page.locator('.k-date-picker-button__input').first();
+  await nativePicker.evaluate((element, value) => {
+    const input = element as HTMLInputElement;
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    valueSetter?.call(input, value as string);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, serviceDate);
   await page.waitForLoadState('networkidle');
 }
 
@@ -268,7 +274,7 @@ test.describe('live temp production verification', () => {
       await expect(page.getByText(order.room_number, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Předchozí den' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Následující den' })).toBeVisible();
-      await expect(page.getByLabel('Vybrat datum')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Vybrat datum' })).toBeVisible();
       await expect(page.getByLabel(/import pdf/i)).toHaveCount(0);
       await expect(page.getByRole('button', { name: /export snídaní|smazat den|aktualizovat z api/i })).toHaveCount(0);
       const adminRow = page.getByRole('row').filter({ hasText: order.room_number });
