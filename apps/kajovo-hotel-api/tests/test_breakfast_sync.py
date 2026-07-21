@@ -1,7 +1,17 @@
 from datetime import date
 
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
+
 from app.config import Settings
-from app.services.breakfast.sync import BetterHotelBreakfastClient, parse_breakfast_food_codes
+from app.db.models import Base, BreakfastOrder
+from app.services.breakfast import sync as breakfast_sync_service
+from app.services.breakfast.sync import (
+    BetterHotelBreakfastAggregate,
+    BetterHotelBreakfastClient,
+    parse_breakfast_food_codes,
+    sync_breakfast_range,
+)
 
 
 def test_better_hotel_sync_maps_food_flags_to_breakfast_days(monkeypatch) -> None:
@@ -69,3 +79,82 @@ def test_breakfast_sync_admin_endpoint_and_removed_mailbox(api_request) -> None:
 def test_parse_breakfast_food_codes_always_includes_half_and_full_board() -> None:
     assert parse_breakfast_food_codes("1") == {1, 2, 3}
     assert parse_breakfast_food_codes("5") == {1, 2, 3, 5}
+
+
+def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
+    tmp_path, monkeypatch
+) -> None:
+    target_day = date(2026, 7, 24)
+    engine = create_engine(f"sqlite:///{tmp_path / 'breakfast-sync-notes.db'}")
+    Base.metadata.create_all(bind=engine)
+    session_local = sessionmaker(bind=engine)
+
+    with session_local() as db:
+        db.add(
+            BreakfastOrder(
+                service_date=target_day,
+                room_number="101",
+                guest_name="Puvodni host",
+                guest_count=1,
+                status="pending",
+                note="Rucni poznamka recepce",
+                diet_no_gluten=True,
+                diet_no_milk=False,
+                diet_no_pork=True,
+            )
+        )
+        db.commit()
+
+    class FakeBetterHotelBreakfastClient:
+        def __init__(self, settings):
+            self.settings = settings
+
+        def build_aggregates(self, *, service_start: date, service_end: date):
+            assert service_start == target_day
+            assert service_end == target_day
+            return (
+                [
+                    BetterHotelBreakfastAggregate(
+                        service_date=target_day,
+                        room_number="101",
+                        guest_count=2,
+                        guest_name="Novy host",
+                    ),
+                    BetterHotelBreakfastAggregate(
+                        service_date=target_day,
+                        room_number="102",
+                        guest_count=1,
+                        guest_name="Bez poznamky",
+                    ),
+                ],
+                2,
+                "source-hash",
+            )
+
+    monkeypatch.setattr(breakfast_sync_service, "BetterHotelBreakfastClient", FakeBetterHotelBreakfastClient)
+    monkeypatch.setattr(breakfast_sync_service, "prague_today", lambda: target_day)
+
+    with session_local() as db:
+        result = sync_breakfast_range(
+            db,
+            settings=Settings(_env_file=None),
+            range_start=target_day,
+            range_end=target_day,
+            trigger="test",
+            note="Automaticka synchronizace Better Hotel API",
+        )
+
+    assert result.imported_rows == 2
+    with session_local() as db:
+        rows = db.scalars(
+            select(BreakfastOrder)
+            .where(BreakfastOrder.service_date == target_day)
+            .order_by(BreakfastOrder.room_number.asc())
+        ).all()
+
+    assert [(row.room_number, row.note) for row in rows] == [
+        ("101", "Rucni poznamka recepce"),
+        ("102", None),
+    ]
+    assert rows[0].diet_no_gluten is True
+    assert rows[0].diet_no_pork is True

@@ -273,10 +273,11 @@ test.describe('live temp production verification', () => {
       await expect(page.getByRole('button', { name: /export snídaní|smazat den|aktualizovat z api/i })).toHaveCount(0);
       const adminRow = page.getByRole('row').filter({ hasText: order.room_number });
       await adminRow.getByRole('button', { name: 'Bez lepku' }).click();
+      await expect(adminRow.getByRole('button', { name: 'Bez lepku' })).toHaveAttribute('aria-pressed', 'true');
       await adminRow.getByRole('button', { name: 'Bez mléka' }).click();
+      await expect(adminRow.getByRole('button', { name: 'Bez mléka' })).toHaveAttribute('aria-pressed', 'true');
       await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(forensicNote);
-      await page.getByRole('button', { name: 'Uložit změny' }).click();
-      await expect(page.getByText(/uloženo 1 změn/i)).toBeVisible();
+      await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).blur();
       await expect(adminRow.getByRole('button', { name: 'Vydáno' })).toBeVisible();
       await expectNoViewportOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`breakfast-admin-${testInfo.project.name}.png`), fullPage: true });
@@ -289,9 +290,9 @@ test.describe('live temp production verification', () => {
       await expect(receptionRow).toBeVisible();
       await expect(receptionRow.getByRole('button', { name: 'Bez lepku' })).toHaveAttribute('aria-pressed', 'true');
       await receptionRow.getByRole('button', { name: 'Bez vepřového' }).click();
+      await expect(receptionRow.getByRole('button', { name: 'Bez vepřového' })).toHaveAttribute('aria-pressed', 'true');
       await receptionRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(`${forensicNote} · recepce`);
-      await page.getByRole('button', { name: 'Uložit změny' }).click();
-      await expect(page.getByText(/uloženo 1 změn/i)).toBeVisible();
+      await receptionRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).blur();
       await expect(receptionRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
       await expectNoViewportOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`breakfast-reception-${testInfo.project.name}.png`), fullPage: true });

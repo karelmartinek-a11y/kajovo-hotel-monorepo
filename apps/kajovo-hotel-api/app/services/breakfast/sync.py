@@ -350,7 +350,7 @@ def sync_breakfast_range(
     range_start: date,
     range_end: date,
     trigger: str,
-    note: str,
+    note: str | None = None,
     progress: Callable[[str, str], None] | None = None,
 ) -> BetterHotelSyncResult:
     if range_end < range_start:
@@ -425,9 +425,12 @@ def sync_breakfast_range(
             if target_day > today_local and existing_rows:
                 replaced_future_count += 1
 
+            for existing_row in existing_rows:
+                db.expunge(existing_row)
             db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
                 synchronize_session=False
             )
+            db.flush()
 
             day_rows = rows_by_day.get(target_day, [])
             if day_rows:
@@ -441,7 +444,7 @@ def sync_breakfast_range(
                         guest_name=row.guest_name or f"Pokoj {row.room_number}",
                         guest_count=max(1, int(row.guest_count)),
                         status=BreakfastStatus.PENDING.value,
-                        note=preserved.get("note") or note,
+                        note=preserved.get("note") or None,
                         diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
                         diet_no_milk=bool(preserved.get("diet_no_milk", False)),
                         diet_no_pork=bool(preserved.get("diet_no_pork", False)),

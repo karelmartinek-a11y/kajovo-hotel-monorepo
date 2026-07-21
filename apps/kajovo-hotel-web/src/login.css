@@ -486,32 +486,70 @@
 
 .k-diet-toggle,
 .k-diet-icon {
-  color: var(--k-color-success);
+  background: var(--k-color-success);
 }
 
 .k-diet-toggle {
   display: inline-flex;
-  padding: 0.18rem;
-  border: 0;
-  background: transparent;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--k-color-success) 55%, var(--k-color-border));
   border-radius: var(--k-radius-4);
 }
 
-.k-diet-toggle svg,
-.k-diet-icon svg {
+.k-diet-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border-radius: var(--k-radius-4);
+}
+
+.k-diet-pictogram {
   display: block;
   width: 1.75rem;
   height: 1.75rem;
+  border-radius: calc(var(--k-radius-4) - 2px);
+  object-fit: cover;
 }
 
 .k-diet-toggle--active,
 .k-diet-icon--active {
-  color: var(--k-color-error);
+  background: var(--k-color-error);
 }
 
-.k-diet-toggle:focus-visible {
+.k-diet-toggle:focus-visible,
+.k-date-picker-button__trigger:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--k-color-primary) 45%, transparent);
   outline-offset: 2px;
+}
+
+.k-date-picker-button {
+  position: relative;
+  display: inline-flex;
+}
+
+.k-date-picker-button__trigger {
+  min-width: 9rem;
+}
+
+.k-day-arrow-button {
+  min-width: 3.25rem;
+  min-height: 3.25rem;
+  padding: 0;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.k-date-picker-button__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  left: 50%;
+  bottom: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .k-breakfast-note {
