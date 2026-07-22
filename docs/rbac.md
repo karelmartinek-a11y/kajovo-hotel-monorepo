@@ -113,6 +113,7 @@ Samotná module-level permission nestačí na všechny endpointy. Backend má je
 - `breakfast`
   - plánování, mazání, import/export a reaktivace jsou jen pro `admin` nebo `recepce`
   - role `snídaně` smí zapisovat jen omezeně, typicky označit objednávku jako `served`
+  - revokace `served -> pending` je povolená jen pro `recepce` nebo `admin`; backend ji vynucuje i proti přímému API požadavku
 - `inventory`
   - role `sklad` má modulový přístup k seznamům a pohybům skladu
   - create/update/delete položek, detail položky, mazání pohybů, práce s kartami a export inventury jsou omezené na `admin`

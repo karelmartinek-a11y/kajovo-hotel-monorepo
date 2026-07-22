@@ -763,9 +763,9 @@ def test_breakfast_reactivation_rbac(api_base_url: str, api_request: ApiRequest)
         method="PUT",
         payload={"status": "pending"},
     )
-    assert status == 403
+    assert status == 200
     assert isinstance(data, dict)
-    assert data["detail"] == "Pouze admin může vracet vydané snídaně zpět."
+    assert data["status"] == "pending"
 
     status, data = api_request(
         f"/api/v1/breakfast/{created['id']}",

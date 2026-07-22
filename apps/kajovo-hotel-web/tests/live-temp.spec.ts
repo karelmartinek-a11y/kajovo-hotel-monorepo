@@ -228,7 +228,7 @@ async function expectCompactBreakfastPhoneLayout(page: Page, roomNumber: string,
   const mobileRow = page.getByTestId('breakfast-serving-mobile-row').filter({ hasText: roomNumber });
   await expect(mobileRow).toBeVisible();
   await expect(mobileRow.locator('.k-breakfast-serving-row__main')).toBeVisible();
-  await expect(mobileRow.getByText(note, { exact: true })).toBeVisible();
+  await expect(mobileRow.getByDisplayValue(note)).toBeVisible();
   await expect(mobileRow.locator('button.k-diet-toggle')).toHaveCount(0);
 
   const metrics = await header.evaluate((element) => {
@@ -324,12 +324,12 @@ test.describe('live temp production verification', () => {
       await expect(adminRow.getByRole('button', { name: 'Bez mléka' })).toHaveAttribute('aria-pressed', 'true');
       await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(forensicNote);
       await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).blur();
-      await expect(adminRow.getByRole('button', { name: 'Vydáno' })).toBeVisible();
-      await adminRow.getByRole('button', { name: 'Vydáno' }).click();
-      await expect(adminRow.getByText('Vydáno', { exact: true })).toBeVisible();
+      await expect(adminRow.getByRole('button', { name: 'Vydat' })).toBeVisible();
+      await adminRow.getByRole('button', { name: 'Vydat' }).click();
+      await expect(adminRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await page.reload({ waitUntil: 'networkidle' });
       const reloadedAdminRow = page.getByRole('row').filter({ hasText: order.room_number });
-      await expect(reloadedAdminRow.getByText('Vydáno', { exact: true })).toBeVisible();
+      await expect(reloadedAdminRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await expectNoViewportOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`breakfast-admin-${testInfo.project.name}.png`), fullPage: true });
 
@@ -344,7 +344,7 @@ test.describe('live temp production verification', () => {
       await expect(receptionRow.getByRole('button', { name: 'Bez vepřového' })).toHaveAttribute('aria-pressed', 'true');
       await receptionRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(`${forensicNote} · recepce`);
       await receptionRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).blur();
-      await expect(receptionRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
+      await expect(receptionRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await expectNoViewportOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`breakfast-reception-${testInfo.project.name}.png`), fullPage: true });
 
@@ -362,7 +362,8 @@ test.describe('live temp production verification', () => {
         await expect(breakfastRow.getByTitle('Strava bez vepřového masa')).toBeVisible();
         await expect(breakfastRow.getByText(`${forensicNote} · recepce`, { exact: true })).toBeVisible();
         await expect(breakfastRow.locator('button.k-diet-toggle')).toHaveCount(0);
-        await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toHaveCount(0);
+        await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toBeVisible();
+        await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toBeDisabled();
         await expectNoViewportOverflow(page);
       }
       await page.screenshot({ path: testInfo.outputPath(`breakfast-user-${testInfo.project.name}.png`), fullPage: true });

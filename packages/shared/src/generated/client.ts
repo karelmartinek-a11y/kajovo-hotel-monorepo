@@ -150,6 +150,7 @@ export type BreakfastOrderUpdate = {
   "diet_no_gluten"?: boolean | null;
   "diet_no_milk"?: boolean | null;
   "diet_no_pork"?: boolean | null;
+  "expected_updated_at"?: string | null;
   "guest_count"?: number | null;
   "guest_name"?: string | null;
   "note"?: string | null;

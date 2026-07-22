@@ -46,6 +46,7 @@ class BetterHotelSyncError(RuntimeError):
 @dataclass(frozen=True)
 class BetterHotelBreakfastAggregate:
     service_date: date
+    source_key: str
     room_number: str
     guest_count: int
     guest_name: str | None
@@ -167,6 +168,13 @@ def normalize_preserved_breakfast_note(note: str | None) -> str | None:
     if any(normalized.startswith(prefix) for prefix in SYSTEM_SYNC_NOTE_PREFIXES):
         return None
     return normalized
+
+
+def build_breakfast_source_key(*, service_date: date, reservation_ids: set[str]) -> str:
+    normalized_ids = sorted({reservation_id.strip() for reservation_id in reservation_ids if reservation_id.strip()})
+    if not normalized_ids:
+        raise BetterHotelSyncError("Chybí stabilní identita rezervace pro synchronizaci snídaně.")
+    return f"{service_date.isoformat()}|{'|'.join(normalized_ids)}"
 
 
 class BetterHotelBreakfastClient:
@@ -326,15 +334,20 @@ class BetterHotelBreakfastClient:
                 key = (current_day, room_number)
                 current = grouped.setdefault(
                     key,
-                    {"count": 0, "names": []},
+                    {"count": 0, "names": [], "reservation_ids": set()},
                 )
                 current["count"] += breakfast_guest_count
                 current["names"].extend(breakfast_guest_names)
+                current["reservation_ids"].add(reservation_id)
                 current_day += timedelta(days=1)
 
         aggregates = [
             BetterHotelBreakfastAggregate(
                 service_date=service_date,
+                source_key=build_breakfast_source_key(
+                    service_date=service_date,
+                    reservation_ids=set(payload["reservation_ids"]),
+                ),
                 room_number=room_number,
                 guest_count=int(payload["count"]),
                 guest_name="; ".join(dict.fromkeys(str(name).strip() for name in payload["names"] if str(name).strip())) or None,
@@ -347,6 +360,7 @@ class BetterHotelBreakfastClient:
                 [
                     {
                         "service_date": item.service_date.isoformat(),
+                        "source_key": item.source_key,
                         "room_number": item.room_number,
                         "guest_count": item.guest_count,
                         "guest_name": item.guest_name,
@@ -426,32 +440,20 @@ def sync_breakfast_range(
             existing_rows = db.scalars(
                 select(BreakfastOrder).where(BreakfastOrder.service_date == target_day)
             ).all()
-            served_rows = {
-                row.room_number: {
-                    "room_number": row.room_number,
-                    "guest_name": row.guest_name,
-                    "guest_count": row.guest_count,
-                    "note": row.note,
+            preserved_by_source_key: dict[str, dict[str, Any]] = {}
+            preserved_by_legacy_room: dict[str, dict[str, Any]] = {}
+            for row in existing_rows:
+                preserved = {
+                    "status": row.status,
                     "diet_no_gluten": bool(row.diet_no_gluten),
                     "diet_no_milk": bool(row.diet_no_milk),
                     "diet_no_pork": bool(row.diet_no_pork),
+                    "note": normalize_preserved_breakfast_note(row.note),
                 }
-                for row in existing_rows
-                if row.status == BreakfastStatus.SERVED.value
-            }
-            preserved_rows = (
-                {
-                    row.room_number: {
-                        "diet_no_gluten": bool(row.diet_no_gluten),
-                        "diet_no_milk": bool(row.diet_no_milk),
-                        "diet_no_pork": bool(row.diet_no_pork),
-                        "note": normalize_preserved_breakfast_note(row.note),
-                    }
-                    for row in existing_rows
-                }
-                if target_day >= today_local
-                else {}
-            )
+                if row.source_key:
+                    preserved_by_source_key[row.source_key] = preserved
+                elif row.room_number not in preserved_by_legacy_room:
+                    preserved_by_legacy_room[row.room_number] = preserved
             if target_day > today_local and existing_rows:
                 replaced_future_count += 1
 
@@ -466,19 +468,17 @@ def sync_breakfast_range(
             if day_rows:
                 imported_days += 1
             for row in day_rows:
-                preserved = preserved_rows.get(row.room_number, {})
-                served = served_rows.get(row.room_number)
+                preserved = preserved_by_source_key.get(row.source_key)
+                if preserved is None:
+                    preserved = preserved_by_legacy_room.get(row.room_number, {})
                 db.add(
                     BreakfastOrder(
                         service_date=row.service_date,
+                        source_key=row.source_key,
                         room_number=row.room_number,
                         guest_name=row.guest_name or f"Pokoj {row.room_number}",
                         guest_count=max(1, int(row.guest_count)),
-                        status=(
-                            BreakfastStatus.SERVED.value
-                            if served is not None
-                            else BreakfastStatus.PENDING.value
-                        ),
+                        status=str(preserved.get("status") or BreakfastStatus.PENDING.value),
                         note=preserved.get("note") or None,
                         diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
                         diet_no_milk=bool(preserved.get("diet_no_milk", False)),
@@ -486,23 +486,6 @@ def sync_breakfast_range(
                     )
                 )
                 imported_rows += 1
-            imported_rooms = {row.room_number for row in day_rows}
-            for served in served_rows.values():
-                if served["room_number"] in imported_rooms:
-                    continue
-                db.add(
-                    BreakfastOrder(
-                        service_date=target_day,
-                        room_number=served["room_number"],
-                        guest_name=served["guest_name"],
-                        guest_count=served["guest_count"],
-                        status=BreakfastStatus.SERVED.value,
-                        note=served["note"],
-                        diet_no_gluten=bool(served["diet_no_gluten"]),
-                        diet_no_milk=bool(served["diet_no_milk"]),
-                        diet_no_pork=bool(served["diet_no_pork"]),
-                    )
-                )
             db.add(
                 BreakfastImportProcessedAttachment(
                     message_uid=f"better-hotel:{trigger}:{range_start.isoformat()}:{range_end.isoformat()}:{target_day.isoformat()}",

@@ -73,6 +73,7 @@ class BreakfastOrderCreate(BreakfastOrderBase):
 
 
 class BreakfastOrderUpdate(BaseModel):
+    expected_updated_at: datetime | None = None
     service_date: date | None = None
     room_number: str | None = Field(default=None, min_length=1, max_length=32)
     guest_name: str | None = Field(default=None, min_length=1, max_length=255)

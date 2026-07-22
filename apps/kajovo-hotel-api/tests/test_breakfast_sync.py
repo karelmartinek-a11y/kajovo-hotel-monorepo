@@ -9,6 +9,7 @@ from app.services.breakfast import sync as breakfast_sync_service
 from app.services.breakfast.sync import (
     BetterHotelBreakfastAggregate,
     BetterHotelBreakfastClient,
+    build_breakfast_source_key,
     parse_breakfast_food_codes,
     sync_breakfast_range,
 )
@@ -61,6 +62,8 @@ def test_better_hotel_sync_maps_food_flags_to_breakfast_days(monkeypatch) -> Non
         ("2026-06-24", "205", 1),
     ]
     assert aggregates[0].guest_name == "Jan Novak; Eva Nova"
+    assert aggregates[0].source_key == "2026-06-22|res-1"
+    assert aggregates[-1].source_key == "2026-06-24|res-2"
 
 
 def test_breakfast_sync_admin_endpoint_and_removed_mailbox(api_request) -> None:
@@ -93,6 +96,7 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
         db.add(
             BreakfastOrder(
                 service_date=target_day,
+                source_key="2026-07-24|res-101",
                 room_number="101",
                 guest_name="Puvodni host",
                 guest_count=1,
@@ -106,6 +110,7 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
         db.add(
             BreakfastOrder(
                 service_date=target_day,
+                source_key="2026-07-24|res-102",
                 room_number="102",
                 guest_name="Systemovy host",
                 guest_count=1,
@@ -129,12 +134,14 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
                 [
                     BetterHotelBreakfastAggregate(
                         service_date=target_day,
+                        source_key="2026-07-24|res-101",
                         room_number="101",
                         guest_count=2,
                         guest_name="Novy host",
                     ),
                     BetterHotelBreakfastAggregate(
                         service_date=target_day,
+                        source_key="2026-07-24|res-102",
                         room_number="102",
                         guest_count=1,
                         guest_name="Bez poznamky",
@@ -174,7 +181,7 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
     assert rows[1].diet_no_milk is True
 
 
-def test_sync_preserves_served_orders_when_source_changes_or_omits_them(monkeypatch, tmp_path) -> None:
+def test_sync_preserves_matching_manual_state_but_removes_missing_rows(monkeypatch, tmp_path) -> None:
     target_day = date(2026, 6, 22)
     engine = create_engine(f"sqlite:///{tmp_path / 'breakfast-sync-served.db'}")
     Base.metadata.create_all(bind=engine)
@@ -188,8 +195,8 @@ def test_sync_preserves_served_orders_when_source_changes_or_omits_them(monkeypa
             assert (service_start, service_end) == (target_day, target_day)
             return (
                 [
-                    BetterHotelBreakfastAggregate(target_day, "101", 2, "Novy host"),
-                    BetterHotelBreakfastAggregate(target_day, "102", 1, "Novy host 2"),
+                    BetterHotelBreakfastAggregate(target_day, "2026-06-22|res-101", "101", 2, "Novy host"),
+                    BetterHotelBreakfastAggregate(target_day, "2026-06-22|res-102", "102", 1, "Novy host 2"),
                 ],
                 2,
                 "source-hash",
@@ -201,8 +208,8 @@ def test_sync_preserves_served_orders_when_source_changes_or_omits_them(monkeypa
     with session_local() as db:
         db.add_all(
             [
-                BreakfastOrder(service_date=target_day, room_number="101", guest_name="Puvodni host", guest_count=1, status="served"),
-                BreakfastOrder(service_date=target_day, room_number="999", guest_name="Vydany mimo zdroj", guest_count=1, status="served"),
+                BreakfastOrder(service_date=target_day, source_key="2026-06-22|res-101", room_number="101", guest_name="Puvodni host", guest_count=1, status="served"),
+                BreakfastOrder(service_date=target_day, source_key="2026-06-22|res-999", room_number="999", guest_name="Vydany mimo zdroj", guest_count=1, status="served"),
             ]
         )
         db.commit()
@@ -223,5 +230,63 @@ def test_sync_preserves_served_orders_when_source_changes_or_omits_them(monkeypa
         assert orders["101"].status == "served"
         assert orders["101"].guest_name == "Novy host"
         assert orders["102"].status == "pending"
-        assert orders["999"].status == "served"
-        assert orders["999"].guest_name == "Vydany mimo zdroj"
+        assert "999" not in orders
+
+
+def test_sync_falls_back_to_room_number_for_legacy_rows_without_source_key(monkeypatch, tmp_path) -> None:
+    target_day = date(2026, 7, 1)
+    engine = create_engine(f"sqlite:///{tmp_path / 'breakfast-sync-legacy-room.db'}")
+    Base.metadata.create_all(bind=engine)
+    session_local = sessionmaker(bind=engine)
+
+    class FakeClient:
+        def __init__(self, settings) -> None:
+            del settings
+
+        def build_aggregates(self, *, service_start: date, service_end: date):
+            assert (service_start, service_end) == (target_day, target_day)
+            return (
+                [
+                    BetterHotelBreakfastAggregate(
+                        target_day,
+                        build_breakfast_source_key(service_date=target_day, reservation_ids={"res-legacy"}),
+                        "101",
+                        2,
+                        "Novy host",
+                    ),
+                ],
+                1,
+                "source-hash",
+            )
+
+    monkeypatch.setattr(breakfast_sync_service, "BetterHotelBreakfastClient", FakeClient)
+    monkeypatch.setattr(breakfast_sync_service, "prague_today", lambda: target_day)
+
+    with session_local() as db:
+        db.add(
+            BreakfastOrder(
+                service_date=target_day,
+                room_number="101",
+                guest_name="Legacy host",
+                guest_count=1,
+                status="served",
+                note="Legacy note",
+                diet_no_gluten=True,
+            )
+        )
+        db.commit()
+
+        sync_breakfast_range(
+            db,
+            settings=Settings(_env_file=None),
+            range_start=target_day,
+            range_end=target_day,
+            trigger="test",
+            note="Test synchronizace",
+        )
+
+        order = db.scalar(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day))
+        assert order is not None
+        assert order.status == "served"
+        assert order.note == "Legacy note"
+        assert order.source_key == "2026-07-01|res-legacy"

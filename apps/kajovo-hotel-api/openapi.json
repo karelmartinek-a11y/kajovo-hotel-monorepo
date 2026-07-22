@@ -919,6 +919,18 @@
             ],
             "title": "Diet No Pork"
           },
+          "expected_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Updated At"
+          },
           "guest_count": {
             "anyOf": [
               {

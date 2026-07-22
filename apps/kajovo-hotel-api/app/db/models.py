@@ -57,6 +57,7 @@ class BreakfastOrder(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     service_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    source_key: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     room_number: Mapped[str] = mapped_column(String(32), nullable=False)
     guest_name: Mapped[str] = mapped_column(String(255), nullable=False)
     guest_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

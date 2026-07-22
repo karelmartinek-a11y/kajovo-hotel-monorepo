@@ -599,6 +599,20 @@ function breakfastStatusLabel(status: BreakfastStatus | null | undefined): strin
   return status ? statusLabels[status] : '-';
 }
 
+type BreakfastRowFeedback = {
+  state: 'saving' | 'error';
+  message: string;
+};
+
+function normalizeBreakfastNoteValue(note: string | null | undefined): string | null {
+  const normalized = (note ?? '').trim();
+  return normalized ? normalized : null;
+}
+
+function sameBreakfastNote(left: string | null | undefined, right: string | null | undefined): boolean {
+  return normalizeBreakfastNoteValue(left) === normalizeBreakfastNoteValue(right);
+}
+
 function lostFoundStatusLabel(status: LostFoundStatus | null | undefined): string {
   return status ? lostFoundStatusLabels[status] : '-';
 }
@@ -1344,7 +1358,7 @@ function BreakfastList(): JSX.Element {
   const isBreakfast = isAdmin || actorRole === breakfastRole || roles.includes(breakfastRole);
   const isServingView = actorRole === breakfastRole && !isRecepce && !isAdmin;
   const canImport = isRecepce || isAdmin;
-  const canReactivate = isAdmin;
+  const canReactivate = isRecepce || isAdmin;
   const canEditDiet = isRecepce || isAdmin;
   const canEditNote = isRecepce || isAdmin;
   const today = currentDateForTimeZone(new Date(), 'Europe/Prague');
@@ -1365,6 +1379,9 @@ function BreakfastList(): JSX.Element {
   const [drafts, setDrafts] = React.useState<Record<number, Partial<BreakfastPayload>>>({});
   const [saveBusy, setSaveBusy] = React.useState(false);
   const [saveInfo, setSaveInfo] = React.useState<string | null>(null);
+  const [rowFeedback, setRowFeedback] = React.useState<Record<number, BreakfastRowFeedback>>({});
+  const itemsRef = React.useRef<BreakfastOrder[]>([]);
+  const noteSaveQueueRef = React.useRef<Record<number, { inFlight: boolean; queuedValue: string | null | undefined }>>({});
 
   const loadDay = React.useCallback((targetDate: string) => {
     let active = true;
@@ -1388,6 +1405,10 @@ function BreakfastList(): JSX.Element {
       active = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   React.useEffect(() => {
     setSaveInfo(null);
@@ -1433,9 +1454,13 @@ function BreakfastList(): JSX.Element {
     return effectiveItem.room_number.toLowerCase().includes(term) || (effectiveItem.guest_name ?? '').toLowerCase().includes(term);
   });
 
-  const updateOrder = async (order: BreakfastOrder, updates: Partial<BreakfastPayload>): Promise<void> => {
+  const updateOrder = async (
+    order: BreakfastOrder,
+    updates: Partial<BreakfastPayload> & { expected_updated_at?: string | null },
+    options?: { preserveDraft?: boolean },
+  ): Promise<BreakfastOrder> => {
     const effectiveOrder = mergeOrderWithDraft(order);
-    const payload: Partial<BreakfastPayload> = {
+    const payload: Partial<BreakfastPayload> & { expected_updated_at?: string | null } = {
       service_date: effectiveOrder.service_date,
       room_number: effectiveOrder.room_number,
       guest_name: effectiveOrder.guest_name,
@@ -1450,6 +1475,9 @@ function BreakfastList(): JSX.Element {
     if (updates.status !== undefined) {
       payload.status = updates.status;
     }
+    if (updates.expected_updated_at !== undefined) {
+      payload.expected_updated_at = updates.expected_updated_at;
+    }
 
     const requestPayload = isServingView ? { status: updates.status } : payload;
     const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
@@ -1458,12 +1486,15 @@ function BreakfastList(): JSX.Element {
       body: JSON.stringify(requestPayload),
     });
     setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
-    setDrafts((prev) => {
-      if (!prev[order.id]) return prev;
-      const cleaned = { ...prev };
-      delete cleaned[order.id];
-      return cleaned;
-    });
+    if (!options?.preserveDraft) {
+      setDrafts((prev) => {
+        if (!prev[order.id]) return prev;
+        const cleaned = { ...prev };
+        delete cleaned[order.id];
+        return cleaned;
+      });
+    }
+    return updated;
   };
 
   const saveOrderUpdates = (order: BreakfastOrder, updates: Partial<BreakfastPayload>, successMessage?: string): void => {
@@ -1509,6 +1540,77 @@ function BreakfastList(): JSX.Element {
     });
     setSaveInfo(null);
   }, []);
+
+  const clearRowFeedback = React.useCallback((orderId: number): void => {
+    setRowFeedback((prev) => {
+      if (!prev[orderId]) return prev;
+      const next = { ...prev };
+      delete next[orderId];
+      return next;
+    });
+  }, []);
+
+  const updateRowFeedback = React.useCallback((orderId: number, feedback: BreakfastRowFeedback): void => {
+    setRowFeedback((prev) => ({ ...prev, [orderId]: feedback }));
+  }, []);
+
+  const flushBreakfastNoteSave = React.useCallback((orderId: number): void => {
+    const queue = noteSaveQueueRef.current[orderId];
+    if (!queue || queue.inFlight || queue.queuedValue === undefined) {
+      return;
+    }
+    const currentOrder = itemsRef.current.find((item) => item.id === orderId);
+    if (!currentOrder) {
+      delete noteSaveQueueRef.current[orderId];
+      return;
+    }
+    const nextNote = queue.queuedValue;
+    queue.queuedValue = undefined;
+    if (sameBreakfastNote(nextNote, currentOrder.note)) {
+      clearRowFeedback(orderId);
+      return;
+    }
+    queue.inFlight = true;
+    updateRowFeedback(orderId, { state: 'saving', message: 'Ukládám poznámku…' });
+    void updateOrder(
+      currentOrder,
+      { note: nextNote, expected_updated_at: currentOrder.updated_at },
+      { preserveDraft: true },
+    )
+      .then((updated) => {
+        queue.inFlight = false;
+        setDrafts((prev) => {
+          const currentDraft = prev[orderId];
+          if (!currentDraft) return prev;
+          if (sameBreakfastNote(currentDraft.note as string | null | undefined, updated.note)) {
+            const next = { ...prev };
+            delete next[orderId];
+            return next;
+          }
+          return prev;
+        });
+        if (queue.queuedValue !== undefined) {
+          flushBreakfastNoteSave(orderId);
+          return;
+        }
+        clearRowFeedback(orderId);
+      })
+      .catch((saveError) => {
+        queue.inFlight = false;
+        updateRowFeedback(orderId, {
+          state: 'error',
+          message: saveError instanceof Error ? saveError.message : 'Uložení poznámky selhalo.',
+        });
+      });
+  }, [clearRowFeedback, updateOrder, updateRowFeedback]);
+
+  const queueBreakfastNoteSave = React.useCallback((order: BreakfastOrder, rawValue: string): void => {
+    const nextNote = normalizeBreakfastNoteValue(rawValue);
+    const queue = noteSaveQueueRef.current[order.id] ?? { inFlight: false, queuedValue: undefined };
+    queue.queuedValue = nextNote;
+    noteSaveQueueRef.current[order.id] = queue;
+    flushBreakfastNoteSave(order.id);
+  }, [flushBreakfastNoteSave]);
 
   const toggleDiet = (order: BreakfastOrder, key: DietKey): void => {
     if (!canEditDiet) {
@@ -1596,6 +1698,19 @@ function BreakfastList(): JSX.Element {
       data.diet_no_pork ? <span key="pork" className="k-diet-icon k-diet-icon--active" title="Strava bez vepřového masa"><DietIcon kind="diet_no_pork" /></span> : null,
     ].filter(Boolean);
     return active.length ? <span className="k-diet-toggle-group">{active}</span> : null;
+  };
+
+  const renderActionButton = (order: BreakfastOrder, effectiveItem: BreakfastOrder): JSX.Element => {
+    if (effectiveItem.status === 'served') {
+      if (canReactivate) {
+        return <button className="k-button secondary" type="button" onClick={() => reactivate(order)}>Vrátit výdej</button>;
+      }
+      return <button className="k-button secondary" type="button" disabled aria-pressed="true">Vydáno</button>;
+    }
+    if (effectiveItem.status === 'cancelled') {
+      return <button className="k-button secondary" type="button" disabled>Zrušeno</button>;
+    }
+    return <button className="k-button" type="button" onClick={() => markServed(order)} disabled={!canServe}>Vydat</button>;
   };
 
   const previewImport = async (file: File): Promise<void> => {
@@ -1737,9 +1852,47 @@ function BreakfastList(): JSX.Element {
     ? formatShortDateTime(summary.source_imported_at)
     : 'nenalezeno';
   const breakfastSummaryDate = summary?.service_date ?? serviceDate;
+  const mobileHeader = (
+    <div className="k-breakfast-serving-header" data-testid="breakfast-serving-mobile-header">
+      <div className="k-breakfast-serving-header__date">
+        <DatePickerButton value={serviceDate} label="Vybrat datum" onChange={setServiceDate} />
+        <span className="k-breakfast-serving-header__date-label">Přehled dne</span>
+        <span className="k-breakfast-serving-header__date-text">{formatBreakfastHeadlineDate(breakfastSummaryDate)}</span>
+      </div>
+      <div className="k-breakfast-serving-header__nav" aria-label="Posun dne snídaní">
+        <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
+        <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
+      </div>
+    </div>
+  );
+  const compactList = (
+    <div className="k-breakfast-serving-list" data-testid="breakfast-serving-mobile-list">
+      {listItems.map((item) => {
+        const effectiveItem = mergeOrderWithDraft(item);
+        const feedback = rowFeedback[item.id];
+        return (
+          <article key={item.id} className={`k-breakfast-serving-row${effectiveItem.status === 'served' ? ' k-breakfast-serving-row--served' : ''}`} data-testid="breakfast-serving-mobile-row">
+            <div className="k-breakfast-serving-row__main">
+              <strong className="k-breakfast-serving-row__room" title={effectiveItem.room_number}>{effectiveItem.room_number}</strong>
+              <span className="k-breakfast-serving-row__guest" title={effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>
+              {canEditNote ? (
+                <input className={`k-input k-breakfast-note k-breakfast-serving-row__note-input${feedback?.state === 'error' ? ' k-input--error' : ''}`} aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)} />
+              ) : (
+                <span className="k-breakfast-serving-row__note-inline" title={effectiveItem.note ?? ''}>{effectiveItem.note || '—'}</span>
+              )}
+              <span className="k-breakfast-serving-row__diets">{renderActiveDiets(effectiveItem)}</span>
+              <span className="k-breakfast-serving-row__action">{renderActionButton(item, effectiveItem)}</span>
+            </div>
+            {feedback ? <p className={`k-breakfast-serving-row__feedback k-text-${feedback.state === 'error' ? 'error' : 'muted'}`}>{feedback.message}</p> : null}
+          </article>
+        );
+      })}
+    </div>
+  );
 
   return (
-    <main className="k-page" data-testid="breakfast-list-page">
+    <main className="k-page k-breakfast-serving-page" data-testid="breakfast-list-page">
+      {mobileHeader}
       
       <h1>Snídaně</h1>
       
@@ -1760,19 +1913,14 @@ function BreakfastList(): JSX.Element {
           {listItems.length === 0 ? (
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
           ) : (
-            <DataTable
-              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Stav', 'Akce']}
+            <>
+              {compactList}
+              <DataTable
+              headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Akce']}
               rows={listItems.map((item) => {
                 const effectiveItem = mergeOrderWithDraft(item);
-                const isDirty = Boolean(drafts[item.id]);
                 const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
-                const action = effectiveItem.status === 'served'
-                  ? canReactivate
-                    ? <button className="k-button secondary" type="button" onClick={() => reactivate(item)}>Vrátit</button>
-                    : <span className="k-text-muted">Vydáno</span>
-                  : canServe
-                    ? <button className="k-button" type="button" onClick={() => markServed(item)}>Vydáno</button>
-                    : <span className="k-text-muted">-</span>;
+                const action = renderActionButton(item, effectiveItem);
 
                 if (isServingView) {
                   return [
@@ -1790,12 +1938,12 @@ function BreakfastList(): JSX.Element {
                   <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                   <span className={rowClass}>{effectiveItem.guest_count}</span>,
                   <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
-                  canEditNote ? <input className="k-input k-breakfast-note" aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => saveOrderUpdates(item, { note: event.currentTarget.value.trim() || null })} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
-                  <span className={rowClass}>{breakfastStatusLabel(effectiveItem.status)}{isDirty ? ' *' : ''}</span>,
+                  canEditNote ? <input className={`k-input k-breakfast-note${rowFeedback[item.id]?.state === 'error' ? ' k-input--error' : ''}`} aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                   action,
                 ];
               })}
             />
+            </>
           )}
           <div className="k-grid cards-3">
             <Card title="Snídaní celkem"><strong>{overviewStats.totalBreakfasts}</strong></Card>

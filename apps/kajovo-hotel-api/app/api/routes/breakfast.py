@@ -336,6 +336,7 @@ def update_breakfast_order(
         )
 
     updates = payload.model_dump(exclude_unset=True)
+    expected_updated_at = updates.pop("expected_updated_at", None)
     actor_role = _actor_role(request)
     diet_keys = {"diet_no_gluten", "diet_no_milk", "diet_no_pork"}
     is_manager = _is_breakfast_manager(actor_role)
@@ -361,12 +362,12 @@ def update_breakfast_order(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Breakfast role can only mark orders as served",
             )
-        if actor_role != "admin" and next_status != BreakfastStatus.SERVED.value:
+        if actor_role not in {"admin", "recepce"} and next_status != BreakfastStatus.SERVED.value:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Pouze admin může vracet vydané snídaně zpět.",
+                detail="Pouze recepce nebo admin mohou vracet vydané snídaně zpět.",
             )
-        if actor_role != "admin" and not _can_mark_served(actor_role, order.service_date, _prague_now()):
+        if actor_role not in {"admin", "recepce"} and not _can_mark_served(actor_role, order.service_date, _prague_now()):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Snídani lze vydat jen pro dnešní den mezi 5:00 a 11:00.",
@@ -625,3 +626,8 @@ def import_breakfast_pdf(
         saved=save,
         items=items,
     )
+    if expected_updated_at is not None and order.updated_at is not None and order.updated_at != expected_updated_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Snídaně byla mezitím změněna jiným požadavkem. Načtěte prosím aktuální stav.",
+        )
