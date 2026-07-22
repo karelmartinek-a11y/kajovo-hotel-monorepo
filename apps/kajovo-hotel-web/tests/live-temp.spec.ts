@@ -325,6 +325,11 @@ test.describe('live temp production verification', () => {
       await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).fill(forensicNote);
       await adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`).blur();
       await expect(adminRow.getByRole('button', { name: 'Vydáno' })).toBeVisible();
+      await adminRow.getByRole('button', { name: 'Vydáno' }).click();
+      await expect(adminRow.getByText('Vydáno', { exact: true })).toBeVisible();
+      await page.reload({ waitUntil: 'networkidle' });
+      const reloadedAdminRow = page.getByRole('row').filter({ hasText: order.room_number });
+      await expect(reloadedAdminRow.getByText('Vydáno', { exact: true })).toBeVisible();
       await expectNoViewportOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`breakfast-admin-${testInfo.project.name}.png`), fullPage: true });
 

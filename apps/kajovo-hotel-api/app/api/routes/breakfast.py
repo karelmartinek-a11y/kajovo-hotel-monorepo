@@ -543,27 +543,74 @@ def import_breakfast_pdf(
     if save:
         today = _today_prague()
         target_days = sorted({row.day for row in rows if row.day >= today})
+        served_orders_by_day: dict[date, dict[str, dict[str, object]]] = {}
+        for target_day in target_days:
+            served_orders = db.scalars(
+                select(BreakfastOrder).where(
+                    BreakfastOrder.service_date == target_day,
+                    BreakfastOrder.status == BreakfastStatus.SERVED.value,
+                )
+            ).all()
+            served_orders_by_day[target_day] = {
+                order.room_number: {
+                    "service_date": order.service_date,
+                    "room_number": order.room_number,
+                    "guest_name": order.guest_name,
+                    "guest_count": order.guest_count,
+                    "note": order.note,
+                    "diet_no_gluten": bool(order.diet_no_gluten),
+                    "diet_no_milk": bool(order.diet_no_milk),
+                    "diet_no_pork": bool(order.diet_no_pork),
+                }
+                for order in served_orders
+            }
+            for order in served_orders:
+                db.expunge(order)
         for target_day in target_days:
             db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
                 synchronize_session=False
             )
+        imported_rooms_by_day: dict[date, set[str]] = {target_day: set() for target_day in target_days}
         for row in rows:
             if row.day < today:
                 continue
             override = diet_overrides.get(str(row.room), {})
+            imported_rooms_by_day[row.day].add(row.room)
+            previous_served_order = served_orders_by_day[row.day].get(row.room)
             db.add(
                 BreakfastOrder(
                     service_date=row.day,
                     room_number=row.room,
                     guest_name=row.guest_name or f"Pokoj {row.room}",
                     guest_count=max(1, int(row.breakfast_count)),
-                    status=BreakfastStatus.PENDING.value,
+                    status=(
+                        BreakfastStatus.SERVED.value
+                        if previous_served_order is not None
+                        else BreakfastStatus.PENDING.value
+                    ),
                     note="Import PDF",
                     diet_no_gluten=bool(override.get("diet_no_gluten", False)),
                     diet_no_milk=bool(override.get("diet_no_milk", False)),
                     diet_no_pork=bool(override.get("diet_no_pork", False)),
                 )
             )
+        for target_day, served_orders in served_orders_by_day.items():
+            for room_number, served_order in served_orders.items():
+                if room_number in imported_rooms_by_day[target_day]:
+                    continue
+                db.add(
+                    BreakfastOrder(
+                        service_date=served_order["service_date"],
+                        room_number=served_order["room_number"],
+                        guest_name=served_order["guest_name"],
+                        guest_count=served_order["guest_count"],
+                        status=BreakfastStatus.SERVED.value,
+                        note=served_order["note"],
+                        diet_no_gluten=served_order["diet_no_gluten"],
+                        diet_no_milk=served_order["diet_no_milk"],
+                        diet_no_pork=served_order["diet_no_pork"],
+                    )
+                )
         db.commit()
 
         settings = get_settings()

@@ -172,3 +172,56 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
     assert rows[0].diet_no_gluten is True
     assert rows[0].diet_no_pork is True
     assert rows[1].diet_no_milk is True
+
+
+def test_sync_preserves_served_orders_when_source_changes_or_omits_them(monkeypatch, tmp_path) -> None:
+    target_day = date(2026, 6, 22)
+    engine = create_engine(f"sqlite:///{tmp_path / 'breakfast-sync-served.db'}")
+    Base.metadata.create_all(bind=engine)
+    session_local = sessionmaker(bind=engine)
+
+    class FakeClient:
+        def __init__(self, settings) -> None:
+            del settings
+
+        def build_aggregates(self, *, service_start: date, service_end: date):
+            assert (service_start, service_end) == (target_day, target_day)
+            return (
+                [
+                    BetterHotelBreakfastAggregate(target_day, "101", 2, "Novy host"),
+                    BetterHotelBreakfastAggregate(target_day, "102", 1, "Novy host 2"),
+                ],
+                2,
+                "source-hash",
+            )
+
+    monkeypatch.setattr(breakfast_sync_service, "BetterHotelBreakfastClient", FakeClient)
+    monkeypatch.setattr(breakfast_sync_service, "prague_today", lambda: date(2026, 6, 23))
+
+    with session_local() as db:
+        db.add_all(
+            [
+                BreakfastOrder(service_date=target_day, room_number="101", guest_name="Puvodni host", guest_count=1, status="served"),
+                BreakfastOrder(service_date=target_day, room_number="999", guest_name="Vydany mimo zdroj", guest_count=1, status="served"),
+            ]
+        )
+        db.commit()
+
+        sync_breakfast_range(
+            db,
+            settings=Settings(_env_file=None),
+            range_start=target_day,
+            range_end=target_day,
+            trigger="test",
+            note="Test synchronizace",
+        )
+
+        orders = {
+            order.room_number: order
+            for order in db.scalars(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day))
+        }
+        assert orders["101"].status == "served"
+        assert orders["101"].guest_name == "Novy host"
+        assert orders["102"].status == "pending"
+        assert orders["999"].status == "served"
+        assert orders["999"].guest_name == "Vydany mimo zdroj"

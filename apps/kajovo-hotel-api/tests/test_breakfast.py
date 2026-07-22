@@ -362,13 +362,22 @@ POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD BEZ STRAVY SNÍDANĚ OBĚD VEČEŘE 
 
 
 def test_import_breakfast_pdf_overwrite_and_diets(
-    api_request: ApiRequest, api_base_url: str
+    api_request: ApiRequest, api_base_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("app.api.routes.breakfast._today_prague", lambda: date(2026, 3, 1))
     create_order(
         api_request,
         service_date="2026-03-05",
         room_number="101",
         guest_name="Stary Host",
+        guest_count=1,
+        status="served",
+    )
+    create_order(
+        api_request,
+        service_date="2026-03-05",
+        room_number="999",
+        guest_name="Vydaný mimo zdroj",
         guest_count=1,
         status="served",
     )
@@ -410,17 +419,12 @@ def test_import_breakfast_pdf_overwrite_and_diets(
     )
     assert status == 200
     assert isinstance(listed, list)
-    sample_day = date(2026, 3, 5)
-    if sample_day < date.today():
-        assert len(listed) == 1
-        assert listed[0]["guest_name"] == "Stary Host"
-        assert listed[0]["status"] == "served"
-    else:
-        assert len(listed) == 3
-        assert all(item["status"] == "pending" for item in listed)
-        room_101 = next(item for item in listed if item["room_number"] == "101")
-        assert room_101["diet_no_gluten"] is True
-        assert room_101["diet_no_pork"] is True
+    assert len(listed) == 2
+    room_101 = next(item for item in listed if item["room_number"] == "101")
+    room_999 = next(item for item in listed if item["room_number"] == "999")
+    assert room_101["status"] == "served"
+    assert room_999["status"] == "served"
+    assert room_999["guest_name"] == "Vydaný mimo zdroj"
 
 
 def test_import_breakfast_pdf_preview_does_not_mutate_existing_orders(
@@ -762,6 +766,15 @@ def test_breakfast_reactivation_rbac(api_base_url: str, api_request: ApiRequest)
     assert status == 403
     assert isinstance(data, dict)
     assert data["detail"] == "Pouze admin může vracet vydané snídaně zpět."
+
+    status, data = api_request(
+        f"/api/v1/breakfast/{created['id']}",
+        method="PUT",
+        payload={"status": "pending"},
+    )
+    assert status == 200
+    assert isinstance(data, dict)
+    assert data["status"] == "pending"
 
 
 def test_breakfast_role_cannot_import_or_export_pdf(api_base_url: str) -> None:
