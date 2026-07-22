@@ -1,3 +1,0 @@
-$ python -m pytest apps/kajovo-hotel-api/tests/test_inventory.py apps/kajovo-hotel-api/tests/test_users.py -q
-..................                                                       [100%]
-18 passed in 5.19s

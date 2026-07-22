@@ -29,7 +29,7 @@ Unknown or uncertain source fields are always preserved in `legacy_migration_aud
 From repository root:
 
 ```bash
-python apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py \
+python3.11 apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py \
   --report-json apps/kajovo-hotel-api/tools/migrate_legacy/report.json \
   --report-csv apps/kajovo-hotel-api/tools/migrate_legacy/report.csv
 ```
@@ -37,7 +37,7 @@ python apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py \
 Dry run:
 
 ```bash
-python apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py --dry-run
+python3.11 apps/kajovo-hotel-api/tools/migrate_legacy/migrate.py --dry-run
 ```
 
 ## Mapping (legacy -> new)

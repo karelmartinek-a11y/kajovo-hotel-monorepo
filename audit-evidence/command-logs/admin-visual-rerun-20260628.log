@@ -1,7 +1,0 @@
-
-> @kajovo/kajovo-hotel-admin@0.1.0 test:visual /Users/karelmartinek/Documents/GitHub/kajovo-hotel-monorepo/apps/kajovo-hotel-admin
-> node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/visual.spec.ts
-
-Error: Process from config.webServer was not able to start. Exit code: 1
-
- ELIFECYCLE  Command failed with exit code 1.

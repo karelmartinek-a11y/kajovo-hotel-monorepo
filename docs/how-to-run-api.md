@@ -6,7 +6,7 @@ Detail k obecnému spuštění je v `docs/how-to-run.md`. Tento dokument drží 
 
 ```bash
 cd apps/kajovo-hotel-api
-python -m pip install -e .[dev]
+python3.11 -m pip install -e .[dev]
 ```
 
 ## Migrace databáze

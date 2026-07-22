@@ -43,6 +43,10 @@ def _pnpm_command(*args: str) -> list[str]:
     return ["pnpm", *args]
 
 
+def _python_command(*args: str) -> list[str]:
+    return [sys.executable, *args]
+
+
 def _git_sha() -> str:
     completed = subprocess.run(
         ["git", "rev-parse", "HEAD"],
@@ -65,7 +69,7 @@ def main() -> int:
         ("policy", _pnpm_command("ci:policy"), True),
         ("web-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "build"), True),
         ("admin-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "build"), True),
-        ("api-unit-tests", ["python", "-m", "pytest", "apps/kajovo-hotel-api/tests", "-q"], True),
+        ("api-unit-tests", _python_command("-m", "pytest", "apps/kajovo-hotel-api/tests", "-q"), True),
         ("frontend-ci-gates", _pnpm_command("ci:gates"), os.getenv("RUN_FRONTEND_GATES") == "1"),
         ("e2e-smoke", _pnpm_command("ci:e2e-smoke"), os.getenv("RUN_E2E_SMOKE") == "1"),
     ]

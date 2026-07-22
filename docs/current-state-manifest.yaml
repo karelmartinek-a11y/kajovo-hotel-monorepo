@@ -1,0 +1,66 @@
+repository:
+  id: karelmartinek-a11y/kajovo-hotel-monorepo
+  package_manager: pnpm@10.34.4
+  workspaces:
+    - apps/*
+    - packages/*
+
+applications:
+  web:
+    path: apps/kajovo-hotel-web
+    runtime_url: https://hotel.hcasc.cz
+    build_command: pnpm --filter @kajovo/kajovo-hotel-web build
+    smoke_command: pnpm --filter @kajovo/kajovo-hotel-web test:smoke
+    visual_command: pnpm --filter @kajovo/kajovo-hotel-web test:visual
+  admin:
+    path: apps/kajovo-hotel-admin
+    runtime_url: https://hotel.hcasc.cz/admin
+    build_command: pnpm --filter @kajovo/kajovo-hotel-admin build
+    smoke_command: pnpm --filter @kajovo/kajovo-hotel-admin test:smoke
+    visual_command: pnpm --filter @kajovo/kajovo-hotel-admin test:visual
+  api:
+    path: apps/kajovo-hotel-api
+    runtime_health_url: https://hotel.hcasc.cz/api/health
+    runtime_ready_url: https://hotel.hcasc.cz/api/ready
+    test_command: python3.11 -m pytest apps/kajovo-hotel-api/tests -q
+    contract_export: apps/kajovo-hotel-api/openapi.json
+
+shared_packages:
+  shared:
+    path: packages/shared
+    generated_client: packages/shared/src/generated/client.ts
+  ui:
+    path: packages/ui
+
+security:
+  session_cookie: kajovo_session
+  csrf_cookie: kajovo_csrf
+  csrf_header: x-csrf-token
+  rbac_source: packages/shared/src/rbac.ts
+
+ci:
+  workflow: .github/workflows/ci-gates.yml
+  required_commands:
+    - pnpm typecheck
+    - python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
+    - pnpm unit
+    - pnpm contract:check
+    - pnpm ci:gates
+    - python3.11 scripts/release_gate.py
+
+deploy:
+  workflow: .github/workflows/deploy-production.yml
+  server_ipv4: 89.221.222.92
+  compose_files:
+    - infra/compose.prod.yml
+    - infra/compose.prod.hotel-hcasc.yml
+  reverse_proxy: infra/reverse-proxy/production-host.conf
+  live_verification_scripts:
+    - scripts/verify_live_breakfast_manual_refresh.mjs
+    - scripts/verify_live_admin_login.mjs
+    - scripts/verify_live_admin_users_smoke.mjs
+
+observability:
+  runtime_integrity_script: scripts/check_runtime_integrity.mjs
+  deploy_verifier: infra/verify/verify-deploy.sh
+  smoke_script: infra/smoke/smoke.sh

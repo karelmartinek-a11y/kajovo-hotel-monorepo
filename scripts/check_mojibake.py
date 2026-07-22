@@ -11,6 +11,8 @@ SCAN_ROOTS = ("apps", "packages", ".github", "scripts")
 ACTIVE_DOC_PATHS = (
     Path("docs/README.md"),
     Path("docs/SSOT_SCOPE_STATUS.md"),
+    Path("docs/SSOT_CURRENT.md"),
+    Path("docs/current-state-manifest.yaml"),
     Path("docs/how-to-deploy.md"),
     Path("docs/developer-handbook.md"),
     Path("docs/github-settings-checklist.md"),

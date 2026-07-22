@@ -16,4 +16,4 @@
 
 ## Produktové pravidlo
 
-Web a admin jsou aktivní produkční aplikace. Legacy Android aplikace byla vyřazena a nesmí blokovat změny, CI ani deploy.
+Repozitář aktivně provozuje pouze web, admin a API. Release, CI ani deploy nesmí záviset na Android build chainu ani historických parity pravidlech.

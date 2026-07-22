@@ -11,7 +11,7 @@
 1. Nainstalujte JavaScript závislosti podle lockfilu:
    - `pnpm install --frozen-lockfile`
 2. Nainstalujte API závislosti:
-   - `python -m pip install -e ./apps/kajovo-hotel-api[dev]`
+   - `python3.11 -m pip install -e ./apps/kajovo-hotel-api[dev]`
 3. Spusťte API:
    - `uvicorn app.main:app --reload --app-dir apps/kajovo-hotel-api --port 8000`
 4. Spusťte portál:
@@ -19,6 +19,6 @@
 5. Spusťte administraci:
    - `pnpm --filter @kajovo/kajovo-hotel-admin dev`
 
-## Poznámka k Androidu
+## Rozsah lokálního běhu
 
-Legacy Android aplikace byla z tohoto repozitáře vyřazena. Lokální spuštění ani webový deploy se na Android build, APK ani signing již nevážou.
+Lokální běh kryje pouze `apps/kajovo-hotel-web`, `apps/kajovo-hotel-admin` a `apps/kajovo-hotel-api` nad stejným RBAC a OpenAPI kontraktem.

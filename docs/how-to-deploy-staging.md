@@ -1,4 +1,4 @@
-# Jak nasadit staging (paralelně k legacy)
+# Jak nasadit staging
 
 ## Rychlá orientace: co je hotovo vs. co je nasazeno
 

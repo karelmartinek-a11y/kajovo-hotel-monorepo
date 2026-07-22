@@ -19,8 +19,8 @@ FastAPI backend pro veřejný portál, administraci a provozní API.
 ## Příkazy
 
 ```bash
-python -m pip install -e .[dev]
+python3.11 -m pip install -e .[dev]
 uvicorn app.main:app --reload --port 8000
-python -m pytest tests
-python -m ruff check app tests
+python3.11 -m pytest tests
+python3.11 -m ruff check app tests
 ```

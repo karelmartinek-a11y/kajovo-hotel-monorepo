@@ -9,25 +9,17 @@
 - Backend runtime validation (`HOTEL_PUBLIC_BASE_URL`) must use host `hotel.hcasc.cz`.
 - Aktivni host-level vhost je vedeny v `infra/reverse-proxy/production-host.conf` a deploy ho musi synchronizovat na `/etc/nginx/sites-available/hotel.hcasc.cz.conf`.
 
-## Sandbox admin login tests (no embedded credentials)
+## Ověření reverse proxy
 
-`legacy/hotel-backend/deploy/sandbox/run-tests.sh` no longer loads secrets from files and does not contain default credentials.
-Set these environment variables before running the sandbox test script:
-
-- `HOTEL_ADMIN_USERNAME`
-- `HOTEL_ADMIN_PASSWORD`
-- `HOTEL_ADMIN_PASSWORD_HASH`
-- `HOTEL_SESSION_SECRET`
-- `HOTEL_CSRF_SECRET`
-- `HOTEL_CRYPTO_SECRET`
-- `HOTEL_SANDBOX_POSTGRES_PASSWORD`
+- Reverse proxy se validuje proti aktivnímu host-level souboru `infra/reverse-proxy/production-host.conf`.
+- Po změně host-level konfigurace ověřte canonical redirect, `/admin/` routování a health endpointy na živé doméně.
 
 ## Basic checks
 
 ```bash
 nginx -t
 rg -n "server_name" infra/reverse-proxy/*.conf
-rg -n "HOTEL_ADMIN_(USERNAME|PASSWORD)" legacy/hotel-backend/deploy/sandbox/run-tests.sh
+curl -k -I -H 'Host: hotel.hcasc.cz' https://127.0.0.1/admin/
 ```
 
 ## Produkcni host-level Nginx

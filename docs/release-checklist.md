@@ -6,7 +6,3 @@
 - Pushnout změny a ověřit, že `main` obsahuje finální commit.
 - Nasadit na `89.221.222.92` podle aktuálního deploy workflow.
 - Potvrdit živé chování na `https://hotel.hcasc.cz` a `https://hotel.hcasc.cz/admin`.
-
-## Legacy Android
-
-Legacy Android aplikace, APK a parity release již nejsou součástí release checklistu.

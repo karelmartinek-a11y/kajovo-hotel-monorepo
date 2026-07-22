@@ -4,7 +4,9 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 
 ## Začít zde
 
-- `docs/SSOT_SCOPE_STATUS.md`: co je autoritativní current-state dokumentace a co je pouze historická evidence.
+- `docs/SSOT_SCOPE_STATUS.md`: pravidla autority current-state dokumentace a rozsah závazných souborů.
+- `docs/SSOT_CURRENT.md`: kanonický current-state popis architektury, runtime a deploy řetězce.
+- `docs/current-state-manifest.yaml`: strojově čitelný manifest aktivních aplikací, workflow a validací.
 - `docs/repository-map.md`: forenzní mapa repozitáře po úklidu.
 - `docs/developer-handbook.md`: rychlý onboarding do monorepa.
 - `docs/how-to-run.md`: lokální spuštění webu, adminu a API.
@@ -39,12 +41,3 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 - `docs/module-reports.md`
 - `docs/api-contract.md`
 - `docs/pdf-export-import.md`
-
-## Historická evidence
-
-- `docs/archive/README.md`
-- `docs/archive/docs-history/*`
-- `docs/archive/android-history/*`
-- `docs/archive/root-audits/*`
-
-Historické forenzní a auditní dokumenty zůstávají v archivu jako evidence, ale nejsou samy o sobě current-state autoritou. Legacy Android materiály mají čistě archivní význam a nejsou závazkem pro webový deploy.

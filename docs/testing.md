@@ -14,5 +14,4 @@
 - žádné překrytí formulářů brandingem
 - české chybové a prázdné stavy
 - přístupné focus stavy a hlavní klávesová navigace
-
-Legacy Android test chain už není součástí aktivní testovací matice.
+- release matice kryje pouze web, admin, API, OpenAPI klient a živé provozní smoke scénáře

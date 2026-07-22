@@ -5,8 +5,7 @@
 - `apps/kajovo-hotel-api` – FastAPI backend
 - `packages/shared` – sdílené typy a klient
 - `packages/ui` – sdílené UI komponenty
+- `apps/kajovo-hotel` – CI guardy, design tokeny a branding policy
 - `infra` – deploy, compose a reverse proxy
-- `docs` – current-state dokumentace
-- `docs/archive` – historická evidence
-
-Legacy Android projekt byl z current-state stromu odstraněn.
+- `scripts` – release gate, runtime integrita a live ověřovací skripty
+- `docs` – current-state dokumentace, SSOT a manifesty
