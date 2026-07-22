@@ -387,9 +387,12 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
 
   await expect(page).toHaveURL(/\/snidane$/);
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Aktualizovat' })).toBeVisible();
   const compactServingHeader = page.getByTestId('breakfast-serving-mobile-header');
   const usesCompactServingLayout = await compactServingHeader.isVisible();
+  const refreshButton = usesCompactServingLayout
+    ? compactServingHeader.getByRole('button', { name: 'Aktualizovat' })
+    : page.getByRole('button', { name: 'Aktualizovat z API' });
+  await expect(refreshButton).toBeVisible();
   if (usesCompactServingLayout) {
     await expect(page.getByTestId('breakfast-serving-mobile-list')).toBeVisible();
     await expect(page.locator('.k-breakfast-serving-page > .k-table-wrap')).toBeHidden();
@@ -403,7 +406,7 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
   await expect(page.getByText(/Hosté dne/i)).toHaveCount(0);
   await expect(page.getByText(/Pokoje /i)).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Aktualizovat' }).click();
+  await refreshButton.click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('dialog').locator('.k-modal-progress__item').first()).toContainText('Better Hotelu');
   await expect(page.getByRole('dialog')).toHaveCount(0);
