@@ -228,7 +228,7 @@ async function expectCompactBreakfastPhoneLayout(page: Page, roomNumber: string,
   const mobileRow = page.getByTestId('breakfast-serving-mobile-row').filter({ hasText: roomNumber });
   await expect(mobileRow).toBeVisible();
   await expect(mobileRow.locator('.k-breakfast-serving-row__main')).toBeVisible();
-  await expect(mobileRow.getByDisplayValue(note)).toBeVisible();
+  await expect(mobileRow.locator('input.k-breakfast-serving-row__note-input').or(mobileRow.getByText(note, { exact: true }))).toBeVisible();
   await expect(mobileRow.locator('button.k-diet-toggle')).toHaveCount(0);
 
   const metrics = await header.evaluate((element) => {

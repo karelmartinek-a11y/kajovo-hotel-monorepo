@@ -341,6 +341,12 @@ def update_breakfast_order(
     diet_keys = {"diet_no_gluten", "diet_no_milk", "diet_no_pork"}
     is_manager = _is_breakfast_manager(actor_role)
 
+    if expected_updated_at is not None and order.updated_at is not None and order.updated_at != expected_updated_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Snídaně byla mezitím změněna jiným požadavkem. Načtěte prosím aktuální stav.",
+        )
+
     if diet_keys.intersection(updates.keys()) and not is_manager:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -626,8 +632,3 @@ def import_breakfast_pdf(
         saved=save,
         items=items,
     )
-    if expected_updated_at is not None and order.updated_at is not None and order.updated_at != expected_updated_at:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Snídaně byla mezitím změněna jiným požadavkem. Načtěte prosím aktuální stav.",
-        )
