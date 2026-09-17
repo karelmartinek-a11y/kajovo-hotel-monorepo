@@ -40,6 +40,9 @@ def test_certificate_verification_requires_validity_beyond_thirty_days() -> None
     script = _load_deploy_module().certificate_verification_script()
 
     assert "certbot renew" not in script
-    assert "hotel.hcasc.cz-renewed" in script
+    assert "hotel.hcasc.cz:443" in script
+    assert "-servername hotel.hcasc.cz" in script
+    assert "-verify_return_error" in script
+    assert "/etc/letsencrypt" not in script
     assert "openssl x509" in script
     assert "-checkend 2592000" in script

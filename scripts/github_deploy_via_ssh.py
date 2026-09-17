@@ -179,16 +179,21 @@ def run_remote(command: str) -> None:
 
 def certificate_verification_script() -> str:
     return r"""set -euo pipefail
-openssl x509 \
-  -checkend 2592000 \
-  -noout \
-  -in /etc/letsencrypt/live/hotel.hcasc.cz-renewed/fullchain.pem
+certificate="$(
+  openssl s_client \
+    -connect hotel.hcasc.cz:443 \
+    -servername hotel.hcasc.cz \
+    -verify_return_error \
+    </dev/null 2>/dev/null |
+    openssl x509 -outform PEM
+)"
+printf '%s\n' "$certificate" | openssl x509 -checkend 2592000 -noout
 echo 'Production TLS certificate validity: PASS (>30 days)'
 """
 
 
 def cmd_verify_certificate() -> None:
-    run_remote(certificate_verification_script())
+    run(["bash", "-c", certificate_verification_script()])
 
 
 def pre_upload_cleanup_script() -> str:
