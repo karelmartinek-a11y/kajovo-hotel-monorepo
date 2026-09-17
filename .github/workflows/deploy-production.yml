@@ -128,10 +128,10 @@ jobs:
         run: |
           python3 scripts/github_deploy_via_ssh.py deploy
 
-      - name: Renew production TLS certificate if due
+      - name: Verify production TLS certificate validity
         shell: bash
         run: |
-          python3 scripts/github_deploy_via_ssh.py renew-certificate
+          python3 scripts/github_deploy_via_ssh.py verify-certificate
 
       - name: Verify deploy runtime artifact on server
         shell: bash

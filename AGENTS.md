@@ -48,7 +48,7 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 - Ověř, že build nebo generování nezanechá neočekávané změny sledovaných souborů a že OpenAPI i generovaný klient jsou aktuální.
 - GitHub CI v `.github/workflows/ci-gates.yml` musí chránit stejný aktuální kontrakt jako lokální testy. Produkční deploy v `.github/workflows/deploy-production.yml` smí navazovat pouze na úspěšné CI nad správným SHA.
 - Produkční SSH deploy před uploadem čistí pouze nedokončené release archivy, staré zdrojové stromy kromě nejnovějšího a nepoužívanou Docker build/image cache; běžící image ani pojmenované databázové a mediální volumes se nemažou.
-- Produkční Nginx musí obsloužit HTTP ACME challenge bez předčasného HTTPS redirectu; deploy po synchronizaci konfigurace spouští `certbot renew` a vyžaduje platnost certifikátu delší než 30 dní.
+- Produkční Nginx musí obsloužit HTTP ACME challenge bez předčasného HTTPS redirectu, používat aktivní Certbot lineage `hotel.hcasc.cz-renewed` a deploy musí vyžadovat platnost certifikátu delší než 30 dní bez rozšíření sudo oprávnění deploy uživatele.
 - Selhání testu, buildu, CI, commitu, pushe, deploye nebo produkční validace analyzuj, oprav a celý dotčený řetězec zopakuj. Zastav se pouze na doloženém blockeru chybějícího oprávnění, tajného údaje, externí služby nebo rozhodnutí vlastníka.
 
 ## Commit, deploy a produkční ověření

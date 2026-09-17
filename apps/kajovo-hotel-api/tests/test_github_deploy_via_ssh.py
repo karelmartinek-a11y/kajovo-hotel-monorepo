@@ -36,11 +36,10 @@ def test_ssh_connection_uses_keepalive(monkeypatch) -> None:
     assert "ServerAliveCountMax=20" in command
 
 
-def test_certificate_renewal_requires_validity_beyond_thirty_days() -> None:
-    script = _load_deploy_module().certificate_renewal_script()
+def test_certificate_verification_requires_validity_beyond_thirty_days() -> None:
+    script = _load_deploy_module().certificate_verification_script()
 
-    assert "certbot renew" in script
-    assert "hotel.hcasc.cz-0001" in script
-    assert "systemctl reload nginx" in script
+    assert "certbot renew" not in script
+    assert "hotel.hcasc.cz-renewed" in script
     assert "openssl x509" in script
     assert "-checkend 2592000" in script
