@@ -173,6 +173,52 @@ def run_remote(command: str) -> None:
     run([*ssh_cmd, command], env_override=ssh_env)
 
 
+def pre_upload_cleanup_script() -> str:
+    return r"""set -euo pipefail
+upload_home="$HOME"
+release_dir="$upload_home/kajovo-deploy-releases"
+
+echo "Disk usage before deploy cleanup:"
+df -h "$upload_home"
+
+# Incomplete archives are never runtime inputs. A successful upload is removed
+# by the remote deploy script immediately after extraction.
+find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz' -delete
+
+# Containers run from built images and named data volumes, not from these source
+# trees. Keep the newest completed source tree as a rollback/runtime-artifact
+# reference and remove older copies before uploading the next release.
+RELEASE_DIR="$release_dir" python3 - <<'PY'
+import os
+import shutil
+from pathlib import Path
+
+root = Path(os.environ["RELEASE_DIR"])
+if root.is_dir():
+    releases = sorted(
+        (path for path in root.iterdir() if path.is_dir()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for stale in releases[1:]:
+        print(f"Removing stale deploy source tree: {stale.name}")
+        shutil.rmtree(stale)
+PY
+
+# These commands remove only cache and images that are not referenced by a
+# container. Named database/media volumes and running images are untouched.
+docker builder prune -af
+docker image prune -af
+
+echo "Disk usage after deploy cleanup:"
+df -h "$upload_home"
+"""
+
+
+def cmd_prepare_upload() -> None:
+    run_remote(pre_upload_cleanup_script())
+
+
 def cmd_check_helper() -> None:
     run_remote(
         "set -euo pipefail; "
@@ -186,6 +232,7 @@ def cmd_deploy() -> None:
     archive = env("RELEASE_ARCHIVE")
     if not archive:
         raise SystemExit("Missing RELEASE_ARCHIVE")
+    cmd_prepare_upload()
     upload(Path(archive), f"~/{archive}")
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
