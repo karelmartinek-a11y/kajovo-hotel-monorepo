@@ -26,13 +26,17 @@ def ssh_base() -> tuple[list[str], dict[str, str] | None]:
     user = env("HOTEL_DEPLOY_USER")
     port = env("HOTEL_DEPLOY_PORT")
     identity = env("SSH_IDENTITY_FILE")
+    keepalive = ["-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=20"]
     if identity:
-      return (["ssh", "-p", port, "-i", identity, f"{user}@{host}"], None)
+        return (
+            ["ssh", *keepalive, "-p", port, "-i", identity, f"{user}@{host}"],
+            None,
+        )
     password = env("HOTEL_DEPLOY_PASS")
     if not password:
         raise SystemExit("Missing HOTEL_DEPLOY_PASS/SSH_IDENTITY_FILE for SSH deploy")
     return (
-        ["sshpass", "-e", "ssh", "-p", port, f"{user}@{host}"],
+        ["sshpass", "-e", "ssh", *keepalive, "-p", port, f"{user}@{host}"],
         {"SSHPASS": password},
     )
 
