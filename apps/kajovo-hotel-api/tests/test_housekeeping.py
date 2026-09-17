@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.config import Settings
-from app.services.housekeeping import BetterHotelHousekeepingClient, STATUS_NAMES
+from app.services.housekeeping import STATUS_NAMES, BetterHotelHousekeepingClient
 
 
 def _reservation(

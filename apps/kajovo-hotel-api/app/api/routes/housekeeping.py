@@ -11,7 +11,6 @@ from app.config import get_settings
 from app.security.rbac import module_access_dependency
 from app.services.housekeeping import BetterHotelHousekeepingClient, BetterHotelHousekeepingError
 
-
 router = APIRouter(
     prefix="/api/v1/housekeeping",
     tags=["housekeeping"],
