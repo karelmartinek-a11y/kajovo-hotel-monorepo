@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir \
     python-multipart==0.0.20 \
     "psycopg[binary]==3.2.13" \
     pypdf==5.9.0 \
+    pycountry==24.6.1 \
     pillow==11.3.0
 
 COPY apps/kajovo-hotel-api/app /app/app

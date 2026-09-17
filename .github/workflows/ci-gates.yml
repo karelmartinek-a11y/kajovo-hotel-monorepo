@@ -15,6 +15,17 @@ env:
   KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
 
 jobs:
+  api-runtime-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Build production API image and verify imports
+        run: |
+          docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
+          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert app.openapi()['paths']"
+
   release-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 45

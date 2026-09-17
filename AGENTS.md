@@ -43,6 +43,7 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 
 - Monorepo používá `pnpm` a workspaces `apps/*` a `packages/*`; aktuální verzi package manageru ověř v kořenovém `package.json`.
 - Web a admin jsou React/Vite/TypeScript aplikace. API je FastAPI/Python 3.11. Sdílený API klient se generuje z OpenAPI kontraktu do `packages/shared`.
+- API runtime závislosti synchronizuj také s explicitním seznamem v `apps/kajovo-hotel-api/Dockerfile`. CI job `api-runtime-image` musí ověřit import aplikace ve skutečně sestaveném produkčním image před nasazením.
 - Používej skutečné projektové příkazy. Minimálně podle dopadu proveď čistou instalaci, typecheck, lint, testy, build a kontraktové kontroly. Relevantní kořenové příkazy zahrnují `pnpm typecheck`, `pnpm unit`, `pnpm contract:check`, `pnpm ci:gates` a `python scripts/release_gate.py`; přesný rozsah vždy ověř v aktuálních manifestech a workflow.
 - Ověř samostatný build dotčených frontendů, API testy, Playwright smoke/E2E a vizuální kontroly, pokud se změna týká UI. Každá uživatelsky viditelná změna se ověřuje na desktopu, tabletu i mobilu.
 - Ověř, že build nebo generování nezanechá neočekávané změny sledovaných souborů a že OpenAPI i generovaný klient jsou aktuální.
