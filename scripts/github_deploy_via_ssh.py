@@ -177,6 +177,39 @@ def run_remote(command: str) -> None:
     run([*ssh_cmd, command], env_override=ssh_env)
 
 
+def run_remote_sudo(command: str) -> None:
+    ssh_cmd, ssh_env = ssh_base()
+    password = env("HOTEL_DEPLOY_PASS")
+    remote_command = f"sudo -S -p '' bash -lc {shlex.quote(command)}"
+    merged = os.environ.copy()
+    if ssh_env:
+        merged.update(ssh_env)
+    subprocess.run(
+        [*ssh_cmd, remote_command],
+        check=True,
+        env=merged,
+        input=f"{password}\n".encode(),
+    )
+
+
+def certificate_renewal_script() -> str:
+    return r"""set -euo pipefail
+certbot renew \
+  --cert-name hotel.hcasc.cz-0001 \
+  --non-interactive \
+  --deploy-hook 'systemctl reload nginx'
+openssl x509 \
+  -checkend 2592000 \
+  -noout \
+  -in /etc/letsencrypt/live/hotel.hcasc.cz-0001/fullchain.pem
+echo 'Production TLS certificate validity: PASS (>30 days)'
+"""
+
+
+def cmd_renew_certificate() -> None:
+    run_remote_sudo(certificate_renewal_script())
+
+
 def pre_upload_cleanup_script() -> str:
     return r"""set -euo pipefail
 upload_home="$HOME"
@@ -281,12 +314,17 @@ def cmd_verify_artifact() -> None:
 
 def main() -> int:
     if len(sys.argv) != 2:
-        raise SystemExit("Usage: github_deploy_via_ssh.py <check-helper|deploy|verify-artifact>")
+        raise SystemExit(
+            "Usage: github_deploy_via_ssh.py "
+            "<check-helper|deploy|renew-certificate|verify-artifact>"
+        )
     command = sys.argv[1]
     if command == "check-helper":
         cmd_check_helper()
     elif command == "deploy":
         cmd_deploy()
+    elif command == "renew-certificate":
+        cmd_renew_certificate()
     elif command == "verify-artifact":
         cmd_verify_artifact()
     else:
