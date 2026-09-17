@@ -11,7 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   getAuthBundle,
@@ -2176,6 +2176,7 @@ function BreakfastDetail(): JSX.Element {
 }
 
 function HousekeepingAdmin(): JSX.Element {
+  const [activeView, setActiveView] = React.useState<'rooms' | 'issue' | 'lost_found'>('rooms');
   const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
   const [selectedRoom, setSelectedRoom] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -2293,27 +2294,13 @@ function HousekeepingAdmin(): JSX.Element {
     <main className="k-page" data-testid="housekeeping-admin-page">
       
       <h1>Pokojská</h1>
-      
-      {(
+      <div className="k-housekeeping-toggle" role="tablist" aria-label="Pohled pokojské">
+        <button className={`k-housekeeping-toggle__button${activeView === 'rooms' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => setActiveView('rooms')} aria-selected={activeView === 'rooms'}>Pokoje</button>
+        <button className={`k-housekeeping-toggle__button${activeView === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => { setMode('lost_found'); setActiveView('lost_found'); }} aria-selected={activeView === 'lost_found'}>Nález</button>
+        <button className={`k-housekeeping-toggle__button${activeView === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => { setMode('issue'); setActiveView('issue'); }} aria-selected={activeView === 'issue'}>Závada</button>
+      </div>
+      {activeView === 'rooms' ? <HousekeepingRooms /> : (
         <div className="k-card k-card--compact">
-          <div className="k-housekeeping-toggle" role="group" aria-label="Typ zápisu pokojské">
-            <button
-              className={`k-housekeeping-toggle__button${mode === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`}
-              type="button"
-              onClick={() => setMode('lost_found')}
-              aria-pressed={mode === 'lost_found'}
-            >
-              Nález
-            </button>
-            <button
-              className={`k-housekeeping-toggle__button${mode === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`}
-              type="button"
-              onClick={() => setMode('issue')}
-              aria-pressed={mode === 'issue'}
-            >
-              Závada
-            </button>
-          </div>
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">
             <FormField id="housekeeping_room" label="Pokoj">

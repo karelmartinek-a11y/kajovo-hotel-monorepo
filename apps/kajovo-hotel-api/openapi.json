@@ -1434,6 +1434,188 @@
         "title": "HintRequest",
         "type": "object"
       },
+      "HousekeepingOperationalState": {
+        "enum": [
+          "checkout_departed_dirty",
+          "checkout_departed_clean",
+          "checkout_pending",
+          "occupied",
+          "free"
+        ],
+        "title": "HousekeepingOperationalState",
+        "type": "string"
+      },
+      "HousekeepingRoomRead": {
+        "properties": {
+          "arrival_today": {
+            "title": "Arrival Today",
+            "type": "boolean"
+          },
+          "checked_out": {
+            "title": "Checked Out",
+            "type": "boolean"
+          },
+          "departure_today": {
+            "title": "Departure Today",
+            "type": "boolean"
+          },
+          "floor": {
+            "title": "Floor",
+            "type": "string"
+          },
+          "guest_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guest Label"
+          },
+          "housekeeping_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Housekeeping Color"
+          },
+          "housekeeping_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Housekeeping Status"
+          },
+          "housekeeping_status_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Housekeeping Status Id"
+          },
+          "occupied": {
+            "title": "Occupied",
+            "type": "boolean"
+          },
+          "operational_state": {
+            "$ref": "#/components/schemas/HousekeepingOperationalState"
+          },
+          "persons": {
+            "minimum": 0.0,
+            "title": "Persons",
+            "type": "integer"
+          },
+          "room_id": {
+            "title": "Room Id",
+            "type": "string"
+          },
+          "room_name": {
+            "title": "Room Name",
+            "type": "string"
+          },
+          "room_number": {
+            "title": "Room Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "room_id",
+          "room_number",
+          "room_name",
+          "floor",
+          "operational_state",
+          "arrival_today",
+          "departure_today",
+          "checked_out",
+          "occupied",
+          "persons"
+        ],
+        "title": "HousekeepingRoomRead",
+        "type": "object"
+      },
+      "HousekeepingRoomStatus": {
+        "enum": [
+          "clean",
+          "dirty",
+          "stay_no_linen",
+          "stay_with_linen",
+          "do_not_disturb",
+          "technical_issue"
+        ],
+        "title": "HousekeepingRoomStatus",
+        "type": "string"
+      },
+      "HousekeepingRoomStatusUpdate": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HousekeepingRoomStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HousekeepingRoomStatusUpdate",
+        "type": "object"
+      },
+      "HousekeepingRoomsOverview": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "housekeeping_status_is_current": {
+            "title": "Housekeeping Status Is Current",
+            "type": "boolean"
+          },
+          "loaded_at": {
+            "format": "date-time",
+            "title": "Loaded At",
+            "type": "string"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingRoomRead"
+            },
+            "title": "Rooms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "housekeeping_status_is_current",
+          "loaded_at",
+          "rooms"
+        ],
+        "title": "HousekeepingRoomsOverview",
+        "type": "object"
+      },
       "InventoryAuditLogRead": {
         "properties": {
           "action": {
@@ -5753,6 +5935,111 @@
         "summary": "Verify Challenge",
         "tags": [
           "device"
+        ]
+      }
+    },
+    "/api/v1/housekeeping/rooms": {
+      "get": {
+        "operationId": "get_housekeeping_rooms_api_v1_housekeeping_rooms_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HousekeepingRoomsOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Housekeeping Rooms",
+        "tags": [
+          "housekeeping"
+        ]
+      }
+    },
+    "/api/v1/housekeeping/rooms/{room_id}": {
+      "patch": {
+        "operationId": "update_housekeeping_room_status_api_v1_housekeeping_rooms__room_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HousekeepingRoomStatusUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HousekeepingRoomRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Housekeeping Room Status",
+        "tags": [
+          "housekeeping"
         ]
       }
     },

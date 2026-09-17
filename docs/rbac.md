@@ -41,7 +41,7 @@ Permission používají formát `<modul>:<akce>`, kde akce je `read` nebo `write
 ### `admin`
 
 - `dashboard:read`
-- `housekeeping:read`
+- `housekeeping:read`, `housekeeping:write`
 - `breakfast:read`, `breakfast:write`
 - `lost_found:read`, `lost_found:write`
 - `issues:read`, `issues:write`
@@ -52,7 +52,7 @@ Permission používají formát `<modul>:<akce>`, kde akce je `read` nebo `write
 
 ### `pokojská`
 
-- `housekeeping:read`
+- `housekeeping:read`, `housekeeping:write`
 - `issues:write`
 - `lost_found:write`
 
@@ -110,6 +110,9 @@ Chybové odpovědi:
 
 Samotná module-level permission nestačí na všechny endpointy. Backend má ještě jemnější omezení:
 
+- `housekeeping`
+  - `admin` a `pokojská` smějí číst denní pokojský přehled a měnit pouze šest podporovaných Better Hotel stavů pokoje
+  - zápis se po každé změně znovu ověří proti živému aktuálnímu stavu; stav rezervací se tím nemění
 - `breakfast`
   - plánování, mazání, import/export a reaktivace jsou jen pro `admin` nebo `recepce`
   - role `snídaně` smí zapisovat jen omezeně, typicky označit objednávku jako `served`

@@ -34,6 +34,7 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 
 ## Doménové dokumenty
 
+- `docs/module-pokoje.md`
 - `docs/module-snidane.md`
 - `docs/module-ztraty-a-nalezy.md`
 - `docs/module-zavady.md`

@@ -66,6 +66,41 @@ const ROUTE_TEST_IDS: Record<string, string> = {
   '/hlaseni': 'reports-list-page',
 };
 
+const HOUSEKEEPING_ROOM_FIXTURE = {
+  room_id: 'room-101',
+  room_number: '101',
+  room_name: '101 KOMFORT',
+  floor: '1',
+  housekeeping_status_id: 'dirty-id',
+  housekeeping_status: 'Neuklizeno',
+  housekeeping_color: '#F57621',
+  operational_state: 'checkout_departed_dirty',
+  arrival_today: false,
+  departure_today: true,
+  checked_out: true,
+  occupied: false,
+  guest_label: 'Novákovi',
+  persons: 2,
+} as const;
+
+const HOUSEKEEPING_ROOM_FIXTURES = [
+  HOUSEKEEPING_ROOM_FIXTURE,
+  ...[201, 202, 203, 204, 205, 206, 207, 208, 301, 302, 303, 304, 305, 306, 307, 308].map((number, index) => ({
+    ...HOUSEKEEPING_ROOM_FIXTURE,
+    room_id: `room-${number}`,
+    room_number: String(number),
+    room_name: `${number} KOMFORT`,
+    floor: String(number)[0],
+    guest_label: index % 3 === 0 ? 'Svoboda' : index % 3 === 1 ? 'D. Král' : null,
+    persons: index % 3,
+    operational_state: index % 5 === 0 ? 'checkout_departed_clean' : index % 5 === 1 ? 'checkout_pending' : index % 5 === 2 ? 'occupied' : 'free',
+    arrival_today: index % 4 === 0,
+    departure_today: index % 5 < 2,
+    checked_out: index % 5 === 0,
+    occupied: index % 5 === 2,
+  })),
+];
+
 async function csrfHeaderFor(context: APIRequestContext) {
   const state = await context.storageState();
   const csrf = state.cookies.find((cookie: { name: string; value: string }) => cookie.name === 'kajovo_csrf')?.value;
@@ -204,6 +239,48 @@ test('recepce načte přehled snídaní automaticky', async ({ page, request }, 
   await expect(page).toHaveURL(/\/snidane$/);
 
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+});
+
+test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page, request }, testInfo) => {
+  let patchBody: unknown = null;
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      patchBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ...HOUSEKEEPING_ROOM_FIXTURE,
+          housekeeping_status_id: 'clean-id',
+          housekeeping_status: 'Uklizeno pro nájezd',
+          housekeeping_color: '#138B43',
+          operational_state: 'checkout_departed_clean',
+        }),
+      });
+      return;
+    }
+    const selectedDate = new URL(route.request().url()).searchParams.get('date');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        date: selectedDate,
+        housekeeping_status_is_current: true,
+        loaded_at: '2026-09-17T12:00:00Z',
+        rooms: HOUSEKEEPING_ROOM_FIXTURES,
+      }),
+    });
+  });
+  const { portalEmail, portalPassword } = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, portalEmail, portalPassword);
+  await expect(page).toHaveURL(/\/pokojska$/);
+  await expect(page.getByTestId('housekeeping-rooms-view')).toBeVisible();
+  await page.getByRole('button', { name: /pokoj 101, check-out.*neuklizený/i }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Neuklizeno');
+  await dialog.getByRole('button', { name: /^Uklizeno /i }).click();
+  await expect(dialog).toContainText('Uklizeno pro nájezd');
+  expect(patchBody).toEqual({ status: 'clean' });
 });
 
 test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page, request }, testInfo) => {

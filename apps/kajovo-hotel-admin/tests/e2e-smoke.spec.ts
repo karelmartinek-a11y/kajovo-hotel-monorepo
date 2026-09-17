@@ -83,6 +83,50 @@ test.describe('CI smoke auth flows', () => {
     await expect(page.getByRole('button', { name: /změnit heslo/i })).toHaveCount(0);
   });
 
+  test('admin vidí pokojský přehled a může změnit stav pokoje', async ({ page, request }) => {
+    const adminLoginResponse = await request.post('/api/auth/admin/login', {
+      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
+    expect(adminLoginResponse.ok()).toBeTruthy();
+    const storageState = await request.storageState();
+    await page.context().addCookies(storageState.cookies);
+    let patchBody: unknown = null;
+    const room = {
+      room_id: 'room-301', room_number: '301', room_name: '301 KOMFORT', floor: '3',
+      housekeeping_status_id: 'dirty-id', housekeeping_status: 'Neuklizeno', housekeeping_color: '#F57621',
+      operational_state: 'checkout_pending', arrival_today: false, departure_today: true,
+      checked_out: false, occupied: false, guest_label: 'Novák', persons: 1,
+    };
+    await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        patchBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ...room, housekeeping_status: 'Technický problém', housekeeping_status_id: 'technical-id' }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          date: new URL(route.request().url()).searchParams.get('date'),
+          housekeeping_status_is_current: true,
+          loaded_at: '2026-09-17T12:00:00Z',
+          rooms: [room],
+        }),
+      });
+    });
+    await page.goto('/admin/pokojska', { waitUntil: 'networkidle' });
+    await expect(page.getByTestId('housekeeping-rooms-view')).toBeVisible();
+    await page.getByRole('button', { name: /pokoj 301/i }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: /^Technická závada /i }).click();
+    await expect(dialog).toContainText('Technický problém');
+    expect(patchBody).toEqual({ status: 'technical_issue' });
+  });
+
   test('admin login hint zobrazi blokujici dialog az do potvrzeni odeslani', async ({ page }) => {
     await page.goto('/admin/login', { waitUntil: 'networkidle' });
     await page.getByLabel(ADMIN_EMAIL_LABEL).fill(ADMIN_EMAIL);

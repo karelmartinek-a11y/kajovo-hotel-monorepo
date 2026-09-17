@@ -93,6 +93,49 @@ def test_rbac_denies_breakfast_for_sklad(api_base_url: str) -> None:
     assert data["detail"] == "Missing permission: breakfast:read"
 
 
+def test_rbac_housekeeping_rooms_are_readable_and_writable_by_housekeeping(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "pokojska@example.com", "password": "pokojska-pass"},
+    )
+    assert status == 200
+
+    status, _ = api_request(opener, api_base_url, "/api/v1/housekeeping/rooms?date=2026-09-17")
+    assert status == 502
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/v1/housekeeping/rooms/room-101?date=2026-09-17",
+        method="PATCH",
+        payload={"status": "clean"},
+        headers=csrf_header(jar),
+    )
+    assert status == 502
+
+
+def test_rbac_housekeeping_rooms_are_denied_to_reception(api_base_url: str) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(
+        opener,
+        api_base_url,
+        "/api/auth/login",
+        method="POST",
+        payload={"email": "recepce@example.com", "password": "recepce-pass"},
+    )
+    assert status == 200
+
+    status, data = api_request(opener, api_base_url, "/api/v1/housekeeping/rooms?date=2026-09-17")
+    assert status == 403
+    assert isinstance(data, dict)
+    assert data["detail"] == "Missing permission: housekeeping:read"
+
+
 def test_rbac_allows_reports_for_recepce(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))

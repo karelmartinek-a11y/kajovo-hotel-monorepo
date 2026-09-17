@@ -233,6 +233,34 @@ export type HTTPValidationError = {
 export type HintRequest = {
   "email": string;
 };
+export type HousekeepingOperationalState = "checkout_departed_dirty" | "checkout_departed_clean" | "checkout_pending" | "occupied" | "free";
+export type HousekeepingRoomRead = {
+  "arrival_today": boolean;
+  "checked_out": boolean;
+  "departure_today": boolean;
+  "floor": string;
+  "guest_label"?: string | null;
+  "housekeeping_color"?: string | null;
+  "housekeeping_status"?: string | null;
+  "housekeeping_status_id"?: string | null;
+  "occupied": boolean;
+  "operational_state": HousekeepingOperationalState;
+  "persons": number;
+  "room_id": string;
+  "room_name": string;
+  "room_number": string;
+};
+export type HousekeepingRoomStatus = "clean" | "dirty" | "stay_no_linen" | "stay_with_linen" | "do_not_disturb" | "technical_issue";
+export type HousekeepingRoomStatusUpdate = {
+  "note"?: string | null;
+  "status": HousekeepingRoomStatus;
+};
+export type HousekeepingRoomsOverview = {
+  "date": string;
+  "housekeeping_status_is_current": boolean;
+  "loaded_at": string;
+  "rooms": Array<HousekeepingRoomRead>;
+};
 export type InventoryAuditLogRead = {
   "action": string;
   "created_at": string | null;
@@ -762,6 +790,12 @@ export const apiClient = {
   },
   async verifyChallengeApiV1DeviceVerifyPost(body: DeviceVerifyRequest): Promise<DeviceVerifyResponse> {
     return request<DeviceVerifyResponse>('POST', `/api/v1/device/verify`, undefined, body);
+  },
+  async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; }): Promise<HousekeepingRoomsOverview> {
+    return request<HousekeepingRoomsOverview>('GET', `/api/v1/housekeeping/rooms`, query, undefined);
+  },
+  async updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(room_id: string, query: { "date": string; }, body: HousekeepingRoomStatusUpdate): Promise<HousekeepingRoomRead> {
+    return request<HousekeepingRoomRead>('PATCH', `/api/v1/housekeeping/rooms/${room_id}`, query, body);
   },
   async listItemsApiV1InventoryGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('GET', `/api/v1/inventory`, query, undefined);

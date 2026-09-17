@@ -46,6 +46,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [
     'dashboard:read',
     'housekeeping:read',
+    'housekeeping:write',
     'breakfast:read',
     'breakfast:write',
     'lost_found:read',
@@ -69,7 +70,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'reports:read',
     'reports:write',
   ],
-  pokojská: ['housekeeping:read', 'issues:write', 'lost_found:write'],
+  pokojská: ['housekeeping:read', 'housekeeping:write', 'issues:write', 'lost_found:write'],
   údržba: ['issues:read', 'issues:write'],
   snídaně: ['breakfast:read', 'breakfast:write'],
   sklad: ['inventory:read', 'inventory:write', 'reports:read'],

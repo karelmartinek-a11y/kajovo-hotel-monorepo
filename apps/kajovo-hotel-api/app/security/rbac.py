@@ -9,6 +9,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     'admin': {
         'dashboard:read',
         'housekeeping:read',
+        'housekeeping:write',
         'breakfast:read',
         'breakfast:write',
         'lost_found:read',
@@ -26,6 +27,7 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     },
     'pokojská': {
         'housekeeping:read',
+        'housekeeping:write',
         'issues:write',
         'lost_found:write',
     },

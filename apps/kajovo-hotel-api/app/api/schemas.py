@@ -106,6 +106,52 @@ class BreakfastDailyOverview(BaseModel):
     summary: BreakfastDailySummary
 
 
+class HousekeepingRoomStatus(StrEnum):
+    CLEAN = "clean"
+    DIRTY = "dirty"
+    STAY_NO_LINEN = "stay_no_linen"
+    STAY_WITH_LINEN = "stay_with_linen"
+    DO_NOT_DISTURB = "do_not_disturb"
+    TECHNICAL_ISSUE = "technical_issue"
+
+
+class HousekeepingOperationalState(StrEnum):
+    CHECKOUT_DEPARTED_DIRTY = "checkout_departed_dirty"
+    CHECKOUT_DEPARTED_CLEAN = "checkout_departed_clean"
+    CHECKOUT_PENDING = "checkout_pending"
+    OCCUPIED = "occupied"
+    FREE = "free"
+
+
+class HousekeepingRoomRead(BaseModel):
+    room_id: str
+    room_number: str
+    room_name: str
+    floor: str
+    housekeeping_status_id: str | None = None
+    housekeeping_status: str | None = None
+    housekeeping_color: str | None = None
+    operational_state: HousekeepingOperationalState
+    arrival_today: bool
+    departure_today: bool
+    checked_out: bool
+    occupied: bool
+    guest_label: str | None = None
+    persons: int = Field(ge=0)
+
+
+class HousekeepingRoomsOverview(BaseModel):
+    date: date
+    housekeeping_status_is_current: bool
+    loaded_at: datetime
+    rooms: list[HousekeepingRoomRead]
+
+
+class HousekeepingRoomStatusUpdate(BaseModel):
+    status: HousekeepingRoomStatus
+    note: str | None = Field(default=None, max_length=500)
+
+
 class BreakfastImportItem(BaseModel):
     room: int
     count: int

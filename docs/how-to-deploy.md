@@ -25,4 +25,4 @@
 ## Důležité
 
 - Workflow je navázané jen na úspěšný běh `CI Gates - Kajovo Hotel` pro `main`.
-- Produkční ověření používá `scripts/verify_live_breakfast_manual_refresh.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`.
+- Produkční ověření používá `scripts/verify_live_breakfast_manual_refresh.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`. Pokojský gate pouze čte živý přehled; v deployi záměrně nemění provozní stav skutečného pokoje.

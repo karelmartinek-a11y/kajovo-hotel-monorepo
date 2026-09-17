@@ -53,12 +53,13 @@
 
 .k-housekeeping-toggle {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--k-spacing-1);
   padding: var(--k-spacing-1);
   border: 1px solid var(--k-color-border);
   border-radius: var(--k-radius-pill);
   background: var(--k-color-surface);
+  margin-bottom: var(--k-spacing-4);
 }
 
 .k-housekeeping-toggle__button {
