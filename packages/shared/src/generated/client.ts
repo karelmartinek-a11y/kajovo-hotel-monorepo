@@ -233,22 +233,26 @@ export type HTTPValidationError = {
 export type HintRequest = {
   "email": string;
 };
-export type HousekeepingOperationalState = "checkout_departed_dirty" | "checkout_departed_clean" | "checkout_pending" | "occupied" | "free";
+export type HousekeepingOperationalState = "checkout_departed_dirty" | "checkout_departed_clean" | "checkout_pending" | "checkout_pending_clean" | "arrived" | "occupied" | "free";
 export type HousekeepingRoomRead = {
   "arrival_today": boolean;
+  "arrivals": Array<HousekeepingStayRead>;
   "checked_out": boolean;
   "departure_today": boolean;
+  "departures": Array<HousekeepingStayRead>;
   "floor": string;
   "guest_label"?: string | null;
   "housekeeping_color"?: string | null;
   "housekeeping_status"?: string | null;
   "housekeeping_status_id"?: string | null;
+  "occupancy_state": "departing" | "arrived" | "staying" | "free";
   "occupied": boolean;
   "operational_state": HousekeepingOperationalState;
   "persons": number;
   "room_id": string;
   "room_name": string;
   "room_number": string;
+  "stays": Array<HousekeepingStayRead>;
 };
 export type HousekeepingRoomStatus = "clean" | "dirty" | "stay_no_linen" | "stay_with_linen" | "do_not_disturb" | "technical_issue";
 export type HousekeepingRoomStatusUpdate = {
@@ -259,7 +263,19 @@ export type HousekeepingRoomsOverview = {
   "date": string;
   "housekeeping_status_is_current": boolean;
   "loaded_at": string;
+  "occupancy_date": string;
   "rooms": Array<HousekeepingRoomRead>;
+};
+export type HousekeepingStayRead = {
+  "amenities"?: Array<ReservationAmenityRead>;
+  "arrival": string;
+  "checked_in"?: string | null;
+  "checked_out"?: string | null;
+  "country_name"?: string | null;
+  "departure": string;
+  "guest_label"?: string | null;
+  "persons": number;
+  "reservation_id": string;
 };
 export type InventoryAuditLogRead = {
   "action": string;
@@ -576,6 +592,18 @@ export type ReportUpdate = {
   "status"?: string | null;
   "title"?: string | null;
 };
+export type ReservationAmenityKind = "dog" | "cot";
+export type ReservationAmenityRead = {
+  "active": boolean;
+  "kind": ReservationAmenityKind;
+  "state": ReservationAmenityState;
+  "version": number;
+};
+export type ReservationAmenityState = "red" | "green";
+export type ReservationAmenityUpdate = {
+  "state": ReservationAmenityState;
+  "version": number;
+};
 export type SelectRoleRequest = {
   "role": string;
 };
@@ -790,6 +818,15 @@ export const apiClient = {
   },
   async verifyChallengeApiV1DeviceVerifyPost(body: DeviceVerifyRequest): Promise<DeviceVerifyResponse> {
     return request<DeviceVerifyResponse>('POST', `/api/v1/device/verify`, undefined, body);
+  },
+  async removeReservationAmenityApiV1HousekeepingReservationsReservationIdAmenitiesKindDelete(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; "version": number; }): Promise<ReservationAmenityRead> {
+    return request<ReservationAmenityRead>('DELETE', `/api/v1/housekeeping/reservations/${reservation_id}/amenities/${kind}`, query, undefined);
+  },
+  async updateReservationAmenityApiV1HousekeepingReservationsReservationIdAmenitiesKindPatch(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; }, body: ReservationAmenityUpdate): Promise<ReservationAmenityRead> {
+    return request<ReservationAmenityRead>('PATCH', `/api/v1/housekeeping/reservations/${reservation_id}/amenities/${kind}`, query, body);
+  },
+  async addReservationAmenityApiV1HousekeepingReservationsReservationIdAmenitiesKindPost(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; "version"?: number; }): Promise<ReservationAmenityRead> {
+    return request<ReservationAmenityRead>('POST', `/api/v1/housekeeping/reservations/${reservation_id}/amenities/${kind}`, query, undefined);
   },
   async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; }): Promise<HousekeepingRoomsOverview> {
     return request<HousekeepingRoomsOverview>('GET', `/api/v1/housekeeping/rooms`, query, undefined);

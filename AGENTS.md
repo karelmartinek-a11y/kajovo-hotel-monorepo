@@ -6,7 +6,7 @@
 - Nejvyšším zdrojem pravdy je aktivní produkční zdrojový kód a skutečné runtime zapojení. Dokumentace, komentáře, audity, poznámky, prompty, SSOT a testy jsou odvozené artefakty; při rozporu se opravují podle ověřeného kódu a runtime.
 - Aktivní části repozitáře zahrnují zejména `apps/kajovo-hotel-web`, `apps/kajovo-hotel-admin`, `apps/kajovo-hotel-api`, `packages/shared`, `packages/ui`, `apps/kajovo-hotel`, `brand`, `scripts`, `infra`, `.github` a aktuální dokumentaci v `docs`.
 - Veřejný portál běží na `https://hotel.hcasc.cz`, administrační část na `https://hotel.hcasc.cz/admin` a API pod produkční doménou. Cílový server, nasazený commit a deploy mechanismus vždy znovu ověř podle DNS, aktivní GitHub Actions konfigurace, serverového runtime a deploy artefaktů.
-- Pokojský modul `/pokojska` a `/admin/pokojska` čte a mění stavy pokojů výhradně serverovým proxy kontraktem `/api/v1/housekeeping/rooms`; Better Hotel tokeny nikdy nesmí přejít do frontendového runtime.
+- Pokojský modul `/pokojska` a `/admin/pokojska` čte a mění stavy pokojů výhradně serverovým proxy kontraktem `/api/v1/housekeeping/rooms`; Better Hotel tokeny nikdy nesmí přejít do frontendového runtime. Pobyty patří vybranému dni, obsazenost a úklid aktuálnímu okamžiku. Ikony psa/postýlky se trvale vážou na ID rezervace v `reservation_amenities`, nikoli pokoj; zápisy kontrolují aktivní roli, vazbu rezervace a monotónní verzi. Recepce/admin ikony spravují, pokojská pouze mění barvu.
 - Android není součástí tohoto repozitáře, jeho release gate ani produkčního webového deploye. Androidí zdroje, testy nebo parity kontroly nesmí blokovat změny webu, adminu nebo API.
 - Secrets, hesla, tokeny, klíče a citlivá produkční data nikdy necommituj ani nevypisuj do reportu.
 

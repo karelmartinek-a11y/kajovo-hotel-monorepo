@@ -63,6 +63,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings:write',
   ],
   recepce: [
+    'housekeeping:read',
+    'housekeeping:write',
     'breakfast:read',
     'breakfast:write',
     'lost_found:read',

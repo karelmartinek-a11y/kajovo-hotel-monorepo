@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 try:
     from enum import StrEnum
@@ -119,8 +120,44 @@ class HousekeepingOperationalState(StrEnum):
     CHECKOUT_DEPARTED_DIRTY = "checkout_departed_dirty"
     CHECKOUT_DEPARTED_CLEAN = "checkout_departed_clean"
     CHECKOUT_PENDING = "checkout_pending"
+    CHECKOUT_PENDING_CLEAN = "checkout_pending_clean"
+    ARRIVED = "arrived"
     OCCUPIED = "occupied"
     FREE = "free"
+
+
+class ReservationAmenityKind(StrEnum):
+    DOG = "dog"
+    COT = "cot"
+
+
+class ReservationAmenityState(StrEnum):
+    RED = "red"
+    GREEN = "green"
+
+
+class ReservationAmenityRead(BaseModel):
+    kind: ReservationAmenityKind
+    state: ReservationAmenityState
+    version: int
+    active: bool
+
+
+class ReservationAmenityUpdate(BaseModel):
+    state: ReservationAmenityState
+    version: int = Field(ge=1)
+
+
+class HousekeepingStayRead(BaseModel):
+    reservation_id: str
+    guest_label: str | None = None
+    persons: int = Field(ge=0)
+    country_name: str | None = None
+    arrival: date
+    departure: date
+    checked_in: datetime | None = None
+    checked_out: datetime | None = None
+    amenities: list[ReservationAmenityRead] = Field(default_factory=list)
 
 
 class HousekeepingRoomRead(BaseModel):
@@ -132,6 +169,10 @@ class HousekeepingRoomRead(BaseModel):
     housekeeping_status: str | None = None
     housekeeping_color: str | None = None
     operational_state: HousekeepingOperationalState
+    occupancy_state: Literal['departing', 'arrived', 'staying', 'free']
+    departures: list[HousekeepingStayRead]
+    arrivals: list[HousekeepingStayRead]
+    stays: list[HousekeepingStayRead]
     arrival_today: bool
     departure_today: bool
     checked_out: bool
@@ -143,6 +184,7 @@ class HousekeepingRoomRead(BaseModel):
 class HousekeepingRoomsOverview(BaseModel):
     date: date
     housekeeping_status_is_current: bool
+    occupancy_date: date
     loaded_at: datetime
     rooms: list[HousekeepingRoomRead]
 

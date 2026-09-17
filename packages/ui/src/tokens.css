@@ -129,6 +129,13 @@ body {
 
 .k-hk-board {
   --k-hk-navy: #091538;
+  --k-hk-amenity-red: #b42318;
+  --k-hk-arrived-green: #067647;
+  --k-hk-arrived-border: #05603a;
+  --k-hk-stripe-panel: rgba(255,255,255,.94);
+  --k-hk-radius-4: 4px;
+  --k-hk-radius-8: 8px;
+  --k-hk-space-5: 5px;
   --k-hk-teal: #087f83;
   --k-hk-muted: #58708f;
   --k-hk-line: #d7e1ec;
@@ -268,7 +275,7 @@ body {
 
 .k-hk-legend {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   gap: 0;
   padding: var(--k-hk-space-11) var(--k-hk-space-10);
   border: var(--k-hk-border-legend);
@@ -359,7 +366,7 @@ body {
 .k-hk-floor__header > span:last-child i { width: 1px; height: 20px; background: var(--k-hk-line); }
 .k-hk-floor__rooms {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: var(--k-hk-space-9);
 }
 
@@ -384,7 +391,6 @@ body {
 .k-hk-room__topline { display: flex; align-items: center; min-height: 31px; gap: var(--k-hk-space-6); }
 .k-hk-room__topline strong { font-size: 23px; line-height: 1; }
 .k-hk-room__chevron { margin-left: auto; color: var(--k-hk-chevron); font-size: 28px; line-height: 1; }
-.k-hk-room__arrival svg { width: 25px; height: 25px; fill: none; stroke: var(--k-hk-blue); stroke-width: 2; }
 .k-hk-room__state { display: flex; align-items: flex-start; gap: var(--k-spacing-2); min-height: 35px; margin-top: var(--k-hk-space-3); font-size: 12px; font-weight: 700; line-height: 1.15; }
 .k-hk-room__state i { width: 11px; height: 11px; margin-top: var(--k-hk-space-1); }
 .k-hk-room__meta { display: flex; justify-content: space-between; align-items: center; gap: var(--k-hk-space-6); color: var(--k-hk-meta); font-size: 11px; white-space: nowrap; }
@@ -392,6 +398,33 @@ body {
 .k-hk-room__persons { display: inline-flex; align-items: center; flex: 0 0 auto; }
 .k-hk-room__persons svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .k-hk-room__housekeeping { display: block; margin-top: var(--k-hk-space-6); overflow: hidden; color: var(--k-hk-status-copy); font-size: 9px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+
+.k-hk-room { display: flex; flex-direction: column; }
+.k-hk-room__topline, .k-hk-room__stays { width: 100%; }
+.k-hk-room__stays { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--k-spacing-2-5); }
+.k-hk-room__stays > span { min-width: 0; }
+.k-hk-room__stays > span + span { border-left: 1px solid var(--k-hk-line); padding-left: var(--k-spacing-2-5); }
+.k-hk-stay { display: flex; flex-direction: column; gap: var(--k-spacing-tight); min-width: 0; margin: 8px 0; font-size: 12px; line-height: 1.4; color: var(--k-hk-navy); }
+.k-hk-stay__label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.k-hk-stay__name { font-weight: 700; overflow-wrap: anywhere; }
+.k-hk-stay__country { overflow-wrap: anywhere; }
+.k-hk-amenities { display: flex; gap: var(--k-hk-space-6); flex-wrap: wrap; }
+.k-hk-amenity { display: inline-flex; align-items: center; gap: var(--k-spacing-tight); padding: var(--k-hk-space-5); border: 1px solid currentColor; border-radius: var(--k-hk-radius-8); background: var(--k-color-brand-white); }
+.k-hk-amenity--red { color: var(--k-hk-amenity-red); }
+.k-hk-amenity--green { color: var(--k-hk-arrived-green); }
+.k-hk-amenity svg, .k-hk-amenity-actions svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.k-hk-amenity__mark { font-size: 12px; font-weight: 800; }
+.k-hk-room--arrived { background: var(--k-hk-arrived-green); border-color: var(--k-hk-arrived-border); color: var(--k-color-brand-white); }
+.k-hk-room--arrived .k-hk-stay, .k-hk-room--arrived .k-hk-room__housekeeping, .k-hk-room--arrived .k-hk-room__chevron { color: var(--k-color-brand-white); }
+.k-hk-room--checkout_pending_clean { background: repeating-linear-gradient(135deg, #f7b5bb 0, #f7b5bb 3px, #a9e4bf 3px, #a9e4bf 6px); }
+.k-hk-room--checkout_pending_clean .k-hk-stay, .k-hk-room--checkout_pending_clean .k-hk-room__state, .k-hk-room--checkout_pending_clean .k-hk-room__housekeeping { background: var(--k-hk-stripe-panel); border-radius: var(--k-hk-radius-4); padding: var(--k-spacing-tight); color: var(--k-hk-navy); }
+.k-hk-legend__item--arrived i { background: var(--k-hk-arrived-green); }
+.k-hk-legend__item--checkout_pending_clean i { background: repeating-linear-gradient(135deg, #b42318 0, #b42318 2px, #067647 2px, #067647 4px); }
+.k-hk-reservation-actions > section { border-top: 1px solid var(--k-hk-line); margin-top: var(--k-spacing-5); padding-top: var(--k-spacing-2); }
+.k-hk-amenity-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-spacing-2-5); }
+.k-hk-amenity-actions > div { display: flex; flex-direction: column; gap: var(--k-hk-space-6); }
+.k-hk-amenity-actions button { display: flex; align-items: center; gap: var(--k-hk-space-6); min-height: 44px; padding: var(--k-spacing-2); border: 1px solid var(--k-hk-line); border-radius: var(--k-hk-radius-8); font: inherit; font-size: 12px; cursor: pointer; }
+.k-hk-amenity-actions button:disabled { opacity: .6; cursor: wait; }
 
 .k-hk-board__source-note { margin: 0; color: var(--k-hk-muted); font-size: 12px; text-align: center; }
 .k-hk-board__thanks {
@@ -446,6 +479,7 @@ body {
 }
 
 @media (max-width: 480px) {
+  .k-hk-floor__rooms { grid-template-columns: minmax(0, 1fr); }
   .k-hk-board__header h2 { font-size: 28px; }
   .k-hk-board__header > div p { font-size: 13px; }
   .k-hk-board__motto { display: none; }

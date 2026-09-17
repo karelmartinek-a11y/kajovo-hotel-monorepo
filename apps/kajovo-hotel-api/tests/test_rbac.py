@@ -118,7 +118,7 @@ def test_rbac_housekeeping_rooms_are_readable_and_writable_by_housekeeping(api_b
     assert status == 502
 
 
-def test_rbac_housekeeping_rooms_are_denied_to_reception(api_base_url: str) -> None:
+def test_rbac_housekeeping_rooms_are_allowed_to_reception(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -131,9 +131,24 @@ def test_rbac_housekeeping_rooms_are_denied_to_reception(api_base_url: str) -> N
     assert status == 200
 
     status, data = api_request(opener, api_base_url, "/api/v1/housekeeping/rooms?date=2026-09-17")
-    assert status == 403
-    assert isinstance(data, dict)
-    assert data["detail"] == "Missing permission: housekeeping:read"
+    assert status == 502  # Access accepted; test server has no Better Hotel credentials.
+
+
+def test_housekeeping_amenities_enforce_role_and_csrf_before_upstream(api_base_url: str) -> None:
+    path = "/api/v1/housekeeping/reservations/r/amenities/dog?room_id=101&date=2026-09-17&version=1"
+    for role in ("pokojska", "recepce", "sklad"):
+        jar = CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        code, _ = api_request(opener, api_base_url, "/api/auth/login", method="POST",
+                             payload={"email": f"{role}@example.com", "password": f"{role}-pass"})
+        assert code == 200
+        for method in ("POST", "DELETE", "PATCH"):
+            payload = {"state": "green", "version": 1} if method == "PATCH" else None
+            code, _ = api_request(opener, api_base_url, path, method=method, payload=payload)
+            assert code == 403
+            code, _ = api_request(opener, api_base_url, path, method=method, payload=payload, headers=csrf_header(jar))
+            allowed = role == "recepce" or (role == "pokojska" and method == "PATCH")
+            assert code == (502 if allowed else 403)
 
 
 def test_rbac_allows_reports_for_recepce(api_base_url: str) -> None:

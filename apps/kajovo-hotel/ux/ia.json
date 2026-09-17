@@ -68,7 +68,7 @@
     },
     {
       "key": "housekeeping",
-      "label": "Pokojská",
+      "label": "Pokoje",
       "route": "/pokojska",
       "icon": "tool",
       "active": true,

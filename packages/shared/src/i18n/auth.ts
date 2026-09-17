@@ -156,7 +156,7 @@ const MODULE_LABELS: Record<AuthLocale, Record<string, string>> = {
   cs: {
     dashboard: 'Přehled',
     breakfast: 'Snídaně',
-    housekeeping: 'Pokojská',
+    housekeeping: 'Pokoje',
     lost_found: 'Ztráty a nálezy',
     issues: 'Závady',
     inventory: 'Skladové hospodářství',
@@ -168,7 +168,7 @@ const MODULE_LABELS: Record<AuthLocale, Record<string, string>> = {
   en: {
     dashboard: 'Overview',
     breakfast: 'Breakfast',
-    housekeeping: 'Housekeeping',
+    housekeeping: 'Rooms',
     lost_found: 'Lost & found',
     issues: 'Issues',
     inventory: 'Inventory',

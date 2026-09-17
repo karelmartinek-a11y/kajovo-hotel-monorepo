@@ -45,17 +45,21 @@ const response = await fetch(`${origin}/api/v1/housekeeping/rooms?date=${encodeU
   headers: { cookie, 'user-agent': 'kajovo-housekeeping-verify/1.0' },
 });
 const overview = await jsonOrThrow(response, 'Housekeeping rooms overview');
-if (overview.date !== serviceDate || !Array.isArray(overview.rooms) || overview.rooms.length === 0) {
-  throw new Error(`Unexpected housekeeping overview: ${JSON.stringify(overview).slice(0, 500)}`);
+if (overview.date !== serviceDate || overview.occupancy_date !== serviceDate || !Array.isArray(overview.rooms) || overview.rooms.length === 0) {
+  throw new Error('Unexpected housekeeping overview contract.');
 }
 const invalid = overview.rooms.find((room) =>
   typeof room.room_id !== 'string' ||
   !/^\d{3}$/.test(room.room_number) ||
   typeof room.operational_state !== 'string' ||
+  !['free', 'arrived', 'departing', 'staying'].includes(room.occupancy_state) ||
+  ['departures', 'arrivals', 'stays'].some((group) => !Array.isArray(room[group]) || room[group].some((stay) =>
+    typeof stay.reservation_id !== 'string' || !Array.isArray(stay.amenities) ||
+    stay.amenities.some((item) => !['dog', 'cot'].includes(item.kind) || !['red', 'green'].includes(item.state) || !Number.isInteger(item.version)))) ||
   typeof room.arrival_today !== 'boolean' ||
   typeof room.departure_today !== 'boolean'
 );
-if (invalid) throw new Error(`Invalid room contract: ${JSON.stringify(invalid)}`);
+if (invalid) throw new Error('Invalid room/reservation/amenity contract.');
 
 console.log(JSON.stringify({
   ok: true,

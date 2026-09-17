@@ -95,6 +95,7 @@ test.describe('CI smoke auth flows', () => {
       room_id: 'room-301', room_number: '301', room_name: '301 KOMFORT', floor: '3',
       housekeeping_status_id: 'dirty-id', housekeeping_status: 'Neuklizeno', housekeeping_color: '#F57621',
       operational_state: 'checkout_pending', arrival_today: false, departure_today: true,
+      occupancy_state: 'departing', departures: [], arrivals: [], stays: [],
       checked_out: false, occupied: false, guest_label: 'Novák', persons: 1,
     };
     await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
@@ -112,9 +113,10 @@ test.describe('CI smoke auth flows', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           date: new URL(route.request().url()).searchParams.get('date'),
+          occupancy_date: new URL(route.request().url()).searchParams.get('date'),
           housekeeping_status_is_current: true,
           loaded_at: '2026-09-17T12:00:00Z',
-          rooms: [room],
+          rooms: [{ ...room, housekeeping_status: patchBody ? 'Technický problém' : room.housekeeping_status }],
         }),
       });
     });

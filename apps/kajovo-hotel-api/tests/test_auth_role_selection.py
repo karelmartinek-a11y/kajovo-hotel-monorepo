@@ -91,6 +91,28 @@ def test_multi_role_user_must_select_active_role(api_base_url: str, api_request)
     assert me_after.get("active_role") == "recepce"
 
 
+def test_amenities_use_active_role_after_switch(api_base_url: str, api_request) -> None:
+    status, _ = api_request("/api/v1/users", method="POST", payload={
+        "first_name": "Rooms", "last_name": "Roles", "email": "rooms.roles@example.com",
+        "password": "rooms-role-pass", "roles": ["recepce", "pokojská"],
+    })
+    assert status == 201
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = raw_request(opener, api_base_url, "/api/auth/login", method="POST",
+                            payload={"email": "rooms.roles@example.com", "password": "rooms-role-pass"})
+    assert status == 200
+    path = "/api/v1/housekeeping/reservations/r/amenities/dog?room_id=101&date=2026-09-17"
+    status, _ = raw_request(opener, api_base_url, path, method="POST", headers=csrf_header(jar))
+    assert status == 403
+    for role, expected in [("recepce", 502), ("pokojská", 403), ("recepce", 502)]:
+        status, _ = raw_request(opener, api_base_url, "/api/auth/select-role", method="POST",
+                                payload={"role": role}, headers=csrf_header(jar))
+        assert status == 200
+        status, _ = raw_request(opener, api_base_url, path, method="POST", headers=csrf_header(jar))
+        assert status == expected
+
+
 def test_logout_revokes_server_side_session(api_base_url: str, api_request) -> None:
     status, created = api_request(
         "/api/v1/users",
@@ -138,4 +160,3 @@ def test_logout_revokes_server_side_session(api_base_url: str, api_request) -> N
     assert status == 401
     assert isinstance(denied, dict)
     assert denied.get("detail") == "Authentication required"
-

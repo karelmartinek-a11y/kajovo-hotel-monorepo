@@ -6,6 +6,11 @@ from app.config import Settings
 from app.services.housekeeping import STATUS_NAMES, BetterHotelHousekeepingClient
 
 
+@pytest.fixture(autouse=True)
+def hotel_today(monkeypatch):
+    monkeypatch.setattr("app.services.housekeeping.current_hotel_date", lambda: date(2026, 9, 17))
+
+
 def _reservation(
     reservation_id: str,
     room_id: str,
@@ -112,10 +117,65 @@ def test_housekeeping_overview_combines_schedule_and_current_cleaning_state() ->
     by_number = {room["room_number"]: room for room in overview["rooms"]}
     assert by_number["101"]["operational_state"] == "checkout_departed_dirty"
     assert by_number["101"]["guest_label"] == "Novákovi"
-    assert by_number["102"]["operational_state"] == "checkout_pending"
+    assert by_number["102"]["operational_state"] == "checkout_pending_clean"
     assert by_number["102"]["arrival_today"] is True
     assert by_number["103"]["operational_state"] == "occupied"
     assert by_number["103"]["persons"] == 3
+    assert by_number["101"]["occupancy_state"] == "free"
+    assert by_number["102"]["departures"][0]["reservation_id"] == "dep-102"
+    assert by_number["102"]["arrivals"][0]["reservation_id"] == "arr-102"
+    assert by_number["103"]["stays"][0]["reservation_id"] == "stay-103"
+
+
+@pytest.mark.parametrize("departure_out,arrival_in,arrival_out,clean,expected", [
+    (False, False, False, "dirty", "checkout_pending"),
+    (False, False, False, "clean", "checkout_pending_clean"),
+    (False, False, False, "stay_no_linen", "checkout_pending_clean"),
+    (False, False, False, "stay_with_linen", "checkout_pending_clean"),
+    (False, True, False, "dirty", "arrived"),
+    (False, True, False, "clean", "arrived"),
+    (True, True, False, "dirty", "arrived"),
+    (True, False, False, "dirty", "checkout_departed_dirty"),
+    (True, False, False, "clean", "checkout_departed_clean"),
+    (True, True, True, "clean", "checkout_departed_clean"),
+])
+def test_occupancy_precedence(departure_out, arrival_in, arrival_out, clean, expected):
+    client = FakeHousekeepingClient()
+    client.current_status_key = clean
+    dep = _reservation("dep", "room-101", "101", arrival="2026-09-15", departure="2026-09-17", checkedin="2026-09-15T12:00:00Z", checkedout="2026-09-17T09:00:00Z" if departure_out else None)
+    arr = _reservation("arr", "room-101", "101", arrival="2026-09-17", departure="2026-09-18", checkedin="2026-09-17T12:00:00Z" if arrival_in else None, checkedout="2026-09-17T13:00:00Z" if arrival_out else None)
+    client.reservations_for_day = lambda day: [dep, arr]
+    room = client.build_overview(date(2026, 9, 17))["rooms"][0]
+    assert room["operational_state"] == expected
+    assert room["occupied"] == (expected in {"arrived", "checkout_pending", "checkout_pending_clean"})
+
+
+def test_other_date_keeps_live_occupancy_and_separate_guests():
+    client = FakeHousekeepingClient()
+    future = _reservation("future", "room-101", "101", arrival="2026-09-20", departure="2026-09-22", label="Budoucí host")
+    live = _reservation("live", "room-101", "101", arrival="2026-09-17", departure="2026-09-19", checkedin="2026-09-17T12:00:00Z")
+    client.reservations_for_day = lambda day: [live] if day == date(2026, 9, 17) else [future]
+    overview = client.build_overview(date(2026, 9, 20))
+    room = overview["rooms"][0]
+    assert room["occupancy_state"] == "arrived"
+    assert room["arrivals"][0]["guest_label"] == "Budoucí host"
+    assert overview["occupancy_date"] == date(2026, 9, 17)
+
+
+def test_country_uses_main_guest_address_not_another_guest():
+    from app.services.housekeeping import _stay_read
+    reservation = _reservation("r", "room-101", "101", arrival="2026-09-17", departure="2026-09-20")
+    reservation.update(main_guest="main", guest_list=[{"guest": {"id": "other", "address": {"country": "DEU"}}}, {"guest": {"id": "main", "address": {"country": "CZE"}}}])
+    assert _stay_read(reservation)["country_name"] in {"Česko", "Česká republika"}
+    reservation["main_guest"] = "missing"
+    assert _stay_read(reservation)["country_name"] is None
+
+
+def test_planned_arrival_without_checkin_and_empty_room_are_free():
+    client = FakeHousekeepingClient()
+    client.reservations_for_day = lambda day: [_reservation("r", "room-101", "101", arrival="2026-09-17", departure="2026-09-20")]
+    rooms = client.build_overview(date(2026, 9, 17))["rooms"]
+    assert all(room["occupancy_state"] == "free" for room in rooms)
 
 
 @pytest.mark.parametrize("status_key", list(STATUS_NAMES))

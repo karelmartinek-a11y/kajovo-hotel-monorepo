@@ -2350,7 +2350,7 @@ function HousekeepingForm(): JSX.Element {
           Závada
         </button>
       </div>
-      {activeView === 'rooms' ? <HousekeepingRooms canWrite={canWriteRooms} /> : (
+      {activeView === 'rooms' ? <HousekeepingRooms canWrite={canWriteRooms} canManageAmenities={['admin', 'recepce'].includes(auth?.activeRole ?? auth?.role ?? '')} /> : (
         <div className="k-card k-card--compact">
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">

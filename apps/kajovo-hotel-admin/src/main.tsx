@@ -2176,6 +2176,7 @@ function BreakfastDetail(): JSX.Element {
 }
 
 function HousekeepingAdmin(): JSX.Element {
+  const auth = useAuth();
   const [activeView, setActiveView] = React.useState<'rooms' | 'issue' | 'lost_found'>('rooms');
   const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
   const [selectedRoom, setSelectedRoom] = React.useState('');
@@ -2299,7 +2300,7 @@ function HousekeepingAdmin(): JSX.Element {
         <button className={`k-housekeeping-toggle__button${activeView === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => { setMode('lost_found'); setActiveView('lost_found'); }} aria-selected={activeView === 'lost_found'}>Nález</button>
         <button className={`k-housekeeping-toggle__button${activeView === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => { setMode('issue'); setActiveView('issue'); }} aria-selected={activeView === 'issue'}>Závada</button>
       </div>
-      {activeView === 'rooms' ? <HousekeepingRooms /> : (
+      {activeView === 'rooms' ? <HousekeepingRooms canManageAmenities={['admin', 'recepce'].includes(auth?.activeRole ?? auth?.role ?? '')} /> : (
         <div className="k-card k-card--compact">
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">
@@ -5176,7 +5177,7 @@ function AppRoutes(): JSX.Element {
     ...module,
     route: toAdminNavRoute(module.route),
   }));
-  const adminHeaderModuleOrder = ['breakfast', 'lost_found', 'issues', 'inventory', 'profile', 'users', 'settings'];
+  const adminHeaderModuleOrder = ['housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'profile', 'users', 'settings'];
   const adminShellModules = auth.role === 'admin'
     ? adminHeaderModuleOrder
       .map((key) => adminNavModules.find((module) => module.key === key))

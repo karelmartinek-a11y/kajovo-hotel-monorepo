@@ -62,8 +62,10 @@ Permission používají formát `<modul>:<akce>`, kde akce je `read` nebo `write
 
 ### `recepce`
 
+- `housekeeping:read`, `housekeeping:write`
 - `breakfast:read`, `breakfast:write`
 - `lost_found:read`, `lost_found:write`
+- `reports:read`, `reports:write`
 
 ### `snídaně`
 
@@ -80,7 +82,7 @@ Permission používají formát `<modul>:<akce>`, kde akce je `read` nebo `write
 - `admin` vidí moduly `dashboard`, `housekeeping`, `breakfast`, `lost_found`, `issues`, `inventory`, `reports`, `users`, `settings`
 - `pokojská` vidí pouze `housekeeping`
 - `údržba` vidí pouze `issues`
-- `recepce` vidí `breakfast` a `lost_found`
+- `recepce` vidí `housekeeping`, `breakfast`, `lost_found` a `reports`
 - `snídaně` vidí pouze `breakfast`
 - `sklad` vidí pouze `inventory`
 
@@ -111,7 +113,8 @@ Chybové odpovědi:
 Samotná module-level permission nestačí na všechny endpointy. Backend má ještě jemnější omezení:
 
 - `housekeeping`
-  - `admin` a `pokojská` smějí číst denní pokojský přehled a měnit pouze šest podporovaných Better Hotel stavů pokoje
+  - `admin`, `recepce` a `pokojská` smějí číst denní pokojský přehled a měnit šest podporovaných Better Hotel stavů pokoje
+  - `admin` a `recepce` přidávají/odebírají ikony psa a postýlky konkrétní rezervace; všechny tři role mění barvu existující ikony s kontrolou verze
   - zápis se po každé změně znovu ověří proti živému aktuálnímu stavu; stav rezervací se tím nemění
 - `breakfast`
   - plánování, mazání, import/export a reaktivace jsou jen pro `admin` nebo `recepce`

@@ -18,9 +18,9 @@ const ROLE_SCENARIOS: RoleScenario[] = [
     key: 'recepce',
     apiRole: 'recepce',
     startRoute: '/recepce',
-    visibleModules: ['/snidane', '/ztraty-a-nalezy', '/hlaseni'],
-    allowedRoutes: ['/recepce', '/snidane', '/ztraty-a-nalezy', '/hlaseni'],
-    deniedRoutes: ['/pokojska', '/zavady', '/sklad'],
+    visibleModules: ['/pokojska', '/snidane', '/ztraty-a-nalezy', '/hlaseni'],
+    allowedRoutes: ['/recepce', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/hlaseni'],
+    deniedRoutes: ['/zavady', '/sklad'],
   },
   {
     key: 'pokojská',
@@ -75,6 +75,10 @@ const HOUSEKEEPING_ROOM_FIXTURE = {
   housekeeping_status: 'Neuklizeno',
   housekeeping_color: '#F57621',
   operational_state: 'checkout_departed_dirty',
+  occupancy_state: 'free',
+  departures: [{ reservation_id: 'reservation-old', guest_label: 'Novákovi', persons: 2, country_name: 'Česko', arrival: '2026-09-15', departure: '2026-09-17', checked_in: '2026-09-15T14:00:00Z', checked_out: '2026-09-17T10:00:00Z', amenities: [] }],
+  arrivals: [],
+  stays: [],
   arrival_today: false,
   departure_today: true,
   checked_out: true,
@@ -265,9 +269,10 @@ test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page,
       contentType: 'application/json',
       body: JSON.stringify({
         date: selectedDate,
+        occupancy_date: selectedDate,
         housekeeping_status_is_current: true,
         loaded_at: '2026-09-17T12:00:00Z',
-        rooms: HOUSEKEEPING_ROOM_FIXTURES,
+        rooms: HOUSEKEEPING_ROOM_FIXTURES.map((room) => room.room_id === 'room-101' && patchBody ? { ...room, housekeeping_status: 'Uklizeno pro nájezd', operational_state: 'checkout_departed_clean' } : room),
       }),
     });
   });
@@ -275,13 +280,110 @@ test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page,
   await loginPortalUser(page, portalEmail, portalPassword);
   await expect(page).toHaveURL(/\/pokojska$/);
   await expect(page.getByTestId('housekeeping-rooms-view')).toBeVisible();
-  await page.getByRole('button', { name: /pokoj 101, check-out.*neuklizený/i }).click();
+  await page.getByRole('button', { name: /pokoj 101, VOLNO/i }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Neuklizeno');
   await dialog.getByRole('button', { name: /^Uklizeno /i }).click();
   await expect(dialog).toContainText('Uklizeno pro nájezd');
   expect(patchBody).toEqual({ status: 'clean' });
 });
+
+test('pokoje obnovují vybraný den po minutě a po návratu z pozadí', async ({ page, request }, testInfo) => {
+  await page.clock.install();
+  const dates: string[] = [];
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    dates.push(date);
+    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [HOUSEKEEPING_ROOM_FIXTURE] } });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toBeVisible();
+  await page.getByRole('button', { name: 'Předchozí den' }).click();
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toBeVisible();
+  const chosenDate = dates[dates.length - 1];
+  const before = dates.length;
+  await page.clock.fastForward(59_000);
+  expect(dates.length).toBe(before);
+  await page.clock.fastForward(1_000);
+  await expect.poll(() => dates.length).toBeGreaterThan(before);
+  await page.evaluate(() => Object.defineProperty(document, 'hidden', { configurable: true, value: true }));
+  const hiddenCount = dates.length;
+  await page.clock.fastForward(120_000);
+  expect(dates.length).toBe(hiddenCount);
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, value: false }); document.dispatchEvent(new Event('visibilitychange')); });
+  await expect.poll(() => dates.length).toBeGreaterThan(hiddenCount);
+  const visibleCount = dates.length;
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect.poll(() => dates.length).toBeGreaterThan(visibleCount);
+  expect(dates.slice(before).every((date) => date === chosenDate)).toBe(true);
+});
+
+test('pokoje nepřepíše opožděná odpověď předchozího dne', async ({ page, request }, testInfo) => {
+  let held: import('@playwright/test').Route | undefined;
+  let count = 0;
+  const response = (date: string, label: string) => ({ date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE, departures: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], guest_label: label }] }] });
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    count += 1;
+    if (count === 2) { held = route; return; }
+    await route.fulfill({ json: response(new URL(route.request().url()).searchParams.get('date')!, count === 1 ? 'První den' : 'Nový den') });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('První den');
+  await page.getByRole('button', { name: 'Předchozí den' }).click();
+  await expect.poll(() => Boolean(held)).toBe(true);
+  await page.getByRole('button', { name: 'Předchozí den' }).click();
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('Nový den');
+  await held!.fulfill({ json: response(new URL(held!.request().url()).searchParams.get('date')!, 'Starý den') });
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('Nový den');
+});
+
+for (const role of ['recepce', 'pokojska']) {
+  test(`pokoje oddělují pobyty a oprávnění ikon: ${role}`, async ({ page, request }, testInfo) => {
+    const icons = [{ kind: 'dog', state: 'red', version: 1, active: true }];
+    const mutations: string[] = [];
+    await page.route('**/api/v1/housekeeping/reservations/**', async (route) => {
+      mutations.push(route.request().method());
+      expect(route.request().url()).toContain('/reservation-new/');
+      if (route.request().method() === 'PATCH') { icons[0].state = 'green'; icons[0].version += 1; }
+      else if (route.request().method() === 'DELETE') { icons[0].active = false; icons[0].version += 1; }
+      else { icons[0].active = true; icons[0].state = 'red'; icons[0].version += 1; }
+      await route.fulfill({ json: icons[0] });
+    });
+    await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+      const date = new URL(route.request().url()).searchParams.get('date');
+      await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE,
+        operational_state: 'arrived', occupancy_state: 'arrived',
+        arrivals: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], reservation_id: 'reservation-new', guest_label: 'Přijíždějící host', country_name: null, amenities: icons }],
+      }] } });
+    });
+    const user = await createPortalUserForRole(request, testInfo, role);
+    await loginPortalUser(page, user.portalEmail, user.portalPassword);
+    if (role === 'recepce') { await expect(page).toHaveURL(/\/recepce$/); await page.goto('/pokojska'); }
+    const card = page.getByRole('button', { name: /pokoj 101/i });
+    await expect(card).toContainText('Novákovi');
+    await expect(card).toContainText('Přijíždějící host');
+    await expect(card).toContainText('Stát neuveden');
+    await expect(card).toContainText('Česko');
+    await page.screenshot({ path: testInfo.outputPath(`pokoje-board-${role}.png`), fullPage: true });
+    await card.click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Pes: Čeká → hotovo' }).click();
+    await expect(dialog.getByRole('button', { name: 'Pes: Hotovo → čeká' })).toBeVisible();
+    if (role === 'recepce') {
+      await dialog.getByRole('button', { name: 'Odebrat: Pes', exact: true }).click();
+      await expect(dialog.getByRole('button', { name: 'Přidat: Pes', exact: true })).toHaveCount(2);
+      await dialog.getByRole('button', { name: 'Přidat: Pes', exact: true }).last().click();
+      await expect(dialog.getByRole('button', { name: 'Pes: Čeká → hotovo' })).toBeVisible();
+      expect(mutations).toEqual(['PATCH', 'DELETE', 'POST']);
+    } else {
+      await expect(dialog.getByRole('button', { name: /Přidat:|Odebrat:/ })).toHaveCount(0);
+      expect(mutations).toEqual(['PATCH']);
+    }
+    await page.screenshot({ path: testInfo.outputPath(`pokoje-${role}.png`), fullPage: true });
+  });
+}
 
 test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page, request }, testInfo) => {
   const adminLoginResponse = await request.post('/api/auth/admin/login', {

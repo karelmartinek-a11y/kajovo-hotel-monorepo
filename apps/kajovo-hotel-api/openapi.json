@@ -1439,6 +1439,8 @@
           "checkout_departed_dirty",
           "checkout_departed_clean",
           "checkout_pending",
+          "checkout_pending_clean",
+          "arrived",
           "occupied",
           "free"
         ],
@@ -1451,6 +1453,13 @@
             "title": "Arrival Today",
             "type": "boolean"
           },
+          "arrivals": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingStayRead"
+            },
+            "title": "Arrivals",
+            "type": "array"
+          },
           "checked_out": {
             "title": "Checked Out",
             "type": "boolean"
@@ -1458,6 +1467,13 @@
           "departure_today": {
             "title": "Departure Today",
             "type": "boolean"
+          },
+          "departures": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingStayRead"
+            },
+            "title": "Departures",
+            "type": "array"
           },
           "floor": {
             "title": "Floor",
@@ -1507,6 +1523,16 @@
             ],
             "title": "Housekeeping Status Id"
           },
+          "occupancy_state": {
+            "enum": [
+              "departing",
+              "arrived",
+              "staying",
+              "free"
+            ],
+            "title": "Occupancy State",
+            "type": "string"
+          },
           "occupied": {
             "title": "Occupied",
             "type": "boolean"
@@ -1530,6 +1556,13 @@
           "room_number": {
             "title": "Room Number",
             "type": "string"
+          },
+          "stays": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingStayRead"
+            },
+            "title": "Stays",
+            "type": "array"
           }
         },
         "required": [
@@ -1538,6 +1571,10 @@
           "room_name",
           "floor",
           "operational_state",
+          "occupancy_state",
+          "departures",
+          "arrivals",
+          "stays",
           "arrival_today",
           "departure_today",
           "checked_out",
@@ -1599,6 +1636,11 @@
             "title": "Loaded At",
             "type": "string"
           },
+          "occupancy_date": {
+            "format": "date",
+            "title": "Occupancy Date",
+            "type": "string"
+          },
           "rooms": {
             "items": {
               "$ref": "#/components/schemas/HousekeepingRoomRead"
@@ -1610,10 +1652,95 @@
         "required": [
           "date",
           "housekeeping_status_is_current",
+          "occupancy_date",
           "loaded_at",
           "rooms"
         ],
         "title": "HousekeepingRoomsOverview",
+        "type": "object"
+      },
+      "HousekeepingStayRead": {
+        "properties": {
+          "amenities": {
+            "items": {
+              "$ref": "#/components/schemas/ReservationAmenityRead"
+            },
+            "title": "Amenities",
+            "type": "array"
+          },
+          "arrival": {
+            "format": "date",
+            "title": "Arrival",
+            "type": "string"
+          },
+          "checked_in": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked In"
+          },
+          "checked_out": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked Out"
+          },
+          "country_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Name"
+          },
+          "departure": {
+            "format": "date",
+            "title": "Departure",
+            "type": "string"
+          },
+          "guest_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guest Label"
+          },
+          "persons": {
+            "minimum": 0.0,
+            "title": "Persons",
+            "type": "integer"
+          },
+          "reservation_id": {
+            "title": "Reservation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "persons",
+          "arrival",
+          "departure"
+        ],
+        "title": "HousekeepingStayRead",
         "type": "object"
       },
       "InventoryAuditLogRead": {
@@ -4105,6 +4232,66 @@
         "title": "ReportUpdate",
         "type": "object"
       },
+      "ReservationAmenityKind": {
+        "enum": [
+          "dog",
+          "cot"
+        ],
+        "title": "ReservationAmenityKind",
+        "type": "string"
+      },
+      "ReservationAmenityRead": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReservationAmenityKind"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReservationAmenityState"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "state",
+          "version",
+          "active"
+        ],
+        "title": "ReservationAmenityRead",
+        "type": "object"
+      },
+      "ReservationAmenityState": {
+        "enum": [
+          "red",
+          "green"
+        ],
+        "title": "ReservationAmenityState",
+        "type": "string"
+      },
+      "ReservationAmenityUpdate": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/ReservationAmenityState"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state",
+          "version"
+        ],
+        "title": "ReservationAmenityUpdate",
+        "type": "object"
+      },
       "SelectRoleRequest": {
         "properties": {
           "role": {
@@ -5935,6 +6122,240 @@
         "summary": "Verify Challenge",
         "tags": [
           "device"
+        ]
+      }
+    },
+    "/api/v1/housekeeping/reservations/{reservation_id}/amenities/{kind}": {
+      "delete": {
+        "operationId": "remove_reservation_amenity_api_v1_housekeeping_reservations__reservation_id__amenities__kind__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReservationAmenityKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationAmenityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Reservation Amenity",
+        "tags": [
+          "housekeeping"
+        ]
+      },
+      "patch": {
+        "operationId": "update_reservation_amenity_api_v1_housekeeping_reservations__reservation_id__amenities__kind__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReservationAmenityKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationAmenityUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationAmenityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Reservation Amenity",
+        "tags": [
+          "housekeeping"
+        ]
+      },
+      "post": {
+        "operationId": "add_reservation_amenity_api_v1_housekeeping_reservations__reservation_id__amenities__kind__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReservationAmenityKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationAmenityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Reservation Amenity",
+        "tags": [
+          "housekeeping"
         ]
       }
     },
