@@ -13,6 +13,8 @@ test('uživatelé mají oddělený editor, validace, zachování konceptu a resp
   const user = await created.json();
   try {
     await page.goto('/admin/uzivatele');
+    await expect(page.locator('.k-wordmark-mark')).toHaveAttribute('src', /kajovo-hotel_mark\.svg$/);
+    await expect(page.locator('.k-wordmark-name')).toContainText('KájovoHotel');
     const row = page.getByRole('row').filter({ hasText: email });
     await expect(row).toBeVisible();
     await expect(page.getByLabel('Jméno *', { exact: true })).toHaveCount(0);
@@ -100,7 +102,7 @@ test('pokoje na šířku ukazují alespoň dva pokoje, dialog se vejde a chyba n
       expect(board!.y + board!.height).toBeLessThanOrEqual(navigation!.y + 1);
     }
     const boxes = await cards.evaluateAll((nodes) => nodes.slice(0, 2).map((node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; }));
-    if (size.width > size.height) { expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(2); expect(boxes[1].x).toBeGreaterThan(boxes[0].x + boxes[0].w); }
+    if (size.width > size.height || size.width === 390) { expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(2); expect(boxes[1].x).toBeGreaterThan(boxes[0].x + boxes[0].w); }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
     await page.screenshot({ path: `/tmp/kajovo-rooms-${size.width}.png`, fullPage: false });
     await cards.first().screenshot({ path: `/tmp/kajovo-room-card-${size.width}.png` });

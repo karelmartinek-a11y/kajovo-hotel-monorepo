@@ -17,12 +17,10 @@ export function KajovoWordmark({
       ? {
           label: 'Administrace',
           defaultTitle: 'Kájovo Hotel Administrace',
-          alt: 'Wordmark Kájovo Hotel Administrace',
         }
       : {
           label: 'Portál',
           defaultTitle: 'Kájovo Hotel Portál',
-          alt: 'Wordmark Kájovo Hotel Portál',
         };
   const resolvedTitle = title ?? config.defaultTitle;
 
@@ -35,10 +33,15 @@ export function KajovoWordmark({
       title={resolvedTitle}
     >
       <img
-        src="/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
-        alt={config.alt}
+        className="k-wordmark-mark"
+        src="/brand/apps/kajovo-hotel/logo/exports/mark/svg/kajovo-hotel_mark.svg"
+        alt=""
+        aria-hidden="true"
         loading="lazy"
       />
+      <span className="k-wordmark-name" aria-hidden="true">
+        <strong>Kájovo</strong><em>Hotel</em>
+      </span>
       <span className="k-wordmark-tagline">{config.label}</span>
     </a>
   );

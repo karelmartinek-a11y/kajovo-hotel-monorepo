@@ -2,7 +2,7 @@
 
 ## Aktivní implementace
 
-Administrace registruje `/admin/uzivatele` v `apps/kajovo-hotel-admin/src/main.tsx` a importuje `UsersAdmin.tsx` ze stejného adresáře. Starší komponenta pod `apps/kajovo-hotel-web/src/admin` není implementací této administrační routy. Pokojské přehledy `/pokojska` a `/admin/pokojska` používají `packages/ui/src/components/HousekeepingRooms.tsx`. Oba vstupní body importují `packages/ui/src/workspace.css` po základním design systému. Původní wordmark, autorizace i datové kontrakty zůstávají zachovány.
+Administrace registruje `/admin/uzivatele` v `apps/kajovo-hotel-admin/src/main.tsx` a importuje `UsersAdmin.tsx` ze stejného adresáře. Starší komponenta pod `apps/kajovo-hotel-web/src/admin` není implementací této administrační routy. Pokojské přehledy `/pokojska` a `/admin/pokojska` používají `packages/ui/src/components/HousekeepingRooms.tsx`. Oba vstupní body importují `packages/ui/src/workspace.css` po základním design systému. Vizuální systém Eclipse Adaptive používá nový orbitální znak a wordmark; autorizace i datové kontrakty zůstávají zachovány.
 
 ## Soupis uživatelů a vazby na backend
 
@@ -47,7 +47,7 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 
 ## Responzivní kontrakt a ověření
 
-Schválená varianta 3 používá bílé pracovní plochy, střídmou červenou primární akci, oddělený seznam/editor a samostatné úlohy. Mobil na výšku má jednu plně čitelnou kartu v řádku; mobil na šířku nejméně dvě, tablet dvě a desktop tři. Všech 37 pokojů s libovolně dlouhými údaji nelze čitelně zobrazit na jediné malé obrazovce; seznam proto používá svislé posouvání, nikoli vodorovné panely nebo zmenšené nečitelné texty. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni: nesmí překrývat karty. Posouvá se jediná obsahová plocha. Stavový dialog používá na výšku 2 × 3 a na nízké obrazovce na šířku 3 × 2 tlačítka.
+Schválená varianta 3 „Eclipse Adaptive“ používá paletu Space Black `#000000`, Orange `#FF6A2E`, Ivory `#F7F4ED` a Silver `#C0C0C0`. Desktop má tmavý navigační rail a světlé pracovní plátno; tablet a mobil kompaktní aplikační hlavičku. Oddělený seznam/editor a samostatné úlohy zůstávají zachovány. Mobilní přehled pokojů má na výšku i na šířku nejméně dvě karty v řádku, tablet dvě a desktop tři. Dlouhé údaje se vždy zalamují a zůstávají celé; přehled proto používá běžné svislé posouvání, nikdy vodorovný panel ani překrytí spodní navigací. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni. Tmavý stavový dialog používá na výšku 2 × 3 a na nízké obrazovce na šířku 3 × 2 tlačítka, nemá vnitřní posuv a po ověřeném zápisu se automaticky zavře.
 
 Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu duplicity, validační kroky, probíhající zápis bez tlačítek, automatický návrat, chybu PATCH a obnovu. Responzivní scénář se 37 pokoji a dlouhou zemí/jménem kontroluje 1440 × 900, 834 × 1112, 390 × 844, 844 × 390 a 667 × 375; kontroluje šířku dokumentu a celý stavový dialog bez vnitřního posuvu. Portálový smoke ověřuje tentýž sdílený tok a role ikon.
 
@@ -55,11 +55,11 @@ Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu d
 
 | Kategorie | Rozhodnutí |
 |---|---|
-| Produkční kód | Aktualizovat aktivní UsersAdmin, sdílený HousekeepingRooms, TaskDialog, exporty a scoped CSS obou frontendů. API beze změny. |
-| Testy | Aktualizovat admin a portálový smoke, přidat responzivní a chybové scénáře; stávající API a vizuální sady ověřit beze změny. |
-| CI a gates | Aktualizovat přesný povolený vyhledávací placeholder v guardu po extrakci komponenty. Workflow ověřit beze změny: spouští obě dotčené smoke sady, vizuální a release gate. |
-| Dokumentace | Aktualizovat tento inventář, module-pokoje a index dokumentace. Datová schémata beze změny. |
-| Komentáře a poznámky | Odstranit starou inline implementaci uživatelů a její výhradní pomocníky; dokumentovat dev obsluhu původního loga. |
-| Instrukce | Aktualizovat AGENTS o rozložení a dokončení zápisu. Ostatní pravidla beze změny. |
-| Fixtures a texty | Aktualizovat modalové selektory, české stavy a testovací data dlouhých pobytů; produkční mocky nejsou použity. |
-| Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny. Admin Vite dev obsluhuje původní root brand assets stejně jako produkce; deploy konfigurace beze změny. |
+| Produkční kód | Aktualizovat nový orbitální znak a wordmark, sdílený shell, design tokeny a scoped CSS aktivního UsersAdmin a sdíleného HousekeepingRooms. Funkční komponenty, API a databáze beze změny. |
+| Testy | Rozšířit admin smoke o nový brand a dvousloupcový mobilní portrét; stávající CRUD, chybové, portálové a vizuální scénáře ověřit beze změny. |
+| CI a gates | Ověřit beze změny: workflow již spouští obě dotčené smoke sady, vizuální testy a release gate. |
+| Dokumentace | Aktualizovat tento aktuální inventář a responzivní kontrakt. Datová schémata a modul Pokoje ověřit beze změny. |
+| Komentáře a poznámky | Aktualizovat pouze účelný popis design vrstvy; funkční TODO, docstringy ani provozní poznámky nejsou změnou dotčeny. |
+| Instrukce | Ověřit beze změny: stávající AGENTS již předepisuje rozložení pokojů i dokončení zápisu; nový vizuální motiv nemění dlouhodobý provozní kontrakt. |
+| Fixtures a texty | Ověřit beze změny: stavové texty, testovací dlouhé pobyty i selektory zůstávají platné. |
+| Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny. Oba frontendové public adresáře obsahují stejný nový aktivní SVG brand; deploy konfigurace beze změny. |
