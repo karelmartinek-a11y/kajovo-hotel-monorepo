@@ -90,6 +90,8 @@ async function expectElementUnobscured(locator: Locator) {
 }
 
 async function assertKdgsGeometry(page: Page, viewName: string) {
+  // A route/auth redirect can replace the initial <main> before branding mounts.
+  await expect.poll(() => visibleBrandCount(page), { message: `${viewName}: brand musí být vykreslený` }).toBeGreaterThanOrEqual(1);
   const brandCount = await visibleBrandCount(page);
   expect.soft(brandCount, `${viewName}: počet brand prvků musí být 1 až 2`).toBeGreaterThanOrEqual(1);
   expect.soft(brandCount, `${viewName}: počet brand prvků musí být 1 až 2`).toBeLessThanOrEqual(2);
