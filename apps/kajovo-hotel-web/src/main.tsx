@@ -36,6 +36,7 @@ import {
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
+import '@kajovo/ui/src/workspace.css';
 import noGlutenIcon from './assets/diets/no-gluten.png';
 import noMilkIcon from './assets/diets/no-milk.png';
 import noPorkIcon from './assets/diets/no-pork.png';

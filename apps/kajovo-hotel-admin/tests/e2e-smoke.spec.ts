@@ -1,6 +1,128 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { getAdminCredentials } from '../test-admin-credentials';
 
+test('uživatelé mají oddělený editor, validace, zachování konceptu a responzivní seznam', async ({ page, request }) => {
+  const credentials = getAdminCredentials();
+  expect((await request.post('/api/auth/admin/login', { data: credentials })).ok()).toBeTruthy();
+  const state = await request.storageState();
+  await page.context().addCookies(state.cookies);
+  const csrf = state.cookies.find((cookie) => cookie.name === 'kajovo_csrf')!.value;
+  const email = `ui-${Date.now()}@example.com`;
+  const created = await request.post('/api/v1/users', { headers: { 'x-csrf-token': csrf }, data: { first_name: 'Alexandra', last_name: 'Velmi Dlouhé Příjmení Pro Kontrolu', email, roles: ['pokojská', 'recepce', 'snídaně'] } });
+  expect(created.status()).toBe(201);
+  const user = await created.json();
+  try {
+    await page.goto('/admin/uzivatele');
+    const row = page.getByRole('row').filter({ hasText: email });
+    await expect(row).toBeVisible();
+    await expect(page.getByLabel('Jméno *', { exact: true })).toHaveCount(0);
+    for (const size of [{ width: 1440, height: 900 }, { width: 834, height: 1112 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize(size);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+      await expect(row.getByRole('button', { name: /Upravit/ })).toBeVisible();
+      await page.screenshot({ path: `/tmp/kajovo-users-${size.width}.png`, fullPage: true });
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await row.getByRole('button', { name: /Upravit/ }).click();
+    await page.getByLabel('Jméno *', { exact: true }).fill('Změněné');
+    await page.getByRole('button', { name: 'Další', exact: true }).click();
+    await page.getByLabel('Sklad', { exact: true }).check();
+    await page.getByRole('button', { name: 'Další', exact: true }).click();
+    await page.getByLabel('Telefon', { exact: true }).fill('777123456');
+    await page.getByLabel('Poznámka', { exact: true }).fill('Zachovaný koncept');
+    await page.getByRole('button', { name: /Zpět na uživatele/ }).click();
+    await expect(page.getByRole('dialog')).toContainText('neuložené');
+    await page.getByRole('button', { name: 'Pokračovat v úpravách' }).click();
+    await expect(page.getByLabel('Poznámka', { exact: true })).toHaveValue('Zachovaný koncept');
+    await page.getByRole('button', { name: 'Uložit změny' }).click();
+    await expect(page.getByRole('heading', { name: 'Uživatelé', exact: true })).toBeVisible();
+    const saved = await (await request.get(`/api/v1/users/${user.id}`)).json();
+    expect(saved.first_name).toBe('Změněné'); expect(saved.roles).toContain('sklad'); expect(saved.phone).toBe('+420777123456'); expect(saved.note).toBe('Zachovaný koncept');
+    await row.getByRole('button', { name: /Upravit/ }).click();
+    await page.getByRole('button', { name: 'Zakázat přístup', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Povolit přístup', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'Povolit přístup', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Zakázat přístup', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: 'Odeslat odkaz pro reset hesla' }).click();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Zavřít', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog')).not.toContainText('Čekám na potvrzení');
+    await page.getByRole('dialog').getByRole('button', { name: 'Zavřít', exact: true }).click();
+    await page.getByRole('button', { name: /Zpět na uživatele/ }).click();
+    await page.getByRole('button', { name: 'Nový uživatel', exact: true }).click();
+    await page.getByRole('button', { name: 'Další', exact: true }).click();
+    await expect(page.getByText('Vyplňte 1 až 120 znaků.')).toHaveCount(2);
+    await page.getByLabel('Jméno *', { exact: true }).fill('Nový');
+    await page.getByLabel('Příjmení *', { exact: true }).fill('Uživatel');
+    await page.getByLabel('E-mail *', { exact: true }).fill(email);
+    await page.getByRole('button', { name: 'Další', exact: true }).click();
+    await page.getByLabel('Administrátor', { exact: true }).check();
+    await page.getByRole('button', { name: 'Další', exact: true }).click();
+    await expect(page.getByText('Potvrďte udělení administrátorských práv.')).toBeVisible();
+    await page.getByLabel('Potvrzuji vědomé udělení administrátorských práv.').check();
+    await page.getByRole('button', { name: 'Další', exact: true }).click();
+    await page.getByRole('button', { name: 'Vytvořit uživatele', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('E-mail už používá');
+    await page.getByRole('button', { name: '1 Údaje', exact: true }).click();
+    await expect(page.getByLabel('E-mail *', { exact: true })).toHaveValue(email);
+    await page.screenshot({ path: '/tmp/kajovo-user-editor-mobile.png', fullPage: true });
+    await page.getByRole('button', { name: /Zpět na uživatele/ }).click();
+    await page.getByRole('button', { name: 'Zahodit změny' }).click();
+    await row.getByRole('button', { name: /Upravit/ }).click();
+    await page.getByRole('button', { name: 'Smazat uživatele', exact: true }).click();
+    await expect(page.getByRole('dialog')).toContainText(email);
+    await page.getByRole('dialog').getByRole('button', { name: 'Zrušit', exact: true }).click();
+    await page.getByRole('button', { name: 'Smazat uživatele', exact: true }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Smazat', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Uživatelé', exact: true })).toBeVisible();
+    await expect(row).toHaveCount(0);
+  } finally { await request.delete(`/api/v1/users/${user.id}`, { headers: { 'x-csrf-token': csrf } }); }
+});
+
+test('pokoje na šířku ukazují alespoň dva pokoje, dialog se vejde a chyba nehlásí úspěch', async ({ page, request }) => {
+  expect((await request.post('/api/auth/admin/login', { data: getAdminCredentials() })).ok()).toBeTruthy();
+  await page.context().addCookies((await request.storageState()).cookies);
+  const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
+  const rooms = Array.from({ length: 37 }, (_, i) => ({ room_id: String(i + 101), room_number: String(i + 101), room_name: String(i + 101), floor: '1', housekeeping_status: 'Neuklizeno', operational_state: 'checkout_pending', occupancy_state: 'departing', departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    if (route.request().method() === 'PATCH') { await route.fulfill({ status: 502, json: { detail: 'Ověření změny selhalo.' } }); return; }
+    await route.fulfill({ json: { date: '2026-09-18', occupancy_date: '2026-09-18', loaded_at: new Date().toISOString(), housekeeping_status_is_current: true, rooms } });
+  });
+  await page.goto('/admin/pokojska');
+  const cards = page.locator('.k-hk-room');
+  await expect(cards).toHaveCount(37);
+  for (const size of [{ width: 1440, height: 900 }, { width: 834, height: 1112 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(size);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator('.k-hk-board').evaluate((node) => node.scrollTo({ top: 0 }));
+    if (size.width <= 1023) {
+      const board = await page.locator('.k-hk-board').boundingBox();
+      const navigation = await page.locator('.k-housekeeping-toggle').boundingBox();
+      expect(board!.y + board!.height).toBeLessThanOrEqual(navigation!.y + 1);
+    }
+    const boxes = await cards.evaluateAll((nodes) => nodes.slice(0, 2).map((node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; }));
+    if (size.width > size.height) { expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(2); expect(boxes[1].x).toBeGreaterThan(boxes[0].x + boxes[0].w); }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    await page.screenshot({ path: `/tmp/kajovo-rooms-${size.width}.png`, fullPage: false });
+    await cards.first().screenshot({ path: `/tmp/kajovo-room-card-${size.width}.png` });
+    await cards.first().click();
+    const modal = page.getByRole('dialog');
+    await expect(modal).toBeVisible();
+    expect(await modal.evaluate((node) => { const r = node.getBoundingClientRect(); return node.scrollHeight <= node.clientHeight + 1 && r.top >= 0 && r.bottom <= innerHeight; })).toBeTruthy();
+    await page.screenshot({ path: `/tmp/kajovo-status-${size.width}.png` });
+    await modal.getByRole('button', { name: 'Zavřít dialog' }).click();
+  }
+  await cards.first().click();
+  await page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ }).click();
+  await expect(page.getByRole('dialog')).toContainText('Změnu se nepodařilo ověřit');
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toHaveCount(0);
+  expect(await page.getByRole('dialog').evaluate((node) => node.scrollHeight <= node.clientHeight + 1)).toBeTruthy();
+  await page.getByRole('button', { name: 'Zavřít dialog' }).click();
+  await cards.first().click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Obnovit stav' }).click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toBeEnabled();
+});
+
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
 const ADMIN_EMAIL_LABEL = /e-mail administrátora/i;
 
@@ -91,6 +213,8 @@ test.describe('CI smoke auth flows', () => {
     const storageState = await request.storageState();
     await page.context().addCookies(storageState.cookies);
     let patchBody: unknown = null;
+    let finishWrite: (() => void) | undefined;
+    const pendingWrite = new Promise<void>((resolve) => { finishWrite = resolve; });
     const room = {
       room_id: 'room-301', room_number: '301', room_name: '301 KOMFORT', floor: '3',
       housekeeping_status_id: 'dirty-id', housekeeping_status: 'Neuklizeno', housekeeping_color: '#F57621',
@@ -101,6 +225,7 @@ test.describe('CI smoke auth flows', () => {
     await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
       if (route.request().method() === 'PATCH') {
         patchBody = route.request().postDataJSON();
+        await pendingWrite;
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -125,7 +250,11 @@ test.describe('CI smoke auth flows', () => {
     await page.getByRole('button', { name: /pokoj 301/i }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: /^Technická závada /i }).click();
-    await expect(dialog).toContainText('Technický problém');
+    await expect(dialog).toContainText('Zapisuji změnu');
+    await expect(dialog.getByRole('button')).toHaveCount(0);
+    finishWrite!();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /pokoj 301/i })).toContainText('Technický problém');
     expect(patchBody).toEqual({ status: 'technical_issue' });
   });
 

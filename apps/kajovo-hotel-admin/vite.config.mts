@@ -7,7 +7,16 @@ const apiTarget = process.env.PLAYWRIGHT_API_PORT
 
 export default defineConfig({
   base: '/admin/',
-  plugins: [react()],
+  plugins: [react(), {
+    name: 'root-brand-assets',
+    configureServer(server) {
+      // Production serves brand assets at the domain root, outside /admin/.
+      server.middlewares.use((req, _res, next) => {
+        if (req.url?.startsWith('/brand/')) req.url = `/admin${req.url}`;
+        next();
+      });
+    },
+  }],
   server: {
     port: 5173,
     proxy: {

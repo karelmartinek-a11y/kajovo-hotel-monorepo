@@ -268,7 +268,7 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   const card = page.getByRole('button', { name: /pokoj 101,/i });
   await expect(card).toHaveClass(/k-hk-room--left-red/);
   await expect(card).toHaveClass(/k-hk-room--right-green/);
-  await expect(card.locator('.k-hk-room__housekeeping')).toHaveCSS('color', 'rgb(9, 21, 56)');
+  await expect(card.locator('.k-hk-room__housekeeping')).toHaveCSS('color', 'rgb(23, 32, 46)');
   await expect(card).toContainText('Noc pobytu: 2/2');
   await expect(card).toContainText('Noc pobytu: 0/1');
   await expect(page.getByRole('button', { name: /pokoj 102,/i })).toHaveClass(/k-hk-room--left-empty/);
@@ -385,7 +385,8 @@ test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page,
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Neuklizeno');
   await dialog.getByRole('button', { name: /^Uklizeno /i }).click();
-  await expect(dialog).toContainText('Uklizeno pro nájezd');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('Uklizeno pro nájezd');
   expect(patchBody).toEqual({ status: 'clean' });
 });
 
@@ -469,7 +470,8 @@ for (const role of ['recepce', 'pokojska']) {
     await expect(card).toContainText('Česko');
     await page.screenshot({ path: testInfo.outputPath(`pokoje-board-${role}.png`), fullPage: true });
     await card.click();
-    const dialog = page.getByRole('dialog');
+    await page.getByRole('dialog').getByRole('button', { name: 'Pobyty a ikony' }).click();
+    const dialog = page.getByTestId('housekeeping-stay-screen');
     await dialog.getByRole('button', { name: 'Pes: Čeká → hotovo' }).click();
     await expect(dialog.getByRole('button', { name: 'Pes: Hotovo → čeká' })).toBeVisible();
     if (role === 'recepce') {

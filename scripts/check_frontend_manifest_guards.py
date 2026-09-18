@@ -22,6 +22,7 @@ ALLOWLIST = {
     'packages/ui/src/navigation/ModuleNavigation.tsx': ('placeholder=',),
     'apps/kajovo-hotel-web/src/main.tsx': ('placeholder=',),
     'apps/kajovo-hotel-admin/src/main.tsx': ('placeholder=',),
+    'apps/kajovo-hotel-admin/src/UsersAdmin.tsx': ('placeholder="Jméno, e-mail nebo role"',),
     'apps/kajovo-hotel-web/src/admin/UsersAdmin.tsx': ('placeholder=',),
 }
 

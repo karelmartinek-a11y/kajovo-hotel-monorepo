@@ -28,9 +28,11 @@ Přehled se obnovuje po zápisu, každých 60 sekund ve viditelném okně a ihne
 
 ## Příznaky rezervací
 
+Stav pokoje se volí v kompaktním dialogu. Během zápisu se zobrazuje blokující „Zapisuji změnu…“ bez tlačítek; ověřená odpověď automaticky vrací přehled a obnoví data. Neověřená změna ponechá dialog s chybou a vyžaduje obnovu stavu před dalším zápisem. Volba „Pobyty a ikony“ otevírá samostatnou pracovní obrazovku, aby dlouhé seznamy rezervací nezvětšovaly stavový dialog. Responzivní uspořádání a úplný inventář prvků popisuje [UI pracovních obrazovek](ui-workspaces.md).
+
 Tabulka `reservation_amenities` (migrace `0031_reservation_amenities`) ukládá unikátní dvojici Better Hotel ID rezervace a typu `dog`/`cot`, stav `red`/`green`, aktivitu, monotónní verzi, autora a čas změny. Odstranění je logické: zachovaná verze brání přepsání nově vytvořené ikony starým požadavkem. Ikony následují tutéž rezervaci při přesunu pokoje, nepřenášejí se na další rezervaci a zachovávají barvu až do odjezdu.
 
-Recepce a admin přidávají (vždy červeně), odebírají a mění barvy. Pokojská pouze mění barvy již existujících ikon. Dialog rozlišuje jednotlivé pobyty; bez rezervace nelze ikonu přidat. Plánovaný příjezd na volný pokoj je platná rezervace. Před zápisem API ověřuje aktuální vazbu rezervace na pokoj a vybraný den. Konflikt verze nebo přesun vrací `409` a UI obnoví přehled. Změna příznaku a audit před/po se ukládají v jedné databázové transakci.
+Recepce a admin přidávají (vždy červeně), odebírají a mění barvy. Pokojská pouze mění barvy již existujících ikon. Pracovní obrazovka rozlišuje jednotlivé pobyty; bez rezervace nelze ikonu přidat. Plánovaný příjezd na volný pokoj je platná rezervace. Před zápisem API ověřuje aktuální vazbu rezervace na pokoj a vybraný den. Konflikt verze nebo přesun vrací `409` a UI obnoví přehled. Změna příznaku a audit před/po se ukládají v jedné databázové transakci.
 
 ## API portálu
 
