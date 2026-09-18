@@ -3,7 +3,7 @@
   "version_name": "2.0.2 NG",
   "download_url": "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk",
   "download_path": "apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk",
-  "sha256": "99f1d076cc5695a95e2583c195ada0088f614c836ec3980b7d656cfb5390145c",
+  "sha256": "c65942c9e0e477b179c9923245c209e4a152ff6f3439cab926f1c3fd08f00541",
   "title": "Je dostupná nová verze KájovoHotel 2.0.2 NG",
   "message": "Na serveru je připravená nativní Android aplikace KájovoHotel 2.0.2 NG s kompletním logem, adaptivním přihlášením a aktuálním přehledem pokojů.",
   "required": false
