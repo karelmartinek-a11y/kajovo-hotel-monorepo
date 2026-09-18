@@ -146,11 +146,11 @@ body {
   --k-hk-pink: #ff8295;
   --k-hk-free-border: #8fa3ba;
   --k-hk-meta: #5a7391;
-  --k-hk-status-copy: #52677f;
+  --k-hk-status-copy: var(--k-hk-navy);
   --k-hk-thanks: #075968;
   --k-hk-thanks-soft: #437889;
   --k-hk-alert: #9b1821;
-  --k-hk-chevron: #15466b;
+  --k-hk-chevron: var(--k-hk-navy);
   --k-hk-border-date: 1px solid #cad7e6;
   --k-hk-border-legend: 1px solid #e5ecf3;
   --k-hk-border-legend-divider: 1px solid #e6edf4;

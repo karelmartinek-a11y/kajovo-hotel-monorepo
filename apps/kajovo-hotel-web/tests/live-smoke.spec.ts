@@ -268,6 +268,7 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   const card = page.getByRole('button', { name: /pokoj 101,/i });
   await expect(card).toHaveClass(/k-hk-room--left-red/);
   await expect(card).toHaveClass(/k-hk-room--right-green/);
+  await expect(card.locator('.k-hk-room__housekeeping')).toHaveCSS('color', 'rgb(9, 21, 56)');
   await expect(card).toContainText('Noc pobytu: 2/2');
   await expect(card).toContainText('Noc pobytu: 0/1');
   await expect(page.getByRole('button', { name: /pokoj 102,/i })).toHaveClass(/k-hk-room--left-empty/);
