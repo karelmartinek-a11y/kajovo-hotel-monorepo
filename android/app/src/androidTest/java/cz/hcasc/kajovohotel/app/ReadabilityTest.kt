@@ -21,6 +21,7 @@ import android.graphics.Bitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import cz.hcasc.kajovohotel.feature.utility.*
 import cz.hcasc.kajovohotel.feature.profile.ResetPasswordScreen
+import cz.hcasc.kajovohotel.feature.breakfast.BreakfastDietSummary
 
 class ReadabilityTest {
     @get:Rule val compose = createComposeRule()
@@ -31,6 +32,25 @@ class ReadabilityTest {
         java.io.File(directory, "$name.png").outputStream().use {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
         }
+    }
+
+    @Test fun dietSummaryShowsOnlyActiveDietsAndFitsNarrowScreen() {
+        var active by mutableStateOf(false)
+        compose.setContent {
+            KajovoTheme(false) {
+                Box(Modifier.width(280.dp)) {
+                    BreakfastDietSummary(noMilk = active, noGluten = active, noPork = active)
+                }
+            }
+        }
+        compose.onNodeWithText("Bez diet").assertIsDisplayed()
+        compose.onNodeWithText("Bez lepku").assertDoesNotExist()
+        compose.runOnIdle { active = true }
+        compose.onNodeWithText("Bez diet").assertDoesNotExist()
+        listOf("Bez lepku", "Bez laktózy", "Bez vepřového").forEach {
+            compose.onNodeWithText(it).assertIsDisplayed()
+        }
+        capture("diet-summary-small")
     }
 
     @Test fun utilityScreensAndResetAreReadable() {

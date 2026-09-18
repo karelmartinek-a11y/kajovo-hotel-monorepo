@@ -277,7 +277,7 @@ private fun DetailCard(
                 }
             }
         }
-        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
             OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
             OutlinedButton(onClick = onStartMovement) { Text("Nový pohyb") }

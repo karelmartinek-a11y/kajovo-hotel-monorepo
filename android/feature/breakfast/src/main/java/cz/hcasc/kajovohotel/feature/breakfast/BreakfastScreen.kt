@@ -583,7 +583,7 @@ private fun ReceptionDetailCard(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = "Detail objednávky ${order.roomNumber}",
-            subtitle = "Host ${order.guestName} · ${order.guestCount} osob · stav ${order.status.label}",
+            subtitle = "",
         )
         Card(
             shape = RoundedCornerShape(KajovoRadiusTokens.R12),
@@ -602,7 +602,7 @@ private fun ReceptionDetailCard(
                     label = "Poznámka",
                     value = order.note.ifBlank { "Bez poznámky" },
                 )
-                DietIcons(
+                BreakfastDietSummary(
                     noMilk = order.noMilk,
                     noGluten = order.noGluten,
                     noPork = order.noPork,
@@ -620,7 +620,6 @@ private fun ReceptionDetailCard(
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
             OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
-            OutlinedButton(onClick = onStartCreate) { Text("Nová") }
         }
     }
 }
@@ -736,16 +735,17 @@ private fun BreakfastOrderCard(
 }
 
 @Composable
-private fun DietIcons(
+fun BreakfastDietSummary(
     noMilk: Boolean,
     noGluten: Boolean,
     noPork: Boolean,
     showLabels: Boolean = true,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-        DietIconBadge(icon = Icons.Outlined.Grass, label = "Bez lepku", isActive = noGluten, showLabel = showLabels)
-        DietIconBadge(icon = Icons.Outlined.LocalDrink, label = "Bez laktózy", isActive = noMilk, showLabel = showLabels)
-        DietIconBadge(icon = Icons.Outlined.Pets, label = "Bez vepřového", isActive = noPork, showLabel = showLabels)
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        if (noGluten) DietIconBadge(icon = Icons.Outlined.Grass, label = "Bez lepku", showLabel = showLabels)
+        if (noMilk) DietIconBadge(icon = Icons.Outlined.LocalDrink, label = "Bez laktózy", showLabel = showLabels)
+        if (noPork) DietIconBadge(icon = Icons.Outlined.Pets, label = "Bez vepřového", showLabel = showLabels)
+        if (!noGluten && !noMilk && !noPork) Text("Bez diet", style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -786,10 +786,7 @@ private fun DetailValueRow(
     label: String,
     value: String,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium)
-        Text(text = value, style = MaterialTheme.typography.bodyLarge)
-    }
+    cz.hcasc.kajovohotel.core.designsystem.BulletLine(label, value)
 }
 
 @Composable
@@ -937,7 +934,7 @@ private fun ImportPreviewCard(
                             leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
                         )
                     }
-                    DietIcons(
+                    BreakfastDietSummary(
                         noMilk = item.noMilk,
                         noGluten = item.noGluten,
                         noPork = item.noPork,

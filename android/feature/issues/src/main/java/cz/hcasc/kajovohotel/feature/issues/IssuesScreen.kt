@@ -294,7 +294,7 @@ private fun DetailCard(
                 contentScale = ContentScale.Crop,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
             if (selected.status != IssueStatus.RESOLVED && selected.status != IssueStatus.CLOSED) {
                 OutlinedButton(onClick = onMarkResolved, enabled = !state.isSaving) { Text("Označit jako odstraněné") }
