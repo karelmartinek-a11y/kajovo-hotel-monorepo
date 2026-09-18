@@ -5,13 +5,13 @@ import test from 'node:test';
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..');
 
-test('AGENTS.md uz neblokuje web legacy Androidem', () => {
+test('AGENTS.md oddeluje nativni Android od weboveho deploy gate', () => {
   const content = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
   assert.ok(content.includes('Povinný forenzní průzkum před změnou'));
   assert.ok(content.includes('Atomická synchronizace každé změny'));
-  assert.ok(content.includes('Android není součástí tohoto repozitáře'));
+  assert.ok(content.includes('Android je samostatný plně nativní Kotlin/Jetpack Compose projekt'));
+  assert.ok(content.includes('nesmí blokovat produkční změny webu, adminu nebo API'));
   assert.ok(!content.includes('Neporusitelne Pravidlo Web Android Parity'));
-  assert.ok(!content.includes('android-release'));
 });
 
 test('current-state dokumentace nema historicke SSOT a auditni ballast', () => {

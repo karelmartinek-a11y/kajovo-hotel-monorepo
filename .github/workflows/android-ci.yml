@@ -1,0 +1,51 @@
+name: Android CI - Kajovo Hotel
+
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-ci.yml'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  native-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build, unit test and lint native app
+        run: ./gradlew :app:assembleDebug testDebugUnitTest lintDebug --console=plain
+
+      - name: Upload debug APK and reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: kajovo-hotel-android-debug
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/**/build/reports/**
+          if-no-files-found: warn
