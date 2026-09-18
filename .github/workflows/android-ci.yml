@@ -4,12 +4,16 @@ on:
   pull_request:
     paths:
       - 'android/**'
+      - 'apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk'
+      - 'scripts/check_android_release_integrity.py'
       - '.github/workflows/android-ci.yml'
   push:
     branches:
       - main
     paths:
       - 'android/**'
+      - 'apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk'
+      - 'scripts/check_android_release_integrity.py'
       - '.github/workflows/android-ci.yml'
   workflow_dispatch:
 
@@ -36,6 +40,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+
+      - name: Verify published release integrity
+        working-directory: .
+        run: python3 scripts/check_android_release_integrity.py
 
       - name: Build, unit test and lint native app
         run: ./gradlew :app:assembleDebug testDebugUnitTest lintDebug --console=plain

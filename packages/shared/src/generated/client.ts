@@ -14,6 +14,15 @@ export type AdminProfileRead = {
 export type AdminProfileUpdate = {
   "display_name": string;
 };
+export type AndroidAppReleaseRead = {
+  "download_url": string;
+  "message": string;
+  "required"?: boolean;
+  "sha256": string;
+  "title": string;
+  "version": string;
+  "version_code": number;
+};
 export type AuthIdentityResponse = {
   "active_role"?: string | null;
   "actor_type": string;
@@ -719,6 +728,9 @@ async function request<T>(method: string, path: string, query?: Record<string, Q
 }
 
 export const apiClient = {
+  async getAndroidReleaseApiAppAndroidReleaseGet(): Promise<AndroidAppReleaseRead> {
+    return request<AndroidAppReleaseRead>('GET', `/api/app/android-release`, undefined, undefined);
+  },
   async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<MailDispatchResponse> {
     return request<MailDispatchResponse>('POST', `/api/auth/admin/hint`, undefined, body);
   },

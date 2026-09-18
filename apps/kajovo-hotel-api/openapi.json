@@ -78,6 +78,49 @@
         "title": "AdminProfileUpdate",
         "type": "object"
       },
+      "AndroidAppReleaseRead": {
+        "properties": {
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "required": {
+            "default": false,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "version_code": {
+            "title": "Version Code",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version_code",
+          "version",
+          "download_url",
+          "sha256",
+          "title",
+          "message"
+        ],
+        "title": "AndroidAppReleaseRead",
+        "type": "object"
+      },
       "AuthIdentityResponse": {
         "properties": {
           "active_role": {
@@ -4729,6 +4772,27 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/app/android-release": {
+      "get": {
+        "operationId": "get_android_release_api_app_android_release_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidAppReleaseRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Android Release",
+        "tags": [
+          "app"
+        ]
+      }
+    },
     "/api/auth/admin/hint": {
       "post": {
         "operationId": "admin_hint_api_auth_admin_hint_post",

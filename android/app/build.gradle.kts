@@ -13,7 +13,6 @@ data class AndroidReleaseManifest(
     val versionCode: Int,
     val versionName: String,
     val downloadUrl: String,
-    val sha256: String,
 )
 
 val androidReleaseManifest = run {
@@ -24,7 +23,6 @@ val androidReleaseManifest = run {
         versionCode = (payload["version_code"] as Number).toInt(),
         versionName = payload["version_name"].toString(),
         downloadUrl = payload["download_url"].toString(),
-        sha256 = payload["sha256"].toString(),
     )
 }
 
@@ -67,7 +65,6 @@ android {
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "HOTEL_BASE_URL", "\"${providers.gradleProperty("kajovoHotelBaseUrl").orElse("https://hotel.hcasc.cz").get()}\"")
         buildConfigField("String", "ANDROID_RELEASE_DOWNLOAD_URL", "\"${androidReleaseManifest.downloadUrl}\"")
-        buildConfigField("String", "ANDROID_RELEASE_SHA256", "\"${androidReleaseManifest.sha256}\"")
     }
 
     buildFeatures {

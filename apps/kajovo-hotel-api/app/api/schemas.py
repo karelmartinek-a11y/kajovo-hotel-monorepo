@@ -26,6 +26,16 @@ class ApiErrorEnvelope(BaseModel):
     error: ApiErrorDetail
 
 
+class AndroidAppReleaseRead(BaseModel):
+    version_code: int
+    version: str
+    download_url: str
+    sha256: str
+    title: str
+    message: str
+    required: bool = False
+
+
 class ReportCreate(BaseModel):
     title: str = Field(min_length=3, max_length=255)
     description: str | None = Field(default=None, max_length=4000)

@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir \
 COPY apps/kajovo-hotel-api/app /app/app
 COPY apps/kajovo-hotel-api/alembic /app/alembic
 COPY apps/kajovo-hotel-api/alembic.ini /app/alembic.ini
+COPY android/release /app/android/release
 
 RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app

@@ -48,9 +48,9 @@ Obnovený projekt v `android/` obsahuje nativní obrazovky login, reset, role, r
 |---|---|
 | Produkční zdroj | aktualizovat: samostatný nativní projekt `android/`; web/admin runtime se nemění |
 | Testy | aktualizovat: Kotlin unit, lint, APK build a emulator QA; webové smoke testy ověřit beze změny |
-| CI/gates | aktualizovat samostatným Android CI; webový produkční deploy nesmí být Androidem blokován |
+| CI/gates | aktualizováno samostatným Android CI včetně kontroly integrity publikovaného APK; webový produkční deploy není Androidem blokován |
 | Dokumentace | aktualizovat tímto auditem, Android README a návrhovým dokumentem |
 | Komentáře/TODO | ověřit beze změny; nepřidávat paralelní historické instrukce |
 | AGENTS/instrukce | aktualizovat architektonický fakt, ale zachovat oddělení web deploy gate |
 | Fixtures/assets/texty | aktualizovat nové logo a návrhové assety; české runtime texty ověřit |
-| Build/OpenAPI/deploy | ověřit OpenAPI beze změny; Android release vyžaduje původní produkční signing key a oddělený release krok |
+| Build/OpenAPI/deploy | aktualizováno: veřejný OpenAPI endpoint `/api/app/android-release`, generovaný klient, podepsané APK s původním produkčním certifikátem, SHA-256 manifest a samostatný podepisovací workflow |
