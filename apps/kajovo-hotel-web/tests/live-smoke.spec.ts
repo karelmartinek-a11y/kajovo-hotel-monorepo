@@ -294,6 +294,26 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   expect(errors).toEqual([]);
 });
 
+test('pokoje po zúžení okna nezachovají šířku dříve vykresleného patra', async ({ page, request }, testInfo) => {
+  const rooms = ['3', '2', '1', '0'].flatMap((floor) => Array.from({ length: floor === '3' ? 14 : floor === '0' ? 7 : 8 }, (_, index) => ({
+    ...HOUSEKEEPING_ROOM_FIXTURE, floor, room_id: `${floor}-${index}`, room_number: `${floor}${String(index + 1).padStart(2, '0')}`,
+  })));
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms } });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  const firstCard = page.locator('.k-hk-room').first();
+  await expect(firstCard).toBeVisible();
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await firstCard.scrollIntoViewIfNeeded();
+    await expect.poll(() => firstCard.evaluate((element) => element.getBoundingClientRect().right)).toBeLessThanOrEqual(width);
+    await expect.poll(() => page.locator('.k-hk-board').evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+});
+
 test('snídaně mění jedinou dietu konkrétní rezervace a obnoví přehled', async ({ page, request }, testInfo) => {
   const reservations = ['a', 'b'].map((id) => ({ reservation_id: id, guest_name: `Host ${id}`, arrival: '2026-09-15', departure: '2026-09-19', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, version: 1 }));
   const writes: unknown[] = [];

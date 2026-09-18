@@ -64,7 +64,7 @@ Role `admin`, `recepce` a `pokojská` mají `housekeeping:read` i `housekeeping:
 - RBAC GET/PATCH: `apps/kajovo-hotel-api/tests/test_rbac.py`;
 - portálová interakce: `apps/kajovo-hotel-web/tests/live-smoke.spec.ts`;
 - administrační interakce: `apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts`;
-- responzivní vizuální kontroly: existující visual suites obou frontendů;
+- responzivní vizuální kontroly: existující visual suites obou frontendů; smoke scénář zúžení otevřeného přehledu s 37 pokoji ověřuje, že odloženě vykreslovaná patra neudrží šířku předchozího viewportu;
 - produkční čtecí gate: `scripts/verify_live_housekeeping_rooms.mjs`.
 - CI job `api-runtime-image` sestaví skutečný produkční Docker image, ověří import celé aplikace a přítomnost českého překladu zemí. Závislost `pycountry` musí být i v Dockerfile, nejen v `pyproject.toml` a minimálních CI instalacích.
 

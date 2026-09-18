@@ -181,6 +181,7 @@ body {
   --k-hk-radius-11: 11px;
   color: var(--k-hk-navy);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--k-hk-space-14);
   padding: var(--k-spacing-1);
 }
