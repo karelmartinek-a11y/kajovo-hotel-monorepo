@@ -62,6 +62,7 @@ data class InventoryMovementDraft(
     val note: String = "",
 ) {
     fun isValid(): Boolean = quantity.toIntOrNull()?.let { it > 0 } == true && documentDate.isNotBlank()
+        && (movementType != InventoryMovementType.IN || documentReference.isNotBlank())
 }
 
 fun InventoryItemDraft.toCreateRequest() = cz.hcasc.kajovohotel.core.network.dto.InventoryItemCreateDto(

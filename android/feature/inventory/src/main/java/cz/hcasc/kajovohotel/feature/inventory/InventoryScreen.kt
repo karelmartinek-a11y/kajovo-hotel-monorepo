@@ -408,11 +408,11 @@ private fun MovementCard(
         Text(text = "Druh pohybu", style = MaterialTheme.typography.labelLarge)
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             InventoryMovementType.entries.forEach { type ->
-                Button(
+                FilterChip(
+                    selected = draft.movementType == type,
                     onClick = { onDraftChange { current -> current.copy(movementType = type) } },
-                ) {
-                    Text(type.label)
-                }
+                    label = { Text(type.label) },
+                )
             }
         }
         OutlinedTextField(
@@ -432,7 +432,7 @@ private fun MovementCard(
             value = draft.documentReference,
             onValueChange = { onDraftChange { current -> current.copy(documentReference = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Číslo dokladu (volitelné)") },
+            label = { Text(if (draft.movementType == InventoryMovementType.IN) "Číslo dokladu" else "Číslo dokladu (volitelné)") },
         )
         OutlinedTextField(
             value = draft.note,
@@ -440,6 +440,9 @@ private fun MovementCard(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Poznámka (volitelná)") },
         )
+        }
+        if (draft.movementType == InventoryMovementType.IN && draft.documentReference.isBlank()) {
+            Text("Doplňte číslo dokladu na kartě Doklad.", color = MaterialTheme.colorScheme.error)
         }
         Button(onClick = onSubmitMovement, enabled = state.selectedItemId != null && !state.isSavingMovement && draft.isValid()) {
             Text("Potvrdit pohyb")

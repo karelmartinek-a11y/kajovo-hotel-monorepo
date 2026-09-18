@@ -30,12 +30,14 @@
 
 ## Provedené kontroly zdroje
 
-- `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `testDebugUnitTest`, `lintDebug`: PASS. Jednotkové testy: 61 testů v 18 sadách, bez chyb.
+- `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `testDebugUnitTest`, `lintDebug`: PASS. Jednotkové testy: 63 testů v 18 sadách, bez chyb.
 - Instrumentované `ReadabilityTest`: 7 testů PASS na API 35. Kontrast obou témat, chyba přihlášení v okně 320 × 480 dp, odeslání klávesnicí, menu sekcí/profilu, rozbalovací filtry, vykreslení utility/reset obrazovek a pravdivé zobrazení diet na úzké obrazovce.
 - Skutečné nativní UI nad lokálním FastAPI a izolovanou SQLite databází: všech pět rolí, seznam/detail/editor hlášení, nálezy po třech krocích, snídaně, závady po dvou krocích, sklad včetně úspěšného založení nové položky, profil a pokojský formulář. Běžné okno a malý telefon 360 × 640 dp.
 - Opravena závodní podmínka skladu: pozdní načtení detailu nesmí změnit vytvoření na editaci. Dva regresní jednotkové testy.
 - Následná kontrola detailu snídaně na 360 × 640 dp odhalila zalamování diet po písmenech. Detail používá kompaktní řádky a zalamovací skupinu pouze skutečně aktivních diet; bez diet se zobrazí „Bez diet“.
 - Karta skladu otevírá detail přímo klepnutím na název. Položky bez fotografie nevkládají do každého řádku velké náhradní logo; značka zůstává v pevném záhlaví.
+- Druh skladového pohybu má explicitní vizuální i přístupnostní stav výběru (Příjem/Výdej/Odpis), nikoli tři nerozlišitelná tlačítka.
+- Skutečný API zápis ověřil, že příjem vyžaduje číslo dokladu. Android tuto validaci provádí již před odesláním a ukazuje chybějící údaj; výdej a odpis zachovávají volitelný doklad. Pokrývají dva nové jednotkové testy.
 - API/OpenAPI, CSRF, RBAC a produkční webové zdroje se touto UI změnou nemění. Rozsáhlé úvodní karty, duplicity ovládání a komentáře k implementaci byly odstraněny, nikoli datová pole.
 - Testovací databáze nemá Better Hotel přihlašovací údaje: živý seznam pokojů a externí synchronizace v tomto prostředí nejsou ověřené. Zachycena skutečná chybová obrazovka a formulář nového zápisu. Produkční zápisy do pokojů se při QA neprovádějí.
 
