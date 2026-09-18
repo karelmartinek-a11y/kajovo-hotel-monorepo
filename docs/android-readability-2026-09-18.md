@@ -35,6 +35,7 @@
 - Skutečné nativní UI nad lokálním FastAPI a izolovanou SQLite databází: všech pět rolí, seznam/detail/editor hlášení, nálezy po třech krocích, snídaně, závady po dvou krocích, sklad včetně úspěšného založení nové položky, profil a pokojský formulář. Běžné okno a malý telefon 360 × 640 dp.
 - Opravena závodní podmínka skladu: pozdní načtení detailu nesmí změnit vytvoření na editaci. Dva regresní jednotkové testy.
 - Následná kontrola detailu snídaně na 360 × 640 dp odhalila zalamování diet po písmenech. Detail používá kompaktní řádky a zalamovací skupinu pouze skutečně aktivních diet; bez diet se zobrazí „Bez diet“.
+- Karta skladu otevírá detail přímo klepnutím na název. Položky bez fotografie nevkládají do každého řádku velké náhradní logo; značka zůstává v pevném záhlaví.
 - API/OpenAPI, CSRF, RBAC a produkční webové zdroje se touto UI změnou nemění. Rozsáhlé úvodní karty, duplicity ovládání a komentáře k implementaci byly odstraněny, nikoli datová pole.
 - Testovací databáze nemá Better Hotel přihlašovací údaje: živý seznam pokojů a externí synchronizace v tomto prostředí nejsou ověřené. Zachycena skutečná chybová obrazovka a formulář nového zápisu. Produkční zápisy do pokojů se při QA neprovádějí.
 

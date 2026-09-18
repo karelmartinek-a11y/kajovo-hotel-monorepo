@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -208,7 +209,10 @@ fun InventoryScreen(
                             FeatureCard(
                                 title = item.name,
                                 subtitle = "${item.unit} · stav ${item.currentStock} · minimum ${item.minStock}${if (item.currentStock <= item.minStock) " · pod minimem" else " · OK"}",
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    viewModel.selectItem(item.id)
+                                    if (onNavigate != null) onNavigate(InventorySection.DETAIL, item.id) else section = InventorySection.DETAIL
+                                },
                             )
                         }
                         TextButton(
@@ -472,12 +476,4 @@ private fun InventoryThumb(
         )
         return
     }
-    Image(
-        painter = painterResource(R.drawable.kajovo_mark_logo),
-        contentDescription = "Zástupná miniatura položky $fallbackLabel",
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(96.dp),
-        contentScale = ContentScale.Fit,
-    )
 }
