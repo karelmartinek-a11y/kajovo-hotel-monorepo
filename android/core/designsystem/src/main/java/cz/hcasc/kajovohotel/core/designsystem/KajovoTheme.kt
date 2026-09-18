@@ -3,26 +3,26 @@ package cz.hcasc.kajovohotel.core.designsystem
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoTypographyTokens
 
-private val KajovoFontFamily = FontFamily(
-    Font(resId = R.font.montserrat_variable, weight = FontWeight.W400),
-    Font(resId = R.font.montserrat_variable, weight = FontWeight.W700),
-)
+private val KajovoFontFamily = FontFamily.SansSerif
 
 private val LightColors: ColorScheme = lightColorScheme(
     primary = KajovoColorTokens.Ink,
     onPrimary = KajovoColorTokens.SignWhite,
-    secondary = KajovoColorTokens.Metal,
+    secondary = KajovoColorTokens.InkSecondary,
     onSecondary = KajovoColorTokens.SignWhite,
     tertiary = KajovoColorTokens.Info,
     onTertiary = KajovoColorTokens.SignWhite,
@@ -38,7 +38,7 @@ private val LightColors: ColorScheme = lightColorScheme(
     onSecondaryContainer = KajovoColorTokens.Ink,
     error = KajovoColorTokens.Error,
     onError = KajovoColorTokens.SignWhite,
-    outline = KajovoColorTokens.Divider,
+    outline = KajovoColorTokens.InkSecondary,
     outlineVariant = KajovoColorTokens.SurfaceAccent,
     surfaceTint = KajovoColorTokens.Metal,
 )
@@ -60,9 +60,9 @@ private val DarkColors: ColorScheme = darkColorScheme(
     onPrimaryContainer = KajovoColorTokens.SignWhite,
     secondaryContainer = KajovoColorTokens.DarkBorder,
     onSecondaryContainer = KajovoColorTokens.SignWhite,
-    error = KajovoColorTokens.Error,
-    onError = KajovoColorTokens.SignWhite,
-    outline = KajovoColorTokens.DarkBorder,
+    error = androidx.compose.ui.graphics.Color(0xFFFFB4AB),
+    onError = KajovoColorTokens.Ink,
+    outline = KajovoColorTokens.SubtleMetal,
     outlineVariant = KajovoColorTokens.DarkAccent,
     surfaceTint = KajovoColorTokens.SubtleMetal,
 )
@@ -119,6 +119,15 @@ fun KajovoTheme(
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
         typography = KajovoTypography,
-        content = content,
-    )
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                content()
+            }
+        }
+    }
 }

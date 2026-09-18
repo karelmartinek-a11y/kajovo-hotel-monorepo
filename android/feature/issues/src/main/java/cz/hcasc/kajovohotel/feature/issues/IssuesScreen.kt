@@ -79,21 +79,13 @@ fun IssuesScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item { Text(text = "Závady", style = MaterialTheme.typography.headlineMedium) }
-        item {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        if (section == IssuesSection.LIST) item {
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = {
                     if (onNavigate != null) onNavigate(IssuesSection.LIST, null) else section = IssuesSection.LIST
                 }, modifier = Modifier.weight(1f)) { Text("Seznam") }
-                if (state.selected != null) {
-                    OutlinedButton(onClick = {
-                        state.selected?.id?.let { id -> onNavigate?.invoke(IssuesSection.DETAIL, id) } ?: run { section = IssuesSection.DETAIL }
-                    }, modifier = Modifier.weight(1f)) { Text("Detail") }
-                    OutlinedButton(onClick = {
-                        state.selected?.id?.let { id -> onNavigate?.invoke(IssuesSection.EDIT, id) } ?: run { section = IssuesSection.EDIT }
-                    }, modifier = Modifier.weight(1f)) { Text("Upravit") }
-                }
+
                 OutlinedButton(onClick = {
                     viewModel.startCreate()
                     if (onNavigate != null) onNavigate(IssuesSection.CREATE, null) else section = IssuesSection.CREATE
@@ -113,19 +105,22 @@ fun IssuesScreen(
                 )
             }
         }
+        if (section != IssuesSection.LIST && state.errorMessage != null) item {
+            Text(state.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
+        }
         when {
             state.isLoading -> item {
                 FeatureCard(
                     title = "Načítám závady",
-                    subtitle = "Připravuji seznam, detail i navazující úpravy pro aktivní roli.",
+                    subtitle = "",
                 )
             }
 
-            state.errorMessage != null -> item {
+            state.errorMessage != null && section == IssuesSection.LIST -> item {
                 FeatureCard(title = "Modul závad není dostupný", subtitle = state.errorMessage ?: "")
             }
 
-            state.issues.isEmpty() -> item {
+            state.issues.isEmpty() && section == IssuesSection.LIST -> item {
                 FeatureCard(
                     title = "Pro zvolený filtr nejsou žádné závady",
                     subtitle = "Upravte filtr nebo založte nový záznam.",
@@ -207,11 +202,7 @@ private fun FiltersCard(
     onRefresh: () -> Unit,
     onStartCreate: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(
-            title = "Přehled závad",
-            subtitle = "Filtrujte seznam podle stavu, priority, místa a pokoje, potom otevřete detail nebo rovnou založte nový záznam.",
-        )
+    cz.hcasc.kajovohotel.core.designsystem.CollapsibleFilters {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(IssueStatus.entries) { status ->
                 FilterChip(
@@ -260,7 +251,7 @@ private fun DetailCard(
     if (selected == null) {
         FeatureCard(
             title = "Vyberte závadu",
-            subtitle = "Po výběru se zobrazí detail, časová osa a pod ní formulář pro úpravu.",
+            subtitle = "",
         )
         return
     }
@@ -324,11 +315,17 @@ private fun EditorCard(
     val selected = state.selected
     val draft = state.draft
 
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+    var details by androidx.compose.runtime.saveable.rememberSaveable(selected?.id) { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         FeatureCard(
             title = if (state.isEditingExisting) "Upravit závadu #${selected?.id}" else "Nová závada",
-            subtitle = state.successMessage ?: "Vyplňte název, místo a popis. Stav můžete měnit jen povolenými přechody.",
+            subtitle = state.successMessage ?: "",
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            FilterChip(selected = !details, onClick = { details = false }, label = { Text("Závada") })
+            FilterChip(selected = details, onClick = { details = true }, label = { Text("Stav a priorita") })
+        }
+        if (!details) {
         OutlinedTextField(
             value = draft.title,
             onValueChange = { onDraftChange { current -> current.copy(title = it) } },
@@ -348,16 +345,17 @@ private fun EditorCard(
             label = { Text("Pokoj") },
         )
         OutlinedTextField(
-            value = draft.assignee,
-            onValueChange = { onDraftChange { current -> current.copy(assignee = it) } },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Přiřazeno") },
-        )
-        OutlinedTextField(
             value = draft.description,
             onValueChange = { onDraftChange { current -> current.copy(description = it) } },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Popis") },
+        )
+        } else {
+        OutlinedTextField(
+            value = draft.assignee,
+            onValueChange = { onDraftChange { current -> current.copy(assignee = it) } },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Přiřazeno") },
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(IssueStatus.entries) { status ->
@@ -376,6 +374,7 @@ private fun EditorCard(
                     label = { Text(priority.label) },
                 )
             }
+        }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             Button(onClick = onSave, enabled = !state.isSaving && draft.isValidForSubmit()) {

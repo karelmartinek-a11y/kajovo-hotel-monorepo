@@ -1,8 +1,14 @@
 package cz.hcasc.kajovohotel.feature.profile
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -42,8 +48,7 @@ fun ProfileScreen(
     val normalizedPhone = normalizePhoneInput(phone)
     val isPhoneValid = normalizedPhone.isNullOrBlank() || phoneRegex.matches(normalizedPhone)
 
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Můj profil", style = MaterialTheme.typography.headlineMedium)
+    Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         if (deviceLayout == KajovoDeviceLayout.TABLET) {
             AdaptiveTwoColumnBlock(
                 leading = {
@@ -88,12 +93,6 @@ fun ProfileScreen(
                 onNoteChange = { note = it },
                 onSave = { onSave(firstName.trim(), lastName.trim(), normalizedPhone.orEmpty(), note.trim()) },
             )
-            Button(onClick = onChangePasswordClick) {
-                Text(text = "Změnit heslo")
-            }
-            OutlinedButton(onClick = onLogoutClick) {
-                Text(text = "Odhlásit")
-            }
         }
     }
 }
@@ -109,18 +108,20 @@ private fun ProfileSummaryCard(
         profile?.let {
             FeatureCard(
                 title = it.fullName,
-                subtitle = "Správa kontaktních údajů a provozní poznámky k účtu ${it.email}",
+                subtitle = it.email,
             )
             BulletLine(label = "Role", value = it.roles.joinToString { role -> role.displayName })
         }
         if (!message.isNullOrBlank()) {
             Text(text = message)
         }
-        Button(onClick = onChangePasswordClick, modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        Button(onClick = onChangePasswordClick, modifier = Modifier.weight(1f)) {
             Text(text = "Změnit heslo")
         }
-        OutlinedButton(onClick = onLogoutClick, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onLogoutClick, modifier = Modifier.weight(1f)) {
             Text(text = "Odhlásit")
+        }
         }
     }
 }
@@ -139,28 +140,32 @@ private fun ProfileFormCard(
     onSave: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         OutlinedTextField(
             value = firstName,
             onValueChange = onFirstNameChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
             label = { Text("Jméno") },
+            singleLine = true,
         )
         OutlinedTextField(
             value = lastName,
             onValueChange = onLastNameChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
             label = { Text("Příjmení") },
+            singleLine = true,
         )
+        }
         OutlinedTextField(
             value = phone,
             onValueChange = onPhoneChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Telefon (E.164, volitelný)") },
+            label = { Text("Telefon") },
             supportingText = {
                 if (!isPhoneValid) {
                     Text("Telefon musí být ve formátu E.164.")
                 } else {
-                    Text("Například +420123456789.")
+                    Text("+420123456789")
                 }
             },
             isError = !isPhoneValid,
@@ -171,7 +176,8 @@ private fun ProfileFormCard(
             onValueChange = onNoteChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Poznámka") },
-            minLines = 3,
+            minLines = 1,
+            maxLines = 2,
         )
         Button(
             onClick = onSave,
@@ -188,12 +194,8 @@ fun ChangePasswordScreen(message: String?, onSubmit: (String, String) -> Unit) {
     var oldPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
 
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Změna hesla", style = MaterialTheme.typography.headlineMedium)
-        FeatureCard(
-            title = "Bezpečné obnovení přístupu",
-            subtitle = "Po změně hesla se účet znovu ověří a navážete novým přihlášením.",
-        )
+    Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+        Text("Minimálně 8 znaků.", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             value = oldPassword,
             onValueChange = { oldPassword = it },
@@ -230,12 +232,9 @@ fun ResetPasswordScreen(
     var confirmPassword by remember { mutableStateOf("") }
     val passwordsMatch = password == confirmPassword
 
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        Text(text = "Dokončení resetu hesla", style = MaterialTheme.typography.headlineMedium)
-        FeatureCard(
-            title = "Reset z odkazu hotel.hcasc.cz",
-            subtitle = "Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení se přihlásíte novým heslem.",
-        )
+    Column(modifier = Modifier.imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+        Text(text = "Obnovení hesla", style = MaterialTheme.typography.titleLarge)
+        Text("Minimálně 8 znaků.", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },

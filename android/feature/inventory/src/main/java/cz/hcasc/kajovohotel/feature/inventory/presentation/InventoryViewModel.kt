@@ -23,13 +23,15 @@ class InventoryViewModel @Inject constructor(
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(InventoryUiState())
     val state: StateFlow<InventoryUiState> = mutableState.asStateFlow()
+    private var selectionGeneration = 0
 
     fun load() {
         mutableState.value = mutableState.value.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             when (val result = repository.list()) {
                 is AppResult.Success -> {
-                    val selectedId = mutableState.value.selectedItemId ?: result.value.firstOrNull()?.id
+                    val current = mutableState.value
+                    val selectedId = current.selectedItemId ?: if (current.isEditingItem) null else result.value.firstOrNull()?.id
                     mutableState.value = mutableState.value.copy(
                         isLoading = false,
                         items = result.value,
@@ -46,8 +48,11 @@ class InventoryViewModel @Inject constructor(
     }
 
     fun loadDetail(itemId: Int) {
+        val generation = selectionGeneration
         viewModelScope.launch {
-            when (val result = repository.detail(itemId)) {
+            val result = repository.detail(itemId)
+            if (generation != selectionGeneration) return@launch
+            when (result) {
                 is AppResult.Success -> {
                     mutableState.value = mutableState.value.copy(
                         selectedItemId = itemId,
@@ -62,11 +67,13 @@ class InventoryViewModel @Inject constructor(
     }
 
     fun selectItem(itemId: Int) {
+        selectionGeneration++
         mutableState.value = mutableState.value.copy(selectedItemId = itemId, successMessage = null, isEditingItem = false, selectedPictogram = null)
         loadDetail(itemId)
     }
 
     fun startCreateItem() {
+        selectionGeneration++
         mutableState.value = mutableState.value.copy(
             isEditingItem = true,
             selectedItemId = null,

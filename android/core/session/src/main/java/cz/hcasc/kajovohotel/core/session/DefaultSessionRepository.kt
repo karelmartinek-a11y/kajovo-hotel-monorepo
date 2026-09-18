@@ -57,7 +57,6 @@ class DefaultSessionRepository(
     }
 
     override suspend fun signIn(email: String, password: String, rememberMe: Boolean) {
-        mutableSessionState.value = SessionState.Checking
         mutableSessionMessage.value = null
         runCatching {
             authApi.login(

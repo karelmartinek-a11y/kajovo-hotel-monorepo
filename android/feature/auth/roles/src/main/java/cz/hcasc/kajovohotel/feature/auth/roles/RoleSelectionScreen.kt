@@ -1,6 +1,10 @@
 package cz.hcasc.kajovohotel.feature.auth.roles
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
@@ -27,12 +31,8 @@ fun RoleSelectionScreen(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
+    Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         Text(text = "Vyberte roli", style = MaterialTheme.typography.headlineMedium)
-        FeatureCard(
-            title = "Role a přístup",
-            subtitle = "Zobrazují se všechny přiřazené role. Konkrétní obrazovky se povolují až podle aktivní role a aktuálních oprávnění.",
-        )
         Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
             roles.forEach { role ->
                 Button(
@@ -40,13 +40,12 @@ fun RoleSelectionScreen(
                     enabled = !isBusy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(text = if (isBusy) "Ukládám volbu" else "Pokračovat jako ${role.displayName}")
+                    Text(text = if (isBusy) "Ukládám volbu" else role.displayName)
                 }
             }
         }
         if (!message.isNullOrBlank()) {
             Text(text = message, color = MaterialTheme.colorScheme.error)
         }
-        BrandFooter()
     }
 }

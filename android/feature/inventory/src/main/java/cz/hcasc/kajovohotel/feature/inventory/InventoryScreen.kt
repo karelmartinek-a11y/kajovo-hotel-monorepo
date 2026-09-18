@@ -100,9 +100,8 @@ fun InventoryScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item { Text(text = "Sklad", style = MaterialTheme.typography.headlineMedium) }
-        item {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        if (section == InventorySection.LIST) item {
             androidx.compose.foundation.layout.Row(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 modifier = Modifier.fillMaxWidth(),
@@ -110,57 +109,35 @@ fun InventoryScreen(
                 OutlinedButton(onClick = {
                     if (onNavigate != null) onNavigate(InventorySection.LIST, null) else section = InventorySection.LIST
                 }, modifier = Modifier.weight(1f)) { Text("Seznam") }
-                if (state.selectedDetail != null) {
-                    OutlinedButton(onClick = {
-                        state.selectedDetail?.id?.let { id -> onNavigate?.invoke(InventorySection.DETAIL, id) } ?: run { section = InventorySection.DETAIL }
-                    }, modifier = Modifier.weight(1f)) { Text("Detail") }
-                    OutlinedButton(onClick = {
-                        state.selectedDetail?.id?.let { id -> onNavigate?.invoke(InventorySection.EDIT, id) } ?: run { section = InventorySection.EDIT }
-                    }, modifier = Modifier.weight(1f)) { Text("Upravit") }
-                    OutlinedButton(onClick = {
-                        state.selectedDetail?.id?.let { id -> onNavigate?.invoke(InventorySection.MOVEMENT, id) } ?: run { section = InventorySection.MOVEMENT }
-                    }, modifier = Modifier.weight(1f)) { Text("Pohyb") }
-                }
+
                 OutlinedButton(onClick = {
                     viewModel.startCreateItem()
                     if (onNavigate != null) onNavigate(InventorySection.CREATE, null) else section = InventorySection.CREATE
                 }, modifier = Modifier.weight(1f)) { Text("Nová") }
             }
         }
-        item {
-            HeaderCard(
-                state = state,
-                onReportsClick = onReportsClick,
-                onStartCreate = {
-                    viewModel.startCreateItem()
-                    if (onNavigate != null) onNavigate(InventorySection.CREATE, null) else section = InventorySection.CREATE
-                },
-                onStartEdit = {
-                    viewModel.startEditSelected()
-                    val id = state.selectedDetail?.id
-                    if (onNavigate != null && id != null) onNavigate(InventorySection.EDIT, id) else section = InventorySection.EDIT
-                },
-            )
+        if (section != InventorySection.LIST && state.errorMessage != null) item {
+            Text(state.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
         }
         when {
             state.isLoading -> item {
                 FeatureCard(
                     title = "Načítám sklad",
-                    subtitle = "Připravuji seznam položek, detail, editor a formulář pro nový pohyb skladu.",
+                    subtitle = "",
                 )
             }
 
-            state.errorMessage != null -> item {
+            state.errorMessage != null && section == InventorySection.LIST -> item {
                 FeatureCard(
                     title = "Sklad není dostupný",
                     subtitle = state.errorMessage ?: "",
                 )
             }
 
-            state.items.isEmpty() -> item {
+            state.items.isEmpty() && section == InventorySection.LIST -> item {
                 FeatureCard(
                     title = "Ve skladu zatím nejsou položky",
-                    subtitle = "Jakmile se načtou nebo založí první karty, objeví se tady.",
+                    subtitle = "",
                 )
             }
 
@@ -251,30 +228,6 @@ fun InventoryScreen(
 }
 
 @Composable
-private fun HeaderCard(
-    state: InventoryUiState,
-    onReportsClick: (() -> Unit)?,
-    onStartCreate: () -> Unit,
-    onStartEdit: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(
-            title = "Správa skladu",
-            subtitle = "Sklad je rozdělený na samostatné kroky: seznam položek, detail, editor karty a nový pohyb.",
-        )
-        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            Button(onClick = onStartCreate) { Text("Nová položka") }
-            if (state.selectedDetail != null) {
-                OutlinedButton(onClick = onStartEdit) { Text("Upravit vybranou") }
-            }
-            if (onReportsClick != null) {
-                OutlinedButton(onClick = onReportsClick) { Text("Hlášení") }
-            }
-        }
-    }
-}
-
-@Composable
 private fun DetailCard(
     state: InventoryUiState,
     onBackToList: () -> Unit,
@@ -285,7 +238,7 @@ private fun DetailCard(
     if (detail == null) {
         FeatureCard(
             title = "Vyberte skladovou položku",
-            subtitle = "Po výběru se zobrazí detail, historie pohybů a možnost úpravy.",
+            subtitle = "",
         )
         return
     }
@@ -343,10 +296,10 @@ private fun ItemEditorCard(
 ) {
     val draft = state.itemDraft
 
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         FeatureCard(
             title = if (state.selectedDetail == null) "Nová skladová položka" else "Upravit skladovou položku",
-            subtitle = state.successMessage ?: "Doplňte název, veličinu, stavy a případně nahrajte miniaturu položky.",
+            subtitle = state.successMessage ?: "",
         )
         OutlinedTextField(
             value = draft.name,
@@ -370,18 +323,20 @@ private fun ItemEditorCard(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Hodnota veličiny v 1 ks") },
         )
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         OutlinedTextField(
             value = draft.minStock,
             onValueChange = { onDraftChange { current -> current.copy(minStock = it.filter(Char::isDigit)) } },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
             label = { Text("Minimální stav") },
         )
         OutlinedTextField(
             value = draft.currentStock,
             onValueChange = { onDraftChange { current -> current.copy(currentStock = it.filter(Char::isDigit)) } },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
             label = { Text("Aktuální stav") },
         )
+        }
         if (state.selectedPictogram != null) {
             Text(text = "Vybraná miniatura: ${state.selectedPictogram.fileName}")
         } else if (state.selectedDetail?.pictogramThumbPath?.isNotBlank() == true) {
@@ -420,18 +375,30 @@ private fun MovementCard(
 ) {
     val draft = state.movementDraft
 
+    var document by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = "Nový pohyb skladu",
-            subtitle = state.successMessage ?: "Vyberte položku, typ pohybu a doplňte doklad stejně jako na webu.",
+            subtitle = state.successMessage ?: "",
         )
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            FilterChip(selected = !document, onClick = { document = false }, label = { Text("Pohyb") })
+            FilterChip(selected = document, onClick = { document = true }, label = { Text("Doklad") })
+        }
+        if (!document) {
         Text(text = "Položka", style = MaterialTheme.typography.labelLarge)
-        state.items.forEach { item ->
-            TextButton(
-                onClick = { onSelectItem(item.id) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(text = if (state.selectedItemId == item.id) "• ${item.name}" else item.name)
+        var itemMenuOpen by remember { mutableStateOf(false) }
+        androidx.compose.foundation.layout.Box {
+            OutlinedButton(onClick = { itemMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(state.items.firstOrNull { it.id == state.selectedItemId }?.name ?: "Vybrat položku")
+            }
+            androidx.compose.material3.DropdownMenu(expanded = itemMenuOpen, onDismissRequest = { itemMenuOpen = false }) {
+                state.items.forEach { item ->
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(item.name) }, onClick = {
+                        onSelectItem(item.id)
+                        itemMenuOpen = false
+                    })
+                }
             }
         }
         Text(text = "Druh pohybu", style = MaterialTheme.typography.labelLarge)
@@ -450,6 +417,7 @@ private fun MovementCard(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Množství") },
         )
+        } else {
         OutlinedTextField(
             value = draft.documentDate,
             onValueChange = { onDraftChange { current -> current.copy(documentDate = it) } },
@@ -468,6 +436,7 @@ private fun MovementCard(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Poznámka (volitelná)") },
         )
+        }
         Button(onClick = onSubmitMovement, enabled = state.selectedItemId != null && !state.isSavingMovement && draft.isValid()) {
             Text("Potvrdit pohyb")
         }

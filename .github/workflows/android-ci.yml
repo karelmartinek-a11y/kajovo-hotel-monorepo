@@ -48,6 +48,20 @@ jobs:
       - name: Build, unit test and lint native app
         run: ./gradlew :app:assembleDebug testDebugUnitTest lintDebug --console=plain
 
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Verify native readability and navigation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          disable-animations: true
+          script: android/gradlew :app:connectedDebugAndroidTest --console=plain
+
       - name: Upload debug APK and reports
         if: always()
         uses: actions/upload-artifact@v6

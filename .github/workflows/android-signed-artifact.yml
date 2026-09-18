@@ -2,6 +2,15 @@ name: Android Signed Artifact - Kajovo Hotel
 
 on:
   workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'Candidate version code (publish manifest and APK together after verification)'
+        required: false
+        type: string
+      version_name:
+        description: 'Candidate version name'
+        required: false
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -34,6 +43,26 @@ jobs:
           test -n "$SIGNING_KEY_B64"
           printf '%s' "$SIGNING_KEY_B64" | base64 --decode > "$RUNNER_TEMP/kajovo-upload.keystore"
           chmod 600 "$RUNNER_TEMP/kajovo-upload.keystore"
+
+      - name: Prepare candidate version
+        env:
+          CANDIDATE_CODE: ${{ inputs.version_code }}
+          CANDIDATE_NAME: ${{ inputs.version_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          code, name = os.environ['CANDIDATE_CODE'], os.environ['CANDIDATE_NAME']
+          if bool(code) != bool(name):
+              raise SystemExit('Supply both candidate version fields or neither.')
+          if code:
+              path = Path('release/android-release.json')
+              manifest = json.loads(path.read_text())
+              if not code.isdecimal() or int(code) <= manifest['version_code'] or not name.strip():
+                  raise SystemExit('Candidate version must be newer than the published version.')
+              manifest.update(version_code=int(code), version_name=name.strip())
+              path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+          PY
 
       - name: Build signed release APK
         env:

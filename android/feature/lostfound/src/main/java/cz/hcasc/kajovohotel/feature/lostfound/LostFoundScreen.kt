@@ -96,22 +96,11 @@ fun LostFoundScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item {
-            Text(
-                text = if (state.isReceptionView) "Nálezy pro recepci" else "Ztráty a nálezy",
-                style = MaterialTheme.typography.headlineMedium,
-            )
-        }
-        item {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        if (section == LostFoundSection.LIST) item {
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST }, modifier = Modifier.weight(1f)) { Text("Seznam") }
-                if (state.selected != null) {
-                    OutlinedButton(onClick = {
-                        val id = state.selected?.id
-                        if (onNavigate != null && id != null) onNavigate(LostFoundSection.DETAIL, id) else section = LostFoundSection.DETAIL
-                    }, modifier = Modifier.weight(1f)) { Text("Detail") }
-                }
+
                     OutlinedButton(onClick = {
                         viewModel.startCreate()
                         if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
@@ -124,19 +113,22 @@ fun LostFoundScreen(
                     }
             }
         }
+        if (section != LostFoundSection.LIST && state.errorMessage != null) item {
+            Text(state.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
+        }
         when {
             state.isLoading -> item {
                 FeatureCard(
                     title = "Načítám záznamy",
-                    subtitle = "Připravuji seznam, detail a návazné akce pro zvolený provozní tok.",
+                    subtitle = "",
                 )
             }
 
-            state.errorMessage != null -> item {
+            state.errorMessage != null && section == LostFoundSection.LIST -> item {
                 FeatureCard(title = "Modul ztrát a nálezů není dostupný", subtitle = state.errorMessage ?: "")
             }
 
-            state.records.isEmpty() -> item {
+            state.records.isEmpty() && section == LostFoundSection.LIST -> item {
                 FeatureCard(
                     title = if (state.isReceptionView) "Čekající nálezy" else "Zatím není žádný záznam",
                     subtitle = if (state.isReceptionView) {
@@ -282,11 +274,7 @@ private fun FiltersCard(
     onStartCreate: () -> Unit,
     onFiltersChange: ((cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundFilters) -> cz.hcasc.kajovohotel.feature.lostfound.domain.LostFoundFilters) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(
-            title = "Filtry a seznam",
-            subtitle = "Nejprve vyfiltrujte záznamy a otevřete seznam. Detail a editor jsou oddělené kroky stejně jako na webu.",
-        )
+    cz.hcasc.kajovohotel.core.designsystem.CollapsibleFilters {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             item {
                 FilterChip(
@@ -335,7 +323,7 @@ private fun DetailCard(
     if (selected == null) {
         FeatureCard(
             title = "Vyberte záznam",
-            subtitle = "Po výběru se zobrazí samostatný detail předmětu. Úprava je oddělený další krok.",
+            subtitle = "",
         )
         return
     }
@@ -390,11 +378,18 @@ private fun EditorCard(
     val draft = state.draft
     val selectedTags = draft.selectedTags()
     val context = LocalContext.current
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+    var step by androidx.compose.runtime.saveable.rememberSaveable(state.selected?.id) { mutableStateOf(0) }
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         FeatureCard(
             title = state.selected?.let { "Upravit záznam #${it.id}" } ?: "Nový záznam",
-            subtitle = state.successMessage ?: "Editor záznamu je oddělený od seznamu a detailu stejně jako na webu.",
+            subtitle = state.successMessage ?: "",
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            listOf("Předmět", "Místo", "Předání").forEachIndexed { index, label ->
+                FilterChip(selected = step == index, onClick = { step = index }, label = { Text(label) })
+            }
+        }
+        if (step == 0) {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(LostFoundItemType.entries) { itemType ->
                 FilterChip(
@@ -415,6 +410,8 @@ private fun EditorCard(
         }
         OutlinedTextField(value = draft.category, onValueChange = { onDraftChange { current -> current.copy(category = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kategorie") })
         OutlinedTextField(value = draft.description, onValueChange = { onDraftChange { current -> current.copy(description = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Popis") })
+        }
+        if (step == 1) {
         OutlinedTextField(value = draft.location, onValueChange = { onDraftChange { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Místo nálezu nebo ztráty") })
         EventAtPickerField(
             eventAt = draft.eventAt,
@@ -422,6 +419,8 @@ private fun EditorCard(
             onChange = { value -> onDraftChange { current -> current.copy(eventAt = value) } },
         )
         OutlinedTextField(value = draft.roomNumber, onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Pokoj") })
+        }
+        if (step == 2) {
         OutlinedTextField(value = draft.claimantName, onValueChange = { onDraftChange { current -> current.copy(claimantName = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Jméno přebírajícího") })
         OutlinedTextField(value = draft.claimantContact, onValueChange = { onDraftChange { current -> current.copy(claimantContact = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kontakt") })
         OutlinedTextField(value = draft.handoverNote, onValueChange = { onDraftChange { current -> current.copy(handoverNote = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Předávací záznam") })
@@ -436,13 +435,17 @@ private fun EditorCard(
                     )
                 }
             }
-            if (selectedTags.isNotEmpty()) {
-                Text(text = "Vybráno: ${selectedTags.joinToString()}", style = MaterialTheme.typography.bodyMedium)
-            }
+        }
         }
         Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            if (step == 1) {
             Button(onClick = onPickPhotos, modifier = Modifier.fillMaxWidth()) { Text("Vybrat až 3 fotky") }
+            }
+            if (step < 2) {
+                Button(onClick = { step += 1 }, modifier = Modifier.fillMaxWidth()) { Text("Pokračovat") }
+            } else {
             Button(onClick = onSave, enabled = !state.isSaving && draft.isValidForSubmit(), modifier = Modifier.fillMaxWidth()) { Text("Uložit záznam") }
+            }
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Zrušit") }
         }
         if (state.pendingPhotos.isNotEmpty()) {

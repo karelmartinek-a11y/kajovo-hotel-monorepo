@@ -68,6 +68,7 @@ fun HousekeepingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var captureMode by remember { mutableStateOf(false) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxItems = 3)) { uris ->
@@ -101,13 +102,19 @@ fun HousekeepingScreen(
         return
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item { Text(text = "Pokojská", style = MaterialTheme.typography.headlineMedium) }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                FilterChip(selected = !captureMode, onClick = { captureMode = false }, label = { Text("Pokoje") })
+                FilterChip(selected = captureMode, onClick = { captureMode = true }, label = { Text("Nový zápis") })
+            }
+        }
+        if (!captureMode) {
         item {
             FeatureCard(
                 title = "Přehled pokojů",
                 subtitle = if (state.housekeepingStatusIsCurrent) {
-                    "Pobyty patří vybranému dni, stav úklidu je aktuální."
+                    ""
                 } else {
                     "Stav úklidu není aktuální. Obnovte přehled."
                 },
@@ -166,13 +173,13 @@ fun HousekeepingScreen(
                 }
             }
         }
+        } else {
         item {
             FeatureCard(
-                title = "Rychlé zadání závady nebo nálezu",
-                subtitle = "Vyberte typ zápisu, pokoj, krátký text a přiložte až 3 fotografie.",
+                title = "Nový zápis",
+                subtitle = "Nejvýše 3 fotografie.",
             )
         }
-        item { Text(text = state.draftNotice, style = MaterialTheme.typography.bodyMedium) }
         state.photoLimitMessage?.let { message ->
             item {
                 Text(
@@ -265,6 +272,8 @@ fun HousekeepingScreen(
         }
     }
 
+    }
+
     val selectedRoom = state.rooms.firstOrNull { it.room_id == state.selectedRoomId }
     if (selectedRoom != null) {
         AlertDialog(
@@ -272,7 +281,7 @@ fun HousekeepingScreen(
             title = { Text("Pokoj ${selectedRoom.room_number}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                    Text("Vyberte nový stav. Zápis se po ověření serverem uloží a přehled se automaticky obnoví.")
+                    Text("Vyberte stav pokoje.")
                     housekeepingStatuses.forEach { (value, label) ->
                         OutlinedButton(
                             onClick = { viewModel.updateRoomStatus(value) },
@@ -352,17 +361,16 @@ private fun RoomPicker(
     selectedRoom: String,
     onSelectRoom: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-        Text(text = "Pokoj", style = MaterialTheme.typography.labelLarge)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
-            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
-        ) {
+    var expanded by remember { mutableStateOf(false) }
+    androidx.compose.foundation.layout.Box {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(if (selectedRoom.isBlank()) "Vybrat pokoj" else "Pokoj $selectedRoom")
+        }
+        androidx.compose.material3.DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             housekeepingRooms.forEach { room ->
-                FilterChip(
-                    selected = selectedRoom == room,
-                    onClick = { onSelectRoom(room) },
-                    label = { Text(room) },
+                androidx.compose.material3.DropdownMenuItem(
+                    onClick = { onSelectRoom(room); expanded = false },
+                    text = { Text(room) },
                 )
             }
         }

@@ -59,6 +59,7 @@ fun KajovoHotelApp(
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val signingIn by viewModel.signingIn.collectAsStateWithLifecycle()
     val appUpdateState by viewModel.appUpdateState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val appUpdater = remember(context) { AndroidAppUpdater(context) }
@@ -103,7 +104,7 @@ fun KajovoHotelApp(
         when (val state = sessionState) {
             SessionState.Checking -> IntroScreen()
             SessionState.Unauthenticated -> LoginScreen(
-                isBusy = false,
+                isBusy = signingIn,
                 errorMessage = message,
                 onSubmit = viewModel::signIn,
             )
@@ -778,6 +779,8 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                     activeRole = identity.activeRole,
                     onRoleSelected = onRoleChange,
+                    sections = PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title },
+                    onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
                 ) {
                     ProfileScreen(
                         profile = profile,
@@ -797,6 +800,8 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                     activeRole = identity.activeRole,
                     onRoleSelected = onRoleChange,
+                    sections = PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title },
+                    onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
                 ) {
                     ChangePasswordScreen(message = message, onSubmit = onChangePassword)
                 }
@@ -846,6 +851,8 @@ private fun GuardedRoute(
         availableRoles = availableRoles,
         activeRole = identity.activeRole,
         onRoleSelected = onRoleChange,
+                    sections = PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title },
+                    onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
         content = content,
     )
 }

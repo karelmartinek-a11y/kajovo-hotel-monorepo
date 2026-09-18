@@ -37,6 +37,8 @@ class AppStateViewModel @Inject constructor(
 
     private val mutableMessage = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = mutableMessage.asStateFlow()
+    private val mutableSigningIn = MutableStateFlow(false)
+    val signingIn: StateFlow<Boolean> = mutableSigningIn.asStateFlow()
 
     private val mutableAppUpdateState = MutableStateFlow(AppUpdateState())
     val appUpdateState: StateFlow<AppUpdateState> = mutableAppUpdateState.asStateFlow()
@@ -81,12 +83,18 @@ class AppStateViewModel @Inject constructor(
     }
 
     fun signIn(email: String, password: String) {
+        if (mutableSigningIn.value) return
+        mutableSigningIn.value = true
         viewModelScope.launch {
-            mutableMessage.value = null
-            sessionRepository.signIn(email, password, rememberMe = false)
-            refreshProfileIfAuthenticated()
-            if (sessionState.value is SessionState.Unauthenticated) {
-                mutableProfile.value = null
+            try {
+                mutableMessage.value = null
+                sessionRepository.signIn(email, password, rememberMe = false)
+                refreshProfileIfAuthenticated()
+                if (sessionState.value is SessionState.Unauthenticated) {
+                    mutableProfile.value = null
+                }
+            } finally {
+                mutableSigningIn.value = false
             }
         }
     }

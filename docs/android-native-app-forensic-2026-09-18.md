@@ -40,6 +40,8 @@ Aktivní uživatelské routy: `/login`, `/login/reset`, `/`, `/recepce`, `/profi
 
 ## Stav parity implementace
 
+Aktuální kompaktní navigaci, kroky formulářů, kontrast a důkazy UI QA popisuje `docs/android-readability-2026-09-18.md`. Soupis datových polí a validací zůstává platný; textové průvodce nahrazují stručná hlášení.
+
 Obnovený projekt v `android/` obsahuje nativní obrazovky login, reset, role, recepci, pokojskou, snídaně, ztráty a nálezy, závady, sklad, hlášení, profil a utility stavy. Aktuální pokojský room-status kontrakt byl doplněn nad živé API. Detailní seznamové/formulářové obrazovky jsou na Androidu řešeny nativním jednosměrným stavem místo kopírování webových URL.
 
 ## Matice dopadů

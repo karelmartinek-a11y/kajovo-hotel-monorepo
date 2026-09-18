@@ -77,9 +77,8 @@ fun ReportsScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item { Text(text = "Hlášení", style = MaterialTheme.typography.headlineMedium) }
-        item {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        if (section == ReportsSection.LIST) item {
             androidx.compose.foundation.layout.Row(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 modifier = Modifier.fillMaxWidth(),
@@ -87,11 +86,7 @@ fun ReportsScreen(
                 OutlinedButton(onClick = {
                     if (onNavigate != null) onNavigate(ReportsSection.LIST, null) else section = ReportsSection.LIST
                 }, modifier = Modifier.weight(1f)) { Text("Seznam") }
-                if (state.selected != null) {
-                    OutlinedButton(onClick = {
-                        state.selected?.id?.let { id -> onNavigate?.invoke(ReportsSection.DETAIL, id) } ?: run { section = ReportsSection.DETAIL }
-                    }, modifier = Modifier.weight(1f)) { Text("Detail") }
-                }
+
                 if (canManageReports) {
                     OutlinedButton(onClick = {
                         viewModel.startCreate()
@@ -119,22 +114,25 @@ fun ReportsScreen(
                     )
                 }
             }
+        if (section != ReportsSection.LIST && state.errorMessage != null) item {
+            Text(state.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
+        }
         when {
             state.isLoading -> item {
                 FeatureCard(
                     title = "Načítám hlášení",
-                    subtitle = "Připravuji seznam, detail a editor podle oprávnění aktivní role.",
+                    subtitle = "",
                 )
             }
 
-            state.errorMessage != null -> item {
+            state.errorMessage != null && section == ReportsSection.LIST -> item {
                 FeatureCard(title = "Modul hlášení není dostupný", subtitle = state.errorMessage ?: "")
             }
 
-            state.reports.isEmpty() -> item {
+            state.reports.isEmpty() && section == ReportsSection.LIST -> item {
                 FeatureCard(
                     title = "Zatím není evidováno žádné hlášení",
-                    subtitle = if (canManageReports) "Můžete založit první záznam." else "Jakmile vznikne první záznam, objeví se tady.",
+                    subtitle = if (canManageReports) "Můžete založit první záznam." else "",
                 )
             }
 
@@ -201,11 +199,7 @@ private fun FiltersCard(
     onRefresh: () -> Unit,
     onStartCreate: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(
-            title = "Přehled hlášení",
-            subtitle = "Filtrujte podle stavu a otevřete detail nebo editor podle oprávnění aktuální role.",
-        )
+    cz.hcasc.kajovohotel.core.designsystem.CollapsibleFilters {
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(ReportStatus.entries) { status ->
                 FilterChip(
@@ -233,7 +227,7 @@ private fun DetailCard(
     if (selected == null) {
         FeatureCard(
             title = "Vyberte hlášení",
-            subtitle = "Po výběru se otevře samostatný detail hlášení. Úprava je oddělený další krok.",
+            subtitle = "",
         )
         return
     }
@@ -283,7 +277,7 @@ private fun EditorCard(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = if (state.isEditingExisting) "Upravit hlášení" else "Nové hlášení",
-            subtitle = state.successMessage ?: if (canManageReports) "Vyplňte název, popis a stav hlášení." else "Tato role má přístup jen ke čtení detailu.",
+            subtitle = state.successMessage ?: if (canManageReports) "" else "Pouze pro čtení",
         )
         OutlinedTextField(
             value = draft.title,

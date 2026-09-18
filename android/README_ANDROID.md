@@ -36,6 +36,7 @@ cd android
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug
+./gradlew :app:connectedDebugAndroidTest
 ```
 
 Na Windows:
@@ -54,6 +55,16 @@ cd android
 - produkční APK musí být podepsaná původním produkčním klíčem; release build bez čtyř `KAJOVO_UPLOAD_*` hodnot záměrně selže
 - veřejná APK, release manifest a veřejný endpoint `/api/app/android-release` se publikují atomicky; Android před instalací ověří SHA-256 a systém vyžádá potvrzení uživatele
 - samostatný workflow `.github/workflows/android-ci.yml` ověřuje debug build, unit testy a lint a neblokuje webový deploy
+- Android CI navíc spouští instrumentované testy kontrastu, přihlášení, filtrů a navigace na emulátoru API 35.
+- Podpisový workflow přijímá volitelné `version_code` a `version_name` pro kandidátní sestavení. Veřejný manifest zůstává na staré verzi až do atomického commitu nového podepsaného APK, hashe a verze; kandidátní metadata se mění jen v pracovním adresáři CI.
+
+## Izolované UI QA
+
+- Debug balíček je `cz.hcasc.kajovohotel.app.debug`, takže nepřepíše produkční instalaci. Cleartext HTTP je povolené výhradně v debug manifestu.
+- `qa/seed_ui_database.py` smí naplnit pouze SQLite databázi `/tmp/kajovo-native-qa-*`; používá skutečný API model a syntetická data, nikoli produkční databázi.
+- Lokální API lze propojit přes `adb reverse tcp:18080 tcp:18080` a build s `-PkajovoHotelBaseUrl=http://127.0.0.1:18080`.
+- `qa/capture_native.py` vybírá cíle z UI stromu debug aplikace a ukládá PNG/XML do `/tmp/kajovo-native-readability` (lze změnit přes `NATIVE_QA_OUTPUT`).
+- Výsledky vizuální kontroly a matice dopadů: `docs/android-readability-2026-09-18.md`.
 
 ## Parita s webem
 

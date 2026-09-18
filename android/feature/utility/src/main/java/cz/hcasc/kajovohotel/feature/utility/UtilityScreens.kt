@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -21,20 +25,10 @@ import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
 
 @Composable
 fun IntroScreen() = RichStatePane(
-    title = "Provoz hotelu bez zbytečných přepínačů",
-    body = "Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a bezpečný přístup k tomu, co právě potřebují.",
+    title = "Načítání…",
+    body = "",
     useFullBrandLockup = true,
-    supportingContent = {
-        UtilityInfoStack(
-            title = "Co se teď kontroluje",
-            body = "Relace, role, dostupné moduly, servisní stav a navazující provozní data.",
-        )
-        UtilityInfoStack(
-            title = "Co bude následovat",
-            body = "Po dokončení se otevře přihlášení, role-select nebo přímo pracovní plocha podle stavu účtu.",
-        )
-        CircularProgressIndicator()
-    },
+    supportingContent = { CircularProgressIndicator() },
 )
 
 @Composable
@@ -43,21 +37,11 @@ fun OfflineScreen(
     onContinueOffline: (() -> Unit)? = null,
 ) = RichStatePane(
     title = "Jste offline",
-    body = "Portál ztratil připojení. Zkontrolujte síť, případně pokračujte v úkolech, které nevyžadují online synchronizaci.",
+    body = "Zkontrolujte připojení k internetu.",
     actionLabel = "Zkusit znovu",
     onAction = onRetry,
-    secondaryActionLabel = if (onContinueOffline != null) "Pracovat offline režimem" else null,
+    secondaryActionLabel = if (onContinueOffline != null) "Pokračovat offline" else null,
     onSecondaryAction = onContinueOffline,
-    supportingContent = {
-        UtilityInfoStack(
-            title = "Co zkontrolovat",
-            body = "Wi-Fi, VPN, dostupnost hotelové sítě a případný výpadek serveru nebo DNS.",
-        )
-        UtilityInfoStack(
-            title = "Co se po obnově stane",
-            body = "Aplikace znovu ověří relaci a vrátí vás zpět do rozpracovaného toku.",
-        )
-    },
 )
 
 @Composable
@@ -66,39 +50,19 @@ fun MaintenanceScreen(
     onDiagnosticsClick: (() -> Unit)? = null,
 ) = RichStatePane(
     title = "Probíhá údržba",
-    body = "Portál právě dokončuje servisní zásah. Sledujte provozní diagnostiku a po obnovení navazujte tam, kde jste skončili.",
+    body = "Zkuste to za chvíli.",
     actionLabel = "Zpět na přehled",
     onAction = onBack,
     secondaryActionLabel = if (onDiagnosticsClick != null) "Diagnostika provozu" else null,
     onSecondaryAction = onDiagnosticsClick,
-    supportingContent = {
-        UtilityInfoStack(
-            title = "Servisní režim",
-            body = "Právě probíhá údržba nebo nasazení nové verze. Data jsou chráněná, jen nejsou dočasně dostupná.",
-        )
-        UtilityInfoStack(
-            title = "Doporučený postup",
-            body = "Počkejte na dokončení údržby a vraťte se na stejnou obrazovku nebo do přehledu portálu.",
-        )
-    },
 )
 
 @Composable
 fun NotFoundScreen(onBack: () -> Unit) = RichStatePane(
     title = "404",
-    body = "Tuhle stránku jsme v portálu nenašli. Vraťte se na přehled nebo pokračujte do provozních modulů.",
+    body = "Obrazovka nebyla nalezena.",
     actionLabel = "Zpět na přehled",
     onAction = onBack,
-    supportingContent = {
-        UtilityInfoStack(
-            title = "Nejrychlejší pokračování",
-            body = "Vraťte se na přehled nebo otevřete modul, který potřebujete dokončit.",
-        )
-        UtilityInfoStack(
-            title = "Co se stalo",
-            body = "Může jít o neplatnou cestu, starý odkaz nebo obrazovku, která už v této roli není k dispozici.",
-        )
-    },
 )
 
 @Composable
@@ -112,30 +76,18 @@ fun AccessDeniedScreen(
     body = if (!moduleLabel.isNullOrBlank() && !roleLabel.isNullOrBlank() && !userId.isNullOrBlank()) {
         "Role $roleLabel (uživatel $userId) nemá oprávnění pro modul $moduleLabel."
     } else {
-        "Aktivní role nemá k této obrazovce oprávnění. Vraťte se zpět nebo přepněte roli, pokud ji máte k dispozici."
+        "K této sekci nemáte přístup."
     },
     actionLabel = "Zpět na přehled",
     onAction = onBack,
-    supportingContent = {
-        UtilityInfoStack(
-            title = "Kontrola oprávnění",
-            body = "Přístup je řízen aktivní rolí a právy účtu. Bez oprávnění se tato obrazovka nezobrazí ani na webu, ani v Androidu.",
-        )
-    },
 )
 
 @Composable
 fun GlobalBlockingErrorScreen(onRetry: () -> Unit) = RichStatePane(
-    title = "Je potřeba znovu ověřit přístup",
-    body = "Aplikace zachytila stav, který vyžaduje nové načtení relace. Zkuste pokračovat znovu.",
+    title = "Přístup se nepodařilo ověřit",
+    body = "Zkuste to znovu.",
     actionLabel = "Zkusit znovu",
     onAction = onRetry,
-    supportingContent = {
-        UtilityInfoStack(
-            title = "Bezpečný restart toku",
-            body = "Obvykle jde o dočasný globální blok, který se vyřeší novým načtením relace nebo obnovením serverového stavu.",
-        )
-    },
 )
 
 @Composable
@@ -154,12 +106,6 @@ fun AppUpdatePromptScreen(
         onAction = onUpdateClick,
         secondaryActionLabel = if (onContinueClick != null) "Pokračovat bez aktualizace" else null,
         onSecondaryAction = onContinueClick,
-        supportingContent = {
-            UtilityInfoStack(
-                title = "Proč se doporučuje aktualizace",
-                body = "Nová verze přináší opravy provozních chyb, sjednocené značení a bezpečnější start portálu.",
-            )
-        },
     )
 }
 
@@ -179,7 +125,7 @@ fun FeatureEmptyCard(title: String, body: String) {
 @Composable
 fun FeatureErrorCard(title: String, body: String) {
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(title = title, subtitle = body)
+        FeatureCard(title = title, subtitle = "")
         Text(text = body, color = MaterialTheme.colorScheme.error)
     }
 }
@@ -204,7 +150,7 @@ private fun RichStatePane(
     supportingContent: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4),
     ) {
         Column(
@@ -223,11 +169,12 @@ private fun RichStatePane(
                     SignageBadge()
                 }
                 Text(text = title, style = MaterialTheme.typography.headlineMedium)
-                Text(text = body, style = MaterialTheme.typography.bodyLarge)
+                if (body.isNotBlank()) Text(text = body, style = MaterialTheme.typography.bodyLarge)
             }
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 supportingContent()
             }
@@ -254,7 +201,6 @@ private fun RichStatePane(
                     }
                 }
             }
-            BrandFooter()
         }
     }
 }

@@ -157,14 +157,8 @@ fun BreakfastScreen(
         }
     }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S4)) {
-        item {
-            Text(
-                text = activeRole.breakfastScreenTitle(),
-                style = MaterialTheme.typography.headlineMedium,
-            )
-        }
-        item {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        if (section == BreakfastSection.LIST) item {
             SectionSwitcher(
                 section = section,
                 isReceptionMode = isReceptionMode,
@@ -188,7 +182,7 @@ fun BreakfastScreen(
                 onShowImport = { if (state.importPreview != null) section = BreakfastSection.IMPORT },
             )
         }
-        item {
+        if (section == BreakfastSection.LIST) item {
             BreakfastToolbar(
                 state = state,
                 onDateChange = viewModel::setServiceDate,
@@ -226,22 +220,22 @@ fun BreakfastScreen(
                 )
             }
         }
+        if (section != BreakfastSection.LIST && state.errorMessage != null) item {
+            Text(state.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
+        }
         when {
             state.isLoading -> item {
                 FeatureCard(
                     title = "Načítám snídaně",
-                    subtitle = "Připravuji seznam objednávek, denní souhrn a návazné akce pro zvolenou roli.",
+                    subtitle = "",
                 )
             }
 
-            state.errorMessage != null -> item {
+            state.errorMessage != null && section == BreakfastSection.LIST -> item {
                 FeatureCard(title = "Modul snídaní není dostupný", subtitle = state.errorMessage ?: "")
             }
 
-            state.orders.isEmpty() -> {
-                item {
-                    BreakfastDateHeadline(serviceDate = state.summary?.serviceDate ?: state.serviceDate)
-                }
+            state.orders.isEmpty() && section == BreakfastSection.LIST -> {
                 item {
                     FeatureCard(
                         title = "Pro zvolené datum nejsou objednávky",
@@ -258,10 +252,7 @@ fun BreakfastScreen(
                 }
             }
 
-            visibleOrders.isEmpty() -> {
-                item {
-                    BreakfastDateHeadline(serviceDate = state.summary?.serviceDate ?: state.serviceDate)
-                }
+            visibleOrders.isEmpty() && section == BreakfastSection.LIST -> {
                 item {
                     FeatureCard(
                         title = "Vyhledávání nenašlo žádnou snídani",
@@ -275,9 +266,6 @@ fun BreakfastScreen(
             }
 
             else -> {
-                if (section == BreakfastSection.LIST || isBreakfastMode) {
-                    item { BreakfastDateHeadline(serviceDate = state.summary?.serviceDate ?: state.serviceDate) }
-                }
                 if (isReceptionMode && section == BreakfastSection.DETAIL) {
                     item {
                         ReceptionDetailCard(
@@ -375,14 +363,8 @@ private fun SectionSwitcher(
         modifier = Modifier.fillMaxWidth(),
     ) {
         OutlinedButton(onClick = onShowList, modifier = Modifier.weight(1f)) { Text("Seznam") }
-        if (hasSelection) {
-            OutlinedButton(onClick = onShowDetail, modifier = Modifier.weight(1f)) { Text("Detail") }
-        }
         if (isReceptionMode) {
             OutlinedButton(onClick = onShowCreate, modifier = Modifier.weight(1f)) { Text("Nová") }
-            if (hasSelection && section != BreakfastSection.CREATE) {
-                OutlinedButton(onClick = onShowEdit, modifier = Modifier.weight(1f)) { Text("Upravit") }
-            }
             if (hasImport) {
                 OutlinedButton(onClick = onShowImport, modifier = Modifier.weight(1f)) { Text("Import") }
             }
@@ -435,13 +417,14 @@ private fun BreakfastToolbar(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                OutlinedButton(onClick = onStartCreate, modifier = Modifier.weight(1f)) { Text("Nová objednávka") }
+                if (state.queuedDrafts.isNotEmpty()) {
                 OutlinedButton(
                     onClick = onSaveQueuedDrafts,
                     enabled = state.queuedDrafts.isNotEmpty() && !state.isSubmitting,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(if (state.queuedDrafts.isEmpty()) "Bez změn" else "Uložit změny (${state.queuedDrafts.size})")
+                    Text("Uložit změny (${state.queuedDrafts.size})")
+                }
                 }
             }
             if (state.queuedDrafts.isNotEmpty()) {
@@ -484,7 +467,7 @@ private fun ManualRefreshDialog(
                 if (state.isRefreshing) {
                     Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(modifier = Modifier.padding(end = KajovoSpacingTokens.S2))
-                        Text(text = "Synchronizuji snídaně z API a přepisuji vybraný den.")
+                        Text(text = "Aktualizuji…")
                     }
                 }
                 state.manualRefreshError?.let {
@@ -493,56 +476,12 @@ private fun ManualRefreshDialog(
                 job?.message?.let {
                     Text(text = it, style = MaterialTheme.typography.bodyMedium)
                 }
-                if (job?.progress?.isNotEmpty() == true) {
-                    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                        job.progress.forEach { item ->
-                            Card(
-                                shape = RoundedCornerShape(KajovoRadiusTokens.R12),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(KajovoSpacingTokens.S3),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(text = item.step, fontWeight = FontWeight.SemiBold)
-                                    Text(text = item.message)
-                                    Text(text = formatDetailDateTime(item.at), style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
-                    }
-                }
                 Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                     OutlinedButton(onClick = onDismiss, enabled = !state.isRefreshing) {
                         Text("Zavřít")
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun BreakfastDateHeadline(serviceDate: String) {
-    Card(
-        shape = RoundedCornerShape(KajovoRadiusTokens.R16),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(KajovoSpacingTokens.S4),
-            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S1),
-        ) {
-            Text(
-                text = "Datum přehledu snídaní",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = formatBreakfastHeadlineDate(serviceDate),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
         }
     }
 }
@@ -566,26 +505,9 @@ private fun BreakfastDateSelector(
         parsedDate.monthValue - 1,
         parsedDate.dayOfMonth,
     )
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-        Text(text = "Datum výdeje", style = MaterialTheme.typography.labelLarge)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            OutlinedTextField(
-                value = serviceDate,
-                onValueChange = onDateChange,
-                modifier = Modifier.weight(1f),
-                label = { Text("YYYY-MM-DD") },
-                singleLine = true,
-                trailingIcon = {
-                    IconButton(onClick = { datePickerDialog.show() }) {
-                        Icon(imageVector = Icons.Outlined.CalendarToday, contentDescription = "Vybrat datum")
-                    }
-                },
-            )
-            Button(onClick = { onRefresh(serviceDate) }) { Text("Aktualizovat z API") }
-        }
+    OutlinedButton(onClick = { datePickerDialog.show() }, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.Outlined.CalendarToday, contentDescription = null)
+        Text(formatBreakfastHeadlineDate(serviceDate), Modifier.padding(start = 8.dp))
     }
 }
 
@@ -646,14 +568,14 @@ private fun ReceptionDetailCard(
     if (order == null && !state.isCreatingNew) {
         FeatureCard(
             title = "Vyberte objednávku",
-            subtitle = "Klepnutím na řádek otevřete detail a následně můžete objednávku upravit.",
+            subtitle = "",
         )
         return
     }
     if (state.isCreatingNew) {
         FeatureCard(
             title = "Nová objednávka snídaně",
-            subtitle = "Vyplňte formulář níže a založte novou objednávku pro vybrané datum.",
+            subtitle = "",
         )
         return
     }
@@ -689,7 +611,7 @@ private fun ReceptionDetailCard(
                 order.updatedAt?.let { DetailValueRow(label = "Naposledy upraveno", value = formatDetailDateTime(it)) }
                 if (hasQueuedChanges) {
                     Text(
-                        text = "Detail obsahuje lokální změny čekající na dávkové uložení.",
+                        text = "Neuložené změny",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -761,28 +683,25 @@ private fun BreakfastOrderCard(
                 Text(text = order.note, style = MaterialTheme.typography.bodyMedium)
             }
             if (isDirty) {
-                Text(text = "Lokální změny čekají na uložení.", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "Neuložené změny", style = MaterialTheme.typography.bodyMedium)
             }
-            DietIcons(
-                noMilk = order.noMilk,
-                noGluten = order.noGluten,
-                noPork = order.noPork,
-                showLabels = !showCompactLayout,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                AssistChip(
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                androidx.compose.material3.FilterChip(
+                    selected = order.noGluten,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_GLUTEN) },
                     enabled = canEditDiet,
                     label = { Text("Bez lepku") },
                     leadingIcon = { Icon(Icons.Outlined.Grass, contentDescription = null) },
                 )
-                AssistChip(
+                androidx.compose.material3.FilterChip(
+                    selected = order.noMilk,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_MILK) },
                     enabled = canEditDiet,
                     label = { Text("Bez laktózy") },
                     leadingIcon = { Icon(Icons.Outlined.LocalDrink, contentDescription = null) },
                 )
-                AssistChip(
+                androidx.compose.material3.FilterChip(
+                    selected = order.noPork,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_PORK) },
                     enabled = canEditDiet,
                     label = { Text("Bez vepřového") },
@@ -881,11 +800,17 @@ private fun ManagerEditor(
     onCancel: () -> Unit,
 ) {
     val draft = state.draft
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
+    var details by androidx.compose.runtime.saveable.rememberSaveable(state.selectedOrder?.id) { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         FeatureCard(
             title = if (state.isCreatingNew || state.selectedOrder == null) "Nová objednávka" else "Upravit vybranou objednávku",
-            subtitle = state.successMessage ?: "Recepce zde pracuje po krocích: nejprve seznam, potom detail a samostatně editor objednávky.",
+            subtitle = state.successMessage ?: "",
         )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            androidx.compose.material3.FilterChip(selected = !details, onClick = { details = false }, label = { Text("Host") })
+            androidx.compose.material3.FilterChip(selected = details, onClick = { details = true }, label = { Text("Stav a diety") })
+        }
+        if (!details) {
         OutlinedTextField(
             value = draft.serviceDate,
             onValueChange = { onDraftChange { current -> current.copy(serviceDate = it) } },
@@ -916,31 +841,31 @@ private fun ManagerEditor(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Poznámka") },
         )
+        } else {
         BreakfastStatusSelector(
             selectedStatus = draft.status,
             onSelect = { nextStatus -> onDraftChange { current -> current.copy(status = nextStatus) } },
         )
-        DietIcons(
-            noMilk = draft.noMilk,
-            noGluten = draft.noGluten,
-            noPork = draft.noPork,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            AssistChip(
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            androidx.compose.material3.FilterChip(
+                selected = draft.noGluten,
                 onClick = { onDraftChange { current -> current.copy(noGluten = !current.noGluten) } },
                 label = { Text("Bez lepku") },
                 leadingIcon = { Icon(Icons.Outlined.Grass, contentDescription = null) },
             )
-            AssistChip(
+            androidx.compose.material3.FilterChip(
+                selected = draft.noMilk,
                 onClick = { onDraftChange { current -> current.copy(noMilk = !current.noMilk) } },
                 label = { Text("Bez laktózy") },
                 leadingIcon = { Icon(Icons.Outlined.LocalDrink, contentDescription = null) },
             )
-            AssistChip(
+            androidx.compose.material3.FilterChip(
+                selected = draft.noPork,
                 onClick = { onDraftChange { current -> current.copy(noPork = !current.noPork) } },
                 label = { Text("Bez vepřového") },
                 leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
             )
+        }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             Button(onClick = onSubmit, enabled = !state.isSubmitting && draft.isValidForSubmit()) {
@@ -960,12 +885,12 @@ private fun BreakfastStatusSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         Text(text = "Stav objednávky", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             BreakfastStatus.entries.forEach { status ->
-                AssistChip(
+                androidx.compose.material3.FilterChip(
+                    selected = selectedStatus == status,
                     onClick = { onSelect(status) },
                     label = { Text(status.label) },
-                    enabled = selectedStatus != status,
                 )
             }
         }
@@ -983,7 +908,7 @@ private fun ImportPreviewCard(
     Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         FeatureCard(
             title = "Kontrola importu ${preview.serviceDate}",
-            subtitle = "Soubor ${preview.sourceFileName} obsahuje ${preview.items.size} položek. Po potvrzení se import uloží bez dalšího výběru PDF.",
+            subtitle = "${preview.sourceFileName} · ${preview.items.size} položek",
         )
         preview.items.forEachIndexed { index, item ->
             Card(
