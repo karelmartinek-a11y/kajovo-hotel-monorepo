@@ -11,15 +11,18 @@ Pokoje jsou seskupené po patrech a karta ukazuje:
 - provozní označení rezervace, počet osob a český název země bydliště hlavního hosta;
 - samostatné ikony psa a postýlky u každé rezervace;
 - aktuální Better Hotel stav úklidu.
+- pod zemí údaj `Noc pobytu: X/Y`: rozdíl vybraného dne a příjezdu / rozdíl odjezdu a příjezdu v kalendářních dnech; příjezd je 0, odjezd Y. Výpočet v UTC nad daty nemění přechod letního času.
 
-Pobyty odpovídají vybranému dni, ale obsazenost, pozadí a úklid aktuálnímu okamžiku. API uvádí `occupancy_date` a `housekeeping_status_is_current=true`; frontend rozlišení vysvětluje. Země se čte z adresy hosta v expandovaném `guest_list.guest.address`, jehož ID odpovídá `main_guest`. Pokud hlavní host nebo jeho země chybí, zobrazuje se „Stát neuveden“, nikoli země jiného hosta.
+Pobyty a barevné poloviny odpovídají vybranému dni; obsazenost a úklid aktuálnímu okamžiku. API uvádí `occupancy_date`, `housekeeping_status_is_current=true` a `ready_for_arrival` (výhradně stav Uklizeno pro nájezd). Země se čte z adresy hlavního hosta v expandovaném `guest_list.guest.address` podle `main_guest`. Pokud chybí, zobrazuje se „Stát neuveden“.
+
+Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá příjezdová polovina je zelená pouze při `ready_for_arrival`, jinak červená, nezávisle na CHECK-IN. Průběžný úklid nestačí. Chybějící příjezd/odjezd nechává příslušnou polovinu prázdnou. Pokračující pobyt a prázdný pokoj mají neutrální pozadí přes celou šířku. Text aktuální obsazenosti má samostatný kontrastní podklad přes celou kartu.
 
 Priorita aktuální obsazenosti:
 
-1. Dnešní příjezd s CHECK-IN bez CHECK-OUT: **OBSAZENO-PŘIJEL**, sytě zelené pozadí bez ohledu na úklid a odjezd.
-2. Dnešní odjezd bez CHECK-OUT: **OBSAZENO-ODJÍŽDÍ**. Při `clean`, `stay_no_linen` či `stay_with_linen` má tenké červenozelené pruhy, jinak odjezdové pozadí.
-3. Pokračující pobyt s CHECK-IN bez CHECK-OUT: **OBSAZENO-POBYT**, neutrální pozadí.
-4. Jinak **VOLNO**, barva podle úklidu a již odbaveného odjezdu. Samotný plánovaný příjezd pokoj neobsazuje.
+1. Dnešní příjezd s CHECK-IN bez CHECK-OUT: **OBSAZENO-PŘIJEL**.
+2. Dnešní odjezd bez CHECK-OUT: **OBSAZENO-ODJÍŽDÍ**.
+3. Pokračující pobyt s CHECK-IN bez CHECK-OUT: **OBSAZENO-POBYT**.
+4. Jinak **VOLNO**. Samotný plánovaný příjezd pokoj neobsazuje.
 
 Přehled se obnovuje po zápisu, každých 60 sekund ve viditelném okně a ihned při návratu do okna, probuzení telefonu či návratu z jiné aplikace (`focus`, `visibilitychange`, `pageshow`). Obnova zachovává vybraný den; na pozadí se periodické dotazy neposílají. Starší odpověď nesmí přepsat novější datum. Ikony mají kontrastní podklad a kromě barvy rozlišují čekání a dokončení také symbolem.
 
@@ -69,11 +72,11 @@ Role `admin`, `recepce` a `pokojská` mají `housekeeping:read` i `housekeeping:
 
 | Kategorie | Rozhodnutí a rozsah |
 |---|---|
-| Produkční kód | Aktualizovat API, databázi, RBAC a sdílený UI obou aplikací. |
-| Testy | Aktualizovat kombinace obsazenosti, ikony, migraci, RBAC a UI scénáře. |
-| GitHub a gates | Aktualizovat závislosti minimálního API prostředí; ověřit stávající CI a automatický deploy. |
+| Produkční kód | Aktualizovat připravenost pro příjezd a sdílené karty; oprávnění ikon ověřit beze změny. |
+| Testy | Aktualizovat půlení barev, počítání nocí a UI scénáře; ověřit obsazenost a ikony. |
+| GitHub a gates | Ověřit beze změny: existující CI, produkční API image a automatický deploy. |
 | Dokumentace | Aktualizovat tento kontrakt a RBAC. |
-| Komentáře a poznámky | Ověřit dotčené výskyty; žádný starý výklad příjezdové ikony nezachovat. |
-| Instrukce | Aktualizovat kořenový AGENTS o trvalé příznaky a časové rozlišení. |
+| Komentáře a poznámky | Aktualizovat rozlišení barev a obsazenosti; odstranit celoplošnou zelenou a pruhování. |
+| Instrukce | Aktualizovat kořenový AGENTS o barvy podle vybraného dne. |
 | Fixtures a texty | Aktualizovat pobyty, role, štítky, legendu a selektory testů. |
 | Build a kontrakty | Aktualizovat OpenAPI, klienta a produkční validátor; ověřit oba buildy a migraci. |

@@ -93,6 +93,11 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
     session_local = sessionmaker(bind=engine)
 
     with session_local() as db:
+        from app.db.models import ReservationBreakfastDiet
+        db.add_all([
+            ReservationBreakfastDiet(reservation_id="res-101", diet_no_gluten=True, diet_no_pork=True),
+            ReservationBreakfastDiet(reservation_id="res-102", diet_no_milk=True),
+        ])
         db.add(
             BreakfastOrder(
                 service_date=target_day,

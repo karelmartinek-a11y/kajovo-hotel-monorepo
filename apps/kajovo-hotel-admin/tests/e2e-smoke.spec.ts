@@ -129,6 +129,30 @@ test.describe('CI smoke auth flows', () => {
     expect(patchBody).toEqual({ status: 'technical_issue' });
   });
 
+  test('admin mění dietu celého pobytu bez přepsání ostatních příznaků', async ({ page, request }) => {
+    const login = await request.post('/api/auth/admin/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
+    expect(login.ok()).toBeTruthy();
+    await page.context().addCookies((await request.storageState()).cookies);
+    const reservation = { reservation_id: 'stay-a', guest_name: 'Host', arrival: '2026-09-15', departure: '2026-09-19', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: true, version: 1 };
+    await page.route('**/api/v1/breakfast/daily-overview?*', async (route) => {
+      const day = new URL(route.request().url()).searchParams.get('service_date');
+      await route.fulfill({ json: { orders: [{ id: 900, service_date: day, room_number: '101', guest_name: 'Host', guest_count: 1, status: 'pending', note: null, reservations: [reservation] }], summary: { service_date: day, total_orders: 1, total_guests: 1, status_counts: { pending: 1 } } } });
+    });
+    await page.route('**/api/v1/breakfast/900/reservations/stay-a/diet', async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ kind: 'diet_no_milk', enabled: true, version: 1 });
+      reservation.diet_no_milk = true;
+      reservation.version = 2;
+      await route.fulfill({ json: { id: 900, reservations: [reservation] } });
+    });
+    await page.goto('/admin/snidane');
+    await expect(page.locator('.k-breakfast-reservation-diets')).toHaveCount(2);
+    if (await page.getByTestId('breakfast-serving-mobile-list').isVisible()) await page.getByText('Diety pobytu', { exact: true }).click();
+    const controls = page.locator('.k-breakfast-reservation-diets:visible');
+    await controls.getByRole('button', { name: 'Bez laktózy', exact: true }).click();
+    await expect(controls.getByRole('button', { name: 'Bez laktózy', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(reservation.diet_no_pork).toBe(true);
+  });
+
   test('admin login hint zobrazi blokujici dialog az do potvrzeni odeslani', async ({ page }) => {
     await page.goto('/admin/login', { waitUntil: 'networkidle' });
     await page.getByLabel(ADMIN_EMAIL_LABEL).fill(ADMIN_EMAIL);

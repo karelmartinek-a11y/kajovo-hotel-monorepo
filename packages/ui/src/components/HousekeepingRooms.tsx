@@ -88,11 +88,15 @@ function AmenityIcon({ kind }: { kind: ReservationAmenityKind }): JSX.Element {
 
 const AMENITY_LABELS: Record<ReservationAmenityKind, string> = { dog: 'Pes', cot: 'Dětská postýlka' };
 
-function StayDetails({ stay, label }: { stay: HousekeepingStayRead; label: string }): JSX.Element {
+function StayDetails({ stay, label, date }: { stay: HousekeepingStayRead; label: string; date: string }): JSX.Element {
+  const calendarDay = (value: string) => Date.parse(`${value}T00:00:00Z`) / 86_400_000;
+  const nights = calendarDay(stay.departure) - calendarDay(stay.arrival);
+  const elapsed = calendarDay(date) - calendarDay(stay.arrival);
   return <span className="k-hk-stay" data-reservation-id={stay.reservation_id}>
     <span className="k-hk-stay__label">{label}</span>
     <span className="k-hk-stay__name">{stay.guest_label ?? 'Host neuveden'}</span>
     <span className="k-hk-stay__country">{stay.country_name ?? 'Stát neuveden'}</span>
+    <span className="k-hk-stay__nights">Noc pobytu: <strong>{elapsed}/{nights}</strong></span>
     <span className="k-hk-room__persons"><GuestIcon /> {stay.persons}</span>
     <span className="k-hk-amenities">{(stay.amenities ?? []).filter((item) => item.active).map((item) =>
       <span key={item.kind} className={`k-hk-amenity k-hk-amenity--${item.state}`} title={`${AMENITY_LABELS[item.kind]}: ${item.state === 'red' ? 'čeká' : 'hotovo'}`}>
@@ -113,14 +117,18 @@ function GuestIcon(): JSX.Element {
 
 type RoomCardProps = {
   room: HousekeepingRoomRead;
+  date: string;
   onSelect: (room: HousekeepingRoomRead) => void;
 };
 
-const RoomCard = React.memo(function RoomCard({ room, onSelect }: RoomCardProps): JSX.Element {
+const RoomCard = React.memo(function RoomCard({ room, date, onSelect }: RoomCardProps): JSX.Element {
   const label = OPERATIONAL_LABELS[room.operational_state];
+  const left = room.departures.length ? room.departures.some((stay) => !stay.checked_out) ? 'red' : 'neutral' : 'empty';
+  const right = room.arrivals.length ? room.ready_for_arrival ? 'green' : 'red' : 'empty';
+  const split = room.departures.length > 0 || room.arrivals.length > 0;
   return (
     <button
-      className={`k-hk-room k-hk-room--${room.operational_state}`}
+      className={`k-hk-room${split ? ` k-hk-room--split k-hk-room--left-${left} k-hk-room--right-${right}` : ''}`}
       type="button"
       onClick={() => onSelect(room)}
       aria-label={`Pokoj ${room.room_number}, ${label}. Změnit stav pokoje.`}
@@ -131,10 +139,10 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: RoomCardProps)
       </span>
       <span className="k-hk-room__state"><i aria-hidden="true" />{label}</span>
       {room.departures.length || room.arrivals.length ? <span className="k-hk-room__stays">
-        <span>{room.departures.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} label="Odjezd" />)}</span>
-        <span>{room.arrivals.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} label="Příjezd" />)}</span>
+        <span>{room.departures.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={date} label="Odjezd" />)}</span>
+        <span>{room.arrivals.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={date} label="Příjezd" />)}</span>
       </span> : null}
-      {room.stays.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} label="Pobyt" />)}
+      {room.stays.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={date} label="Pobyt" />)}
       {!room.departures.length && !room.arrivals.length && !room.stays.length ? <span className="k-hk-stay">Bez pobytu ve vybraný den</span> : null}
       {room.housekeeping_status ? <span className="k-hk-room__housekeeping">{room.housekeeping_status}</span> : null}
     </button>
@@ -277,16 +285,13 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
         <button type="button" disabled={busy} onClick={() => setSelectedDate((value) => shiftDate(value, 1))} aria-label="Následující den">›</button>
         <button className="k-hk-datebar__today" type="button" disabled={busy} onClick={() => setSelectedDate(todayInPrague())}>Dnes</button>
       </div>
-      <p className="k-hk-board__source-note">Pobyty podle vybraného dne. Obsazenost, barvy a úklid jsou aktuální právě teď.</p>
+      <p className="k-hk-board__source-note">Pobyty a barevné poloviny podle vybraného dne. Obsazenost a úklid jsou aktuální právě teď. Zelený příjezd znamená uklizeno pro nájezd.</p>
       <div className="k-hk-legend" aria-label="Legenda stavů">
         {([
-          ['checkout_departed_dirty', 'Check-out – odjel (neuklizený)'],
-          ['checkout_departed_clean', 'Check-out – odjel (uklizený)'],
-          ['checkout_pending', 'Check-out – neodjel'],
-          ['checkout_pending_clean', 'Odjíždí – uklizeno'],
-          ['arrived', 'Obsazeno – přijel'],
-          ['occupied', 'Obsazeno – pobyt'],
-          ['free', 'Volný'],
+          ['red', 'Odjezd bez check-out / příjezd nepřipraven'],
+          ['green', 'Příjezd – uklizeno pro nájezd'],
+          ['neutral', 'Odjel / pokračující pobyt'],
+          ['empty', 'Bez příjezdu či odjezdu'],
         ] as const).map(([key, label]) => (
           <span key={key} className={`k-hk-legend__item k-hk-legend__item--${key}`}>
             <i aria-hidden="true" />{label}
@@ -307,7 +312,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
               <span>{rooms.length} {rooms.length === 1 ? 'pokoj' : 'pokojů'} <i /> {cleaningCount} k úklidu</span>
             </header>
             <div className="k-hk-floor__rooms">
-              {rooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} />)}
+              {rooms.map((room) => <RoomCard key={room.room_id} room={room} date={selectedDate} onSelect={selectRoom} />)}
             </div>
           </section>
         );
@@ -333,7 +338,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
             </div>
             <div className="k-hk-reservation-actions">
               {(['departures', 'arrivals', 'stays'] as const).map((group) => selectedRoom[group].map((stay) => <section key={`${group}-${stay.reservation_id}`} aria-label={`${group === 'departures' ? 'Odjezd' : group === 'arrivals' ? 'Příjezd' : 'Pobyt'}: ${stay.guest_label ?? 'Host'}`}>
-                <StayDetails stay={stay} label={group === 'departures' ? 'Odjezd' : group === 'arrivals' ? 'Příjezd' : 'Pobyt'} />
+                <StayDetails stay={stay} date={selectedDate} label={group === 'departures' ? 'Odjezd' : group === 'arrivals' ? 'Příjezd' : 'Pobyt'} />
                 <div className="k-hk-amenity-actions">{(['dog', 'cot'] as const).map((kind) => {
                   const item = stay.amenities?.find((entry) => entry.kind === kind);
                   return <div key={kind}>

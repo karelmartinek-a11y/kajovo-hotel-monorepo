@@ -393,6 +393,35 @@
         "title": "BreakfastDailySummary",
         "type": "object"
       },
+      "BreakfastDietUpdate": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "diet_no_gluten",
+              "diet_no_milk",
+              "diet_no_pork"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "enabled",
+          "version"
+        ],
+        "title": "BreakfastDietUpdate",
+        "type": "object"
+      },
       "BreakfastImportItem": {
         "properties": {
           "count": {
@@ -844,6 +873,13 @@
             ],
             "title": "Note"
           },
+          "reservations": {
+            "items": {
+              "$ref": "#/components/schemas/BreakfastReservationRead"
+            },
+            "title": "Reservations",
+            "type": "array"
+          },
           "room_number": {
             "maxLength": 32,
             "minLength": 1,
@@ -1006,6 +1042,74 @@
           }
         },
         "title": "BreakfastOrderUpdate",
+        "type": "object"
+      },
+      "BreakfastReservationRead": {
+        "properties": {
+          "arrival": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival"
+          },
+          "departure": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Departure"
+          },
+          "diet_no_gluten": {
+            "title": "Diet No Gluten",
+            "type": "boolean"
+          },
+          "diet_no_milk": {
+            "title": "Diet No Milk",
+            "type": "boolean"
+          },
+          "diet_no_pork": {
+            "title": "Diet No Pork",
+            "type": "boolean"
+          },
+          "guest_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guest Name"
+          },
+          "reservation_id": {
+            "title": "Reservation Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "diet_no_gluten",
+          "diet_no_milk",
+          "diet_no_pork",
+          "version"
+        ],
+        "title": "BreakfastReservationRead",
         "type": "object"
       },
       "BreakfastStatus": {
@@ -1544,6 +1648,11 @@
             "minimum": 0.0,
             "title": "Persons",
             "type": "integer"
+          },
+          "ready_for_arrival": {
+            "default": false,
+            "title": "Ready For Arrival",
+            "type": "boolean"
           },
           "room_id": {
             "title": "Room Id",
@@ -5916,6 +6025,67 @@
           }
         },
         "summary": "Update Breakfast Order",
+        "tags": [
+          "breakfast"
+        ]
+      }
+    },
+    "/api/v1/breakfast/{order_id}/reservations/{reservation_id}/diet": {
+      "patch": {
+        "operationId": "update_reservation_diet_api_v1_breakfast__order_id__reservations__reservation_id__diet_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "title": "Order Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreakfastDietUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastOrderRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Reservation Diet",
         "tags": [
           "breakfast"
         ]

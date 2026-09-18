@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -24,6 +24,7 @@ from app.db.models import (
     BreakfastOrder,
     BreakfastStatus,
 )
+from app.services.breakfast.diets import ensure_diets, project_flags
 from app.time_utils import utc_now
 
 log = logging.getLogger("kajovo.breakfast.sync")
@@ -50,6 +51,7 @@ class BetterHotelBreakfastAggregate:
     room_number: str
     guest_count: int
     guest_name: str | None
+    reservations: dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -284,6 +286,8 @@ class BetterHotelBreakfastClient:
 
         for reservation in reservations:
             reservation_id = str(reservation.get("id") or reservation.get("uuid") or "").strip() or "unknown"
+            if reservation_id == "unknown" or "|" in reservation_id or len(reservation_id) > 128:
+                raise BetterHotelSyncError("Rezervace nemá platnou stabilní identitu.")
             arrival = _parse_iso_date(reservation.get("arrival"), label=f"reservation[{reservation_id}].arrival")
             departure = _parse_iso_date(
                 reservation.get("departure"),
@@ -334,11 +338,15 @@ class BetterHotelBreakfastClient:
                 key = (current_day, room_number)
                 current = grouped.setdefault(
                     key,
-                    {"count": 0, "names": [], "reservation_ids": set()},
+                    {"count": 0, "names": [], "reservation_ids": set(), "reservations": {}},
                 )
                 current["count"] += breakfast_guest_count
                 current["names"].extend(breakfast_guest_names)
                 current["reservation_ids"].add(reservation_id)
+                current["reservations"][reservation_id] = {
+                    "arrival": arrival, "departure": departure,
+                    "guest_name": "; ".join(dict.fromkeys(breakfast_guest_names))[:255] or None,
+                }
                 current_day += timedelta(days=1)
 
         aggregates = [
@@ -351,6 +359,7 @@ class BetterHotelBreakfastClient:
                 room_number=room_number,
                 guest_count=int(payload["count"]),
                 guest_name="; ".join(dict.fromkeys(str(name).strip() for name in payload["names"] if str(name).strip())) or None,
+                reservations=payload["reservations"],
             )
             for (service_date, room_number), payload in grouped.items()
         ]
@@ -435,6 +444,7 @@ def sync_breakfast_range(
     processed_days = (range_end - range_start).days + 1
 
     try:
+        ensure_diets(db, {key: value for aggregate in aggregates for key, value in aggregate.reservations.items()})
         for day_offset in range(processed_days):
             target_day = range_start + timedelta(days=day_offset)
             existing_rows = db.scalars(
@@ -445,9 +455,6 @@ def sync_breakfast_range(
             for row in existing_rows:
                 preserved = {
                     "status": row.status,
-                    "diet_no_gluten": bool(row.diet_no_gluten),
-                    "diet_no_milk": bool(row.diet_no_milk),
-                    "diet_no_pork": bool(row.diet_no_pork),
                     "note": normalize_preserved_breakfast_note(row.note),
                 }
                 if row.source_key:
@@ -480,12 +487,11 @@ def sync_breakfast_range(
                         guest_count=max(1, int(row.guest_count)),
                         status=str(preserved.get("status") or BreakfastStatus.PENDING.value),
                         note=preserved.get("note") or None,
-                        diet_no_gluten=bool(preserved.get("diet_no_gluten", False)),
-                        diet_no_milk=bool(preserved.get("diet_no_milk", False)),
-                        diet_no_pork=bool(preserved.get("diet_no_pork", False)),
                     )
                 )
                 imported_rows += 1
+            db.flush()
+            project_flags(db, list(db.scalars(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day))))
             db.add(
                 BreakfastImportProcessedAttachment(
                     message_uid=f"better-hotel:{trigger}:{range_start.isoformat()}:{range_end.isoformat()}:{target_day.isoformat()}",

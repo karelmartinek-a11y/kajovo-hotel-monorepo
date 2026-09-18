@@ -2,7 +2,7 @@
 
 ## Snídaně (Admin + Portal)
 
-- **Import** – front‑end file input on `/snidane` (Czech UI) uploads a `.pdf` to `/api/v1/breakfast/import`. Roles `recepce`/`admin` can preview the parsed rows, adjust diet flags, and persist the data. The backend parses the breakfast schedule using `app.services.breakfast.parser`, stores the `BreakfastOrder` rows, and archives the original asset under `KAJOVO_API_MEDIA_ROOT/breakfast/imports`.
+- **Import** – front‑end file input on `/snidane` (Czech UI) uploads a `.pdf` to `/api/v1/breakfast/import`. Roles `recepce`/`admin` can preview and persist parsed rows. Diet changes require a verified Better Hotel reservation and cannot be saved through PDF overrides. The backend parses the schedule using `app.services.breakfast.parser`, stores `BreakfastOrder` rows, and archives the original asset under `KAJOVO_API_MEDIA_ROOT/breakfast/imports`.
 - **Export** – the new `GET /api/v1/breakfast/export/daily?service_date=YYYY-MM-DD` endpoint builds a simple PDF summary (`app.services.pdf.breakfast.build_breakfast_schedule_pdf`) and returns it as a download (`Content-Disposition: attachment`). The Export button lives beside the import controls on `/snidane` and is enabled for recepce/admin roles. The export respects the currently selected service date so hotel staff can print the current day’s plan.
 
 ## Sklad: inventurní protokol

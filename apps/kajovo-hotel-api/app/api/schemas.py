@@ -86,12 +86,32 @@ class BreakfastOrderUpdate(BaseModel):
     diet_no_pork: bool | None = None
 
 
+class BreakfastReservationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    reservation_id: str
+    guest_name: str | None = None
+    arrival: date | None = None
+    departure: date | None = None
+    diet_no_gluten: bool
+    diet_no_milk: bool
+    diet_no_pork: bool
+    version: int
+
+
+class BreakfastDietUpdate(BaseModel):
+    kind: Literal['diet_no_gluten', 'diet_no_milk', 'diet_no_pork']
+    enabled: bool
+    version: int = Field(ge=1)
+
+
 class BreakfastOrderRead(BreakfastOrderBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     created_at: datetime | None
     updated_at: datetime | None
+    reservations: list[BreakfastReservationRead] = Field(default_factory=list)
 
 
 class BreakfastDailySummary(BaseModel):
@@ -168,6 +188,7 @@ class HousekeepingRoomRead(BaseModel):
     housekeeping_status_id: str | None = None
     housekeeping_status: str | None = None
     housekeeping_color: str | None = None
+    ready_for_arrival: bool = False
     operational_state: HousekeepingOperationalState
     occupancy_state: Literal['departing', 'arrived', 'staying', 'free']
     departures: list[HousekeepingStayRead]

@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas import (
     BreakfastDailyOverview,
     BreakfastDailySummary,
+    BreakfastDietUpdate,
     BreakfastImportItem,
     BreakfastImportResponse,
     BreakfastManualRefreshJobRead,
@@ -41,12 +42,17 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, parse_identity
+from app.services.breakfast.diets import DIET_KEYS, change_diet, enrich_orders, reservation_ids
 from app.services.breakfast.manual_refresh import (
     get_manual_breakfast_refresh_job,
     start_manual_breakfast_refresh,
 )
 from app.services.breakfast.parser import parse_breakfast_pdf
-from app.services.breakfast.sync import sync_breakfast_range
+from app.services.breakfast.sync import (
+    BetterHotelBreakfastClient,
+    BetterHotelSyncError,
+    sync_breakfast_range,
+)
 from app.services.pdf.breakfast import build_breakfast_schedule_pdf
 from app.time_utils import utc_now
 
@@ -221,7 +227,7 @@ def list_breakfast_orders(
         query = query.where(BreakfastOrder.status == status_filter.value)
 
     result = db.scalars(query)
-    return _visible_breakfast_orders(list(result))
+    return enrich_orders(db, _visible_breakfast_orders(list(result)))
 
 
 @router.get("/daily-summary", response_model=BreakfastDailySummary)
@@ -263,7 +269,7 @@ def get_daily_overview(
         )
     )
     return BreakfastDailyOverview(
-        orders=orders,
+        orders=enrich_orders(db, orders),
         summary=_build_daily_summary(service_date, orders, source_imported_at=source_imported_at),
     )
 
@@ -296,7 +302,33 @@ def get_breakfast_order(order_id: int, db: Session = Depends(get_db)) -> Breakfa
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Breakfast order not found",
         )
-    return order
+    return enrich_orders(db, [order])[0]
+
+
+@router.patch("/{order_id}/reservations/{reservation_id}/diet", response_model=BreakfastOrderRead)
+def update_reservation_diet(order_id: int, reservation_id: str, payload: BreakfastDietUpdate,
+                            request: Request, db: Session = Depends(get_db)) -> BreakfastOrder:
+    if not _is_breakfast_manager(_actor_role(request)):
+        raise HTTPException(403, "Diety může měnit jen recepce nebo administrátor.")
+    order = db.get(BreakfastOrder, order_id)
+    if order is None:
+        raise HTTPException(409, "Přehled byl synchronizován. Načtěte aktuální snídaně.")
+    if reservation_id not in reservation_ids(order.source_key, order.service_date):
+        raise HTTPException(409, "Snídaně nemá ověřenou vazbu na tento pobyt.")
+    try:
+        aggregates, _, _ = BetterHotelBreakfastClient(get_settings()).build_aggregates(
+            service_start=order.service_date, service_end=order.service_date,
+        )
+    except BetterHotelSyncError as exc:
+        raise HTTPException(502, "Vazbu pobytu se nepodařilo ověřit v Better Hotel.") from exc
+    aggregate = next((item for item in aggregates if item.source_key == order.source_key
+                      and item.room_number == order.room_number and reservation_id in item.reservations), None)
+    if aggregate is None:
+        raise HTTPException(409, "Pobyt nebo snídaně se změnily. Obnovte data z API.")
+    change_diet(db, request, order, reservation_id, kind=payload.kind, enabled=payload.enabled,
+                version=payload.version, metadata=aggregate.reservations[reservation_id])
+    db.refresh(order)
+    return enrich_orders(db, [order])[0]
 
 
 @router.post("", response_model=BreakfastOrderRead, status_code=status.HTTP_201_CREATED)
@@ -313,6 +345,8 @@ def create_breakfast_order(
         )
 
     payload_data = payload.model_dump()
+    if any(payload_data.get(key) for key in DIET_KEYS):
+        raise HTTPException(409, "Diety lze nastavit pouze u ověřené rezervace z API.")
     payload_data["status"] = payload.status.value
     order = BreakfastOrder(**payload_data)
     db.add(order)
@@ -352,6 +386,8 @@ def update_breakfast_order(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Diet updates are limited to recepce/admin roles",
         )
+    if diet_keys.intersection(updates):
+        raise HTTPException(409, "Diety se mění podle rezervace, nikoli denní objednávky. Obnovte aplikaci.")
 
     if not is_manager:
         disallowed_keys = set(updates) - {"status"}
@@ -386,7 +422,7 @@ def update_breakfast_order(
     db.add(order)
     db.commit()
     db.refresh(order)
-    return order
+    return enrich_orders(db, [order])[0]
 
 
 @router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -533,6 +569,8 @@ def import_breakfast_pdf(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     diet_overrides = _parse_diet_overrides(overrides)
+    if save and any(any(values.values()) for values in diet_overrides.values()):
+        raise HTTPException(409, "Diety lze nastavit pouze u ověřené rezervace z API.")
     items = []
     for row in rows:
         override = diet_overrides.get(str(row.room), {})

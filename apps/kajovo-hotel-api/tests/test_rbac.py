@@ -151,6 +151,21 @@ def test_housekeeping_amenities_enforce_role_and_csrf_before_upstream(api_base_u
             assert code == (502 if allowed else 403)
 
 
+def test_breakfast_reservation_diets_enforce_role_and_csrf(api_base_url: str) -> None:
+    path = "/api/v1/breakfast/999999/reservations/r/diet"
+    payload = {"kind": "diet_no_milk", "enabled": True, "version": 1}
+    for role in ("pokojska", "recepce", "snidane"):
+        jar = CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        code, _ = api_request(opener, api_base_url, "/api/auth/login", method="POST",
+                             payload={"email": f"{role}@example.com", "password": f"{role}-pass"})
+        assert code == 200
+        code, _ = api_request(opener, api_base_url, path, method="PATCH", payload=payload)
+        assert code == 403
+        code, _ = api_request(opener, api_base_url, path, method="PATCH", payload=payload, headers=csrf_header(jar))
+        assert code == (409 if role == "recepce" else 403)
+
+
 def test_rbac_allows_reports_for_recepce(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))

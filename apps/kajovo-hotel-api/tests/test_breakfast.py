@@ -361,7 +361,7 @@ POKOJ OZNAČENÍ REZERVACE PŘÍJEZD ODJEZD BEZ STRAVY SNÍDANĚ OBĚD VEČEŘE 
     ]
 
 
-def test_import_breakfast_pdf_overwrite_and_diets(
+def test_import_breakfast_pdf_overwrite_and_reject_unlinked_diets(
     api_request: ApiRequest, api_base_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("app.api.routes.breakfast._today_prague", lambda: date(2026, 3, 1))
@@ -405,6 +405,17 @@ def test_import_breakfast_pdf_overwrite_and_diets(
         data=payload,
         headers={"Content-Type": content_type, **csrf_header(jar)},
         method="POST",
+    )
+    with pytest.raises(urllib.error.HTTPError) as invalid:
+        opener.open(request, timeout=10)
+    assert invalid.value.code == 409
+    payload, content_type = build_multipart(
+        {"save": "true"},
+        [("file", "breakfast-sample.pdf", pdf_bytes, "application/pdf")],
+    )
+    request = urllib.request.Request(
+        url=f"{api_base_url}/api/v1/breakfast/import", data=payload,
+        headers={"Content-Type": content_type, **csrf_header(jar)}, method="POST",
     )
     with opener.open(request, timeout=10) as response:
         assert response.status == 200

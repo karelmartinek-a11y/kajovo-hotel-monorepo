@@ -245,6 +245,86 @@ test('recepce načte přehled snídaní automaticky', async ({ page, request }, 
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
 });
 
+test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ page, request }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  let checkedOut = false;
+  let ready = true;
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    const newYear = date === '2027-01-01';
+    const stay = { ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], arrival: newYear ? '2026-12-30' : '2026-03-28', departure: newYear ? date : '2026-03-30', checked_out: checkedOut ? '2026-03-30T10:00:00Z' : null };
+    const arrival = { ...stay, reservation_id: 'new', guest_label: 'Příjezdový host', arrival: date, departure: newYear ? '2027-01-02' : '2026-03-31', checked_out: null };
+    await route.fulfill({ json: { date, occupancy_date: '2026-09-18', housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [
+      { ...HOUSEKEEPING_ROOM_FIXTURE, ready_for_arrival: ready, departures: [stay], arrivals: [arrival] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '102', room_number: '102', ready_for_arrival: ready, departures: [], arrivals: [arrival] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '103', room_number: '103', departures: [stay], arrivals: [] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '104', room_number: '104', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
+    ] } });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  await page.getByLabel('Vybraný den', { exact: true }).fill('2026-03-30');
+  const card = page.getByRole('button', { name: /pokoj 101,/i });
+  await expect(card).toHaveClass(/k-hk-room--left-red/);
+  await expect(card).toHaveClass(/k-hk-room--right-green/);
+  await expect(card).toContainText('Noc pobytu: 2/2');
+  await expect(card).toContainText('Noc pobytu: 0/1');
+  await expect(page.getByRole('button', { name: /pokoj 102,/i })).toHaveClass(/k-hk-room--left-empty/);
+  await expect(page.getByRole('button', { name: /pokoj 103,/i })).toHaveClass(/k-hk-room--right-empty/);
+  const continuing = page.getByRole('button', { name: /pokoj 104,/i });
+  await expect(continuing).not.toHaveClass(/k-hk-room--split/);
+  await expect(continuing).toContainText('Noc pobytu: 2/4');
+  const bounds = await card.boundingBox();
+  const textBounds = await card.locator('.k-hk-room__state').boundingBox();
+  expect(textBounds!.width).toBeGreaterThan(bounds!.width * .8);
+  expect(await card.evaluate((element) => getComputedStyle(element).backgroundImage)).toContain('50%');
+  await page.screenshot({ path: testInfo.outputPath('room-split-colors.png'), fullPage: true });
+  checkedOut = true;
+  ready = false;
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect(card).toHaveClass(/k-hk-room--left-neutral/);
+  await expect(card).toHaveClass(/k-hk-room--right-red/);
+  await expect(page.getByLabel('Vybraný den', { exact: true })).toHaveValue('2026-03-30');
+  await page.getByLabel('Vybraný den', { exact: true }).fill('2027-01-01');
+  await expect(card).toContainText('Noc pobytu: 2/2');
+  await expect(card).toContainText('Noc pobytu: 0/1');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  expect(errors).toEqual([]);
+});
+
+test('snídaně mění jedinou dietu konkrétní rezervace a obnoví přehled', async ({ page, request }, testInfo) => {
+  const reservations = ['a', 'b'].map((id) => ({ reservation_id: id, guest_name: `Host ${id}`, arrival: '2026-09-15', departure: '2026-09-19', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, version: 1 }));
+  const writes: unknown[] = [];
+  await page.route('**/api/v1/breakfast/900/reservations/*/diet', async (route) => {
+    const payload = route.request().postDataJSON();
+    writes.push(payload);
+    const target = reservations.find((item) => route.request().url().includes(`/reservations/${item.reservation_id}/`))!;
+    expect(payload.version).toBe(target.version);
+    expect(payload.kind).toBe('diet_no_milk');
+    target.diet_no_milk = payload.enabled;
+    target.version += 1;
+    await route.fulfill({ json: { id: 900, reservations } });
+  });
+  await page.route('**/api/v1/breakfast/daily-overview?*', async (route) => {
+    const day = new URL(route.request().url()).searchParams.get('service_date');
+    await route.fulfill({ json: { orders: [{ id: 900, service_date: day, room_number: '101', guest_name: 'Host a; Host b', guest_count: 2, status: 'pending', note: null, created_at: null, updated_at: null, reservations }], summary: { service_date: day, total_orders: 1, total_guests: 2, status_counts: { pending: 1 } } } });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'recepce');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  await expect(page).toHaveURL(/\/recepce$/);
+  await page.goto('/snidane');
+  await expect(page.locator('.k-breakfast-reservation-diets')).toHaveCount(4);
+  if (await page.getByTestId('breakfast-serving-mobile-list').isVisible()) await page.getByText('Diety pobytu', { exact: true }).click();
+  const stay = page.locator('.k-breakfast-reservation-diets:visible').filter({ hasText: 'Host a' });
+  await stay.getByRole('button', { name: 'Bez laktózy', exact: true }).click();
+  await expect(stay.getByRole('button', { name: 'Bez laktózy', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.k-breakfast-reservation-diets:visible').filter({ hasText: 'Host b' }).getByRole('button', { name: 'Bez laktózy', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await stay.getByRole('button', { name: 'Bez laktózy', exact: true }).click();
+  await expect(stay.getByRole('button', { name: 'Bez laktózy', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  expect(writes).toEqual([{ kind: 'diet_no_milk', enabled: true, version: 1 }, { kind: 'diet_no_milk', enabled: false, version: 2 }]);
+});
+
 test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page, request }, testInfo) => {
   let patchBody: unknown = null;
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {

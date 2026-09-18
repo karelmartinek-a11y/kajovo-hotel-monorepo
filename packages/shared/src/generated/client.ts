@@ -65,6 +65,11 @@ export type BreakfastDailySummary = {
   "total_guests": number;
   "total_orders": number;
 };
+export type BreakfastDietUpdate = {
+  "enabled": boolean;
+  "kind": "diet_no_gluten" | "diet_no_milk" | "diet_no_pork";
+  "version": number;
+};
 export type BreakfastImportItem = {
   "count": number;
   "diet_no_gluten"?: boolean;
@@ -141,6 +146,7 @@ export type BreakfastOrderRead = {
   "guest_name": string;
   "id": number;
   "note"?: string | null;
+  "reservations"?: Array<BreakfastReservationRead>;
   "room_number": string;
   "service_date": string;
   "status"?: BreakfastStatus;
@@ -157,6 +163,16 @@ export type BreakfastOrderUpdate = {
   "room_number"?: string | null;
   "service_date"?: string | null;
   "status"?: BreakfastStatus | null;
+};
+export type BreakfastReservationRead = {
+  "arrival"?: string | null;
+  "departure"?: string | null;
+  "diet_no_gluten": boolean;
+  "diet_no_milk": boolean;
+  "diet_no_pork": boolean;
+  "guest_name"?: string | null;
+  "reservation_id": string;
+  "version": number;
 };
 export type BreakfastStatus = "pending" | "preparing" | "served" | "cancelled";
 export type BreakfastSyncRuntimeStatusRead = {
@@ -249,6 +265,7 @@ export type HousekeepingRoomRead = {
   "occupied": boolean;
   "operational_state": HousekeepingOperationalState;
   "persons": number;
+  "ready_for_arrival"?: boolean;
   "room_id": string;
   "room_name": string;
   "room_number": string;
@@ -806,6 +823,9 @@ export const apiClient = {
   },
   async updateBreakfastOrderApiV1BreakfastOrderIdPut(order_id: number, body: BreakfastOrderUpdate): Promise<BreakfastOrderRead> {
     return request<BreakfastOrderRead>('PUT', `/api/v1/breakfast/${order_id}`, undefined, body);
+  },
+  async updateReservationDietApiV1BreakfastOrderIdReservationsReservationIdDietPatch(order_id: number, reservation_id: string, body: BreakfastDietUpdate): Promise<BreakfastOrderRead> {
+    return request<BreakfastOrderRead>('PATCH', `/api/v1/breakfast/${order_id}/reservations/${reservation_id}/diet`, undefined, body);
   },
   async issueChallengeApiV1DeviceChallengePost(body: DeviceChallengeRequest): Promise<DeviceChallengeResponse> {
     return request<DeviceChallengeResponse>('POST', `/api/v1/device/challenge`, undefined, body);

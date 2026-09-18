@@ -328,6 +328,7 @@ class BetterHotelHousekeepingClient:
                     "floor": _floor_for_room(room_number),
                     "housekeeping_status_id": status_id,
                     "housekeeping_status": status_name,
+                    "ready_for_arrival": status_name == STATUS_NAMES["clean"],
                     "housekeeping_color": status_color,
                     "operational_state": operational_state,
                     "occupancy_state": occupancy_state,

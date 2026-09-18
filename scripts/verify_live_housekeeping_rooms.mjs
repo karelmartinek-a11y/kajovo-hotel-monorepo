@@ -52,6 +52,7 @@ const invalid = overview.rooms.find((room) =>
   typeof room.room_id !== 'string' ||
   !/^\d{3}$/.test(room.room_number) ||
   typeof room.operational_state !== 'string' ||
+  typeof room.ready_for_arrival !== 'boolean' ||
   !['free', 'arrived', 'departing', 'staying'].includes(room.occupancy_state) ||
   ['departures', 'arrivals', 'stays'].some((group) => !Array.isArray(room[group]) || room[group].some((stay) =>
     typeof stay.reservation_id !== 'string' || !Array.isArray(stay.amenities) ||

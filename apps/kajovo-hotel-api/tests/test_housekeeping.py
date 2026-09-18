@@ -11,6 +11,14 @@ def hotel_today(monkeypatch):
     monkeypatch.setattr("app.services.housekeeping.current_hotel_date", lambda: date(2026, 9, 17))
 
 
+@pytest.mark.parametrize("status", list(STATUS_NAMES))
+def test_only_arrival_clean_is_ready_for_arrival(status):
+    client = FakeHousekeepingClient()
+    client.current_status_key = status
+    room = client.build_overview(date(2026, 9, 17))["rooms"][0]
+    assert room["ready_for_arrival"] is (status == "clean")
+
+
 def _reservation(
     reservation_id: str,
     room_id: str,

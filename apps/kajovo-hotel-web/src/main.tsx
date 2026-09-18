@@ -964,7 +964,7 @@ function BreakfastList(): JSX.Element {
   const isServingView = actorRole === breakfastRole && !isRecepce && !isAdmin;
   const canImport = isRecepce || isAdmin;
   const canReactivate = isRecepce || isAdmin;
-  const canEditDiet = isRecepce || isAdmin;
+  const canEditDiet = actorRole === 'recepce' || isAdmin;
   const canEditNote = isRecepce || isAdmin;
   const today = currentDateForTimeZone(new Date(), 'Europe/Prague');
   const minutesNow = currentMinutesForTimeZone(new Date(), 'Europe/Prague');
@@ -996,20 +996,24 @@ function BreakfastList(): JSX.Element {
   const itemsRef = React.useRef<BreakfastOrder[]>([]);
   const noteSaveQueueRef = React.useRef<Record<number, { inFlight: boolean; queuedValue: string | null | undefined }>>({});
 
-  const loadDay = React.useCallback((targetDate: string) => {
+  const breakfastRequestSequence = React.useRef(0);
+  const displayedDate = React.useRef(serviceDate);
+  displayedDate.current = serviceDate;
+  const loadDay = React.useCallback((targetDate: string, preserveDrafts = false) => {
+    const sequence = ++breakfastRequestSequence.current;
     let active = true;
     fetchJson<BreakfastDailyOverview>(`/api/v1/breakfast/daily-overview?service_date=${targetDate}`)
       .then(({ orders, summary: dailySummary }) => {
-        if (!active) {
+        if (!active || sequence !== breakfastRequestSequence.current || targetDate !== displayedDate.current) {
           return;
         }
         setItems(orders);
         setSummary(dailySummary);
-        setDrafts({});
+        if (!preserveDrafts) setDrafts({});
         setError(null);
       })
       .catch(() => {
-        if (!active) {
+        if (!active || sequence !== breakfastRequestSequence.current || targetDate !== displayedDate.current) {
           return;
         }
         setError('Nepodařilo se načíst seznam snídaní.');
@@ -1040,9 +1044,6 @@ function BreakfastList(): JSX.Element {
     return {
       ...order,
       status: draft.status ?? order.status,
-      diet_no_gluten: draft.diet_no_gluten ?? order.diet_no_gluten,
-      diet_no_milk: draft.diet_no_milk ?? order.diet_no_milk,
-      diet_no_pork: draft.diet_no_pork ?? order.diet_no_pork,
       note: draft.note ?? order.note,
       };
     }, [drafts]);
@@ -1071,17 +1072,7 @@ function BreakfastList(): JSX.Element {
     updates: Partial<BreakfastPayload> & { expected_updated_at?: string | null },
     options?: { preserveDraft?: boolean },
   ): Promise<BreakfastOrder> => {
-    const effectiveOrder = mergeOrderWithDraft(order);
-    const payload: Partial<BreakfastPayload> & { expected_updated_at?: string | null } = {
-      service_date: effectiveOrder.service_date,
-      room_number: effectiveOrder.room_number,
-      guest_name: effectiveOrder.guest_name,
-      guest_count: effectiveOrder.guest_count,
-      note: updates.note ?? effectiveOrder.note ?? null,
-      diet_no_gluten: updates.diet_no_gluten ?? effectiveOrder.diet_no_gluten ?? false,
-      diet_no_milk: updates.diet_no_milk ?? effectiveOrder.diet_no_milk ?? false,
-      diet_no_pork: updates.diet_no_pork ?? effectiveOrder.diet_no_pork ?? false,
-    };
+    const payload: Partial<BreakfastPayload> & { expected_updated_at?: string | null } = { ...updates };
 
     if (updates.status !== undefined) {
       payload.status = updates.status;
@@ -1143,16 +1134,10 @@ function BreakfastList(): JSX.Element {
       };
       const effective = {
         status: nextDraft.status ?? order.status,
-        diet_no_gluten: nextDraft.diet_no_gluten ?? order.diet_no_gluten ?? false,
-        diet_no_milk: nextDraft.diet_no_milk ?? order.diet_no_milk ?? false,
-        diet_no_pork: nextDraft.diet_no_pork ?? order.diet_no_pork ?? false,
         note: nextDraft.note ?? order.note ?? null,
       };
       if (
         effective.status === order.status &&
-        effective.diet_no_gluten === (order.diet_no_gluten ?? false) &&
-        effective.diet_no_milk === (order.diet_no_milk ?? false) &&
-        effective.diet_no_pork === (order.diet_no_pork ?? false) &&
         effective.note === (order.note ?? null)
       ) {
         const cleaned = { ...prev };
@@ -1242,16 +1227,25 @@ function BreakfastList(): JSX.Element {
     flushBreakfastNoteSave(order.id);
   }, [flushBreakfastNoteSave]);
 
-  const toggleDiet = (order: BreakfastOrder, key: DietKey): void => {
-    if (!canEditDiet) {
-      return;
+  const dietBusy = React.useRef(false);
+  const [dietSaving, setDietSaving] = React.useState(false);
+  const [dietError, setDietError] = React.useState<string | null>(null);
+  const toggleDiet = async (order: BreakfastOrder, reservation: NonNullable<BreakfastOrder['reservations']>[number], key: DietKey): Promise<void> => {
+    if (!canEditDiet || dietBusy.current) return;
+    dietBusy.current = true;
+    setDietSaving(true);
+    setDietError(null);
+    try {
+      await apiClient.updateReservationDietApiV1BreakfastOrderIdReservationsReservationIdDietPatch(order.id, reservation.reservation_id, {
+        kind: key, enabled: !reservation[key], version: reservation.version,
+      });
+    } catch {
+      setDietError('Dietu se nepodařilo uložit. Pobyt mohl mezitím změnit jiný uživatel; přehled se obnoví.');
+    } finally {
+      if (displayedDate.current === serviceDate) loadDay(serviceDate, true);
+      dietBusy.current = false;
+      setDietSaving(false);
     }
-    const effectiveOrder = mergeOrderWithDraft(order);
-    const updates: Partial<BreakfastPayload> = {};
-    if (key === 'diet_no_gluten') updates.diet_no_gluten = !effectiveOrder.diet_no_gluten;
-    if (key === 'diet_no_milk') updates.diet_no_milk = !effectiveOrder.diet_no_milk;
-    if (key === 'diet_no_pork') updates.diet_no_pork = !effectiveOrder.diet_no_pork;
-    saveOrderUpdates(order, updates);
   };
 
   const markServed = (order: BreakfastOrder): void => {
@@ -1358,7 +1352,7 @@ function BreakfastList(): JSX.Element {
       <DietToggleButton active={Boolean(data.diet_no_gluten)} label="Bez lepku" disabled={disabled} onToggle={() => onToggle('diet_no_gluten')}>
         <DietIcon kind="diet_no_gluten" />
       </DietToggleButton>
-      <DietToggleButton active={Boolean(data.diet_no_milk)} label="Bez mléka" disabled={disabled} onToggle={() => onToggle('diet_no_milk')}>
+      <DietToggleButton active={Boolean(data.diet_no_milk)} label="Bez laktózy" disabled={disabled} onToggle={() => onToggle('diet_no_milk')}>
         <DietIcon kind="diet_no_milk" />
       </DietToggleButton>
       <DietToggleButton active={Boolean(data.diet_no_pork)} label="Bez vepřového" disabled={disabled} onToggle={() => onToggle('diet_no_pork')}>
@@ -1367,10 +1361,16 @@ function BreakfastList(): JSX.Element {
     </div>
   );
 
+  const renderReservationDiets = (item: BreakfastOrder): JSX.Element => <span>{(item.reservations ?? []).length ? item.reservations!.map((reservation) => <span className="k-breakfast-reservation-diets" key={reservation.reservation_id}>
+    {item.reservations!.length > 1 ? <strong>{reservation.guest_name ?? `Pobyt ${reservation.reservation_id}`}</strong> : null}
+    {renderDietToggles(reservation, (key) => void toggleDiet(item, reservation, key), !canEditDiet || dietSaving)}
+    <small>Pro celý pobyt{reservation.arrival && reservation.departure ? ` ${reservation.arrival} – ${reservation.departure}` : ''}</small>
+  </span>) : <span title="Obnovte rezervace z Better Hotel API.">Chybí vazba na pobyt</span>}</span>;
+
   const renderActiveDiets = (data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean }): JSX.Element | null => {
     const active = [
       data.diet_no_gluten ? <span key="gluten" className="k-diet-icon k-diet-icon--active" title="Bezlepková strava"><DietIcon kind="diet_no_gluten" /></span> : null,
-      data.diet_no_milk ? <span key="milk" className="k-diet-icon k-diet-icon--active" title="Bezlaktozová strava"><DietIcon kind="diet_no_milk" /></span> : null,
+      data.diet_no_milk ? <span key="milk" className="k-diet-icon k-diet-icon--active" title="Bez laktózy"><DietIcon kind="diet_no_milk" /></span> : null,
       data.diet_no_pork ? <span key="pork" className="k-diet-icon k-diet-icon--active" title="Strava bez vepřového masa"><DietIcon kind="diet_no_pork" /></span> : null,
     ].filter(Boolean);
     return active.length ? <span className="k-diet-toggle-group">{active}</span> : null;
@@ -1542,19 +1542,11 @@ function BreakfastList(): JSX.Element {
       ) : null}
       <DataTable
         headers={['Pokoj', 'Host', 'Počet', 'Diety']}
-        rows={importPreview.map((item, index) => [
+        rows={importPreview.map((item) => [
           item.room,
           item.guest_name ?? `Pokoj ${item.room}`,
           item.count,
-          renderDietToggles(item, (key) => setImportPreview((prev) => {
-            if (!prev) return prev;
-            return prev.map((row, rowIndex) => {
-              if (rowIndex !== index) return row;
-              if (key === 'diet_no_gluten') return { ...row, diet_no_gluten: !row.diet_no_gluten };
-              if (key === 'diet_no_milk') return { ...row, diet_no_milk: !row.diet_no_milk };
-              return { ...row, diet_no_pork: !row.diet_no_pork };
-            });
-          }), false),
+          <span>Diety se nastavují u rezervace načtené z API.</span>,
         ])}
       />
       <div className="k-toolbar">
@@ -1652,6 +1644,7 @@ function BreakfastList(): JSX.Element {
               <span className="k-breakfast-serving-row__diets">{renderActiveDiets(effectiveItem)}</span>
               <span className="k-breakfast-serving-row__action">{renderActionButton(item, effectiveItem)}</span>
             </div>
+            {canEditDiet ? <details><summary>Diety pobytu</summary>{renderReservationDiets(item)}</details> : null}
             {feedback ? <p className={`k-breakfast-serving-row__feedback k-text-${feedback.state === 'error' ? 'error' : 'muted'}`}>{feedback.message}</p> : null}
           </article>
         );
@@ -1684,6 +1677,7 @@ function BreakfastList(): JSX.Element {
           {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
           {canImport && (importError || importInfo) ? <p className={importError ? 'k-text-error' : 'k-text-success'}>{importError ?? importInfo}</p> : null}
           {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
+          {dietError ? <p className="k-text-error" role="alert">{dietError}</p> : null}
           {importPreviewTable}
           {listItems.length === 0 ? (
             <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
@@ -1712,7 +1706,7 @@ function BreakfastList(): JSX.Element {
                     <span className={rowClass}>{effectiveItem.room_number}</span>,
                     <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                     <span className={rowClass}>{effectiveItem.guest_count}</span>,
-                    <span className={rowClass}>{renderDietToggles(effectiveItem, (key) => toggleDiet(item, key), !canEditDiet)}</span>,
+                    <span className={rowClass}>{renderReservationDiets(item)}</span>,
                     canEditNote ? <input className={`k-input k-breakfast-note${rowFeedback[item.id]?.state === 'error' ? ' k-input--error' : ''}`} aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                     action,
                   ];
@@ -1953,7 +1947,7 @@ function BreakfastDetail(): JSX.Element {
               ['Stav', breakfastStatusLabel(item.status)],
               ['Poznámka', item.note ?? '-'],
               ['Bez lepku', item.diet_no_gluten ? 'Ano' : 'Ne'],
-              ['Bez mléka', item.diet_no_milk ? 'Ano' : 'Ne'],
+              ['Bez laktózy', item.diet_no_milk ? 'Ano' : 'Ne'],
               ['Bez vepřového', item.diet_no_pork ? 'Ano' : 'Ne'],
               ['Vytvořeno', item.created_at ? formatDateTime(item.created_at) : '-'],
               ['Aktualizováno', item.updated_at ? formatDateTime(item.updated_at) : '-'],

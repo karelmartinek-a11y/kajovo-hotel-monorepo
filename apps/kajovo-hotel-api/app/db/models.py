@@ -82,6 +82,21 @@ class BreakfastStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ReservationBreakfastDiet(Base):
+    __tablename__ = "reservation_breakfast_diets"
+
+    reservation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    guest_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    arrival: Mapped[date | None] = mapped_column(Date, nullable=True)
+    departure: Mapped[date | None] = mapped_column(Date, nullable=True)
+    diet_no_gluten: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    diet_no_milk: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    diet_no_pork: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_by: Mapped[str] = mapped_column(String(255), nullable=False, default="sync")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class BreakfastOrder(Base):
     __tablename__ = "breakfast_orders"
 
