@@ -98,6 +98,27 @@
   padding: var(--k-spacing-4);
 }
 
+.k-login-download--mobile-only {
+  display: none;
+  margin-top: 0;
+  margin-bottom: var(--k-spacing-5);
+  padding: var(--k-spacing-4);
+  border: 1px solid color-mix(in srgb, var(--k-color-brand-red) 24%, var(--k-color-border));
+  border-radius: var(--k-radius-3);
+  background: color-mix(in srgb, var(--k-color-brand-red) 5%, var(--k-color-surface-raised));
+}
+
+@media (max-width: 767px) {
+  .k-login-download--mobile-only {
+    display: grid;
+  }
+
+  .k-login-download--mobile-only .k-login-download__action {
+    width: 100%;
+    text-decoration: none;
+  }
+}
+
 .k-login-feedback {
   margin: 0;
   border: 1px solid var(--k-color-error);

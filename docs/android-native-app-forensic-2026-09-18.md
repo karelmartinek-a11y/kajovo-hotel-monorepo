@@ -14,7 +14,7 @@ Aktivní uživatelské routy: `/login`, `/login/reset`, `/`, `/recepce`, `/profi
 | Plocha | Prvky a funkce | Validace, blokace a chybové stavy |
 |---|---|---|
 | Start / intro | systémový splash, kompletní logo KájovoHotel, kontrola nové verze, obnova session | update kontrola je best-effort; hash stažené APK musí souhlasit; bez session následuje login; síť/maintenance mají samostatný stav |
-| Přihlášení | kompletní logo, uživatelské jméno, heslo, CTA Přihlásit, informační text o aktualizaci | obě pole povinná; tlačítko je do té doby neaktivní; serverové 401 se překládá do české chyby; cookies a CSRF se ukládají bezpečně |
+| Přihlášení | kompletní logo, uživatelské jméno, heslo, CTA Přihlásit, informační text o aktualizaci; veřejný web v mobilním layoutu nabízí stažení podepsané Android APK | obě pole povinná; tlačítko je do té doby neaktivní; serverové 401 se překládá do české chyby; cookies a CSRF se ukládají bezpečně; APK odkaz je na webu skrytý od šířky 768 px |
 | Obnova hesla | token z app-linku, nové heslo, potvrzení, návrat na login | token povinný; nejméně 8 znaků; hesla se musí shodovat; po úspěchu nová autentizace |
 | Volba role | seznam všech přiřazených rolí, potvrzení role | jedna role se volí automaticky; role musí patřit účtu; zápis používá CSRF; selhání neotevře modul |
 | Nativní shell | top app bar, značka, název role, navigace dle role/oprávnění, Profil, Odhlásit | admin actor je odmítnut; nepovolený modul zobrazí access denied; po 401 se zahodí lokální session |

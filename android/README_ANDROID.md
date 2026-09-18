@@ -62,6 +62,7 @@ cd android
 - Android musí mít samostatné nativní mobilní i tabletové chování, ne jen roztažený telefonní layout.
 - wrapper nebo WebView-first model není přípustný
 - veřejný web publikuje podepsané APK na `/downloads/kajovo-hotel-android.apk`; API endpoint `/api/app/android-release` vrací verzi, URL a SHA-256 pro nativní update flow
+- veřejná přihlašovací stránka nabízí odkaz na APK pouze v mobilním layoutu do šířky 767 px
 - integritu manifestu a publikovaného APK ověřuje `python3 scripts/check_android_release_integrity.py` i samostatná Android CI
 
 ## Historické materiály

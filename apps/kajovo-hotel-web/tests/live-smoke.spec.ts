@@ -703,7 +703,7 @@ test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page
   }
 });
 
-test('portal bez session skonci na loginu', async ({ page }) => {
+test('portal bez session skonci na loginu a download aplikace je pouze na mobilu', async ({ page }) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
@@ -716,6 +716,16 @@ test('portal bez session skonci na loginu', async ({ page }) => {
     await expect(brandImages.nth(index)).toHaveJSProperty('complete', true);
     const naturalWidth = await brandImages.nth(index).evaluate((image) => (image as HTMLImageElement).naturalWidth);
     expect(naturalWidth).toBeGreaterThan(0);
+  }
+
+  const appDownload = page.getByTestId('android-app-download');
+  const appDownloadLink = page.getByTestId('android-app-download-link');
+  await expect(appDownloadLink).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
+  if ((page.viewportSize()?.width ?? 0) <= 767) {
+    await expect(appDownload).toBeVisible();
+    await expect(appDownloadLink).toBeVisible();
+  } else {
+    await expect(appDownload).toBeHidden();
   }
 });
 

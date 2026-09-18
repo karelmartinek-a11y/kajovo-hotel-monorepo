@@ -81,6 +81,21 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
         <p className="k-login-copy">
           Přihlaste se do provozního portálu. Po ověření účtu navážete přesně tam, kde začíná dnešní směna.
         </p>
+        <section className="k-login-download k-login-download--mobile-only" data-testid="android-app-download" aria-labelledby="android-app-download-title">
+          <h2 id="android-app-download-title" className="k-login-download__title">KájovoHotel pro Android</h2>
+          <p className="k-login-download__copy">
+            Stáhněte si plně nativní aplikaci pro rychlý přístup k hotelovému provozu.
+          </p>
+          <a
+            className="k-button k-login-download__action"
+            href="/downloads/kajovo-hotel-android.apk"
+            download="kajovo-hotel-android.apk"
+            data-testid="android-app-download-link"
+          >
+            Stáhnout aplikaci pro Android
+          </a>
+          <p className="k-login-download__meta">Verze 2.0.2 NG · instalace APK</p>
+        </section>
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">
             Uživatelské jméno
