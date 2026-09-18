@@ -43,4 +43,12 @@
 
 ## Publikace
 
-Podepsaný kandidát se připravuje odděleně. Veřejné APK a manifest zůstávají do dokončení jeho kontroly na vydané verzi; nová verze bude publikována atomicky až po ověření hashe, verze a původního podpisu.
+Vydání 2.0.3 NG (208) obsahuje podepsaný artefakt ze zdrojového commitu `0a16f60b922247bcb958469c6c023da44c3c604f`, GitHub Actions run `35396769481` (PASS). APK, manifest a verze mobilního odkazu se publikují společně.
+
+- `apksigner verify`: PASS, podpisový certifikát SHA-256 `ea3a8f3a6a61f1ecebf42adab70d4626e33badc4004a093941bc0613d6812830` je shodný s vydáním 207.
+- `aapt dump badging`: produkční balíček `cz.hcasc.kajovohotel.app`, versionCode 208, versionName `2.0.3 NG`.
+- APK SHA-256: `e0ae621b6032bcf7a766a0839a79294eb19275c67e336fd07d226a44e4ce19a8`.
+- Mobilní download: Playwright nad skutečným izolovaným API, šířky 360/768/1440 px, 3 testy PASS; pouze mobil zobrazuje odkaz.
+- Instalace aktualizace podléhá systémovému potvrzení Androidu; kontrola vydání a stažení se spouští automaticky. Tichá instalace se neslibuje.
+
+Produkční ověření po nasazení kontroluje manifest, hash staženého APK, runtime SHA, stav služeb a aktualizaci existující instalace 207. Snímky a závěrečný runtime protokol jsou externí QA artefakty, nikoli součást aplikace.
