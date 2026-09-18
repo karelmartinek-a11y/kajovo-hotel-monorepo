@@ -49,11 +49,11 @@ Produkční test aktualizace 207 → 208 odhalil zrušení download coroutine zm
 
 Regresní test na původním pořadí operací selhal (`Pending update must not be cleared during download`), po opravě prošel. Explicitní `ProductionUpdateTest` stáhl skutečné produkční APK, ověřil SHA-256 a otevřel systémové povolení instalace bez Chrome: 1 test PASS. Běžné CI tento síťový test přeskakuje; spouští jej pouze explicitní QA argument. Oprava přerušení se nemůže zpětně propsat do starších nainstalovaných APK; jejich jednorázový přechod může vyžadovat tlačítko Aktualizovat nebo mobilní odkaz.
 
-Vydání 2.0.3 NG (208) obsahuje podepsaný artefakt ze zdrojového commitu `0a16f60b922247bcb958469c6c023da44c3c604f`, GitHub Actions run `35396769481` (PASS). APK, manifest a verze mobilního odkazu se publikují společně.
+Vydání 2.0.4 NG (209) obsahuje podepsaný artefakt ze zdrojového commitu `c5db45a112fe755457f3a0c330860c63db57714c`, GitHub Actions run `35399107599` (PASS). APK, manifest a verze mobilního odkazu se publikují společně.
 
 - `apksigner verify`: PASS, podpisový certifikát SHA-256 `ea3a8f3a6a61f1ecebf42adab70d4626e33badc4004a093941bc0613d6812830` je shodný s vydáním 207.
-- `aapt dump badging`: produkční balíček `cz.hcasc.kajovohotel.app`, versionCode 208, versionName `2.0.3 NG`.
-- APK SHA-256: `e0ae621b6032bcf7a766a0839a79294eb19275c67e336fd07d226a44e4ce19a8`.
+- `aapt dump badging`: produkční balíček `cz.hcasc.kajovohotel.app`, versionCode 209, versionName `2.0.4 NG`.
+- APK SHA-256: `dd370b859e2cca87314eba82a7f979518d69e907d21f3bb887d8b2e8119fe098`.
 - Mobilní download: Playwright nad skutečným izolovaným API, šířky 360/768/1440 px, 3 testy PASS; pouze mobil zobrazuje odkaz.
 - Instalace aktualizace podléhá systémovému potvrzení Androidu; kontrola vydání a stažení se spouští automaticky. Tichá instalace se neslibuje.
 

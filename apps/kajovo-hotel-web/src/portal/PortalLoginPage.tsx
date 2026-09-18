@@ -94,7 +94,7 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
           >
             Stáhnout aplikaci pro Android
           </a>
-          <p className="k-login-download__meta">Verze 2.0.3 NG · instalace APK</p>
+          <p className="k-login-download__meta">Verze 2.0.4 NG · instalace APK</p>
         </section>
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">
