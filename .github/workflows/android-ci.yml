@@ -35,7 +35,7 @@ jobs:
           cache: gradle
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Build, unit test and lint native app
         run: ./gradlew :app:assembleDebug testDebugUnitTest lintDebug --console=plain
