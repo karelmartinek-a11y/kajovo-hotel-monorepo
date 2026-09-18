@@ -1,0 +1,61 @@
+name: Android Signed Artifact - Kajovo Hotel
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  signed-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Materialize production signing key
+        env:
+          SIGNING_KEY_B64: ${{ secrets.KAJOVO_UPLOAD_STORE_FILE_B64 }}
+        run: |
+          test -n "$SIGNING_KEY_B64"
+          printf '%s' "$SIGNING_KEY_B64" | base64 --decode > "$RUNNER_TEMP/kajovo-upload.keystore"
+          chmod 600 "$RUNNER_TEMP/kajovo-upload.keystore"
+
+      - name: Build signed release APK
+        env:
+          KAJOVO_UPLOAD_STORE_FILE: ${{ runner.temp }}/kajovo-upload.keystore
+          KAJOVO_UPLOAD_STORE_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
+          KAJOVO_UPLOAD_KEY_ALIAS: ${{ secrets.KAJOVO_UPLOAD_KEY_ALIAS }}
+          KAJOVO_UPLOAD_KEY_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --console=plain
+
+      - name: Verify release signature and checksum
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          apksigner verify --verbose "$APK"
+          sha256sum "$APK" | tee app/build/outputs/apk/release/app-release.apk.sha256
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: kajovo-hotel-android-signed-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/app-release.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
