@@ -15,7 +15,7 @@ Tento adresář je samostatný nativní Android projekt pro ověřený non-admin
 - feature moduly `recepce`, `pokojská` včetně serverově ověřovaného přehledu pokojů, `snídaně`, `ztráty a nálezy`, `závady`, `sklad`, `hlášení`, `profil`
 - adaptivní mobilní a tabletové rozložení pro vstupní a profilové veřejné obrazovky
 - deep link handshake mezi webem a Androidem přes `kajovohotel://open/...` a app-link metadata v `apps/kajovo-hotel-web/public/.well-known/assetlinks.json`
-- best-effort update flow podle `/api/app/android-release`
+- best-effort update flow podle `/api/app/android-release`; dokončení automatického downloadu před spotřebováním jeho spouštěcího stavu, přerušení coroutine bez otevírání prohlížeče
 
 ## Co projekt záměrně neobsahuje
 
@@ -64,6 +64,8 @@ cd android
 - `qa/seed_ui_database.py` smí naplnit pouze SQLite databázi `/tmp/kajovo-native-qa-*`; používá skutečný API model a syntetická data, nikoli produkční databázi.
 - Lokální API lze propojit přes `adb reverse tcp:18080 tcp:18080` a build s `-PkajovoHotelBaseUrl=http://127.0.0.1:18080`.
 - `qa/capture_native.py` vybírá cíle z UI stromu debug aplikace a ukládá PNG/XML do `/tmp/kajovo-native-readability` (lze změnit přes `NATIVE_QA_OUTPUT`).
+- `ReadabilityTest` ověřuje také dokončení automatického update efektu před vymazáním jeho spouštěcího stavu.
+- `ProductionUpdateTest` je v běžném CI přeskočený: skutečné stažení veřejného APK a otevření systémového instalátoru se spouští jen explicitně instrumentačním argumentem `-e verifyProductionUpdate true`. Test nemění produkční data ani nepotvrzuje instalaci; kontroluje SHA-256 staženého souboru.
 - Výsledky vizuální kontroly a matice dopadů: `docs/android-readability-2026-09-18.md`.
 
 ## Parita s webem

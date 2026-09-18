@@ -9,6 +9,7 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -18,6 +19,7 @@ class AndroidAppUpdater(private val context: Context) {
 
     suspend fun startBestEffortUpdate(updateInfo: AppUpdateInfo) {
         runCatching { downloadAndLaunchInstaller(updateInfo) }
+            .onFailure { if (it is CancellationException) throw it }
             .getOrElse { openBrowserFallback(updateInfo.downloadUrl) }
     }
 

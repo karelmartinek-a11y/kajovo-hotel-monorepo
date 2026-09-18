@@ -31,7 +31,7 @@
 ## Provedené kontroly zdroje
 
 - `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `testDebugUnitTest`, `lintDebug`: PASS. Jednotkové testy: 63 testů v 18 sadách, bez chyb.
-- Instrumentované `ReadabilityTest`: 7 testů PASS na API 35. Kontrast obou témat, chyba přihlášení v okně 320 × 480 dp, odeslání klávesnicí, menu sekcí/profilu, rozbalovací filtry, vykreslení utility/reset obrazovek a pravdivé zobrazení diet na úzké obrazovce.
+- Instrumentované `ReadabilityTest`: 8 testů PASS na API 35. Kontrast obou témat, chyba přihlášení v okně 320 × 480 dp, odeslání klávesnicí, menu sekcí/profilu, rozbalovací filtry, vykreslení utility/reset obrazovek, pravdivé zobrazení diet na úzké obrazovce a dokončení automatického downloadu před spotřebováním stavu.
 - Skutečné nativní UI nad lokálním FastAPI a izolovanou SQLite databází: všech pět rolí, seznam/detail/editor hlášení, nálezy po třech krocích, snídaně, závady po dvou krocích, sklad včetně úspěšného založení nové položky, profil a pokojský formulář. Běžné okno a malý telefon 360 × 640 dp.
 - Opravena závodní podmínka skladu: pozdní načtení detailu nesmí změnit vytvoření na editaci. Dva regresní jednotkové testy.
 - Následná kontrola detailu snídaně na 360 × 640 dp odhalila zalamování diet po písmenech. Detail používá kompaktní řádky a zalamovací skupinu pouze skutečně aktivních diet; bez diet se zobrazí „Bez diet“.
@@ -42,6 +42,12 @@
 - Testovací databáze nemá Better Hotel přihlašovací údaje: živý seznam pokojů a externí synchronizace v tomto prostředí nejsou ověřené. Zachycena skutečná chybová obrazovka a formulář nového zápisu. Produkční zápisy do pokojů se při QA neprovádějí.
 
 ## Publikace
+
+### Dopad opravy automatického stahování
+
+Produkční test aktualizace 207 → 208 odhalil zrušení download coroutine změnou klíče `LaunchedEffect`. Dopad: aktualizovat produkční update efekt a zacházení s přerušením; přidat instrumentovaný regresní test; aktualizovat release APK/manifest a stručnou dokumentaci. Existující Android CI ověřit beze změny. API, OpenAPI, RBAC, databázi, generované klienty, AGENTS.md a webový kontrakt ověřit beze změny — oprava se týká pouze životního cyklu nativního stahování. Web mění jen číslo verze ke stažení.
+
+Regresní test na původním pořadí operací selhal (`Pending update must not be cleared during download`), po opravě prošel. Explicitní `ProductionUpdateTest` stáhl skutečné produkční APK, ověřil SHA-256 a otevřel systémové povolení instalace bez Chrome: 1 test PASS. Běžné CI tento síťový test přeskakuje; spouští jej pouze explicitní QA argument. Oprava přerušení se nemůže zpětně propsat do starších nainstalovaných APK; jejich jednorázový přechod může vyžadovat tlačítko Aktualizovat nebo mobilní odkaz.
 
 Vydání 2.0.3 NG (208) obsahuje podepsaný artefakt ze zdrojového commitu `0a16f60b922247bcb958469c6c023da44c3c604f`, GitHub Actions run `35396769481` (PASS). APK, manifest a verze mobilního odkazu se publikují společně.
 

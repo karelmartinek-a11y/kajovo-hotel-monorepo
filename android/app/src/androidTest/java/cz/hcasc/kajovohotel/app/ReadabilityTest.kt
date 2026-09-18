@@ -26,6 +26,28 @@ import cz.hcasc.kajovohotel.feature.breakfast.BreakfastDietSummary
 class ReadabilityTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun automaticUpdateIsConsumedOnlyAfterDownloadCompletes() {
+        var pending by mutableStateOf<Int?>(209)
+        val started = java.util.concurrent.atomic.AtomicBoolean(false)
+        val completed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val consumed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val download = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val info = AppUpdateInfo(208, "2.0.3 NG", 209, "2.0.4 NG", "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk", "hash", "Aktualizace", "", false)
+        compose.setContent {
+            AutomaticUpdateEffect(
+                AppUpdateState(availableUpdate = info, pendingAutoStartVersionCode = pending),
+                onConsumed = { consumed.set(true); pending = null },
+                onUpdate = { started.set(true); download.await(); completed.set(true) },
+            )
+        }
+        compose.waitUntil(5_000) { started.get() }
+        compose.waitForIdle()
+        org.junit.Assert.assertFalse("Pending update must not be cleared during download", consumed.get())
+        download.complete(Unit)
+        compose.waitUntil(5_000) { completed.get() && consumed.get() }
+        compose.runOnIdle { org.junit.Assert.assertNull(pending) }
+    }
+
     private fun capture(name: String) {
         val directory = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir("readability")!!
         directory.mkdirs()

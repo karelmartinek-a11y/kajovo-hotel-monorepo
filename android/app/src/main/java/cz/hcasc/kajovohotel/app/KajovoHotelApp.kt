@@ -68,14 +68,7 @@ fun KajovoHotelApp(
     LaunchedEffect(Unit) {
         viewModel.restoreSession()
     }
-    LaunchedEffect(appUpdateState.pendingAutoStartVersionCode) {
-        val updateInfo = appUpdateState.availableUpdate
-        val targetVersion = appUpdateState.pendingAutoStartVersionCode
-        if (updateInfo != null && targetVersion != null && updateInfo.latestVersionCode == targetVersion) {
-            viewModel.consumePendingAutoStart(targetVersion)
-            appUpdater.startBestEffortUpdate(updateInfo)
-        }
-    }
+    AutomaticUpdateEffect(appUpdateState, viewModel::consumePendingAutoStart, appUpdater::startBestEffortUpdate)
 
     KajovoTheme(darkTheme = isSystemInDarkTheme()) {
         val updateInfo = appUpdateState.availableUpdate

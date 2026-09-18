@@ -20,3 +20,4 @@ Samostatná launcher značka: `docs/android-design/kajovo-hotel-app-mark.png`
 - Systémové pickery pro foto/PDF, Camera contract, app links pro reset hesla.
 - Blokující dialog pouze při zápisu kritického stavu pokoje; ostatní formuláře používají inline validaci a jednoznačný progress.
 - Auto-update kontrola probíhá při startu před loginem. APK se stáhne, ověří SHA-256 a předá systémovému instalátoru; Android z bezpečnostních důvodů stále vyžaduje uživatelské potvrzení instalace.
+- Příznak automatického spuštění se spotřebuje až po dokončení aktualizační operace, aby změna Compose efektu nepřerušila stahování. Zrušení coroutine není síťová chyba a neotevírá náhradní prohlížeč.
