@@ -8,6 +8,9 @@
   margin: 0 auto;
   padding: var(--k-spacing-6) var(--k-spacing-4);
 }
+.k-locale-switcher { display: flex; flex-wrap: wrap; gap: var(--k-spacing-2); align-items: center; }
+.k-locale-switcher__option { min-height: 44px; border: 1px solid var(--k-color-border); border-radius: var(--k-radius-1); background: var(--k-color-surface); color: var(--k-color-ink); padding: var(--k-spacing-1) var(--k-spacing-2); cursor: pointer; }
+.k-locale-switcher__option[aria-pressed="true"] { border-color: var(--k-color-brand-red); font-weight: var(--k-weight-bold); }
 
 .k-login-card {
   background: var(--k-color-surface-raised);

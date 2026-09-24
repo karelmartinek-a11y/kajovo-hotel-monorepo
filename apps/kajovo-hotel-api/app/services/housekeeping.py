@@ -56,6 +56,7 @@ def _stay_read(reservation: dict[str, Any]) -> dict[str, Any]:
         "guest_label": str(reservation.get("label") or guest.get("full_name") or "").strip() or None,
         "persons": max(0, int(reservation.get("persons") or 0)),
         "country_name": COUNTRY_TRANSLATION.gettext(country.name) if country else None,
+        "country_code": country.alpha_2 if country else None,
         "arrival": reservation["arrival"], "departure": reservation["departure"],
         "checked_in": action.get("checkedin"), "checked_out": action.get("checkedout"),
         "amenities": [],
@@ -290,6 +291,7 @@ class BetterHotelHousekeepingClient:
                 continue
             status = raw_room.get("room_status") if isinstance(raw_room.get("room_status"), dict) else None
             status_name = str(status.get("name") or "").strip() if status else None
+            status_key = next((key for key, name in STATUS_NAMES.items() if name == status_name), None)
             status_id = str(status.get("id") or raw_room.get("room_status_id") or "").strip() or None if status else str(raw_room.get("room_status_id") or "").strip() or None
             status_color = str(status.get("color") or "").strip() or None if status else None
             is_clean = status_name in {STATUS_NAMES[key] for key in ("clean", "stay_no_linen", "stay_with_linen")}
@@ -328,6 +330,7 @@ class BetterHotelHousekeepingClient:
                     "floor": _floor_for_room(room_number),
                     "housekeeping_status_id": status_id,
                     "housekeeping_status": status_name,
+                    "housekeeping_status_key": status_key,
                     "ready_for_arrival": status_name == STATUS_NAMES["clean"],
                     "housekeeping_color": status_color,
                     "operational_state": operational_state,

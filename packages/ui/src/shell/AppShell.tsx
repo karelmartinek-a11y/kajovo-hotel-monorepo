@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@kajovo/shared';
 import '../tokens.css';
 import { KajovoWordmark } from './KajovoWordmark';
 import { Icon } from '../components/Icon';
@@ -69,17 +70,15 @@ export function AppShell({
           <div className="k-shell-inner k-app-header__ribbon-inner">
             <span className="k-app-header__ribbon-item">
               <Icon name="briefcase" className="k-app-header__ribbon-icon" />
-              <span>{panelLayout === 'admin' ? 'Administrace hotelu' : 'Provozní portál hotelu'}</span>
+              <span>{panelLayout === 'admin' ? t('Administrace hotelu') : t('Provozní portál hotelu')}</span>
             </span>
             <span className="k-app-header__ribbon-item">
               <Icon name="tool" className="k-app-header__ribbon-icon" />
-              <span>Navigace podle aktuální role</span>
+              <span>{t("Navigace podle aktuální role")}</span>
             </span>
           </div>
         </div>
-        <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>
-          Přeskočit na obsah
-        </a>
+        <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>{t("Přeskočit na obsah")}{' '}</a>
         <div className="k-shell-inner k-shell-header">
           {!isIntroView ? <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} /> : null}
           <ModuleNavigation

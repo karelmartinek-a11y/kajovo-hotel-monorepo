@@ -10,6 +10,7 @@ Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční 
 - `pnpm ci:brand-assets`
 - `pnpm ci:signage`
 - `pnpm ci:text-integrity`
+- `pnpm ci:portal-translations`
 - `pnpm ci:frontend-manifest`
 - `pnpm ci:runtime-integrity`
 - `pnpm ci:web-smoke`

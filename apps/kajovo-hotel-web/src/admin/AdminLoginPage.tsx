@@ -43,7 +43,7 @@ export function AdminLoginPage({ authError = null }: { authError?: string | null
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email: principal, password }),
+      body: JSON.stringify({ email: principal, password, web_activity_session: true }),
     });
     if (!response.ok) {
       const locked = response.status === 423;

@@ -14,6 +14,12 @@ import ia from '../../kajovo-hotel/ux/ia.json';
 import { Badge, Card, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
+  attachWebActivity,
+  getAuthBundle,
+  getPortalLocale,
+  t,
+  tf,
+  getIntlLocale,
   type BreakfastDailySummary,
   type BreakfastOrderCreate,
   type BreakfastOrderRead,
@@ -158,6 +164,18 @@ class HttpError extends Error {
   }
 }
 
+function localizeServerError(message: string, status: number): string {
+  if (getPortalLocale() === 'cs') return message;
+  const known = t(message);
+  if (known !== message) return known;
+  if (status === 401) return t('Přihlášení vypršelo. Přihlaste se znovu.');
+  if (status === 403) return t('Nemáte oprávnění k této akci.');
+  if (status === 404) return t('Požadovaný záznam nebyl nalezen.');
+  if (status === 409) return t('Záznam se mezitím změnil. Obnovte stránku a zkuste to znovu.');
+  if (status === 422) return t('Zkontrolujte zadané údaje.');
+  return tf('Požadavek se nepodařilo zpracovat (HTTP {status}).', { status });
+}
+
 async function buildHttpError(response: Response): Promise<HttpError> {
   const status = response.status;
   const raw = await response.text();
@@ -181,7 +199,7 @@ async function buildHttpError(response: Response): Promise<HttpError> {
       detail = raw;
     }
   }
-  return new HttpError(status, message, detail);
+  return new HttpError(status, localizeServerError(message, status), detail);
 }
 
 
@@ -288,10 +306,10 @@ class ClientErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
       return (
         <main className="k-page">
           <StateView
-            title="Chyba"
-            description={this.state.message ?? 'Aplikace narazila na neočekávanou chybu.'}
+            title={t("Chyba")}
+            description={this.state.message ?? t('Aplikace narazila na neočekávanou chybu.')}
             stateKey="error"
-            action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>}
+            action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>}
           />
         </main>
       );
@@ -378,7 +396,7 @@ const inventoryMovementLabels: Record<InventoryMovementType, string> = {
 
 
 function breakfastStatusLabel(status: BreakfastStatus | null | undefined): string {
-  return status ? statusLabels[status] : '-';
+  return status ? t(statusLabels[status]) : '-';
 }
 
 type BreakfastRowFeedback = {
@@ -396,7 +414,7 @@ function sameBreakfastNote(left: string | null | undefined, right: string | null
 }
 
 function lostFoundStatusLabel(status: LostFoundStatus | null | undefined): string {
-  return status ? lostFoundStatusLabels[status] : '-';
+  return status ? t(lostFoundStatusLabels[status]) : '-';
 }
 
 const lostFoundTagLabels: Record<string, string> = {
@@ -407,28 +425,28 @@ const lostFoundTagLabels: Record<string, string> = {
 };
 
 function lostFoundTagLabel(tag: string): string {
-  return lostFoundTagLabels[tag] ?? tag;
+  return t(lostFoundTagLabels[tag] ?? tag);
 }
 
 function lostFoundTypeLabel(itemType: LostFoundType | null | undefined): string {
-  return itemType ? lostFoundTypeLabels[itemType] : '-';
+  return itemType ? t(lostFoundTypeLabels[itemType]) : '-';
 }
 
 function issuePriorityLabel(priority: IssuePriority | null | undefined): string {
-  return priority ? issuePriorityLabels[priority] : '-';
+  return priority ? t(issuePriorityLabels[priority]) : '-';
 }
 
 function issueStatusLabel(status: IssueStatus | null | undefined): string {
-  return status ? issueStatusLabels[status] : '-';
+  return status ? t(issueStatusLabels[status]) : '-';
 }
 
 function inventoryMovementLabel(movementType: InventoryMovementType | null | undefined): string {
-  return movementType ? inventoryMovementLabels[movementType] : '-';
+  return movementType ? t(inventoryMovementLabels[movementType]) : '-';
 }
 
 function reportStatusLabel(status: string | null | undefined): string {
   if (status === 'open' || status === 'in_progress' || status === 'closed') {
-    return reportStatusLabels[status];
+    return t(reportStatusLabels[status]);
   }
   return status ?? '-';
 }
@@ -478,7 +496,7 @@ function formatBreakfastHeadlineDate(value: string): string {
   if (!year || !month || !day) {
     return value;
   }
-  return new Intl.DateTimeFormat('cs-CZ', {
+  return new Intl.DateTimeFormat(getIntlLocale(), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -535,7 +553,7 @@ async function normalizeHousekeepingPhoto(file: File): Promise<File> {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const element = new Image();
       element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error('Fotografii se nepodařilo připravit.'));
+      element.onerror = () => reject(new Error(t('Fotografii se nepodařilo připravit.')));
       element.src = objectUrl;
     });
     const maxEdge = 1600;
@@ -575,7 +593,7 @@ function canUseHousekeepingDraftStorage(): boolean {
 function openHousekeepingDraftDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (!canUseHousekeepingDraftStorage()) {
-      reject(new Error('IndexedDB není dostupné.'));
+      reject(new Error(t('IndexedDB není dostupné.')));
       return;
     }
     const request = window.indexedDB.open(HOUSEKEEPING_DRAFT_DB, 1);
@@ -586,7 +604,7 @@ function openHousekeepingDraftDatabase(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Lokální úložiště pokojské se nepodařilo otevřít.'));
+    request.onerror = () => reject(request.error ?? new Error(t('Lokální úložiště pokojské se nepodařilo otevřít.')));
   });
 }
 
@@ -603,7 +621,7 @@ async function readHousekeepingDraft(): Promise<HousekeepingDraftStorage | null>
       database.close();
     };
     request.onerror = () => {
-      reject(request.error ?? new Error('Lokální koncept pokojské se nepodařilo načíst.'));
+      reject(request.error ?? new Error(t('Lokální koncept pokojské se nepodařilo načíst.')));
       database.close();
     };
   });
@@ -621,7 +639,7 @@ async function writeHousekeepingDraft(draft: HousekeepingDraftStorage): Promise<
       database.close();
     };
     transaction.onerror = () => {
-      reject(transaction.error ?? new Error('Lokální koncept pokojské se nepodařilo uložit.'));
+      reject(transaction.error ?? new Error(t('Lokální koncept pokojské se nepodařilo uložit.')));
       database.close();
     };
     transaction.objectStore(HOUSEKEEPING_DRAFT_STORE).put(draft);
@@ -686,7 +704,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.detail ?? `Ruční aktualizace skončila chybou ${response.status}.`);
+      throw new Error(localizeServerError(payload?.detail ?? tf('Ruční aktualizace skončila chybou {status}.', { status: response.status }), response.status));
     }
     return (await response.json()) as T;
   }
@@ -700,7 +718,7 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      throw new Error(payload?.detail ?? `Ruční aktualizace skončila chybou ${response.status}.`);
+      throw new Error(localizeServerError(payload?.detail ?? tf('Ruční aktualizace skončila chybou {status}.', { status: response.status }), response.status));
     }
     return (await response.json()) as T;
   }
@@ -753,14 +771,14 @@ function formatDateTime(value: string | null): string {
   if (!value) {
     return '-';
   }
-  return new Date(value).toLocaleString('cs-CZ');
+  return new Date(value).toLocaleString(getIntlLocale());
 }
 
 function formatShortDateTime(value: string | null): string {
   if (!value) {
     return '-';
   }
-  return new Date(value).toLocaleString('cs-CZ', {
+  return new Date(value).toLocaleString(getIntlLocale(), {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -802,7 +820,7 @@ function InventoryThumb({
   return (
     <div className={`k-inventory-thumb k-inventory-thumb--${size}`} aria-hidden={src ? undefined : 'true'}>
       {src ? (
-        <img src={src} alt={alt ?? `Miniatura položky ${item.name}`} />
+        <img src={src} alt={alt ?? tf('Miniatura položky {name}', { name: item.name })} />
       ) : (
         <span className="k-inventory-thumb-letter">{item.name.slice(0, 1).toUpperCase()}</span>
       )}
@@ -870,7 +888,7 @@ function DatePickerButton({
 
   return (
     <span className="k-date-picker-button">
-      <button className="k-button secondary k-date-picker-button__trigger" type="button" aria-label={label} title={label} onClick={openPicker}>Vybrat datum</button>
+      <button className="k-button secondary k-date-picker-button__trigger" type="button" aria-label={label} title={label} onClick={openPicker}>{t("Vybrat datum")}</button>
       <input ref={inputRef} className="k-date-picker-button__input" tabIndex={-1} type="date" value={value} aria-hidden="true" onChange={(event) => onChange(event.target.value)} />
     </span>
   );
@@ -929,24 +947,24 @@ function Dashboard(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="dashboard-page">
-      <h1>Přehled</h1>
+      <h1>{t("Přehled")}</h1>
       {(
         <div className="k-grid cards-4 k-dashboard-cards">
-          <Card title="Snídaně dnes a zítra">
+          <Card title={t("Snídaně dnes a zítra")}>
             <strong>{metricValue(todayCount)}</strong>
-            <p>Zítra: {metricValue(tomorrowCount)}</p>
+            <p>{t("Zítra:")}{' '}{metricValue(tomorrowCount)}</p>
           </Card>
-          <Card title="Neopravené závady">
+          <Card title={t("Neopravené závady")}>
             <strong>{metricValue(unresolvedIssuesCount)}</strong>
-            <p>Aktuálně otevřené závady</p>
+            <p>{t("Aktuálně otevřené závady")}</p>
           </Card>
-          <Card title="Nezpracované nálezy">
+          <Card title={t("Nezpracované nálezy")}>
             <strong>{metricValue(unprocessedLostFoundCount)}</strong>
-            <p>Položky čekající na zpracování</p>
+            <p>{t("Položky čekající na zpracování")}</p>
           </Card>
-          <Card title="Stav skladu">
+          <Card title={t("Stav skladu")}>
             <strong>{metricValue(stockTotal)}</strong>
-            <p>Položek v evidenci: {metricValue(stockItemCount)}</p>
+            <p>{t("Položek v evidenci:")}{' '}{metricValue(stockItemCount)}</p>
           </Card>
         </div>
       )}
@@ -1017,7 +1035,7 @@ function BreakfastList(): JSX.Element {
         if (!active || sequence !== breakfastRequestSequence.current || targetDate !== displayedDate.current) {
           return;
         }
-        setError('Nepodařilo se načíst seznam snídaní.');
+        setError(t('Nepodařilo se načíst seznam snídaní.'));
       });
     return () => {
       active = false;
@@ -1107,7 +1125,7 @@ function BreakfastList(): JSX.Element {
         if (successMessage) setSaveInfo(successMessage);
       })
       .catch((saveError) => {
-        setError(saveError instanceof Error ? saveError.message : 'Uložení změn snídaní selhalo.');
+        setError(saveError instanceof Error ? saveError.message : t('Uložení změn snídaní selhalo.'));
       });
   };
 
@@ -1182,7 +1200,7 @@ function BreakfastList(): JSX.Element {
       return;
     }
     queue.inFlight = true;
-    updateRowFeedback(orderId, { state: 'saving', message: 'Ukládám poznámku…' });
+    updateRowFeedback(orderId, { state: 'saving', message: t('Ukládám poznámku…') });
     void updateOrder(
       currentOrder,
       {
@@ -1215,7 +1233,7 @@ function BreakfastList(): JSX.Element {
         queue.inFlight = false;
         updateRowFeedback(orderId, {
           state: 'error',
-          message: saveError instanceof Error ? saveError.message : 'Uložení poznámky selhalo.',
+          message: saveError instanceof Error ? saveError.message : t('Uložení poznámky selhalo.'),
         });
       });
   }, [clearRowFeedback, updateOrder, updateRowFeedback]);
@@ -1241,7 +1259,7 @@ function BreakfastList(): JSX.Element {
         kind: key, enabled: !reservation[key], version: reservation.version,
       });
     } catch {
-      setDietError('Dietu se nepodařilo uložit. Pobyt mohl mezitím změnit jiný uživatel; přehled se obnoví.');
+      setDietError(t('Dietu se nepodařilo uložit. Pobyt mohl mezitím změnit jiný uživatel; přehled se obnoví.'));
     } finally {
       if (displayedDate.current === serviceDate) loadDay(serviceDate, true);
       dietBusy.current = false;
@@ -1277,10 +1295,10 @@ function BreakfastList(): JSX.Element {
         await updateOrder(order, drafts[order.id] ?? {});
       }
       setDrafts({});
-      setSaveInfo(`Uloženo ${entries.length} změn pro ${serviceDate}.`);
+      setSaveInfo(tf('Uloženo {count} změn pro {date}.', { count: entries.length, date: serviceDate }));
       loadDay(serviceDate);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Uložení změn snídaní selhalo.');
+      setError(saveError instanceof Error ? saveError.message : t('Uložení změn snídaní selhalo.'));
     } finally {
       setSaveBusy(false);
     }
@@ -1302,7 +1320,7 @@ function BreakfastList(): JSX.Element {
     if (!canClearDay) {
       return;
     }
-    const confirmed = window.confirm(`Opravdu chcete smazat všechny snídaně pro den ${serviceDate}? Operaci nelze vrátit.`);
+    const confirmed = window.confirm(tf('Opravdu chcete smazat všechny snídaně pro den {date}? Operaci nelze vrátit.', { date: serviceDate }));
     if (!confirmed) return;
     const csrf = readCsrfToken();
     await fetchJson<void>(`/api/v1/breakfast/day/delete?service_date=${serviceDate}`, {
@@ -1322,14 +1340,14 @@ function BreakfastList(): JSX.Element {
     if (!isAdmin) {
       return;
     }
-    const confirmed = window.confirm(`Opravdu chcete smazat snídaně v období ${rangeDeleteFrom} až ${rangeDeleteTo}? Operaci nelze vrátit.`);
+    const confirmed = window.confirm(tf('Opravdu chcete smazat snídaně v období {from} až {to}? Operaci nelze vrátit.', { from: rangeDeleteFrom, to: rangeDeleteTo }));
     if (!confirmed) return;
     const csrf = readCsrfToken();
     await fetchJson<void>(`/api/v1/breakfast/period/delete?date_from=${encodeURIComponent(rangeDeleteFrom)}&date_to=${encodeURIComponent(rangeDeleteTo)}`, {
       method: 'DELETE',
       headers: csrf ? { 'x-csrf-token': csrf } : undefined,
     });
-    setSaveInfo(`Smazáno období ${rangeDeleteFrom} až ${rangeDeleteTo}.`);
+    setSaveInfo(tf('Smazáno období {from} až {to}.', { from: rangeDeleteFrom, to: rangeDeleteTo }));
     if (serviceDate >= rangeDeleteFrom && serviceDate <= rangeDeleteTo) {
       setItems([]);
       setSummary({
@@ -1350,13 +1368,13 @@ function BreakfastList(): JSX.Element {
     disabled: boolean,
   ): JSX.Element => (
     <div className="k-diet-toggle-group">
-      <DietToggleButton active={Boolean(data.diet_no_gluten)} label="Bez lepku" disabled={disabled} onToggle={() => onToggle('diet_no_gluten')}>
+      <DietToggleButton active={Boolean(data.diet_no_gluten)} label={t("Bez lepku")} disabled={disabled} onToggle={() => onToggle('diet_no_gluten')}>
         <DietIcon kind="diet_no_gluten" />
       </DietToggleButton>
-      <DietToggleButton active={Boolean(data.diet_no_milk)} label="Bez laktózy" disabled={disabled} onToggle={() => onToggle('diet_no_milk')}>
+      <DietToggleButton active={Boolean(data.diet_no_milk)} label={t("Bez laktózy")} disabled={disabled} onToggle={() => onToggle('diet_no_milk')}>
         <DietIcon kind="diet_no_milk" />
       </DietToggleButton>
-      <DietToggleButton active={Boolean(data.diet_no_pork)} label="Bez vepřového" disabled={disabled} onToggle={() => onToggle('diet_no_pork')}>
+      <DietToggleButton active={Boolean(data.diet_no_pork)} label={t("Bez vepřového")} disabled={disabled} onToggle={() => onToggle('diet_no_pork')}>
         <DietIcon kind="diet_no_pork" />
       </DietToggleButton>
     </div>
@@ -1365,14 +1383,14 @@ function BreakfastList(): JSX.Element {
   const renderReservationDiets = (item: BreakfastOrder): JSX.Element => <span>{(item.reservations ?? []).length ? item.reservations!.map((reservation) => <span className="k-breakfast-reservation-diets" key={reservation.reservation_id}>
     {item.reservations!.length > 1 ? <strong>{reservation.guest_name ?? `Pobyt ${reservation.reservation_id}`}</strong> : null}
     {renderDietToggles(reservation, (key) => void toggleDiet(item, reservation, key), !canEditDiet || dietSaving)}
-    <small>Pro celý pobyt{reservation.arrival && reservation.departure ? ` ${reservation.arrival} – ${reservation.departure}` : ''}</small>
-  </span>) : <span title="Obnovte rezervace z Better Hotel API.">Chybí vazba na pobyt</span>}</span>;
+    <small>{t("Pro celý pobyt")}{reservation.arrival && reservation.departure ? ` ${reservation.arrival} – ${reservation.departure}` : ''}</small>
+  </span>) : <span title={t("Obnovte rezervace z Better Hotel API.")}>{t("Chybí vazba na pobyt")}</span>}</span>;
 
   const renderActiveDiets = (data: { diet_no_gluten?: boolean; diet_no_milk?: boolean; diet_no_pork?: boolean }): JSX.Element | null => {
     const active = [
-      data.diet_no_gluten ? <span key="gluten" className="k-diet-icon k-diet-icon--active" title="Bezlepková strava"><DietIcon kind="diet_no_gluten" /></span> : null,
-      data.diet_no_milk ? <span key="milk" className="k-diet-icon k-diet-icon--active" title="Bez laktózy"><DietIcon kind="diet_no_milk" /></span> : null,
-      data.diet_no_pork ? <span key="pork" className="k-diet-icon k-diet-icon--active" title="Strava bez vepřového masa"><DietIcon kind="diet_no_pork" /></span> : null,
+      data.diet_no_gluten ? <span key="gluten" className="k-diet-icon k-diet-icon--active" title={t("Bezlepková strava")}><DietIcon kind="diet_no_gluten" /></span> : null,
+      data.diet_no_milk ? <span key="milk" className="k-diet-icon k-diet-icon--active" title={t("Bez laktózy")}><DietIcon kind="diet_no_milk" /></span> : null,
+      data.diet_no_pork ? <span key="pork" className="k-diet-icon k-diet-icon--active" title={t("Strava bez vepřového masa")}><DietIcon kind="diet_no_pork" /></span> : null,
     ].filter(Boolean);
     return active.length ? <span className="k-diet-toggle-group">{active}</span> : null;
   };
@@ -1380,14 +1398,14 @@ function BreakfastList(): JSX.Element {
   const renderActionButton = (order: BreakfastOrder, effectiveItem: BreakfastOrder): JSX.Element => {
     if (effectiveItem.status === 'served') {
       if (canReactivate) {
-        return <button className="k-button secondary" type="button" onClick={() => reactivate(order)}>Vrátit výdej</button>;
+        return <button className="k-button secondary" type="button" onClick={() => reactivate(order)}>{t("Vrátit výdej")}</button>;
       }
-      return <button className="k-button secondary" type="button" disabled aria-pressed="true">Vydáno</button>;
+      return <button className="k-button secondary" type="button" disabled aria-pressed="true">{t("Vydáno")}</button>;
     }
     if (effectiveItem.status === 'cancelled') {
-      return <button className="k-button secondary" type="button" disabled>Zrušeno</button>;
+      return <button className="k-button secondary" type="button" disabled>{t("Zrušeno")}</button>;
     }
-    return <button className="k-button" type="button" onClick={() => markServed(order)} disabled={!canServe}>Vydat</button>;
+    return <button className="k-button" type="button" onClick={() => markServed(order)} disabled={!canServe}>{t("Vydat")}</button>;
   };
 
   const previewImport = async (file: File): Promise<void> => {
@@ -1408,12 +1426,12 @@ function BreakfastList(): JSX.Element {
       setImportPreview(result.items);
       setImportDate(result.date);
       if (result.items.length === 0) {
-        setImportInfo(`Soubor ${file.name} neobsahuje žádné snídaně k importu.`);
+        setImportInfo(tf('Soubor {name} neobsahuje žádné snídaně k importu.', { name: file.name }));
       } else {
-        setImportInfo(`Náhled připraven: ${result.items.length} pokojů pro ${result.date}.`);
+        setImportInfo(tf('Náhled připraven: {count} pokojů pro {date}.', { count: result.items.length, date: result.date }));
       }
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Validace PDF selhala.');
+      setImportError(error instanceof Error ? error.message : t('Validace PDF selhala.'));
     } finally {
       setImportBusy(false);
     }
@@ -1431,7 +1449,7 @@ function BreakfastList(): JSX.Element {
 
   const saveImport = async (): Promise<void> => {
     if (!importFile || !importPreview) {
-      setImportError('Nejprve nahrajte PDF.');
+      setImportError(t('Nejprve nahrajte PDF.'));
       return;
     }
     setImportBusy(true);
@@ -1452,13 +1470,13 @@ function BreakfastList(): JSX.Element {
         headers: csrf ? { 'x-csrf-token': csrf } : undefined,
         body: data,
       });
-      setImportInfo(`Import uložen: ${result.items.length} pokojů (${result.date}).`);
+      setImportInfo(tf('Import uložen: {count} pokojů ({date}).', { count: result.items.length, date: result.date }));
       setImportPreview(null);
       setImportDate(result.date);
       setServiceDate(result.date);
       loadDay(result.date);
     } catch {
-      setImportError('Uložení importu selhalo.');
+      setImportError(t('Uložení importu selhalo.'));
     } finally {
       setImportBusy(false);
     }
@@ -1496,9 +1514,9 @@ function BreakfastList(): JSX.Element {
       service_date: serviceDate,
       status: 'queued',
       progress: [
-        { at: new Date().toISOString(), step: 'queued', message: 'Žádost se připravuje.' },
+        { at: new Date().toISOString(), step: 'queued', message: t('Žádost se připravuje.') },
       ],
-      message: 'Žádost se připravuje.',
+      message: t('Žádost se připravuje.'),
       error_message: null,
       imported_count: 0,
       created_at: null,
@@ -1516,13 +1534,13 @@ function BreakfastList(): JSX.Element {
       if (finalJob.status === 'succeeded') {
         setManualRefreshOpen(false);
         setManualRefreshJob(null);
-        setImportInfo(`Ruční aktualizace pro ${serviceDate} byla dokončena.`);
+        setImportInfo(tf('Ruční aktualizace pro {date} byla dokončena.', { date: serviceDate }));
         loadDay(serviceDate);
         return;
       }
-      setManualRefreshError(finalJob.error_message ?? 'Ruční aktualizace selhala.');
+      setManualRefreshError(finalJob.error_message ?? t('Ruční aktualizace selhala.'));
     } catch (error) {
-      setManualRefreshError(error instanceof Error ? error.message : 'Ruční aktualizaci se nepodařilo spustit.');
+      setManualRefreshError(error instanceof Error ? error.message : t('Ruční aktualizaci se nepodařilo spustit.'));
     } finally {
       setManualRefreshBusy(false);
     }
@@ -1531,28 +1549,28 @@ function BreakfastList(): JSX.Element {
   const importPreviewTable = importPreview ? (
     <div className="k-card">
       <div className="k-toolbar">
-        <strong>Kontrola importu</strong>
+        <strong>{t("Kontrola importu")}</strong>
         <span className="k-subtle">{importFile?.name ?? importDate ?? '-'}</span>
       </div>
       {importPreview.length === 0 ? (
         <StateView
-          title="Žádné snídaně v PDF"
-          description="Vybraný soubor neobsahuje žádné řádky se snídaní pro import."
+          title={t("Žádné snídaně v PDF")}
+          description={t("Vybraný soubor neobsahuje žádné řádky se snídaní pro import.")}
           stateKey="empty"
         />
       ) : null}
       <DataTable
-        headers={['Pokoj', 'Host', 'Počet', 'Diety']}
+        headers={[t('Pokoj'), t('Host'), t('Počet'), t('Diety')]}
         rows={importPreview.map((item) => [
           item.room,
           item.guest_name ?? `Pokoj ${item.room}`,
           item.count,
-          <span>Diety se nastavují u rezervace načtené z API.</span>,
+          <span>{t("Diety se nastavují u rezervace načtené z API.")}</span>,
         ])}
       />
       <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy || importPreview.length === 0}>Potvrdit import</button>
-        <button className="k-button secondary" type="button" onClick={() => setImportPreview(null)}>Zavřít náhled</button>
+        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy || importPreview.length === 0}>{t("Potvrdit import")}</button>
+        <button className="k-button secondary" type="button" onClick={() => setImportPreview(null)}>{t("Zavřít náhled")}</button>
       </div>
     </div>
   ) : null;
@@ -1570,51 +1588,51 @@ function BreakfastList(): JSX.Element {
   const servingMobileHeader = (
     <div className="k-breakfast-serving-header" data-testid="breakfast-serving-mobile-header">
       <div className="k-breakfast-serving-header__date">
-        <DatePickerButton value={serviceDate} label="Vybrat datum" onChange={setServiceDate} />
-        <span className="k-breakfast-serving-header__date-label">Přehled dne</span>
+        <DatePickerButton value={serviceDate} label={t("Vybrat datum")} onChange={setServiceDate} />
+        <span className="k-breakfast-serving-header__date-label">{t("Přehled dne")}</span>
         <span className="k-breakfast-serving-header__date-text">{formatBreakfastHeadlineDate(breakfastSummaryDate)}</span>
       </div>
-      <div className="k-breakfast-serving-header__nav" aria-label="Posun dne snídaní">
-        <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
-        <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
+      <div className="k-breakfast-serving-header__nav" aria-label={t("Posun dne snídaní")}>
+        <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Předchozí den")} title={t("Předchozí den")} onClick={() => changeServiceDate(-1)}>←</button>
+        <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Následující den")} title={t("Následující den")} onClick={() => changeServiceDate(1)}>→</button>
       </div>
       {canManualRefresh ? (
-        <button className="k-button k-breakfast-serving-header__refresh" type="button" aria-label="Aktualizovat" title="Aktualizovat" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>↻</button>
+        <button className="k-button k-breakfast-serving-header__refresh" type="button" aria-label={t("Aktualizovat")} title={t("Aktualizovat")} onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>↻</button>
       ) : null}
     </div>
   );
 
   const breakfastToolbar = isServingView ? (
     <div className="k-toolbar">
-      <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Předchozí den" title="Předchozí den" onClick={() => changeServiceDate(-1)}>←</button>
-      <DatePickerButton value={serviceDate} label="Vybrat datum" onChange={setServiceDate} />
-      <button className="k-button secondary k-day-arrow-button" type="button" aria-label="Následující den" title="Následující den" onClick={() => changeServiceDate(1)}>→</button>
-      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
+      <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Předchozí den")} title={t("Předchozí den")} onClick={() => changeServiceDate(-1)}>←</button>
+      <DatePickerButton value={serviceDate} label={t("Vybrat datum")} onChange={setServiceDate} />
+      <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Následující den")} title={t("Následující den")} onClick={() => changeServiceDate(1)}>→</button>
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>{t("Aktualizovat z API")}</button> : null}
     </div>
   ) : (
     <div className="k-toolbar">
-      <DatePickerButton value={serviceDate} label="Vybrat datum" onChange={setServiceDate} />
-      <input className="k-input" placeholder="Hledat dle pokoje nebo hosta" aria-label="Hledat" value={search} onChange={(event) => setSearch(event.target.value)} />
-      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label="Import PDF" onChange={(event) => {
+      <DatePickerButton value={serviceDate} label={t("Vybrat datum")} onChange={setServiceDate} />
+      <input className="k-input" placeholder={t("Hledat dle pokoje nebo hosta")} aria-label={t("Hledat")} value={search} onChange={(event) => setSearch(event.target.value)} />
+      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label={t("Import PDF")} onChange={(event) => {
         handleImportFile(event.target.files?.[0] ?? null);
         event.currentTarget.value = '';
       }} /> : null}
-      {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>Export snídaní (PDF)</button> : null}
-      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>Aktualizovat z API</button> : null}
-      {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>Vrátit celý den</button> : null}
-      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>Smazat den</button> : null}
-      {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>Uložit změny</button> : null}
+      {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>{t("Export snídaní (PDF)")}</button> : null}
+      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>{t("Aktualizovat z API")}</button> : null}
+      {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>{t("Vrátit celý den")}</button> : null}
+      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>{t("Smazat den")}</button> : null}
+      {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>{t("Uložit změny")}</button> : null}
     </div>
   );
 
   const manualRefreshProgress = manualRefreshJob?.progress ?? [];
   const manualRefreshTitle = manualRefreshJob
     ? manualRefreshJob.status === 'succeeded'
-      ? 'Aktualizace dokončena'
+      ? t('Aktualizace dokončena')
       : manualRefreshJob.status === 'failed'
         ? 'Aktualizace selhala'
-        : 'Aktualizace probíhá'
-    : 'Aktualizace snídaní';
+        : t('Aktualizace probíhá')
+    : t('Aktualizace snídaní');
 
   const compactServingList = (
     <div className="k-breakfast-serving-list" data-testid="breakfast-serving-mobile-list">
@@ -1634,7 +1652,7 @@ function BreakfastList(): JSX.Element {
               {canEditNote ? (
                 <input
                   className={`k-input k-breakfast-note k-breakfast-serving-row__note-input${feedback?.state === 'error' ? ' k-input--error' : ''}`}
-                  aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`}
+                  aria-label={tf('Poznámka pro pokoj {room}', { room: effectiveItem.room_number })}
                   value={effectiveItem.note ?? ''}
                   onChange={(event) => queueOrderDraft(item, { note: event.target.value })}
                   onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)}
@@ -1645,7 +1663,7 @@ function BreakfastList(): JSX.Element {
               <span className="k-breakfast-serving-row__diets">{renderActiveDiets(effectiveItem)}</span>
               <span className="k-breakfast-serving-row__action">{renderActionButton(item, effectiveItem)}</span>
             </div>
-            {canEditDiet ? <details><summary>Diety pobytu</summary>{renderReservationDiets(item)}</details> : null}
+            {canEditDiet ? <details><summary>{t("Diety pobytu")}</summary>{renderReservationDiets(item)}</details> : null}
             {feedback ? <p className={`k-breakfast-serving-row__feedback k-text-${feedback.state === 'error' ? 'error' : 'muted'}`}>{feedback.message}</p> : null}
           </article>
         );
@@ -1656,13 +1674,13 @@ function BreakfastList(): JSX.Element {
   return (
     <main className="k-page k-breakfast-serving-page" data-testid="breakfast-list-page">
       {servingMobileHeader}
-      <h1>Snídaně</h1>
+      <h1>{t("Snídaně")}</h1>
       {error ? (
-        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+        <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : (
         <>
           <div className="k-card k-breakfast-overview-date">
-            <p className="k-text-muted k-breakfast-overview-date__label">Datum přehledu snídaní</p>
+            <p className="k-text-muted k-breakfast-overview-date__label">{t("Datum přehledu snídaní")}</p>
             <h2 className="k-breakfast-overview-date__value">
               {formatBreakfastHeadlineDate(breakfastSummaryDate)}
             </h2>
@@ -1670,23 +1688,23 @@ function BreakfastList(): JSX.Element {
           {breakfastToolbar}
           {isAdmin ? (
             <div className="k-toolbar">
-              <input className="k-input" type="date" aria-label="Smazat období od" value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
-              <input className="k-input" type="date" aria-label="Smazat období do" value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
-              <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>Smazat období</button>
+              <input className="k-input" type="date" aria-label={t("Smazat období od")} value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
+              <input className="k-input" type="date" aria-label={t("Smazat období do")} value={rangeDeleteTo} onChange={(event) => setRangeDeleteTo(event.target.value)} />
+              <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>{t("Smazat období")}</button>
             </div>
           ) : null}
-          {canImport && importBusy ? <p className="k-text-muted">Načítám náhled importu z PDF…</p> : null}
+          {canImport && importBusy ? <p className="k-text-muted">{t("Načítám náhled importu z PDF…")}</p> : null}
           {canImport && (importError || importInfo) ? <p className={importError ? 'k-text-error' : 'k-text-success'}>{importError ?? importInfo}</p> : null}
           {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
           {dietError ? <p className="k-text-error" role="alert">{dietError}</p> : null}
           {importPreviewTable}
           {listItems.length === 0 ? (
-            <StateView title="Prázdný stav" description={isServingView ? 'Na vybraný den nejsou naplánované žádné snídaně.' : 'Nebyly nalezeny žádné objednávky.'} stateKey="empty" />
+            <StateView title={t("Prázdný stav")} description={isServingView ? t('Na vybraný den nejsou naplánované žádné snídaně.') : t('Nebyly nalezeny žádné objednávky.')} stateKey="empty" />
           ) : (
             <>
               {compactServingList}
               <DataTable
-                headers={isServingView ? ['Pokoj', 'Osoby', 'Jméno', 'Diety', 'Poznámka', 'Akce'] : ['Pokoj', 'Host', 'Osoby', 'Diety', 'Poznámka', 'Akce']}
+                headers={isServingView ? [t('Pokoj'), t('Osoby'), t('Jméno'), t('Diety'), t('Poznámka'), t('Akce')] : [t('Pokoj'), t('Host'), t('Osoby'), t('Diety'), t('Poznámka'), t('Akce')]}
                 rows={listItems.map((item) => {
                   const effectiveItem = mergeOrderWithDraft(item);
                   const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
@@ -1708,7 +1726,7 @@ function BreakfastList(): JSX.Element {
                     <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
                     <span className={rowClass}>{effectiveItem.guest_count}</span>,
                     <span className={rowClass}>{renderReservationDiets(item)}</span>,
-                    canEditNote ? <input className={`k-input k-breakfast-note${rowFeedback[item.id]?.state === 'error' ? ' k-input--error' : ''}`} aria-label={`Poznámka pro pokoj ${effectiveItem.room_number}`} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
+                    canEditNote ? <input className={`k-input k-breakfast-note${rowFeedback[item.id]?.state === 'error' ? ' k-input--error' : ''}`} aria-label={tf('Poznámka pro pokoj {room}', { room: effectiveItem.room_number })} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                     action,
                   ];
                 })}
@@ -1716,12 +1734,11 @@ function BreakfastList(): JSX.Element {
             </>
           )}
           <div className="k-grid cards-3">
-            <Card title="Snídaní celkem"><strong>{overviewStats.totalBreakfasts}</strong></Card>
-            <Card title="Vydáno"><strong>{overviewStats.servedBreakfasts}</strong></Card>
-            <Card title="Zbývá vydat"><strong>{overviewStats.remainingBreakfasts}</strong></Card>
+            <Card title={t("Snídaní celkem")}><strong>{overviewStats.totalBreakfasts}</strong></Card>
+            <Card title={t("Vydáno")}><strong>{overviewStats.servedBreakfasts}</strong></Card>
+            <Card title={t("Zbývá vydat")}><strong>{overviewStats.remainingBreakfasts}</strong></Card>
           </div>
-          <p className="k-text-muted k-breakfast-overview-updated-at">
-            Data aktualizována: {breakfastImportStamp}
+          <p className="k-text-muted k-breakfast-overview-updated-at">{t("Data aktualizována:")}{' '}{breakfastImportStamp}
           </p>
           {manualRefreshOpen ? (
             <div className="k-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="breakfast-refresh-title">
@@ -1729,7 +1746,7 @@ function BreakfastList(): JSX.Element {
                 <div className="k-modal-header">
                   <div>
                     <h2 id="breakfast-refresh-title">{manualRefreshTitle}</h2>
-                    <p className="k-subtle">Ruční synchronizace z API pro den {manualRefreshJob?.service_date ?? serviceDate}.</p>
+                    <p className="k-subtle">{t("Ruční synchronizace z API pro den")}{' '}{manualRefreshJob?.service_date ?? serviceDate}.</p>
                   </div>
                   <div className="k-modal-spinner" aria-hidden="true" />
                 </div>
@@ -1742,12 +1759,10 @@ function BreakfastList(): JSX.Element {
                       <span>{item.message}</span>
                       <small>{formatShortDateTime(item.at)}</small>
                     </div>
-                  )) : <p className="k-text-muted">Čekám na stav serverového jobu.</p>}
+                  )) : <p className="k-text-muted">{t("Čekám na stav serverového jobu.")}</p>}
                 </div>
                 <div className="k-toolbar">
-                  <button className="k-button secondary" type="button" onClick={() => setManualRefreshOpen(false)} disabled={manualRefreshBusy}>
-                    Zavřít
-                  </button>
+                  <button className="k-button secondary" type="button" onClick={() => setManualRefreshOpen(false)} disabled={manualRefreshBusy}>{t("Zavřít")}{' '}</button>
                 </div>
               </div>
             </div>
@@ -1788,7 +1803,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         });
       })
       .catch(() => {
-        setError('Objednávku se nepodařilo načíst.');
+        setError(t('Objednávku se nepodařilo načíst.'));
       });
   }, [id, mode]);
 
@@ -1813,27 +1828,23 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       const saved = await fetchJson<BreakfastOrder>(target, init);
       navigate(`/snidane/${saved.id}`);
     } catch {
-      setError('Objednávku se nepodařilo uložit.');
+      setError(t('Objednávku se nepodařilo uložit.'));
     }
   };
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'breakfast-create-page' : 'breakfast-edit-page'}>
-      <h1>{mode === 'create' ? 'Nová snídaně' : 'Upravit snídani'}</h1>
+      <h1>{mode === 'create' ? t('Nová snídaně') : t('Upravit snídani')}</h1>
       {error ? (
-        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+        <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : (
         <div className="k-card">
           <div className="k-toolbar">
-            <Link className="k-nav-link" to="/snidane">
-              Zpět na seznam
-            </Link>
-            <button className="k-button" type="button" onClick={() => void save()}>
-              Uložit
-            </button>
+            <Link className="k-nav-link" to="/snidane">{t("Zpět na seznam")}{' '}</Link>
+            <button className="k-button" type="button" onClick={() => void save()}>{t("Uložit")}{' '}</button>
           </div>
           <div className="k-form-grid">
-            <FormField id="service_date" label="Datum služby">
+            <FormField id="service_date" label={t("Datum služby")}>
               <input
                 id="service_date"
                 type="date"
@@ -1842,7 +1853,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, service_date: event.target.value }))}
               />
             </FormField>
-            <FormField id="room_number" label="Pokoj">
+            <FormField id="room_number" label={t("Pokoj")}>
               <input
                 id="room_number"
                 className="k-input"
@@ -1850,7 +1861,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, room_number: event.target.value }))}
               />
             </FormField>
-            <FormField id="guest_name" label="Host">
+            <FormField id="guest_name" label={t("Host")}>
               <input
                 id="guest_name"
                 className="k-input"
@@ -1858,7 +1869,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, guest_name: event.target.value }))}
               />
             </FormField>
-            <FormField id="guest_count" label="Počet hostů">
+            <FormField id="guest_count" label={t("Počet hostů")}>
               <input
                 id="guest_count"
                 type="number"
@@ -1870,7 +1881,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 }
               />
             </FormField>
-            <FormField id="status" label="Stav">
+            <FormField id="status" label={t("Stav")}>
               <select
                 id="status"
                 className="k-select"
@@ -1879,13 +1890,13 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                   setPayload((prev) => ({ ...prev, status: event.target.value as BreakfastStatus }))
                 }
               >
-                <option value="pending">Čeká</option>
-                <option value="preparing">Připravuje se</option>
-                <option value="served">Vydáno</option>
-                <option value="cancelled">Zrušeno</option>
+                <option value="pending">{t("Čeká")}</option>
+                <option value="preparing">{t("Připravuje se")}</option>
+                <option value="served">{t("Vydáno")}</option>
+                <option value="cancelled">{t("Zrušeno")}</option>
               </select>
             </FormField>
-            <FormField id="note" label="Poznámka">
+            <FormField id="note" label={t("Poznámka")}>
               <textarea
                 id="note"
                 className="k-textarea"
@@ -1919,39 +1930,35 @@ function BreakfastDetail(): JSX.Element {
       })
       .catch(() => {
         setNotFound(true);
-        setError('Objednávka nebyla nalezena.');
+        setError(t('Objednávka nebyla nalezena.'));
       });
   }, [id]);
 
   return (
     <main className="k-page" data-testid="breakfast-detail-page">
-      <h1>Detail snídaně</h1>
+      <h1>{t("Detail snídaně")}</h1>
       {notFound ? (
-        <StateView title="404" description={error ?? 'Objednávka neexistuje.'} stateKey="404" action={<Link className="k-button secondary" to="/snidane">Zpět na seznam</Link>} />
+        <StateView title="404" description={error ?? t('Objednávka neexistuje.')} stateKey="404" action={<Link className="k-button secondary" to="/snidane">{t("Zpět na seznam")}</Link>} />
       ) : item ? (
         <div className="k-card">
           <div className="k-toolbar">
-            <Link className="k-nav-link" to="/snidane">
-              Zpět na seznam
-            </Link>
-            <Link className="k-button" to={`/snidane/${item.id}/edit`}>
-              Upravit
-            </Link>
+            <Link className="k-nav-link" to="/snidane">{t("Zpět na seznam")}{' '}</Link>
+            <Link className="k-button" to={`/snidane/${item.id}/edit`}>{t("Upravit")}{' '}</Link>
           </div>
           <DataTable
-            headers={['Položka', 'Hodnota']}
+            headers={[t('Položka'), t('Hodnota')]}
             rows={[
-              ['Datum služby', item.service_date],
-              ['Pokoj', item.room_number],
-              ['Host', item.guest_name],
-              ['Počet hostů', item.guest_count],
-              ['Stav', breakfastStatusLabel(item.status)],
-              ['Poznámka', item.note ?? '-'],
-              ['Bez lepku', item.diet_no_gluten ? 'Ano' : 'Ne'],
-              ['Bez laktózy', item.diet_no_milk ? 'Ano' : 'Ne'],
-              ['Bez vepřového', item.diet_no_pork ? 'Ano' : 'Ne'],
-              ['Vytvořeno', item.created_at ? formatDateTime(item.created_at) : '-'],
-              ['Aktualizováno', item.updated_at ? formatDateTime(item.updated_at) : '-'],
+              [t('Datum služby'), item.service_date],
+              [t('Pokoj'), item.room_number],
+              [t('Host'), item.guest_name],
+              [t('Počet hostů'), item.guest_count],
+              [t('Stav'), breakfastStatusLabel(item.status)],
+              [t('Poznámka'), item.note ?? '-'],
+              [t('Bez lepku'), item.diet_no_gluten ? t('Ano') : t('Ne')],
+              [t('Bez laktózy'), item.diet_no_milk ? t('Ano') : t('Ne')],
+              [t('Bez vepřového'), item.diet_no_pork ? t('Ano') : t('Ne')],
+              [t('Vytvořeno'), item.created_at ? formatDateTime(item.created_at) : '-'],
+              [t('Aktualizováno'), item.updated_at ? formatDateTime(item.updated_at) : '-'],
             ]}
           />
         </div>
@@ -1973,7 +1980,7 @@ function HousekeepingForm(): JSX.Element {
   const [selectedRoom, setSelectedRoom] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [photos, setPhotos] = React.useState<File[]>([]);
-  const [draftNotice, setDraftNotice] = React.useState<string>('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.');
+  const [draftNotice, setDraftNotice] = React.useState<string>(t('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.'));
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
@@ -2007,7 +2014,7 @@ function HousekeepingForm(): JSX.Element {
     setCameraError(null);
     setCameraReady(false);
     clearHousekeepingDraft();
-    setDraftNotice('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.');
+    setDraftNotice(t('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.'));
   }, []);
 
   const stopCamera = React.useCallback((): void => {
@@ -2031,10 +2038,10 @@ function HousekeepingForm(): JSX.Element {
     setPhotos((current) => {
       const merged = append ? [...current, ...normalized] : normalized;
       if (merged.length > 3) {
-        setError('Lze připojit nejvýše 3 fotografie.');
+        setError(t('Lze připojit nejvýše 3 fotografie.'));
         return merged.slice(0, 3);
       }
-      setError((previous) => (previous === 'Lze připojit nejvýše 3 fotografie.' ? null : previous));
+      setError((previous) => (previous === t('Lze připojit nejvýše 3 fotografie.') ? null : previous));
       return merged;
     });
   }, []);
@@ -2051,7 +2058,7 @@ function HousekeepingForm(): JSX.Element {
 
   const removePhoto = React.useCallback((index: number): void => {
     setPhotos((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    setError((previous) => (previous === 'Lze připojit nejvýše 3 fotografie.' ? null : previous));
+    setError((previous) => (previous === t('Lze připojit nejvýše 3 fotografie.') ? null : previous));
   }, []);
 
   const openNativeCamera = React.useCallback(async (): Promise<void> => {
@@ -2059,7 +2066,7 @@ function HousekeepingForm(): JSX.Element {
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Tento prohlížeč nepodporuje přímý kamerový náhled. Použijte systémové vyfocení.');
+      setCameraError(t('Tento prohlížeč nepodporuje přímý kamerový náhled. Použijte systémové vyfocení.'));
       cameraInputRef.current?.click();
       return;
     }
@@ -2074,7 +2081,7 @@ function HousekeepingForm(): JSX.Element {
       setCameraError(null);
       setCameraOpen(true);
     } catch {
-      setCameraError('Kamera není dostupná. Zkontrolujte oprávnění a zkuste to znovu.');
+      setCameraError(t('Kamera není dostupná. Zkontrolujte oprávnění a zkuste to znovu.'));
       cameraInputRef.current?.click();
     }
   }, [photos.length, saving]);
@@ -2082,7 +2089,7 @@ function HousekeepingForm(): JSX.Element {
   const capturePhoto = React.useCallback(async (): Promise<void> => {
     const video = cameraVideoRef.current;
     if (!video) {
-      setCameraError('Náhled kamery ještě není připravený.');
+      setCameraError(t('Náhled kamery ještě není připravený.'));
       return;
     }
     const width = video.videoWidth || 1280;
@@ -2092,7 +2099,7 @@ function HousekeepingForm(): JSX.Element {
     canvas.height = height;
     const context = canvas.getContext('2d');
     if (!context) {
-      setCameraError('Snímek z kamery se nepodařilo zpracovat.');
+      setCameraError(t('Snímek z kamery se nepodařilo zpracovat.'));
       return;
     }
     context.drawImage(video, 0, 0, width, height);
@@ -2100,7 +2107,7 @@ function HousekeepingForm(): JSX.Element {
       canvas.toBlob(resolve, 'image/jpeg', 0.9);
     });
     if (!blob) {
-      setCameraError('Snímek z kamery se nepodařilo uložit.');
+      setCameraError(t('Snímek z kamery se nepodařilo uložit.'));
       return;
     }
     const file = new File([blob], `housekeeping-${Date.now()}.jpg`, {
@@ -2118,7 +2125,7 @@ function HousekeepingForm(): JSX.Element {
     cameraVideoRef.current.srcObject = cameraStreamRef.current;
     void cameraVideoRef.current.play()
       .then(() => setCameraReady(true))
-      .catch(() => setCameraError('Náhled kamery se nepodařilo spustit.'));
+      .catch(() => setCameraError(t('Náhled kamery se nepodařilo spustit.')));
   }, [cameraOpen]);
 
   React.useEffect(() => {
@@ -2138,7 +2145,7 @@ function HousekeepingForm(): JSX.Element {
           setPhotos(draft.photos.slice(0, 3).map(draftPhotoToFile));
         }
         if (draft.updatedAt) {
-          setDraftNotice(`Obnoven lokální koncept z ${formatDateTime(draft.updatedAt)}.`);
+          setDraftNotice(tf('Obnoven lokální koncept z {date}.', { date: formatDateTime(draft.updatedAt) }));
         }
       })
       .catch(() => {
@@ -2150,7 +2157,7 @@ function HousekeepingForm(): JSX.Element {
     const isEmpty = mode === 'issue' && selectedRoom === '' && description.trim() === '' && photos.length === 0;
     if (isEmpty) {
       clearHousekeepingDraft();
-      setDraftNotice('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.');
+      setDraftNotice(t('Rozpracovaný záznam se ukládá lokálně v tomto zařízení, včetně nově pořízených fotek.'));
       return;
     }
     let cancelled = false;
@@ -2170,7 +2177,7 @@ function HousekeepingForm(): JSX.Element {
         };
         await writeHousekeepingDraft(payload);
         if (!cancelled) {
-          setDraftNotice('Rozpracovaný záznam je uložený lokálně v tomto zařízení, včetně pořízených fotek.');
+          setDraftNotice(t('Rozpracovaný záznam je uložený lokálně v tomto zařízení, včetně pořízených fotek.'));
         }
       } catch {
         console.warn('housekeeping.draft_persist_failed');
@@ -2193,11 +2200,11 @@ function HousekeepingForm(): JSX.Element {
     const shortDescription = description.trim();
     const roomValue = selectedRoom.trim();
     if (mode === 'issue' && !canCreateIssue) {
-      setError('Aktivní role nemá oprávnění pro založení závady.');
+      setError(t('Aktivní role nemá oprávnění pro založení závady.'));
       return;
     }
     if (mode === 'lost_found' && !canCreateLostFound) {
-      setError('Aktivní role nemá oprávnění pro založení nálezu.');
+      setError(t('Aktivní role nemá oprávnění pro založení nálezu.'));
       return;
     }
     if (!roomValue) {
@@ -2205,7 +2212,7 @@ function HousekeepingForm(): JSX.Element {
       return;
     }
     if (!shortDescription) {
-      setError('Vyplňte krátký popis.');
+      setError(t('Vyplňte krátký popis.'));
       return;
     }
 
@@ -2237,7 +2244,7 @@ function HousekeepingForm(): JSX.Element {
             body: formData,
           });
           if (!response.ok) {
-            throw new Error('Fotografie závady se nepodařilo nahrát.');
+            throw new Error(t('Fotografie závady se nepodařilo nahrát.'));
           }
         }
         successReference = `#${created.id}`;
@@ -2247,7 +2254,7 @@ function HousekeepingForm(): JSX.Element {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             item_type: 'found',
-            category: 'Nález',
+            category: t('Nález'),
             description: shortDescription,
             location: `Pokoj ${roomValue}`,
             room_number: roomValue,
@@ -2267,16 +2274,16 @@ function HousekeepingForm(): JSX.Element {
             body: formData,
           });
           if (!response.ok) {
-            throw new Error('Fotografie nálezu se nepodařilo nahrát.');
+            throw new Error(t('Fotografie nálezu se nepodařilo nahrát.'));
           }
         }
         successReference = `#${created.id}`;
       }
       stopCamera();
       clearDraftForm();
-      setSuccess(`Úspěšně byl odeslán záznam ${successReference}.`);
+      setSuccess(tf('Úspěšně byl odeslán záznam {reference}.', { reference: successReference }));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Uložení záznamu selhalo.');
+      setError(err instanceof Error ? err.message : t('Uložení záznamu selhalo.'));
     } finally {
       setSaving(false);
     }
@@ -2285,10 +2292,10 @@ function HousekeepingForm(): JSX.Element {
   if (!canCreateIssue && !canCreateLostFound) {
     return (
       <main className="k-page" data-testid="housekeeping-form-page">
-        <h1>Pokojská</h1>
+        <h1>{t("Pokojská")}</h1>
         <StateView
-          title="Přístup odepřen"
-          description="Aktivní role nemá oprávnění pro založení závady ani nálezu z toku pokojské."
+          title={t("Přístup odepřen")}
+          description={t("Aktivní role nemá oprávnění pro založení závady ani nálezu z toku pokojské.")}
           stateKey="error"
         />
       </main>
@@ -2298,13 +2305,13 @@ function HousekeepingForm(): JSX.Element {
   if (success) {
     return (
       <main className="k-page" data-testid="housekeeping-form-page">
-          <h1>Pokojská</h1>
+          <h1>{t("Pokojská")}</h1>
         {(
           <StateView
-            title="Hotovo"
+            title={t("Hotovo")}
             description={success}
             stateKey="empty"
-            action={<button className="k-button" type="button" onClick={resetForm}>Nový záznam</button>}
+            action={<button className="k-button" type="button" onClick={resetForm}>{t("Nový záznam")}</button>}
           />
         )}
       </main>
@@ -2313,17 +2320,15 @@ function HousekeepingForm(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="housekeeping-form-page">
-      <h1>Pokojská</h1>
-      <div className="k-housekeeping-toggle" role="tablist" aria-label="Pohled pokojské">
+      <h1>{t("Pokojská")}</h1>
+      <div className="k-housekeeping-toggle" role="tablist" aria-label={t("Pohled pokojské")}>
         <button
           className={`k-housekeeping-toggle__button${activeView === 'rooms' ? ' k-housekeeping-toggle__button--active' : ''}`}
           type="button"
           role="tab"
           onClick={() => setActiveView('rooms')}
           aria-selected={activeView === 'rooms'}
-        >
-          Pokoje
-        </button>
+        >{t("Pokoje")}{' '}</button>
         <button
           className={`k-housekeeping-toggle__button${activeView === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`}
           type="button"
@@ -2331,9 +2336,7 @@ function HousekeepingForm(): JSX.Element {
           onClick={() => { setMode('lost_found'); setActiveView('lost_found'); }}
           aria-selected={activeView === 'lost_found'}
           disabled={!canCreateLostFound}
-        >
-          Nález
-        </button>
+        >{t("Nález")}{' '}</button>
         <button
           className={`k-housekeeping-toggle__button${activeView === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`}
           type="button"
@@ -2341,16 +2344,14 @@ function HousekeepingForm(): JSX.Element {
           onClick={() => { setMode('issue'); setActiveView('issue'); }}
           aria-selected={activeView === 'issue'}
           disabled={!canCreateIssue}
-        >
-          Závada
-        </button>
+        >{t("Závada")}{' '}</button>
       </div>
       {activeView === 'rooms' ? <HousekeepingRooms canWrite={canWriteRooms} canManageAmenities={['admin', 'recepce'].includes(auth?.activeRole ?? auth?.role ?? '')} /> : (
         <div className="k-card k-card--compact">
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">
-            <FormField id="housekeeping_room" label="Pokoj">
-              <div className="k-housekeeping-room-grid" role="group" aria-label="Výběr pokoje">
+            <FormField id="housekeeping_room" label={t("Pokoj")}>
+              <div className="k-housekeeping-room-grid" role="group" aria-label={t("Výběr pokoje")}>
                 {HOUSEKEEPING_ROOMS.map((room) => (
                   <button
                     key={room}
@@ -2364,23 +2365,17 @@ function HousekeepingForm(): JSX.Element {
                 ))}
               </div>
             </FormField>
-            <FormField id="housekeeping_description" label={mode === 'issue' ? 'Krátký popis závady' : 'Krátký popis nálezu'}>
+            <FormField id="housekeeping_description" label={mode === 'issue' ? t('Krátký popis závady') : t('Krátký popis nálezu')}>
               <input id="housekeeping_description" className="k-input" maxLength={160} value={description} onChange={(event) => setDescription(event.target.value)} />
             </FormField>
-            <FormField id="housekeeping_photos" label="Fotografie (max. 3)">
+            <FormField id="housekeeping_photos" label={t("Fotografie (max. 3)")}>
               <>
                 <input ref={galleryInputRef} id="housekeeping_photos" type="file" className="k-input" multiple accept="image/*" onChange={onGalleryChange} hidden />
                 <input ref={cameraInputRef} id="housekeeping_camera" type="file" className="k-input" accept="image/*" capture="environment" onChange={onCameraChange} hidden />
                 <div className="k-toolbar">
-                  <button className="k-button secondary" type="button" onClick={() => galleryInputRef.current?.click()} disabled={photos.length >= 3 || saving}>
-                    Vybrat fotografie
-                  </button>
-                  <button className="k-button secondary" type="button" onClick={() => void openNativeCamera()} disabled={photos.length >= 3 || saving}>
-                    Otevřít kameru
-                  </button>
-                  <button className="k-button secondary" type="button" onClick={() => cameraInputRef.current?.click()} disabled={photos.length >= 3 || saving}>
-                    Vyfotit systémově
-                  </button>
+                  <button className="k-button secondary" type="button" onClick={() => galleryInputRef.current?.click()} disabled={photos.length >= 3 || saving}>{t("Vybrat fotografie")}{' '}</button>
+                  <button className="k-button secondary" type="button" onClick={() => void openNativeCamera()} disabled={photos.length >= 3 || saving}>{t("Otevřít kameru")}{' '}</button>
+                  <button className="k-button secondary" type="button" onClick={() => cameraInputRef.current?.click()} disabled={photos.length >= 3 || saving}>{t("Vyfotit systémově")}{' '}</button>
                 </div>
                 <p className="k-subtle">{draftNotice}</p>
                 {cameraError ? <p className="k-text-error">{cameraError}</p> : null}
@@ -2392,27 +2387,21 @@ function HousekeepingForm(): JSX.Element {
                   <video ref={cameraVideoRef} autoPlay playsInline muted />
                 </div>
                 <div className="k-toolbar">
-                  <button className="k-button" type="button" onClick={() => void capturePhoto()} disabled={!cameraReady || saving}>
-                    Pořídit snímek
-                  </button>
-                  <button className="k-button secondary" type="button" onClick={stopCamera} disabled={saving}>
-                    Zavřít kameru
-                  </button>
+                  <button className="k-button" type="button" onClick={() => void capturePhoto()} disabled={!cameraReady || saving}>{t("Pořídit snímek")}{' '}</button>
+                  <button className="k-button secondary" type="button" onClick={stopCamera} disabled={saving}>{t("Zavřít kameru")}{' '}</button>
                 </div>
               </div>
             ) : null}
             {photos.length > 0 ? (
               <div className="k-housekeeping-photos">
-                <p className="k-subtle">Vybráno fotografií: {photos.length}</p>
+                <p className="k-subtle">{t("Vybráno fotografií:")}{' '}{photos.length}</p>
                 <div className="k-housekeeping-photos__grid">
                   {photoPreviews.map((photo, index) => (
                     <figure key={`${photo.name}-${index}`} className="k-housekeeping-photo-card">
-                      <img src={photo.url} alt={`Fotografie záznamu ${index + 1}`} className="k-housekeeping-photo-card__image" />
+                      <img src={photo.url} alt={tf('Fotografie záznamu {number}', { number: index + 1 })} className="k-housekeeping-photo-card__image" />
                       <figcaption className="k-housekeeping-photo-card__caption">
                         <span>{photo.name || `Fotografie ${index + 1}`}</span>
-                        <button className="k-button secondary" type="button" onClick={() => removePhoto(index)} disabled={saving}>
-                          Odebrat
-                        </button>
+                        <button className="k-button secondary" type="button" onClick={() => removePhoto(index)} disabled={saving}>{t("Odebrat")}{' '}</button>
                       </figcaption>
                     </figure>
                   ))}
@@ -2421,12 +2410,8 @@ function HousekeepingForm(): JSX.Element {
             ) : null}
           </div>
           <div className="k-toolbar">
-            <button className="k-button" type="button" onClick={() => void submit()} disabled={saving}>
-              Odeslat
-            </button>
-            <button className="k-button secondary" type="button" onClick={resetForm} disabled={saving}>
-              Vyčistit
-            </button>
+            <button className="k-button" type="button" onClick={() => void submit()} disabled={saving}>{t("Odeslat")}{' '}</button>
+            <button className="k-button secondary" type="button" onClick={resetForm} disabled={saving}>{t("Vyčistit")}{' '}</button>
           </div>
         </div>
       )}
@@ -2456,7 +2441,7 @@ function LostFoundList(): JSX.Element {
         setItems(response.filter((item) => (isReception ? item.status === 'new' : true)));
         setError(null);
       })
-      .catch(() => setError('Nepodařilo se načíst nálezy.'));
+      .catch(() => setError(t('Nepodařilo se načíst nálezy.')));
   }, [isReception, statusFilter]);
 
   React.useEffect(() => {
@@ -2472,45 +2457,45 @@ function LostFoundList(): JSX.Element {
       });
       setItems((prev) => prev.filter((item) => item.id !== itemId));
     } catch {
-      setError('Označení nálezu jako zpracovaného selhalo.');
+      setError(t('Označení nálezu jako zpracovaného selhalo.'));
     }
   };
 
   return (
     <main className="k-page" data-testid="lost-found-list-page">
-      <h1>{isReception ? 'Nálezy pro recepci' : 'Ztráty a nálezy'}</h1>
+      <h1>{isReception ? t('Nálezy pro recepci') : t('Ztráty a nálezy')}</h1>
       {error ? (
-        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} />
+        <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>{t("Obnovit")}</button>} />
       ) : items.length === 0 ? (
-        <StateView title={isReception ? 'Čekající nálezy' : 'Prázdný stav'} description={isReception ? 'Žádný čekající nález pro recepci.' : 'Žádný evidovaný nález.'} stateKey="empty" action={<Link className="k-button" to="/ztraty-a-nalezy/novy">Přidat záznam</Link>} />
+        <StateView title={isReception ? t('Čekající nálezy') : t('Prázdný stav')} description={isReception ? t('Žádný čekající nález pro recepci.') : t('Žádný evidovaný nález.')} stateKey="empty" action={<Link className="k-button" to="/ztraty-a-nalezy/novy">{t("Přidat záznam")}</Link>} />
       ) : (
         <>
           <div className="k-toolbar">
             {!isReception ? (
-              <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}>
-                <option value="all">Všechny stavy</option>
-                <option value="new">Nezpracováno</option>
-                <option value="claimed">Zpracováno</option>
+              <select className="k-select" aria-label={t("Filtr stavu")} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | LostFoundStatus)}>
+                <option value="all">{t("Všechny stavy")}</option>
+                <option value="new">{t("Nezpracováno")}</option>
+                <option value="claimed">{t("Zpracováno")}</option>
               </select>
             ) : null}
-            <Link className="k-button" to="/ztraty-a-nalezy/novy">Nový záznam</Link>
+            <Link className="k-button" to="/ztraty-a-nalezy/novy">{t("Nový záznam")}</Link>
           </div>
           <DataTable
-            headers={isReception ? ['Miniatura', 'Pokoj', 'Popis', 'Vznik', 'Akce'] : ['Stav', 'Pokoj', 'Popis', 'Vznik', 'Akce']}
+            headers={isReception ? [t('Miniatura'), t('Pokoj'), t('Popis'), t('Vznik'), t('Akce')] : [t('Stav'), t('Pokoj'), t('Popis'), t('Vznik'), t('Akce')]}
             rows={items.map((item) => (isReception
               ? [
-                  item.photos && item.photos.length > 0 ? <img key={`thumb-${item.id}`} src={`/api/v1/lost-found/${item.id}/photos/${item.photos[0].id}/thumb`} alt="Miniatura nálezu" className="k-photo-thumb" /> : '-',
+                  item.photos && item.photos.length > 0 ? <img key={`thumb-${item.id}`} src={`/api/v1/lost-found/${item.id}/photos/${item.photos[0].id}/thumb`} alt={t("Miniatura nálezu")} className="k-photo-thumb" /> : '-',
                   item.room_number ?? '-',
                   item.description,
                   formatShortDateTime(item.event_at),
-                  <div className="k-inline-links" key={`actions-${item.id}`}><Link className="k-nav-link" to={`/ztraty-a-nalezy/${item.id}`}>Detail</Link><button className="k-button" type="button" onClick={() => void markProcessed(item.id)}>Zpracováno</button></div>,
+                  <div className="k-inline-links" key={`actions-${item.id}`}><Link className="k-nav-link" to={`/ztraty-a-nalezy/${item.id}`}>{t("Detail")}</Link><button className="k-button" type="button" onClick={() => void markProcessed(item.id)}>{t("Zpracováno")}</button></div>,
                 ]
               : [
                   lostFoundStatusLabel(item.status),
                   item.room_number ?? '-',
                   item.description,
                   formatShortDateTime(item.event_at),
-                  <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>Detail</Link>,
+                  <Link className="k-nav-link" key={item.id} to={`/ztraty-a-nalezy/${item.id}`}>{t("Detail")}</Link>,
                 ]))}
           />
         </>
@@ -2555,7 +2540,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
           handover_note: item.handover_note ?? '',
         });
       })
-      .catch(() => setError('Položku se nepodařilo načíst.'));
+      .catch(() => setError(t('Položku se nepodařilo načíst.')));
   }, [id, mode]);
 
   const save = async (): Promise<void> => {
@@ -2578,38 +2563,34 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       });
       navigate(`/ztraty-a-nalezy/${saved.id}`);
     } catch {
-      setError('Položku se nepodařilo uložit.');
+      setError(t('Položku se nepodařilo uložit.'));
     }
   };
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'lost-found-create-page' : 'lost-found-edit-page'}>
-      <h1>{mode === 'create' ? 'Nová položka' : 'Upravit položku'}</h1>
+      <h1>{mode === 'create' ? t('Nová položka') : t('Upravit položku')}</h1>
       {error ? (
-        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+        <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : (
         <div className="k-card">
           <div className="k-toolbar">
-            <Link className="k-nav-link" to="/ztraty-a-nalezy">
-              Zpět na seznam
-            </Link>
-            <button className="k-button" type="button" onClick={() => void save()}>
-              Uložit
-            </button>
+            <Link className="k-nav-link" to="/ztraty-a-nalezy">{t("Zpět na seznam")}{' '}</Link>
+            <button className="k-button" type="button" onClick={() => void save()}>{t("Uložit")}{' '}</button>
           </div>
           <div className="k-form-grid">
-            <FormField id="item_type" label="Typ záznamu">
+            <FormField id="item_type" label={t("Typ záznamu")}>
               <select
                 id="item_type"
                 className="k-select"
                 value={payload.item_type}
                 onChange={(event) => setPayload((prev) => ({ ...prev, item_type: event.target.value as LostFoundType }))}
               >
-                <option value="found">Nalezeno</option>
-                <option value="lost">Ztraceno</option>
+                <option value="found">{t("Nalezeno")}</option>
+                <option value="lost">{t("Ztraceno")}</option>
               </select>
             </FormField>
-            <FormField id="category" label="Kategorie">
+            <FormField id="category" label={t("Kategorie")}>
               <input
                 id="category"
                 className="k-input"
@@ -2617,7 +2598,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, category: event.target.value }))}
               />
             </FormField>
-            <FormField id="location" label="Místo nálezu/ztráty">
+            <FormField id="location" label={t("Místo nálezu/ztráty")}>
               <input
                 id="location"
                 className="k-input"
@@ -2625,7 +2606,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, location: event.target.value }))}
               />
             </FormField>
-            <FormField id="room_number" label="Číslo pokoje (volitelné)">
+            <FormField id="room_number" label={t("Číslo pokoje (volitelné)")}>
               <input
                 id="room_number"
                 className="k-input"
@@ -2633,7 +2614,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, room_number: event.target.value }))}
               />
             </FormField>
-            <FormField id="event_at" label="Datum a čas">
+            <FormField id="event_at" label={t("Datum a čas")}>
               <input
                 id="event_at"
                 type="datetime-local"
@@ -2644,7 +2625,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 }
               />
             </FormField>
-            <FormField id="status" label="Stav workflow">
+            <FormField id="status" label={t("Stav workflow")}>
               <select
                 id="status"
                 className="k-select"
@@ -2653,14 +2634,14 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                   setPayload((prev) => ({ ...prev, status: event.target.value as LostFoundStatus }))
                 }
               >
-                <option value="new">Nový</option>
-                <option value="stored">Uskladněno</option>
-                <option value="disposed">Zlikvidovat</option>
-                <option value="claimed">Nárokováno</option>
-                <option value="returned">Vráceno</option>
+                <option value="new">{t("Nový")}</option>
+                <option value="stored">{t("Uskladněno")}</option>
+                <option value="disposed">{t("Zlikvidovat")}</option>
+                <option value="claimed">{t("Nárokováno")}</option>
+                <option value="returned">{t("Vráceno")}</option>
               </select>
             </FormField>
-            <FormField id="tags" label="Tagy">
+            <FormField id="tags" label={t("Tagy")}>
               <div className="k-toolbar">
                 {Object.keys(lostFoundTagLabels).map((tag) => (
                   <label className="k-role-label" key={tag}>
@@ -2684,7 +2665,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 ))}
               </div>
             </FormField>
-            <FormField id="description" label="Popis položky">
+            <FormField id="description" label={t("Popis položky")}>
               <textarea
                 id="description"
                 className="k-textarea"
@@ -2693,7 +2674,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, description: event.target.value }))}
               />
             </FormField>
-            <FormField id="claimant_name" label="Jméno nálezce/žadatele (volitelné)">
+            <FormField id="claimant_name" label={t("Jméno nálezce/žadatele (volitelné)")}>
               <input
                 id="claimant_name"
                 className="k-input"
@@ -2701,7 +2682,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, claimant_name: event.target.value }))}
               />
             </FormField>
-            <FormField id="claimant_contact" label="Kontakt (volitelné)">
+            <FormField id="claimant_contact" label={t("Kontakt (volitelné)")}>
               <input
                 id="claimant_contact"
                 className="k-input"
@@ -2709,7 +2690,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 onChange={(event) => setPayload((prev) => ({ ...prev, claimant_contact: event.target.value }))}
               />
             </FormField>
-            <FormField id="handover_note" label="Předávací záznam (volitelné)">
+            <FormField id="handover_note" label={t("Předávací záznam (volitelné)")}>
               <textarea
                 id="handover_note"
                 className="k-textarea"
@@ -2743,7 +2724,7 @@ function LostFoundDetail(): JSX.Element {
         setItem(response);
         setError(null);
       })
-      .catch(() => setError('Položka nebyla nalezena.'));
+      .catch(() => setError(t('Položka nebyla nalezena.')));
   }, [id]);
 
   React.useEffect(() => {
@@ -2763,45 +2744,45 @@ function LostFoundDetail(): JSX.Element {
         window.location.assign('/ztraty-a-nalezy');
       }
     } catch {
-      setError('Změna stavu nálezu selhala.');
+      setError(t('Změna stavu nálezu selhala.'));
     }
   };
 
   const deleteItem = async (): Promise<void> => {
     if (!id) return;
-    const confirmed = window.confirm('Opravdu chcete smazat tento nález? Záznam zmizí ze seznamu nálezů a operaci nelze vrátit.');
+    const confirmed = window.confirm(t('Opravdu chcete smazat tento nález? Záznam zmizí ze seznamu nálezů a operaci nelze vrátit.'));
     if (!confirmed) return;
     try {
       await fetchJson(`/api/v1/lost-found/${id}`, { method: 'DELETE' });
       window.location.assign('/ztraty-a-nalezy');
     } catch {
-      setError('Smazání položky selhalo.');
+      setError(t('Smazání položky selhalo.'));
     }
   };
 
   return (
     <main className="k-page" data-testid="lost-found-detail-page">
-      <h1>Detail nálezu</h1>
+      <h1>{t("Detail nálezu")}</h1>
       {error ? <StateView title="404" description={error} /> : item ? (
         <div className="k-card">
           <div className="k-toolbar">
-            <Link className="k-nav-link" to="/ztraty-a-nalezy">Zpět na seznam</Link>
-            {canProcess ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('claimed')}>Označit jako zpracováno</button> : null}
-            <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>Upravit</Link>
-            {canAdmin && item.status !== 'new' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('new')}>Vrátit do nezpracovaných</button> : null}
-            {canAdmin ? <button className="k-button secondary danger" type="button" onClick={() => void deleteItem()}>Smazat</button> : null}
+            <Link className="k-nav-link" to="/ztraty-a-nalezy">{t("Zpět na seznam")}</Link>
+            {canProcess ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('claimed')}>{t("Označit jako zpracováno")}</button> : null}
+            <Link className="k-button" to={`/ztraty-a-nalezy/${item.id}/edit`}>{t("Upravit")}</Link>
+            {canAdmin && item.status !== 'new' ? <button className="k-button" type="button" onClick={() => void setWorkflowStatus('new')}>{t("Vrátit do nezpracovaných")}</button> : null}
+            {canAdmin ? <button className="k-button secondary danger" type="button" onClick={() => void deleteItem()}>{t("Smazat")}</button> : null}
           </div>
           <DataTable
-            headers={['Položka', 'Hodnota']}
+            headers={[t('Položka'), t('Hodnota')]}
             rows={[
-              ['Pokoj', item.room_number ?? '-'],
-              ['Místo', item.location],
-              ['Popis', item.description],
-              ['Vznik', formatDateTime(item.event_at)],
-              ['Stav', lostFoundStatusLabel(item.status)],
+              [t('Pokoj'), item.room_number ?? '-'],
+              [t('Místo'), item.location],
+              [t('Popis'), item.description],
+              [t('Vznik'), formatDateTime(item.event_at)],
+              [t('Stav'), lostFoundStatusLabel(item.status)],
             ]}
           />
-          {item.photos && item.photos.length > 0 ? <div className="k-grid cards-3">{item.photos.map((photo) => <img key={photo.id} src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie nálezu ${photo.id}`} className="k-photo-thumb" />)}</div> : null}
+          {item.photos && item.photos.length > 0 ? <div className="k-grid cards-3">{item.photos.map((photo) => <img key={photo.id} src={`/api/v1/lost-found/${item.id}/photos/${photo.id}/thumb`} alt={tf('Fotografie nálezu {id}', { id: photo.id })} className="k-photo-thumb" />)}</div> : null}
         </div>
       ) : <SkeletonPage />}
     </main>
@@ -2829,7 +2810,7 @@ function IssuesList(): JSX.Element {
         setItems(response.filter((item) => (isMaintenance ? item.status !== 'resolved' && item.status !== 'closed' : true)));
         setError(null);
       })
-      .catch(() => setError('Nepodařilo se načíst seznam závad.'));
+      .catch(() => setError(t('Nepodařilo se načíst seznam závad.')));
   }, [isMaintenance, statusFilter]);
 
   React.useEffect(() => {
@@ -2845,42 +2826,42 @@ function IssuesList(): JSX.Element {
       });
       setItems((prev) => prev.filter((item) => item.id !== issueId));
     } catch {
-      setError('Označení závady jako odstraněné selhalo.');
+      setError(t('Označení závady jako odstraněné selhalo.'));
     }
   };
 
   return (
     <main className="k-page" data-testid="issues-list-page">
-      <h1>{isMaintenance ? 'Závady pro údržbu' : 'Závady'}</h1>
-      {error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>Obnovit</button>} /> : items.length === 0 ? (
-        <StateView title="Prázdný stav" description={isMaintenance ? 'Žádná otevřená závada.' : 'Zatím nejsou evidované žádné závady.'} stateKey="empty" action={<Link className="k-button" to="/zavady/nova">Nahlásit závadu</Link>} />
+      <h1>{isMaintenance ? t('Závady pro údržbu') : t('Závady')}</h1>
+      {error ? <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => void loadItems()}>{t("Obnovit")}</button>} /> : items.length === 0 ? (
+        <StateView title={t("Prázdný stav")} description={isMaintenance ? t('Žádná otevřená závada.') : t('Zatím nejsou evidované žádné závady.')} stateKey="empty" action={<Link className="k-button" to="/zavady/nova">{t("Nahlásit závadu")}</Link>} />
       ) : isMaintenance ? (
         <DataTable
-          headers={['Miniatura', 'Pokoj', 'Popis', 'Zadáno', 'Hodin', 'Akce']}
+          headers={[t('Miniatura'), t('Pokoj'), t('Popis'), t('Zadáno'), t('Hodin'), t('Akce')]}
           rows={items.map((item) => [
             item.photos && item.photos.length > 0
-              ? <img key={`issue-thumb-${item.id}`} src={`/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb`} alt="Miniatura závady" className="k-photo-thumb k-issue-list-thumb-mobile" />
+              ? <img key={`issue-thumb-${item.id}`} src={`/api/v1/issues/${item.id}/photos/${item.photos[0].id}/thumb`} alt={t("Miniatura závady")} className="k-photo-thumb k-issue-list-thumb-mobile" />
               : '-',
             item.room_number ?? '-',
             item.description ?? item.title,
             formatDateTime(item.created_at),
             hoursOpenSince(item.created_at),
-            <button className="k-button" type="button" key={`issue-actions-${item.id}`} onClick={() => void markResolved(item.id)}>Opraveno</button>,
+            <button className="k-button" type="button" key={`issue-actions-${item.id}`} onClick={() => void markResolved(item.id)}>{t("Opraveno")}</button>,
           ])}
         />
       ) : (
         <>
           <div className="k-toolbar">
-            <select className="k-select" aria-label="Filtr stavu" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | IssueStatus)}>
-              <option value="all">Všechny stavy</option>
-              <option value="new">Otevřené</option>
-              <option value="resolved">Odstraněné</option>
+            <select className="k-select" aria-label={t("Filtr stavu")} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | IssueStatus)}>
+              <option value="all">{t("Všechny stavy")}</option>
+              <option value="new">{t("Otevřené")}</option>
+              <option value="resolved">{t("Odstraněné")}</option>
             </select>
-            <Link className="k-button" to="/zavady/nova">Nová závada</Link>
+            <Link className="k-button" to="/zavady/nova">{t("Nová závada")}</Link>
           </div>
-          <DataTable headers={['Stav', 'Pokoj', 'Popis', 'Vznik', 'Otevřeno', 'Akce']} rows={items.map((item) => [
+          <DataTable headers={[t('Stav'), t('Pokoj'), t('Popis'), t('Vznik'), t('Otevřeno'), t('Akce')]} rows={items.map((item) => [
             issueStatusLabel(item.status), item.room_number ?? '-', item.description ?? item.title, formatShortDateTime(item.created_at), hoursOpenSince(item.created_at),
-            <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>Detail</Link>,
+            <Link className="k-nav-link" key={item.id} to={`/zavady/${item.id}`}>{t("Detail")}</Link>,
           ])} />
         </>
       )}
@@ -2900,7 +2881,7 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     if (mode !== 'edit' || !id) return;
     fetchJson<Issue>(`/api/v1/issues/${id}`).then((item) => setPayload({
       title: item.title, description: item.description ?? '', location: item.location, room_number: item.room_number ?? '', priority: item.priority, status: item.status, assignee: item.assignee ?? '',
-    })).catch(() => setError('Závadu se nepodařilo načíst.'));
+    })).catch(() => setError(t('Závadu se nepodařilo načíst.')));
   }, [id, mode]);
 
   const save = async (): Promise<void> => {
@@ -2911,17 +2892,17 @@ function IssuesForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
         body: JSON.stringify({ ...payload, description: payload.description || null, room_number: payload.room_number || null, assignee: payload.assignee || null }),
       });
       navigate(`/zavady/${saved.id}`);
-    } catch { setError('Závadu se nepodařilo uložit.'); }
+    } catch { setError(t('Závadu se nepodařilo uložit.')); }
   };
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}><h1>{mode === 'create' ? 'Nová závada' : 'Upravit závadu'}</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid">
-<FormField id="issue_title" label="Název"><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
-<FormField id="issue_location" label="Lokalita"><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
-<FormField id="issue_room_number" label="Pokoj (volitelné)"><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
-<FormField id="issue_priority" label="Priorita"><select id="issue_priority" className="k-select" value={payload.priority} onChange={(e) => setPayload((prev) => ({ ...prev, priority: e.target.value as IssuePriority }))}><option value="low">Nízká</option><option value="medium">Střední</option><option value="high">Vysoká</option><option value="critical">Kritická</option></select></FormField>
-<FormField id="issue_status" label="Stav"><select id="issue_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as IssueStatus }))}><option value="new">Nová</option><option value="in_progress">V řešení</option><option value="resolved">Vyřešena</option><option value="closed">Uzavřena</option></select></FormField>
-<FormField id="issue_assignee" label="Přiřazeno (volitelné)"><input id="issue_assignee" className="k-input" value={payload.assignee ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, assignee: e.target.value }))} /></FormField>
-<FormField id="issue_description" label="Popis"><textarea id="issue_description" className="k-textarea" rows={3} value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField>
+  return <main className="k-page" data-testid={mode === 'create' ? 'issues-create-page' : 'issues-edit-page'}><h1>{mode === 'create' ? t('Nová závada') : t('Upravit závadu')}</h1>{error ? <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">{t("Zpět na seznam")}</Link><button className="k-button" type="button" onClick={() => void save()}>{t("Uložit")}</button></div><div className="k-form-grid">
+<FormField id="issue_title" label={t("Název")}><input id="issue_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField>
+<FormField id="issue_location" label={t("Lokalita")}><input id="issue_location" className="k-input" value={payload.location} onChange={(e) => setPayload((prev) => ({ ...prev, location: e.target.value }))} /></FormField>
+<FormField id="issue_room_number" label={t("Pokoj (volitelné)")}><input id="issue_room_number" className="k-input" value={payload.room_number ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, room_number: e.target.value }))} /></FormField>
+<FormField id="issue_priority" label={t("Priorita")}><select id="issue_priority" className="k-select" value={payload.priority} onChange={(e) => setPayload((prev) => ({ ...prev, priority: e.target.value as IssuePriority }))}><option value="low">{t("Nízká")}</option><option value="medium">{t("Střední")}</option><option value="high">{t("Vysoká")}</option><option value="critical">{t("Kritická")}</option></select></FormField>
+<FormField id="issue_status" label={t("Stav")}><select id="issue_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as IssueStatus }))}><option value="new">{t("Nová")}</option><option value="in_progress">{t("V řešení")}</option><option value="resolved">{t("Vyřešena")}</option><option value="closed">{t("Uzavřena")}</option></select></FormField>
+<FormField id="issue_assignee" label={t("Přiřazeno (volitelné)")}><input id="issue_assignee" className="k-input" value={payload.assignee ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, assignee: e.target.value }))} /></FormField>
+<FormField id="issue_description" label={t("Popis")}><textarea id="issue_description" className="k-textarea" rows={3} value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField>
 </div></div>}</main>;
 }
 
@@ -2945,7 +2926,7 @@ function IssuesDetail(): JSX.Element {
         return fetchJson<MediaPhoto[]>(`/api/v1/issues/${id}/photos`);
       })
       .then((media) => setPhotos(media ?? []))
-      .catch(() => setError('Závada nebyla nalezena.'));
+      .catch(() => setError(t('Závada nebyla nalezena.')));
   }, [id]);
 
   React.useEffect(() => {
@@ -2965,32 +2946,32 @@ function IssuesDetail(): JSX.Element {
         window.location.assign('/zavady');
       }
     } catch {
-      setError('Změna stavu závady selhala.');
+      setError(t('Změna stavu závady selhala.'));
     }
   };
 
   const deleteIssue = async (): Promise<void> => {
     if (!id) return;
-    const confirmed = window.confirm('Opravdu chcete smazat tuto závadu? Záznam a připojené informace se odstraní a operaci nelze vrátit.');
+    const confirmed = window.confirm(t('Opravdu chcete smazat tuto závadu? Záznam a připojené informace se odstraní a operaci nelze vrátit.'));
     if (!confirmed) return;
     try {
       await fetchJson(`/api/v1/issues/${id}`, { method: 'DELETE' });
       window.location.assign('/zavady');
     } catch {
-      setError('Smazání závady selhalo.');
+      setError(t('Smazání závady selhalo.'));
     }
   };
 
   const timeline = item ? [
     { label: 'Vznik', value: formatDateTime(item.created_at) },
-    { label: 'Otevřeno', value: hoursOpenSince(item.created_at) },
-    ...(item.resolved_at ? [{ label: 'Odstraněno', value: formatDateTime(item.resolved_at) }] : []),
+    { label: t('Otevřeno'), value: hoursOpenSince(item.created_at) },
+    ...(item.resolved_at ? [{ label: t('Odstraněno'), value: formatDateTime(item.resolved_at) }] : []),
   ] : [];
 
   return (
     <main className="k-page" data-testid="issues-detail-page">
-      <h1>Detail závady</h1>
-      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">Zpět na seznam</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>Odstraněno</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>Znovu otevřít</button> : null}{canDelete ? <button className="k-button secondary danger" type="button" onClick={() => void deleteIssue()}>Smazat</button> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Pokoj', item.room_number ?? '-'],[ 'Místo', item.location],[ 'Přiřazeno', item.assignee ?? '-'],[ 'Popis', item.description ?? item.title],[ 'Stav', issueStatusLabel(item.status)],[ 'Vznik', formatDateTime(item.created_at)],[ 'Otevřeno', hoursOpenSince(item.created_at)] ]} /><h2>Přehled</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={`Fotografie závady ${photo.id}`} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
+      <h1>{t("Detail závady")}</h1>
+      {error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/zavady">{t("Zpět na seznam")}</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/zavady">{t("Zpět na seznam")}</Link>{canResolve && item.status !== 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('resolved')}>{t("Odstraněno")}</button> : null}{canReopen && item.status === 'resolved' ? <button className="k-button" type="button" onClick={() => void updateStatus('new')}>{t("Znovu otevřít")}</button> : null}{canDelete ? <button className="k-button secondary danger" type="button" onClick={() => void deleteIssue()}>{t("Smazat")}</button> : null}</div><DataTable headers={[t('Položka'), t('Hodnota')]} rows={[[ t('Pokoj'), item.room_number ?? '-'],[ t('Místo'), item.location],[ t('Přiřazeno'), item.assignee ?? '-'],[ t('Popis'), item.description ?? item.title],[ t('Stav'), issueStatusLabel(item.status)],[ t('Vznik'), formatDateTime(item.created_at)],[ t('Otevřeno'), hoursOpenSince(item.created_at)] ]} /><h2>{t("Přehled")}</h2><Timeline entries={timeline} />{photos.length > 0 ? <div className="k-grid cards-3">{photos.map((photo) => <img key={photo.id} src={`/api/v1/issues/${item.id}/photos/${photo.id}/thumb`} alt={tf('Fotografie závady {id}', { id: photo.id })} className="k-photo-thumb" />)}</div> : null}</div> : <SkeletonPage />}
     </main>
   );
 }
@@ -3017,7 +2998,7 @@ function InventoryList(): JSX.Element {
         setItems(response);
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Položky skladu se nepodařilo načíst.'));
+      .catch((err) => setError(err instanceof Error ? err.message : t('Položky skladu se nepodařilo načíst.')));
   }, []);
 
   React.useEffect(() => {
@@ -3038,23 +3019,23 @@ function InventoryList(): JSX.Element {
     const selectedItem = items.find((item) => String(item.id) === movementItemId);
     setMovementInfo(null);
     if (!selectedItem) {
-      setError('Vyberte položku skladu.');
+      setError(t('Vyberte položku skladu.'));
       return;
     }
     if (!Number.isInteger(movementQuantity) || movementQuantity <= 0) {
-      setError('Množství musí být celé číslo větší než nula.');
+      setError(t('Množství musí být celé číslo větší než nula.'));
       return;
     }
     if (!movementDate) {
-      setError('Vyplňte datum dokladu.');
+      setError(t('Vyplňte datum dokladu.'));
       return;
     }
     if (movementType === 'in' && movementReference.trim().length === 0) {
-      setError('U příjmu vyplňte číslo dokladu.');
+      setError(t('U příjmu vyplňte číslo dokladu.'));
       return;
     }
     if ((movementType === 'out' || movementType === 'adjust') && movementQuantity > selectedItem.current_stock) {
-      setError('Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav.');
+      setError(t('Množství nelze vydat ani odepsat, protože je vyšší než aktuální skladový stav.'));
       return;
     }
     setSavingMovement(true);
@@ -3073,15 +3054,15 @@ function InventoryList(): JSX.Element {
       const latestMovement = [...response.movements].sort((left, right) => right.id - left.id)[0];
       setItems((prev) => prev.map((item) => (item.id === response.id ? { ...item, current_stock: response.current_stock } : item)));
       setMovementInfo(latestMovement?.document_number
-        ? `Pohyb uložen. Interní číslo ${latestMovement.document_number}.`
-        : 'Pohyb uložen.');
+        ? tf('Pohyb uložen. Interní číslo {number}.', { number: latestMovement.document_number })
+        : t('Pohyb uložen.'));
       setMovementQuantity(1);
       setMovementReference('');
       setMovementNote('');
       loadItems();
       setError(null);
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : 'Pohyb skladu se nepodařilo uložit.');
+      setError(err instanceof Error && err.message ? err.message : t('Pohyb skladu se nepodařilo uložit.'));
     } finally {
       setSavingMovement(false);
     }
@@ -3089,37 +3070,37 @@ function InventoryList(): JSX.Element {
 
   const movementCard = items.length > 0 ? (
     <div className="k-card">
-      <h2>Nový pohyb skladu</h2>
+      <h2>{t("Nový pohyb skladu")}</h2>
       <div className="k-form-grid">
-        <FormField id="inventory_movement_type" label="Druh pohybu *">
+        <FormField id="inventory_movement_type" label={t("Druh pohybu *")}>
           <select id="inventory_movement_type" className="k-select" value={movementType} onChange={(event) => setMovementType(event.target.value as InventoryMovementType)}>
-            <option value="in">Příjem</option>
-            <option value="out">Výdej</option>
-            <option value="adjust">Odpis</option>
+            <option value="in">{t("Příjem")}</option>
+            <option value="out">{t("Výdej")}</option>
+            <option value="adjust">{t("Odpis")}</option>
           </select>
         </FormField>
-        <FormField id="inventory_movement_item" label="Položka *">
+        <FormField id="inventory_movement_item" label={t("Položka *")}>
           <select id="inventory_movement_item" className="k-select" value={movementItemId} onChange={(event) => setMovementItemId(event.target.value)}>
             {items.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </select>
         </FormField>
-        <FormField id="inventory_movement_quantity" label="Množství *">
+        <FormField id="inventory_movement_quantity" label={t("Množství *")}>
           <input id="inventory_movement_quantity" type="number" min={1} step={1} className="k-input" value={movementQuantity} onChange={(event) => setMovementQuantity(Number(event.target.value))} />
         </FormField>
-        <FormField id="inventory_movement_date" label="Datum dokladu *">
+        <FormField id="inventory_movement_date" label={t("Datum dokladu *")}>
           <input id="inventory_movement_date" type="date" className="k-input" value={movementDate} onChange={(event) => setMovementDate(event.target.value)} />
         </FormField>
-        <FormField id="inventory_movement_reference" label={movementType === 'in' ? 'Číslo dokladu *' : 'Číslo dokladu (volitelné)'}>
+        <FormField id="inventory_movement_reference" label={movementType === 'in' ? t('Číslo dokladu *') : t('Číslo dokladu (volitelné)')}>
           <input id="inventory_movement_reference" className="k-input" value={movementReference} onChange={(event) => setMovementReference(event.target.value)} />
         </FormField>
-        <FormField id="inventory_movement_note" label="Poznámka (volitelná)">
+        <FormField id="inventory_movement_note" label={t("Poznámka (volitelná)")}>
           <input id="inventory_movement_note" className="k-input" value={movementNote} onChange={(event) => setMovementNote(event.target.value)} />
         </FormField>
       </div>
       <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void submitMovement()} disabled={savingMovement}>{savingMovement ? 'Ukládám pohyb…' : 'Potvrdit pohyb'}</button>
+        <button className="k-button" type="button" onClick={() => void submitMovement()} disabled={savingMovement}>{savingMovement ? t('Ukládám pohyb…') : t('Potvrdit pohyb')}</button>
       </div>
       {movementInfo ? <p className="k-text-success" aria-live="polite">{movementInfo}</p> : null}
     </div>
@@ -3127,25 +3108,25 @@ function InventoryList(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="inventory-list-page">
-      <h1>Skladové hospodářství</h1>
+      <h1>{t("Skladové hospodářství")}</h1>
       {error ? (
-        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+        <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : items.length === 0 ? (
         <StateView
-          title="Prázdný stav"
-          description="Ve skladu zatím nejsou položky."
+          title={t("Prázdný stav")}
+          description={t("Ve skladu zatím nejsou položky.")}
           stateKey="empty"
-          action={isAdmin ? <Link className="k-button" to="/sklad/nova">Nová položka</Link> : undefined}
+          action={isAdmin ? <Link className="k-button" to="/sklad/nova">{t("Nová položka")}</Link> : undefined}
         />
       ) : (
         <>
           <div className="k-toolbar">
-            {isAdmin ? <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>Inventurní protokol (PDF)</button> : null}
-            {isAdmin ? <Link className="k-button" to="/sklad/nova">Nová položka</Link> : null}
+            {isAdmin ? <button className="k-button secondary" type="button" onClick={downloadStocktakePdf}>{t("Inventurní protokol (PDF)")}</button> : null}
+            {isAdmin ? <Link className="k-button" to="/sklad/nova">{t("Nová položka")}</Link> : null}
           </div>
           {movementCard}
           <DataTable
-            headers={isAdmin ? ['Položka', 'Skladem', 'Minimum', 'Jednotka', 'Status', 'Akce'] : ['Položka', 'Jednotka', 'Akce']}
+            headers={isAdmin ? [t('Položka'), t('Skladem'), t('Minimum'), t('Jednotka'), t('Status'), t('Akce')] : [t('Položka'), t('Jednotka'), t('Akce')]}
             rows={items.map((item) => {
               const itemLabel = (
                 <div key={`inventory-cell-${item.id}`} className="k-inventory-item-cell">
@@ -3157,7 +3138,7 @@ function InventoryList(): JSX.Element {
                 return [
                   itemLabel,
                   item.unit,
-                  <span key={`inventory-action-${item.id}`} className="k-subtle">Pohyb vytvořte nahoře.</span>,
+                  <span key={`inventory-action-${item.id}`} className="k-subtle">{t("Pohyb vytvořte nahoře.")}</span>,
                 ];
               }
               return [
@@ -3166,9 +3147,9 @@ function InventoryList(): JSX.Element {
                 item.min_stock,
                 item.unit,
                 item.current_stock <= item.min_stock
-                  ? <Badge key={`low-${item.id}`} tone="danger">Pod minimem</Badge>
-                  : <Badge key={`ok-${item.id}`} tone="success">OK</Badge>,
-                <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>Detail</Link>,
+                  ? <Badge key={`low-${item.id}`} tone="danger">{t("Pod minimem")}</Badge>
+                  : <Badge key={`ok-${item.id}`} tone="success">{t("OK")}</Badge>,
+                <Link className="k-nav-link" key={item.id} to={`/sklad/${item.id}`}>{t("Detail")}</Link>,
               ];
             })}
           />
@@ -3206,7 +3187,7 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
           pictogram_thumb_path: item.pictogram_thumb_path,
         })
       )
-      .catch((err) => setError(err instanceof Error ? err.message : 'Položku se nepodařilo načíst.'));
+      .catch((err) => setError(err instanceof Error ? err.message : t('Položku se nepodařilo načíst.')));
   }, [id, mode]);
 
   React.useEffect(() => {
@@ -3227,13 +3208,13 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
   const validationError =
     normalizedPayload.name.length === 0
-      ? 'Název položky je povinný.'
+      ? t('Název položky je povinný.')
       : !Number.isInteger(normalizedPayload.amount_per_piece_base) || (normalizedPayload.amount_per_piece_base ?? 0) < 1
-        ? 'Hodnota veličiny v 1 ks musí být alespoň 1.'
+        ? t('Hodnota veličiny v 1 ks musí být alespoň 1.')
         : !Number.isInteger(normalizedPayload.min_stock) || normalizedPayload.min_stock < 0
-          ? 'Minimální stav musí být nula nebo vyšší.'
+          ? t('Minimální stav musí být nula nebo vyšší.')
           : !Number.isInteger(normalizedPayload.current_stock) || normalizedPayload.current_stock < 0
-            ? 'Počáteční stav musí být nula nebo vyšší.'
+            ? t('Počáteční stav musí být nula nebo vyšší.')
             : null;
 
   const save = async (): Promise<void> => {
@@ -3252,46 +3233,46 @@ function InventoryForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       }
       navigate(`/sklad/${saved.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Položku se nepodařilo uložit.');
+      setError(err instanceof Error ? err.message : t('Položku se nepodařilo uložit.'));
     }
   };
 
   return (
     <main className="k-page" data-testid={mode === 'create' ? 'inventory-create-page' : 'inventory-edit-page'}>
-      <h1>{mode === 'create' ? 'Nová skladová položka' : 'Upravit skladovou položku'}</h1>
+      <h1>{mode === 'create' ? t('Nová skladová položka') : t('Upravit skladovou položku')}</h1>
       {error ? (
-        <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} />
+        <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : (
         <div className="k-card">
           <div className="k-toolbar">
-            <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
-            <button className="k-button" type="button" onClick={() => void save()}>Uložit</button>
+            <Link className="k-nav-link" to="/sklad">{t("Zpět na seznam")}</Link>
+            <button className="k-button" type="button" onClick={() => void save()}>{t("Uložit")}</button>
           </div>
           <div className="k-inventory-form-media">
             {pictogramPreview ? (
-              <img className="k-inventory-thumb-preview" src={pictogramPreview} alt={payload.name ? `Náhled položky ${payload.name}` : 'Náhled položky'} />
+              <img className="k-inventory-thumb-preview" src={pictogramPreview} alt={payload.name ? tf('Náhled položky {name}', { name: payload.name }) : t('Náhled položky')} />
             ) : (
-              <InventoryThumb item={{ id: Number(id ?? 0), name: payload.name || 'Položka', pictogram_thumb_path: payload.pictogram_thumb_path }} size="form" />
+              <InventoryThumb item={{ id: Number(id ?? 0), name: payload.name || t('Položka'), pictogram_thumb_path: payload.pictogram_thumb_path }} size="form" />
             )}
           </div>
           <div className="k-form-grid">
-            <FormField id="inventory_name" label="Název">
+            <FormField id="inventory_name" label={t("Název")}>
               <input id="inventory_name" className="k-input" value={payload.name} onChange={(event) => setPayload((prev) => ({ ...prev, name: event.target.value }))} />
             </FormField>
-            <FormField id="inventory_unit" label="Veličina v 1 ks">
+            <FormField id="inventory_unit" label={t("Veličina v 1 ks")}>
               <select id="inventory_unit" className="k-select" value={payload.unit} onChange={(event) => setPayload((prev) => ({ ...prev, unit: event.target.value }))}>
                 <option value="g">g</option>
                 <option value="l">l</option>
-                <option value="ks">ks</option>
+                <option value="ks">{t("ks")}</option>
               </select>
             </FormField>
-            <FormField id="inventory_amount_per_piece_base" label="Hodnota veličiny v 1 ks">
+            <FormField id="inventory_amount_per_piece_base" label={t("Hodnota veličiny v 1 ks")}>
               <input id="inventory_amount_per_piece_base" type="number" min={1} step={1} className="k-input" value={payload.amount_per_piece_base ?? 1} onChange={(event) => setPayload((prev) => ({ ...prev, amount_per_piece_base: Number(event.target.value) }))} />
             </FormField>
-            <FormField id="inventory_min_stock" label="Minimální stav">
+            <FormField id="inventory_min_stock" label={t("Minimální stav")}>
               <input id="inventory_min_stock" type="number" min={0} step={1} className="k-input" value={payload.min_stock} onChange={(event) => setPayload((prev) => ({ ...prev, min_stock: Number(event.target.value) }))} />
             </FormField>
-            <FormField id="inventory_pictogram" label="Miniatura položky">
+            <FormField id="inventory_pictogram" label={t("Miniatura položky")}>
               <input id="inventory_pictogram" type="file" className="k-input" accept="image/*" onChange={(event) => setPictogramFile(event.target.files?.[0] ?? null)} />
             </FormField>
           </div>
@@ -3318,11 +3299,11 @@ function InventoryDetail(): JSX.Element {
       })
       .catch((err) => {
         if (err instanceof HttpError) {
-          if (err.status === 404) setError('Skladová položka nebyla nalezena. Zkontrolujte seznam skladu nebo se vraťte zpět.');
-          else if (err.status === 403) setError('Nemáte oprávnění zobrazit detail skladové položky.');
-          else setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+          if (err.status === 404) setError(t('Skladová položka nebyla nalezena. Zkontrolujte seznam skladu nebo se vraťte zpět.'));
+          else if (err.status === 403) setError(t('Nemáte oprávnění zobrazit detail skladové položky.'));
+          else setError(t('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.'));
         } else {
-          setError('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.');
+          setError(t('Detail skladové položky se nepodařilo načíst. Technická chyba byla zalogována.'));
         }
       });
   }, [id]);
@@ -3333,7 +3314,7 @@ function InventoryDetail(): JSX.Element {
 
   const deleteMovement = async (movementId: number): Promise<void> => {
     if (!id) return;
-    const confirmed = window.confirm('Opravdu chcete smazat tento skladový pohyb? Množství položky se přepočítá opačným pohybem a operaci nelze vrátit bez nového zápisu.');
+    const confirmed = window.confirm(t('Opravdu chcete smazat tento skladový pohyb? Množství položky se přepočítá opačným pohybem a operaci nelze vrátit bez nového zápisu.'));
     if (!confirmed) return;
     const csrf = readCsrfToken();
     try {
@@ -3343,38 +3324,38 @@ function InventoryDetail(): JSX.Element {
       });
       loadDetail();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Pohyb se nepodařilo smazat.');
+      setError(err instanceof Error ? err.message : t('Pohyb se nepodařilo smazat.'));
     }
   };
 
   return (
     <main className="k-page" data-testid="inventory-detail-page">
-      <h1>{item ? `Detail skladové položky: ${item.name}` : 'Detail skladové položky'}</h1>
+      <h1>{item ? tf('Detail skladové položky: {name}', { name: item.name }) : t('Detail skladové položky')}</h1>
       {error ? (
-        <StateView title={error.includes('Missing role') || error.includes('Missing actor type') ? 'Přístup odepřen' : '404'} description={error} stateKey={error.includes('Missing role') || error.includes('Missing actor type') ? 'error' : '404'} action={<Link className="k-button secondary" to="/sklad">Zpět na seznam</Link>} />
+        <StateView title={error.includes('Missing role') || error.includes('Missing actor type') ? t('Přístup odepřen') : '404'} description={error} stateKey={error.includes('Missing role') || error.includes('Missing actor type') ? 'error' : '404'} action={<Link className="k-button secondary" to="/sklad">{t("Zpět na seznam")}</Link>} />
       ) : item ? (
         <>
           <div className="k-card">
             <div className="k-toolbar">
-              <Link className="k-nav-link" to="/sklad">Zpět na seznam</Link>
-              {isAdmin ? <Link className="k-button" to={`/sklad/${item.id}/edit`}>Upravit</Link> : null}
+              <Link className="k-nav-link" to="/sklad">{t("Zpět na seznam")}</Link>
+              {isAdmin ? <Link className="k-button" to={`/sklad/${item.id}/edit`}>{t("Upravit")}</Link> : null}
             </div>
             <div className="k-inventory-detail-hero">
               <InventoryThumb item={item} size="detail" />
               <div>
                 <h2>{item.name}</h2>
-                <p className="k-subtle">{isAdmin ? 'Admin může položku upravit a mazat pohyby.' : 'Karta položky a její pohyby jsou dostupné jen ke čtení.'}</p>
+                <p className="k-subtle">{isAdmin ? t('Admin může položku upravit a mazat pohyby.') : t('Karta položky a její pohyby jsou dostupné jen ke čtení.')}</p>
               </div>
             </div>
             <DataTable
-              headers={['Položka', 'Skladem', 'Minimum', 'Veličina v 1 ks', 'Hodnota veličiny v 1 ks']}
+              headers={[t('Položka'), t('Skladem'), t('Minimum'), t('Veličina v 1 ks'), t('Hodnota veličiny v 1 ks')]}
               rows={[[item.name, item.current_stock, item.min_stock, item.unit, item.amount_per_piece_base ?? 0]]}
             />
           </div>
           <div className="k-card">
-            <h2>Pohyby</h2>
+            <h2>{t("Pohyby")}</h2>
             <DataTable
-               headers={isAdmin ? ['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka', 'Akce'] : ['Interní číslo', 'Datum', 'Druh', 'Množství', 'Číslo dokladu', 'Poznámka']}
+               headers={isAdmin ? [t('Interní číslo'), t('Datum'), t('Druh'), t('Množství'), t('Číslo dokladu'), t('Poznámka'), t('Akce')] : [t('Interní číslo'), t('Datum'), t('Druh'), t('Množství'), t('Číslo dokladu'), t('Poznámka')]}
                rows={item.movements.map((movement) => [
                  movement.document_number ?? '-',
                  formatDateTime(movement.document_date ?? movement.created_at),
@@ -3382,7 +3363,7 @@ function InventoryDetail(): JSX.Element {
                  movement.quantity,
                  movement.document_reference ?? '-',
                  movement.note ?? '-',
-                 ...(isAdmin ? [<button className="k-button secondary danger" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>Smazat</button>] : []),
+                 ...(isAdmin ? [<button className="k-button secondary danger" type="button" key={`delete-movement-${movement.id}`} onClick={() => void deleteMovement(movement.id)}>{t("Smazat")}</button>] : []),
                ])}
              />
           </div>
@@ -3403,10 +3384,10 @@ function ReportsList(): JSX.Element {
   React.useEffect(() => {
     fetchJson<Report[]>('/api/v1/reports')
       .then(setItems)
-      .catch(() => setError('Hlášení se nepodařilo načíst.'));
+      .catch(() => setError(t('Hlášení se nepodařilo načíst.')));
   }, []);
 
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : undefined} /> : <><div className="k-toolbar">{canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : null}</div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
+  return <main className="k-page" data-testid="reports-list-page"><h1>{t("Hlášení")}</h1>{error ? <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} /> : items.length === 0 ? <StateView title={t("Prázdný stav")} description={t("Zatím není evidováno žádné hlášení.")} stateKey="empty" action={canManageReports ? <Link className="k-button" to="/hlaseni/nove">{t("Nové hlášení")}</Link> : undefined} /> : <><div className="k-toolbar">{canManageReports ? <Link className="k-button" to="/hlaseni/nove">{t("Nové hlášení")}</Link> : null}</div><DataTable headers={[t('Název'), t('Stav'), t('Vytvořeno'), t('Akce')]} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>{t("Detail")}</Link>])} /></>}</main>;
 }
 
 function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
@@ -3421,7 +3402,7 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     }
     fetchJson<Report>(`/api/v1/reports/${id}`)
       .then((item) => setPayload({ title: item.title, description: item.description, status: item.status }))
-      .catch(() => setError('Detail hlášení se nepodařilo načíst.'));
+      .catch(() => setError(t('Detail hlášení se nepodařilo načíst.')));
   }, [id, mode]);
 
   async function save(): Promise<void> {
@@ -3433,11 +3414,11 @@ function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
       });
       navigate(`/hlaseni/${saved.id}`);
     } catch {
-      setError('Hlášení se nepodařilo uložit.');
+      setError(t('Hlášení se nepodařilo uložit.'));
     }
   }
 
-  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
+  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? t('Nové hlášení') : t('Upravit hlášení')}</h1>{error ? <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">{t("Zpět na seznam")}</Link><button className="k-button" type="button" onClick={() => void save()}>{t("Uložit")}</button></div><div className="k-form-grid"><FormField id="report_title" label={t("Název")}><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label={t("Stav")}><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">{t("Otevřené")}</option><option value="in_progress">{t("V řešení")}</option><option value="closed">{t("Uzavřené")}</option></select></FormField><FormField id="report_description" label={t("Popis (volitelné)")}><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
 }
 
 function ReportsDetail(): JSX.Element {
@@ -3453,10 +3434,10 @@ function ReportsDetail(): JSX.Element {
     }
     fetchJson<Report>(`/api/v1/reports/${id}`)
       .then(setItem)
-      .catch(() => setError('Hlášení nebylo nalezeno.'));
+      .catch(() => setError(t('Hlášení nebylo nalezeno.')));
   }, [id]);
 
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link>{canManageReports ? <Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
+  return <main className="k-page" data-testid="reports-detail-page"><h1>{t("Detail hlášení")}</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">{t("Zpět na seznam")}</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">{t("Zpět na seznam")}</Link>{canManageReports ? <Link className="k-button" to={`/hlaseni/${item.id}/edit`}>{t("Upravit")}</Link> : null}</div><DataTable headers={[t('Položka'), t('Hodnota')]} rows={[[ t('Název'), item.title],[ t('Stav'), reportStatusLabel(item.status)],[ t('Popis'), item.description ?? '-' ],[ t('Vytvořeno'), formatDateTime(item.created_at) ],[ t('Aktualizováno'), formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
 }
 
 function PortalProfilePage(): JSX.Element {
@@ -3507,7 +3488,7 @@ function PortalProfilePage(): JSX.Element {
         });
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Profil se nepodařilo načíst.'));
+      .catch((err) => setError(err instanceof Error ? err.message : t('Profil se nepodařilo načíst.')));
   }, []);
 
   const saveProfile = async (): Promise<void> => {
@@ -3542,9 +3523,9 @@ function PortalProfilePage(): JSX.Element {
         phone: nextProfile.phone ?? '',
         note: nextProfile.note ?? '',
       });
-      setInfo('Profil byl uložen.');
+      setInfo(t('Profil byl uložen.'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Profil se nepodařilo uložit.');
+      setError(err instanceof Error ? err.message : t('Profil se nepodařilo uložit.'));
     } finally {
       setSavingProfile(false);
     }
@@ -3564,7 +3545,7 @@ function PortalProfilePage(): JSX.Element {
       });
       await navigate('/login');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Odhlášení se nepodařilo dokončit.');
+      setError(err instanceof Error ? err.message : t('Odhlášení se nepodařilo dokončit.'));
     } finally {
       setLoggingOut(false);
     }
@@ -3588,7 +3569,7 @@ function PortalProfilePage(): JSX.Element {
       });
       await navigate('/login');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Heslo se nepodařilo změnit.');
+      setError(err instanceof Error ? err.message : t('Heslo se nepodařilo změnit.'));
     } finally {
       setChangingPassword(false);
     }
@@ -3596,19 +3577,19 @@ function PortalProfilePage(): JSX.Element {
 
   return (
     <main className="k-page" data-testid="portal-profile-page">
-      <h1>Můj profil</h1>
-      {error ? <StateView title="Chyba" description={error} stateKey="error" /> : null}
+      <h1>{t("Můj profil")}</h1>
+      {error ? <StateView title={t("Chyba")} description={error} stateKey="error" /> : null}
       {info ? <p className="k-text-success">{info}</p> : null}
       {profile ? (
         <>
           <div className="k-card">
             <div className="k-toolbar">
               <strong>{profile.email}</strong>
-              <span className="k-text-muted">{profile.roles.join(', ') || '-'}</span>
+              <span className="k-text-muted">{profile.roles.map((role) => getAuthBundle('portal', getPortalLocale()).roleLabels[role] ?? role).join(', ') || '-'}</span>
             </div>
-            <p className="k-text-muted">Správa kontaktních údajů a provozní poznámky k účtu {profile.email}</p>
+            <p className="k-text-muted">{t("Správa kontaktních údajů a provozní poznámky k účtu")}{' '}{profile.email}</p>
             <div className="k-form-grid">
-              <FormField id="portal_profile_first_name" label="Jméno">
+              <FormField id="portal_profile_first_name" label={t("Jméno")}>
                 <input
                   id="portal_profile_first_name"
                   className="k-input"
@@ -3616,7 +3597,7 @@ function PortalProfilePage(): JSX.Element {
                   onChange={(event) => setProfileForm((prev) => ({ ...prev, first_name: event.target.value }))}
                 />
               </FormField>
-              <FormField id="portal_profile_last_name" label="Příjmení">
+              <FormField id="portal_profile_last_name" label={t("Příjmení")}>
                 <input
                   id="portal_profile_last_name"
                   className="k-input"
@@ -3624,7 +3605,7 @@ function PortalProfilePage(): JSX.Element {
                   onChange={(event) => setProfileForm((prev) => ({ ...prev, last_name: event.target.value }))}
                 />
               </FormField>
-              <FormField id="portal_profile_phone" label="Telefon (E.164, volitelně)">
+              <FormField id="portal_profile_phone" label={t("Telefon (E.164, volitelně)")}>
                 <input
                   id="portal_profile_phone"
                   className="k-input"
@@ -3632,7 +3613,7 @@ function PortalProfilePage(): JSX.Element {
                   onChange={(event) => setProfileForm((prev) => ({ ...prev, phone: event.target.value }))}
                 />
               </FormField>
-              <FormField id="portal_profile_note" label="Poznámka">
+              <FormField id="portal_profile_note" label={t("Poznámka")}>
                 <textarea
                   id="portal_profile_note"
                   className="k-input"
@@ -3641,21 +3622,17 @@ function PortalProfilePage(): JSX.Element {
                 />
               </FormField>
             </div>
-            <p className="k-text-muted">Telefon zadávej ve formátu E.164, například +420123456789.</p>
-            {!isPhoneValid ? <p className="k-text-error">Telefon musí být ve formátu E.164.</p> : null}
+            <p className="k-text-muted">{t("Telefon zadávej ve formátu E.164, například +420123456789.")}</p>
+            {!isPhoneValid ? <p className="k-text-error">{t("Telefon musí být ve formátu E.164.")}</p> : null}
             <div className="k-toolbar">
-              <button className="k-button" type="button" disabled={savingProfile || !isPhoneValid || !profileForm.first_name.trim() || !profileForm.last_name.trim()} onClick={() => void saveProfile()}>
-                Uložit profil
-              </button>
-              <button className="k-button secondary" type="button" disabled={loggingOut} onClick={() => void logout()}>
-                Odhlásit
-              </button>
+              <button className="k-button" type="button" disabled={savingProfile || !isPhoneValid || !profileForm.first_name.trim() || !profileForm.last_name.trim()} onClick={() => void saveProfile()}>{t("Uložit profil")}{' '}</button>
+              <button className="k-button secondary" type="button" disabled={loggingOut} onClick={() => void logout()}>{t("Odhlásit")}{' '}</button>
             </div>
           </div>
           <div className="k-card">
-            <h2>Změna hesla</h2>
+            <h2>{t("Změna hesla")}</h2>
             <div className="k-form-grid">
-              <FormField id="portal_profile_current_password" label="Současné heslo">
+              <FormField id="portal_profile_current_password" label={t("Současné heslo")}>
                 <input
                   id="portal_profile_current_password"
                   className="k-input"
@@ -3664,7 +3641,7 @@ function PortalProfilePage(): JSX.Element {
                   onChange={(event) => setPasswordForm((prev) => ({ ...prev, current_password: event.target.value }))}
                 />
               </FormField>
-              <FormField id="portal_profile_new_password" label="Nové heslo">
+              <FormField id="portal_profile_new_password" label={t("Nové heslo")}>
                 <input
                   id="portal_profile_new_password"
                   className="k-input"
@@ -3675,9 +3652,7 @@ function PortalProfilePage(): JSX.Element {
               </FormField>
             </div>
             <div className="k-toolbar">
-              <button className="k-button" type="button" disabled={changingPassword} onClick={() => void changePassword()}>
-                Potvrdit změnu
-              </button>
+              <button className="k-button" type="button" disabled={changingPassword} onClick={() => void changePassword()}>{t("Potvrdit změnu")}{' '}</button>
             </div>
           </div>
         </>
@@ -3719,13 +3694,18 @@ function AppRoutes(): JSX.Element {
       });
   }, []);
 
+  React.useEffect(() => {
+    if (authState.status !== 'authenticated') return;
+    return attachWebActivity(() => window.location.assign(authState.profile.actorType === 'admin' ? '/admin/login' : '/login'));
+  }, [authState]);
+
   if (authState.status === 'loading') {
     return (
       <KajovoStartupSplash
         href="/"
-        eyebrow="Kájovo Hotel"
-        title="Provoz hotelu bez zbytečných přepínačů"
-        description="Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a bezpečný přístup k tomu, co právě potřebují."
+        eyebrow={t("Kájovo Hotel")}
+        title={t("Provoz hotelu bez zbytečných přepínačů")}
+        description={t("Recepce, pokojská, údržba i sklad mají společný pracovní rytmus, jasné stavy a bezpečný přístup k tomu, co právě potřebují.")}
       />
     );
   }

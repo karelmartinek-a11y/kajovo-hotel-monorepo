@@ -3,7 +3,7 @@ import mimetypes
 from datetime import date
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -34,6 +34,7 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.media.storage import InventoryMediaStorage
+from app.security.auth import preferred_locale_for_session
 from app.security.rbac import module_access_dependency, require_role
 from app.services.pdf.inventory import build_inventory_stocktake_pdf
 
@@ -548,13 +549,14 @@ def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
 
 @router.get("/stocktake/pdf")
 def export_stocktake_pdf(
+    request: Request,
     db: Session = Depends(get_db),
     _admin: None = Depends(require_role("admin")),
 ):
     items = list(
         db.scalars(select(InventoryItem).order_by(InventoryItem.name.asc(), InventoryItem.id.asc()))
     )
-    pdf_bytes = build_inventory_stocktake_pdf(items, stock_date=date.today())
+    pdf_bytes = build_inventory_stocktake_pdf(items, stock_date=date.today(), locale=preferred_locale_for_session(request, db))
     return StreamingResponse(
         BytesIO(pdf_bytes),
         media_type="application/pdf",

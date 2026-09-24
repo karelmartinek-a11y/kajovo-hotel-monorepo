@@ -260,6 +260,10 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '102', room_number: '102', ready_for_arrival: ready, departures: [], arrivals: [arrival] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '103', room_number: '103', departures: [stay], arrivals: [] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '104', room_number: '104', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '105', room_number: '105', housekeeping_status_key: 'clean', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '106', room_number: '106', housekeeping_status_key: 'stay_no_linen', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '107', room_number: '107', housekeeping_status_key: 'stay_with_linen', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '108', room_number: '108', housekeeping_status_key: 'dirty', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
     ] } });
   });
   const user = await createPortalUserForRole(request, testInfo, 'pokojska');
@@ -276,6 +280,10 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   const continuing = page.getByRole('button', { name: /pokoj 104,/i });
   await expect(continuing).not.toHaveClass(/k-hk-room--split/);
   await expect(continuing).toContainText('Noc pobytu: 2/4');
+  await expect(page.getByRole('button', { name: /pokoj 105,/i })).toHaveClass(/k-hk-room--right-green/);
+  await expect(page.getByRole('button', { name: /pokoj 106,/i })).toHaveClass(/k-hk-room--right-light-green/);
+  await expect(page.getByRole('button', { name: /pokoj 107,/i })).toHaveClass(/k-hk-room--right-light-green/);
+  await expect(page.getByRole('button', { name: /pokoj 108,/i })).not.toHaveClass(/k-hk-room--split/);
   const bounds = await card.boundingBox();
   const textBounds = await card.locator('.k-hk-room__state').boundingBox();
   expect(textBounds!.width).toBeGreaterThan(bounds!.width * .8);

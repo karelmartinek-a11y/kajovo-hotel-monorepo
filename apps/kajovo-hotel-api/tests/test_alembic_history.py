@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0032_reservation_breakfast_diets"]
+    assert script.get_heads() == ["0033_portal_locale_web_activity"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -45,6 +45,11 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "inventory_card_items" in tables
     assert "breakfast_manual_refresh_jobs" in tables
     assert "reservation_amenities" in tables
+
+    user_columns = {column["name"] for column in inspector.get_columns("portal_users")}
+    session_columns = {column["name"] for column in inspector.get_columns("auth_sessions")}
+    assert "preferred_locale" in user_columns
+    assert {"web_activity_session", "last_activity_at"} <= session_columns
 
     smtp_columns = {column["name"] for column in inspector.get_columns("portal_smtp_settings")}
     assert "from_email" in smtp_columns

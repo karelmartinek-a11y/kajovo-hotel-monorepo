@@ -5,6 +5,7 @@ Tento repozitář je autoritativní zdroj pravdy pro web, admin, API, sdílené 
 ## Co je v repozitáři
 
 - `apps/kajovo-hotel-web`: provozní portál pro role `recepce`, `pokojská`, `údržba`, `snídaně` a `sklad`
+- Portál je v češtině, angličtině a ukrajinštině. Zvolený jazyk se automaticky ukládá u účtu; webové přihlášení trvá do 48 hodin nečinnosti na zařízení.
 - `apps/kajovo-hotel-admin`: admin rozhraní nad stejným API a RBAC kontraktem
 - `apps/kajovo-hotel-api`: FastAPI backend
 - `packages/shared`: sdílené typy, RBAC a generovaný klient

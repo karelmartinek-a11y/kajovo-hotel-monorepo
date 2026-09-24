@@ -2,7 +2,7 @@ import json
 import sqlite3
 import urllib.error
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from http.cookiejar import CookieJar
 from pathlib import Path
 
@@ -265,6 +265,108 @@ def test_portal_login_remember_me_extends_session_lifetime(api_base_url: str, ap
     remember_expiry = datetime.fromisoformat(str(rows[0][0]).replace("Z", "+00:00"))
     default_expiry = datetime.fromisoformat(str(rows[1][0]).replace("Z", "+00:00"))
     assert (remember_expiry - default_expiry).total_seconds() > 20 * 24 * 60 * 60
+
+
+def test_web_session_renews_only_after_user_activity(api_base_url: str, api_db_path: Path) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(opener, api_base_url, "/api/auth/login", method="POST", payload={
+        "email": "pokojska@example.com", "password": "pokojska-pass", "web_activity_session": True,
+    })
+    assert status == 200
+    cookie = next(cookie for cookie in jar if cookie.name == "kajovo_session")
+    assert cookie.expires is not None
+    assert 47 * 3600 < cookie.expires - datetime.now(timezone.utc).timestamp() < 49 * 3600
+
+    with sqlite3.connect(api_db_path) as connection:
+        before = connection.execute(
+            "SELECT id, expires_at FROM auth_sessions WHERE principal = ? ORDER BY id DESC LIMIT 1",
+            ("pokojska@example.com",),
+        ).fetchone()
+    assert before is not None
+    status, _ = api_request(opener, api_base_url, "/api/auth/me")
+    assert status == 200
+    with sqlite3.connect(api_db_path) as connection:
+        after_read = connection.execute("SELECT expires_at FROM auth_sessions WHERE id = ?", (before[0],)).fetchone()
+    assert after_read == (before[1],)
+
+    status, _ = api_request(opener, api_base_url, "/api/auth/activity", method="POST", headers=csrf_header(jar))
+    assert status == 200
+    with sqlite3.connect(api_db_path) as connection:
+        renewed = connection.execute("SELECT last_activity_at, expires_at FROM auth_sessions WHERE id = ?", (before[0],)).fetchone()
+    assert renewed is not None
+    assert datetime.fromisoformat(renewed[1]).replace(tzinfo=timezone.utc) - datetime.fromisoformat(renewed[0]).replace(tzinfo=timezone.utc) == timedelta(hours=48)
+
+    stale = (datetime.now(timezone.utc) - timedelta(hours=49)).isoformat()
+    with sqlite3.connect(api_db_path) as connection:
+        connection.execute("UPDATE auth_sessions SET last_activity_at = ? WHERE id = ?", (stale, before[0]))
+        connection.commit()
+    status, _ = api_request(opener, api_base_url, "/api/auth/me")
+    assert status == 401
+
+
+def test_legacy_session_activity_is_compatible_without_renewal(api_base_url: str, api_db_path: Path) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(opener, api_base_url, "/api/auth/login", method="POST", payload={
+        "email": "pokojska@example.com", "password": "pokojska-pass",
+    })
+    assert status == 200
+    with sqlite3.connect(api_db_path) as connection:
+        before = connection.execute(
+            "SELECT id, expires_at FROM auth_sessions WHERE principal = ? ORDER BY id DESC LIMIT 1",
+            ("pokojska@example.com",),
+        ).fetchone()
+    assert before is not None
+    status, _ = api_request(opener, api_base_url, "/api/auth/activity", method="POST", headers=csrf_header(jar))
+    assert status == 200
+    with sqlite3.connect(api_db_path) as connection:
+        after = connection.execute("SELECT expires_at FROM auth_sessions WHERE id = ?", (before[0],)).fetchone()
+    assert after == (before[1],)
+
+
+def test_admin_web_session_uses_same_idle_policy(api_base_url: str, api_db_path: Path) -> None:
+    jar = CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    status, _ = api_request(opener, api_base_url, "/api/auth/admin/login", method="POST", payload={
+        "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD, "web_activity_session": True,
+    })
+    assert status == 200
+    cookie = next(cookie for cookie in jar if cookie.name == "kajovo_session")
+    assert 47 * 3600 < cookie.expires - datetime.now(timezone.utc).timestamp() < 49 * 3600
+    with sqlite3.connect(api_db_path) as connection:
+        before = connection.execute(
+            "SELECT id, expires_at FROM auth_sessions WHERE principal = ? ORDER BY id DESC LIMIT 1",
+            (ADMIN_EMAIL,),
+        ).fetchone()
+    assert before is not None
+    status, _ = api_request(opener, api_base_url, "/api/auth/me")
+    assert status == 200
+    with sqlite3.connect(api_db_path) as connection:
+        after_read = connection.execute("SELECT expires_at FROM auth_sessions WHERE id = ?", (before[0],)).fetchone()
+    assert after_read == (before[1],)
+    status, _ = api_request(opener, api_base_url, "/api/auth/activity", method="POST", headers=csrf_header(jar))
+    assert status == 200
+    status, _ = api_request(opener, api_base_url, "/api/auth/locale", method="PATCH", payload={"locale": "en"}, headers=csrf_header(jar))
+    assert status == 403
+
+
+def test_account_locale_is_shared_between_sessions(api_base_url: str) -> None:
+    jars = [CookieJar(), CookieJar()]
+    openers = [urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar)) for jar in jars]
+    for opener in openers:
+        status, _ = api_request(opener, api_base_url, "/api/auth/login", method="POST", payload={
+            "email": "sklad@example.com", "password": "sklad-pass", "web_activity_session": True,
+        })
+        assert status == 200
+    status, updated = api_request(openers[0], api_base_url, "/api/auth/locale", method="PATCH", payload={"locale": "uk"}, headers=csrf_header(jars[0]))
+    assert status == 200 and isinstance(updated, dict) and updated["preferred_locale"] == "uk"
+    status, profile = api_request(openers[1], api_base_url, "/api/auth/me")
+    assert status == 200 and isinstance(profile, dict) and profile["preferred_locale"] == "uk"
+    status, _ = api_request(openers[0], api_base_url, "/api/auth/locale", method="PATCH", payload={"locale": "xx"}, headers=csrf_header(jars[0]))
+    assert status == 422
+    status, _ = api_request(openers[0], api_base_url, "/api/auth/locale", method="PATCH", payload={"locale": "cs"}, headers=csrf_header(jars[0]))
+    assert status == 200
 
 
 def test_disabling_user_revokes_existing_portal_sessions(api_base_url: str) -> None:

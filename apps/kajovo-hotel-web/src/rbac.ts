@@ -8,6 +8,8 @@ import {
   resolveActiveRoleForPermissions,
   rolePermissionSet,
   type Role,
+  setPortalLocale,
+  type PortalLocale,
 } from '@kajovo/shared';
 
 export type { Role };
@@ -20,6 +22,7 @@ export type AuthProfile = {
   activeRole: Role | null;
   permissions: Set<string>;
   actorType: 'admin' | 'portal';
+  preferredLocale: PortalLocale;
 };
 
 export type ResolvedAuthState =
@@ -38,6 +41,7 @@ type AuthMeResponse = {
   active_role?: string | null;
   permissions: string[];
   actor_type: 'admin' | 'portal';
+  preferred_locale?: PortalLocale;
 };
 
 async function readAuthErrorMessage(response: Response): Promise<string> {
@@ -89,6 +93,9 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
       ? new Set(payload.permissions)
       : new Set(activeRole ? rolePermissions(activeRole) : []);
     const resolvedActiveRole = resolveActiveRoleForPermissions(assignedRoles, activeRole, permissions);
+    const preferredLocale = payload.actor_type === 'portal' && ['cs', 'en', 'uk'].includes(payload.preferred_locale ?? '')
+      ? payload.preferred_locale! : 'cs';
+    setPortalLocale(preferredLocale);
     return {
       status: 'authenticated',
       profile: {
@@ -98,6 +105,7 @@ export async function resolveAuthProfile(): Promise<ResolvedAuthState> {
         activeRole: resolvedActiveRole,
         permissions,
         actorType: payload.actor_type,
+        preferredLocale,
       },
     };
   } catch (error) {

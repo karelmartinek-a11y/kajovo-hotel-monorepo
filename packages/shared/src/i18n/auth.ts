@@ -1,4 +1,4 @@
-export type AuthLocale = 'cs' | 'en';
+export type AuthLocale = 'cs' | 'en' | 'uk';
 
 export type AuthContext = 'portal' | 'admin';
 
@@ -36,7 +36,7 @@ type AuthCopy = {
   accessDeniedNoModules?: (roleLabel: string, userId: string) => string;
 };
 
-type AuthDictionary = Record<AuthContext, Record<AuthLocale, AuthCopy>>;
+type AuthDictionary = { portal: Record<AuthLocale, AuthCopy>; admin: Record<'cs', AuthCopy> };
 
 const AUTH_STRINGS: AuthDictionary = {
   portal: {
@@ -67,7 +67,7 @@ const AUTH_STRINGS: AuthDictionary = {
         `Role ${roleLabel} (uživatel ${userId}) nemá žádné dostupné moduly.`,
     },
     en: {
-      eyebrow: 'Kájovo Hotel · Portál',
+      eyebrow: 'Kájovo Hotel · Portal',
       title: 'User sign-in',
       description: 'Sign in with your work account. The username is always your email address.',
       emailLabel: 'Email',
@@ -92,6 +92,24 @@ const AUTH_STRINGS: AuthDictionary = {
       accessDeniedNoModules: (roleLabel, userId) =>
         `Role ${roleLabel} (user ${userId}) has no available modules.`,
     },
+    uk: {
+      eyebrow: 'Kájovo Hotel · Портал',
+      title: 'Вхід до порталу',
+      description: 'Увійдіть із робочим обліковим записом. Ваше ім’я користувача — адреса електронної пошти.',
+      emailLabel: 'Електронна пошта', passwordLabel: 'Пароль', loginAction: 'Увійти',
+      loginError: 'Неправильні облікові дані.', loginErrorTitle: 'Не вдалося увійти',
+      loginErrorHelp: 'Перевірте адресу електронної пошти й пароль або розблокуйте обліковий запис.',
+      accountLockedError: 'Обліковий запис тимчасово заблоковано. Скористайтеся посиланням для розблокування.',
+      forgotAction: 'Пароль відновлює адміністратор',
+      forgotInfo: 'Лише адміністратор може надіслати посилання для відновлення пароля.',
+      forgotLockedInfo: 'Якщо обліковий запис заблоковано, посилання для розблокування надійде електронною поштою.',
+      emailRequired: 'Введіть адресу електронної пошти.', credentialsRequired: 'Введіть адресу електронної пошти й пароль.',
+      roleSelectTitle: 'Оберіть роль', roleSelectDescription: 'Оберіть роль, у якій працюватимете.',
+      roleSelectError: 'Не вдалося обрати роль.', continueAs: (roleLabel) => `Продовжити як ${roleLabel}`,
+      accessDeniedTitle: 'Доступ заборонено',
+      accessDeniedModule: (moduleLabel, roleLabel, userId) => `Роль ${roleLabel} (користувач ${userId}) не має доступу до модуля ${moduleLabel}.`,
+      accessDeniedNoModules: (roleLabel, userId) => `Для ролі ${roleLabel} (користувач ${userId}) немає доступних модулів.`,
+    },
   },
   admin: {
     cs: {
@@ -111,24 +129,6 @@ const AUTH_STRINGS: AuthDictionary = {
       credentialsRequired: 'Vyplňte email i heslo.',
       hintAction: 'Poslat připomenutí hesla',
       hintInfo: 'Pokud účet existuje, byl odeslán e-mail s připomenutím, kde admin heslo najdete.',
-    },
-    en: {
-      eyebrow: 'Kájovo Hotel · Admin',
-      title: 'Administration sign-in',
-      description: 'Use the dedicated admin account to manage users and operational settings.',
-      emailLabel: 'Email',
-      passwordLabel: 'Password',
-      loginAction: 'Sign in',
-      loginError: 'Invalid credentials.',
-      loginErrorTitle: 'Sign-in failed',
-      loginErrorHelp: 'Check your email and password. If the account is locked, use the unlock link. If you forgot the password, request the reminder email.',
-      accountLockedError: 'Account is temporarily locked. Use the unlock link.',
-      forgotAction: 'Password reminder',
-      forgotInfo: 'If the account exists, a reminder email explaining where to find the admin password has been sent.',
-      emailRequired: 'Enter your email.',
-      credentialsRequired: 'Enter both email and password.',
-      hintAction: 'Send password reminder',
-      hintInfo: 'If the account exists, a reminder email explaining where to find the admin password has been sent.',
     },
   },
 };
@@ -150,6 +150,7 @@ const ROLE_LABELS: Record<AuthLocale, Record<string, string>> = {
     snídaně: 'Breakfast',
     sklad: 'Inventory',
   },
+  uk: { admin: 'Адміністратор', recepce: 'Рецепція', pokojská: 'Покоївка', údržba: 'Технічна служба', snídaně: 'Сніданки', sklad: 'Склад' },
 };
 
 const MODULE_LABELS: Record<AuthLocale, Record<string, string>> = {
@@ -177,6 +178,7 @@ const MODULE_LABELS: Record<AuthLocale, Record<string, string>> = {
     settings: 'Settings',
     other: 'More',
   },
+  uk: { dashboard: 'Огляд', breakfast: 'Сніданки', housekeeping: 'Номери', lost_found: 'Бюро знахідок', issues: 'Несправності', inventory: 'Склад', reports: 'Звіти', users: 'Користувачі', settings: 'Налаштування', other: 'Інше' },
 };
 
 const NAVIGATION_COPY: Record<AuthLocale, NavigationCopy> = {
@@ -192,6 +194,7 @@ const NAVIGATION_COPY: Record<AuthLocale, NavigationCopy> = {
     phoneDrawerLabel: 'Menu',
     phoneSearchPlaceholder: 'Search the menu',
   },
+  uk: { ariaLabel: 'Головна навігація', overflowLabel: 'Інше', phoneDrawerLabel: 'Меню', phoneSearchPlaceholder: 'Пошук у меню' },
 };
 
 const NAVIGATION_SECTIONS: Record<AuthLocale, Record<string, string>> = {
@@ -205,6 +208,7 @@ const NAVIGATION_SECTIONS: Record<AuthLocale, Record<string, string>> = {
     operations: 'Operations',
     records: 'Records',
   },
+  uk: { overview: 'Огляд', operations: 'Робота готелю', records: 'Облік' },
 };
 
 export type AuthBundle = {
@@ -224,14 +228,17 @@ export function resolveAuthLocale(source?: string | null): AuthLocale {
   if (normalized.startsWith('en')) {
     return 'en';
   }
+  if (normalized.startsWith('uk')) {
+    return 'uk';
+  }
   return 'cs';
 }
 
 export function getAuthBundle(context: AuthContext, localeHint?: string | null): AuthBundle {
-  const locale = resolveAuthLocale(localeHint);
+  const locale = context === 'admin' ? 'cs' : resolveAuthLocale(localeHint);
   return {
     locale,
-    copy: AUTH_STRINGS[context][locale],
+    copy: context === 'admin' ? AUTH_STRINGS.admin.cs : AUTH_STRINGS.portal[locale],
     roleLabels: ROLE_LABELS[locale],
     moduleLabels: MODULE_LABELS[locale],
     navigation: NAVIGATION_COPY[locale],

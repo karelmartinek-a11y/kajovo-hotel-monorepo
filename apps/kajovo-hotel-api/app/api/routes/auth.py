@@ -14,6 +14,7 @@ from app.api.schemas import (
     AuthIdentityResponse,
     AuthProfileRead,
     AuthProfileUpdate,
+    LocaleUpdate,
     LogoutResponse,
     MailDispatchResponse,
     PortalLoginRequest,
@@ -36,7 +37,9 @@ from app.security.auth import (
     create_session_cookie,
     create_session_record,
     get_permissions,
+    preferred_locale_for_session,
     read_session_cookie,
+    renew_web_activity,
     require_session,
     revoke_session_by_id,
     revoke_sessions_for_portal_user,
@@ -282,6 +285,7 @@ def _profile_response(session: dict[str, object], user: PortalUser) -> AuthProfi
         note=user.note,
         roles=[normalize_role(role.role) for role in user.roles],
         actor_type=str(session["actor_type"]),
+        preferred_locale=user.preferred_locale,
     )
 
 
@@ -338,22 +342,24 @@ def admin_login(
         roles=["admin"],
         active_role="admin",
         portal_user_id=portal_user_id,
-        max_age_seconds=settings.session_max_age_seconds,
+        max_age_seconds=settings.web_session_idle_seconds if payload.web_activity_session else settings.session_max_age_seconds,
+        web_activity_session=payload.web_activity_session,
     )
     db.commit()
     csrf_token = secrets.token_urlsafe(32)
-    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=settings.session_max_age_seconds)
+    session_max_age_seconds = settings.web_session_idle_seconds if payload.web_activity_session else settings.session_max_age_seconds
+    session_expiry = datetime.now(timezone.utc) + timedelta(seconds=session_max_age_seconds)
     response.set_cookie(
         SESSION_COOKIE_NAME,
         create_session_cookie(
             session_record.session_id,
-            max_age_seconds=settings.session_max_age_seconds,
+            max_age_seconds=session_max_age_seconds,
         ),
         httponly=True,
         samesite="lax",
         secure=cookie_secure(),
         path="/",
-        max_age=settings.session_max_age_seconds,
+        max_age=session_max_age_seconds,
         expires=session_expiry,
     )
     response.set_cookie(
@@ -363,7 +369,7 @@ def admin_login(
         samesite="lax",
         secure=cookie_secure(),
         path="/",
-        max_age=settings.session_max_age_seconds,
+        max_age=session_max_age_seconds,
         expires=session_expiry,
     )
     return AuthIdentityResponse(
@@ -454,8 +460,8 @@ def portal_login(
     settings = get_settings()
     email = payload.email.strip().lower()
     session_max_age_seconds = (
-        settings.session_remember_me_max_age_seconds
-        if payload.remember_me
+        settings.web_session_idle_seconds if payload.web_activity_session
+        else settings.session_remember_me_max_age_seconds if payload.remember_me
         else settings.session_max_age_seconds
     )
     now = _utc_now()
@@ -497,6 +503,7 @@ def portal_login(
         active_role=active_role,
         portal_user_id=user.id,
         max_age_seconds=session_max_age_seconds,
+        web_activity_session=payload.web_activity_session,
     )
     db.commit()
     user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
@@ -535,6 +542,7 @@ def portal_login(
         active_role=active_role,
         permissions=permissions,
         actor_type="portal",
+        preferred_locale=user.preferred_locale,
     )
 
 
@@ -637,6 +645,7 @@ def auth_me(request: Request, db: Session = Depends(get_db)) -> AuthIdentityResp
         active_role=active_role,
         permissions=permissions,
         actor_type=session["actor_type"],
+        preferred_locale=preferred_locale_for_session(request, db),
     )
 
 
@@ -671,7 +680,47 @@ def select_portal_role(
         active_role=selected_role,
         permissions=get_permissions(selected_role),
         actor_type=str(session["actor_type"]),
+        preferred_locale=preferred_locale_for_session(request, db),
     )
+
+
+@router.post("/activity", response_model=LogoutResponse)
+def web_activity(request: Request, response: Response, db: Session = Depends(get_db)) -> LogoutResponse:
+    session = require_session(request, db)
+    if not session["web_activity_session"]:
+        return LogoutResponse()
+    if not renew_web_activity(db, str(session["session_id"])):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    lifetime = get_settings().web_session_idle_seconds
+    expiry = _utc_now() + timedelta(seconds=lifetime)
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        create_session_cookie(str(session["session_id"]), max_age_seconds=lifetime),
+        httponly=True, samesite="lax", secure=cookie_secure(), path="/",
+        max_age=lifetime, expires=expiry,
+    )
+    csrf_token = request.cookies.get(CSRF_COOKIE_NAME)
+    if csrf_token:
+        response.set_cookie(
+            CSRF_COOKIE_NAME, csrf_token,
+            httponly=False, samesite="lax", secure=cookie_secure(), path="/",
+            max_age=lifetime, expires=expiry,
+        )
+    return LogoutResponse()
+
+
+@router.patch("/locale", response_model=AuthIdentityResponse)
+def update_portal_locale(
+    payload: LocaleUpdate, request: Request, db: Session = Depends(get_db),
+) -> AuthIdentityResponse:
+    session, user = _current_user_from_session(request, db)
+    if session["actor_type"] != "portal":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Portal account required")
+    user.preferred_locale = payload.locale
+    user.updated_at = _utc_now()
+    db.add(user)
+    db.commit()
+    return auth_me(request, db)
 
 
 @router.get("/profile", response_model=AuthProfileRead)
