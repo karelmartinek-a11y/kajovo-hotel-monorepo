@@ -275,7 +275,10 @@ test.describe('KDGS role scénáře portálu', () => {
 
       for (const locale of ['cs', 'en', 'uk'] as const) {
         if (locale !== 'cs') {
-          await page.getByRole('button', { name: locale === 'en' ? 'English' : 'Українська' }).click();
+          await Promise.all([
+            page.waitForEvent('load'),
+            page.getByRole('button', { name: locale === 'en' ? 'English' : 'Українська' }).click(),
+          ]);
           await expect(page.locator('html')).toHaveAttribute('lang', locale);
         }
         for (const view of scenario.views) {
