@@ -29,7 +29,7 @@ const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\"'\"'`)
 const powerShellQuote = (value: string): string => `'${value.replace(/'/g, "''")}'`;
 
 const dbPathNormalized = isWin ? smokeDbPath.replace(/\\/g, '/') : smokeDbPath;
-const pythonCmd = isWin ? 'python' : 'python3';
+const pythonCmd = isWin ? 'python' : 'python3.11';
 const initDbCommand = isWin
   ? `powershell -NoLogo -NoProfile -Command "$env:PYTHONPATH='..\\\\kajovo-hotel-api'; ${pythonCmd} ..\\\\kajovo-hotel-api\\\\scripts\\\\init_smoke_db.py ${smokeDbPath}"`
   : `PYTHONPATH=../kajovo-hotel-api ${pythonCmd} ../kajovo-hotel-api/scripts/init_smoke_db.py ${smokeDbPath}`;
