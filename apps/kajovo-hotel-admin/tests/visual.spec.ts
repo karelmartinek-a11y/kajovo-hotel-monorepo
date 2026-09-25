@@ -141,7 +141,11 @@ test.describe('KDGS vizuální a geometrická kontrola adminu', () => {
       await assertKdgsGeometry(page, view.name);
       await expect(page.getByRole('link', { name: 'Profil' }).first()).toBeVisible();
       await expect(page.getByTestId('module-navigation')).toBeVisible();
-      await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
+      if ((page.viewportSize()?.width ?? 0) <= 599 && await page.locator('.k-hk-board').isVisible()) {
+        await expect(page.getByTestId('module-navigation-phone').locator('button')).toBeVisible();
+      } else {
+        await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
+      }
       await expect.poll(() => page.locator('.k-wordmark-mark').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBeTruthy();
       await expect.poll(() => page.locator('.k-wordmark').evaluate((wordmark) => {
         const mark = wordmark.querySelector('.k-wordmark-mark')?.getBoundingClientRect();

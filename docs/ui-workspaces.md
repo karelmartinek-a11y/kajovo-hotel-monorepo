@@ -37,7 +37,7 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 | Datum, předchozí/následující den, Dnes | GET `/api/v1/housekeeping/rooms?date=…`; výchozí hotelový den Europe/Prague, ochrana před přepsáním novějšího dne starou odpovědí. |
 | Vysvětlivky barev | Rozbalitelné, bez zápisu; popisují odjezd, úklid nezávislý na příjezdu, pokračující pobyt a prázdnou polovinu. |
 | Patro a počty | Seskupení skutečného inventáře a počet pokojů k úklidu z provozního stavu. |
-| Karta pokoje | ID/číslo pokoje, aktuální obsazenost a úklid; odjezdy/příjezdy/pokračující rezervace, označení, osoby, země, noc pobytu, pes a postýlka. Žádné vymyšlené typy pokojů. |
+| Dlaždice a spodní detail pokoje | Pevná velikost dlaždic, číslo pokoje, výslovná aktuální obsazenost s počtem osob, stručný náhled odjezdů/příjezdů/pokračování vybraného dne a úklid. Spodní detail ukazuje úplné údaje rezervací včetně osob, země, noci pobytu, psa a postýlky. Žádné vymyšlené typy pokojů. |
 | Šest stavových tlačítek | PATCH `/api/v1/housekeeping/rooms/{room_id}?date=…`; přesné hodnoty a mapování číselníku jsou v modulu Pokoje. |
 | Probíhající zápis | Nativní modální dialog „Zapisuji změnu…“, bez zavření a bez potvrzovacích tlačítek. Po ověřené odpovědi automatický návrat k přehledu, lokální aktualizace karty a obnova dat na pozadí. |
 | Chyba zápisu | Nesmí být vydávána za úspěch; dialog zůstává, další zápis je zablokován do obnovení aktuálního stavu. Bez slepého opakování PATCH. |
@@ -47,19 +47,19 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 
 ## Responzivní kontrakt a ověření
 
-Schválená varianta 3 „Eclipse Adaptive“ používá paletu Space Black `#000000`, Orange `#FF6A2E`, Ivory `#F7F4ED` a Silver `#C0C0C0`. Desktop má tmavý navigační rail a světlé pracovní plátno; tablet a mobil kompaktní aplikační hlavičku. Oddělený seznam/editor a samostatné úlohy zůstávají zachovány. Mobilní přehled pokojů má na výšku i na šířku nejméně dvě karty v řádku, tablet dvě a desktop tři. Dlouhé údaje se vždy zalamují a zůstávají celé; přehled proto používá běžné svislé posouvání, nikdy vodorovný panel ani překrytí spodní navigací. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni. Tmavý stavový dialog používá na výšku 2 × 3 a na nízké obrazovce na šířku 3 × 2 tlačítka, nemá vnitřní posuv a po ověřeném zápisu se automaticky zavře.
+Varianta „Eclipse Adaptive“ používá paletu Space Black `#000000`, Orange `#FF6A2E`, Ivory `#F7F4ED` a Silver `#C0C0C0`. Desktop má tmavý navigační rail a světlé pracovní plátno; tablet a mobil kompaktní aplikační hlavičku. Oddělený seznam/editor a samostatné úlohy zůstávají zachovány. Přehled pokojů má pevně vysoké kompaktní dlaždice; na mobilu drženém na výšku jsou čtyři v řádku. Dlaždice současně ukazuje číslo, aktuální obsazenost, zkrácený náhled pobytů vybraného dne a úklid. Úplné údaje o pobytech a volba stavu jsou ve spodním detailu otevřeném výběrem dlaždice. Ovládání dne zůstává při svislém posuvu přehledu nahoře. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni. Detail má vnitřní svislý posuv pro dlouhé údaje a po ověřeném zápisu se automaticky zavře.
 
-Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu duplicity, validační kroky, probíhající zápis bez tlačítek, automatický návrat, chybu PATCH a obnovu. Responzivní scénář se 37 pokoji a dlouhou zemí/jménem kontroluje 1440 × 900, 834 × 1112, 390 × 844, 844 × 390 a 667 × 375; kontroluje šířku dokumentu a celý stavový dialog bez vnitřního posuvu. Portálový smoke ověřuje tentýž sdílený tok a role ikon.
+Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu duplicity, validační kroky, probíhající zápis bez tlačítek, automatický návrat, chybu PATCH a obnovu. Responzivní scénář se 37 pokoji a dlouhou zemí/jménem kontroluje 1440 × 900, 834 × 1112, 390 × 844, 320 × 700, 844 × 390 a 667 × 375; kontroluje čtyři stejně velké dlaždice v portrétu, šířku dokumentu a spodní detail ve výšce displeje. Portálový smoke ověřuje tentýž sdílený tok a role ikon.
 
 ## Matice dopadů
 
 | Kategorie | Rozhodnutí |
 |---|---|
-| Produkční kód | Aktualizovat nový orbitální znak a wordmark, sdílený shell, design tokeny a scoped CSS aktivního UsersAdmin a sdíleného HousekeepingRooms. Funkční komponenty, API a databáze beze změny. |
-| Testy | Rozšířit admin smoke o nový brand a dvousloupcový mobilní portrét; stávající CRUD, chybové, portálové a vizuální scénáře ověřit beze změny. |
+| Produkční kód | Aktualizovat sdílený HousekeepingRooms a jeho scoped CSS; API a databázi ověřit beze změny. |
+| Testy | Aktualizovat admin a portálový smoke pro čtyřsloupcový portrét, pevnou velikost, spodní detail a úplné údaje; vizuální scénáře ověřit. |
 | CI a gates | Ověřit beze změny: workflow již spouští obě dotčené smoke sady, vizuální testy a release gate. |
 | Dokumentace | Aktualizovat tento aktuální inventář a responzivní kontrakt. Datová schémata a modul Pokoje ověřit beze změny. |
 | Komentáře a poznámky | Aktualizovat pouze účelný popis design vrstvy; funkční TODO, docstringy ani provozní poznámky nejsou změnou dotčeny. |
-| Instrukce | Ověřit beze změny: stávající AGENTS již předepisuje rozložení pokojů i dokončení zápisu; nový vizuální motiv nemění dlouhodobý provozní kontrakt. |
-| Fixtures a texty | Ověřit beze změny: stavové texty, testovací dlouhé pobyty i selektory zůstávají platné. |
-| Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny. Oba frontendové public adresáře obsahují stejný nový aktivní SVG brand; deploy konfigurace beze změny. |
+| Instrukce | Aktualizovat AGENTS pro čtyři dlaždice v mobilním portrétu a spodní detail. |
+| Fixtures a texty | Aktualizovat EN/UK překlady aktuální obsazenosti a zkratek, testová data a selektory pro nový detail. |
+| Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny; deploy konfiguraci ověřit beze změny. |

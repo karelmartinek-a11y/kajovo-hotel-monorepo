@@ -15,6 +15,14 @@
   --k-color-error: #b71c1c;
   --k-color-success: #1b5e20;
   --k-color-warning: #e65100;
+  --k-color-room-empty-badge: #e7f1ea;
+  --k-color-room-empty-copy: #285f42;
+  --k-color-room-occupied-badge: #ffded4;
+  --k-color-room-occupied-copy: #8b3822;
+  --k-color-room-split-neutral: #d9d8d3;
+  --k-color-room-departure-detail: #fff0ee;
+  --k-color-room-arrival-detail: #eff9f1;
+  --k-color-room-sheet-backdrop: rgba(32, 28, 25, .38);
 
   --k-spacing-0: 0;
   --k-spacing-1: 4px;
@@ -146,12 +154,10 @@ body {
   --k-hk-light-green: #effbf2;
   --k-hk-pink: #ff8295;
   --k-hk-free-border: #8fa3ba;
-  --k-hk-meta: #5a7391;
   --k-hk-status-copy: var(--k-hk-navy);
   --k-hk-thanks: #075968;
   --k-hk-thanks-soft: #437889;
   --k-hk-alert: #9b1821;
-  --k-hk-chevron: var(--k-hk-navy);
   --k-hk-border-date: 1px solid #cad7e6;
   --k-hk-border-legend: 1px solid #e5ecf3;
   --k-hk-border-legend-divider: 1px solid #e6edf4;
@@ -284,8 +290,7 @@ body {
 }
 
 .k-hk-legend__item:last-child { border-right: 0; }
-.k-hk-legend__item i,
-.k-hk-room__state i {
+.k-hk-legend__item i {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
@@ -375,20 +380,12 @@ body {
 .k-hk-room--right-light-green { --k-hk-right: var(--k-hk-light-green); }
 .k-hk-room__topline { display: flex; align-items: center; min-height: 31px; gap: var(--k-hk-space-6); }
 .k-hk-room__topline strong { font-size: 23px; line-height: 1; }
-.k-hk-room__chevron { margin-left: auto; color: var(--k-hk-chevron); font-size: 28px; line-height: 1; }
-.k-hk-room__state { display: flex; align-items: flex-start; gap: var(--k-spacing-2); min-height: 35px; margin-top: var(--k-hk-space-3); font-size: 12px; font-weight: 700; line-height: 1.15; }
-.k-hk-room__state i { width: 11px; height: 11px; margin-top: var(--k-hk-space-1); }
-.k-hk-room__meta { display: flex; justify-content: space-between; align-items: center; gap: var(--k-hk-space-6); color: var(--k-hk-meta); font-size: 11px; white-space: nowrap; }
-.k-hk-room__meta > span:first-child { overflow: hidden; text-overflow: ellipsis; }
 .k-hk-room__persons { display: inline-flex; align-items: center; flex: 0 0 auto; }
 .k-hk-room__persons svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; }
 .k-hk-room__housekeeping { display: block; margin-top: var(--k-hk-space-6); overflow: hidden; color: var(--k-hk-status-copy); font-size: 9px; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
 
 .k-hk-room { display: flex; flex-direction: column; }
-.k-hk-room__topline, .k-hk-room__stays { width: 100%; }
-.k-hk-room__stays { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--k-spacing-2-5); }
-.k-hk-room__stays > span { min-width: 0; }
-.k-hk-room__stays > span + span { border-left: 1px solid var(--k-hk-line); padding-left: var(--k-spacing-2-5); }
+.k-hk-room__topline { width: 100%; }
 .k-hk-stay { display: flex; flex-direction: column; gap: var(--k-spacing-tight); min-width: 0; margin: 8px 0; font-size: 12px; line-height: 1.4; color: var(--k-hk-navy); }
 .k-hk-stay__label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
 .k-hk-stay__name { font-weight: 700; overflow-wrap: anywhere; }
@@ -399,7 +396,6 @@ body {
 .k-hk-amenity--green { color: var(--k-hk-arrived-green); }
 .k-hk-amenity svg, .k-hk-amenity-actions svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 .k-hk-amenity__mark { font-size: 12px; font-weight: 800; }
-.k-hk-room__state { align-self: stretch; background: var(--k-color-brand-white); border-radius: var(--k-hk-radius-4); padding: var(--k-spacing-2); color: var(--k-hk-navy); }
 .k-hk-reservation-actions > section { border-top: 1px solid var(--k-hk-line); margin-top: var(--k-spacing-5); padding-top: var(--k-spacing-2); }
 .k-hk-amenity-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-spacing-2-5); }
 .k-hk-amenity-actions > div { display: flex; flex-direction: column; gap: var(--k-hk-space-6); }

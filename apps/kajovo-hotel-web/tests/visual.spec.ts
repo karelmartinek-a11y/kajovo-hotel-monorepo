@@ -294,7 +294,11 @@ test.describe('KDGS role scénáře portálu', () => {
           await expect(page.locator('.k-shell-profile-link')).toBeVisible();
           await expect(page.locator('.k-shell-profile-link')).toContainText(locale === 'en' ? 'Profile' : locale === 'uk' ? 'Профіль' : 'Profil');
           await expect(page.getByTestId('module-navigation')).toBeVisible();
-          await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
+          if ((page.viewportSize()?.width ?? 0) <= 599 && await page.locator('.k-hk-board').isVisible()) {
+            await expect(page.getByTestId('module-navigation-phone').locator('button')).toBeVisible();
+          } else {
+            await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
+          }
           if (view.name === 'recepce') {
             await page.evaluate(() => window.scrollTo(0, 500));
             if (await page.evaluate(() => window.scrollY > 0)) {
