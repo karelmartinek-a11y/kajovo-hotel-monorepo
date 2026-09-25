@@ -6,22 +6,19 @@ Tento dokument navazuje na cutover/release runbook a slouží jako praktický UA
 
 - Testované moduly: Přehled, Snídaně, Ztráty a nálezy, Závady, Skladové hospodářství, Hlášení.
 - Utility stavy: `/intro`, `/offline`, `/maintenance`, `/404`.
-- Každý scénář se provádí minimálně na:
-  - **telefonu** (pevné záhlaví s vlajkami a spodní lišta ikon dostupných podle role),
-  - **tabletu** (přichycené záhlaví a vodorovná navigace),
-  - **desktopu** (postranní navigace).
+- Každý scénář se provádí minimálně na telefonu, tabletu a desktopu. Portál má na všech třech pevné zápatí s ikonami povolených sekcí; administrace používá vlastní navigaci.
 - V každém scénáři ověřte i chování při prázdných datech, chybě API (5xx) a offline režimu.
 
 ## Device & navigace checklist (provedení u každého modulu)
 
 1. **Telefon**
-   - Ověřit, že logo a tři vlajky zůstávají nahoře a ikony modulů a profilu dole při posuvu obsahu.
+   - Ověřit, že logo, tři vlajky a ikona odhlášení zůstávají nahoře a nejvýše pět ikon sekcí dole při posuvu obsahu.
    - Ověřit přepnutí všech tří jazyků a správné označení aktivního modulu.
-   - Ověřit, že se všechny moduly povolené aktivní rolí dají otevřít včetně případného vodorovného posuvu lišty.
+   - Ověřit, že zápatí ukazuje pouze dostupné sekce Profil, Pokojská, Recepce, Snídaně a Údržba; role Sklad má sklad a hlášení v profilu.
 2. **Tablet**
-   - Ověřit přichycené záhlaví, přístupný profil a vodorovný posuv navigace bez posuvu celého dokumentu.
+   - Ověřit přichycené záhlaví, spodní lištu a přepnutí dostupných sekcí bez vodorovného posuvu dokumentu.
 3. **Desktop**
-   - Ověřit stálý postranní panel, profil a všechny povolené sekce.
+   - Ověřit stálé záhlaví, spodní lištu, profil a všechny povolené sekce.
 4. **Navigace mezi moduly**
    - Otevřít alespoň 2 moduly ze sekce Evidence, pokud je role dovoluje.
    - Návrat na výchozí modul aktivní role musí fungovat bez smyčky přesměrování a runtime chyb.

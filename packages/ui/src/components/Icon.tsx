@@ -100,6 +100,21 @@ function pathFor(name?: string | null): JSX.Element {
           <path d="M5 20a7 7 0 0 1 14 0" />
         </>
       );
+    case 'logout':
+      return (
+        <>
+          <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5" />
+          <path d="M13 8l4 4-4 4" />
+          <path d="M8 12h9" />
+        </>
+      );
+    case 'bed':
+      return (
+        <>
+          <path d="M3 5v14M21 19V9a2 2 0 0 0-2-2H3v9h18" />
+          <path d="M3 12h18M6 7v5" />
+        </>
+      );
     default:
       return (
         <>

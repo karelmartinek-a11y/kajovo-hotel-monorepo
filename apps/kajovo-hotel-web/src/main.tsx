@@ -52,7 +52,7 @@ import { AdminLoginPage } from './admin/AdminLoginPage';
 import { AdminRoutes } from './admin/AdminRoutes';
 import { PortalLoginPage } from './portal/PortalLoginPage';
 import { PortalResetPasswordPage } from './portal/PortalResetPasswordPage';
-import { PortalRoutes } from './portal/PortalRoutes';
+import { PortalRoutes, requestRoleSelection } from './portal/PortalRoutes';
 
 type LostFoundType = LostFoundItemType;
 
@@ -3442,6 +3442,7 @@ function ReportsDetail(): JSX.Element {
 
 function PortalProfilePage(): JSX.Element {
   const navigate = useNavigate();
+  const auth = useAuth();
   const [profile, setProfile] = React.useState<{
     email: string;
     first_name: string;
@@ -3454,7 +3455,6 @@ function PortalProfilePage(): JSX.Element {
   const [info, setInfo] = React.useState<string | null>(null);
   const [savingProfile, setSavingProfile] = React.useState(false);
   const [changingPassword, setChangingPassword] = React.useState(false);
-  const [loggingOut, setLoggingOut] = React.useState(false);
   const [profileForm, setProfileForm] = React.useState({
     first_name: '',
     last_name: '',
@@ -3467,6 +3467,22 @@ function PortalProfilePage(): JSX.Element {
   });
   const normalizedPhone = normalizePhoneInput(profileForm.phone);
   const isPhoneValid = !normalizedPhone || e164PhoneRegex.test(normalizedPhone);
+  const openWarehouseRoute = async (route: '/sklad' | '/hlaseni'): Promise<void> => {
+    try {
+      if (auth?.activeRole !== 'sklad') {
+        const result = await requestRoleSelection('sklad');
+        if (!result.ok) {
+          setError(result.detail ?? t('Výběr role selhal.'));
+          return;
+        }
+        window.location.assign(route);
+        return;
+      }
+      await navigate(route);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t('Výběr role selhal.'));
+    }
+  };
 
   React.useEffect(() => {
     fetchJson('/api/auth/profile')
@@ -3531,26 +3547,6 @@ function PortalProfilePage(): JSX.Element {
     }
   };
 
-  const logout = async (): Promise<void> => {
-    setLoggingOut(true);
-    setError(null);
-    setInfo(null);
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'X-CSRF-Token': readCsrfToken(),
-        },
-      });
-      await navigate('/login');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('Odhlášení se nepodařilo dokončit.'));
-    } finally {
-      setLoggingOut(false);
-    }
-  };
-
   const changePassword = async (): Promise<void> => {
     setChangingPassword(true);
     setError(null);
@@ -3582,6 +3578,7 @@ function PortalProfilePage(): JSX.Element {
       {info ? <p className="k-text-success">{info}</p> : null}
       {profile ? (
         <>
+          {auth?.roles.includes('sklad') ? <div className="k-card"><div className="k-toolbar"><button className="k-button" type="button" onClick={() => void openWarehouseRoute('/sklad')}>{getAuthBundle('portal', getPortalLocale()).roleLabels.sklad}</button><button className="k-button secondary" type="button" onClick={() => void openWarehouseRoute('/hlaseni')}>{getAuthBundle('portal', getPortalLocale()).moduleLabels.reports}</button></div></div> : null}
           <div className="k-card">
             <div className="k-toolbar">
               <strong>{profile.email}</strong>
@@ -3626,7 +3623,6 @@ function PortalProfilePage(): JSX.Element {
             {!isPhoneValid ? <p className="k-text-error">{t("Telefon musí být ve formátu E.164.")}</p> : null}
             <div className="k-toolbar">
               <button className="k-button" type="button" disabled={savingProfile || !isPhoneValid || !profileForm.first_name.trim() || !profileForm.last_name.trim()} onClick={() => void saveProfile()}>{t("Uložit profil")}{' '}</button>
-              <button className="k-button secondary" type="button" disabled={loggingOut} onClick={() => void logout()}>{t("Odhlásit")}{' '}</button>
             </div>
           </div>
           <div className="k-card">

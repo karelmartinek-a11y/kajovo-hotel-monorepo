@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
-import { AppShell, RoleSwitcher, SkeletonPage, StateView } from '@kajovo/ui';
+import { AppShell, Icon, SkeletonPage, StateView } from '@kajovo/ui';
 import {
   canReadModule,
   canWriteModule,
@@ -10,7 +10,7 @@ import {
   type AuthProfile,
   type Role,
 } from '../rbac';
-import { getAuthBundle, type AuthBundle, setPortalLocale, t, type PortalLocale } from '@kajovo/shared';
+import { getAuthBundle, rolePermissionSet, type AuthBundle, setPortalLocale, t, type PortalLocale } from '@kajovo/shared';
 import { LocaleSwitcher } from './LocaleSwitcher';
 
 type AuthCopy = AuthBundle['copy'];
@@ -41,7 +41,7 @@ type RoleSelectPageProps = {
   roleLabel: (role: string) => string;
 };
 
-async function requestRoleSelection(role: string): Promise<{ ok: true } | { ok: false; detail?: string }> {
+export async function requestRoleSelection(role: string): Promise<{ ok: true } | { ok: false; detail?: string }> {
   const csrfToken = readCsrfToken();
   const response = await fetch('/api/auth/select-role', {
     method: 'POST',
@@ -209,7 +209,7 @@ export function PortalRoutes({
     document.documentElement.lang = bundle.locale;
     document.title = bundle.copy.eyebrow;
   }, [bundle.copy.eyebrow, bundle.locale]);
-  const { copy, roleLabels, moduleLabels, navigation, sectionLabels } = bundle;
+  const { copy, roleLabels, moduleLabels, navigation } = bundle;
   const localizedRoleLabel = React.useCallback(
     (role: string) => roleLabels[role] ?? role,
     [roleLabels]
@@ -217,25 +217,6 @@ export function PortalRoutes({
   const localizedModuleLabel = React.useCallback(
     (key: string) => moduleLabels[key] ?? key,
     [moduleLabels]
-  );
-  const navigationRules = React.useMemo(
-    () => ({
-      ...ia.navigation.rules,
-      enableSearchInMenuOnPhone: false,
-      phoneDrawerLabel: navigation.phoneDrawerLabel,
-      phoneSearchPlaceholder: navigation.phoneSearchPlaceholder,
-      ariaLabel: navigation.ariaLabel,
-      defaultGroupLabel: moduleLabels['other'],
-    }),
-    [moduleLabels['other'], navigation.ariaLabel, navigation.phoneDrawerLabel, navigation.phoneSearchPlaceholder]
-  );
-  const navigationSections = React.useMemo(
-    () =>
-      ia.navigation.sections.map((section) => ({
-        ...section,
-        label: sectionLabels[section.key] ?? section.label,
-      })),
-    [sectionLabels]
   );
   const localizedModules = React.useMemo(
     () =>
@@ -247,6 +228,7 @@ export function PortalRoutes({
   );
   const [switchError, setSwitchError] = React.useState<string | null>(null);
   const [switchBusy, setSwitchBusy] = React.useState(false);
+  const [logoutBusy, setLogoutBusy] = React.useState(false);
   const [localeBusy, setLocaleBusy] = React.useState(false);
   const [localeError, setLocaleError] = React.useState<string | null>(null);
   const changeLocale = React.useCallback(async (locale: PortalLocale) => {
@@ -294,7 +276,7 @@ export function PortalRoutes({
     return <RoleSelectPage roles={assignedRoles} copy={copy} roleLabel={localizedRoleLabel} />;
   }
   const activeRoleLabel = localizedRoleLabel(activeRole);
-  const switchRoleFromHeader = React.useCallback(async (role: string) => {
+  const switchRole = React.useCallback(async (role: string, route: string) => {
     setSwitchError(null);
     setSwitchBusy(true);
     try {
@@ -304,12 +286,28 @@ export function PortalRoutes({
         setSwitchError(result.detail ?? copy.roleSelectError ?? t('Výběr role selhal.'));
         return;
       }
-      window.location.assign('/');
+      window.location.assign(route);
     } catch (err) {
       setSwitchBusy(false);
       setSwitchError(err instanceof Error && err.message ? err.message : (copy.roleSelectError ?? t('Výběr role selhal.')));
     }
   }, [copy.roleSelectError]);
+  const logout = React.useCallback(async () => {
+    setLogoutBusy(true);
+    setSwitchError(null);
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': decodeURIComponent(readCsrfToken()) },
+      });
+      if (!response.ok) throw new Error(t('Odhlášení se nepodařilo dokončit.'));
+      window.location.assign('/login');
+    } catch (error) {
+      setLogoutBusy(false);
+      setSwitchError(error instanceof Error ? error.message : t('Odhlášení se nepodařilo dokončit.'));
+    }
+  }, []);
 
   const roleModuleKeys = roleModules(activeRole);
   const moduleByKey = new Map(localizedModules.map((module) => [module.key, module]));
@@ -328,14 +326,6 @@ export function PortalRoutes({
     }
   });
   const allowedModules = Array.from(allowedLookup.values());
-  const extraModules = localizedModules.filter((module) => {
-    const hasPermissions = Array.isArray(module.permissions) && module.permissions.length > 0;
-    if (hasPermissions) {
-      return false;
-    }
-    return !roleModuleKeys.includes(module.key);
-  });
-  const navigationModules = [...allowedModules, ...extraModules];
   const primaryRoute = activeRole === 'recepce' ? '/recepce' : (allowedModules[0]?.route ?? '/');
   const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
 
@@ -372,24 +362,34 @@ export function PortalRoutes({
     [activeRoleLabel, auth.userId, copy, localizedModuleLabel]
   );
 
+  const tabs = [
+    { key: 'profile', label: moduleLabels.profile, route: '/profil', icon: 'profile', module: null, role: null, paths: ['/profil'] },
+    { key: 'housekeeping', label: localizedRoleLabel('pokojská'), route: '/pokojska', icon: 'bed', module: 'housekeeping', role: 'pokojská' as Role, paths: ['/pokojska'] },
+    { key: 'reception', label: localizedRoleLabel('recepce'), route: '/recepce', icon: 'briefcase', module: 'lost_found', role: 'recepce' as Role, paths: ['/recepce', '/ztraty-a-nalezy', '/hlaseni'] },
+    { key: 'breakfast', label: localizedRoleLabel('snídaně'), route: '/snidane', icon: 'utensils', module: 'breakfast', role: 'snídaně' as Role, paths: ['/snidane'] },
+    { key: 'maintenance', label: localizedRoleLabel('údržba'), route: '/zavady', icon: 'tool', module: 'issues', role: 'údržba' as Role, paths: ['/zavady'] },
+  ].filter((tab) => !tab.module || canReadModule(auth.permissions, tab.module) || (tab.role && assignedRoles.includes(tab.role) && canReadModule(rolePermissionSet(tab.role), tab.module)));
+  const portalTabs = tabs.map((tab) => {
+    const selected = tab.paths.some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
+    const needsRoleSwitch = tab.module && !canReadModule(auth.permissions, tab.module) && tab.role && tab.role !== activeRole;
+    const content = <><Icon name={tab.icon} className="k-nav-link__icon" /><span className="k-portal-mobile-tabs__label">{tab.label}</span></>;
+    return needsRoleSwitch ? (
+      <button key={tab.key} className="k-portal-mobile-tabs__link" type="button" aria-label={tab.label} aria-current={selected ? 'page' : undefined} disabled={switchBusy} onClick={() => void switchRole(tab.role!, tab.route)}>{content}</button>
+    ) : (
+      <Link key={tab.key} className="k-portal-mobile-tabs__link" to={tab.route} aria-label={tab.label} aria-current={selected ? 'page' : undefined}>{content}</Link>
+    );
+  });
+
   return (
     <AppShell
       panelLayout="portal"
-      profileLabel={moduleLabels.profile}
-      modules={navigationModules}
-      navigationRules={navigationRules}
-      navigationSections={navigationSections}
+      modules={[]}
+      navigationRules={{ grouping: false, ariaLabel: navigation.ariaLabel }}
       currentPath={currentPath}
+      portalTabs={portalTabs}
       headerControls={(
         <><LocaleSwitcher locale={auth.preferredLocale} onSelect={(locale) => void changeLocale(locale)} busy={localeBusy} />
-        <RoleSwitcher
-          activeLabel={localizedRoleLabel(activeRole)}
-          alternatives={assignedRoles
-            .filter((role) => role !== activeRole)
-            .map((role) => ({ key: role, label: localizedRoleLabel(role) }))}
-          busy={switchBusy}
-          onSelect={(role) => void switchRoleFromHeader(role)}
-        /></>
+        <button className="k-portal-logout" type="button" aria-label={t('Odhlásit')} title={t('Odhlásit')} disabled={logoutBusy} onClick={() => void logout()}><Icon name="logout" /></button></>
       )}
     >
       {switchError ? <div className="k-shell-inner"><StateView title={copy.accessDeniedTitle ?? t('Přístup odepřen')} description={switchError} stateKey="error" /></div> : null}

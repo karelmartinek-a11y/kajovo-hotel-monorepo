@@ -206,7 +206,7 @@ async function expectElementUnobscured(locator: Locator) {
     const hit = document.elementFromPoint(point.x, point.y);
     return Boolean(hit && (hit === element || element.contains(hit) || hit.contains(element)));
   }, { x, y });
-  expect(unobscured).toBeTruthy();
+  expect(unobscured, `Ovládací prvek zakrytý při ověření: ${await locator.evaluate((element) => element.outerHTML.slice(0, 180))}`).toBeTruthy();
 }
 
 async function assertKdgsGeometry(page: Page, viewName: string) {
@@ -276,14 +276,18 @@ test.describe('KDGS role scénáře portálu', () => {
     test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
       const user = await createPortalUser(request, testInfo, scenario.roles);
       await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
-      const isPhone = (page.viewportSize()?.width ?? 0) <= 599;
-      const profileLink = isPhone ? page.getByTestId('portal-mobile-tabs').getByRole('link', { name: 'Profil' }) : page.locator('.k-shell-profile-link');
+      const profileLink = page.getByTestId('portal-mobile-tabs').getByRole('link', { name: 'Profil' });
       await profileLink.click();
       await expect(page).toHaveURL(/\/profil$/);
-      const firstModule = isPhone ? page.getByTestId('portal-mobile-tabs').locator('a[href]:not([href="/profil"])').first() : page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first();
-      const firstModulePath = new URL((await firstModule.getAttribute('href'))!, page.url()).pathname;
-      await firstModule.click();
-      await expect.poll(() => new URL(page.url()).pathname).toBe(firstModulePath);
+      if (scenario.name === 'sklad') {
+        await page.getByRole('button', { name: 'Sklad' }).click();
+        await expect(page).toHaveURL(/\/sklad$/);
+      } else {
+        const firstModule = page.getByTestId('portal-mobile-tabs').locator('a[href]:not([href="/profil"])').first();
+        const firstModulePath = new URL((await firstModule.getAttribute('href'))!, page.url()).pathname;
+        await firstModule.click();
+        await expect.poll(() => new URL(page.url()).pathname).toBe(firstModulePath);
+      }
 
       for (const locale of ['cs', 'en', 'uk'] as const) {
         if (locale !== 'cs') {
@@ -297,19 +301,12 @@ test.describe('KDGS role scénáře portálu', () => {
           await waitForView(page, view);
           await assertKdgsGeometry(page, `${scenario.name} / ${view.name} / ${locale}`);
           const localizedProfile = locale === 'en' ? 'Profile' : locale === 'uk' ? 'Профіль' : 'Profil';
-          if (isPhone) {
-            await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: localizedProfile })).toBeVisible();
-          } else {
-            await expect(page.locator('.k-shell-profile-link')).toBeVisible();
-            await expect(page.locator('.k-shell-profile-link')).toContainText(localizedProfile);
-            await expect(page.getByTestId('module-navigation')).toBeVisible();
-          }
+          await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: localizedProfile })).toBeVisible();
+          await expect(page.getByRole('button', { name: locale === 'en' ? 'Sign out' : locale === 'uk' ? 'Вийти' : 'Odhlásit' })).toBeVisible();
           if ((page.viewportSize()?.width ?? 0) <= 599) {
             await expect(page.getByTestId('portal-mobile-tabs')).toBeVisible();
             await expect(page.getByTestId('module-navigation-phone')).toBeHidden();
             await expect(page.locator('.k-app-header')).toHaveCSS('position', 'fixed');
-          } else {
-            await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
           }
           if (view.name === 'recepce') {
             await page.evaluate(() => window.scrollTo(0, 500));
