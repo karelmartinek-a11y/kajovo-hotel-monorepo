@@ -560,6 +560,7 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-task--sheet .k-hk-status-actions button:hover:not(:disabled) { border-color: var(--k-color-brand-red); background: var(--k-color-surface); }
 
 @media (max-width: 599px) {
+  body:has(.k-hk-board) .k-app-header { z-index: var(--k-z-drawer); }
   body:has(.k-hk-board) .k-shell-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;

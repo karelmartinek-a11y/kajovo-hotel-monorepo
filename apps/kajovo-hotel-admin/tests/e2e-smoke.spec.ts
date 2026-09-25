@@ -106,7 +106,14 @@ test('pokoje mají pevné dlaždice po čtyřech na mobilu, spodní detail a chy
       expect(Math.abs((await controls.boundingBox())!.y - controlsY)).toBeLessThan(2);
       await page.locator('.k-hk-board').evaluate((node) => node.scrollTo({ top: 0 }));
     }
-    if (size.width <= 390) await expect(page.locator('.k-shell-profile-link .k-nav-link__icon')).toBeVisible();
+    if (size.width <= 390) {
+      await expect(page.locator('.k-shell-profile-link .k-nav-link__icon')).toBeVisible();
+      await page.getByTestId('module-navigation-phone').getByRole('button', { name: 'Menu' }).click();
+      await page.getByRole('dialog', { name: 'Navigace' }).getByRole('menuitem', { name: /Přehled/ }).click();
+      await expect(page.getByTestId('dashboard-page')).toBeVisible();
+      await page.goto('/admin/pokojska');
+      await expect(cards).toHaveCount(37);
+    }
     const boxes = await cards.evaluateAll((nodes) => nodes.slice(0, 5).map((node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
     if (size.width <= 390) {
       expect(boxes.slice(0, 4).every((box) => Math.abs(box.y - boxes[0].y) < 2)).toBeTruthy();

@@ -487,6 +487,12 @@ for (const role of ['recepce', 'pokojska']) {
     await expect(card).toContainText('Novákovi');
     await expect(card).toContainText('Přijíždějící host');
     await page.screenshot({ path: testInfo.outputPath(`pokoje-board-${role}.png`), fullPage: true });
+    const originalViewport = page.viewportSize();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByTestId('module-navigation-phone').getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('dialog', { name: 'Navigace' }).getByRole('menuitem', { name: /Pokoje/ }).click();
+    await expect(page.getByRole('dialog', { name: 'Navigace' })).toHaveCount(0);
+    if (originalViewport) await page.setViewportSize(originalViewport);
     await card.click();
     await expect(page.getByRole('dialog')).toContainText('Stát neuveden');
     await expect(page.getByRole('dialog')).toContainText('Česko');
