@@ -80,18 +80,20 @@ test('uživatelé mají oddělený editor, validace, zachování konceptu a resp
   } finally { await request.delete(`/api/v1/users/${user.id}`, { headers: { 'x-csrf-token': csrf } }); }
 });
 
-test('pokoje mají pevné dlaždice po čtyřech na mobilu, spodní detail a chyba nehlásí úspěch', async ({ page, request }) => {
+test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní detail a chyba nehlásí úspěch', async ({ page, request }) => {
   expect((await request.post('/api/auth/admin/login', { data: getAdminCredentials() })).ok()).toBeTruthy();
   await page.context().addCookies((await request.storageState()).cookies);
   const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
-  const rooms = Array.from({ length: 37 }, (_, i) => ({ room_id: String(i + 101), room_number: String(i + 101), room_name: String(i + 101), floor: '1', housekeeping_status: 'Neuklizeno', operational_state: 'checkout_pending', occupancy_state: 'departing', occupied: i % 2 === 0, persons: i % 2 === 0 ? 3 : 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
+  const expectedOrder = [101, 102, 103, 104, 105, 106, 107, 108, 109, 203, 204, 205, 206, 207, 208, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 221, 222, 223, 224, 321, 322, 323, 324, 201, 202, 209, 210, 410];
+  const rooms = expectedOrder.slice().reverse().map((number, i) => ({ room_id: String(number), room_number: String(number), room_name: String(number), floor: String(number)[0], housekeeping_status: 'Neuklizeno', operational_state: 'checkout_pending', occupancy_state: 'departing', occupied: number === 101 || i % 2 === 0, persons: number === 101 || i % 2 === 0 ? 3 : 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     if (route.request().method() === 'PATCH') { await route.fulfill({ status: 502, json: { detail: 'Ověření změny selhalo.' } }); return; }
     await route.fulfill({ json: { date: '2026-09-18', occupancy_date: '2026-09-18', loaded_at: new Date().toISOString(), housekeeping_status_is_current: true, rooms } });
   });
   await page.goto('/admin/pokojska');
   const cards = page.locator('.k-hk-room');
-  await expect(cards).toHaveCount(37);
+  await expect(cards).toHaveCount(38);
+  expect(await cards.evaluateAll((nodes) => nodes.map((node) => node.querySelector('.k-hk-room__topline strong')?.textContent))).toEqual(expectedOrder.map(String));
   for (const size of [{ width: 1440, height: 900 }, { width: 834, height: 1112 }, { width: 390, height: 844 }, { width: 320, height: 700 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
     await page.setViewportSize(size);
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -112,7 +114,7 @@ test('pokoje mají pevné dlaždice po čtyřech na mobilu, spodní detail a chy
       await page.getByRole('dialog', { name: 'Navigace' }).getByRole('menuitem', { name: /Přehled/ }).click();
       await expect(page.getByTestId('dashboard-page')).toBeVisible();
       await page.goto('/admin/pokojska');
-      await expect(cards).toHaveCount(37);
+      await expect(cards).toHaveCount(38);
     }
     const boxes = await cards.evaluateAll((nodes) => nodes.slice(0, 5).map((node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
     if (size.width <= 390) {

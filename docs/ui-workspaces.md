@@ -36,30 +36,30 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 |---|---|
 | Datum, předchozí/následující den, Dnes | GET `/api/v1/housekeeping/rooms?date=…`; výchozí hotelový den Europe/Prague, ochrana před přepsáním novějšího dne starou odpovědí. |
 | Vysvětlivky barev | Rozbalitelné, bez zápisu; popisují odjezd, úklid nezávislý na příjezdu, pokračující pobyt a prázdnou polovinu. |
-| Patro a počty | Seskupení skutečného inventáře a počet pokojů k úklidu z provozního stavu. |
+| Pořadí pokojů | Jedna mřížka ve stanoveném provozním pořadí; další pokoje z živého inventáře následují číselně. |
 | Dlaždice a spodní detail pokoje | Pevná velikost dlaždic, číslo pokoje, výslovná aktuální obsazenost s počtem osob, stručný náhled odjezdů/příjezdů/pokračování vybraného dne a úklid. Spodní detail ukazuje úplné údaje rezervací včetně osob, země, noci pobytu, psa a postýlky. Žádné vymyšlené typy pokojů. |
 | Šest stavových tlačítek | PATCH `/api/v1/housekeeping/rooms/{room_id}?date=…`; přesné hodnoty a mapování číselníku jsou v modulu Pokoje. |
 | Probíhající zápis | Nativní modální dialog „Zapisuji změnu…“, bez zavření a bez potvrzovacích tlačítek. Po ověřené odpovědi automatický návrat k přehledu, lokální aktualizace karty a obnova dat na pozadí. |
 | Chyba zápisu | Nesmí být vydávána za úspěch; dialog zůstává, další zápis je zablokován do obnovení aktuálního stavu. Bez slepého opakování PATCH. |
 | Pobyty a ikony | Samostatná pracovní obrazovka; admin/recepce spravují ikony, pokojská pouze mění barvu. Endpointy rezervace kontrolují ID rezervace, pokoj, den a monotónní verzi. |
-| Nález / Závada | Zachované existující formuláře nadřazené pokojské routy; mobilní přehled má spodní navigaci. |
+| Nález / Závada | Pokojská otevírá stávající rychlé formuláře přes obrazové zápatí portálu na `/pokojska?view=lost_found` a `/pokojska?view=issue`. Administrační pohled si ponechává vlastní přepínač. |
 | Obnova | 60 sekund ve viditelném okně, návrat do okna a po zápisu. Better Hotel tokeny zůstávají výhradně na serveru. |
 
 ## Responzivní kontrakt a ověření
 
 Varianta „Eclipse Adaptive“ používá paletu Space Black `#000000`, Orange `#FF6A2E`, Ivory `#F7F4ED` a Silver `#C0C0C0`. Uživatelský portál má na mobilu, tabletu i desktopu pevnou spodní lištu s čtvercovými tužkovými piktogramy a viditelnými názvy všech dostupných pohledů. Mobilní záhlaví má výšku 20 px, spodní lišta 72 px plus systémový bezpečný okraj; každý odkaz má nejméně 68 px na šířku a při nedostatku místa se lišta posouvá vodorovně. Sklad i hlášení mají vlastní odkazy v zápatí. Přepnutí do sekce jiné role provádí serverový výběr role. Mobilní záhlaví obsahuje logo, tři vlajky volby jazyka a ikonu odhlášení. Administrace používá vlastní navigaci. Oddělený seznam/editor a samostatné úlohy zůstávají zachovány. Přehled pokojů má pevně vysoké kompaktní dlaždice; na mobilu drženém na výšku jsou čtyři v řádku. Dlaždice současně ukazuje číslo, aktuální obsazenost, zkrácený náhled pobytů vybraného dne a úklid. Úplné údaje o pobytech a volba stavu jsou ve spodním detailu otevřeném výběrem dlaždice. Ovládání dne zůstává při svislém posuvu přehledu nahoře. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni. Detail má vnitřní svislý posuv pro dlouhé údaje a po ověřeném zápisu se automaticky zavře.
 
-Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu duplicity, validační kroky, probíhající zápis bez tlačítek, automatický návrat, chybu PATCH a obnovu. Responzivní scénář se 37 pokoji a dlouhou zemí/jménem kontroluje 1440 × 900, 834 × 1112, 390 × 844, 320 × 700, 844 × 390 a 667 × 375; kontroluje čtyři stejně velké dlaždice v portrétu, šířku dokumentu a spodní detail ve výšce displeje. Portálový smoke ověřuje tentýž sdílený tok a role ikon.
+Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu duplicity, validační kroky, probíhající zápis bez tlačítek, automatický návrat, chybu PATCH a obnovu. Responzivní scénář se 37 určenými pokoji a jedním dalším kontroluje 1440 × 900, 834 × 1112, 390 × 844, 320 × 700, 844 × 390 a 667 × 375; kontroluje pořadí, čtyři stejně velké dlaždice v portrétu, šířku dokumentu a spodní detail ve výšce displeje. Portálový smoke ověřuje totéž pořadí, rychlé formuláře v jediném zápatí a role ikon.
 
 ## Matice dopadů
 
 | Kategorie | Rozhodnutí |
 |---|---|
-| Produkční kód | Aktualizovat portálovou větev AppShell, mobilní styl a jazykové volby; sdílený datový tok pokojů, API a databázi ověřit beze změny. |
-| Testy | Aktualizovat portálový smoke pro role, spodní lištu, profil, pevné záhlaví a vlajky; portálové vizuální scénáře ověřit na mobilu, tabletu i desktopu. Admin testy ověřit beze změny. |
+| Produkční kód | Sdílený přehled řadí jednu mřížku; portál otevírá rychlé formuláře z obrazového zápatí. API a databáze zůstávají beze změny. |
+| Testy | Portálový i administrační smoke kontrolují pořadí a responzivní mřížku; portálový smoke navíc kontroluje obrazové zápatí a rychlé zápisy. |
 | CI a gates | Ověřit beze změny: workflow již spouští obě dotčené smoke sady, vizuální testy a release gate. |
-| Dokumentace | Aktualizovat tento aktuální inventář a responzivní kontrakt. Datová schémata a modul Pokoje ověřit beze změny. |
-| Komentáře a poznámky | Ověřit beze změny: dotčené komponenty nemají popisný komentář ani TODO se starým chováním. |
-| Instrukce | Aktualizovat AGENTS pro mobilní navigační kontrakt portálu. |
-| Fixtures a texty | Ověřit překlady názvů modulů a jazyků beze změny; vlajky doplnit do UI a nové selektory do testů. |
+| Dokumentace | Aktuální inventář a přesné pořadí jsou zde a v modulu Pokoje; datová schémata jsou beze změny. |
+| Komentáře a poznámky | Popis starého seskupení podle pater byl odstraněn; ostatní poznámky zůstávají platné. |
+| Instrukce | Kořenový AGENTS stanoví pořadí a jediné portálové zápatí. |
+| Fixtures a texty | Testovací inventář obsahuje všech 37 určených pokojů i další pokoj; existující obrázky a lokalizované názvy se používají v zápatí. |
 | Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny; CI a deploy konfiguraci ověřit beze změny. |

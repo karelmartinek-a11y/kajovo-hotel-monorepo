@@ -4,7 +4,22 @@
 
 Pohled `Pokoje` je samostatná výchozí volba na stránce `/pokojska` a paralelně na `/admin/pokojska`, vedle rychlých zápisů `Nález` a `Závada`. Je dostupný pokojské, recepci i administrátorovi přes sdílenou komponentu. Výchozí den je aktuální hotelový den v `Europe/Prague`; obsluha může přejít na předchozí nebo následující den či zvolit datum.
 
-Pokoje jsou seskupené po patrech. Čtyři stejně velké dlaždice se vejdou vedle sebe i v mobilním portrétu. Horní ovládání dne zůstává při svislém posuvu přehledu nahoře. Dlaždice ukazuje číslo, současnou obsazenost s počtem osob, stručný náhled pobytů a stav úklidu. Výběr dlaždice otevírá spodní detail; v něm zůstávají úplné údaje:
+Pokoje tvoří jednu mřížku v pevném pořadí. Na mobilu po čtyřech dlaždicích v řádku:
+
+```text
+101 102 103 104
+105 106 107 108
+109 203 204 205
+206 207 208 301
+302 303 304 305
+306 307 308 309
+310 221 222 223
+224 321 322 323
+324 201 202 209
+210
+```
+
+Další pokoje z inventáře následují číselně za tímto pořadím. Ostatní šířky mění počet sloupců, ne pořadí. Horní ovládání dne zůstává při svislém posuvu přehledu nahoře. Dlaždice ukazuje číslo, současnou obsazenost s počtem osob, stručný náhled pobytů a stav úklidu. Výběr dlaždice otevírá spodní detail; v něm zůstávají úplné údaje:
 
 - odjíždějící pobyty vlevo a přijíždějící vpravo, s prázdnou opačnou částí při jediné události;
 - pokračující pobyt přes celou šířku;
@@ -66,7 +81,7 @@ Role `admin`, `recepce` a `pokojská` mají `housekeeping:read` i `housekeeping:
 - RBAC GET/PATCH: `apps/kajovo-hotel-api/tests/test_rbac.py`;
 - portálová interakce: `apps/kajovo-hotel-web/tests/live-smoke.spec.ts`;
 - administrační interakce: `apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts`;
-- responzivní vizuální kontroly: existující visual suites obou frontendů; smoke scénář zúžení otevřeného přehledu s 37 pokoji ověřuje, že odloženě vykreslovaná patra neudrží šířku předchozího viewportu;
+- responzivní vizuální kontroly: visual suites obou frontendů; smoke scénáře kontrolují pořadí pokojů, čtyři dlaždice na mobilu a přizpůsobení šířky po zúžení viewportu;
 - produkční čtecí gate: `scripts/verify_live_housekeeping_rooms.mjs`.
 - CI job `api-runtime-image` sestaví skutečný produkční Docker image, ověří import celé aplikace a přítomnost českého překladu zemí. Závislost `pycountry` musí být i v Dockerfile, nejen v `pyproject.toml` a minimálních CI instalacích.
 

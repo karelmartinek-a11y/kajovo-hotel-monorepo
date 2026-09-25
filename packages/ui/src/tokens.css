@@ -311,47 +311,7 @@ body {
 .k-hk-legend__item--red i { background: var(--k-hk-red); }
 .k-hk-legend__item--green i { background: var(--k-hk-green); }
 .k-hk-legend__item--empty i { background: transparent; border-color: var(--k-hk-free-border); }
-
-.k-hk-floor {
-  padding: var(--k-hk-space-10);
-  border-radius: var(--k-radius-11);
-  background: var(--k-hk-gradient-floor);
-  box-shadow: var(--k-hk-shadow-floor);
-  content-visibility: auto;
-  contain-intrinsic-size: 190px;
-}
-
-.k-hk-floor__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--k-spacing-4);
-  padding: 0 var(--k-spacing-1) var(--k-hk-space-9);
-  color: var(--k-hk-muted);
-  font-size: 13px;
-}
-
-.k-hk-floor__title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--k-hk-space-9);
-  color: var(--k-hk-navy);
-}
-
-.k-hk-floor__title strong { font-size: 21px; }
-.k-hk-floor__title svg {
-  width: 23px;
-  height: 23px;
-  fill: none;
-  stroke: var(--k-hk-teal);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.k-hk-floor__header > span:last-child { display: inline-flex; align-items: center; gap: var(--k-hk-space-9); }
-.k-hk-floor__header > span:last-child i { width: 1px; height: 20px; background: var(--k-hk-line); }
-.k-hk-floor__rooms {
+.k-hk-room-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: var(--k-hk-space-9);
@@ -426,21 +386,17 @@ body {
   .k-hk-datebar strong { font-size: 14px; }
   .k-hk-legend { display: flex; overflow-x: auto; scrollbar-width: thin; }
   .k-hk-legend__item { flex: 0 0 150px; }
-  .k-hk-floor__rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .k-hk-room-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .k-hk-room { min-height: 132px; }
 }
 
 @media (max-width: 480px) {
-  .k-hk-floor__rooms { grid-template-columns: minmax(0, 1fr); }
+  .k-hk-room-grid { grid-template-columns: minmax(0, 1fr); }
   .k-hk-board__header h2 { font-size: 28px; }
   .k-hk-board__header > div p { font-size: 13px; }
   .k-hk-datebar label { padding: 0 var(--k-hk-space-6); }
   .k-hk-datebar label > span { display: none; }
   .k-hk-datebar strong { font-size: 12px; }
-  .k-hk-floor { padding: var(--k-hk-space-9); }
-  .k-hk-floor__header { align-items: flex-start; }
-  .k-hk-floor__header > span:last-child { font-size: 11px; }
-  .k-hk-floor__title strong { font-size: 19px; }
   .k-hk-status-actions { grid-template-columns: 1fr; }
 }
 

@@ -105,6 +105,14 @@ const HOUSEKEEPING_ROOM_FIXTURES = [
   })),
 ];
 
+const EXPECTED_ROOM_ORDER = [
+  101, 102, 103, 104, 105, 106, 107, 108,
+  109, 203, 204, 205, 206, 207, 208, 301,
+  302, 303, 304, 305, 306, 307, 308, 309,
+  310, 221, 222, 223, 224, 321, 322, 323,
+  324, 201, 202, 209, 210,
+];
+
 async function csrfHeaderFor(context: APIRequestContext) {
   const state = await context.storageState();
   const csrf = state.cookies.find((cookie: { name: string; value: string }) => cookie.name === 'kajovo_csrf')?.value;
@@ -292,10 +300,10 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   expect(errors).toEqual([]);
 });
 
-test('pokoje po zúžení okna nezachovají šířku dříve vykresleného patra', async ({ page, request }, testInfo) => {
-  const rooms = ['3', '2', '1', '0'].flatMap((floor) => Array.from({ length: floor === '3' ? 14 : floor === '0' ? 7 : 8 }, (_, index) => ({
-    ...HOUSEKEEPING_ROOM_FIXTURE, floor, room_id: `${floor}-${index}`, room_number: `${floor}${String(index + 1).padStart(2, '0')}`,
-  })));
+test('pokoje zachovají provozní pořadí a přizpůsobí mřížku šířce okna', async ({ page, request }, testInfo) => {
+  const rooms = [410, 99, ...EXPECTED_ROOM_ORDER.slice().reverse()].map((number) => ({
+    ...HOUSEKEEPING_ROOM_FIXTURE, floor: String(number)[0], room_id: `room-${number}`, room_number: String(number),
+  }));
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     const date = new URL(route.request().url()).searchParams.get('date')!;
     await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms } });
@@ -304,12 +312,58 @@ test('pokoje po zúžení okna nezachovají šířku dříve vykresleného patra
   await loginPortalUser(page, user.portalEmail, user.portalPassword);
   const firstCard = page.locator('.k-hk-room').first();
   await expect(firstCard).toBeVisible();
+  await expect(page.locator('.k-hk-room')).toHaveCount(39);
+  expect(await page.locator('.k-hk-room').evaluateAll((nodes) => nodes.map((node) => node.querySelector('.k-hk-room__topline strong')?.textContent))).toEqual([...EXPECTED_ROOM_ORDER, 99, 410].map(String));
   for (const width of [1440, 768, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     await firstCard.scrollIntoViewIfNeeded();
     await expect.poll(() => firstCard.evaluate((element) => element.getBoundingClientRect().right)).toBeLessThanOrEqual(width);
     await expect.poll(() => page.locator('.k-hk-board').evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
+    if (width === 390) {
+      const rows = await page.locator('.k-hk-room').evaluateAll((nodes) => nodes.slice(0, 8).map((node) => node.getBoundingClientRect().top));
+      expect(rows.slice(0, 4).every((top) => Math.abs(top - rows[0]) < 2)).toBeTruthy();
+      expect(rows.slice(4).every((top) => Math.abs(top - rows[4]) < 2)).toBeTruthy();
+      expect(rows[4]).toBeGreaterThan(rows[0]);
+    }
   }
+});
+
+test('pokojská používá jediné obrázkové zápatí pro pokoje, nález a závadu', async ({ page, request }, testInfo) => {
+  const submitted: Array<{ kind: string; body: Record<string, unknown> }> = [];
+  for (const [kind, path] of [['lost_found', 'lost-found'], ['issue', 'issues']] as const) {
+    await page.route(`**/api/v1/${path}`, async (route) => {
+      if (route.request().method() !== 'POST') { await route.continue(); return; }
+      submitted.push({ kind, body: route.request().postDataJSON() });
+      await route.fulfill({ status: 201, json: { id: submitted.length } });
+    });
+  }
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [HOUSEKEEPING_ROOM_FIXTURE] } });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const footer = page.getByTestId('portal-mobile-tabs');
+  await expect(footer).toBeVisible();
+  await expect(page.locator('.k-housekeeping-toggle')).toHaveCount(0);
+  await expect(footer.locator('a, button')).toHaveCount(4);
+  for (const [label, view, kind] of [['Nález', 'lost_found', 'lost_found'], ['Závada', 'issue', 'issue']] as const) {
+    await footer.getByRole('link', { name: label }).click();
+    expect(new URL(page.url()).pathname).toBe('/pokojska');
+    expect(new URL(page.url()).searchParams.get('view')).toBe(view);
+    await expect(footer.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('#housekeeping_description')).toBeVisible();
+    await page.getByRole('button', { name: '101', exact: true }).click();
+    await page.locator('#housekeeping_description').fill(`Test ${label}`);
+    await page.getByRole('button', { name: 'Odeslat' }).click();
+    await expect(page.getByText(/Úspěšně byl odeslán záznam/)).toBeVisible();
+    expect(submitted[submitted.length - 1]?.kind).toBe(kind);
+    expect(submitted[submitted.length - 1]?.body.room_number).toBe('101');
+  }
+  await footer.getByRole('link', { name: 'Pokoje' }).click();
+  await expect(page).toHaveURL(/\/pokojska$/);
+  await expect(page.getByTestId('housekeeping-rooms-view')).toBeVisible();
 });
 
 test('snídaně mění jedinou dietu konkrétní rezervace a obnoví přehled', async ({ page, request }, testInfo) => {
@@ -808,8 +862,8 @@ test('multirolni portal uzivatel vidi kazdy dostupny pohled v zapati', async ({ 
 
   await expect(page).toHaveURL(/\/pokojska$/);
   const tabs = page.getByTestId('portal-mobile-tabs');
-  await expect(tabs.locator('a, button')).toHaveCount(7);
-  for (const name of ['Profil', 'Pokoje', 'Recepce', 'Snídaně', 'Ztráty a nálezy', 'Závady', 'Hlášení']) {
+  await expect(tabs.locator('a, button')).toHaveCount(9);
+  for (const name of ['Profil', 'Pokoje', 'Recepce', 'Snídaně', 'Nález', 'Závada', 'Ztráty a nálezy', 'Závady', 'Hlášení']) {
     const tab = tabs.getByRole('link', { name, exact: true }).or(tabs.getByRole('button', { name, exact: true }));
     await expect(tab).toBeVisible();
     await expect(tab.locator('img')).toHaveAttribute('src', /\/assets\/[^/]+\.webp$/);
@@ -880,7 +934,7 @@ for (const scenario of ROLE_SCENARIOS) {
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileTabs = page.getByTestId('portal-mobile-tabs');
     await expect(mobileTabs).toBeVisible();
-    await expect(mobileTabs.locator('a, button')).toHaveCount(expectedVisibleModules.length + 1);
+    await expect(mobileTabs.locator('a, button')).toHaveCount(expectedVisibleModules.length + 1 + (scenario.key === 'pokojská' ? 2 : 0));
     expect(await collectVisibleModuleRoutes(page)).toEqual(expectedVisibleModules.slice().sort());
     await expect(mobileTabs.getByRole('link', { name: 'Profil' })).toBeVisible();
     await mobileTabs.getByRole('link', { name: 'Profil' }).click();

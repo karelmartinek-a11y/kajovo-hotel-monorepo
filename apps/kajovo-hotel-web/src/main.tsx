@@ -1971,12 +1971,16 @@ function BreakfastDetail(): JSX.Element {
 
 function HousekeepingForm(): JSX.Element {
   const auth = useAuth();
+  const { search } = useLocation();
   const permissions = auth?.permissions ?? new Set<string>();
   const canCreateIssue = permissions.has('issues:write');
   const canCreateLostFound = permissions.has('lost_found:write');
   const canWriteRooms = permissions.has('housekeeping:write');
-  const [activeView, setActiveView] = React.useState<'rooms' | 'issue' | 'lost_found'>('rooms');
-  const [mode, setMode] = React.useState<'issue' | 'lost_found'>('issue');
+  const requestedView = new URLSearchParams(search).get('view');
+  const activeView = requestedView === 'issue' && canCreateIssue ? 'issue'
+    : requestedView === 'lost_found' && canCreateLostFound ? 'lost_found' : 'rooms';
+  const [draftMode, setDraftMode] = React.useState<'issue' | 'lost_found'>('issue');
+  const mode = activeView === 'rooms' ? draftMode : activeView;
   const [selectedRoom, setSelectedRoom] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [photos, setPhotos] = React.useState<File[]>([]);
@@ -1996,15 +2000,6 @@ function HousekeepingForm(): JSX.Element {
     () => photos.map((photo) => ({ name: photo.name, url: URL.createObjectURL(photo) })),
     [photos],
   );
-
-  React.useEffect(() => {
-    if (mode === 'issue' && !canCreateIssue && canCreateLostFound) {
-      setMode('lost_found');
-    }
-    if (mode === 'lost_found' && !canCreateLostFound && canCreateIssue) {
-      setMode('issue');
-    }
-  }, [canCreateIssue, canCreateLostFound, mode]);
 
   const clearDraftForm = React.useCallback(() => {
     setSelectedRoom('');
@@ -2032,6 +2027,11 @@ function HousekeepingForm(): JSX.Element {
     clearDraftForm();
     setSuccess(null);
   }, [clearDraftForm, stopCamera]);
+
+  React.useEffect(() => {
+    setSuccess(null);
+    if (activeView !== 'rooms') setDraftMode(activeView);
+  }, [activeView]);
 
   const updatePhotos = React.useCallback(async (files: File[], append: boolean): Promise<void> => {
     const normalized = await Promise.all(files.map((file) => normalizeHousekeepingPhoto(file)));
@@ -2138,7 +2138,7 @@ function HousekeepingForm(): JSX.Element {
         if (!draft) {
           return;
         }
-        setMode(draft.mode === 'lost_found' ? 'lost_found' : 'issue');
+        setDraftMode(draft.mode === 'lost_found' ? 'lost_found' : 'issue');
         setSelectedRoom(typeof draft.selectedRoom === 'string' ? draft.selectedRoom : '');
         setDescription(typeof draft.description === 'string' ? draft.description : '');
         if (Array.isArray(draft.photos) && draft.photos.length > 0) {
@@ -2321,31 +2321,6 @@ function HousekeepingForm(): JSX.Element {
   return (
     <main className="k-page" data-testid="housekeeping-form-page">
       <h1>{t("Pokojská")}</h1>
-      <div className="k-housekeeping-toggle" role="tablist" aria-label={t("Pohled pokojské")}>
-        <button
-          className={`k-housekeeping-toggle__button${activeView === 'rooms' ? ' k-housekeeping-toggle__button--active' : ''}`}
-          type="button"
-          role="tab"
-          onClick={() => setActiveView('rooms')}
-          aria-selected={activeView === 'rooms'}
-        >{t("Pokoje")}{' '}</button>
-        <button
-          className={`k-housekeeping-toggle__button${activeView === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`}
-          type="button"
-          role="tab"
-          onClick={() => { setMode('lost_found'); setActiveView('lost_found'); }}
-          aria-selected={activeView === 'lost_found'}
-          disabled={!canCreateLostFound}
-        >{t("Nález")}{' '}</button>
-        <button
-          className={`k-housekeeping-toggle__button${activeView === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`}
-          type="button"
-          role="tab"
-          onClick={() => { setMode('issue'); setActiveView('issue'); }}
-          aria-selected={activeView === 'issue'}
-          disabled={!canCreateIssue}
-        >{t("Závada")}{' '}</button>
-      </div>
       {activeView === 'rooms' ? <HousekeepingRooms canWrite={canWriteRooms} canManageAmenities={['admin', 'recepce'].includes(auth?.activeRole ?? auth?.role ?? '')} /> : (
         <div className="k-card k-card--compact">
           {error ? <p className="k-text-error">{error}</p> : null}
