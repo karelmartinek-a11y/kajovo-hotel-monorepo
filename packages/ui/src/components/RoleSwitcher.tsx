@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './Icon';
+import { t, tf } from '@kajovo/shared';
 
 type RoleSwitcherItem = {
   key: string;
@@ -26,7 +27,7 @@ export function RoleSwitcher({
   }
 
   return (
-    <div className="k-role-switcher" role="group" aria-label={ariaLabel}>
+    <div className="k-role-switcher" role="group" aria-label={t(ariaLabel)}>
       <span className="k-role-switcher__active">
         <Icon name="profile" className="k-role-switcher__icon" />
         <span>{activeLabel}</span>
@@ -37,7 +38,7 @@ export function RoleSwitcher({
           className="k-role-switcher__button"
           type="button"
           disabled={busy}
-          aria-label={`Přepnout roli na ${item.label}`}
+          aria-label={tf('Přepnout roli na {role}', { role: item.label })}
           onClick={() => onSelect(item.key)}
         >
           <Icon name="grid" className="k-role-switcher__icon" />

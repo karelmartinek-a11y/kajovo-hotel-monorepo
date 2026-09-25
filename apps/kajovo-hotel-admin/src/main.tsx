@@ -15,6 +15,7 @@ import { AppShell, Badge, Card, DataTable, FormField, HousekeepingRooms, KajovoS
 import {
   apiClient,
   getAuthBundle,
+  attachWebActivity,
   type BreakfastDailySummary,
   type BreakfastOrderCreate,
   type BreakfastOrderRead,
@@ -4202,7 +4203,7 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: principal, password }),
+        body: JSON.stringify({ email: principal, password, web_activity_session: true }),
       });
       window.location.assign('/admin/');
     } catch (error) {
@@ -4343,6 +4344,11 @@ function AppRoutes(): JSX.Element {
   }, [refreshAuth]);
 
   const auth = authState.status === 'authenticated' ? authState.profile : null;
+
+  React.useEffect(() => {
+    if (authState.status !== 'authenticated') return;
+    return attachWebActivity(() => window.location.assign('/admin/login'));
+  }, [authState]);
 
   if (authState.status === 'loading') {
     return (

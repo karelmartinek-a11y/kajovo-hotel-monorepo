@@ -744,7 +744,11 @@ def test_breakfast_export_pdf(api_request: ApiRequest, api_base_url: str) -> Non
             assert response.headers.get("content-type") == "application/pdf"
             content = response.read()
             assert content.startswith(b"%PDF-")
-            assert b"Datum: 2026-03-09" in content
+            from io import BytesIO
+
+            from pypdf import PdfReader
+
+            assert "Datum: 2026-03-09" in PdfReader(BytesIO(content)).pages[0].extract_text()
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="ignore")
         raise AssertionError(f"Export request failed: {exc.code} {exc.reason} {detail}") from exc

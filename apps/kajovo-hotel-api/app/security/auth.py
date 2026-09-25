@@ -97,6 +97,7 @@ def _serialize_session(record: AuthSession) -> dict[str, str | list[str] | int |
         "active_role": normalize_role(record.active_role) if record.active_role else None,
         "actor_type": record.actor_type,
         "portal_user_id": record.portal_user_id,
+        "web_activity_session": record.web_activity_session,
     }
 
 
@@ -153,6 +154,10 @@ def _load_session(request: Request, db: Session) -> dict[str, str | list[str] | 
             _revoke_session_record(db, record, now=now)
         return None
 
+    if record.web_activity_session and (now - (_as_utc(record.last_activity_at) or now)).total_seconds() > get_settings().web_session_idle_seconds:
+        _revoke_session_record(db, record, now=now)
+        return None
+
     if record.portal_user_id is not None and not _validate_portal_session(db, record):
         _revoke_session_record(db, record, now=now)
         return None
@@ -174,6 +179,7 @@ def create_session_record(
     active_role: str | None = None,
     portal_user_id: int | None = None,
     max_age_seconds: int | None = None,
+    web_activity_session: bool = False,
 ) -> AuthSession:
     normalized_roles = [normalize_role(item) for item in (roles or [role])]
     expires_at = _utc_now() + timedelta(seconds=max_age_seconds or get_settings().session_max_age_seconds)
@@ -185,12 +191,28 @@ def create_session_record(
         role=normalize_role(role),
         active_role=normalize_role(active_role) if active_role else None,
         expires_at=expires_at,
+        web_activity_session=web_activity_session,
+        last_activity_at=_utc_now() if web_activity_session else None,
         last_seen_at=_utc_now(),
     )
     record.roles = normalized_roles
     db.add(record)
     db.flush()
     return record
+
+
+def renew_web_activity(db: Session, session_id: str) -> bool:
+    record = db.execute(select(AuthSession).where(AuthSession.session_id == session_id)).scalar_one_or_none()
+    if record is None or not record.web_activity_session or record.revoked_at is not None:
+        return False
+    now = _utc_now()
+    if (_as_utc(record.expires_at) or now) <= now:
+        return False
+    record.last_activity_at = now
+    record.expires_at = now + timedelta(seconds=get_settings().web_session_idle_seconds)
+    db.add(record)
+    db.commit()
+    return True
 
 
 def require_session(
@@ -304,6 +326,13 @@ def get_permissions(role: str) -> list[str]:
     return sorted(ROLE_PERMISSIONS.get(normalize_role(role), set()))
 
 
+def preferred_locale_for_session(request: Request, db: Session) -> str:
+    session = require_session(request, db)
+    if session["actor_type"] != "portal" or not session.get("portal_user_id"):
+        return "cs"
+    user = db.get(PortalUser, int(session["portal_user_id"]))
+    return user.preferred_locale if user and user.preferred_locale in {"cs", "en", "uk"} else "cs"
+
+
 def cookie_secure() -> bool:
     return get_settings().environment.lower() == "production"
-

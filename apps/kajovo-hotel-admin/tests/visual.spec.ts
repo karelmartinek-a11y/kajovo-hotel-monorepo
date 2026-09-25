@@ -80,13 +80,11 @@ async function expectElementUnobscured(locator: Locator) {
   if (!box) {
     return;
   }
-  const x = box.x + box.width / 2;
-  const y = box.y + box.height / 2;
-  const unobscured = await locator.evaluate((element, point) => {
-    const hit = document.elementFromPoint(point.x, point.y);
+  await expect.poll(() => locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
     return Boolean(hit && (hit === element || element.contains(hit) || hit.contains(element)));
-  }, { x, y });
-  expect(unobscured).toBeTruthy();
+  })).toBeTruthy();
 }
 
 async function assertKdgsGeometry(page: Page, viewName: string) {

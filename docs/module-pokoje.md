@@ -8,14 +8,14 @@ Pokoje jsou seskupené po patrech a karta ukazuje:
 
 - odjíždějící pobyty vlevo a přijíždějící vpravo, s prázdnou opačnou částí při jediné události;
 - pokračující pobyt přes celou šířku;
-- provozní označení rezervace, počet osob a český název země bydliště hlavního hosta;
+- provozní označení rezervace, počet osob a název země bydliště hlavního hosta v jazyce portálu;
 - samostatné ikony psa a postýlky u každé rezervace;
 - aktuální Better Hotel stav úklidu.
 - pod zemí údaj `Noc pobytu: X/Y`: rozdíl vybraného dne a příjezdu / rozdíl odjezdu a příjezdu v kalendářních dnech; příjezd je 0, odjezd Y. Výpočet v UTC nad daty nemění přechod letního času.
 
-Pobyty a barevné poloviny odpovídají vybranému dni; obsazenost a úklid aktuálnímu okamžiku. API uvádí `occupancy_date`, `housekeeping_status_is_current=true` a `ready_for_arrival` (výhradně stav Uklizeno pro nájezd). Země se čte z adresy hlavního hosta v expandovaném `guest_list.guest.address` podle `main_guest`. Pokud chybí, zobrazuje se „Stát neuveden“.
+Pobyty odpovídají vybranému dni; obsazenost a úklid aktuálnímu okamžiku. API uvádí `occupancy_date`, `housekeeping_status_is_current=true`, `housekeeping_status_key` a `ready_for_arrival`. Země se čte z adresy hlavního hosta v expandovaném `guest_list.guest.address` podle `main_guest`; API předá kód země pro jazykově správné zobrazení. Pokud chybí, zobrazuje se lokalizované „Stát neuveden“.
 
-Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá příjezdová polovina je zelená pouze při `ready_for_arrival`, jinak červená, nezávisle na CHECK-IN. Průběžný úklid nestačí. Chybějící příjezd/odjezd nechává příslušnou polovinu prázdnou. Pokračující pobyt a prázdný pokoj mají neutrální pozadí přes celou šířku. Text aktuální obsazenosti má samostatný kontrastní podklad přes celou kartu.
+Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá polovina je zelená při stavu `clean` bez ohledu na příjezd, světle zelená při `stay_no_linen` nebo `stay_with_linen`; jinak při plánovaném příjezdu červená a bez příjezdu prázdná. Bez události a bez uklizení zůstává karta neutrální. Text aktuální obsazenosti má samostatný kontrastní podklad přes celou kartu.
 
 Priorita aktuální obsazenosti:
 

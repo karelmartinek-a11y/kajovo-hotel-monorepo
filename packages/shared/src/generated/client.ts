@@ -4,6 +4,7 @@
 export type AdminLoginRequest = {
   "email": string;
   "password": string;
+  "web_activity_session"?: boolean;
 };
 export type AdminProfileRead = {
   "display_name": string;
@@ -28,6 +29,7 @@ export type AuthIdentityResponse = {
   "actor_type": string;
   "email": string;
   "permissions": Array<string>;
+  "preferred_locale"?: "cs" | "en" | "uk";
   "role": string;
   "roles"?: Array<string>;
 };
@@ -38,6 +40,7 @@ export type AuthProfileRead = {
   "last_name": string;
   "note"?: string | null;
   "phone"?: string | null;
+  "preferred_locale"?: "cs" | "en" | "uk";
   "roles"?: Array<string>;
 };
 export type AuthProfileUpdate = {
@@ -270,6 +273,7 @@ export type HousekeepingRoomRead = {
   "housekeeping_color"?: string | null;
   "housekeeping_status"?: string | null;
   "housekeeping_status_id"?: string | null;
+  "housekeeping_status_key"?: HousekeepingRoomStatus | null;
   "occupancy_state": "departing" | "arrived" | "staying" | "free";
   "occupied": boolean;
   "operational_state": HousekeepingOperationalState;
@@ -297,6 +301,7 @@ export type HousekeepingStayRead = {
   "arrival": string;
   "checked_in"?: string | null;
   "checked_out"?: string | null;
+  "country_code"?: string | null;
   "country_name"?: string | null;
   "departure": string;
   "guest_label"?: string | null;
@@ -479,6 +484,9 @@ export type IssueUpdate = {
   "status"?: IssueStatus | null;
   "title"?: string | null;
 };
+export type LocaleUpdate = {
+  "locale": "cs" | "en" | "uk";
+};
 export type LogoutResponse = {
   "ok"?: boolean;
 };
@@ -552,6 +560,7 @@ export type PortalLoginRequest = {
   "email": string;
   "password": string;
   "remember_me"?: boolean;
+  "web_activity_session"?: boolean;
 };
 export type PortalPasswordChangeRequest = {
   "new_password": string;
@@ -731,6 +740,9 @@ export const apiClient = {
   async getAndroidReleaseApiAppAndroidReleaseGet(): Promise<AndroidAppReleaseRead> {
     return request<AndroidAppReleaseRead>('GET', `/api/app/android-release`, undefined, undefined);
   },
+  async webActivityApiAuthActivityPost(): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/activity`, undefined, undefined);
+  },
   async adminHintApiAuthAdminHintPost(body: HintRequest): Promise<MailDispatchResponse> {
     return request<MailDispatchResponse>('POST', `/api/auth/admin/hint`, undefined, body);
   },
@@ -742,6 +754,9 @@ export const apiClient = {
   },
   async changeOwnPasswordApiAuthChangePasswordPost(body: PortalPasswordChangeRequest): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/change-password`, undefined, body);
+  },
+  async updatePortalLocaleApiAuthLocalePatch(body: LocaleUpdate): Promise<AuthIdentityResponse> {
+    return request<AuthIdentityResponse>('PATCH', `/api/auth/locale`, undefined, body);
   },
   async portalLoginApiAuthLoginPost(body: PortalLoginRequest): Promise<AuthIdentityResponse> {
     return request<AuthIdentityResponse>('POST', `/api/auth/login`, undefined, body);

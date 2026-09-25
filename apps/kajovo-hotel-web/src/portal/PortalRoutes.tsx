@@ -10,7 +10,8 @@ import {
   type AuthProfile,
   type Role,
 } from '../rbac';
-import { getAuthBundle, type AuthBundle } from '@kajovo/shared';
+import { getAuthBundle, type AuthBundle, setPortalLocale, t, type PortalLocale } from '@kajovo/shared';
+import { LocaleSwitcher } from './LocaleSwitcher';
 
 type AuthCopy = AuthBundle['copy'];
 
@@ -80,14 +81,14 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
       const result = await requestRoleSelection(role);
       if (!result.ok) {
         setBusy(false);
-        setError(result.detail ?? copy.roleSelectError ?? 'Výběr role selhal.');
+        setError(result.detail ?? copy.roleSelectError ?? t('Výběr role selhal.'));
         return;
       }
       window.location.assign('/');
     } catch (err) {
       setBusy(false);
       const message =
-        err instanceof Error && err.message ? `${err.message}` : (copy.roleSelectError ?? 'Výběr role selhal.');
+        err instanceof Error && err.message ? `${err.message}` : (copy.roleSelectError ?? t('Výběr role selhal.'));
       console.error('Role select network error', err);
       setError(message);
     }
@@ -101,8 +102,8 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
 
   return (
     <main className="k-page" data-testid="role-select-page">
-      <h1>{copy.roleSelectTitle ?? 'Vyberte roli'}</h1>
-      <p className="k-login-copy">{copy.roleSelectDescription ?? 'Pro pokračování zvolte roli, ve které budete pracovat.'}</p>
+      <h1>{copy.roleSelectTitle ?? t('Vyberte roli')}</h1>
+      <p className="k-login-copy">{copy.roleSelectDescription ?? t('Pro pokračování zvolte roli, ve které budete pracovat.')}</p>
       <div className="k-toolbar">
         {roles.map((role) => (
           <button key={role} className="k-button" type="button" onClick={() => void selectRole(role)} disabled={busy}>
@@ -110,7 +111,7 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
           </button>
         ))}
       </div>
-      {error ? <StateView title={copy.accessDeniedTitle ?? 'Přístup odepřen'} description={error} stateKey="error" /> : null}
+      {error ? <StateView title={copy.accessDeniedTitle ?? t('Přístup odepřen')} description={error} stateKey="error" /> : null}
       {busy ? <SkeletonPage /> : null}
     </main>
   );
@@ -119,28 +120,26 @@ function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.El
 function ReceptionHubPage(): JSX.Element {
   return (
     <main className="k-page" data-testid="reception-hub-page">
-      <h1>Recepce</h1>
-      <p className="k-login-copy">
-        Vyberte provozní tok, který chcete otevřít. Každá karta vede do plnohodnotného pracovního vstupu, ne jen do stručné zkratky.
-      </p>
+      <h1>{t("Recepce")}</h1>
+      <p className="k-login-copy">{t("Vyberte provozní tok, který chcete otevřít. Každá karta vede do plnohodnotného pracovního vstupu, ne jen do stručné zkratky.")}{' '}</p>
       <div className="k-grid cards-3">
         <StateView
-          title="Zpracování nálezů"
-          description="Seznam čekajících nálezů, detail položky a převzetí po recepci."
+          title={t("Zpracování nálezů")}
+          description={t("Seznam čekajících nálezů, detail položky a převzetí po recepci.")}
           stateKey="empty"
-          action={<Link className="k-button" to="/ztraty-a-nalezy">Otevřít nálezy</Link>}
+          action={<Link className="k-button" to="/ztraty-a-nalezy">{t("Otevřít nálezy")}</Link>}
         />
         <StateView
-          title="Import a správa snídaní"
-          description="Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF."
+          title={t("Import a správa snídaní")}
+          description={t("Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF.")}
           stateKey="empty"
-          action={<Link className="k-button" to="/snidane">Otevřít snídaně</Link>}
+          action={<Link className="k-button" to="/snidane">{t("Otevřít snídaně")}</Link>}
         />
         <StateView
-          title="Přehled hlášení"
-          description="Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role."
+          title={t("Přehled hlášení")}
+          description={t("Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role.")}
           stateKey="empty"
-          action={<Link className="k-button" to="/hlaseni">Otevřít hlášení</Link>}
+          action={<Link className="k-button" to="/hlaseni">{t("Otevřít hlášení")}</Link>}
         />
       </div>
     </main>
@@ -148,7 +147,7 @@ function ReceptionHubPage(): JSX.Element {
 }
 
 function AccessDeniedPage({ moduleLabel, roleLabel, userId, copy }: AccessDeniedProps): JSX.Element {
-  const title = copy.accessDeniedTitle ?? 'Přístup odepřen';
+  const title = copy.accessDeniedTitle ?? t('Přístup odepřen');
   const description = copy.accessDeniedModule
     ? copy.accessDeniedModule(moduleLabel, roleLabel, userId)
     : `Role ${roleLabel} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`;
@@ -159,9 +158,7 @@ function AccessDeniedPage({ moduleLabel, roleLabel, userId, copy }: AccessDenied
         description={description}
         stateKey="error"
         action={
-          <Link className="k-button secondary" to="/">
-            Zpět na přehled
-          </Link>
+          <Link className="k-button secondary" to="/">{t("Zpět na přehled")}{' '}</Link>
         }
       />
     </main>
@@ -204,10 +201,7 @@ export function PortalRoutes({
   modules: typeof ia.modules;
   deps: PortalRouteDeps;
 }): JSX.Element {
-  const bundle = React.useMemo(() => {
-    const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
-    return getAuthBundle('portal', lang);
-  }, []);
+  const bundle = React.useMemo(() => getAuthBundle('portal', auth.preferredLocale), [auth.preferredLocale]);
   React.useEffect(() => {
     if (typeof document === 'undefined') {
       return;
@@ -253,6 +247,27 @@ export function PortalRoutes({
   );
   const [switchError, setSwitchError] = React.useState<string | null>(null);
   const [switchBusy, setSwitchBusy] = React.useState(false);
+  const [localeBusy, setLocaleBusy] = React.useState(false);
+  const [localeError, setLocaleError] = React.useState<string | null>(null);
+  const changeLocale = React.useCallback(async (locale: PortalLocale) => {
+    if (locale === auth.preferredLocale) return;
+    setLocaleBusy(true);
+    setLocaleError(null);
+    try {
+      const csrf = readCsrfToken();
+      const response = await fetch('/api/auth/locale', {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': decodeURIComponent(csrf) },
+        body: JSON.stringify({ locale }),
+      });
+      if (!response.ok) throw new Error(t('Jazyk se nepodařilo uložit. Zkuste to znovu.'));
+      setPortalLocale(locale);
+      window.location.reload();
+    } catch (error) {
+      setLocaleBusy(false);
+      setLocaleError(error instanceof Error ? error.message : t('Jazyk se nepodařilo uložit.'));
+    }
+  }, [auth.preferredLocale]);
 
   if (auth.actorType !== 'portal') {
     return <Navigate to="/login" replace />;
@@ -264,7 +279,7 @@ export function PortalRoutes({
     return (
       <main className="k-page" data-testid="access-denied-page">
         <StateView
-          title={copy.accessDeniedTitle ?? 'Přístup odepřen'}
+          title={copy.accessDeniedTitle ?? t('Přístup odepřen')}
           description={
             copy.accessDeniedNoModules
               ? copy.accessDeniedNoModules(localizedRoleLabel(auth.role), auth.userId)
@@ -286,13 +301,13 @@ export function PortalRoutes({
       const result = await requestRoleSelection(role);
       if (!result.ok) {
         setSwitchBusy(false);
-        setSwitchError(result.detail ?? copy.roleSelectError ?? 'Výběr role selhal.');
+        setSwitchError(result.detail ?? copy.roleSelectError ?? t('Výběr role selhal.'));
         return;
       }
       window.location.assign('/');
     } catch (err) {
       setSwitchBusy(false);
-      setSwitchError(err instanceof Error && err.message ? err.message : (copy.roleSelectError ?? 'Výběr role selhal.'));
+      setSwitchError(err instanceof Error && err.message ? err.message : (copy.roleSelectError ?? t('Výběr role selhal.')));
     }
   }, [copy.roleSelectError]);
 
@@ -329,7 +344,7 @@ export function PortalRoutes({
     return (
       <main className="k-page" data-testid="access-denied-page">
         <StateView
-          title={copy.accessDeniedTitle ?? 'Přístup odepřen'}
+          title={copy.accessDeniedTitle ?? t('Přístup odepřen')}
           description={
             copy.accessDeniedNoModules
               ? copy.accessDeniedNoModules(roleLabelText, auth.userId)
@@ -365,6 +380,7 @@ export function PortalRoutes({
       navigationSections={navigationSections}
       currentPath={currentPath}
       headerControls={(
+        <><LocaleSwitcher locale={auth.preferredLocale} onSelect={(locale) => void changeLocale(locale)} busy={localeBusy} />
         <RoleSwitcher
           activeLabel={localizedRoleLabel(activeRole)}
           alternatives={assignedRoles
@@ -372,10 +388,11 @@ export function PortalRoutes({
             .map((role) => ({ key: role, label: localizedRoleLabel(role) }))}
           busy={switchBusy}
           onSelect={(role) => void switchRoleFromHeader(role)}
-        />
+        /></>
       )}
     >
-      {switchError ? <div className="k-shell-inner"><StateView title={copy.accessDeniedTitle ?? 'Přístup odepřen'} description={switchError} stateKey="error" /></div> : null}
+      {switchError ? <div className="k-shell-inner"><StateView title={copy.accessDeniedTitle ?? t('Přístup odepřen')} description={switchError} stateKey="error" /></div> : null}
+      {localeError ? <div className="k-shell-inner" role="alert">{localeError}</div> : null}
       <Routes>
         <Route
           path="/"

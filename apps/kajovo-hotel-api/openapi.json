@@ -10,6 +10,11 @@
           "password": {
             "title": "Password",
             "type": "string"
+          },
+          "web_activity_session": {
+            "default": false,
+            "title": "Web Activity Session",
+            "type": "boolean"
           }
         },
         "required": [
@@ -149,6 +154,16 @@
             "title": "Permissions",
             "type": "array"
           },
+          "preferred_locale": {
+            "default": "cs",
+            "enum": [
+              "cs",
+              "en",
+              "uk"
+            ],
+            "title": "Preferred Locale",
+            "type": "string"
+          },
           "role": {
             "title": "Role",
             "type": "string"
@@ -210,6 +225,16 @@
               }
             ],
             "title": "Phone"
+          },
+          "preferred_locale": {
+            "default": "cs",
+            "enum": [
+              "cs",
+              "en",
+              "uk"
+            ],
+            "title": "Preferred Locale",
+            "type": "string"
           },
           "roles": {
             "items": {
@@ -1670,6 +1695,16 @@
             ],
             "title": "Housekeeping Status Id"
           },
+          "housekeeping_status_key": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HousekeepingRoomStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "occupancy_state": {
             "enum": [
               "departing",
@@ -1848,6 +1883,17 @@
               }
             ],
             "title": "Checked Out"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
           },
           "country_name": {
             "anyOf": [
@@ -3310,6 +3356,24 @@
         "title": "IssueUpdate",
         "type": "object"
       },
+      "LocaleUpdate": {
+        "properties": {
+          "locale": {
+            "enum": [
+              "cs",
+              "en",
+              "uk"
+            ],
+            "title": "Locale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "locale"
+        ],
+        "title": "LocaleUpdate",
+        "type": "object"
+      },
       "LogoutResponse": {
         "properties": {
           "ok": {
@@ -3880,6 +3944,11 @@
           "remember_me": {
             "default": false,
             "title": "Remember Me",
+            "type": "boolean"
+          },
+          "web_activity_session": {
+            "default": false,
+            "title": "Web Activity Session",
             "type": "boolean"
           }
         },
@@ -4793,6 +4862,27 @@
         ]
       }
     },
+    "/api/auth/activity": {
+      "post": {
+        "operationId": "web_activity_api_auth_activity_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Web Activity",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/auth/admin/hint": {
       "post": {
         "operationId": "admin_hint_api_auth_admin_hint_post",
@@ -4932,6 +5022,47 @@
           }
         },
         "summary": "Change Own Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/locale": {
+      "patch": {
+        "operationId": "update_portal_locale_api_auth_locale_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocaleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthIdentityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Portal Locale",
         "tags": [
           "auth"
         ]

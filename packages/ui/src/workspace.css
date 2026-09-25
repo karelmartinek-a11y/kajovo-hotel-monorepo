@@ -102,6 +102,7 @@ body:has(.k-task-dialog[open]) { overflow: hidden; }
 .k-hk-room--left-red { --k-hk-left: var(--k-hk-pink); }
 .k-hk-room--right-red { --k-hk-right: var(--k-hk-pink); }
 .k-hk-room--right-green { --k-hk-right: var(--k-hk-green); }
+.k-hk-room--right-light-green { --k-hk-right: var(--k-hk-light-green); }
 .k-hk-room__topline strong { font-size: 26px; }
 .k-hk-room__state { min-height: 0; font-size: 13px; line-height: 1.4; margin-block: var(--k-spacing-2); overflow-wrap: anywhere; }
 .k-hk-room__state i { flex-shrink: 0; }

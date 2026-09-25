@@ -1,5 +1,6 @@
 import React from 'react';
 import '../tokens.css';
+import { t } from '@kajovo/shared';
 
 type KajovoWordmarkProps = {
   href?: string;
@@ -22,7 +23,7 @@ export function KajovoWordmark({
           label: 'Portál',
           defaultTitle: 'Kájovo Hotel Portál',
         };
-  const resolvedTitle = title ?? config.defaultTitle;
+  const resolvedTitle = title ?? (variant === 'portal' ? t(config.defaultTitle) : config.defaultTitle);
 
   return (
     <a
@@ -42,7 +43,7 @@ export function KajovoWordmark({
       <span className="k-wordmark-name" aria-hidden="true">
         <strong>Kájovo</strong><em>Hotel</em>
       </span>
-      <span className="k-wordmark-tagline">{config.label}</span>
+      <span className="k-wordmark-tagline">{variant === 'portal' ? t(config.label) : config.label}</span>
     </a>
   );
 }

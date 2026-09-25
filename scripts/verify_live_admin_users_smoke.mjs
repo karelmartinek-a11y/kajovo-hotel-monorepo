@@ -68,6 +68,12 @@ const readCookieValue = (cookieHeader, name) => {
   return '';
 };
 
+const sessionSetCookie = (headers) => {
+  const values = typeof headers.getSetCookie === 'function'
+    ? headers.getSetCookie() : [headers.get('set-cookie') ?? ''];
+  return values.find((value) => value.startsWith('kajovo_session=')) ?? '';
+};
+
 const createSession = async () => {
   const loginResponse = await fetch(`${origin}/api/auth/admin/login`, {
     method: 'POST',
@@ -76,7 +82,7 @@ const createSession = async () => {
       'content-type': 'application/json',
       'user-agent': 'kajovo-live-users-smoke/1.0',
     },
-    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+    body: JSON.stringify({ email: adminEmail, password: adminPassword, web_activity_session: true }),
   });
   const loginPayload = await assertJsonOk(loginResponse, 'POST /api/auth/admin/login');
   if (loginPayload.email !== adminEmail || loginPayload.actor_type !== 'admin') {
@@ -90,6 +96,20 @@ const createSession = async () => {
   }
   if (!csrfToken) {
     throw new Error('Admin login did not issue kajovo_csrf cookie.');
+  }
+
+  const adminSessionCookie = sessionSetCookie(loginResponse.headers);
+  if (!adminSessionCookie?.includes('Max-Age=172800')) {
+    throw new Error('Admin web session does not have a 48-hour cookie.');
+  }
+
+  const activityResponse = await fetch(`${origin}/api/auth/activity`, {
+    method: 'POST',
+    headers: { cookie: cookieHeader, 'x-csrf-token': csrfToken, 'user-agent': 'kajovo-live-users-smoke/1.0' },
+  });
+  await assertJsonOk(activityResponse, 'Admin web activity');
+  if (!sessionSetCookie(activityResponse.headers).includes('Max-Age=172800')) {
+    throw new Error('Admin activity did not renew its 48-hour cookie.');
   }
 
   return { cookieHeader, csrfToken };
@@ -147,6 +167,36 @@ try {
     throw new Error(`Unexpected create user payload: ${JSON.stringify(created.payload)}`);
   }
   createdUserId = created.payload.id;
+
+  const portalLogin = async () => {
+    const response = await fetch(`${origin}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'user-agent': 'kajovo-live-users-smoke/1.0' },
+      body: JSON.stringify({ email: testEmail, password: createPayload.password, web_activity_session: true }),
+    });
+    const payload = await assertJsonOk(response, 'Portal web login');
+    if (payload.actor_type !== 'portal') throw new Error('Unexpected portal actor type.');
+    const cookieHeader = parseCookieHeader(response.headers);
+    const csrfToken = readCookieValue(cookieHeader, 'kajovo_csrf');
+    const sessionCookie = sessionSetCookie(response.headers);
+    if (!csrfToken || !sessionCookie?.includes('Max-Age=172800')) {
+      throw new Error('Portal web session cookies are invalid.');
+    }
+    return { cookieHeader, csrfToken };
+  };
+
+  const portalSession = await portalLogin();
+  const selectedLocale = await requestJson(portalSession, '/api/auth/locale', {
+    method: 'PATCH', payload: { locale: 'uk' },
+  });
+  assertStatus(selectedLocale, 200, 'PATCH /api/auth/locale');
+  if (selectedLocale.payload?.preferred_locale !== 'uk') throw new Error('Portal locale was not saved.');
+  const secondPortalSession = await portalLogin();
+  const rememberedLocale = await requestJson(secondPortalSession, '/api/auth/me');
+  assertStatus(rememberedLocale, 200, 'GET /api/auth/me with second session');
+  if (rememberedLocale.payload?.preferred_locale !== 'uk') throw new Error('Portal locale was not remembered across sessions.');
+  const refreshed = await requestJson(secondPortalSession, '/api/auth/activity', { method: 'POST' });
+  assertStatus(refreshed, 200, 'POST /api/auth/activity');
 
   const detail = await requestJson(session, `/api/v1/users/${createdUserId}`);
   assertStatus(detail, 200, 'GET /api/v1/users/{id}');

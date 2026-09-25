@@ -183,6 +183,7 @@ class HousekeepingStayRead(BaseModel):
     guest_label: str | None = None
     persons: int = Field(ge=0)
     country_name: str | None = None
+    country_code: str | None = None
     arrival: date
     departure: date
     checked_in: datetime | None = None
@@ -197,6 +198,7 @@ class HousekeepingRoomRead(BaseModel):
     floor: str
     housekeeping_status_id: str | None = None
     housekeeping_status: str | None = None
+    housekeeping_status_key: HousekeepingRoomStatus | None = None
     housekeeping_color: str | None = None
     ready_for_arrival: bool = False
     operational_state: HousekeepingOperationalState
@@ -719,12 +721,14 @@ class PortalUserRead(BaseModel):
 class AdminLoginRequest(BaseModel):
     email: str
     password: str
+    web_activity_session: bool = False
 
 
 class PortalLoginRequest(BaseModel):
     email: str
     password: str
     remember_me: bool = False
+    web_activity_session: bool = False
 
 
 class LogoutResponse(BaseModel):
@@ -753,6 +757,7 @@ class AuthProfileRead(BaseModel):
     note: str | None = None
     roles: list[str] = Field(default_factory=list)
     actor_type: str
+    preferred_locale: Literal['cs', 'en', 'uk'] = 'cs'
 
 
 class AuthProfileUpdate(BaseModel):
@@ -787,6 +792,11 @@ class AuthIdentityResponse(BaseModel):
     active_role: str | None = None
     permissions: list[str]
     actor_type: str
+    preferred_locale: Literal['cs', 'en', 'uk'] = 'cs'
+
+
+class LocaleUpdate(BaseModel):
+    locale: Literal['cs', 'en', 'uk']
 
 
 class DeviceRegisterRequest(BaseModel):

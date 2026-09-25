@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@kajovo/shared';
 
 /** Native modal semantics keep focus and pointer interaction inside the active task. */
 export function TaskDialog({ title, children, busy = false, onClose, className = '' }: {
@@ -20,7 +21,7 @@ export function TaskDialog({ title, children, busy = false, onClose, className =
     onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>
     <header className="k-task-dialog__header">
       <h2 id={titleId}>{title}</h2>
-      {!busy ? <button type="button" className="k-task-close" aria-label="Zavřít dialog" onClick={onClose}>×</button> : null}
+      {!busy ? <button type="button" className="k-task-close" aria-label={t("Zavřít dialog")} onClick={onClose}>×</button> : null}
     </header>
     {children}
   </dialog>;

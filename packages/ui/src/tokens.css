@@ -143,6 +143,7 @@ body {
   --k-hk-slate: #98a8ba;
   --k-hk-red: #e52836;
   --k-hk-green: #14a552;
+  --k-hk-light-green: #effbf2;
   --k-hk-pink: #ff8295;
   --k-hk-free-border: #8fa3ba;
   --k-hk-meta: #5a7391;
@@ -371,6 +372,7 @@ body {
 .k-hk-room--left-neutral { --k-hk-left: var(--k-hk-line); }
 .k-hk-room--right-red { --k-hk-right: var(--k-hk-pink); }
 .k-hk-room--right-green { --k-hk-right: var(--k-hk-green); }
+.k-hk-room--right-light-green { --k-hk-right: var(--k-hk-light-green); }
 .k-hk-room__topline { display: flex; align-items: center; min-height: 31px; gap: var(--k-hk-space-6); }
 .k-hk-room__topline strong { font-size: 23px; line-height: 1; }
 .k-hk-room__chevron { margin-left: auto; color: var(--k-hk-chevron); font-size: 28px; line-height: 1; }

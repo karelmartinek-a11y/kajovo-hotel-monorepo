@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '@kajovo/shared';
 import { Link } from 'react-router-dom';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
 import { Icon } from '../components/Icon';
@@ -150,7 +151,7 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
 
     const bySection = new Map<string, GroupedModules>();
     const defaultSectionKey = 'default';
-    const defaultLabel = rules.defaultGroupLabel ?? 'Ostatní';
+    const defaultLabel = rules.defaultGroupLabel ?? t('Ostatní');
 
     for (const module of visibleItems) {
       const sectionKey = module.section ?? defaultSectionKey;
@@ -200,7 +201,7 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
   return (
     <nav
       role="navigation"
-      aria-label={rules.ariaLabel ?? 'Hlavní navigace'}
+      aria-label={rules.ariaLabel ?? t('Hlavní navigace')}
       className="k-nav"
       data-testid="module-navigation"
     >
@@ -269,7 +270,7 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
           aria-controls="k-nav-drawer"
           onClick={() => setDrawerOpen((value) => !value)}
         >
-          {rules.phoneDrawerLabel ?? 'Menu'}
+          {rules.phoneDrawerLabel ?? t('Menu')}
         </button>
         {drawerOpen ? (
           <div
@@ -278,22 +279,22 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
             id="k-nav-drawer"
             role="dialog"
             aria-modal="true"
-            aria-label={rules.ariaLabel ?? 'Navigace'}
+            aria-label={rules.ariaLabel ?? t('Navigace')}
           >
             {rules.enableSearchInMenuOnPhone ? (
               <label className="k-nav-drawer-search">
-                <span className="k-nav-sr-only">Hledat modul</span>
+                <span className="k-nav-sr-only">{t("Hledat modul")}</span>
                 <input
                   ref={searchInputRef}
                   className="k-input"
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder={rules.phoneSearchPlaceholder ?? 'Hledat v menu'}
+                  placeholder={rules.phoneSearchPlaceholder ?? t('Hledat v menu')}
                 />
               </label>
             ) : null}
-            <div className="k-nav-drawer-list" role="menu" aria-label="Moduly">
+            <div className="k-nav-drawer-list" role="menu" aria-label={t("Moduly")}>
               {searchableItems.map((module) => (
                 <Link
                   className="k-nav-overflow-item"
@@ -306,7 +307,7 @@ export function ModuleNavigation({ modules, rules, currentPath, sections = [] }:
                   <span>{module.label}</span>
                 </Link>
               ))}
-              {searchableItems.length === 0 ? <p className="k-nav-empty">Žádné výsledky.</p> : null}
+              {searchableItems.length === 0 ? <p className="k-nav-empty">{t("Žádné výsledky.")}</p> : null}
             </div>
           </div>
         ) : null}

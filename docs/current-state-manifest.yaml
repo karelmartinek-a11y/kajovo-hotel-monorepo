@@ -36,12 +36,17 @@ security:
   session_cookie: kajovo_session
   csrf_cookie: kajovo_csrf
   csrf_header: x-csrf-token
+  web_idle_seconds: 172800
+  web_activity_endpoint: /api/auth/activity
+  portal_locales: [cs, en, uk]
+  portal_locale_endpoint: /api/auth/locale
   rbac_source: packages/shared/src/rbac.ts
 
 ci:
   workflow: .github/workflows/ci-gates.yml
   required_commands:
     - pnpm typecheck
+    - pnpm ci:portal-translations
     - python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
     - pnpm unit
     - pnpm contract:check

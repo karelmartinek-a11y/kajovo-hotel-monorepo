@@ -1,29 +1,19 @@
 import React from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Icon, KajovoFullLockup } from '@kajovo/ui';
-import { getAuthBundle } from '@kajovo/shared';
+import { getAuthBundle, setPortalLocale, t, type PortalLocale } from '@kajovo/shared';
+import { LocaleSwitcher } from './LocaleSwitcher';
 
 async function readErrorMessage(response: Response): Promise<string> {
-  const raw = await response.text();
-  if (!raw) {
-    return 'Reset hesla se nepodařilo dokončit.';
-  }
-  try {
-    const parsed = JSON.parse(raw) as { detail?: unknown };
-    if (typeof parsed.detail === 'string' && parsed.detail.trim()) {
-      return parsed.detail;
-    }
-  } catch {
-    // Vracíme níže původní text odpovědi.
-  }
-  return raw.trim() || 'Reset hesla se nepodařilo dokončit.';
+  await response.body?.cancel();
+  return response.status === 400 || response.status === 404
+    ? t('Resetovací odkaz je neplatný nebo vypršel.')
+    : t('Reset hesla se nepodařilo dokončit.');
 }
 
 export function PortalResetPasswordPage(): JSX.Element {
-  const bundle = React.useMemo(() => {
-    const lang = typeof document !== 'undefined' ? document.documentElement.lang : undefined;
-    return getAuthBundle('portal', lang);
-  }, []);
+  const [locale, setLocale] = React.useState<PortalLocale>(() => { setPortalLocale('cs'); return 'cs'; });
+  const bundle = React.useMemo(() => getAuthBundle('portal', locale), [locale]);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token')?.trim() ?? '';
@@ -39,7 +29,7 @@ export function PortalResetPasswordPage(): JSX.Element {
       return;
     }
     document.documentElement.lang = bundle.locale;
-    document.title = 'Kájovo Hotel · Dokončení resetu hesla';
+    document.title = t('Kájovo Hotel · Dokončení resetu hesla');
   }, [bundle.locale]);
 
   React.useEffect(() => () => {
@@ -54,15 +44,15 @@ export function PortalResetPasswordPage(): JSX.Element {
     setInfo(null);
 
     if (!token) {
-      setError('Resetovací odkaz je neplatný nebo neúplný.');
+      setError(t('Resetovací odkaz je neplatný nebo neúplný.'));
       return;
     }
     if (password.trim().length < 8) {
-      setError('Nové heslo musí mít alespoň 8 znaků.');
+      setError(t('Nové heslo musí mít alespoň 8 znaků.'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('Hesla se neshodují.');
+      setError(t('Hesla se neshodují.'));
       return;
     }
 
@@ -82,7 +72,7 @@ export function PortalResetPasswordPage(): JSX.Element {
       setBusy(false);
       setPassword('');
       setConfirmPassword('');
-      setInfo('Heslo bylo změněno. Za chvíli vás přesměrujeme na přihlášení.');
+      setInfo(t('Heslo bylo změněno. Za chvíli vás přesměrujeme na přihlášení.'));
       if (redirectTimeoutRef.current !== null) {
         window.clearTimeout(redirectTimeoutRef.current);
       }
@@ -94,7 +84,7 @@ export function PortalResetPasswordPage(): JSX.Element {
       setError(
         submitError instanceof Error && submitError.message
           ? submitError.message
-          : 'Reset hesla se nepodařilo dokončit.'
+          : t('Reset hesla se nepodařilo dokončit.')
       );
     }
   }
@@ -102,16 +92,13 @@ export function PortalResetPasswordPage(): JSX.Element {
   return (
     <main className="k-login-page" data-testid="portal-reset-password-page">
       <section className="k-login-card" aria-labelledby="portal-reset-title">
-        <KajovoFullLockup href="/" title="Kájovo Hotel" subtitle="Obnova přístupu" />
+        <LocaleSwitcher locale={locale} onSelect={(value) => { setPortalLocale(value); setLocale(value); }} />
+        <KajovoFullLockup href="/" title={t("Kájovo Hotel")} subtitle={t("Obnova přístupu")} />
         <p className="k-login-eyebrow">{bundle.copy.eyebrow}</p>
-        <h1 id="portal-reset-title">Dokončení resetu hesla</h1>
-        <p className="k-login-copy">
-          Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení vás přesměrujeme na přihlášení do hotelového portálu.
-        </p>
+        <h1 id="portal-reset-title">{t("Dokončení resetu hesla")}</h1>
+        <p className="k-login-copy">{t("Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení vás přesměrujeme na přihlášení do hotelového portálu.")}{' '}</p>
         <form className="k-login-form" onSubmit={(event) => void submit(event)}>
-          <label className="k-login-label" htmlFor="portal-reset-password">
-            Nové heslo
-          </label>
+          <label className="k-login-label" htmlFor="portal-reset-password">{t("Nové heslo")}{' '}</label>
           <input
             id="portal-reset-password"
             className="k-input"
@@ -119,9 +106,7 @@ export function PortalResetPasswordPage(): JSX.Element {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          <label className="k-login-label" htmlFor="portal-reset-password-confirm">
-            Potvrzení hesla
-          </label>
+          <label className="k-login-label" htmlFor="portal-reset-password-confirm">{t("Potvrzení hesla")}{' '}</label>
           <input
             id="portal-reset-password-confirm"
             className="k-input"
@@ -129,12 +114,8 @@ export function PortalResetPasswordPage(): JSX.Element {
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
           />
-          <button className="k-button" type="submit" disabled={busy}>
-            Nastavit nové heslo
-          </button>
-          <Link className="k-button secondary" to="/login">
-            Zpět na přihlášení
-          </Link>
+          <button className="k-button" type="submit" disabled={busy}>{t("Nastavit nové heslo")}{' '}</button>
+          <Link className="k-button secondary" to="/login">{t("Zpět na přihlášení")}{' '}</Link>
           {error ? (
             <p className="k-login-copy" role="alert">
               {error}
@@ -147,19 +128,19 @@ export function PortalResetPasswordPage(): JSX.Element {
           ) : null}
         </form>
       </section>
-      <aside className="k-login-preview" aria-label="Instrukce k obnoveni pristupu">
+      <aside className="k-login-preview" aria-label={t("Instrukce k obnoveni pristupu")}>
         <div className="k-card">
           <div className="k-card__header">
             <div className="k-card__title-wrap">
-              <p className="k-card__eyebrow">Obnova pristupu</p>
-              <h3>Po zmene hesla se vratite zpet do smeny</h3>
+              <p className="k-card__eyebrow">{t("Obnova pristupu")}</p>
+              <h3>{t("Po zmene hesla se vratite zpet do smeny")}</h3>
             </div>
-            <Icon name="profile" className="k-card__icon" title="Obnova pristupu" />
+            <Icon name="profile" className="k-card__icon" title={t("Obnova pristupu")} />
           </div>
           <div className="k-card__body k-grid">
-            <p className="k-text-muted">Použijte odkaz ze správcovského e-mailu a nastavte nové heslo alespoň o 8 znacích.</p>
-            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>Token z odkazu</span></div>
-            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>Nova hesla musi souhlasit</span></div>
+            <p className="k-text-muted">{t("Použijte odkaz ze správcovského e-mailu a nastavte nové heslo alespoň o 8 znacích.")}</p>
+            <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>{t("Token z odkazu")}</span></div>
+            <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>{t("Nova hesla musi souhlasit")}</span></div>
           </div>
         </div>
       </aside>

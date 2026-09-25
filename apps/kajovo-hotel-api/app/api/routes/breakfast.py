@@ -41,6 +41,7 @@ from app.db.models import (
     BreakfastOrder,
 )
 from app.db.session import get_db
+from app.security.auth import preferred_locale_for_session
 from app.security.rbac import module_access_dependency, parse_identity
 from app.services.breakfast.diets import DIET_KEYS, change_diet, enrich_orders, reservation_ids
 from app.services.breakfast.manual_refresh import (
@@ -531,7 +532,7 @@ def export_breakfast_daily_pdf(
         )
     ))
 
-    pdf_bytes = build_breakfast_schedule_pdf(orders, service_date=service_date)
+    pdf_bytes = build_breakfast_schedule_pdf(orders, service_date=service_date, locale=preferred_locale_for_session(request, db))
     filename = f"breakfast-{service_date.isoformat()}.pdf"
     return StreamingResponse(
         BytesIO(pdf_bytes),

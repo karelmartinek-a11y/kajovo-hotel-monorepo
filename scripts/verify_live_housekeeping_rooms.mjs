@@ -53,6 +53,8 @@ const invalid = overview.rooms.find((room) =>
   !/^\d{3}$/.test(room.room_number) ||
   typeof room.operational_state !== 'string' ||
   typeof room.ready_for_arrival !== 'boolean' ||
+  !('housekeeping_status_key' in room) ||
+  (room.housekeeping_status_key !== null && !['clean', 'dirty', 'stay_no_linen', 'stay_with_linen', 'do_not_disturb', 'technical_issue'].includes(room.housekeeping_status_key)) ||
   !['free', 'arrived', 'departing', 'staying'].includes(room.occupancy_state) ||
   ['departures', 'arrivals', 'stays'].some((group) => !Array.isArray(room[group]) || room[group].some((stay) =>
     typeof stay.reservation_id !== 'string' || !Array.isArray(stay.amenities) ||

@@ -1,4 +1,6 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+// @ts-expect-error Playwright runs this spec in Node; the browser app tsconfig has no Node declarations.
+import { writeFile } from 'node:fs/promises';
 import { getAdminCredentials } from '../test-admin-credentials';
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
@@ -19,6 +21,7 @@ type PortalScenario = {
 
 const utilityViews: ViewCheck[] = [
   { name: 'login', path: '/login', readyTestId: 'portal-login-page' },
+  { name: 'password reset', path: '/login/reset', readyTestId: 'portal-reset-password-page' },
   { name: 'intro', path: '/intro' },
   { name: 'offline', path: '/offline' },
   { name: 'maintenance', path: '/maintenance' },
@@ -32,10 +35,13 @@ const portalScenarios: PortalScenario[] = [
     landingPath: /\/recepce$/,
     views: [
       { name: 'recepce', path: '/recepce', readyTestId: 'reception-hub-page' },
+      { name: 'pokoje recepce', path: '/pokojska', readyTestId: 'housekeeping-form-page' },
       { name: 'snídaně seznam', path: '/snidane', readyTestId: 'breakfast-list-page' },
       { name: 'snídaně formulář', path: '/snidane/nova', readyTestId: 'breakfast-create-page' },
       { name: 'ztráty a nálezy seznam', path: '/ztraty-a-nalezy', readyTestId: 'lost-found-list-page' },
       { name: 'ztráty a nálezy formulář', path: '/ztraty-a-nalezy/novy', readyTestId: 'lost-found-create-page' },
+      { name: 'hlášení seznam', path: '/hlaseni', readyTestId: 'reports-list-page' },
+      { name: 'hlášení formulář', path: '/hlaseni/nove', readyTestId: 'reports-create-page' },
       { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
     ],
   },
@@ -73,6 +79,8 @@ const portalScenarios: PortalScenario[] = [
     landingPath: /\/sklad$/,
     views: [
       { name: 'sklad seznam', path: '/sklad', readyTestId: 'inventory-list-page' },
+      { name: 'sklad formulář', path: '/sklad/nova', readyTestId: 'inventory-create-page' },
+      { name: 'hlášení pouze čtení', path: '/hlaseni', readyTestId: 'reports-list-page' },
       { name: 'profil', path: '/profil', readyTestId: 'portal-profile-page' },
     ],
   },
@@ -142,6 +150,11 @@ async function waitForView(page: Page, view: ViewCheck) {
   } else {
     await expect(page.locator('main')).toBeVisible();
   }
+}
+
+async function captureAudit(page: Page, testInfo: { outputPath: (name: string) => string }, name: string) {
+  await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
+  await writeFile(testInfo.outputPath(`${name}.txt`), await page.locator('body').innerText(), 'utf8');
 }
 
 async function visibleBrandCount(page: Page): Promise<number> {
@@ -233,9 +246,17 @@ async function expectLoadedImages(scope: Locator, viewName: string) {
 
 test.describe('KDGS vizuální a geometrická kontrola portálu', () => {
   for (const view of utilityViews) {
-    test(`utility view ${view.name} drží brand a geometrii`, async ({ page }) => {
+    test(`utility view ${view.name} drží brand a geometrii`, async ({ page }, testInfo) => {
       await waitForView(page, view);
       await assertKdgsGeometry(page, view.name);
+      await captureAudit(page, testInfo, `cs-${view.name}`);
+      if (view.path === '/login' || view.path === '/login/reset') {
+        for (const [locale, label] of [['en', 'English'], ['uk', 'Українська']] as const) {
+          await page.getByRole('button', { name: label }).click();
+          await expect(page.locator('html')).toHaveAttribute('lang', locale);
+          await captureAudit(page, testInfo, `${locale}-${view.name}`);
+        }
+      }
       if (view.path === '/login') {
         await expectLoadedImages(page.getByTestId('portal-login-page'), view.name);
       }
@@ -245,16 +266,26 @@ test.describe('KDGS vizuální a geometrická kontrola portálu', () => {
 
 test.describe('KDGS role scénáře portálu', () => {
   test.describe.configure({ mode: 'serial' });
-  test.setTimeout(90000);
+  test.setTimeout(180000);
 
   for (const scenario of portalScenarios) {
     test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
       const user = await createPortalUser(request, testInfo, scenario.roles);
       await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
 
-      for (const view of scenario.views) {
-        await waitForView(page, view);
-        await assertKdgsGeometry(page, `${scenario.name} / ${view.name}`);
+      for (const locale of ['cs', 'en', 'uk'] as const) {
+        if (locale !== 'cs') {
+          await Promise.all([
+            page.waitForEvent('load'),
+            page.getByRole('button', { name: locale === 'en' ? 'English' : 'Українська' }).click(),
+          ]);
+          await expect(page.locator('html')).toHaveAttribute('lang', locale);
+        }
+        for (const view of scenario.views) {
+          await waitForView(page, view);
+          await assertKdgsGeometry(page, `${scenario.name} / ${view.name} / ${locale}`);
+          await captureAudit(page, testInfo, `${locale}-${view.name}`);
+        }
       }
     });
   }
