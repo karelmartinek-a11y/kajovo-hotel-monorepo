@@ -18,7 +18,7 @@ const ROLE_SCENARIOS: RoleScenario[] = [
     key: 'recepce',
     apiRole: 'recepce',
     startRoute: '/recepce',
-    visibleModules: ['/pokojska', '/recepce', '/snidane'],
+    visibleModules: ['/pokojska', '/recepce', '/snidane', '/ztraty-a-nalezy', '/hlaseni'],
     allowedRoutes: ['/recepce', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/hlaseni'],
     deniedRoutes: ['/zavady', '/sklad'],
   },
@@ -50,7 +50,7 @@ const ROLE_SCENARIOS: RoleScenario[] = [
     key: 'sklad',
     apiRole: 'sklad',
     startRoute: '/sklad',
-    visibleModules: [],
+    visibleModules: ['/sklad', '/hlaseni'],
     allowedRoutes: ['/sklad', '/hlaseni'],
     deniedRoutes: ['/pokojska', '/snidane', '/ztraty-a-nalezy', '/zavady'],
   },
@@ -468,8 +468,8 @@ for (const role of ['recepce', 'pokojska']) {
     const originalViewport = page.viewportSize();
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileTabs = page.getByTestId('portal-mobile-tabs');
-    await expect(mobileTabs.getByRole('link', { name: /Pokojská/ })).toBeVisible();
-    await mobileTabs.getByRole('link', { name: /Pokojská/ }).click();
+    await expect(mobileTabs.getByRole('link', { name: /Pokoje/ })).toBeVisible();
+    await mobileTabs.getByRole('link', { name: /Pokoje/ }).click();
     await expect(page).toHaveURL(/\/pokojska$/);
     await expect(page.getByTestId('module-navigation-phone')).toBeHidden();
     if (originalViewport) await page.setViewportSize(originalViewport);
@@ -771,7 +771,7 @@ test('portal auth endpoint funguje nad realnym API a web admin surface zustava r
   await expect(page.getByTestId('admin-surface-retired-page')).toBeVisible();
 });
 
-test('multirolni portal uzivatel prepina pet dostupnych sekci v zapati', async ({ page, request }, testInfo) => {
+test('multirolni portal uzivatel vidi kazdy dostupny pohled v zapati', async ({ page, request }, testInfo) => {
   const adminLoginResponse = await request.post('/api/auth/admin/login', {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
@@ -808,13 +808,22 @@ test('multirolni portal uzivatel prepina pet dostupnych sekci v zapati', async (
 
   await expect(page).toHaveURL(/\/pokojska$/);
   const tabs = page.getByTestId('portal-mobile-tabs');
-  await expect(tabs.locator('a, button')).toHaveCount(5);
+  await expect(tabs.locator('a, button')).toHaveCount(7);
+  for (const name of ['Profil', 'Pokoje', 'Recepce', 'Snídaně', 'Ztráty a nálezy', 'Závady', 'Hlášení']) {
+    const tab = tabs.getByRole('link', { name, exact: true }).or(tabs.getByRole('button', { name, exact: true }));
+    await expect(tab).toBeVisible();
+    await expect(tab.locator('img')).toHaveAttribute('src', /\/assets\/[^/]+\.webp$/);
+    await expect(tab.locator('span')).toBeVisible();
+  }
   await tabs.getByRole('button', { name: /recepce/i }).click();
   await expect(page).toHaveURL(/\/recepce$/);
   await expect(tabs.getByRole('link', { name: /recepce/i })).toHaveAttribute('aria-current', 'page');
-  await tabs.getByRole('button', { name: /údržba/i }).click();
+  await tabs.getByRole('button', { name: /závady/i }).click();
   await expect(page).toHaveURL(/\/zavady$/);
-  await expect(tabs.getByRole('link', { name: /údržba/i })).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.getByRole('link', { name: /závady/i })).toHaveAttribute('aria-current', 'page');
+  await tabs.getByRole('button', { name: /hlášení/i }).click();
+  await expect(page).toHaveURL(/\/hlaseni$/);
+  await expect(tabs.getByRole('link', { name: /hlášení/i })).toHaveAttribute('aria-current', 'page');
 });
 
 test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na snidane', async ({ page, request }, testInfo) => {
@@ -846,7 +855,7 @@ test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na 
   await page.getByTestId('role-select-page').getByRole('button').first().click();
 
   await expect(page).toHaveURL(/\/pokojska$/);
-  await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: /pokojská/i })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: /pokoje/i })).toHaveAttribute('aria-current', 'page');
   await page.getByTestId('portal-mobile-tabs').getByRole('button', { name: /snídaně/i }).click();
 
   await expect(page).toHaveURL(/\/snidane$/);
@@ -877,10 +886,10 @@ for (const scenario of ROLE_SCENARIOS) {
     await mobileTabs.getByRole('link', { name: 'Profil' }).click();
     await expect(page).toHaveURL(/\/profil$/);
     if (scenario.key === 'sklad') {
-      await page.getByRole('button', { name: 'Sklad' }).click();
+      await mobileTabs.getByRole('link', { name: 'Sklad' }).click();
       await expect(page).toHaveURL(/\/sklad$/);
       await mobileTabs.getByRole('link', { name: 'Profil' }).click();
-      await page.getByRole('button', { name: 'Hlášení' }).click();
+      await mobileTabs.getByRole('link', { name: 'Hlášení' }).click();
       await expect(page).toHaveURL(/\/hlaseni$/);
       await mobileTabs.getByRole('link', { name: 'Profil' }).click();
     }
@@ -900,7 +909,7 @@ for (const scenario of ROLE_SCENARIOS) {
     expect(mobileGeometry.brandBottom).toBeLessThanOrEqual(20);
     expect(mobileGeometry.flagsInside).toBeTruthy();
     expect(mobileGeometry.footerBottom).toBe(mobileGeometry.viewportHeight);
-    expect(mobileGeometry.footerHeight).toBe(20);
+    expect(mobileGeometry.footerHeight).toBe(72);
     await page.evaluate(() => window.scrollTo(0, 500));
     await expect.poll(() => page.locator('.k-app-header').evaluate((header) => header.getBoundingClientRect().top)).toBe(0);
     await expect.poll(() => mobileTabs.evaluate((footer) => footer.getBoundingClientRect().bottom)).toBe(mobileGeometry.viewportHeight);

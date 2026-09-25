@@ -280,7 +280,7 @@ test.describe('KDGS role scénáře portálu', () => {
       await profileLink.click();
       await expect(page).toHaveURL(/\/profil$/);
       if (scenario.name === 'sklad') {
-        await page.getByRole('button', { name: 'Sklad' }).click();
+        await page.getByTestId('portal-mobile-tabs').getByRole('link', { name: 'Sklad' }).click();
         await expect(page).toHaveURL(/\/sklad$/);
       } else {
         const firstModule = page.getByTestId('portal-mobile-tabs').locator('a[href]:not([href="/profil"])').first();

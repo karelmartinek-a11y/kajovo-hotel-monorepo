@@ -12,6 +12,14 @@ import {
 } from '../rbac';
 import { getAuthBundle, rolePermissionSet, type AuthBundle, setPortalLocale, t, type PortalLocale } from '@kajovo/shared';
 import { LocaleSwitcher } from './LocaleSwitcher';
+import profilePictogram from '../assets/portal-tabs/profile.webp';
+import roomsPictogram from '../assets/portal-tabs/rooms.webp';
+import receptionPictogram from '../assets/portal-tabs/reception.webp';
+import breakfastPictogram from '../assets/portal-tabs/breakfast.webp';
+import maintenancePictogram from '../assets/portal-tabs/maintenance.webp';
+import inventoryPictogram from '../assets/portal-tabs/inventory.webp';
+import reportsPictogram from '../assets/portal-tabs/reports.webp';
+import lostFoundPictogram from '../assets/portal-tabs/lostfound.webp';
 
 type AuthCopy = AuthBundle['copy'];
 
@@ -363,20 +371,27 @@ export function PortalRoutes({
   );
 
   const tabs = [
-    { key: 'profile', label: moduleLabels.profile, route: '/profil', icon: 'profile', module: null, role: null, paths: ['/profil'] },
-    { key: 'housekeeping', label: localizedRoleLabel('pokojská'), route: '/pokojska', icon: 'bed', module: 'housekeeping', role: 'pokojská' as Role, paths: ['/pokojska'] },
-    { key: 'reception', label: localizedRoleLabel('recepce'), route: '/recepce', icon: 'briefcase', module: 'lost_found', role: 'recepce' as Role, paths: ['/recepce', '/ztraty-a-nalezy', '/hlaseni'] },
-    { key: 'breakfast', label: localizedRoleLabel('snídaně'), route: '/snidane', icon: 'utensils', module: 'breakfast', role: 'snídaně' as Role, paths: ['/snidane'] },
-    { key: 'maintenance', label: localizedRoleLabel('údržba'), route: '/zavady', icon: 'tool', module: 'issues', role: 'údržba' as Role, paths: ['/zavady'] },
-  ].filter((tab) => !tab.module || canReadModule(auth.permissions, tab.module) || (tab.role && assignedRoles.includes(tab.role) && canReadModule(rolePermissionSet(tab.role), tab.module)));
+    { key: 'profile', label: moduleLabels.profile, route: '/profil', pictogram: profilePictogram, module: null, role: null },
+    { key: 'housekeeping', label: moduleLabels.housekeeping, route: '/pokojska', pictogram: roomsPictogram, module: 'housekeeping', role: null },
+    { key: 'reception', label: localizedRoleLabel('recepce'), route: '/recepce', pictogram: receptionPictogram, module: null, role: 'recepce' as Role },
+    { key: 'breakfast', label: moduleLabels.breakfast, route: '/snidane', pictogram: breakfastPictogram, module: 'breakfast', role: null },
+    { key: 'lost_found', label: moduleLabels.lost_found, route: '/ztraty-a-nalezy', pictogram: lostFoundPictogram, module: 'lost_found', role: null },
+    { key: 'issues', label: moduleLabels.issues, route: '/zavady', pictogram: maintenancePictogram, module: 'issues', role: null },
+    { key: 'inventory', label: localizedRoleLabel('sklad'), route: '/sklad', pictogram: inventoryPictogram, module: 'inventory', role: null },
+    { key: 'reports', label: moduleLabels.reports, route: '/hlaseni', pictogram: reportsPictogram, module: 'reports', role: null },
+  ].map((tab) => ({
+    ...tab,
+    targetRole: tab.role ?? (tab.module && canReadModule(auth.permissions, tab.module) ? activeRole : null)
+      ?? assignedRoles.find((role) => tab.module && canReadModule(rolePermissionSet(role), tab.module)) ?? null,
+  })).filter((tab) => tab.key === 'profile' || (tab.key === 'reception' ? assignedRoles.includes('recepce') : tab.targetRole !== null));
   const portalTabs = tabs.map((tab) => {
-    const selected = tab.paths.some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
-    const needsRoleSwitch = tab.module && !canReadModule(auth.permissions, tab.module) && tab.role && tab.role !== activeRole;
-    const content = <><Icon name={tab.icon} className="k-nav-link__icon" /><span className="k-portal-mobile-tabs__label">{tab.label}</span></>;
+    const selected = currentPath === tab.route || currentPath.startsWith(`${tab.route}/`);
+    const needsRoleSwitch = tab.targetRole !== null && (tab.key === 'reception' ? activeRole !== 'recepce' : !canReadModule(auth.permissions, tab.module!));
+    const content = <><img className="k-portal-mobile-tabs__pictogram" src={tab.pictogram} alt="" aria-hidden="true" /><span className="k-portal-mobile-tabs__label">{tab.label}</span></>;
     return needsRoleSwitch ? (
-      <button key={tab.key} className="k-portal-mobile-tabs__link" type="button" aria-label={tab.label} aria-current={selected ? 'page' : undefined} disabled={switchBusy} onClick={() => void switchRole(tab.role!, tab.route)}>{content}</button>
+      <button key={tab.key} className="k-portal-mobile-tabs__link" type="button" aria-current={selected ? 'page' : undefined} disabled={switchBusy} onClick={() => void switchRole(tab.targetRole!, tab.route)}>{content}</button>
     ) : (
-      <Link key={tab.key} className="k-portal-mobile-tabs__link" to={tab.route} aria-label={tab.label} aria-current={selected ? 'page' : undefined}>{content}</Link>
+      <Link key={tab.key} className="k-portal-mobile-tabs__link" to={tab.route} aria-current={selected ? 'page' : undefined}>{content}</Link>
     );
   });
 
