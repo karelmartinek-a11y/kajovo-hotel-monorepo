@@ -12,9 +12,9 @@ Tento dokument navazuje na cutover/release runbook a slouží jako praktický UA
 ## Device & navigace checklist (provedení u každého modulu)
 
 1. **Telefon**
-   - Ověřit, že logo, tři vlajky a ikona odhlášení zůstávají nahoře a nejvýše pět ikon sekcí dole při posuvu obsahu.
+   - Ověřit, že logo, tři vlajky a ikona odhlášení zůstávají nahoře a spodní lišta s dostupnými pohledy při posuvu obsahu.
    - Ověřit přepnutí všech tří jazyků a správné označení aktivního modulu.
-   - Ověřit, že zápatí ukazuje pouze dostupné sekce Profil, Pokojská, Recepce, Snídaně a Údržba; role Sklad má sklad a hlášení v profilu.
+   - Ověřit, že zápatí ukazuje jednotlivé pohledy dostupné účtu, každý s kresleným piktogramem a čitelným názvem; role Sklad má samostatné odkazy na Skladové hospodářství a Hlášení.
 2. **Tablet**
    - Ověřit přichycené záhlaví, spodní lištu a přepnutí dostupných sekcí bez vodorovného posuvu dokumentu.
 3. **Desktop**
