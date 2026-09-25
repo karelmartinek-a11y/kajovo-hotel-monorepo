@@ -473,6 +473,21 @@ test('pokoje obnovují vybraný den po minutě a po návratu z pozadí', async (
   expect(dates.slice(before).every((date) => date === chosenDate)).toBe(true);
 });
 
+test('pokoj s poznámkou pokojské upozorní ikonou a ukáže text v detailu', async ({ page, request }, testInfo) => {
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    const date = new URL(route.request().url()).searchParams.get('date');
+    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE,
+      departures: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], housekeeping_note: 'Prosím druhý polštář' }],
+    }] } });
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  const card = page.getByRole('button', { name: /pokoj 101/i });
+  await expect(card.locator('.k-hk-room__note-alert')).toBeVisible();
+  await card.click();
+  await expect(page.getByRole('dialog')).toContainText('Prosím druhý polštář');
+});
+
 test('pokoje nepřepíše opožděná odpověď předchozího dne', async ({ page, request }, testInfo) => {
   let held: import('@playwright/test').Route | undefined;
   let count = 0;
@@ -548,218 +563,62 @@ for (const role of ['recepce', 'pokojska']) {
   });
 }
 
-test('snidane umi spustit rucni aktualizaci s modalem a reloadem', async ({ page, request }, testInfo) => {
+test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', async ({ page, request }, testInfo) => {
   const adminLoginResponse = await request.post('/api/auth/admin/login', {
     data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
   expect(adminLoginResponse.ok()).toBeTruthy();
-
   const csrfHeaders = await csrfHeaderFor(request);
   const suffix = uniqueSuffix(testInfo.project.name, testInfo.parallelIndex);
-  const portalEmail = `web-manual-refresh-${suffix}@kajovohotel.local`;
-  const portalPassword = `WebManual-${suffix}-pass`;
-
+  const portalEmail = `web-breakfast-overview-${suffix}@kajovohotel.local`;
+  const portalPassword = `WebBreakfast-${suffix}-pass`;
   const createUserResponse = await request.post('/api/v1/users', {
-    data: {
-      email: portalEmail,
-      password: portalPassword,
-      first_name: 'Ruční',
-      last_name: 'Aktualizace',
-      roles: ['snidane'],
-    },
+    data: { email: portalEmail, password: portalPassword, first_name: 'Přehled', last_name: 'Snídaně', roles: ['snidane'] },
     headers: csrfHeaders,
   });
   expect(createUserResponse.status()).toBe(201);
-
-  await page.route('**/api/v1/breakfast**', async (route) => {
-    const url = new URL(route.request().url());
-    const method = route.request().method();
-    const path = url.pathname;
-
-    const initialOrders = [
-      {
-        id: 1,
-        service_date: '2026-06-08',
-        room_number: '101',
-        guest_name: 'Původní host',
-        guest_count: 1,
-        note: null,
-        diet_no_gluten: false,
-        diet_no_milk: false,
-        diet_no_pork: false,
-        status: 'pending',
-        created_at: '2026-06-08T07:00:00Z',
-        updated_at: '2026-06-08T07:00:00Z',
-      },
+  const createdUser = await createUserResponse.json() as { id: number };
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  let refreshed = false;
+  await page.route('**/api/v1/breakfast/daily-overview?**', async (route) => {
+    const orders = [
+      { id: 1, service_date: today, room_number: '101', guest_name: 'Jan Novák', guest_names: 'Jan Novák; Eva Nováková', country_code: 'CZ', guest_count: 2, note: 'Druhý polštář', status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] },
+      ...(refreshed ? [{ id: 2, service_date: today, room_number: '102', guest_name: 'Petr Svoboda', guest_names: 'Petr Svoboda', country_code: 'SK', guest_count: 1, note: null, status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] }] : []),
     ];
-    const refreshedOrders = [
-      ...initialOrders,
-      {
-        id: 2,
-        service_date: '2026-06-08',
-        room_number: '102',
-        guest_name: 'Nový host',
-        guest_count: 2,
-        note: null,
-        diet_no_gluten: false,
-        diet_no_milk: false,
-        diet_no_pork: false,
-        status: 'pending',
-        created_at: '2026-06-08T08:00:00Z',
-        updated_at: '2026-06-08T08:00:00Z',
-      },
-    ];
-    const currentOrders = (page as unknown as { _manualRefreshDone?: boolean })._manualRefreshDone ? refreshedOrders : initialOrders;
-    const currentSummary = (page as unknown as { _manualRefreshDone?: boolean })._manualRefreshDone
-      ? {
-          service_date: '2026-06-08',
-          total_orders: 2,
-          total_guests: 3,
-          status_counts: { pending: 2, preparing: 0, served: 0, cancelled: 0 },
-          source_imported_at: '2026-06-08T08:05:00Z',
-        }
-      : {
-          service_date: '2026-06-08',
-          total_orders: 1,
-          total_guests: 1,
-          status_counts: { pending: 1, preparing: 0, served: 0, cancelled: 0 },
-          source_imported_at: '2026-06-08T07:05:00Z',
-        };
-
-    if (method === 'GET' && path === '/api/v1/breakfast/daily-overview') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ orders: currentOrders, summary: currentSummary }),
-      });
-      return;
-    }
-
-    if (method === 'GET' && path === '/api/v1/breakfast') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentOrders) });
-      return;
-    }
-    if (method === 'GET' && path === '/api/v1/breakfast/daily-summary') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentSummary) });
-      return;
-    }
-    if (method === 'POST' && path === '/api/v1/breakfast/manual-refresh') {
-      (page as unknown as { _manualRefreshPolls?: number; _manualRefreshDone?: boolean })._manualRefreshPolls = 0;
-      await route.fulfill({
-        status: 202,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 1,
-          job_key: 'manual-refresh-test',
-          service_date: '2026-06-08',
-          status: 'queued',
-          progress: [
-            { at: '2026-06-08T08:00:00Z', step: 'queued', message: 'Žádost byla zařazena do fronty.' },
-          ],
-          message: 'Žádost byla zařazena do fronty.',
-          error_message: null,
-          imported_count: 0,
-          created_at: '2026-06-08T08:00:00Z',
-          started_at: null,
-          finished_at: null,
-        }),
-      });
-      return;
-    }
-    if (method === 'GET' && path === '/api/v1/breakfast/manual-refresh/1') {
-      const state = page as unknown as { _manualRefreshPolls?: number; _manualRefreshDone?: boolean };
-      state._manualRefreshPolls = (state._manualRefreshPolls ?? 0) + 1;
-      if ((state._manualRefreshPolls ?? 0) === 1) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 1,
-            job_key: 'manual-refresh-test',
-            service_date: '2026-06-08',
-            status: 'running',
-            progress: [
-              { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
-            ],
-            message: 'Přihlášení do Better Hotelu proběhlo.',
-            error_message: null,
-            imported_count: 0,
-            created_at: '2026-06-08T08:00:00Z',
-            started_at: '2026-06-08T08:00:01Z',
-            finished_at: null,
-          }),
-        });
-        return;
-      }
-      state._manualRefreshDone = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 1,
-          job_key: 'manual-refresh-test',
-          service_date: '2026-06-08',
-          status: 'succeeded',
-          progress: [
-            { at: '2026-06-08T08:00:00Z', step: 'login', message: 'Přihlášení do Better Hotelu proběhlo.' },
-            { at: '2026-06-08T08:00:02Z', step: 'download', message: 'PDF bylo staženo.' },
-          ],
-          message: 'Ruční import dokončen.',
-          error_message: null,
-          imported_count: 2,
-          created_at: '2026-06-08T08:00:00Z',
-          started_at: '2026-06-08T08:00:01Z',
-          finished_at: '2026-06-08T08:00:04Z',
-        }),
-      });
-      return;
-    }
-
-    await route.continue();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      orders, summary: { service_date: today, total_orders: orders.length, total_guests: orders.reduce((sum, order) => sum + order.guest_count, 0), status_counts: { pending: orders.length, preparing: 0, served: 0, cancelled: 0 }, source_imported_at: new Date().toISOString() },
+    }) });
   });
-
-  const portalLoginResponse = await request.post('/api/auth/login', {
-    data: { email: portalEmail, password: portalPassword },
-  });
-  expect(portalLoginResponse.ok()).toBeTruthy();
-  const portalState = await request.storageState();
-  await page.context().clearCookies();
-  await page.context().addCookies(portalState.cookies);
-  await page.goto('/snidane', { waitUntil: 'networkidle' });
-
-  await expect(page).toHaveURL(/\/snidane$/);
-  await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
-  const compactServingHeader = page.getByTestId('breakfast-serving-mobile-header');
-  const usesCompactServingLayout = await compactServingHeader.isVisible();
-  const refreshButton = usesCompactServingLayout
-    ? compactServingHeader.getByRole('button', { name: 'Aktualizovat' })
-    : page.getByRole('button', { name: 'Aktualizovat z API' });
-  await expect(refreshButton).toBeVisible();
-  if (usesCompactServingLayout) {
-    await expect(page.getByTestId('breakfast-serving-mobile-list')).toBeVisible();
-    await expect(page.locator('.k-breakfast-serving-page > .k-table-wrap')).toBeHidden();
-  } else {
-    await expect(page.getByText(/Datum přehledu snídaní/i)).toBeVisible();
-    await expect(page.locator('section').filter({ hasText: 'Snídaní celkem' }).getByRole('strong')).toHaveText('1');
-    await expect(page.locator('section').filter({ hasText: 'Vydáno' }).getByRole('strong')).toHaveText('0');
-    await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('1');
-  }
-  await expect(page.getByText(/Objednávky dne/i)).toHaveCount(0);
-  await expect(page.getByText(/Hosté dne/i)).toHaveCount(0);
-  await expect(page.getByText(/Pokoje /i)).toHaveCount(0);
-
-  await refreshButton.click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('dialog').locator('.k-modal-progress__item').first()).toContainText('Better Hotelu');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  if (usesCompactServingLayout) {
-    await expect(page.getByTestId('breakfast-serving-mobile-row').filter({ hasText: '102' })).toBeVisible();
-  } else {
-    await expect(page.getByRole('cell', { name: '102' }).first()).toBeVisible();
-    await expect(page.getByText(/Data aktualizována:/i)).toBeVisible();
-    await expect(page.locator('section').filter({ hasText: 'Snídaní celkem' }).getByRole('strong')).toHaveText('3');
-    await expect(page.locator('section').filter({ hasText: 'Vydáno' }).getByRole('strong')).toHaveText('0');
-    await expect(page.locator('section').filter({ hasText: 'Zbývá vydat' }).getByRole('strong')).toHaveText('3');
+  try {
+    const loginResponse = await request.post('/api/auth/login', { data: { email: portalEmail, password: portalPassword } });
+    expect(loginResponse.ok()).toBeTruthy();
+    const state = await request.storageState();
+    await page.context().clearCookies();
+    await page.context().addCookies(state.cookies);
+    await page.goto('/snidane', { waitUntil: 'networkidle' });
+    await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+    await expect(page.locator('.k-hk-datebar')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Dnes' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Předchozí den' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Následující den' })).toBeVisible();
+    const visibleList = await page.getByTestId('breakfast-serving-mobile-list').isVisible()
+      ? page.getByTestId('breakfast-serving-mobile-list')
+      : page.locator('.k-breakfast-serving-page .k-table-wrap');
+    await expect(visibleList.getByText('Jan Novák; Eva Nováková').first()).toBeVisible();
+    await expect(visibleList.getByText('Česko').first()).toBeVisible();
+    await expect(visibleList.getByText('Druhý polštář').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /aktualizovat|import pdf/i })).toHaveCount(0);
+    await expect(page.getByLabel('Poznámka pro pokoj 101')).toHaveCount(0);
+    refreshed = true;
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(visibleList.getByText('Petr Svoboda').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Předchozí den' }).click();
+    await expect(page.locator('.k-hk-datebar input[type=date]')).not.toHaveValue(today);
+    await page.getByRole('button', { name: 'Dnes' }).click();
+    await expect(page.locator('.k-hk-datebar input[type=date]')).toHaveValue(today);
+  } finally {
+    await request.post('/api/auth/admin/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
+    await request.delete(`/api/v1/users/${createdUser.id}`, { headers: await csrfHeaderFor(request) });
   }
 });
 
@@ -957,10 +816,10 @@ for (const scenario of ROLE_SCENARIOS) {
       return { headerTop: header.top, headerHeight: header.height, brandWidth: brand.width, brandTop: brand.top, brandBottom: brand.bottom, footerBottom: footer.bottom, footerHeight: footer.height, viewportHeight: window.innerHeight, flagsInside: flags.every((flag) => flag.top >= header.top && flag.bottom <= header.bottom) };
     });
     expect(mobileGeometry.headerTop).toBe(0);
-    expect(mobileGeometry.headerHeight).toBe(20);
-    expect(mobileGeometry.brandWidth).toBeGreaterThanOrEqual(16);
+    expect(mobileGeometry.headerHeight).toBe(64);
+    expect(mobileGeometry.brandWidth).toBeGreaterThanOrEqual(42);
     expect(mobileGeometry.brandTop).toBeGreaterThanOrEqual(0);
-    expect(mobileGeometry.brandBottom).toBeLessThanOrEqual(20);
+    expect(mobileGeometry.brandBottom).toBeLessThanOrEqual(64);
     expect(mobileGeometry.flagsInside).toBeTruthy();
     expect(mobileGeometry.footerBottom).toBe(mobileGeometry.viewportHeight);
     expect(mobileGeometry.footerHeight).toBe(72);

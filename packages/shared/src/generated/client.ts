@@ -49,11 +49,6 @@ export type AuthProfileUpdate = {
   "note"?: string | null;
   "phone"?: string | null;
 };
-export type Body_import_breakfast_pdf_api_v1_breakfast_import_post = {
-  "file": string;
-  "overrides"?: string | null;
-  "save"?: boolean;
-};
 export type Body_upload_issue_photos_api_v1_issues__issue_id__photos_post = {
   "photos": Array<string>;
 };
@@ -82,14 +77,6 @@ export type BreakfastDietUpdate = {
   "kind": "diet_no_gluten" | "diet_no_milk" | "diet_no_pork";
   "version": number;
 };
-export type BreakfastImportItem = {
-  "count": number;
-  "diet_no_gluten"?: boolean;
-  "diet_no_milk"?: boolean;
-  "diet_no_pork"?: boolean;
-  "guest_name"?: string | null;
-  "room": number;
-};
 export type BreakfastImportLogEntry = {
   "details_json": string;
   "finished_at": string;
@@ -98,64 +85,25 @@ export type BreakfastImportLogEntry = {
   "started_at": string;
   "trigger": string;
 };
-export type BreakfastImportResponse = {
-  "date": string;
-  "items": Array<BreakfastImportItem>;
-  "ok"?: boolean;
-  "saved"?: boolean;
-  "status": string;
-};
-export type BreakfastImportRunResponse = {
-  "errors": Array<string>;
-  "imported_count": number;
-  "imported_days": number;
-  "ok": boolean;
-  "processed_days": number;
-  "range_end": string;
-  "range_start": string;
-  "replaced_future_count": number;
-  "reservations_count": number;
-};
-export type BreakfastManualRefreshJobRead = {
-  "created_at": string | null;
-  "error_message"?: string | null;
-  "finished_at": string | null;
-  "id": number;
-  "imported_count": number;
-  "job_key": string;
-  "message"?: string | null;
-  "progress"?: Array<BreakfastManualRefreshProgressItem>;
-  "service_date": string;
-  "started_at": string | null;
-  "status": BreakfastManualRefreshStatus;
-};
-export type BreakfastManualRefreshProgressItem = {
-  "at": string;
-  "message": string;
-  "step": string;
-};
-export type BreakfastManualRefreshRequest = {
-  "service_date": string;
-};
-export type BreakfastManualRefreshStatus = "queued" | "running" | "succeeded" | "failed";
 export type BreakfastOrderCreate = {
   "diet_no_gluten"?: boolean;
   "diet_no_milk"?: boolean;
   "diet_no_pork"?: boolean;
   "guest_count": number;
   "guest_name": string;
-  "note"?: string | null;
   "room_number": string;
   "service_date": string;
   "status"?: BreakfastStatus;
 };
 export type BreakfastOrderRead = {
+  "country_code"?: string | null;
   "created_at": string | null;
   "diet_no_gluten"?: boolean;
   "diet_no_milk"?: boolean;
   "diet_no_pork"?: boolean;
   "guest_count": number;
   "guest_name": string;
+  "guest_names"?: string | null;
   "id": number;
   "note"?: string | null;
   "reservations"?: Array<BreakfastReservationRead>;
@@ -171,7 +119,6 @@ export type BreakfastOrderUpdate = {
   "expected_updated_at"?: string | null;
   "guest_count"?: number | null;
   "guest_name"?: string | null;
-  "note"?: string | null;
   "room_number"?: string | null;
   "service_date"?: string | null;
   "status"?: BreakfastStatus | null;
@@ -209,7 +156,6 @@ export type BreakfastSyncSettingsRead = {
   "connector_base_url": string;
   "provider": string;
   "runtime_status"?: BreakfastSyncRuntimeStatusRead | null;
-  "schedule_times": Array<string>;
   "scheduler_enabled": boolean;
   "scheduler_interval_seconds": number;
   "scheduler_max_retries": number;
@@ -305,6 +251,7 @@ export type HousekeepingStayRead = {
   "country_name"?: string | null;
   "departure": string;
   "guest_label"?: string | null;
+  "housekeeping_note"?: string | null;
   "persons": number;
   "reservation_id": string;
 };
@@ -791,9 +738,6 @@ export const apiClient = {
   async getBreakfastImportLogsApiV1AdminSettingsBreakfastImportLogsGet(query: { "limit"?: number; }): Promise<Array<BreakfastImportLogEntry>> {
     return request<Array<BreakfastImportLogEntry>>('GET', `/api/v1/admin/settings/breakfast-import-logs`, query, undefined);
   },
-  async runBreakfastImportNowApiV1AdminSettingsBreakfastImportRunPost(): Promise<BreakfastImportRunResponse> {
-    return request<BreakfastImportRunResponse>('POST', `/api/v1/admin/settings/breakfast-import-run`, undefined, undefined);
-  },
   async getBreakfastSyncSettingsApiV1AdminSettingsBreakfastSyncGet(): Promise<BreakfastSyncSettingsRead> {
     return request<BreakfastSyncSettingsRead>('GET', `/api/v1/admin/settings/breakfast-sync`, undefined, undefined);
   },
@@ -826,15 +770,6 @@ export const apiClient = {
   },
   async exportBreakfastDailyPdfApiV1BreakfastExportDailyGet(query: { "service_date": string; }): Promise<unknown> {
     return request<unknown>('GET', `/api/v1/breakfast/export/daily`, query, undefined);
-  },
-  async importBreakfastPdfApiV1BreakfastImportPost(): Promise<BreakfastImportResponse> {
-    return request<BreakfastImportResponse>('POST', `/api/v1/breakfast/import`, undefined, undefined);
-  },
-  async manualRefreshBreakfastApiV1BreakfastManualRefreshPost(body: BreakfastManualRefreshRequest): Promise<void> {
-    return request<void>('POST', `/api/v1/breakfast/manual-refresh`, undefined, body);
-  },
-  async getManualRefreshJobApiV1BreakfastManualRefreshJobIdGet(job_id: number): Promise<BreakfastManualRefreshJobRead> {
-    return request<BreakfastManualRefreshJobRead>('GET', `/api/v1/breakfast/manual-refresh/${job_id}`, undefined, undefined);
   },
   async deleteBreakfastOrdersForPeriodApiV1BreakfastPeriodDeleteDelete(query: { "date_from": string; "date_to": string; }): Promise<void> {
     return request<void>('DELETE', `/api/v1/breakfast/period/delete`, query, undefined);

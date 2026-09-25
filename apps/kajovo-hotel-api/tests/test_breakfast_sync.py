@@ -30,8 +30,10 @@ def test_better_hotel_sync_maps_food_flags_to_breakfast_days(monkeypatch) -> Non
                 "arrival": "2026-06-21",
                 "departure": "2026-06-24",
                 "room": {"name": "102 KOMFORT"},
+                "main_guest": "guest-1",
+                "reservation_note": [{"note": "Interní text", "housekeep": "Prosím druhý polštář"}],
                 "guest_list": [
-                    {"food": 1, "guest": {"first_name": "Jan", "last_name": "Novak"}},
+                    {"food": 1, "guest": {"id": "guest-1", "first_name": "Jan", "last_name": "Novak", "address": {"country": "CZE"}}},
                     {"food": 2, "guest": {"first_name": "Eva", "last_name": "Nova"}},
                     {"food": 0, "guest": {"first_name": "Bez", "last_name": "Snidane"}},
                 ],
@@ -62,6 +64,9 @@ def test_better_hotel_sync_maps_food_flags_to_breakfast_days(monkeypatch) -> Non
         ("2026-06-24", "205", 1),
     ]
     assert aggregates[0].guest_name == "Jan Novak; Eva Nova"
+    assert aggregates[0].guest_names == "Jan Novak; Eva Nova; Bez Snidane"
+    assert aggregates[0].country_code == "CZ"
+    assert aggregates[0].housekeeping_note == "Prosím druhý polštář"
     assert aggregates[0].source_key == "2026-06-22|res-1"
     assert aggregates[-1].source_key == "2026-06-24|res-2"
 
@@ -73,7 +78,8 @@ def test_breakfast_sync_admin_endpoint_and_removed_mailbox(api_request) -> None:
     assert payload["provider"] == "better_hotel_api"
     assert payload["breakfast_window_days_forward"] == 7
     assert payload["breakfast_food_codes"] == [1, 2, 3]
-    assert payload["schedule_times"] == ["14:00", "16:00", "18:00", "20:00", "22:20", "23:50"]
+    assert payload["scheduler_interval_seconds"] == 300
+    assert "schedule_times" not in payload
 
     removed_status, _ = api_request("/api/v1/admin/settings/breakfast-mailbox")
     assert removed_status == 404
@@ -84,7 +90,7 @@ def test_parse_breakfast_food_codes_always_includes_half_and_full_board() -> Non
     assert parse_breakfast_food_codes("5") == {1, 2, 3, 5}
 
 
-def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
+def test_better_hotel_sync_replaces_local_notes_with_housekeeping_note(
     tmp_path, monkeypatch
 ) -> None:
     target_day = date(2026, 7, 24)
@@ -142,7 +148,8 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
                         source_key="2026-07-24|res-101",
                         room_number="101",
                         guest_count=2,
-                        guest_name="Novy host",
+                            guest_name="Novy host",
+                            housekeeping_note="Pokojská: polštář navíc",
                     ),
                     BetterHotelBreakfastAggregate(
                         service_date=target_day,
@@ -160,6 +167,7 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
     monkeypatch.setattr(breakfast_sync_service, "prague_today", lambda: target_day)
 
     with session_local() as db:
+        original_ids = {row.room_number: row.id for row in db.scalars(select(BreakfastOrder)).all()}
         result = sync_breakfast_range(
             db,
             settings=Settings(_env_file=None),
@@ -177,8 +185,10 @@ def test_better_hotel_sync_keeps_user_notes_but_does_not_create_system_notes(
             .order_by(BreakfastOrder.room_number.asc())
         ).all()
 
+    assert {row.room_number: row.id for row in rows} == original_ids
+
     assert [(row.room_number, row.note) for row in rows] == [
-        ("101", "Rucni poznamka recepce"),
+        ("101", "Pokojská: polštář navíc"),
         ("102", None),
     ]
     assert rows[0].diet_no_gluten is True
@@ -293,5 +303,5 @@ def test_sync_falls_back_to_room_number_for_legacy_rows_without_source_key(monke
         order = db.scalar(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day))
         assert order is not None
         assert order.status == "served"
-        assert order.note == "Legacy note"
+        assert order.note is None
         assert order.source_key == "2026-07-01|res-legacy"

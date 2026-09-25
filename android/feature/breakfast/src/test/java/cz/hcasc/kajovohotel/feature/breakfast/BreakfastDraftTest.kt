@@ -3,13 +3,11 @@ package cz.hcasc.kajovohotel.feature.breakfast
 import cz.hcasc.kajovohotel.core.model.BreakfastStatus
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDietKey
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDraft
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportItem
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrderDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.applyDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
 import cz.hcasc.kajovohotel.feature.breakfast.domain.matchesSearch
-import cz.hcasc.kajovohotel.feature.breakfast.domain.toggleDiet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -31,7 +29,6 @@ class BreakfastDraftTest {
             roomNumber = "101",
             guestName = "Novák",
             guestCount = 2,
-            note = "",
             noGluten = false,
             noMilk = false,
             noPork = false,
@@ -57,7 +54,6 @@ class BreakfastDraftTest {
             roomNumber = "205",
             guestName = "Svoboda",
             guestCount = 1,
-            note = "",
             noGluten = false,
             noMilk = false,
             noPork = false,
@@ -69,21 +65,4 @@ class BreakfastDraftTest {
         assertFalse(order.matchesSearch("novak"))
     }
 
-    @Test
-    fun importPreviewDietToggleFlipsRequestedFlagOnly() {
-        val item = BreakfastImportItem(
-            room = 101,
-            count = 2,
-            guestName = "Novák",
-            noGluten = false,
-            noMilk = false,
-            noPork = false,
-        )
-
-        val toggled = item.toggleDiet(BreakfastDietKey.NO_MILK)
-
-        assertTrue(toggled.noMilk)
-        assertFalse(toggled.noGluten)
-        assertFalse(toggled.noPork)
-    }
 }

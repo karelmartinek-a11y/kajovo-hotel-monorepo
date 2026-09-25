@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 import pycountry
 
 from app.config import Settings
+from app.services.better_hotel_notes import housekeep_note
 
 ROOM_NUMBERS = frozenset(
     {
@@ -57,6 +58,7 @@ def _stay_read(reservation: dict[str, Any]) -> dict[str, Any]:
         "persons": max(0, int(reservation.get("persons") or 0)),
         "country_name": COUNTRY_TRANSLATION.gettext(country.name) if country else None,
         "country_code": country.alpha_2 if country else None,
+        "housekeeping_note": housekeep_note(reservation),
         "arrival": reservation["arrival"], "departure": reservation["departure"],
         "checked_in": action.get("checkedin"), "checked_out": action.get("checkedout"),
         "amenities": [],
@@ -218,7 +220,7 @@ class BetterHotelHousekeepingClient:
                 "filter[range_type]": range_type,
                 "filter[mode]": "hotel",
                 "filter[state]": state,
-                "expand[]": ["room", "reservation_status", "reservation_action", "guest_list", "guest_list.guest", "guest_list.guest.address"],
+                "expand[]": ["room", "reservation_status", "reservation_action", "guest_list", "guest_list.guest", "guest_list.guest.address", "reservation_note"],
             },
         )
         deduplicated: dict[str, dict[str, Any]] = {}

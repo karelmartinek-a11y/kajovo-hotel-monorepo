@@ -43,4 +43,4 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 - `docs/module-sklad.md`
 - `docs/module-reports.md`
 - `docs/api-contract.md`
-- `docs/pdf-export-import.md`
+- `docs/pdf-export.md`

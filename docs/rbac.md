@@ -117,8 +117,8 @@ Samotná module-level permission nestačí na všechny endpointy. Backend má je
   - `admin` a `recepce` přidávají/odebírají ikony psa a postýlky konkrétní rezervace; všechny tři role mění barvu existující ikony s kontrolou verze
   - zápis se po každé změně znovu ověří proti živému aktuálnímu stavu; stav rezervací se tím nemění
 - `breakfast`
-  - diety celého pobytu mění pouze aktivní role `recepce`/`admin` přes rezervační endpoint s ověřením vazby Better Hotel a verze; denní PUT ani PDF import nemění diety
-  - plánování, mazání, import/export a reaktivace jsou jen pro `admin` nebo `recepce`
+  - diety celého pobytu mění pouze aktivní role `recepce`/`admin` přes rezervační endpoint s ověřením vazby Better Hotel a verze; denní PUT diety nemění
+  - plánování, mazání, PDF export a reaktivace jsou jen pro `admin` nebo `recepce`; poznámka z Better Hotelu je všem rolím pouze ke čtení
   - role `snídaně` smí zapisovat jen omezeně, typicky označit objednávku jako `served`
   - revokace `served -> pending` je povolená jen pro `recepce` nebo `admin`; backend ji vynucuje i proti přímému API požadavku
 - `inventory`

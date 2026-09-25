@@ -16,8 +16,8 @@ Samostatná launcher značka: `docs/android-design/kajovo-hotel-app-mark.png`
 - Pevné kompaktní záhlaví s logem, názvem sekce, přepnutím role a menu oprávněných sekcí/profilu. Bez spodního copyrightu, duplicitních nadpisů a vysvětlování implementace.
 - Systémový bezpatkový font s běžným a tučným řezem; textové dvojice barev se v obou tématech testují na kontrast nejméně 4,5:1. Kompletní černé logo má světlou podložku i v tmavém režimu.
 - Přihlášení zachovává formulář při odeslání, skryje klávesnici a zobrazí chybu nad tlačítkem. Krátké obrazovky se vejdou na telefon; seznamy, dlouhý obsah, malé okno s klávesnicí a velké systémové písmo mohou bezpečně posouvat obsah.
-- Filtry seznamů jsou rozbalovací. Nálezy mají kroky Předmět/Místo/Předání, závady Závada/Stav a priorita, snídaně Host/Stav a diety. Všechna původní pole a validace zůstávají dostupné.
-- Systémové pickery pro foto/PDF, Camera contract, app links pro reset hesla.
+- Filtry seznamů jsou rozbalovací. Nálezy mají kroky Předmět/Místo/Předání, závady Závada/Stav a priorita, snídaně Host/Stav a diety. Poznámka pro pokojskou u snídaní se čte z Better Hotel API a v editoru se nemění.
+- Systémové pickery pro fotografie, Camera contract, app links pro reset hesla. PDF export snídaní lze uložit nebo sdílet; PDF import není dostupný.
 - Blokující dialog pouze při zápisu kritického stavu pokoje; ostatní formuláře používají inline validaci a jednoznačný progress.
 - Auto-update kontrola probíhá při startu před loginem. APK se stáhne, ověří SHA-256 a předá systémovému instalátoru; Android z bezpečnostních důvodů stále vyžaduje uživatelské potvrzení instalace.
 - Příznak automatického spuštění se spotřebuje až po dokončení aktualizační operace, aby změna Compose efektu nepřerušila stahování. Zrušení coroutine není síťová chyba a neotevírá náhradní prohlížeč.

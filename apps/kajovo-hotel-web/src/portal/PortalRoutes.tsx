@@ -138,8 +138,8 @@ function ReceptionHubPage(): JSX.Element {
           action={<Link className="k-button" to="/ztraty-a-nalezy">{t("Otevřít nálezy")}</Link>}
         />
         <StateView
-          title={t("Import a správa snídaní")}
-          description={t("Denní souhrn, seznam objednávek, detail, založení, úpravy i práce s PDF.")}
+          title={t("Přehled snídaní")}
+          description={t("Snídaně podle vybraného dne se pravidelně aktualizují z Better Hotelu.")}
           stateKey="empty"
           action={<Link className="k-button" to="/snidane">{t("Otevřít snídaně")}</Link>}
         />

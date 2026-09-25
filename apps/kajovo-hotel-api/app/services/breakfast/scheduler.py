@@ -9,9 +9,7 @@ from pathlib import Path
 from app.config import get_settings
 from app.db.session import SessionLocal
 from app.services.breakfast.sync import (
-    PRAGUE_TZ,
     default_sync_range,
-    is_scheduled_now,
     prague_today,
     sync_breakfast_range,
 )
@@ -57,20 +55,6 @@ def run_breakfast_scheduler_iteration(*, attempt: int = 1) -> BreakfastScheduler
     settings = get_settings()
     today_local = prague_today()
     range_start, range_end = default_sync_range(today=today_local, settings=settings)
-    now_local = utc_now().astimezone(PRAGUE_TZ)
-
-    if not is_scheduled_now(now_local, settings.breakfast_scheduler_interval_seconds):
-        result = BreakfastSchedulerResult(
-            ok=True,
-            range_start=range_start.isoformat(),
-            range_end=range_end.isoformat(),
-            attempt=attempt,
-            imported=False,
-            processed_days=(range_end - range_start).days + 1,
-        )
-        _write_runtime_artifact(result)
-        return result
-
     db = SessionLocal()
     try:
         run_result = sync_breakfast_range(

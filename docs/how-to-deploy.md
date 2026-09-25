@@ -30,4 +30,4 @@
 - Retence na serveru zachovává nejnovější dokončený zdrojový strom jako rollback/runtime-artifact referenci; provozní data zůstávají v pojmenovaných Docker volumes.
 - HTTP ACME challenge se obsluhuje přímo z `/var/www/hotelapp/letsencrypt` bez předčasného HTTPS redirectu; ostatní HTTP požadavky přesměrovává `location /`.
 - Aktivní Nginx certifikát používá Certbot lineage `hotel.hcasc.cz-renewed`; deploy uživateli nepřiděluje obecná root oprávnění a certifikát ověřuje zvenčí stejně jako klient produkční domény.
-- Produkční ověření používá `scripts/verify_live_breakfast_manual_refresh.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`. Pokojský gate pouze čte živý přehled; v deployi záměrně nemění provozní stav skutečného pokoje.
+- Produkční ověření používá `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`. Pokojský gate pouze čte živý přehled; v deployi záměrně nemění provozní stav skutečného pokoje.

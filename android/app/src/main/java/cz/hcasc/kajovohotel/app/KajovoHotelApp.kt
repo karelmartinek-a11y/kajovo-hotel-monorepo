@@ -218,7 +218,6 @@ private fun PortalAppShell(
                                 BreakfastSection.CREATE -> navController.navigate(PortalRoutes.BreakfastCreate)
                                 BreakfastSection.DETAIL -> orderId?.let { navController.navigate(PortalRoutes.breakfastDetail(it)) }
                                 BreakfastSection.EDIT -> orderId?.let { navController.navigate(PortalRoutes.breakfastEdit(it)) }
-                                BreakfastSection.IMPORT -> navController.navigate(PortalRoutes.Breakfast)
                             }
                         },
                     )
@@ -247,7 +246,6 @@ private fun PortalAppShell(
                                 BreakfastSection.CREATE -> navController.navigate(PortalRoutes.BreakfastCreate)
                                 BreakfastSection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.breakfastDetail(it)) }
                                 BreakfastSection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.breakfastEdit(it)) }
-                                BreakfastSection.IMPORT -> navController.navigate(PortalRoutes.Breakfast)
                             }
                         },
                     )
@@ -271,7 +269,6 @@ private fun PortalAppShell(
                                 BreakfastSection.CREATE -> navController.navigate(PortalRoutes.BreakfastCreate)
                                 BreakfastSection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.breakfastDetail(it)) }
                                 BreakfastSection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.breakfastEdit(it)) }
-                                BreakfastSection.IMPORT -> navController.navigate(PortalRoutes.Breakfast)
                             }
                         },
                     )
@@ -300,7 +297,6 @@ private fun PortalAppShell(
                                 BreakfastSection.CREATE -> navController.navigate(PortalRoutes.BreakfastCreate)
                                 BreakfastSection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.breakfastDetail(it)) }
                                 BreakfastSection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.breakfastEdit(it)) }
-                                BreakfastSection.IMPORT -> navController.navigate(PortalRoutes.Breakfast)
                             }
                         },
                     )

@@ -14,8 +14,10 @@ data class BreakfastOrder(
     val serviceDate: String,
     val roomNumber: String,
     val guestName: String,
+    val guestNames: String? = null,
+    val countryCode: String? = null,
     val guestCount: Int,
-    val note: String,
+    val note: String = "",
     val noGluten: Boolean,
     val noMilk: Boolean,
     val noPork: Boolean,
@@ -32,53 +34,10 @@ data class BreakfastSummary(
     val sourceImportedAt: String? = null,
 )
 
-enum class BreakfastManualRefreshStatus {
-    QUEUED,
-    RUNNING,
-    SUCCEEDED,
-    FAILED,
-}
-
-data class BreakfastManualRefreshProgress(
-    val at: String,
-    val step: String,
-    val message: String,
-)
-
-data class BreakfastManualRefreshJob(
-    val id: Int,
-    val jobKey: String,
-    val serviceDate: String,
-    val status: BreakfastManualRefreshStatus,
-    val progress: List<BreakfastManualRefreshProgress>,
-    val message: String?,
-    val errorMessage: String?,
-    val importedCount: Int,
-    val createdAt: String?,
-    val startedAt: String?,
-    val finishedAt: String?,
-)
-
 data class BreakfastServiceStats(
     val totalBreakfasts: Int,
     val servedBreakfasts: Int,
     val remainingBreakfasts: Int,
-)
-
-data class BreakfastImportPreview(
-    val sourceFileName: String,
-    val serviceDate: String,
-    val items: List<BreakfastImportItem>,
-    val saved: Boolean,
-)
-
-data class BreakfastImportItem(
-    val room: Int,
-    val count: Int,
-    val guestName: String,
-    val noGluten: Boolean,
-    val noMilk: Boolean,
-    val noPork: Boolean,
 )
 
 data class BreakfastDraft(
@@ -86,7 +45,6 @@ data class BreakfastDraft(
     val roomNumber: String = "",
     val guestName: String = "",
     val guestCount: String = "1",
-    val note: String = "",
     val noGluten: Boolean = false,
     val noMilk: Boolean = false,
     val noPork: Boolean = false,
@@ -112,7 +70,6 @@ fun BreakfastDraft.toCreateRequest() = cz.hcasc.kajovohotel.core.network.dto.Bre
     room_number = roomNumber.trim(),
     guest_name = guestName.trim(),
     guest_count = guestCount.toIntOrNull() ?: 1,
-    note = note.trim().ifBlank { null },
     diet_no_gluten = noGluten,
     diet_no_milk = noMilk,
     diet_no_pork = noPork,
@@ -124,7 +81,6 @@ fun BreakfastDraft.toUpdateRequest() = cz.hcasc.kajovohotel.core.network.dto.Bre
     room_number = roomNumber.trim(),
     guest_name = guestName.trim(),
     guest_count = guestCount.toIntOrNull() ?: 1,
-    note = note.trim().ifBlank { null },
     diet_no_gluten = noGluten,
     diet_no_milk = noMilk,
     diet_no_pork = noPork,
@@ -136,18 +92,11 @@ fun BreakfastOrder.toDraft() = BreakfastDraft(
     roomNumber = roomNumber,
     guestName = guestName,
     guestCount = guestCount.toString(),
-    note = note,
     noGluten = noGluten,
     noMilk = noMilk,
     noPork = noPork,
     status = status,
 )
-
-fun BreakfastImportItem.toggleDiet(key: BreakfastDietKey): BreakfastImportItem = when (key) {
-    BreakfastDietKey.NO_GLUTEN -> copy(noGluten = !noGluten)
-    BreakfastDietKey.NO_MILK -> copy(noMilk = !noMilk)
-    BreakfastDietKey.NO_PORK -> copy(noPork = !noPork)
-}
 
 fun BreakfastOrder.applyDraft(draft: BreakfastOrderDraft?) = copy(
     status = draft?.status ?: status,
@@ -168,7 +117,6 @@ fun BreakfastOrder.toQueuedDraftUpdate(draft: BreakfastOrderDraft) = cz.hcasc.ka
     room_number = roomNumber,
     guest_name = guestName,
     guest_count = guestCount,
-    note = note.ifBlank { null },
     diet_no_gluten = draft.noGluten ?: noGluten,
     diet_no_milk = draft.noMilk ?: noMilk,
     diet_no_pork = draft.noPork ?: noPork,
@@ -178,10 +126,8 @@ fun BreakfastOrder.toQueuedDraftUpdate(draft: BreakfastOrderDraft) = cz.hcasc.ka
 fun BreakfastOrder.matchesSearch(query: String): Boolean {
     val term = query.trim().lowercase()
     if (term.isBlank()) return true
-    return roomNumber.lowercase().contains(term) || guestName.lowercase().contains(term)
+    return roomNumber.lowercase().contains(term) || (guestNames ?: guestName).lowercase().contains(term)
 }
-
-fun BreakfastManualRefreshStatus.isTerminal(): Boolean = this == BreakfastManualRefreshStatus.SUCCEEDED || this == BreakfastManualRefreshStatus.FAILED
 
 fun PortalRole.breakfastScreenTitle(): String = when (this) {
     PortalRole.RECEPTION -> "Snídaně / recepce"

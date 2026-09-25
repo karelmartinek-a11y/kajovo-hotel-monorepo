@@ -3,7 +3,13 @@ from datetime import date
 import pytest
 
 from app.config import Settings
+from app.services.better_hotel_notes import housekeep_note
 from app.services.housekeeping import STATUS_NAMES, BetterHotelHousekeepingClient
+
+
+def test_housekeeper_note_uses_only_housekeep_field() -> None:
+    assert housekeep_note({"reservation_note": [{"note": "Interní text", "housekeep": "  Přistýlka  "}, {"housekeep": "Přistýlka"}]}) == "Přistýlka"
+    assert housekeep_note({"reservation_note": [{"note": "Interní text", "housekeep": "  "}]}) is None
 
 
 @pytest.fixture(autouse=True)

@@ -73,24 +73,23 @@ class BreakfastOrderBase(BaseModel):
     guest_name: str = Field(min_length=1, max_length=255)
     guest_count: int = Field(ge=1, le=20)
     status: BreakfastStatus = BreakfastStatus.PENDING
-    note: str | None = Field(default=None, max_length=2000)
     diet_no_gluten: bool = False
     diet_no_milk: bool = False
     diet_no_pork: bool = False
 
 
 class BreakfastOrderCreate(BreakfastOrderBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class BreakfastOrderUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     expected_updated_at: datetime | None = None
     service_date: date | None = None
     room_number: str | None = Field(default=None, min_length=1, max_length=32)
     guest_name: str | None = Field(default=None, min_length=1, max_length=255)
     guest_count: int | None = Field(default=None, ge=1, le=20)
     status: BreakfastStatus | None = None
-    note: str | None = Field(default=None, max_length=2000)
     diet_no_gluten: bool | None = None
     diet_no_milk: bool | None = None
     diet_no_pork: bool | None = None
@@ -119,6 +118,9 @@ class BreakfastOrderRead(BreakfastOrderBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    note: str | None = None
+    guest_names: str | None = None
+    country_code: str | None = None
     created_at: datetime | None
     updated_at: datetime | None
     reservations: list[BreakfastReservationRead] = Field(default_factory=list)
@@ -184,6 +186,7 @@ class HousekeepingStayRead(BaseModel):
     persons: int = Field(ge=0)
     country_name: str | None = None
     country_code: str | None = None
+    housekeeping_note: str | None = None
     arrival: date
     departure: date
     checked_in: datetime | None = None
@@ -225,54 +228,6 @@ class HousekeepingRoomsOverview(BaseModel):
 class HousekeepingRoomStatusUpdate(BaseModel):
     status: HousekeepingRoomStatus
     note: str | None = Field(default=None, max_length=500)
-
-
-class BreakfastImportItem(BaseModel):
-    room: int
-    count: int
-    guest_name: str | None = None
-    diet_no_gluten: bool = False
-    diet_no_milk: bool = False
-    diet_no_pork: bool = False
-
-
-class BreakfastImportResponse(BaseModel):
-    ok: bool = True
-    date: date
-    status: str
-    saved: bool = False
-    items: list[BreakfastImportItem]
-
-
-class BreakfastManualRefreshStatus(StrEnum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-
-
-class BreakfastManualRefreshProgressItem(BaseModel):
-    at: datetime
-    step: str
-    message: str
-
-
-class BreakfastManualRefreshRequest(BaseModel):
-    service_date: date
-
-
-class BreakfastManualRefreshJobRead(BaseModel):
-    id: int
-    job_key: str
-    service_date: date
-    status: BreakfastManualRefreshStatus
-    progress: list[BreakfastManualRefreshProgressItem] = Field(default_factory=list)
-    message: str | None = None
-    error_message: str | None = None
-    imported_count: int
-    created_at: datetime | None
-    started_at: datetime | None
-    finished_at: datetime | None
 
 
 class LostFoundItemType(StrEnum):
@@ -938,7 +893,6 @@ class BreakfastSyncSettingsRead(BaseModel):
     scheduler_interval_seconds: int
     scheduler_retry_seconds: int
     scheduler_max_retries: int
-    schedule_times: list[str]
     runtime_status: BreakfastSyncRuntimeStatusRead | None = None
 
 
@@ -949,18 +903,6 @@ class BreakfastImportLogEntry(BaseModel):
     ok: bool
     trigger: str
     details_json: str
-
-
-class BreakfastImportRunResponse(BaseModel):
-    ok: bool
-    imported_count: int
-    imported_days: int
-    processed_days: int
-    range_start: date
-    range_end: date
-    replaced_future_count: int
-    reservations_count: int
-    errors: list[str]
 
 
 class MailDispatchResponse(BaseModel):

@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import pycountry
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,20 +25,14 @@ from app.db.models import (
     BreakfastOrder,
     BreakfastStatus,
 )
+from app.services.better_hotel_notes import housekeep_note
 from app.services.breakfast.diets import ensure_diets, project_flags
 from app.time_utils import utc_now
 
 log = logging.getLogger("kajovo.breakfast.sync")
 
 PRAGUE_TZ = ZoneInfo("Europe/Prague")
-SCHEDULE_TIMES = ("14:00", "16:00", "18:00", "20:00", "22:20", "23:50")
 DEFAULT_BREAKFAST_FOOD_CODES = frozenset({1, 2, 3})
-SYSTEM_SYNC_NOTE_PREFIXES = (
-    "Automatická synchronizace Better Hotel",
-    "Automaticka synchronizace Better Hotel",
-    "Ruční synchronizace Better Hotel",
-    "Rucni synchronizace Better Hotel",
-)
 
 
 class BetterHotelSyncError(RuntimeError):
@@ -52,6 +47,9 @@ class BetterHotelBreakfastAggregate:
     guest_count: int
     guest_name: str | None
     reservations: dict[str, dict] = field(default_factory=dict)
+    guest_names: str | None = None
+    country_code: str | None = None
+    housekeeping_note: str | None = None
 
 
 @dataclass(frozen=True)
@@ -78,25 +76,6 @@ def default_sync_range(*, today: date | None = None, settings: Settings | None =
     active_settings = settings or get_settings()
     forward_days = max(0, int(active_settings.better_hotel_breakfast_window_days_forward))
     return current_day, current_day + timedelta(days=forward_days)
-
-
-def is_scheduled_now(now_local: datetime, interval_seconds: int) -> bool:
-    interval = max(60, int(interval_seconds))
-    window_start = now_local - timedelta(seconds=interval)
-    for schedule_time in SCHEDULE_TIMES:
-        hour_text, minute_text = schedule_time.split(":")
-        slot_time = now_local.replace(
-            hour=int(hour_text),
-            minute=int(minute_text),
-            second=0,
-            microsecond=0,
-        )
-        if window_start <= slot_time <= now_local:
-            return True
-        previous_day_slot_time = slot_time - timedelta(days=1)
-        if window_start <= previous_day_slot_time <= now_local:
-            return True
-    return False
 
 
 def parse_breakfast_food_codes(raw: str) -> set[int]:
@@ -161,15 +140,17 @@ def _extract_guest_name(item: dict[str, Any]) -> str:
     return label
 
 
-def normalize_preserved_breakfast_note(note: str | None) -> str | None:
-    if note is None:
-        return None
-    normalized = note.strip()
-    if not normalized:
-        return None
-    if any(normalized.startswith(prefix) for prefix in SYSTEM_SYNC_NOTE_PREFIXES):
-        return None
-    return normalized
+def _country_code(reservation: dict[str, Any]) -> str | None:
+    main = reservation.get("main_guest")
+    guest = main if isinstance(main, dict) else next(
+        (item["guest"] for item in (reservation.get("guest_list") or [])
+         if isinstance(item, dict) and isinstance(item.get("guest"), dict) and str(item["guest"].get("id")) == str(main)),
+        None,
+    )
+    address = guest.get("address") if isinstance(guest, dict) else None
+    code = str(address.get("country") or "").upper() if isinstance(address, dict) else ""
+    country = pycountry.countries.get(**({"alpha_3": code} if len(code) == 3 else {"alpha_2": code})) if len(code) in {2, 3} else None
+    return country.alpha_2 if country else None
 
 
 def build_breakfast_source_key(*, service_date: date, reservation_ids: set[str]) -> str:
@@ -258,7 +239,7 @@ class BetterHotelBreakfastClient:
                     "filter[from]": query_from.isoformat(),
                     "filter[to]": service_end.isoformat(),
                     "filter[range_type]": "intersect",
-                    "expand[]": ["guest_list", "guest_list.guest", "room"],
+                    "expand[]": ["guest_list", "guest_list.guest", "guest_list.guest.address", "room", "reservation_note"],
                 },
             )
             data = _require_list(payload.get("data"), label="data")
@@ -306,6 +287,8 @@ class BetterHotelBreakfastClient:
                 label=f"reservation[{reservation_id}].guest_list",
             )
             breakfast_guest_names: list[str] = []
+            all_guest_names = [name for item in guest_list if isinstance(item, dict) if (name := _extract_guest_name(item))]
+            country_code = _country_code(reservation)
             for guest_item_raw in guest_list:
                 guest_item = _require_dict(guest_item_raw, label=f"reservation[{reservation_id}].guest_list[]")
                 try:
@@ -338,10 +321,15 @@ class BetterHotelBreakfastClient:
                 key = (current_day, room_number)
                 current = grouped.setdefault(
                     key,
-                    {"count": 0, "names": [], "reservation_ids": set(), "reservations": {}},
+                    {"count": 0, "names": [], "all_names": [], "country_codes": [], "housekeeping_notes": [], "reservation_ids": set(), "reservations": {}},
                 )
                 current["count"] += breakfast_guest_count
                 current["names"].extend(breakfast_guest_names)
+                current["all_names"].extend(all_guest_names)
+                if country_code:
+                    current["country_codes"].append(country_code)
+                if note := housekeep_note(reservation):
+                    current["housekeeping_notes"].append(note)
                 current["reservation_ids"].add(reservation_id)
                 current["reservations"][reservation_id] = {
                     "arrival": arrival, "departure": departure,
@@ -359,6 +347,9 @@ class BetterHotelBreakfastClient:
                 room_number=room_number,
                 guest_count=int(payload["count"]),
                 guest_name="; ".join(dict.fromkeys(str(name).strip() for name in payload["names"] if str(name).strip())) or None,
+                guest_names="; ".join(dict.fromkeys(str(name).strip() for name in payload["all_names"] if str(name).strip())) or None,
+                country_code=next(iter(dict.fromkeys(payload["country_codes"])), None),
+                housekeeping_note="\n".join(dict.fromkeys(payload["housekeeping_notes"])) or None,
                 reservations=payload["reservations"],
             )
             for (service_date, room_number), payload in grouped.items()
@@ -373,6 +364,9 @@ class BetterHotelBreakfastClient:
                         "room_number": item.room_number,
                         "guest_count": item.guest_count,
                         "guest_name": item.guest_name,
+                        "guest_names": item.guest_names,
+                        "country_code": item.country_code,
+                        "housekeeping_note": item.housekeeping_note,
                     }
                     for item in aggregates
                 ],
@@ -455,7 +449,6 @@ def sync_breakfast_range(
             for row in existing_rows:
                 preserved = {
                     "status": row.status,
-                    "note": normalize_preserved_breakfast_note(row.note),
                 }
                 if row.source_key:
                     preserved_by_source_key[row.source_key] = preserved
@@ -464,42 +457,45 @@ def sync_breakfast_range(
             if target_day > today_local and existing_rows:
                 replaced_future_count += 1
 
-            for existing_row in existing_rows:
-                db.expunge(existing_row)
-            db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
-                synchronize_session=False
-            )
-            db.flush()
-
             day_rows = rows_by_day.get(target_day, [])
             if day_rows:
                 imported_days += 1
+            existing_by_key = {row.source_key: row for row in existing_rows if row.source_key}
+            retained_ids: set[int] = set()
             for row in day_rows:
                 preserved = preserved_by_source_key.get(row.source_key)
                 if preserved is None:
                     preserved = preserved_by_legacy_room.get(row.room_number, {})
-                db.add(
-                    BreakfastOrder(
+                existing = existing_by_key.get(row.source_key)
+                if existing is None:
+                    existing = BreakfastOrder(
                         service_date=row.service_date,
                         source_key=row.source_key,
-                        room_number=row.room_number,
-                        guest_name=row.guest_name or f"Pokoj {row.room_number}",
-                        guest_count=max(1, int(row.guest_count)),
                         status=str(preserved.get("status") or BreakfastStatus.PENDING.value),
-                        note=preserved.get("note") or None,
+                        note=row.housekeeping_note,
                     )
-                )
+                    db.add(existing)
+                existing.room_number = row.room_number
+                existing.note = row.housekeeping_note
+                existing.guest_name = (row.guest_name or f"Pokoj {row.room_number}")[:255]
+                existing.guest_names = row.guest_names
+                existing.country_code = row.country_code
+                existing.guest_count = max(1, int(row.guest_count))
+                db.flush()
+                retained_ids.add(existing.id)
                 imported_rows += 1
+            for existing in existing_rows:
+                if existing.id not in retained_ids:
+                    db.delete(existing)
             db.flush()
             project_flags(db, list(db.scalars(select(BreakfastOrder).where(BreakfastOrder.service_date == target_day))))
-            db.add(
-                BreakfastImportProcessedAttachment(
-                    message_uid=f"better-hotel:{trigger}:{range_start.isoformat()}:{range_end.isoformat()}:{target_day.isoformat()}",
-                    attachment_hash=source_hash,
-                    parsed_day=target_day,
-                    imported_at=source_imported_at,
-                )
-            )
+            stamp_key = f"better-hotel:current:{target_day.isoformat()}"
+            stamp = db.scalar(select(BreakfastImportProcessedAttachment).where(BreakfastImportProcessedAttachment.message_uid == stamp_key))
+            if stamp is None:
+                stamp = BreakfastImportProcessedAttachment(message_uid=stamp_key, parsed_day=target_day)
+                db.add(stamp)
+            stamp.attachment_hash = source_hash
+            stamp.imported_at = source_imported_at
 
         finished_at = utc_now()
         details = {

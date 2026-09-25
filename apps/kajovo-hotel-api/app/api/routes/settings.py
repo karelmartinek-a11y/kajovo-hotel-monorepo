@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas import (
     BreakfastImportLogEntry,
-    BreakfastImportRunResponse,
     BreakfastSyncRuntimeStatusRead,
     BreakfastSyncSettingsRead,
     SmtpOperationalStatusRead,
@@ -24,11 +23,7 @@ from app.db.models import BreakfastImportRunLog, PortalSmtpSettings
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency, require_actor_type
 from app.services.breakfast.sync import (
-    SCHEDULE_TIMES,
-    BetterHotelSyncError,
     parse_breakfast_food_codes,
-    prague_today,
-    sync_breakfast_range,
 )
 from app.services.mail import (
     MailMessage,
@@ -491,7 +486,6 @@ def get_breakfast_sync_settings() -> BreakfastSyncSettingsRead:
         scheduler_interval_seconds=max(60, int(settings.breakfast_scheduler_interval_seconds)),
         scheduler_retry_seconds=max(5, int(settings.breakfast_scheduler_retry_seconds)),
         scheduler_max_retries=max(1, int(settings.breakfast_scheduler_max_retries)),
-        schedule_times=list(SCHEDULE_TIMES),
         runtime_status=_load_breakfast_runtime_status(),
     )
 
@@ -518,35 +512,3 @@ def get_breakfast_import_logs(
         )
         for row in rows
     ]
-
-
-@router.post("/breakfast-import-run", response_model=BreakfastImportRunResponse)
-def run_breakfast_import_now(db: Session = Depends(get_db)) -> BreakfastImportRunResponse:
-    settings = get_settings()
-    today_local = prague_today()
-    range_end = today_local + timedelta(days=max(0, int(settings.better_hotel_breakfast_window_days_forward)))
-    try:
-        result = sync_breakfast_range(
-            db,
-            settings=settings,
-            range_start=today_local,
-            range_end=range_end,
-            trigger="manual_api",
-            note="Ruční synchronizace Better Hotel API",
-        )
-    except BetterHotelSyncError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
-    return BreakfastImportRunResponse(
-        ok=result.ok,
-        imported_count=result.imported_rows,
-        imported_days=result.imported_days,
-        processed_days=result.processed_days,
-        range_start=result.range_start,
-        range_end=result.range_end,
-        replaced_future_count=result.replaced_future_count,
-        reservations_count=result.reservations_count,
-        errors=result.errors,
-    )

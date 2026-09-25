@@ -11,8 +11,8 @@ import {
   type HousekeepingStayRead,
   type ReservationAmenityKind,
 } from '@kajovo/shared';
+import { DateNavigation, hotelToday } from './DateNavigation';
 
-const PRAGUE_TIME_ZONE = 'Europe/Prague';
 const ROOM_ORDER = [
   '101', '102', '103', '104', '105', '106', '107', '108',
   '109', '203', '204', '205', '206', '207', '208', '301',
@@ -40,38 +40,6 @@ const STATUS_ACTIONS: Array<{ value: HousekeepingRoomStatus; label: string; deta
   { value: 'do_not_disturb', label: 'Nerušenka', detail: 'Host si nepřeje být rušen.' },
   { value: 'technical_issue', label: 'Technická závada', detail: 'Pokoj vyžaduje technický zásah.' },
 ];
-
-function localDateParts(value: Date): { year: string; month: string; day: string } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: PRAGUE_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(value);
-  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((part) => part.type === type)?.value ?? '';
-  return { year: get('year'), month: get('month'), day: get('day') };
-}
-
-function todayInPrague(): string {
-  const parts = localDateParts(new Date());
-  return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
-function shiftDate(value: string, days: number): string {
-  const [year, month, day] = value.split('-').map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1, day + days, 12));
-  return shifted.toISOString().slice(0, 10);
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(getIntlLocale(), {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${value}T12:00:00Z`));
-}
 
 function AmenityIcon({ kind }: { kind: ReservationAmenityKind }): JSX.Element {
   return (
@@ -128,17 +96,18 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: RoomCardProps)
     ['Pobyt', room.stays],
   ] as const).filter(([, stays]) => stays.length > 0);
   const accessibleStays = preview.map(([kind, stays]) => `${t(kind)} ${stays.map((stay) => stay.guest_label ?? t('Host neuveden')).join(', ')}`).join('; ');
+  const hasHousekeepingNote = [...room.departures, ...room.arrivals, ...room.stays].some((stay) => Boolean(stay.housekeeping_note?.trim()));
   return (
     <button
       className={`k-hk-room${split ? ` k-hk-room--split k-hk-room--left-${left} k-hk-room--right-${right}` : ''}`}
       type="button"
       onClick={() => onSelect(room)}
       data-room-id={room.room_id}
-      aria-label={`${t('Pokoj')} ${room.room_number}, ${label}, ${room.occupied ? `${room.persons} ${t('Uvnitř teď')}` : t('Prázdný teď')}, ${room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen')}. ${accessibleStays}. ${t('Změnit stav pokoje.')}`}
+      aria-label={`${t('Pokoj')} ${room.room_number}, ${label}, ${room.occupied ? `${room.persons} ${t('Uvnitř teď')}` : t('Prázdný teď')}, ${room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen')}. ${accessibleStays}. ${hasHousekeepingNote ? `${t('Poznámka pro pokojskou')}. ` : ''}${t('Změnit stav pokoje.')}`}
     >
       <span className="k-hk-room__topline">
         <strong>{room.room_number}</strong>
-        <span className={`k-hk-room__occupancy-count${room.occupied ? ' k-hk-room__occupancy-count--occupied' : ''}`} aria-hidden="true">{room.occupied ? '●' : '○'} {room.occupied ? room.persons : 0}</span>
+        <span className="k-hk-room__topline-end">{hasHousekeepingNote ? <span className="k-hk-room__note-alert" title={t('Poznámka pro pokojskou')} aria-label={t('Poznámka pro pokojskou')}>!</span> : null}<span className={`k-hk-room__occupancy-count${room.occupied ? ' k-hk-room__occupancy-count--occupied' : ''}`} aria-hidden="true">{room.occupied ? '●' : '○'} {room.occupied ? room.persons : 0}</span></span>
       </span>
       <span className={`k-hk-room__occupancy${room.occupied ? ' k-hk-room__occupancy--occupied' : ''}`}>{t(room.occupied ? 'Uvnitř teď' : 'Prázdný teď')}</span>
       <span className="k-hk-room__splitbar" aria-hidden="true"><i /><i /></span>
@@ -156,7 +125,7 @@ export type HousekeepingRoomsProps = {
 };
 
 export function HousekeepingRooms({ canWrite = true, canManageAmenities = false }: HousekeepingRoomsProps): JSX.Element {
-  const [selectedDate, setSelectedDate] = React.useState(todayInPrague);
+  const [selectedDate, setSelectedDate] = React.useState(hotelToday);
   const [overview, setOverview] = React.useState<HousekeepingRoomsOverview | null>(null);
   const [selectedRoomId, setSelectedRoomId] = React.useState<string | null>(null);
   const [panel, setPanel] = React.useState<'status' | 'amenities'>('status');
@@ -284,16 +253,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
           <h2>{t("Pokoje")}</h2>
         </div>
       </header>
-      <div className="k-hk-datebar">
-        <button type="button" disabled={busy} onClick={() => setSelectedDate((value) => shiftDate(value, -1))} aria-label={t("Předchozí den")}>‹</button>
-        <label>
-          <span aria-hidden="true">▣</span>
-          <input type="date" disabled={busy} value={selectedDate} onChange={(event) => { if (event.target.value) setSelectedDate(event.target.value); }} aria-label={t("Vybraný den")} />
-          <strong>{formatDate(selectedDate)}</strong>
-        </label>
-        <button type="button" disabled={busy} onClick={() => setSelectedDate((value) => shiftDate(value, 1))} aria-label={t("Následující den")}>›</button>
-        <button className="k-hk-datebar__today" type="button" disabled={busy} onClick={() => setSelectedDate(todayInPrague())}>{t("Dnes")}</button>
-      </div>
+      <DateNavigation value={selectedDate} onChange={setSelectedDate} disabled={busy} />
       {announcement ? <p className="k-hk-saved" role="status">{announcement}</p> : null}
       <p className="k-hk-board__source-note">{t("Pobyty podle data · Obsazenost a úklid nyní.")}</p>
       </div>
@@ -331,6 +291,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
             {selectedRoom.stays.length ? <section className="k-hk-detail-stays__continuing">{selectedRoom.stays.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={selectedDate} label={t('Pobyt')} />)}</section> : null}
             {!selectedRoom.departures.length && !selectedRoom.arrivals.length && !selectedRoom.stays.length ? <p>{t('Bez pobytu ve vybraný den')}</p> : null}
           </div>
+          {[...selectedRoom.departures, ...selectedRoom.arrivals, ...selectedRoom.stays].filter((stay) => Boolean(stay.housekeeping_note?.trim())).map((stay) => <p className="k-hk-housekeeping-note" key={`note-${stay.reservation_id}`}><strong>{t('Poznámka pro pokojskou')}{stay.guest_label ? ` · ${stay.guest_label}` : ''}</strong><span>{stay.housekeeping_note}</span></p>)}
           <p className="k-hk-modal__current">{t("Aktuální stav úklidu:")}{' '}<strong>{selectedRoom.housekeeping_status ? t(selectedRoom.housekeeping_status) : t('Neurčen')}</strong></p>
           {error ? <div className="k-hk-alert" role="alert"><p>{error}</p><button disabled={loading} onClick={() => void loadRooms(selectedDate, true)}>{t("Obnovit stav")}</button></div> : null}
           {!error ? <><div className="k-hk-status-actions">{STATUS_ACTIONS.map((action) => <button key={action.value} type="button" title={t(action.detail)} aria-label={`${t(action.label)} ${t(action.detail)}`} onClick={() => void updateStatus(action.value)} disabled={!canWrite || busy}><strong>{t(action.label)}</strong></button>)}</div>

@@ -9,22 +9,17 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.feature.breakfast.data.BreakfastRepository
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDietKey
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDraft
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportPreview
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshJob
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshStatus
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrderDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastSummary
 import cz.hcasc.kajovohotel.feature.breakfast.domain.applyDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
-import cz.hcasc.kajovohotel.feature.breakfast.domain.isTerminal
 import cz.hcasc.kajovohotel.feature.breakfast.domain.toDraft
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -51,11 +46,6 @@ class BreakfastViewModel @Inject constructor(
                         summary = result.value.second,
                         selectedOrder = selectedOrder,
                         queuedDrafts = emptyMap(),
-                        importPreview = null,
-                        pendingImportFile = null,
-                        manualRefreshJob = null,
-                        manualRefreshError = null,
-                        isRefreshing = false,
                         draft = if (mutableState.value.isCreatingNew) {
                             BreakfastDraft(serviceDate = serviceDate)
                         } else {
@@ -86,17 +76,6 @@ class BreakfastViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(exportFile = null, exportMessage = null)
     }
 
-    fun clearManualRefreshError() {
-        mutableState.value = mutableState.value.copy(manualRefreshError = null)
-    }
-
-    fun clearManualRefreshDialog() {
-        mutableState.value = mutableState.value.copy(
-            manualRefreshJob = null,
-            manualRefreshError = null,
-        )
-    }
-
     fun selectOrder(order: BreakfastOrder) {
         if (mutableState.value.role != PortalRole.RECEPTION) {
             return
@@ -104,8 +83,6 @@ class BreakfastViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(
             selectedOrder = order,
             draft = order.toDraft(),
-            importPreview = null,
-            pendingImportFile = null,
             exportMessage = null,
             isCreatingNew = false,
         )
@@ -126,8 +103,6 @@ class BreakfastViewModel @Inject constructor(
         mutableState.value = mutableState.value.copy(
             selectedOrder = null,
             draft = BreakfastDraft(serviceDate = serviceDate),
-            importPreview = null,
-            pendingImportFile = null,
             exportMessage = null,
             successMessage = null,
             errorMessage = null,
@@ -234,73 +209,6 @@ class BreakfastViewModel @Inject constructor(
         }
     }
 
-    fun importPreview(file: BinaryPayload) {
-        if (mutableState.value.role != PortalRole.RECEPTION) {
-            mutableState.value = mutableState.value.copy(errorMessage = "Import snídaní je dostupný jen pro recepci.")
-            return
-        }
-        mutableState.value = mutableState.value.copy(isSubmitting = true, errorMessage = null)
-        viewModelScope.launch {
-            when (val result = repository.importPreview(file, save = false)) {
-                is AppResult.Success -> mutableState.value = mutableState.value.copy(
-                    isSubmitting = false,
-                    importPreview = result.value,
-                    pendingImportFile = file,
-                    successMessage = "Import byl analyzován.",
-                )
-
-                is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
-            }
-        }
-    }
-
-    fun toggleImportDiet(index: Int, dietKey: BreakfastDietKey) {
-        val preview = mutableState.value.importPreview ?: return
-        if (index !in preview.items.indices) return
-        val updatedItems = preview.items.mapIndexed { currentIndex, item ->
-            if (currentIndex != index) {
-                item
-            } else {
-                when (dietKey) {
-                    BreakfastDietKey.NO_GLUTEN -> item.copy(noGluten = !item.noGluten)
-                    BreakfastDietKey.NO_MILK -> item.copy(noMilk = !item.noMilk)
-                    BreakfastDietKey.NO_PORK -> item.copy(noPork = !item.noPork)
-                }
-            }
-        }
-        mutableState.value = mutableState.value.copy(importPreview = preview.copy(items = updatedItems))
-    }
-
-    fun confirmImport() {
-        val file = mutableState.value.pendingImportFile
-        if (file == null) {
-            mutableState.value = mutableState.value.copy(errorMessage = "Nejprve nahrajte PDF se snídaněmi.")
-            return
-        }
-        if (mutableState.value.role != PortalRole.RECEPTION) {
-            mutableState.value = mutableState.value.copy(errorMessage = "Import snídaní je dostupný jen pro recepci.")
-            return
-        }
-        mutableState.value = mutableState.value.copy(isSubmitting = true, errorMessage = null)
-        viewModelScope.launch {
-            when (val result = repository.importPreview(file, save = true, overrides = mutableState.value.importPreview?.items.orEmpty())) {
-                is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(
-                        isSubmitting = false,
-                        selectedOrder = null,
-                        importPreview = null,
-                        pendingImportFile = null,
-                        successMessage = "Import byl potvrzen a uložen.",
-                        isCreatingNew = false,
-                    )
-                    load(mutableState.value.role, result.value.serviceDate)
-                }
-
-                is AppResult.Error -> mutableState.value = mutableState.value.copy(isSubmitting = false, errorMessage = result.message)
-            }
-        }
-    }
-
     fun triggerExport() {
         val serviceDate = mutableState.value.serviceDate
         if (mutableState.value.role != PortalRole.RECEPTION) {
@@ -325,82 +233,7 @@ class BreakfastViewModel @Inject constructor(
         }
     }
 
-    fun startManualRefresh() {
-        val serviceDate = mutableState.value.serviceDate
-        if (serviceDate.isBlank()) {
-            mutableState.value = mutableState.value.copy(manualRefreshError = "Nejprve vyberte datum.")
-            return
-        }
-        mutableState.value = mutableState.value.copy(
-            isRefreshing = true,
-            manualRefreshError = null,
-            manualRefreshJob = BreakfastManualRefreshJob(
-                id = 0,
-                jobKey = "",
-                serviceDate = serviceDate,
-                status = BreakfastManualRefreshStatus.QUEUED,
-                progress = emptyList(),
-                message = "Žádost se připravuje.",
-                errorMessage = null,
-                importedCount = 0,
-                createdAt = null,
-                startedAt = null,
-                finishedAt = null,
-            ),
-        )
-        viewModelScope.launch {
-            when (val startResult = repository.startManualRefresh(serviceDate)) {
-                is AppResult.Success -> {
-                    mutableState.value = mutableState.value.copy(manualRefreshJob = startResult.value)
-                    pollManualRefresh(startResult.value.id)
-                }
-
-                is AppResult.Error -> mutableState.value = mutableState.value.copy(
-                    isRefreshing = false,
-                    manualRefreshError = startResult.message,
-                )
-            }
-        }
-    }
-
     private fun defaultServiceDate(): String = java.time.LocalDate.now().toString()
-
-    private suspend fun pollManualRefresh(jobId: Int) {
-        while (true) {
-            delay(1000)
-            when (val result = repository.manualRefreshJob(jobId)) {
-                is AppResult.Success -> {
-                    val job = result.value
-                    mutableState.value = mutableState.value.copy(manualRefreshJob = job)
-                    if (job.status.isTerminal()) {
-                        if (job.status == BreakfastManualRefreshStatus.SUCCEEDED) {
-                            mutableState.value = mutableState.value.copy(
-                                isRefreshing = false,
-                                manualRefreshJob = null,
-                                manualRefreshError = null,
-                                successMessage = "Ruční aktualizace byla dokončena.",
-                            )
-                            load(mutableState.value.role, mutableState.value.serviceDate)
-                        } else {
-                            mutableState.value = mutableState.value.copy(
-                                isRefreshing = false,
-                                manualRefreshError = job.errorMessage ?: "Ruční aktualizace selhala.",
-                            )
-                        }
-                        return
-                    }
-                }
-
-                is AppResult.Error -> {
-                    mutableState.value = mutableState.value.copy(
-                        isRefreshing = false,
-                        manualRefreshError = result.message,
-                    )
-                    return
-                }
-            }
-        }
-    }
 
     private fun loadOrderDetail(orderId: Int) {
         val current = mutableState.value
@@ -414,8 +247,6 @@ class BreakfastViewModel @Inject constructor(
                         selectedOrder = detail,
                         draft = detail.toDraft(),
                         serviceDate = detail.serviceDate,
-                        importPreview = null,
-                        pendingImportFile = null,
                         exportMessage = null,
                         isCreatingNew = false,
                     )
@@ -455,15 +286,10 @@ data class BreakfastUiState(
     val summary: BreakfastSummary? = null,
     val selectedOrder: BreakfastOrder? = null,
     val draft: BreakfastDraft = BreakfastDraft(serviceDate = java.time.LocalDate.now().toString()),
-    val importPreview: BreakfastImportPreview? = null,
-    val pendingImportFile: BinaryPayload? = null,
     val exportFile: BinaryPayload? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val exportMessage: String? = null,
-    val manualRefreshJob: BreakfastManualRefreshJob? = null,
-    val manualRefreshError: String? = null,
-    val isRefreshing: Boolean = false,
     val isCreatingNew: Boolean = false,
     val searchQuery: String = "",
     val queuedDrafts: Map<Int, BreakfastOrderDraft> = emptyMap(),

@@ -123,7 +123,7 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
             <Icon name="layout-dashboard" className="k-card__icon" title={t("Přehled")} />
           </div>
           <div className="k-card__body k-grid">
-            <div className="k-nav-link"><Icon name="utensils" className="k-nav-link__icon" /><span>{t("Snídaně a importy")}</span></div>
+            <div className="k-nav-link"><Icon name="utensils" className="k-nav-link__icon" /><span>{t("Snídaně")}</span></div>
             <div className="k-nav-link"><Icon name="tool" className="k-nav-link__icon" /><span>{t("Závady a pokojská")}</span></div>
             <div className="k-nav-link"><Icon name="search" className="k-nav-link__icon" /><span>{t("Ztráty a nálezy")}</span></div>
             <div className="k-nav-link"><Icon name="file-text" className="k-nav-link__icon" /><span>{t("Hlášení, profil a směnové úkoly")}</span></div>

@@ -289,7 +289,7 @@ test.describe('CI smoke auth flows', () => {
     const reservation = { reservation_id: 'stay-a', guest_name: 'Host', arrival: '2026-09-15', departure: '2026-09-19', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: true, version: 1 };
     await page.route('**/api/v1/breakfast/daily-overview?*', async (route) => {
       const day = new URL(route.request().url()).searchParams.get('service_date');
-      await route.fulfill({ json: { orders: [{ id: 900, service_date: day, room_number: '101', guest_name: 'Host', guest_count: 1, status: 'pending', note: null, reservations: [reservation] }], summary: { service_date: day, total_orders: 1, total_guests: 1, status_counts: { pending: 1 } } } });
+      await route.fulfill({ json: { orders: [{ id: 900, service_date: day, room_number: '101', guest_name: 'Host', guest_names: 'Host; Druhý host', country_code: 'CZ', guest_count: 1, status: 'pending', note: 'Přistýlka', reservations: [reservation] }], summary: { service_date: day, total_orders: 1, total_guests: 1, status_counts: { pending: 1 } } } });
     });
     await page.route('**/api/v1/breakfast/900/reservations/stay-a/diet', async (route) => {
       expect(route.request().postDataJSON()).toEqual({ kind: 'diet_no_milk', enabled: true, version: 1 });
@@ -298,6 +298,16 @@ test.describe('CI smoke auth flows', () => {
       await route.fulfill({ json: { id: 900, reservations: [reservation] } });
     });
     await page.goto('/admin/snidane');
+    await expect(page.locator('.k-hk-datebar')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Dnes' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Export snídaní (PDF)' })).toBeVisible();
+    const visibleList = await page.getByTestId('breakfast-serving-mobile-list').isVisible()
+      ? page.getByTestId('breakfast-serving-mobile-list')
+      : page.locator('.k-breakfast-serving-page .k-table-wrap');
+    await expect(visibleList.getByText('Host; Druhý host')).toBeVisible();
+    await expect(visibleList.getByText('Česko')).toBeVisible();
+    await expect(visibleList.getByText('Přistýlka')).toBeVisible();
+    await expect(page.getByLabel('Poznámka pro pokoj 101')).toHaveCount(0);
     await expect(page.locator('.k-breakfast-reservation-diets')).toHaveCount(2);
     if (await page.getByTestId('breakfast-serving-mobile-list').isVisible()) await page.getByText('Diety pobytu', { exact: true }).click();
     const controls = page.locator('.k-breakfast-reservation-diets:visible');

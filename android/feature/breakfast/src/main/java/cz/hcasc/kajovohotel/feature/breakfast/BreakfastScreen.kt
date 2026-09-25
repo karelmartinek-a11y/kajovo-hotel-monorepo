@@ -73,13 +73,13 @@ import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 enum class BreakfastSection {
     LIST,
     DETAIL,
     CREATE,
     EDIT,
-    IMPORT,
 }
 
 @Composable
@@ -101,14 +101,6 @@ fun BreakfastScreen(
     val visibleOrders = state.orders
         .map { order -> order.applyDraft(state.queuedDrafts[order.id]) }
         .filter { order -> order.matchesSearch(state.searchQuery) }
-    val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { picked ->
-            readBinaryPayload(context, picked)?.let { payload ->
-                viewModel.importPreview(payload)
-                section = BreakfastSection.IMPORT
-            }
-        }
-    }
     val exportSaveLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/pdf"),
     ) { uri ->
@@ -124,6 +116,15 @@ fun BreakfastScreen(
         viewModel.load(activeRole)
     }
 
+    LaunchedEffect(activeRole, state.serviceDate, section, state.queuedDrafts.isEmpty()) {
+        if (section == BreakfastSection.LIST && state.queuedDrafts.isEmpty()) {
+            while (true) {
+                delay(60_000)
+                viewModel.load(activeRole, state.serviceDate)
+            }
+        }
+    }
+
     LaunchedEffect(initialSection) {
         section = initialSection
     }
@@ -137,23 +138,11 @@ fun BreakfastScreen(
         }
     }
 
-    LaunchedEffect(state.successMessage, state.selectedOrder?.id, state.importPreview, state.isCreatingNew) {
-        if (state.importPreview != null) {
-            section = BreakfastSection.IMPORT
-        } else if (state.isCreatingNew) {
+    LaunchedEffect(state.successMessage, state.selectedOrder?.id, state.isCreatingNew, isReceptionMode) {
+        if (state.isCreatingNew) {
             section = BreakfastSection.CREATE
         } else if (state.selectedOrder != null && state.successMessage != null && isReceptionMode) {
             section = BreakfastSection.DETAIL
-        }
-    }
-
-    LaunchedEffect(state.successMessage, state.importPreview, section, isReceptionMode) {
-        if (state.successMessage != null && state.importPreview == null && section == BreakfastSection.IMPORT && isReceptionMode) {
-            if (onNavigate != null) {
-                onNavigate(BreakfastSection.LIST, null)
-            } else {
-                section = BreakfastSection.LIST
-            }
         }
     }
 
@@ -163,7 +152,6 @@ fun BreakfastScreen(
                 section = section,
                 isReceptionMode = isReceptionMode,
                 hasSelection = selectedOrder != null,
-                hasImport = state.importPreview != null,
                 onShowList = { if (onNavigate != null) onNavigate(BreakfastSection.LIST, null) else section = BreakfastSection.LIST },
                 onShowDetail = {
                     val id = selectedOrder?.id
@@ -179,7 +167,6 @@ fun BreakfastScreen(
                         if (onNavigate != null && id != null) onNavigate(BreakfastSection.EDIT, id) else section = BreakfastSection.EDIT
                     }
                 },
-                onShowImport = { if (state.importPreview != null) section = BreakfastSection.IMPORT },
             )
         }
         if (section == BreakfastSection.LIST) item {
@@ -188,8 +175,6 @@ fun BreakfastScreen(
                 onDateChange = viewModel::setServiceDate,
                 onSearchChange = viewModel::setSearchQuery,
                 onRefresh = { date -> viewModel.load(activeRole, date) },
-                onManualRefresh = viewModel::startManualRefresh,
-                onPickImport = { pdfLauncher.launch(arrayOf("application/pdf")) },
                 onExport = viewModel::triggerExport,
                 onSaveQueuedDrafts = viewModel::saveQueuedDrafts,
                 onDiscardQueuedDrafts = viewModel::discardQueuedDrafts,
@@ -198,16 +183,6 @@ fun BreakfastScreen(
                     if (onNavigate != null) onNavigate(BreakfastSection.CREATE, null) else section = BreakfastSection.CREATE
                 },
             )
-        }
-        if (isReceptionMode && state.importPreview != null && section == BreakfastSection.IMPORT) {
-            item {
-                ImportPreviewCard(
-                    state = state,
-                    onConfirm = viewModel::confirmImport,
-                    onToggleDiet = viewModel::toggleImportDiet,
-                    onBackToList = { if (onNavigate != null) onNavigate(BreakfastSection.LIST, null) else section = BreakfastSection.LIST },
-                )
-            }
         }
         state.exportFile?.let { exportFile ->
             item {
@@ -240,7 +215,7 @@ fun BreakfastScreen(
                     FeatureCard(
                         title = "Pro zvolené datum nejsou objednávky",
                         subtitle = if (isReceptionMode) {
-                            "Můžete založit první objednávku nebo naimportovat PDF."
+                            "Můžete založit první objednávku."
                         } else {
                             "Na vybrané datum není co vydávat."
                         },
@@ -333,14 +308,6 @@ fun BreakfastScreen(
                     item { BreakfastSummaryCard(state = state) }
                     item { BreakfastRefreshFootnote(sourceImportedAt = state.summary?.sourceImportedAt) }
                 }
-                if (state.isRefreshing || state.manualRefreshJob != null || state.manualRefreshError != null) {
-                    item {
-                        ManualRefreshDialog(
-                            state = state,
-                            onDismiss = viewModel::clearManualRefreshDialog,
-                        )
-                    }
-                }
             }
         }
     }
@@ -351,12 +318,10 @@ private fun SectionSwitcher(
     section: BreakfastSection,
     isReceptionMode: Boolean,
     hasSelection: Boolean,
-    hasImport: Boolean,
     onShowList: () -> Unit,
     onShowDetail: () -> Unit,
     onShowCreate: () -> Unit,
     onShowEdit: () -> Unit,
-    onShowImport: () -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
@@ -365,9 +330,6 @@ private fun SectionSwitcher(
         OutlinedButton(onClick = onShowList, modifier = Modifier.weight(1f)) { Text("Seznam") }
         if (isReceptionMode) {
             OutlinedButton(onClick = onShowCreate, modifier = Modifier.weight(1f)) { Text("Nová") }
-            if (hasImport) {
-                OutlinedButton(onClick = onShowImport, modifier = Modifier.weight(1f)) { Text("Import") }
-            }
         }
     }
 }
@@ -378,8 +340,6 @@ private fun BreakfastToolbar(
     onDateChange: (String) -> Unit,
     onSearchChange: (String) -> Unit,
     onRefresh: (String) -> Unit,
-    onManualRefresh: () -> Unit,
-    onPickImport: () -> Unit,
     onExport: () -> Unit,
     onSaveQueuedDrafts: () -> Unit,
     onDiscardQueuedDrafts: () -> Unit,
@@ -391,13 +351,6 @@ private fun BreakfastToolbar(
             onDateChange = onDateChange,
             onRefresh = onRefresh,
         )
-        Button(
-            onClick = onManualRefresh,
-            enabled = !state.isRefreshing,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (state.isRefreshing) "Aktualizace běží" else "Aktualizovat")
-        }
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearchChange,
@@ -410,7 +363,6 @@ private fun BreakfastToolbar(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Button(onClick = onPickImport, modifier = Modifier.weight(1f)) { Text("Import PDF") }
                 Button(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Export PDF") }
             }
             Row(
@@ -443,50 +395,6 @@ private fun BreakfastToolbar(
 }
 
 @Composable
-private fun ManualRefreshDialog(
-    state: BreakfastUiState,
-    onDismiss: () -> Unit,
-) {
-    val job = state.manualRefreshJob
-    Dialog(onDismissRequest = { if (!state.isRefreshing) onDismiss() }) {
-        Surface(shape = RoundedCornerShape(KajovoRadiusTokens.R16)) {
-            Column(
-                modifier = Modifier.padding(KajovoSpacingTokens.S5),
-                verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
-            ) {
-                Text(
-                    text = when {
-                        state.isRefreshing -> "Ruční aktualizace probíhá"
-                        state.manualRefreshError != null -> "Ruční aktualizace selhala"
-                        job?.status == cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshStatus.SUCCEEDED -> "Ruční aktualizace dokončena"
-                        else -> "Ruční aktualizace snídaní"
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                if (state.isRefreshing) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.padding(end = KajovoSpacingTokens.S2))
-                        Text(text = "Aktualizuji…")
-                    }
-                }
-                state.manualRefreshError?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error)
-                }
-                job?.message?.let {
-                    Text(text = it, style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                    OutlinedButton(onClick = onDismiss, enabled = !state.isRefreshing) {
-                        Text("Zavřít")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun BreakfastDateSelector(
     serviceDate: String,
     onDateChange: (String) -> Unit,
@@ -505,9 +413,14 @@ private fun BreakfastDateSelector(
         parsedDate.monthValue - 1,
         parsedDate.dayOfMonth,
     )
-    OutlinedButton(onClick = { datePickerDialog.show() }, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Outlined.CalendarToday, contentDescription = null)
-        Text(formatBreakfastHeadlineDate(serviceDate), Modifier.padding(start = 8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { onRefresh(parsedDate.minusDays(1).toString()) }) { Text("‹") }
+        OutlinedButton(onClick = { datePickerDialog.show() }, modifier = Modifier.weight(1f)) {
+            Icon(Icons.Outlined.CalendarToday, contentDescription = null)
+            Text(formatBreakfastHeadlineDate(serviceDate), Modifier.padding(start = 8.dp))
+        }
+        OutlinedButton(onClick = { onRefresh(parsedDate.plusDays(1).toString()) }) { Text("›") }
+        OutlinedButton(onClick = { onRefresh(LocalDate.now().toString()) }) { Text("Dnes") }
     }
 }
 
@@ -595,7 +508,8 @@ private fun ReceptionDetailCard(
             ) {
                 DetailValueRow(label = "Datum služby", value = order.serviceDate)
                 DetailValueRow(label = "Pokoj", value = order.roomNumber)
-                DetailValueRow(label = "Host", value = order.guestName)
+                DetailValueRow(label = "Ubytovaní", value = order.guestNames ?: order.guestName)
+                DetailValueRow(label = "Národnost", value = order.countryCode?.let { Locale.Builder().setRegion(it).build().getDisplayCountry(Locale.forLanguageTag("cs")) } ?: "—")
                 DetailValueRow(label = "Počet hostů", value = order.guestCount.toString())
                 DetailValueRow(label = "Stav", value = order.status.label)
                 DetailValueRow(
@@ -670,7 +584,8 @@ private fun BreakfastOrderCard(
                     Text(text = order.status.label, style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            Text(text = order.guestName, style = MaterialTheme.typography.titleMedium)
+            Text(text = order.guestNames ?: order.guestName, style = MaterialTheme.typography.titleMedium)
+            Text(text = order.countryCode?.let { Locale.Builder().setRegion(it).build().getDisplayCountry(Locale.forLanguageTag("cs")) } ?: "—", style = MaterialTheme.typography.bodyMedium)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 verticalAlignment = Alignment.CenterVertically,
@@ -832,12 +747,6 @@ private fun ManagerEditor(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Počet hostů") },
         )
-        OutlinedTextField(
-            value = draft.note,
-            onValueChange = { onDraftChange { current -> current.copy(note = it) } },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Poznámka") },
-        )
         } else {
         BreakfastStatusSelector(
             selectedStatus = draft.status,
@@ -889,68 +798,6 @@ private fun BreakfastStatusSelector(
                     onClick = { onSelect(status) },
                     label = { Text(status.label) },
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ImportPreviewCard(
-    state: BreakfastUiState,
-    onConfirm: () -> Unit,
-    onToggleDiet: (Int, BreakfastDietKey) -> Unit,
-    onBackToList: () -> Unit,
-) {
-    val preview = state.importPreview ?: return
-    Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        FeatureCard(
-            title = "Kontrola importu ${preview.serviceDate}",
-            subtitle = "${preview.sourceFileName} · ${preview.items.size} položek",
-        )
-        preview.items.forEachIndexed { index, item ->
-            Card(
-                shape = RoundedCornerShape(KajovoRadiusTokens.R12),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            ) {
-                Column(
-                    modifier = Modifier.padding(KajovoSpacingTokens.S3),
-                    verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
-                ) {
-                    Text(text = "Pokoj ${item.room} · ${item.count} hosté · ${item.guestName}")
-                    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                        AssistChip(
-                            onClick = { onToggleDiet(index, BreakfastDietKey.NO_GLUTEN) },
-                            label = { Text("Bez lepku") },
-                            leadingIcon = { Icon(Icons.Outlined.Grass, contentDescription = null) },
-                        )
-                        AssistChip(
-                            onClick = { onToggleDiet(index, BreakfastDietKey.NO_MILK) },
-                            label = { Text("Bez laktózy") },
-                            leadingIcon = { Icon(Icons.Outlined.LocalDrink, contentDescription = null) },
-                        )
-                        AssistChip(
-                            onClick = { onToggleDiet(index, BreakfastDietKey.NO_PORK) },
-                            label = { Text("Bez vepřového") },
-                            leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
-                        )
-                    }
-                    BreakfastDietSummary(
-                        noMilk = item.noMilk,
-                        noGluten = item.noGluten,
-                        noPork = item.noPork,
-                    )
-                }
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            Button(
-                onClick = onConfirm,
-                enabled = state.role == PortalRole.RECEPTION && !state.isSubmitting,
-            ) {
-                Text("Potvrdit import PDF")
-            }
-            OutlinedButton(onClick = onBackToList, enabled = !state.isSubmitting) {
-                Text("Zpět na seznam")
             }
         }
     }

@@ -1,5 +1,3 @@
-import json
-import os
 import re
 from datetime import date, datetime, time
 from io import BytesIO
@@ -8,12 +6,9 @@ from zoneinfo import ZoneInfo
 from fastapi import (
     APIRouter,
     Depends,
-    File,
-    Form,
     HTTPException,
     Query,
     Request,
-    UploadFile,
     status,
 )
 from fastapi.responses import StreamingResponse
@@ -24,11 +19,6 @@ from app.api.schemas import (
     BreakfastDailyOverview,
     BreakfastDailySummary,
     BreakfastDietUpdate,
-    BreakfastImportItem,
-    BreakfastImportResponse,
-    BreakfastManualRefreshJobRead,
-    BreakfastManualRefreshProgressItem,
-    BreakfastManualRefreshRequest,
     BreakfastOrderCreate,
     BreakfastOrderRead,
     BreakfastOrderUpdate,
@@ -37,22 +27,15 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.models import (
     BreakfastImportProcessedAttachment,
-    BreakfastManualRefreshJob,
     BreakfastOrder,
 )
 from app.db.session import get_db
 from app.security.auth import preferred_locale_for_session
 from app.security.rbac import module_access_dependency, parse_identity
 from app.services.breakfast.diets import DIET_KEYS, change_diet, enrich_orders, reservation_ids
-from app.services.breakfast.manual_refresh import (
-    get_manual_breakfast_refresh_job,
-    start_manual_breakfast_refresh,
-)
-from app.services.breakfast.parser import parse_breakfast_pdf
 from app.services.breakfast.sync import (
     BetterHotelBreakfastClient,
     BetterHotelSyncError,
-    sync_breakfast_range,
 )
 from app.services.pdf.breakfast import build_breakfast_schedule_pdf
 from app.time_utils import utc_now
@@ -107,46 +90,12 @@ def _is_breakfast_manager(actor_role: str) -> bool:
     return actor_role in {"admin", "recepce"}
 
 
-def _parse_diet_overrides(raw: str | None) -> dict[str, dict[str, bool]]:
-    if not raw:
-        return {}
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-
-    overrides: dict[str, dict[str, bool]] = {}
-    if isinstance(payload, dict):
-        items = payload.values()
-    elif isinstance(payload, list):
-        items = payload
-    else:
-        return {}
-
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        room = str(item.get("room") or "").strip()
-        if not room:
-            continue
-        overrides[room] = {
-            "diet_no_gluten": bool(item.get("diet_no_gluten", False)),
-            "diet_no_milk": bool(item.get("diet_no_milk", False)),
-            "diet_no_pork": bool(item.get("diet_no_pork", False)),
-        }
-    return overrides
-
-
 def _today_prague() -> date:
     return utc_now().astimezone(ZoneInfo("Europe/Prague")).date()
 
 
 def _prague_now() -> datetime:
     return utc_now().astimezone(ZoneInfo("Europe/Prague"))
-
-
-def _should_refresh_before_display(service_date: date, now_local: datetime) -> bool:
-    return service_date == now_local.date() and now_local.time() < time(6, 0)
 
 
 def _can_mark_served(actor_role: str, service_date: date, now_local: datetime) -> bool:
@@ -159,64 +108,12 @@ def _can_mark_served(actor_role: str, service_date: date, now_local: datetime) -
     )
 
 
-def _refresh_before_display_if_needed(db: Session, service_date: date) -> None:
-    now_local = _prague_now()
-    if not _should_refresh_before_display(service_date, now_local):
-        return
-    sync_breakfast_range(
-        db,
-        settings=get_settings(),
-        range_start=service_date,
-        range_end=service_date,
-        trigger="display_before_0600",
-        note="Automatická synchronizace Better Hotel API",
-    )
-
-
-def _read_manual_refresh_job(job: BreakfastManualRefreshJob) -> BreakfastManualRefreshJobRead:
-    progress: list[BreakfastManualRefreshProgressItem] = []
-    if job.progress_json:
-        try:
-            payload = json.loads(job.progress_json)
-        except json.JSONDecodeError:
-            payload = []
-        if isinstance(payload, list):
-            for item in payload:
-                if not isinstance(item, dict):
-                    continue
-                try:
-                    progress.append(
-                        BreakfastManualRefreshProgressItem(
-                            at=datetime.fromisoformat(str(item.get("at"))),
-                            step=str(item.get("step") or "runner"),
-                            message=str(item.get("message") or ""),
-                        )
-                    )
-                except ValueError:
-                    continue
-    return BreakfastManualRefreshJobRead(
-        id=job.id,
-        job_key=job.job_key,
-        service_date=job.service_date,
-        status=job.status,
-        progress=progress,
-        message=job.message,
-        error_message=job.error_message,
-        imported_count=job.imported_count,
-        created_at=job.created_at,
-        started_at=job.started_at,
-        finished_at=job.finished_at,
-    )
-
-
 @router.get("", response_model=list[BreakfastOrderRead])
 def list_breakfast_orders(
     service_date: date | None = Query(default=None),
     status_filter: BreakfastStatus | None = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
 ) -> list[BreakfastOrder]:
-    if service_date:
-        _refresh_before_display_if_needed(db, service_date)
     query = select(BreakfastOrder).order_by(
         BreakfastOrder.service_date.desc(), BreakfastOrder.id.desc()
     )
@@ -256,7 +153,6 @@ def get_daily_overview(
     service_date: date = Query(...),
     db: Session = Depends(get_db),
 ) -> BreakfastDailyOverview:
-    _refresh_before_display_if_needed(db, service_date)
     orders = _visible_breakfast_orders(list(
         db.scalars(
             select(BreakfastOrder)
@@ -273,26 +169,6 @@ def get_daily_overview(
         orders=enrich_orders(db, orders),
         summary=_build_daily_summary(service_date, orders, source_imported_at=source_imported_at),
     )
-
-
-@router.post("/manual-refresh", response_model=BreakfastManualRefreshJobRead, status_code=status.HTTP_202_ACCEPTED)
-def manual_refresh_breakfast(
-    payload: BreakfastManualRefreshRequest,
-    db: Session = Depends(get_db),
-) -> BreakfastManualRefreshJobRead:
-    job = start_manual_breakfast_refresh(db, payload.service_date)
-    return _read_manual_refresh_job(job)
-
-
-@router.get("/manual-refresh/{job_id}", response_model=BreakfastManualRefreshJobRead)
-def get_manual_refresh_job(
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> BreakfastManualRefreshJobRead:
-    job = get_manual_breakfast_refresh_job(db, job_id)
-    if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Manual refresh job not found")
-    return _read_manual_refresh_job(job)
 
 
 @router.get("/{order_id}", response_model=BreakfastOrderRead)
@@ -538,136 +414,4 @@ def export_breakfast_daily_pdf(
         BytesIO(pdf_bytes),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )
-
-
-@router.post("/import", response_model=BreakfastImportResponse)
-def import_breakfast_pdf(
-    request: Request,
-    save: bool = Form(False),
-    overrides: str | None = Form(None),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-) -> BreakfastImportResponse:
-    actor_role = _actor_role(request)
-    if not _is_breakfast_manager(actor_role):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Breakfast import requires recepce/admin role",
-        )
-
-    filename = (file.filename or "").lower()
-    if not filename.endswith(".pdf"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expected PDF file")
-
-    pdf_bytes = file.file.read()
-    if not pdf_bytes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PDF is empty")
-
-    try:
-        parsed_day, rows = parse_breakfast_pdf(pdf_bytes)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-    diet_overrides = _parse_diet_overrides(overrides)
-    if save and any(any(values.values()) for values in diet_overrides.values()):
-        raise HTTPException(409, "Diety lze nastavit pouze u ověřené rezervace z API.")
-    items = []
-    for row in rows:
-        override = diet_overrides.get(str(row.room), {})
-        items.append(
-            BreakfastImportItem(
-                room=int(row.room),
-                count=int(row.breakfast_count),
-                guest_name=row.guest_name,
-                diet_no_gluten=bool(override.get("diet_no_gluten", False)),
-                diet_no_milk=bool(override.get("diet_no_milk", False)),
-                diet_no_pork=bool(override.get("diet_no_pork", False)),
-            )
-        )
-
-    if save:
-        today = _today_prague()
-        target_days = sorted({row.day for row in rows if row.day >= today})
-        served_orders_by_day: dict[date, dict[str, dict[str, object]]] = {}
-        for target_day in target_days:
-            served_orders = db.scalars(
-                select(BreakfastOrder).where(
-                    BreakfastOrder.service_date == target_day,
-                    BreakfastOrder.status == BreakfastStatus.SERVED.value,
-                )
-            ).all()
-            served_orders_by_day[target_day] = {
-                order.room_number: {
-                    "service_date": order.service_date,
-                    "room_number": order.room_number,
-                    "guest_name": order.guest_name,
-                    "guest_count": order.guest_count,
-                    "note": order.note,
-                    "diet_no_gluten": bool(order.diet_no_gluten),
-                    "diet_no_milk": bool(order.diet_no_milk),
-                    "diet_no_pork": bool(order.diet_no_pork),
-                }
-                for order in served_orders
-            }
-            for order in served_orders:
-                db.expunge(order)
-        for target_day in target_days:
-            db.query(BreakfastOrder).filter(BreakfastOrder.service_date == target_day).delete(
-                synchronize_session=False
-            )
-        imported_rooms_by_day: dict[date, set[str]] = {target_day: set() for target_day in target_days}
-        for row in rows:
-            if row.day < today:
-                continue
-            override = diet_overrides.get(str(row.room), {})
-            imported_rooms_by_day[row.day].add(row.room)
-            previous_served_order = served_orders_by_day[row.day].get(row.room)
-            db.add(
-                BreakfastOrder(
-                    service_date=row.day,
-                    room_number=row.room,
-                    guest_name=row.guest_name or f"Pokoj {row.room}",
-                    guest_count=max(1, int(row.breakfast_count)),
-                    status=(
-                        BreakfastStatus.SERVED.value
-                        if previous_served_order is not None
-                        else BreakfastStatus.PENDING.value
-                    ),
-                    note="Import PDF",
-                    diet_no_gluten=bool(override.get("diet_no_gluten", False)),
-                    diet_no_milk=bool(override.get("diet_no_milk", False)),
-                    diet_no_pork=bool(override.get("diet_no_pork", False)),
-                )
-            )
-        for target_day, served_orders in served_orders_by_day.items():
-            for room_number, served_order in served_orders.items():
-                if room_number in imported_rooms_by_day[target_day]:
-                    continue
-                db.add(
-                    BreakfastOrder(
-                        service_date=served_order["service_date"],
-                        room_number=served_order["room_number"],
-                        guest_name=served_order["guest_name"],
-                        guest_count=served_order["guest_count"],
-                        status=BreakfastStatus.SERVED.value,
-                        note=served_order["note"],
-                        diet_no_gluten=served_order["diet_no_gluten"],
-                        diet_no_milk=served_order["diet_no_milk"],
-                        diet_no_pork=served_order["diet_no_pork"],
-                    )
-                )
-        db.commit()
-
-        settings = get_settings()
-        archive_dir = f"{settings.media_root}/breakfast/imports"
-        os.makedirs(archive_dir, exist_ok=True)
-        with open(f"{archive_dir}/{parsed_day.isoformat()}.pdf", "wb") as handle:
-            handle.write(pdf_bytes)
-
-    return BreakfastImportResponse(
-        date=parsed_day,
-        status="FOUND" if items else "MISSING",
-        saved=save,
-        items=items,
     )
