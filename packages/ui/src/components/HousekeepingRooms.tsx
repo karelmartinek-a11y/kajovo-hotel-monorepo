@@ -33,7 +33,7 @@ const FLOOR_LABELS: Record<string, string> = {
 };
 
 const STATUS_ACTIONS: Array<{ value: HousekeepingRoomStatus; label: string; detail: string }> = [
-  { value: 'clean', label: 'Uklizeno', detail: 'Pokoj je připravený pro nájezd.' },
+  { value: 'clean', label: 'Uklizeno', detail: 'Pokoj je uklizený.' },
   { value: 'dirty', label: 'Neuklizeno', detail: 'Pokoj čeká na úklid.' },
   { value: 'stay_no_linen', label: 'Průběžný úklid', detail: 'Bez výměny ložního prádla.' },
   { value: 'stay_with_linen', label: 'Průběžný úklid + prádlo', detail: 'S výměnou ložního prádla.' },
@@ -309,7 +309,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
       <div className="k-hk-legend" aria-label={t("Legenda stavů")}>
         {([
           ['red', t('Odjezd bez check-out / příjezd nepřipraven')],
-          ['green', t('Pokoj uklizený pro nájezd')],
+          ['green', t('Uklizený pokoj')],
           ['light-green', t('Průběžně uklizený pokoj')],
           ['neutral', t('Odjel / pokračující pobyt')],
           ['empty', t('Bez příjezdu či odjezdu')],

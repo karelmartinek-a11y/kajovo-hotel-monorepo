@@ -281,6 +281,8 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   await expect(continuing).not.toHaveClass(/k-hk-room--split/);
   await expect(continuing).toContainText('Noc pobytu: 2/4');
   await expect(page.getByRole('button', { name: /pokoj 105,/i })).toHaveClass(/k-hk-room--right-green/);
+  await page.getByText('Vysvětlivky barev').click();
+  await expect(page.getByText('Uklizený pokoj', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /pokoj 106,/i })).toHaveClass(/k-hk-room--right-light-green/);
   await expect(page.getByRole('button', { name: /pokoj 107,/i })).toHaveClass(/k-hk-room--right-light-green/);
   await expect(page.getByRole('button', { name: /pokoj 108,/i })).not.toHaveClass(/k-hk-room--split/);
