@@ -19,6 +19,7 @@ type AppShellProps = {
   brandHref?: string;
   headerControls?: React.ReactNode;
   profileLabel?: string;
+  portalTabs?: React.ReactNode;
 };
 
 const MAIN_TARGET_ID = 'main-content';
@@ -33,6 +34,7 @@ export function AppShell({
   brandHref,
   headerControls,
   profileLabel,
+  portalTabs,
 }: AppShellProps): JSX.Element {
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
   const wordmarkVariant = panelLayout === 'admin' ? 'admin' : 'portal';
@@ -85,38 +87,20 @@ export function AppShell({
         <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>{t("Přeskočit na obsah")}{' '}</a>
         <div className="k-shell-inner k-shell-header">
           {!isIntroView ? <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} /> : null}
-          <ModuleNavigation
+          {panelLayout === 'admin' ? <ModuleNavigation
             modules={portalModules}
             rules={navigationRules}
             sections={navigationSections}
             currentPath={currentPath}
-          />
-          <Link className="k-shell-profile-link" to="/profil" aria-current={currentPath === '/profil' ? 'page' : undefined}>
+          /> : null}
+          {panelLayout === 'admin' ? <Link className="k-shell-profile-link" to="/profil" aria-current={currentPath === '/profil' ? 'page' : undefined}>
             <Icon name="users" className="k-nav-link__icon" />
             <span>{profileLabel ?? t('Profil')}</span>
-          </Link>
+          </Link> : null}
           {headerControls ? <div className="k-shell-header-controls">{headerControls}</div> : null}
         </div>
       </header>
-      {panelLayout === 'portal' ? (
-        <nav className="k-portal-mobile-tabs" aria-label={navigationRules.ariaLabel ?? t('Hlavní navigace')} data-testid="portal-mobile-tabs">
-          {portalModules.map((module) => (
-            <Link
-              key={module.key}
-              className="k-portal-mobile-tabs__link"
-              to={module.route}
-              aria-label={module.label}
-              title={module.label}
-              aria-current={currentPath === module.route || (module.route !== '/' && currentPath.startsWith(`${module.route}/`)) ? 'page' : undefined}
-            >
-              <Icon name={module.icon} className="k-nav-link__icon" />
-            </Link>
-          ))}
-          <Link className="k-portal-mobile-tabs__link" to="/profil" aria-label={profileLabel ?? t('Profil')} title={profileLabel ?? t('Profil')} aria-current={currentPath === '/profil' ? 'page' : undefined}>
-            <Icon name="users" className="k-nav-link__icon" />
-          </Link>
-        </nav>
-      ) : null}
+      {panelLayout === 'portal' ? <nav className="k-portal-mobile-tabs" aria-label={navigationRules.ariaLabel ?? t('Hlavní navigace')} data-testid="portal-mobile-tabs">{portalTabs}</nav> : null}
       {children}
     </div>
   );
