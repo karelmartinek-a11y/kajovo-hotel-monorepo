@@ -300,6 +300,7 @@ test.describe('live temp production verification', () => {
       await adminRow.getByRole('button', { name: 'Vydat' }).click();
       await expect(adminRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await page.reload({ waitUntil: 'networkidle' });
+      await selectBreakfastDate(page, serviceDate);
       const reloadedAdminRow = visibleBreakfastRow(page, order.room_number);
       await expect(reloadedAdminRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await expectNoViewportOverflow(page);
