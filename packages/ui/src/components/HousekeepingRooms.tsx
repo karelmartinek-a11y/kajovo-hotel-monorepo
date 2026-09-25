@@ -120,37 +120,40 @@ function GuestIcon(): JSX.Element {
 
 type RoomCardProps = {
   room: HousekeepingRoomRead;
-  date: string;
   onSelect: (room: HousekeepingRoomRead) => void;
 };
 
-const RoomCard = React.memo(function RoomCard({ room, date, onSelect }: RoomCardProps): JSX.Element {
+const RoomCard = React.memo(function RoomCard({ room, onSelect }: RoomCardProps): JSX.Element {
   const label = t(OPERATIONAL_LABELS[room.operational_state]);
   const left = room.departures.length ? room.departures.some((stay) => !stay.checked_out) ? 'red' : 'neutral' : 'empty';
   const right = room.housekeeping_status_key === 'clean' || room.ready_for_arrival ? 'green'
     : room.housekeeping_status_key === 'stay_no_linen' || room.housekeeping_status_key === 'stay_with_linen' ? 'light-green'
       : room.arrivals.length ? 'red' : 'empty';
   const split = room.departures.length > 0 || room.arrivals.length > 0 || right !== 'empty';
+  const preview = ([
+    ['Odj.', room.departures],
+    ['Příj.', room.arrivals],
+    ['Pobyt', room.stays],
+  ] as const).filter(([, stays]) => stays.length > 0);
+  const accessibleStays = preview.map(([kind, stays]) => `${t(kind)} ${stays.map((stay) => stay.guest_label ?? t('Host neuveden')).join(', ')}`).join('; ');
   return (
     <button
       className={`k-hk-room${split ? ` k-hk-room--split k-hk-room--left-${left} k-hk-room--right-${right}` : ''}`}
       type="button"
       onClick={() => onSelect(room)}
       data-room-id={room.room_id}
-      aria-label={`${t('Pokoj')} ${room.room_number}, ${label}. ${t('Změnit stav pokoje.')}`}
+      aria-label={`${t('Pokoj')} ${room.room_number}, ${label}, ${room.occupied ? `${room.persons} ${t('Uvnitř teď')}` : t('Prázdný teď')}, ${room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen')}. ${accessibleStays}. ${t('Změnit stav pokoje.')}`}
     >
       <span className="k-hk-room__topline">
         <strong>{room.room_number}</strong>
-        <span className="k-hk-room__chevron" aria-hidden="true">›</span>
+        <span className={`k-hk-room__occupancy-count${room.occupied ? ' k-hk-room__occupancy-count--occupied' : ''}`} aria-hidden="true">{room.occupied ? '●' : '○'} {room.occupied ? room.persons : 0}</span>
       </span>
-      <span className="k-hk-room__state"><i aria-hidden="true" />{label}</span>
-      {room.departures.length || room.arrivals.length ? <span className="k-hk-room__stays">
-        <span>{room.departures.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={date} label={t("Odjezd")} />)}</span>
-        <span>{room.arrivals.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={date} label={t("Příjezd")} />)}</span>
-      </span> : null}
-      {room.stays.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={date} label={t("Pobyt")} />)}
-      {!room.departures.length && !room.arrivals.length && !room.stays.length ? <span className="k-hk-stay">{t("Bez pobytu ve vybraný den")}</span> : null}
-      {room.housekeeping_status ? <span className="k-hk-room__housekeeping">{t(room.housekeeping_status)}</span> : null}
+      <span className={`k-hk-room__occupancy${room.occupied ? ' k-hk-room__occupancy--occupied' : ''}`}>{t(room.occupied ? 'Uvnitř teď' : 'Prázdný teď')}</span>
+      <span className="k-hk-room__splitbar" aria-hidden="true"><i /><i /></span>
+      <span className="k-hk-room__preview">
+        {preview.length ? preview.slice(0, 2).map(([kind, stays]) => <span key={kind} title={stays.map((stay) => stay.guest_label ?? t('Host neuveden')).join(', ')}><b>{t(kind)}</b>{' '}{stays[0].guest_label ?? t('Host neuveden')}{stays.length > 1 ? ` +${stays.length - 1}` : ''}</span>) : <span>{t('Bez pobytu ve vybraný den')}</span>}
+      </span>
+      <span className="k-hk-room__housekeeping" title={room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen')}>{room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen')}</span>
     </button>
   );
 });
@@ -288,7 +291,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
 
   return (
     <section ref={boardRef} className="k-hk-board" data-testid="housekeeping-rooms-view">
-      <header className="k-hk-board__header">
+      <div className="k-hk-board__controls"><header className="k-hk-board__header">
         <div>
           <h2>{t("Pokoje")}</h2>
         </div>
@@ -305,6 +308,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
       </div>
       {announcement ? <p className="k-hk-saved" role="status">{announcement}</p> : null}
       <p className="k-hk-board__source-note">{t("Pobyty podle data · Obsazenost a úklid nyní.")}</p>
+      </div>
       <details className="k-hk-help"><summary>{t("Vysvětlivky barev")}</summary>
       <div className="k-hk-legend" aria-label={t("Legenda stavů")}>
         {([
@@ -334,14 +338,24 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
               <span>{rooms.length} {rooms.length === 1 ? t('pokoj') : t('pokojů')} <i /> {cleaningCount}{' '}{t("k úklidu")}</span>
             </header>
             <div className="k-hk-floor__rooms">
-              {rooms.map((room) => <RoomCard key={room.room_id} room={room} date={selectedDate} onSelect={selectRoom} />)}
+              {rooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} />)}
             </div>
           </section>
         );
       }) : null}
 
-      {selectedRoom ? <TaskDialog title={savingStatus ? t('Zapisuji změnu…') : `${t('Pokoj')} ${selectedRoom.room_number}`} busy={busy} onClose={() => setSelectedRoomId(null)} className="k-hk-task">
+      {selectedRoom ? <TaskDialog title={savingStatus ? t('Zapisuji změnu…') : `${t('Pokoj')} ${selectedRoom.room_number}`} busy={busy} onClose={() => setSelectedRoomId(null)} className="k-hk-task k-hk-task--sheet">
         {savingStatus ? <div className="k-hk-saving" role="status"><span className="k-modal-spinner" aria-hidden="true" /><p>{t("Ukládám stav pokoje")}{' '}{selectedRoom.room_number}{t(". Po zápisu se vrátíte na přehled.")}</p></div> : <>
+          <div className="k-hk-detail-summary">
+            <strong className={selectedRoom.occupied ? 'k-hk-detail-summary__occupied' : ''}>{selectedRoom.occupied ? `${selectedRoom.persons} ${t('Uvnitř teď')}` : t('Prázdný teď')}</strong>
+            <span>{t(OPERATIONAL_LABELS[selectedRoom.operational_state])}</span>
+          </div>
+          <div className={`k-hk-detail-stays${selectedRoom.departures.length && selectedRoom.arrivals.length ? ' k-hk-detail-stays--split' : ''}`}>
+            {selectedRoom.departures.length ? <section className="k-hk-detail-stays__departure">{selectedRoom.departures.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={selectedDate} label={t('Odjezd')} />)}</section> : null}
+            {selectedRoom.arrivals.length ? <section className="k-hk-detail-stays__arrival">{selectedRoom.arrivals.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={selectedDate} label={t('Příjezd')} />)}</section> : null}
+            {selectedRoom.stays.length ? <section className="k-hk-detail-stays__continuing">{selectedRoom.stays.map((stay) => <StayDetails key={stay.reservation_id} stay={stay} date={selectedDate} label={t('Pobyt')} />)}</section> : null}
+            {!selectedRoom.departures.length && !selectedRoom.arrivals.length && !selectedRoom.stays.length ? <p>{t('Bez pobytu ve vybraný den')}</p> : null}
+          </div>
           <p className="k-hk-modal__current">{t("Aktuální stav úklidu:")}{' '}<strong>{selectedRoom.housekeeping_status ? t(selectedRoom.housekeeping_status) : t('Neurčen')}</strong></p>
           {error ? <div className="k-hk-alert" role="alert"><p>{error}</p><button disabled={loading} onClick={() => void loadRooms(selectedDate, true)}>{t("Obnovit stav")}</button></div> : null}
           {!error ? <><div className="k-hk-status-actions">{STATUS_ACTIONS.map((action) => <button key={action.value} type="button" title={t(action.detail)} aria-label={`${t(action.label)} ${t(action.detail)}`} onClick={() => void updateStatus(action.value)} disabled={!canWrite || busy}><strong>{t(action.label)}</strong></button>)}</div>

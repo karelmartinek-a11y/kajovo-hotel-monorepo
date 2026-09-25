@@ -80,11 +80,11 @@ test('uživatelé mají oddělený editor, validace, zachování konceptu a resp
   } finally { await request.delete(`/api/v1/users/${user.id}`, { headers: { 'x-csrf-token': csrf } }); }
 });
 
-test('pokoje na šířku ukazují alespoň dva pokoje, dialog se vejde a chyba nehlásí úspěch', async ({ page, request }) => {
+test('pokoje mají pevné dlaždice po čtyřech na mobilu, spodní detail a chyba nehlásí úspěch', async ({ page, request }) => {
   expect((await request.post('/api/auth/admin/login', { data: getAdminCredentials() })).ok()).toBeTruthy();
   await page.context().addCookies((await request.storageState()).cookies);
   const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
-  const rooms = Array.from({ length: 37 }, (_, i) => ({ room_id: String(i + 101), room_number: String(i + 101), room_name: String(i + 101), floor: '1', housekeeping_status: 'Neuklizeno', operational_state: 'checkout_pending', occupancy_state: 'departing', departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
+  const rooms = Array.from({ length: 37 }, (_, i) => ({ room_id: String(i + 101), room_number: String(i + 101), room_name: String(i + 101), floor: '1', housekeeping_status: 'Neuklizeno', operational_state: 'checkout_pending', occupancy_state: 'departing', occupied: i % 2 === 0, persons: i % 2 === 0 ? 3 : 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     if (route.request().method() === 'PATCH') { await route.fulfill({ status: 502, json: { detail: 'Ověření změny selhalo.' } }); return; }
     await route.fulfill({ json: { date: '2026-09-18', occupancy_date: '2026-09-18', loaded_at: new Date().toISOString(), housekeeping_status_is_current: true, rooms } });
@@ -92,7 +92,7 @@ test('pokoje na šířku ukazují alespoň dva pokoje, dialog se vejde a chyba n
   await page.goto('/admin/pokojska');
   const cards = page.locator('.k-hk-room');
   await expect(cards).toHaveCount(37);
-  for (const size of [{ width: 1440, height: 900 }, { width: 834, height: 1112 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
+  for (const size of [{ width: 1440, height: 900 }, { width: 834, height: 1112 }, { width: 390, height: 844 }, { width: 320, height: 700 }, { width: 844, height: 390 }, { width: 667, height: 375 }]) {
     await page.setViewportSize(size);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.locator('.k-hk-board').evaluate((node) => node.scrollTo({ top: 0 }));
@@ -100,16 +100,29 @@ test('pokoje na šířku ukazují alespoň dva pokoje, dialog se vejde a chyba n
       const board = await page.locator('.k-hk-board').boundingBox();
       const navigation = await page.locator('.k-housekeeping-toggle').boundingBox();
       expect(board!.y + board!.height).toBeLessThanOrEqual(navigation!.y + 1);
+      const controls = page.locator('.k-hk-board__controls');
+      const controlsY = (await controls.boundingBox())!.y;
+      await page.locator('.k-hk-board').evaluate((node) => node.scrollTo({ top: 250 }));
+      expect(Math.abs((await controls.boundingBox())!.y - controlsY)).toBeLessThan(2);
+      await page.locator('.k-hk-board').evaluate((node) => node.scrollTo({ top: 0 }));
     }
-    const boxes = await cards.evaluateAll((nodes) => nodes.slice(0, 2).map((node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; }));
-    if (size.width > size.height || size.width === 390) { expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(2); expect(boxes[1].x).toBeGreaterThan(boxes[0].x + boxes[0].w); }
+    if (size.width <= 390) await expect(page.locator('.k-shell-profile-link .k-nav-link__icon')).toBeVisible();
+    const boxes = await cards.evaluateAll((nodes) => nodes.slice(0, 5).map((node) => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
+    if (size.width <= 390) {
+      expect(boxes.slice(0, 4).every((box) => Math.abs(box.y - boxes[0].y) < 2)).toBeTruthy();
+      expect(boxes[4].y).toBeGreaterThan(boxes[0].y + boxes[0].h);
+    }
+    expect(boxes.every((box) => Math.abs(box.h - boxes[0].h) < 1)).toBeTruthy();
+    expect(boxes.every((box) => Math.abs(box.w - boxes[0].w) < 1)).toBeTruthy();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
     await page.screenshot({ path: `/tmp/kajovo-rooms-${size.width}.png`, fullPage: false });
     await cards.first().screenshot({ path: `/tmp/kajovo-room-card-${size.width}.png` });
     await cards.first().click();
     const modal = page.getByRole('dialog');
     await expect(modal).toBeVisible();
-    expect(await modal.evaluate((node) => { const r = node.getBoundingClientRect(); return node.scrollHeight <= node.clientHeight + 1 && r.top >= 0 && r.bottom <= innerHeight; })).toBeTruthy();
+    expect(await modal.evaluate((node) => { const r = node.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1 && Math.abs(r.bottom - innerHeight) <= 2; })).toBeTruthy();
+    await expect(modal).toContainText('Alexandra Velmi Dlouhé Příjmení');
+    await expect(modal).toContainText('Uvnitř teď');
     await page.screenshot({ path: `/tmp/kajovo-status-${size.width}.png` });
     await modal.getByRole('button', { name: 'Zavřít dialog' }).click();
   }
@@ -117,7 +130,7 @@ test('pokoje na šířku ukazují alespoň dva pokoje, dialog se vejde a chyba n
   await page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ }).click();
   await expect(page.getByRole('dialog')).toContainText('Změnu se nepodařilo ověřit');
   await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toHaveCount(0);
-  expect(await page.getByRole('dialog').evaluate((node) => node.scrollHeight <= node.clientHeight + 1)).toBeTruthy();
+  expect(await page.getByRole('dialog').evaluate((node) => node.getBoundingClientRect().bottom <= innerHeight + 1)).toBeTruthy();
   await page.getByRole('button', { name: 'Zavřít dialog' }).click();
   await cards.first().click();
   await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toHaveCount(0);

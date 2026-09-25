@@ -4,7 +4,7 @@
 
 Pohled `Pokoje` je samostatná výchozí volba na stránce `/pokojska` a paralelně na `/admin/pokojska`, vedle rychlých zápisů `Nález` a `Závada`. Je dostupný pokojské, recepci i administrátorovi přes sdílenou komponentu. Výchozí den je aktuální hotelový den v `Europe/Prague`; obsluha může přejít na předchozí nebo následující den či zvolit datum.
 
-Pokoje jsou seskupené po patrech a karta ukazuje:
+Pokoje jsou seskupené po patrech. Čtyři stejně velké dlaždice se vejdou vedle sebe i v mobilním portrétu. Horní ovládání dne zůstává při svislém posuvu přehledu nahoře. Dlaždice ukazuje číslo, současnou obsazenost s počtem osob, stručný náhled pobytů a stav úklidu. Výběr dlaždice otevírá spodní detail; v něm zůstávají úplné údaje:
 
 - odjíždějící pobyty vlevo a přijíždějící vpravo, s prázdnou opačnou částí při jediné události;
 - pokračující pobyt přes celou šířku;
@@ -15,7 +15,7 @@ Pokoje jsou seskupené po patrech a karta ukazuje:
 
 Pobyty odpovídají vybranému dni; obsazenost a úklid aktuálnímu okamžiku. API uvádí `occupancy_date`, `housekeeping_status_is_current=true`, `housekeeping_status_key` a `ready_for_arrival`. Země se čte z adresy hlavního hosta v expandovaném `guest_list.guest.address` podle `main_guest`; API předá kód země pro jazykově správné zobrazení. Pokud chybí, zobrazuje se lokalizované „Stát neuveden“.
 
-Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá polovina je zelená při stavu `clean` bez ohledu na příjezd, světle zelená při `stay_no_linen` nebo `stay_with_linen`; jinak při plánovaném příjezdu červená a bez příjezdu prázdná. Bez události a bez uklizení zůstává karta neutrální. Text aktuální obsazenosti má samostatný kontrastní podklad přes celou kartu.
+Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá polovina je zelená při stavu `clean` bez ohledu na příjezd, světle zelená při `stay_no_linen` nebo `stay_with_linen`; jinak při plánovaném příjezdu červená a bez příjezdu prázdná. Bez události a bez uklizení zůstává karta neutrální. Současná obsazenost je na každé dlaždici i v detailu výslovně označená textem a kontrastní barvou.
 
 Priorita aktuální obsazenosti:
 
@@ -28,7 +28,7 @@ Přehled se obnovuje po zápisu, každých 60 sekund ve viditelném okně a ihne
 
 ## Příznaky rezervací
 
-Stav pokoje se volí v kompaktním dialogu. Během zápisu se zobrazuje blokující „Zapisuji změnu…“ bez tlačítek; ověřená odpověď automaticky vrací přehled a obnoví data. Neověřená změna ponechá dialog s chybou a vyžaduje obnovu stavu před dalším zápisem. Volba „Pobyty a ikony“ otevírá samostatnou pracovní obrazovku, aby dlouhé seznamy rezervací nezvětšovaly stavový dialog. Responzivní uspořádání a úplný inventář prvků popisuje [UI pracovních obrazovek](ui-workspaces.md).
+Stav pokoje se volí ve spodním detailu. Během zápisu se zobrazuje blokující „Zapisuji změnu…“ bez tlačítek; ověřená odpověď automaticky vrací přehled a obnoví data. Neověřená změna ponechá detail s chybou a vyžaduje obnovu stavu před dalším zápisem. Volba „Pobyty a ikony“ otevírá samostatnou pracovní obrazovku pro správu ikon. Responzivní uspořádání a úplný inventář prvků popisuje [UI pracovních obrazovek](ui-workspaces.md).
 
 Tabulka `reservation_amenities` (migrace `0031_reservation_amenities`) ukládá unikátní dvojici Better Hotel ID rezervace a typu `dog`/`cot`, stav `red`/`green`, aktivitu, monotónní verzi, autora a čas změny. Odstranění je logické: zachovaná verze brání přepsání nově vytvořené ikony starým požadavkem. Ikony následují tutéž rezervaci při přesunu pokoje, nepřenášejí se na další rezervaci a zachovávají barvu až do odjezdu.
 
@@ -74,11 +74,11 @@ Role `admin`, `recepce` a `pokojská` mají `housekeeping:read` i `housekeeping:
 
 | Kategorie | Rozhodnutí a rozsah |
 |---|---|
-| Produkční kód | Aktualizovat připravenost pro příjezd a sdílené karty; oprávnění ikon ověřit beze změny. |
-| Testy | Aktualizovat půlení barev, počítání nocí a UI scénáře; ověřit obsazenost a ikony. |
+| Produkční kód | Aktualizovat sdílené dlaždice, spodní detail a jejich CSS; API a oprávnění ikon ověřit beze změny. |
+| Testy | Aktualizovat čtyřsloupcový portrét, stejné rozměry dlaždic, půlení barev, počítání nocí v detailu, obsazenost a ikony. |
 | GitHub a gates | Ověřit beze změny: existující CI, produkční API image a automatický deploy. |
 | Dokumentace | Aktualizovat tento kontrakt a RBAC. |
-| Komentáře a poznámky | Aktualizovat rozlišení barev a obsazenosti; odstranit celoplošnou zelenou a pruhování. |
-| Instrukce | Aktualizovat kořenový AGENTS o barvy podle vybraného dne. |
-| Fixtures a texty | Aktualizovat pobyty, role, štítky, legendu a selektory testů. |
-| Build a kontrakty | Aktualizovat OpenAPI, klienta a produkční validátor; ověřit oba buildy a migraci. |
+| Komentáře a poznámky | Ověřit aktuální popisy karty a detailu; neaktuální popis odstranit. |
+| Instrukce | Aktualizovat kořenový AGENTS o čtyřech dlaždicích a spodním detailu. |
+| Fixtures a texty | Aktualizovat překlady aktuální obsazenosti a zkratek, testová data a selektory. |
+| Build a kontrakty | Ověřit OpenAPI, klienta, oba buildy a produkční validátor beze změny. |
