@@ -13,6 +13,7 @@ export * from './components/Badge';
 export * from './components/RoleSwitcher';
 export * from './components/Icon';
 export * from './components/HousekeepingRooms';
+export * from './components/DateNavigation';
 export * from './components/TaskDialog';
 
 export * from './components/Skeleton';

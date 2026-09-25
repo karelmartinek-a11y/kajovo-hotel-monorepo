@@ -19,7 +19,7 @@ Pokoje tvoří jednu mřížku v pevném pořadí. Na mobilu po čtyřech dlažd
 210
 ```
 
-Další pokoje z inventáře následují číselně za tímto pořadím. Ostatní šířky mění počet sloupců, ne pořadí. Horní ovládání dne zůstává při svislém posuvu přehledu nahoře. Dlaždice ukazuje číslo, současnou obsazenost s počtem osob, stručný náhled pobytů a stav úklidu. Výběr dlaždice otevírá spodní detail; v něm zůstávají úplné údaje:
+Další pokoje z inventáře následují číselně za tímto pořadím. Ostatní šířky mění počet sloupců, ne pořadí. Horní ovládání dne zůstává při svislém posuvu přehledu nahoře. Dlaždice ukazuje číslo, současnou obsazenost s počtem osob, stručný náhled pobytů a stav úklidu. Neprázdná poznámka `reservation_note[].housekeep` u kteréhokoli zobrazeného pobytu zapne blikající červenou ikonu; při omezení animací zůstane statická. Výběr dlaždice otevírá spodní detail s textem poznámky a úplnými údaji:
 
 - odjíždějící pobyty vlevo a přijíždějící vpravo, s prázdnou opačnou částí při jediné události;
 - pokračující pobyt přes celou šířku;

@@ -11,7 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { Badge, Card, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { Badge, Card, DataTable, DateNavigation, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   attachWebActivity,
@@ -73,42 +73,6 @@ type BreakfastSummary = BreakfastDailySummary;
 type BreakfastDailyOverview = {
   orders: BreakfastOrder[];
   summary: BreakfastSummary;
-};
-
-type BreakfastImportItem = {
-  room: number;
-  count: number;
-  guest_name?: string | null;
-  diet_no_gluten?: boolean;
-  diet_no_milk?: boolean;
-  diet_no_pork?: boolean;
-};
-
-type BreakfastImportResponse = {
-  date: string;
-  status: 'FOUND' | 'MISSING';
-  saved: boolean;
-  items: BreakfastImportItem[];
-};
-
-type BreakfastManualRefreshProgressItem = {
-  at: string;
-  step: string;
-  message: string;
-};
-
-type BreakfastManualRefreshJob = {
-  id: number;
-  job_key: string;
-  service_date: string;
-  status: 'queued' | 'running' | 'succeeded' | 'failed';
-  progress: BreakfastManualRefreshProgressItem[];
-  message: string | null;
-  error_message: string | null;
-  imported_count: number;
-  created_at: string | null;
-  started_at: string | null;
-  finished_at: string | null;
 };
 
 type LostFoundItem = LostFoundItemRead;
@@ -399,20 +363,6 @@ function breakfastStatusLabel(status: BreakfastStatus | null | undefined): strin
   return status ? t(statusLabels[status]) : '-';
 }
 
-type BreakfastRowFeedback = {
-  state: 'saving' | 'error';
-  message: string;
-};
-
-function normalizeBreakfastNoteValue(note: string | null | undefined): string | null {
-  const normalized = (note ?? '').trim();
-  return normalized ? normalized : null;
-}
-
-function sameBreakfastNote(left: string | null | undefined, right: string | null | undefined): boolean {
-  return normalizeBreakfastNoteValue(left) === normalizeBreakfastNoteValue(right);
-}
-
 function lostFoundStatusLabel(status: LostFoundStatus | null | undefined): string {
   return status ? t(lostFoundStatusLabels[status]) : '-';
 }
@@ -489,29 +439,6 @@ function buildBreakfastOverviewStats(items: BreakfastOrder[]): BreakfastOverview
     servedBreakfasts,
     remainingBreakfasts: Math.max(0, totalBreakfasts - servedBreakfasts),
   };
-}
-
-function formatBreakfastHeadlineDate(value: string): string {
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) {
-    return value;
-  }
-  return new Intl.DateTimeFormat(getIntlLocale(), {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month - 1, day)));
-}
-
-function shiftDateInputValue(value: string, offsetDays: number): string {
-  const parsed = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  parsed.setDate(parsed.getDate() + offsetDays);
-  return currentDateForTimeZone(parsed, 'Europe/Prague');
 }
 
 function readCsrfToken(): string {
@@ -693,35 +620,6 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
 
   if (path === '/api/v1/breakfast' && method === 'GET') return (await apiClient.listBreakfastOrdersApiV1BreakfastGet({ service_date: url.searchParams.get('service_date'), status: url.searchParams.get('status') as BreakfastStatus | null })) as T;
   if (path === '/api/v1/breakfast/daily-summary' && method === 'GET') return (await apiClient.getDailySummaryApiV1BreakfastDailySummaryGet({ service_date: url.searchParams.get('service_date') ?? '' })) as T;
-  if (path === '/api/v1/breakfast/manual-refresh' && method === 'POST') {
-    const response = await fetch('/api/v1/breakfast/manual-refresh', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': readCsrfToken(),
-      },
-      body: JSON.stringify(body ?? {}),
-    });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      throw new Error(localizeServerError(payload?.detail ?? tf('Ruční aktualizace skončila chybou {status}.', { status: response.status }), response.status));
-    }
-    return (await response.json()) as T;
-  }
-  const manualRefreshId = path.match(/^\/api\/v1\/breakfast\/manual-refresh\/(\d+)$/);
-  if (manualRefreshId && method === 'GET') {
-    const response = await fetch(`/api/v1/breakfast/manual-refresh/${manualRefreshId[1]}`, {
-      method: 'GET',
-      headers: {
-        'X-CSRF-Token': readCsrfToken(),
-      },
-    });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      throw new Error(localizeServerError(payload?.detail ?? tf('Ruční aktualizace skončila chybou {status}.', { status: response.status }), response.status));
-    }
-    return (await response.json()) as T;
-  }
   const breakfastId = path.match(/^\/api\/v1\/breakfast\/(\d+)$/);
   if (breakfastId && method === 'GET') return (await apiClient.getBreakfastOrderApiV1BreakfastOrderIdGet(Number(breakfastId[1]))) as T;
   if (breakfastId && method === 'PUT') return (await apiClient.updateBreakfastOrderApiV1BreakfastOrderIdPut(Number(breakfastId[1]), body as BreakfastOrderCreate)) as T;
@@ -865,35 +763,6 @@ function DietIcon({ kind }: { kind: DietKey }): JSX.Element {
   );
 }
 
-function DatePickerButton({
-  value,
-  label,
-  onChange,
-}: {
-  value: string;
-  label: string;
-  onChange: (value: string) => void;
-}): JSX.Element {
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const openPicker = (): void => {
-    const input = inputRef.current;
-    if (!input) return;
-    if (typeof input.showPicker === 'function') {
-      input.showPicker();
-      return;
-    }
-    input.focus();
-    input.click();
-  };
-
-  return (
-    <span className="k-date-picker-button">
-      <button className="k-button secondary k-date-picker-button__trigger" type="button" aria-label={label} title={label} onClick={openPicker}>{t("Vybrat datum")}</button>
-      <input ref={inputRef} className="k-date-picker-button__input" tabIndex={-1} type="date" value={value} aria-hidden="true" onChange={(event) => onChange(event.target.value)} />
-    </span>
-  );
-}
-
 function Dashboard(): JSX.Element {
     const [todayCount, setTodayCount] = React.useState<number | null>(null);
   const [tomorrowCount, setTomorrowCount] = React.useState<number | null>(null);
@@ -981,44 +850,26 @@ function BreakfastList(): JSX.Element {
   const isRecepce = isAdmin || actorRole === 'recepce' || roles.includes('recepce');
   const isBreakfast = isAdmin || actorRole === breakfastRole || roles.includes(breakfastRole);
   const isServingView = actorRole === breakfastRole && !isRecepce && !isAdmin;
-  const canImport = isRecepce || isAdmin;
   const canReactivate = isRecepce || isAdmin;
   const canEditDiet = actorRole === 'recepce' || isAdmin;
-  const canEditNote = isRecepce || isAdmin;
   const today = currentDateForTimeZone(new Date(), 'Europe/Prague');
   const minutesNow = currentMinutesForTimeZone(new Date(), 'Europe/Prague');
   const canClearDay = isAdmin;
-  const canManualRefresh = isBreakfast || isRecepce || isAdmin;
 
   const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
   const canServe = isAdmin || ((isBreakfast || isRecepce) && serviceDate === today && minutesNow >= 300 && minutesNow <= 660);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [search, setSearch] = React.useState('');
-  const [importFile, setImportFile] = React.useState<File | null>(null);
-  const [importPreview, setImportPreview] = React.useState<BreakfastImportItem[] | null>(null);
-  const [importDate, setImportDate] = React.useState<string | null>(null);
-  const [importInfo, setImportInfo] = React.useState<string | null>(null);
-  const [importError, setImportError] = React.useState<string | null>(null);
-  const [importBusy, setImportBusy] = React.useState(false);
-  const [manualRefreshBusy, setManualRefreshBusy] = React.useState(false);
-  const [manualRefreshOpen, setManualRefreshOpen] = React.useState(false);
-  const [manualRefreshJob, setManualRefreshJob] = React.useState<BreakfastManualRefreshJob | null>(null);
-  const [manualRefreshError, setManualRefreshError] = React.useState<string | null>(null);
-  const [drafts, setDrafts] = React.useState<Record<number, Partial<BreakfastPayload>>>({});
   const [saveBusy, setSaveBusy] = React.useState(false);
   const [saveInfo, setSaveInfo] = React.useState<string | null>(null);
-  const [rowFeedback, setRowFeedback] = React.useState<Record<number, BreakfastRowFeedback>>({});
   const [rangeDeleteFrom, setRangeDeleteFrom] = React.useState(serviceDate);
   const [rangeDeleteTo, setRangeDeleteTo] = React.useState(serviceDate);
-  const itemsRef = React.useRef<BreakfastOrder[]>([]);
-  const noteSaveQueueRef = React.useRef<Record<number, { inFlight: boolean; queuedValue: string | null | undefined }>>({});
 
   const breakfastRequestSequence = React.useRef(0);
   const displayedDate = React.useRef(serviceDate);
   displayedDate.current = serviceDate;
-  const loadDay = React.useCallback((targetDate: string, preserveDrafts = false) => {
+  const loadDay = React.useCallback((targetDate: string) => {
     const sequence = ++breakfastRequestSequence.current;
     let active = true;
     fetchJson<BreakfastDailyOverview>(`/api/v1/breakfast/daily-overview?service_date=${targetDate}`)
@@ -1028,7 +879,6 @@ function BreakfastList(): JSX.Element {
         }
         setItems(orders);
         setSummary(dailySummary);
-        if (!preserveDrafts) setDrafts({});
         setError(null);
       })
       .catch(() => {
@@ -1043,29 +893,24 @@ function BreakfastList(): JSX.Element {
   }, []);
 
   React.useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
-
-  React.useEffect(() => {
     setSaveInfo(null);
     const cleanup = loadDay(serviceDate);
+    const refresh = () => { if (document.visibilityState === 'visible') loadDay(serviceDate); };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('pageshow', refresh);
+    document.addEventListener('visibilitychange', refresh);
     return () => {
       if (cleanup) cleanup();
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('pageshow', refresh);
+      document.removeEventListener('visibilitychange', refresh);
     };
   }, [loadDay, serviceDate]);
 
   const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
-  const mergeOrderWithDraft = React.useCallback((order: BreakfastOrder): BreakfastOrder => {
-    const draft = drafts[order.id];
-    if (!draft) {
-      return order;
-    }
-    return {
-      ...order,
-      status: draft.status ?? order.status,
-      note: draft.note ?? order.note,
-      };
-    }, [drafts]);
+  const mergeOrderWithDraft = (order: BreakfastOrder): BreakfastOrder => order;
 
   const effectiveVisibleItems = React.useMemo(
     () => visibleItems.map((item) => mergeOrderWithDraft(item)),
@@ -1075,46 +920,16 @@ function BreakfastList(): JSX.Element {
     () => buildBreakfastOverviewStats(effectiveVisibleItems),
     [effectiveVisibleItems],
   );
-  const editedRowsCount = Object.keys(drafts).length;
 
-  const filteredItems = visibleItems.filter((item) => {
-    const effectiveItem = mergeOrderWithDraft(item);
-    const term = search.trim().toLowerCase();
-    if (!term || isServingView) {
-      return true;
-    }
-    return effectiveItem.room_number.toLowerCase().includes(term) || (effectiveItem.guest_name ?? '').toLowerCase().includes(term);
-  });
+  const filteredItems = visibleItems;
 
-  const updateOrder = async (
-    order: BreakfastOrder,
-    updates: Partial<BreakfastPayload> & { expected_updated_at?: string | null },
-    options?: { preserveDraft?: boolean },
-  ): Promise<BreakfastOrder> => {
-    const payload: Partial<BreakfastPayload> & { expected_updated_at?: string | null } = { ...updates };
-
-    if (updates.status !== undefined) {
-      payload.status = updates.status;
-    }
-    if (updates.expected_updated_at !== undefined) {
-      payload.expected_updated_at = updates.expected_updated_at;
-    }
-
-    const requestPayload = isServingView ? { status: updates.status } : payload;
+  const updateOrder = async (order: BreakfastOrder, updates: Partial<BreakfastPayload>): Promise<BreakfastOrder> => {
     const updated = await fetchJson<BreakfastOrder>(`/api/v1/breakfast/${order.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload),
+      body: JSON.stringify(updates),
     });
     setItems((prev) => prev.map((item) => (item.id === order.id ? updated : item)));
-    if (!options?.preserveDraft) {
-      setDrafts((prev) => {
-        if (!prev[order.id]) return prev;
-        const cleaned = { ...prev };
-        delete cleaned[order.id];
-        return cleaned;
-      });
-    }
     return updated;
   };
 
@@ -1128,123 +943,6 @@ function BreakfastList(): JSX.Element {
         setError(saveError instanceof Error ? saveError.message : t('Uložení změn snídaní selhalo.'));
       });
   };
-
-  const clearRowFeedback = React.useCallback((orderId: number): void => {
-    setRowFeedback((prev) => {
-      if (!prev[orderId]) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[orderId];
-      return next;
-    });
-  }, []);
-
-  const updateRowFeedback = React.useCallback((orderId: number, feedback: BreakfastRowFeedback): void => {
-    setRowFeedback((prev) => ({ ...prev, [orderId]: feedback }));
-  }, []);
-
-  const queueOrderDraft = React.useCallback((order: BreakfastOrder, updates: Partial<BreakfastPayload>): void => {
-    setDrafts((prev) => {
-      const base = prev[order.id] ?? {};
-      const nextDraft: Partial<BreakfastPayload> = {
-        ...base,
-        ...updates,
-      };
-      const effective = {
-        status: nextDraft.status ?? order.status,
-        note: nextDraft.note ?? order.note ?? null,
-      };
-      if (
-        effective.status === order.status &&
-        effective.note === (order.note ?? null)
-      ) {
-        const cleaned = { ...prev };
-        delete cleaned[order.id];
-        return cleaned;
-      }
-      return {
-        ...prev,
-        [order.id]: nextDraft,
-      };
-    });
-    setSaveInfo(null);
-  }, []);
-
-  const flushBreakfastNoteSave = React.useCallback((orderId: number): void => {
-    const queue = noteSaveQueueRef.current[orderId];
-    if (!queue || queue.inFlight || queue.queuedValue === undefined) {
-      return;
-    }
-    const currentOrder = itemsRef.current.find((item) => item.id === orderId);
-    if (!currentOrder) {
-      delete noteSaveQueueRef.current[orderId];
-      return;
-    }
-    const nextNote = queue.queuedValue;
-    queue.queuedValue = undefined;
-    if (sameBreakfastNote(nextNote, currentOrder.note)) {
-      clearRowFeedback(orderId);
-      setDrafts((prev) => {
-        const currentDraft = prev[orderId];
-        if (!currentDraft || sameBreakfastNote(currentDraft.note as string | null | undefined, currentOrder.note)) {
-          if (!currentDraft) {
-            return prev;
-          }
-          const next = { ...prev };
-          delete next[orderId];
-          return next;
-        }
-        return prev;
-      });
-      return;
-    }
-    queue.inFlight = true;
-    updateRowFeedback(orderId, { state: 'saving', message: t('Ukládám poznámku…') });
-    void updateOrder(
-      currentOrder,
-      {
-        note: nextNote,
-        expected_updated_at: currentOrder.updated_at,
-      },
-      { preserveDraft: true },
-    )
-      .then((updated) => {
-        queue.inFlight = false;
-        setDrafts((prev) => {
-          const currentDraft = prev[orderId];
-          if (!currentDraft) {
-            return prev;
-          }
-          if (sameBreakfastNote(currentDraft.note as string | null | undefined, updated.note)) {
-            const next = { ...prev };
-            delete next[orderId];
-            return next;
-          }
-          return prev;
-        });
-        if (queue.queuedValue !== undefined) {
-          flushBreakfastNoteSave(orderId);
-          return;
-        }
-        clearRowFeedback(orderId);
-      })
-      .catch((saveError) => {
-        queue.inFlight = false;
-        updateRowFeedback(orderId, {
-          state: 'error',
-          message: saveError instanceof Error ? saveError.message : t('Uložení poznámky selhalo.'),
-        });
-      });
-  }, [clearRowFeedback, updateOrder, updateRowFeedback]);
-
-  const queueBreakfastNoteSave = React.useCallback((order: BreakfastOrder, rawValue: string): void => {
-    const nextNote = normalizeBreakfastNoteValue(rawValue);
-    const queue = noteSaveQueueRef.current[order.id] ?? { inFlight: false, queuedValue: undefined };
-    queue.queuedValue = nextNote;
-    noteSaveQueueRef.current[order.id] = queue;
-    flushBreakfastNoteSave(order.id);
-  }, [flushBreakfastNoteSave]);
 
   const dietBusy = React.useRef(false);
   const [dietSaving, setDietSaving] = React.useState(false);
@@ -1261,7 +959,7 @@ function BreakfastList(): JSX.Element {
     } catch {
       setDietError(t('Dietu se nepodařilo uložit. Pobyt mohl mezitím změnit jiný uživatel; přehled se obnoví.'));
     } finally {
-      if (displayedDate.current === serviceDate) loadDay(serviceDate, true);
+      if (displayedDate.current === serviceDate) loadDay(serviceDate);
       dietBusy.current = false;
       setDietSaving(false);
     }
@@ -1281,27 +979,6 @@ function BreakfastList(): JSX.Element {
       return;
     }
     saveOrderUpdates(order, { status: 'pending' });
-  };
-
-  const saveDraftChanges = async (): Promise<void> => {
-    const entries = visibleItems.filter((item) => drafts[item.id]);
-    if (entries.length === 0) {
-      return;
-    }
-    setSaveBusy(true);
-    setError(null);
-    try {
-      for (const order of entries) {
-        await updateOrder(order, drafts[order.id] ?? {});
-      }
-      setDrafts({});
-      setSaveInfo(tf('Uloženo {count} změn pro {date}.', { count: entries.length, date: serviceDate }));
-      loadDay(serviceDate);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : t('Uložení změn snídaní selhalo.'));
-    } finally {
-      setSaveBusy(false);
-    }
   };
 
   const reactivateAll = async (): Promise<void> => {
@@ -1356,7 +1033,6 @@ function BreakfastList(): JSX.Element {
         total_guests: 0,
         status_counts: { pending: 0, preparing: 0, served: 0, cancelled: 0 },
       });
-      setDrafts({});
       return;
     }
     loadDay(serviceDate);
@@ -1408,237 +1084,24 @@ function BreakfastList(): JSX.Element {
     return <button className="k-button" type="button" onClick={() => markServed(order)} disabled={!canServe}>{t("Vydat")}</button>;
   };
 
-  const previewImport = async (file: File): Promise<void> => {
-    setImportBusy(true);
-    setImportError(null);
-    setImportInfo(null);
-    setImportPreview(null);
-    setImportDate(null);
-    try {
-      const data = new FormData();
-      data.append('file', file);
-      const csrf = readCsrfToken();
-      const result = await fetchJson<BreakfastImportResponse>('/api/v1/breakfast/import', {
-        method: 'POST',
-        headers: csrf ? { 'x-csrf-token': csrf } : undefined,
-        body: data,
-      });
-      setImportPreview(result.items);
-      setImportDate(result.date);
-      if (result.items.length === 0) {
-        setImportInfo(tf('Soubor {name} neobsahuje žádné snídaně k importu.', { name: file.name }));
-      } else {
-        setImportInfo(tf('Náhled připraven: {count} pokojů pro {date}.', { count: result.items.length, date: result.date }));
-      }
-    } catch (error) {
-      setImportError(error instanceof Error ? error.message : t('Validace PDF selhala.'));
-    } finally {
-      setImportBusy(false);
-    }
-  };
-
-  const handleImportFile = (file: File | null): void => {
-    setImportFile(file);
-    if (file) {
-      void previewImport(file);
-    } else {
-      setImportPreview(null);
-      setImportDate(null);
-    }
-  };
-
-  const saveImport = async (): Promise<void> => {
-    if (!importFile || !importPreview) {
-      setImportError(t('Nejprve nahrajte PDF.'));
-      return;
-    }
-    setImportBusy(true);
-    setImportError(null);
-    try {
-      const data = new FormData();
-      data.append('save', 'true');
-      data.append('file', importFile);
-      data.append('overrides', JSON.stringify(importPreview.map((item) => ({
-        room: String(item.room),
-        diet_no_gluten: Boolean(item.diet_no_gluten),
-        diet_no_milk: Boolean(item.diet_no_milk),
-        diet_no_pork: Boolean(item.diet_no_pork),
-      }))));
-      const csrf = readCsrfToken();
-      const result = await fetchJson<BreakfastImportResponse>('/api/v1/breakfast/import', {
-        method: 'POST',
-        headers: csrf ? { 'x-csrf-token': csrf } : undefined,
-        body: data,
-      });
-      setImportInfo(tf('Import uložen: {count} pokojů ({date}).', { count: result.items.length, date: result.date }));
-      setImportPreview(null);
-      setImportDate(result.date);
-      setServiceDate(result.date);
-      loadDay(result.date);
-    } catch {
-      setImportError(t('Uložení importu selhalo.'));
-    } finally {
-      setImportBusy(false);
-    }
-  };
-
-  const downloadBreakfastPdf = (): void => {
-    if (!serviceDate) {
-      return;
-    }
-    const url = `/api/v1/breakfast/export/daily?service_date=${encodeURIComponent(serviceDate)}`;
-    window.open(url, '_blank', 'noopener');
-  };
-
-  const pollManualRefreshJob = async (jobId: number): Promise<BreakfastManualRefreshJob> => {
-    for (;;) {
-      const job = await fetchJson<BreakfastManualRefreshJob>(`/api/v1/breakfast/manual-refresh/${jobId}`);
-      setManualRefreshJob(job);
-      if (job.status === 'succeeded' || job.status === 'failed') {
-        return job;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 1000));
-    }
-  };
-
-  const runManualRefresh = async (): Promise<void> => {
-    if (!canManualRefresh || manualRefreshBusy) {
-      return;
-    }
-    setManualRefreshBusy(true);
-    setManualRefreshOpen(true);
-    setManualRefreshError(null);
-    setManualRefreshJob({
-      id: 0,
-      job_key: '',
-      service_date: serviceDate,
-      status: 'queued',
-      progress: [
-        { at: new Date().toISOString(), step: 'queued', message: t('Žádost se připravuje.') },
-      ],
-      message: t('Žádost se připravuje.'),
-      error_message: null,
-      imported_count: 0,
-      created_at: null,
-      started_at: null,
-      finished_at: null,
-    });
-    try {
-      const job = await fetchJson<BreakfastManualRefreshJob>('/api/v1/breakfast/manual-refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_date: serviceDate }),
-      });
-      setManualRefreshJob(job);
-      const finalJob = await pollManualRefreshJob(job.id);
-      if (finalJob.status === 'succeeded') {
-        setManualRefreshOpen(false);
-        setManualRefreshJob(null);
-        setImportInfo(tf('Ruční aktualizace pro {date} byla dokončena.', { date: serviceDate }));
-        loadDay(serviceDate);
-        return;
-      }
-      setManualRefreshError(finalJob.error_message ?? t('Ruční aktualizace selhala.'));
-    } catch (error) {
-      setManualRefreshError(error instanceof Error ? error.message : t('Ruční aktualizaci se nepodařilo spustit.'));
-    } finally {
-      setManualRefreshBusy(false);
-    }
-  };
-
-  const importPreviewTable = importPreview ? (
-    <div className="k-card">
-      <div className="k-toolbar">
-        <strong>{t("Kontrola importu")}</strong>
-        <span className="k-subtle">{importFile?.name ?? importDate ?? '-'}</span>
-      </div>
-      {importPreview.length === 0 ? (
-        <StateView
-          title={t("Žádné snídaně v PDF")}
-          description={t("Vybraný soubor neobsahuje žádné řádky se snídaní pro import.")}
-          stateKey="empty"
-        />
-      ) : null}
-      <DataTable
-        headers={[t('Pokoj'), t('Host'), t('Počet'), t('Diety')]}
-        rows={importPreview.map((item) => [
-          item.room,
-          item.guest_name ?? `Pokoj ${item.room}`,
-          item.count,
-          <span>{t("Diety se nastavují u rezervace načtené z API.")}</span>,
-        ])}
-      />
-      <div className="k-toolbar">
-        <button className="k-button" type="button" onClick={() => void saveImport()} disabled={importBusy || importPreview.length === 0}>{t("Potvrdit import")}</button>
-        <button className="k-button secondary" type="button" onClick={() => setImportPreview(null)}>{t("Zavřít náhled")}</button>
-      </div>
-    </div>
-  ) : null;
-
-  const changeServiceDate = (offset: number): void => {
-    setServiceDate((value) => shiftDateInputValue(value, offset));
-  };
-
   const listItems = isServingView ? visibleItems : filteredItems;
+  const guestDisplay = (order: BreakfastOrder): string => order.guest_names || order.guest_name || `${t('Pokoj')} ${order.room_number}`;
+  const countryDisplay = (order: BreakfastOrder): string => order.country_code
+    ? new Intl.DisplayNames([getIntlLocale()], { type: 'region' }).of(order.country_code) ?? order.country_code
+    : '—';
   const breakfastImportStamp = summary?.source_imported_at
     ? formatShortDateTime(summary.source_imported_at)
     : 'nenalezeno';
-  const breakfastSummaryDate = summary?.service_date ?? serviceDate;
-
-  const servingMobileHeader = (
-    <div className="k-breakfast-serving-header" data-testid="breakfast-serving-mobile-header">
-      <div className="k-breakfast-serving-header__date">
-        <DatePickerButton value={serviceDate} label={t("Vybrat datum")} onChange={setServiceDate} />
-        <span className="k-breakfast-serving-header__date-label">{t("Přehled dne")}</span>
-        <span className="k-breakfast-serving-header__date-text">{formatBreakfastHeadlineDate(breakfastSummaryDate)}</span>
-      </div>
-      <div className="k-breakfast-serving-header__nav" aria-label={t("Posun dne snídaní")}>
-        <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Předchozí den")} title={t("Předchozí den")} onClick={() => changeServiceDate(-1)}>←</button>
-        <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Následující den")} title={t("Následující den")} onClick={() => changeServiceDate(1)}>→</button>
-      </div>
-      {canManualRefresh ? (
-        <button className="k-button k-breakfast-serving-header__refresh" type="button" aria-label={t("Aktualizovat")} title={t("Aktualizovat")} onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>↻</button>
-      ) : null}
-    </div>
-  );
-
-  const breakfastToolbar = isServingView ? (
-    <div className="k-toolbar">
-      <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Předchozí den")} title={t("Předchozí den")} onClick={() => changeServiceDate(-1)}>←</button>
-      <DatePickerButton value={serviceDate} label={t("Vybrat datum")} onChange={setServiceDate} />
-      <button className="k-button secondary k-day-arrow-button" type="button" aria-label={t("Následující den")} title={t("Následující den")} onClick={() => changeServiceDate(1)}>→</button>
-      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>{t("Aktualizovat z API")}</button> : null}
-    </div>
-  ) : (
-    <div className="k-toolbar">
-      <DatePickerButton value={serviceDate} label={t("Vybrat datum")} onChange={setServiceDate} />
-      <input className="k-input" placeholder={t("Hledat dle pokoje nebo hosta")} aria-label={t("Hledat")} value={search} onChange={(event) => setSearch(event.target.value)} />
-      {canImport ? <input className="k-input" type="file" accept="application/pdf" aria-label={t("Import PDF")} onChange={(event) => {
-        handleImportFile(event.target.files?.[0] ?? null);
-        event.currentTarget.value = '';
-      }} /> : null}
-      {canImport ? <button className="k-button secondary" type="button" onClick={downloadBreakfastPdf} disabled={!serviceDate}>{t("Export snídaní (PDF)")}</button> : null}
-      {canManualRefresh ? <button className="k-button" type="button" onClick={() => void runManualRefresh()} disabled={manualRefreshBusy}>{t("Aktualizovat z API")}</button> : null}
-      {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>{t("Vrátit celý den")}</button> : null}
-      {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>{t("Smazat den")}</button> : null}
-      {editedRowsCount > 0 ? <button className="k-button" type="button" onClick={() => void saveDraftChanges()} disabled={saveBusy}>{t("Uložit změny")}</button> : null}
-    </div>
-  );
-
-  const manualRefreshProgress = manualRefreshJob?.progress ?? [];
-  const manualRefreshTitle = manualRefreshJob
-    ? manualRefreshJob.status === 'succeeded'
-      ? t('Aktualizace dokončena')
-      : manualRefreshJob.status === 'failed'
-        ? 'Aktualizace selhala'
-        : t('Aktualizace probíhá')
-    : t('Aktualizace snídaní');
+  const breakfastToolbar = !isServingView ? <div className="k-toolbar">
+    {isRecepce ? <a className="k-button secondary" href={`/api/v1/breakfast/export/daily?service_date=${encodeURIComponent(serviceDate)}`} target="_blank" rel="noopener noreferrer">{t('Export snídaní (PDF)')}</a> : null}
+    {isAdmin ? <button className="k-button secondary" type="button" onClick={() => void reactivateAll()}>{t('Vrátit celý den')}</button> : null}
+    {canClearDay ? <button className="k-button secondary danger" type="button" onClick={() => void clearDay()}>{t('Smazat den')}</button> : null}
+  </div> : null;
 
   const compactServingList = (
     <div className="k-breakfast-serving-list" data-testid="breakfast-serving-mobile-list">
       {listItems.map((item) => {
         const effectiveItem = mergeOrderWithDraft(item);
-        const feedback = rowFeedback[item.id];
         return (
           <article
             key={item.id}
@@ -1648,23 +1111,14 @@ function BreakfastList(): JSX.Element {
           >
             <div className="k-breakfast-serving-row__main">
               <strong className="k-breakfast-serving-row__room" title={effectiveItem.room_number}>{effectiveItem.room_number}</strong>
-              <span className="k-breakfast-serving-row__guest" title={effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>
-              {canEditNote ? (
-                <input
-                  className={`k-input k-breakfast-note k-breakfast-serving-row__note-input${feedback?.state === 'error' ? ' k-input--error' : ''}`}
-                  aria-label={tf('Poznámka pro pokoj {room}', { room: effectiveItem.room_number })}
-                  value={effectiveItem.note ?? ''}
-                  onChange={(event) => queueOrderDraft(item, { note: event.target.value })}
-                  onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)}
-                />
-              ) : (
-                <span className="k-breakfast-serving-row__note-inline" title={effectiveItem.note ?? ''}>{effectiveItem.note || '—'}</span>
-              )}
+              <span className="k-breakfast-serving-row__guest" title={guestDisplay(effectiveItem)}>{guestDisplay(effectiveItem)}</span>
+              <span className="k-breakfast-serving-row__country">{countryDisplay(effectiveItem)}</span>
+              <span className="k-breakfast-serving-row__count">{t('Snídaní')}: {effectiveItem.guest_count}</span>
+              <span className="k-breakfast-serving-row__note-inline" title={effectiveItem.note ?? ''}>{effectiveItem.note || '—'}</span>
               <span className="k-breakfast-serving-row__diets">{renderActiveDiets(effectiveItem)}</span>
               <span className="k-breakfast-serving-row__action">{renderActionButton(item, effectiveItem)}</span>
             </div>
             {canEditDiet ? <details><summary>{t("Diety pobytu")}</summary>{renderReservationDiets(item)}</details> : null}
-            {feedback ? <p className={`k-breakfast-serving-row__feedback k-text-${feedback.state === 'error' ? 'error' : 'muted'}`}>{feedback.message}</p> : null}
           </article>
         );
       })}
@@ -1673,19 +1127,12 @@ function BreakfastList(): JSX.Element {
 
   return (
     <main className="k-page k-breakfast-serving-page" data-testid="breakfast-list-page">
-      {servingMobileHeader}
       <h1>{t("Snídaně")}</h1>
       {error ? (
         <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : (
         <>
-          <div className="k-card k-breakfast-overview-date">
-            <p className="k-text-muted k-breakfast-overview-date__label">{t("Datum přehledu snídaní")}</p>
-            <h2 className="k-breakfast-overview-date__value">
-              {formatBreakfastHeadlineDate(breakfastSummaryDate)}
-            </h2>
-          </div>
-          {breakfastToolbar}
+          <DateNavigation value={serviceDate} onChange={setServiceDate} />
           {isAdmin ? (
             <div className="k-toolbar">
               <input className="k-input" type="date" aria-label={t("Smazat období od")} value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
@@ -1693,18 +1140,15 @@ function BreakfastList(): JSX.Element {
               <button className="k-button secondary danger" type="button" onClick={() => void clearPeriod()} disabled={saveBusy}>{t("Smazat období")}</button>
             </div>
           ) : null}
-          {canImport && importBusy ? <p className="k-text-muted">{t("Načítám náhled importu z PDF…")}</p> : null}
-          {canImport && (importError || importInfo) ? <p className={importError ? 'k-text-error' : 'k-text-success'}>{importError ?? importInfo}</p> : null}
           {saveInfo ? <p className="k-text-success">{saveInfo}</p> : null}
           {dietError ? <p className="k-text-error" role="alert">{dietError}</p> : null}
-          {importPreviewTable}
           {listItems.length === 0 ? (
             <StateView title={t("Prázdný stav")} description={isServingView ? t('Na vybraný den nejsou naplánované žádné snídaně.') : t('Nebyly nalezeny žádné objednávky.')} stateKey="empty" />
           ) : (
             <>
               {compactServingList}
               <DataTable
-                headers={isServingView ? [t('Pokoj'), t('Osoby'), t('Jméno'), t('Diety'), t('Poznámka'), t('Akce')] : [t('Pokoj'), t('Host'), t('Osoby'), t('Diety'), t('Poznámka'), t('Akce')]}
+                headers={[t('Pokoj'), t('Ubytovaní'), t('Národnost'), t('Snídaní'), t('Diety'), t('Poznámka'), t('Akce')]}
                 rows={listItems.map((item) => {
                   const effectiveItem = mergeOrderWithDraft(item);
                   const rowClass = effectiveItem.status === 'served' ? 'k-row-muted' : '';
@@ -1713,8 +1157,9 @@ function BreakfastList(): JSX.Element {
                   if (isServingView) {
                     return [
                       <span className={rowClass}>{effectiveItem.room_number}</span>,
+                      <span className={rowClass}>{guestDisplay(effectiveItem)}</span>,
+                      <span className={rowClass}>{countryDisplay(effectiveItem)}</span>,
                       <span className={rowClass}>{effectiveItem.guest_count}</span>,
-                      <span className={rowClass}>{effectiveItem.guest_name ?? `Pokoj ${effectiveItem.room_number}`}</span>,
                       <span className={rowClass}>{renderActiveDiets(effectiveItem)}</span>,
                       <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                       action,
@@ -1723,10 +1168,11 @@ function BreakfastList(): JSX.Element {
 
                   return [
                     <span className={rowClass}>{effectiveItem.room_number}</span>,
-                    <span className={rowClass}>{effectiveItem.guest_name ?? '-'}</span>,
+                    <span className={rowClass}>{guestDisplay(effectiveItem)}</span>,
+                    <span className={rowClass}>{countryDisplay(effectiveItem)}</span>,
                     <span className={rowClass}>{effectiveItem.guest_count}</span>,
                     <span className={rowClass}>{renderReservationDiets(item)}</span>,
-                    canEditNote ? <input className={`k-input k-breakfast-note${rowFeedback[item.id]?.state === 'error' ? ' k-input--error' : ''}`} aria-label={tf('Poznámka pro pokoj {room}', { room: effectiveItem.room_number })} value={effectiveItem.note ?? ''} onChange={(event) => queueOrderDraft(item, { note: event.target.value })} onBlur={(event) => queueBreakfastNoteSave(item, event.currentTarget.value)} /> : <span className={rowClass}>{effectiveItem.note || '-'}</span>,
+                    <span className={rowClass}>{effectiveItem.note || '-'}</span>,
                     action,
                   ];
                 })}
@@ -1740,33 +1186,8 @@ function BreakfastList(): JSX.Element {
           </div>
           <p className="k-text-muted k-breakfast-overview-updated-at">{t("Data aktualizována:")}{' '}{breakfastImportStamp}
           </p>
-          {manualRefreshOpen ? (
-            <div className="k-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="breakfast-refresh-title">
-              <div className="k-modal-card">
-                <div className="k-modal-header">
-                  <div>
-                    <h2 id="breakfast-refresh-title">{manualRefreshTitle}</h2>
-                    <p className="k-subtle">{t("Ruční synchronizace z API pro den")}{' '}{manualRefreshJob?.service_date ?? serviceDate}.</p>
-                  </div>
-                  <div className="k-modal-spinner" aria-hidden="true" />
-                </div>
-                {manualRefreshError ? <p className="k-text-error">{manualRefreshError}</p> : null}
-                {manualRefreshJob?.message ? <p className="k-text-muted">{manualRefreshJob.message}</p> : null}
-                <div className="k-modal-progress">
-                  {manualRefreshProgress.length > 0 ? manualRefreshProgress.map((item) => (
-                    <div key={`${item.at}-${item.step}-${item.message}`} className="k-modal-progress__item">
-                      <strong>{item.step}</strong>
-                      <span>{item.message}</span>
-                      <small>{formatShortDateTime(item.at)}</small>
-                    </div>
-                  )) : <p className="k-text-muted">{t("Čekám na stav serverového jobu.")}</p>}
-                </div>
-                <div className="k-toolbar">
-                  <button className="k-button secondary" type="button" onClick={() => setManualRefreshOpen(false)} disabled={manualRefreshBusy}>{t("Zavřít")}{' '}</button>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          {breakfastToolbar}
+
         </>
       )}
     </main>
@@ -1782,7 +1203,6 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
     guest_name: '',
     guest_count: 1,
     status: 'pending',
-    note: '',
   });
   const [error, setError] = React.useState<string | null>(null);
 
@@ -1799,7 +1219,6 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
           guest_name: order.guest_name,
           guest_count: order.guest_count,
           status: order.status,
-          note: order.note ?? '',
         });
       })
       .catch(() => {
@@ -1809,10 +1228,7 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
 
   const save = async (): Promise<void> => {
     setError(null);
-    const body: BreakfastPayload = {
-      ...payload,
-      note: payload.note ? payload.note : null,
-    };
+    const body: BreakfastPayload = payload;
 
     const init: RequestInit = {
       method: mode === 'create' ? 'POST' : 'PUT',
@@ -1895,15 +1311,6 @@ function BreakfastForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 <option value="served">{t("Vydáno")}</option>
                 <option value="cancelled">{t("Zrušeno")}</option>
               </select>
-            </FormField>
-            <FormField id="note" label={t("Poznámka")}>
-              <textarea
-                id="note"
-                className="k-textarea"
-                rows={3}
-                value={payload.note ?? ''}
-                onChange={(event) => setPayload((prev) => ({ ...prev, note: event.target.value }))}
-              />
             </FormField>
           </div>
         </div>

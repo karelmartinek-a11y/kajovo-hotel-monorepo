@@ -200,8 +200,8 @@ jobs:
           check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
           check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
 
-      - name: Verify live breakfast manual refresh
-        run: node scripts/verify_live_breakfast_manual_refresh.mjs
+      - name: Verify live breakfast and housekeeping overview
+        run: node scripts/verify_live_breakfast_overview.mjs
         env:
           VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
           VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}

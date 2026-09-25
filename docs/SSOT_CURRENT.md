@@ -34,4 +34,4 @@
 - `pnpm contract:check`
 - `pnpm ci:gates`
 - `python3.11 scripts/release_gate.py`
-- live ověření přes `scripts/verify_live_breakfast_manual_refresh.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`
+- live ověření přes `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`

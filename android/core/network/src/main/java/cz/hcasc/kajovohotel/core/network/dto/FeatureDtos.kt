@@ -29,6 +29,8 @@ data class BreakfastOrderDto(
     val service_date: String,
     val room_number: String,
     val guest_name: String,
+    val guest_names: String? = null,
+    val country_code: String? = null,
     val guest_count: Int,
     val note: String? = null,
     val diet_no_gluten: Boolean = false,
@@ -46,25 +48,8 @@ data class BreakfastDailySummaryDto(
     val status_counts: Map<String, Int>,
     val source_imported_at: String? = null,
 )
-data class BreakfastOrderCreateDto(val service_date: String, val room_number: String, val guest_name: String, val guest_count: Int, val note: String? = null, val diet_no_gluten: Boolean = false, val diet_no_milk: Boolean = false, val diet_no_pork: Boolean = false, val status: String = "pending")
-data class BreakfastOrderUpdateDto(val service_date: String? = null, val room_number: String? = null, val guest_name: String? = null, val guest_count: Int? = null, val note: String? = null, val diet_no_gluten: Boolean? = null, val diet_no_milk: Boolean? = null, val diet_no_pork: Boolean? = null, val status: String? = null)
-data class BreakfastImportItemDto(val room: Int, val count: Int, val guest_name: String? = null, val diet_no_gluten: Boolean = false, val diet_no_milk: Boolean = false, val diet_no_pork: Boolean = false)
-data class BreakfastImportResponseDto(val date: String, val status: String, val items: List<BreakfastImportItemDto>, val ok: Boolean = true, val saved: Boolean = false)
-data class BreakfastManualRefreshRequestDto(val service_date: String)
-data class BreakfastManualRefreshProgressDto(val at: String, val step: String, val message: String)
-data class BreakfastManualRefreshJobDto(
-    val id: Int,
-    val job_key: String,
-    val service_date: String,
-    val status: String,
-    val progress: List<BreakfastManualRefreshProgressDto> = emptyList(),
-    val message: String? = null,
-    val error_message: String? = null,
-    val imported_count: Int = 0,
-    val created_at: String? = null,
-    val started_at: String? = null,
-    val finished_at: String? = null,
-)
+data class BreakfastOrderCreateDto(val service_date: String, val room_number: String, val guest_name: String, val guest_count: Int, val diet_no_gluten: Boolean = false, val diet_no_milk: Boolean = false, val diet_no_pork: Boolean = false, val status: String = "pending")
+data class BreakfastOrderUpdateDto(val service_date: String? = null, val room_number: String? = null, val guest_name: String? = null, val guest_count: Int? = null, val diet_no_gluten: Boolean? = null, val diet_no_milk: Boolean? = null, val diet_no_pork: Boolean? = null, val status: String? = null)
 
 data class LostFoundItemDto(
     val id: Int,

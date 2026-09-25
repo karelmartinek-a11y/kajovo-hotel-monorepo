@@ -5,15 +5,8 @@ import cz.hcasc.kajovohotel.core.common.BaseUrlConfig
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
 import cz.hcasc.kajovohotel.core.model.BreakfastStatus
 import cz.hcasc.kajovohotel.core.network.api.BreakfastApi
-import cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshJobDto
-import cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshRequestDto
 import cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderUpdateDto
 import cz.hcasc.kajovohotel.core.network.readableMessage
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportItem
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastImportPreview
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshJob
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshProgress
-import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastManualRefreshStatus
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrderDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastSummary
@@ -23,12 +16,7 @@ import cz.hcasc.kajovohotel.feature.breakfast.domain.toCreateRequest
 import cz.hcasc.kajovohotel.feature.breakfast.domain.toUpdateRequest
 import javax.inject.Inject
 import javax.inject.Singleton
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
-import org.json.JSONArray
-import org.json.JSONObject
 
 @Singleton
 class BreakfastRepository @Inject constructor(
@@ -85,50 +73,6 @@ class BreakfastRepository @Inject constructor(
         }
     }
 
-    suspend fun importPreview(file: BinaryPayload, save: Boolean, overrides: List<BreakfastImportItem> = emptyList()): AppResult<BreakfastImportPreview> {
-        return try {
-            val filePart = MultipartBody.Part.createFormData(
-                name = "file",
-                filename = file.fileName,
-                body = file.bytes.toRequestBody(file.mimeType.toMediaType()),
-            )
-            val saveBody = save.toString().toRequestBody("text/plain".toMediaType())
-            val overridesBody = overrides
-                .takeIf { save && it.isNotEmpty() }
-                ?.let { items ->
-                    JSONArray(
-                        items.map { item ->
-                            JSONObject()
-                                .put("room", item.room.toString())
-                                .put("diet_no_gluten", item.noGluten)
-                                .put("diet_no_milk", item.noMilk)
-                                .put("diet_no_pork", item.noPork)
-                        },
-                    ).toString().toRequestBody("application/json".toMediaType())
-                }
-            val response = api.importPdf(filePart, saveBody, overridesBody)
-            AppResult.Success(
-                BreakfastImportPreview(
-                    sourceFileName = file.fileName,
-                    serviceDate = response.date,
-                    items = response.items.map {
-                        BreakfastImportItem(
-                            room = it.room,
-                            count = it.count,
-                            guestName = it.guest_name.orEmpty(),
-                            noGluten = it.diet_no_gluten,
-                            noMilk = it.diet_no_milk,
-                            noPork = it.diet_no_pork,
-                        )
-                    },
-                    saved = response.saved,
-                ),
-            )
-        } catch (throwable: Throwable) {
-            AppResult.Error(throwable.readableMessage("Import PDF se nepodařilo zpracovat."), throwable)
-        }
-    }
-
     suspend fun exportDaily(serviceDate: String): AppResult<BinaryPayload> {
         return try {
             val response = api.exportDaily(serviceDate)
@@ -149,21 +93,6 @@ class BreakfastRepository @Inject constructor(
         }
     }
 
-    suspend fun startManualRefresh(serviceDate: String): AppResult<BreakfastManualRefreshJob> {
-        return try {
-            AppResult.Success(api.startManualRefresh(BreakfastManualRefreshRequestDto(service_date = serviceDate)).toDomain())
-        } catch (throwable: Throwable) {
-            AppResult.Error(throwable.readableMessage("Ruční aktualizaci se nepodařilo spustit."), throwable)
-        }
-    }
-
-    suspend fun manualRefreshJob(jobId: Int): AppResult<BreakfastManualRefreshJob> {
-        return try {
-            AppResult.Success(api.manualRefreshJob(jobId).toDomain())
-        } catch (throwable: Throwable) {
-            AppResult.Error(throwable.readableMessage("Stav ruční aktualizace se nepodařilo načíst."), throwable)
-        }
-    }
 }
 
 private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderDto.toDomain() = BreakfastOrder(
@@ -171,6 +100,8 @@ private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderDto.toDomain() =
     serviceDate = service_date,
     roomNumber = room_number,
     guestName = guest_name,
+    guestNames = guest_names,
+    countryCode = country_code,
     guestCount = guest_count,
     note = note.orEmpty(),
     noGluten = diet_no_gluten,
@@ -187,31 +118,6 @@ private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastDailySummaryDto.toDom
     totalGuests = total_guests,
     statusCounts = status_counts,
     sourceImportedAt = source_imported_at,
-)
-
-private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastManualRefreshJobDto.toDomain() = BreakfastManualRefreshJob(
-    id = id,
-    jobKey = job_key,
-    serviceDate = service_date,
-    status = when (status.lowercase()) {
-        "queued" -> BreakfastManualRefreshStatus.QUEUED
-        "running" -> BreakfastManualRefreshStatus.RUNNING
-        "succeeded" -> BreakfastManualRefreshStatus.SUCCEEDED
-        else -> BreakfastManualRefreshStatus.FAILED
-    },
-    progress = progress.map {
-        BreakfastManualRefreshProgress(
-            at = it.at,
-            step = it.step,
-            message = it.message,
-        )
-    },
-    message = message,
-    errorMessage = error_message,
-    importedCount = imported_count,
-    createdAt = created_at,
-    startedAt = started_at,
-    finishedAt = finished_at,
 )
 
 private fun retrofit2.Response<ResponseBody>.fileNameOrDefault(serviceDate: String): String {

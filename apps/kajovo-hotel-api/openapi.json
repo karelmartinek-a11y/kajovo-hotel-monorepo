@@ -299,36 +299,6 @@
         "title": "AuthProfileUpdate",
         "type": "object"
       },
-      "Body_import_breakfast_pdf_api_v1_breakfast_import_post": {
-        "properties": {
-          "file": {
-            "format": "binary",
-            "title": "File",
-            "type": "string"
-          },
-          "overrides": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Overrides"
-          },
-          "save": {
-            "default": false,
-            "title": "Save",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "file"
-        ],
-        "title": "Body_import_breakfast_pdf_api_v1_breakfast_import_post",
-        "type": "object"
-      },
       "Body_upload_issue_photos_api_v1_issues__issue_id__photos_post": {
         "properties": {
           "photos": {
@@ -490,50 +460,6 @@
         "title": "BreakfastDietUpdate",
         "type": "object"
       },
-      "BreakfastImportItem": {
-        "properties": {
-          "count": {
-            "title": "Count",
-            "type": "integer"
-          },
-          "diet_no_gluten": {
-            "default": false,
-            "title": "Diet No Gluten",
-            "type": "boolean"
-          },
-          "diet_no_milk": {
-            "default": false,
-            "title": "Diet No Milk",
-            "type": "boolean"
-          },
-          "diet_no_pork": {
-            "default": false,
-            "title": "Diet No Pork",
-            "type": "boolean"
-          },
-          "guest_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Guest Name"
-          },
-          "room": {
-            "title": "Room",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "room",
-          "count"
-        ],
-        "title": "BreakfastImportItem",
-        "type": "object"
-      },
       "BreakfastImportLogEntry": {
         "properties": {
           "details_json": {
@@ -574,251 +500,8 @@
         "title": "BreakfastImportLogEntry",
         "type": "object"
       },
-      "BreakfastImportResponse": {
-        "properties": {
-          "date": {
-            "format": "date",
-            "title": "Date",
-            "type": "string"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/BreakfastImportItem"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "ok": {
-            "default": true,
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "saved": {
-            "default": false,
-            "title": "Saved",
-            "type": "boolean"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "date",
-          "status",
-          "items"
-        ],
-        "title": "BreakfastImportResponse",
-        "type": "object"
-      },
-      "BreakfastImportRunResponse": {
-        "properties": {
-          "errors": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Errors",
-            "type": "array"
-          },
-          "imported_count": {
-            "title": "Imported Count",
-            "type": "integer"
-          },
-          "imported_days": {
-            "title": "Imported Days",
-            "type": "integer"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          },
-          "processed_days": {
-            "title": "Processed Days",
-            "type": "integer"
-          },
-          "range_end": {
-            "format": "date",
-            "title": "Range End",
-            "type": "string"
-          },
-          "range_start": {
-            "format": "date",
-            "title": "Range Start",
-            "type": "string"
-          },
-          "replaced_future_count": {
-            "title": "Replaced Future Count",
-            "type": "integer"
-          },
-          "reservations_count": {
-            "title": "Reservations Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "ok",
-          "imported_count",
-          "imported_days",
-          "processed_days",
-          "range_start",
-          "range_end",
-          "replaced_future_count",
-          "reservations_count",
-          "errors"
-        ],
-        "title": "BreakfastImportRunResponse",
-        "type": "object"
-      },
-      "BreakfastManualRefreshJobRead": {
-        "properties": {
-          "created_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "finished_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Finished At"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "imported_count": {
-            "title": "Imported Count",
-            "type": "integer"
-          },
-          "job_key": {
-            "title": "Job Key",
-            "type": "string"
-          },
-          "message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message"
-          },
-          "progress": {
-            "items": {
-              "$ref": "#/components/schemas/BreakfastManualRefreshProgressItem"
-            },
-            "title": "Progress",
-            "type": "array"
-          },
-          "service_date": {
-            "format": "date",
-            "title": "Service Date",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "$ref": "#/components/schemas/BreakfastManualRefreshStatus"
-          }
-        },
-        "required": [
-          "id",
-          "job_key",
-          "service_date",
-          "status",
-          "imported_count",
-          "created_at",
-          "started_at",
-          "finished_at"
-        ],
-        "title": "BreakfastManualRefreshJobRead",
-        "type": "object"
-      },
-      "BreakfastManualRefreshProgressItem": {
-        "properties": {
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "step": {
-            "title": "Step",
-            "type": "string"
-          }
-        },
-        "required": [
-          "at",
-          "step",
-          "message"
-        ],
-        "title": "BreakfastManualRefreshProgressItem",
-        "type": "object"
-      },
-      "BreakfastManualRefreshRequest": {
-        "properties": {
-          "service_date": {
-            "format": "date",
-            "title": "Service Date",
-            "type": "string"
-          }
-        },
-        "required": [
-          "service_date"
-        ],
-        "title": "BreakfastManualRefreshRequest",
-        "type": "object"
-      },
-      "BreakfastManualRefreshStatus": {
-        "enum": [
-          "queued",
-          "running",
-          "succeeded",
-          "failed"
-        ],
-        "title": "BreakfastManualRefreshStatus",
-        "type": "string"
-      },
       "BreakfastOrderCreate": {
+        "additionalProperties": false,
         "properties": {
           "diet_no_gluten": {
             "default": false,
@@ -846,18 +529,6 @@
             "minLength": 1,
             "title": "Guest Name",
             "type": "string"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
           },
           "room_number": {
             "maxLength": 32,
@@ -886,6 +557,17 @@
       },
       "BreakfastOrderRead": {
         "properties": {
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
           "created_at": {
             "anyOf": [
               {
@@ -925,6 +607,17 @@
             "title": "Guest Name",
             "type": "string"
           },
+          "guest_names": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guest Names"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -932,7 +625,6 @@
           "note": {
             "anyOf": [
               {
-                "maxLength": 2000,
                 "type": "string"
               },
               {
@@ -989,6 +681,7 @@
         "type": "object"
       },
       "BreakfastOrderUpdate": {
+        "additionalProperties": false,
         "properties": {
           "diet_no_gluten": {
             "anyOf": [
@@ -1060,18 +753,6 @@
               }
             ],
             "title": "Guest Name"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
           },
           "room_number": {
             "anyOf": [
@@ -1312,13 +993,6 @@
               }
             ]
           },
-          "schedule_times": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Schedule Times",
-            "type": "array"
-          },
           "scheduler_enabled": {
             "title": "Scheduler Enabled",
             "type": "boolean"
@@ -1346,8 +1020,7 @@
           "breakfast_food_codes",
           "scheduler_interval_seconds",
           "scheduler_retry_seconds",
-          "scheduler_max_retries",
-          "schedule_times"
+          "scheduler_max_retries"
         ],
         "title": "BreakfastSyncSettingsRead",
         "type": "object"
@@ -1921,6 +1594,17 @@
               }
             ],
             "title": "Guest Label"
+          },
+          "housekeeping_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Housekeeping Note"
           },
           "persons": {
             "minimum": 0.0,
@@ -5458,27 +5142,6 @@
         ]
       }
     },
-    "/api/v1/admin/settings/breakfast-import-run": {
-      "post": {
-        "operationId": "run_breakfast_import_now_api_v1_admin_settings_breakfast_import_run_post",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BreakfastImportRunResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Run Breakfast Import Now",
-        "tags": [
-          "settings"
-        ]
-      }
-    },
     "/api/v1/admin/settings/breakfast-sync": {
       "get": {
         "operationId": "get_breakfast_sync_settings_api_v1_admin_settings_breakfast_sync_get",
@@ -5889,130 +5552,6 @@
           }
         },
         "summary": "Export Breakfast Daily Pdf",
-        "tags": [
-          "breakfast"
-        ]
-      }
-    },
-    "/api/v1/breakfast/import": {
-      "post": {
-        "operationId": "import_breakfast_pdf_api_v1_breakfast_import_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_import_breakfast_pdf_api_v1_breakfast_import_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BreakfastImportResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Import Breakfast Pdf",
-        "tags": [
-          "breakfast"
-        ]
-      }
-    },
-    "/api/v1/breakfast/manual-refresh": {
-      "post": {
-        "operationId": "manual_refresh_breakfast_api_v1_breakfast_manual_refresh_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BreakfastManualRefreshRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BreakfastManualRefreshJobRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Manual Refresh Breakfast",
-        "tags": [
-          "breakfast"
-        ]
-      }
-    },
-    "/api/v1/breakfast/manual-refresh/{job_id}": {
-      "get": {
-        "operationId": "get_manual_refresh_job_api_v1_breakfast_manual_refresh__job_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BreakfastManualRefreshJobRead"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Manual Refresh Job",
         "tags": [
           "breakfast"
         ]

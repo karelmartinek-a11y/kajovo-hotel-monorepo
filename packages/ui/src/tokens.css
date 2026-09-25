@@ -99,6 +99,7 @@
   --k-motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --k-motion-spin-sequence: k-spin 800ms linear infinite;
   --k-motion-skeleton-sequence: k-skeleton-wave var(--k-motion-duration-standard) var(--k-motion-ease-standard) infinite;
+  --k-motion-housekeeping-note-sequence: k-hk-note-pulse 1.2s ease-in-out infinite;
 
   --k-spacing-compact: 2px;
   --k-spacing-hairline: 1px;
