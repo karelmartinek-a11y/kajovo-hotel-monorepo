@@ -92,10 +92,7 @@ body:has(.k-task-dialog[open]) { overflow: hidden; }
 .k-hk-help[open] .k-hk-legend { padding-block: var(--k-spacing-3); }
 .k-hk-legend { display: flex; flex-wrap: wrap; overflow: visible; padding: 0; gap: var(--k-spacing-3); border: 0; background: var(--k-color-surface); }
 .k-hk-legend__item { flex: 0 1 auto; border: 0; padding: 0; font-size: 12px; }
-.k-hk-floor { padding: 0; background: var(--k-color-surface); border: 0; border-radius: 0; box-shadow: none; content-visibility: visible; contain-intrinsic-size: none; }
-.k-hk-floor__header { align-items: center; padding-block: var(--k-spacing-3); }
-.k-hk-floor__title strong { font-size: 18px; }
-.k-hk-floor__rooms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--k-spacing-3); align-items: stretch; }
+.k-hk-room-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--k-spacing-3); align-items: stretch; }
 .k-hk-room { min-width: 0; width: 100%; min-height: 0; padding: var(--k-spacing-3); border: 1px solid var(--k-color-border); border-radius: var(--k-radius-1); background: var(--k-color-surface-muted); box-shadow: none; text-align: left; }
 .k-hk-room:hover { transform: none; box-shadow: none; outline: 2px solid var(--k-color-brand-red); }
 .k-hk-room--split { background: linear-gradient(90deg, var(--k-hk-left) 50%, var(--k-hk-right) 50%); }
@@ -123,7 +120,7 @@ body:has(.k-task-dialog[open]) { overflow: hidden; }
 .k-hk-alert { flex-wrap: wrap; padding: var(--k-spacing-3); gap: var(--k-spacing-2); font-size: 14px; }
 .k-hk-alert p { margin: 0; }
 @media (max-width: 1023px) {
-  .k-hk-floor__rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .k-hk-room-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .k-users-table thead { display: none; }
   .k-users-table, .k-users-table tbody { display: block; }
   .k-users-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-block: var(--k-spacing-3); border-bottom: 1px solid var(--k-color-border); }
@@ -132,7 +129,7 @@ body:has(.k-task-dialog[open]) { overflow: hidden; }
   .k-users-table td:not(:first-child)::before { content: attr(data-label); display: block; color: var(--k-color-ink-muted); font-size: 12px; margin-bottom: var(--k-spacing-1); }
 }
 @media (max-width: 599px) and (orientation: portrait) {
-  .k-hk-floor__rooms { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .k-hk-room-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 599px) {
   body:has(.k-hk-board) .k-shell-header { flex-direction: row; flex-wrap: wrap; align-items: center; padding-block: var(--k-spacing-1); }
@@ -175,8 +172,7 @@ body:has(.k-task-dialog[open]) { overflow: hidden; }
   .k-hk-board { gap: var(--k-spacing-2); }
   .k-hk-board__header { display: none; }
   .k-hk-board__source-note { margin: 0; }
-  .k-hk-floor__header { padding-block: var(--k-spacing-1); }
-  .k-hk-floor__rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .k-hk-room-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .k-hk-task { width: min(760px, calc(100% - 24px)); padding: var(--k-spacing-3); }
   .k-hk-task .k-hk-status-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .k-hk-task .k-hk-status-actions button { min-height: 48px; padding: var(--k-spacing-2); }
@@ -338,16 +334,7 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-datebar .k-hk-datebar__today { border-color: var(--k-color-brand-red); background: var(--k-color-brand-red); color: var(--k-color-ink); font-weight: 750; }
 .k-hk-board__source-note { color: var(--k-color-ink-muted); font-size: 12px; letter-spacing: .04em; }
 .k-hk-help summary { color: var(--k-eclipse-soft-copy); }
-
-.k-hk-floor {
-  padding: var(--k-spacing-4);
-  border: 1px solid #ddd8cf;
-  border-radius: var(--k-radius-4);
-  background: var(--k-eclipse-white-glass-soft);
-}
-.k-hk-floor__header { padding: var(--k-eclipse-space-2px) var(--k-eclipse-space-2px) var(--k-spacing-3); }
-.k-hk-floor__title svg { color: var(--k-color-brand-red); }
-.k-hk-floor__rooms { gap: var(--k-eclipse-space-10px); }
+.k-hk-room-grid { gap: var(--k-eclipse-space-10px); }
 .k-hk-room {
   border-color: var(--k-eclipse-room-line);
   border-radius: var(--k-radius-11);
@@ -412,7 +399,6 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
   }
   .k-users-table td,
   .k-users-table tbody tr:nth-child(even) td { background: transparent; }
-  .k-hk-floor { padding: var(--k-spacing-3); }
 }
 
 @media (min-width: 600px) and (max-width: 1023px) {
@@ -437,12 +423,9 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
   .k-users-table tr { grid-template-columns: 1fr 1fr; }
   .k-users-table td { padding: var(--k-eclipse-space-5px); font-size: 12px; line-height: 1.35; }
   .k-users-table td:last-child button { width: 100%; min-width: 0; }
-
-  .k-hk-floor { padding: var(--k-spacing-2); border-radius: var(--k-radius-11); }
   .k-hk-stay { font-size: 11px; line-height: 1.3; }
   .k-hk-stay__label { font-size: 9px; }
   .k-hk-room__persons { font-size: 10px; }
-  .k-hk-floor__header > span:last-child { font-size: 10px; }
   .k-hk-datebar { grid-template-columns: 38px minmax(0, 1fr) 38px 48px; }
   .k-hk-datebar > button,
   .k-hk-datebar label { min-height: 40px; }
@@ -466,7 +449,7 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 }
 .k-hk-board__controls .k-hk-board__header h2 { font-size: 24px; }
 .k-hk-board__controls .k-hk-board__source-note { margin: 0; }
-.k-hk-floor__rooms {
+.k-hk-room-grid {
   grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   grid-auto-rows: 112px;
   gap: var(--k-hk-space-6);
@@ -588,9 +571,7 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
   .k-hk-board__controls .k-hk-board__header h2 { font-size: 20px; }
   .k-hk-board__controls .k-hk-board__source-note { font-size: 10px; letter-spacing: 0; }
   .k-hk-help summary { min-height: 26px; padding-block: 3px; }
-  .k-hk-floor { padding: var(--k-spacing-1); }
-  .k-hk-floor__header { padding: 2px 0 5px; }
-  .k-hk-floor__rooms { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 106px; gap: var(--k-spacing-1); }
+  .k-hk-room-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 106px; gap: var(--k-spacing-1); }
   .k-hk-room { padding: var(--k-hk-space-5); }
   .k-hk-room__topline strong { font-size: 20px; }
   .k-hk-room__occupancy, .k-hk-room__preview, .k-hk-room__housekeeping { font-size: 9px; }

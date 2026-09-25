@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
 import { AppShell, Icon, SkeletonPage, StateView } from '@kajovo/ui';
 import {
@@ -209,6 +209,7 @@ export function PortalRoutes({
   modules: typeof ia.modules;
   deps: PortalRouteDeps;
 }): JSX.Element {
+  const location = useLocation();
   const bundle = React.useMemo(() => getAuthBundle('portal', auth.preferredLocale), [auth.preferredLocale]);
   React.useEffect(() => {
     if (typeof document === 'undefined') {
@@ -335,7 +336,7 @@ export function PortalRoutes({
   });
   const allowedModules = Array.from(allowedLookup.values());
   const primaryRoute = activeRole === 'recepce' ? '/recepce' : (allowedModules[0]?.route ?? '/');
-  const currentSearch = typeof window !== 'undefined' ? window.location.search : '';
+  const currentSearch = location.search;
 
   if (allowedModules.length === 0) {
     const roleLabelText = activeRoleLabel;
@@ -375,6 +376,16 @@ export function PortalRoutes({
     { key: 'housekeeping', label: moduleLabels.housekeeping, route: '/pokojska', pictogram: roomsPictogram, module: 'housekeeping', role: null },
     { key: 'reception', label: localizedRoleLabel('recepce'), route: '/recepce', pictogram: receptionPictogram, module: null, role: 'recepce' as Role },
     { key: 'breakfast', label: moduleLabels.breakfast, route: '/snidane', pictogram: breakfastPictogram, module: 'breakfast', role: null },
+    ...(activeRole === 'pokojská' ? [
+      ...(canWriteModule(auth.permissions, 'lost_found') ? [{
+        key: 'quick_lost_found', label: t('Nález'), route: '/pokojska' + '?' + 'view=lost_found',
+        pictogram: lostFoundPictogram, module: 'housekeeping', role: null,
+      }] : []),
+      ...(canWriteModule(auth.permissions, 'issues') ? [{
+        key: 'quick_issue', label: t('Závada'), route: '/pokojska' + '?' + 'view=issue',
+        pictogram: maintenancePictogram, module: 'housekeeping', role: null,
+      }] : []),
+    ] : []),
     { key: 'lost_found', label: moduleLabels.lost_found, route: '/ztraty-a-nalezy', pictogram: lostFoundPictogram, module: 'lost_found', role: null },
     { key: 'issues', label: moduleLabels.issues, route: '/zavady', pictogram: maintenancePictogram, module: 'issues', role: null },
     { key: 'inventory', label: localizedRoleLabel('sklad'), route: '/sklad', pictogram: inventoryPictogram, module: 'inventory', role: null },
@@ -385,7 +396,9 @@ export function PortalRoutes({
       ?? assignedRoles.find((role) => tab.module && canReadModule(rolePermissionSet(role), tab.module)) ?? null,
   })).filter((tab) => tab.key === 'profile' || (tab.key === 'reception' ? assignedRoles.includes('recepce') : tab.targetRole !== null));
   const portalTabs = tabs.map((tab) => {
-    const selected = currentPath === tab.route || currentPath.startsWith(`${tab.route}/`);
+    const selected = tab.key === 'housekeeping'
+      ? currentPath === '/pokojska' && !['lost_found', 'issue'].includes(new URLSearchParams(currentSearch).get('view') ?? '')
+      : tab.route.includes('?') ? `${currentPath}${currentSearch}` === tab.route : currentPath === tab.route || currentPath.startsWith(`${tab.route}/`);
     const needsRoleSwitch = tab.targetRole !== null && (tab.key === 'reception' ? activeRole !== 'recepce' : !canReadModule(auth.permissions, tab.module!));
     const content = <><img className="k-portal-mobile-tabs__pictogram" src={tab.pictogram} alt="" aria-hidden="true" /><span className="k-portal-mobile-tabs__label">{tab.label}</span></>;
     return needsRoleSwitch ? (

@@ -13,7 +13,14 @@ import {
 } from '@kajovo/shared';
 
 const PRAGUE_TIME_ZONE = 'Europe/Prague';
-const FLOOR_ORDER = ['3', '2', '1', '0'];
+const ROOM_ORDER = [
+  '101', '102', '103', '104', '105', '106', '107', '108',
+  '109', '203', '204', '205', '206', '207', '208', '301',
+  '302', '303', '304', '305', '306', '307', '308', '309',
+  '310', '221', '222', '223', '224', '321', '322', '323',
+  '324', '201', '202', '209', '210',
+];
+const ROOM_ORDER_INDEX = new Map(ROOM_ORDER.map((number, index) => [number, index]));
 
 const OPERATIONAL_LABELS: Record<HousekeepingOperationalState, string> = {
   checkout_departed_dirty: 'VOLNO',
@@ -23,13 +30,6 @@ const OPERATIONAL_LABELS: Record<HousekeepingOperationalState, string> = {
   arrived: 'OBSAZENO-PŘIJEL',
   occupied: 'OBSAZENO-POBYT',
   free: 'VOLNO',
-};
-
-const FLOOR_LABELS: Record<string, string> = {
-  '3': '3. patro',
-  '2': '2. patro',
-  '1': '1. patro',
-  '0': 'Přízemí',
 };
 
 const STATUS_ACTIONS: Array<{ value: HousekeepingRoomStatus; label: string; detail: string }> = [
@@ -71,14 +71,6 @@ function formatDate(value: string): string {
     year: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${value}T12:00:00Z`));
-}
-
-function LayersIcon(): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m12 3 9 5-9 5-9-5 9-5Zm-7.8 9.2L12 16.5l7.8-4.3M4.2 16.2 12 20.5l7.8-4.3" />
-    </svg>
-  );
 }
 
 function AmenityIcon({ kind }: { kind: ReservationAmenityKind }): JSX.Element {
@@ -209,15 +201,11 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
     return () => { ++requestSequence.current; window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('pageshow', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [loadRooms, selectedDate]);
 
-  const roomsByFloor = React.useMemo(() => {
-    const grouped = new Map<string, HousekeepingRoomRead[]>();
-    for (const room of overview?.rooms ?? []) {
-      const rooms = grouped.get(room.floor) ?? [];
-      rooms.push(room);
-      grouped.set(room.floor, rooms);
-    }
-    return grouped;
-  }, [overview?.rooms]);
+  const orderedRooms = React.useMemo(() => [...(overview?.rooms ?? [])].sort((left, right) => {
+    const leftRank = ROOM_ORDER_INDEX.get(left.room_number) ?? ROOM_ORDER.length;
+    const rightRank = ROOM_ORDER_INDEX.get(right.room_number) ?? ROOM_ORDER.length;
+    return leftRank - rightRank || left.room_number.localeCompare(right.room_number, 'cs', { numeric: true }) || left.room_id.localeCompare(right.room_id);
+  }), [overview?.rooms]);
 
   const updateStatus = async (status: HousekeepingRoomStatus): Promise<void> => {
     if (!selectedRoom || !canWrite || savingRef.current) return;
@@ -327,22 +315,9 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
       {error && !selectedRoom ? <div className="k-hk-alert" role="alert">{error}<button type="button" onClick={() => void loadRooms(selectedDate)}>{t("Zkusit znovu")}</button></div> : null}
       {loading ? <div className="k-hk-loading" aria-live="polite">{t("Načítám aktuální přehled pokojů…")}</div> : null}
       {!loading && overview?.rooms.length === 0 ? <div className="k-hk-loading">{t("Better Hotel nevrátil žádné provozní pokoje.")}</div> : null}
-      {!loading ? FLOOR_ORDER.map((floor) => {
-        const rooms = roomsByFloor.get(floor) ?? [];
-        if (rooms.length === 0) return null;
-        const cleaningCount = rooms.filter((room) => room.operational_state.startsWith('checkout') && room.operational_state !== 'checkout_departed_clean').length;
-        return (
-          <section className="k-hk-floor" key={floor}>
-            <header className="k-hk-floor__header">
-              <span className="k-hk-floor__title"><LayersIcon /><strong>{t(FLOOR_LABELS[floor] ?? `${floor}. patro`)}</strong></span>
-              <span>{rooms.length} {rooms.length === 1 ? t('pokoj') : t('pokojů')} <i /> {cleaningCount}{' '}{t("k úklidu")}</span>
-            </header>
-            <div className="k-hk-floor__rooms">
-              {rooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} />)}
-            </div>
-          </section>
-        );
-      }) : null}
+      {!loading && orderedRooms.length > 0 ? <div className="k-hk-room-grid" aria-label={t('Pokoje')}>
+        {orderedRooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} />)}
+      </div> : null}
 
       {selectedRoom ? <TaskDialog title={savingStatus ? t('Zapisuji změnu…') : `${t('Pokoj')} ${selectedRoom.room_number}`} busy={busy} onClose={() => setSelectedRoomId(null)} className="k-hk-task k-hk-task--sheet">
         {savingStatus ? <div className="k-hk-saving" role="status"><span className="k-modal-spinner" aria-hidden="true" /><p>{t("Ukládám stav pokoje")}{' '}{selectedRoom.room_number}{t(". Po zápisu se vrátíte na přehled.")}</p></div> : <>
