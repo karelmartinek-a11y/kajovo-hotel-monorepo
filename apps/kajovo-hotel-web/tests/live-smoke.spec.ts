@@ -165,6 +165,12 @@ async function loginPortalUser(page: import('@playwright/test').Page, email: str
 }
 
 async function collectVisibleModuleRoutes(page: import('@playwright/test').Page) {
+  const mobileTabs = page.getByTestId('portal-mobile-tabs');
+  if (await mobileTabs.isVisible()) {
+    return Array.from(new Set(await mobileTabs.locator('a[href]:not([href="/profil"])').evaluateAll((links) =>
+      links.map((link) => new URL((link as HTMLAnchorElement).href).pathname),
+    ))).sort();
+  }
   const phoneNavigation = page.getByTestId('module-navigation-phone');
   if (await phoneNavigation.isVisible()) {
     await phoneNavigation.getByRole('button').click();
@@ -489,9 +495,11 @@ for (const role of ['recepce', 'pokojska']) {
     await page.screenshot({ path: testInfo.outputPath(`pokoje-board-${role}.png`), fullPage: true });
     const originalViewport = page.viewportSize();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByTestId('module-navigation-phone').getByRole('button', { name: 'Menu' }).click();
-    await page.getByRole('dialog', { name: 'Navigace' }).getByRole('menuitem', { name: /Pokoje/ }).click();
-    await expect(page.getByRole('dialog', { name: 'Navigace' })).toHaveCount(0);
+    const mobileTabs = page.getByTestId('portal-mobile-tabs');
+    await expect(mobileTabs.getByRole('link', { name: /Pokoje/ })).toBeVisible();
+    await mobileTabs.getByRole('link', { name: /Pokoje/ }).click();
+    await expect(page).toHaveURL(/\/pokojska$/);
+    await expect(page.getByTestId('module-navigation-phone')).toBeHidden();
     if (originalViewport) await page.setViewportSize(originalViewport);
     await card.click();
     await expect(page.getByRole('dialog')).toContainText('Stát neuveden');
@@ -879,6 +887,38 @@ for (const scenario of ROLE_SCENARIOS) {
     const expectedVisibleModules = scenario.visibleModules.filter((route) => MODULE_ROOTS.includes(route as typeof MODULE_ROOTS[number]));
     const visibleModuleRoutes = await collectVisibleModuleRoutes(page);
     expect(visibleModuleRoutes).toEqual(expectedVisibleModules.slice().sort());
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileTabs = page.getByTestId('portal-mobile-tabs');
+    await expect(mobileTabs).toBeVisible();
+    expect(await collectVisibleModuleRoutes(page)).toEqual(expectedVisibleModules.slice().sort());
+    await expect(mobileTabs.getByRole('link', { name: 'Profil' })).toBeVisible();
+    await mobileTabs.getByRole('link', { name: 'Profil' }).click();
+    await expect(page).toHaveURL(/\/profil$/);
+    await expect(mobileTabs.getByRole('link', { name: 'Profil' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('.k-app-header')).toHaveCSS('position', 'fixed');
+    const mobileGeometry = await page.evaluate(() => {
+      const header = document.querySelector('.k-app-header')!.getBoundingClientRect();
+      const brand = document.querySelector('.k-app-header .k-wordmark')!.getBoundingClientRect();
+      const footer = document.querySelector('.k-portal-mobile-tabs')!.getBoundingClientRect();
+      const flags = Array.from(document.querySelectorAll('.k-app-header .k-locale-switcher__option')).map((button) => button.getBoundingClientRect());
+      return { headerTop: header.top, headerHeight: header.height, brandWidth: brand.width, brandTop: brand.top, brandBottom: brand.bottom, footerBottom: footer.bottom, footerHeight: footer.height, viewportHeight: window.innerHeight, flagsInside: flags.every((flag) => flag.top >= header.top && flag.bottom <= header.bottom) };
+    });
+    expect(mobileGeometry.headerTop).toBe(0);
+    expect(mobileGeometry.headerHeight).toBe(44);
+    expect(mobileGeometry.brandWidth).toBeGreaterThanOrEqual(28);
+    expect(mobileGeometry.brandTop).toBeGreaterThanOrEqual(0);
+    expect(mobileGeometry.brandBottom).toBeLessThanOrEqual(44);
+    expect(mobileGeometry.flagsInside).toBeTruthy();
+    expect(mobileGeometry.footerBottom).toBe(mobileGeometry.viewportHeight);
+    expect(mobileGeometry.footerHeight).toBe(48);
+    await page.evaluate(() => window.scrollTo(0, 500));
+    await expect.poll(() => page.locator('.k-app-header').evaluate((header) => header.getBoundingClientRect().top)).toBe(0);
+    await expect.poll(() => mobileTabs.evaluate((footer) => footer.getBoundingClientRect().bottom)).toBe(mobileGeometry.viewportHeight);
+    await expect(page.getByRole('button', { name: 'Čeština' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'English' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Українська' })).toBeVisible();
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     for (const route of scenario.allowedRoutes) {
       await expectAllowedRoute(page, route);

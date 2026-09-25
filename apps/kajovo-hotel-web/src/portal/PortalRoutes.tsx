@@ -221,6 +221,7 @@ export function PortalRoutes({
   const navigationRules = React.useMemo(
     () => ({
       ...ia.navigation.rules,
+      enableSearchInMenuOnPhone: false,
       phoneDrawerLabel: navigation.phoneDrawerLabel,
       phoneSearchPlaceholder: navigation.phoneSearchPlaceholder,
       ariaLabel: navigation.ariaLabel,

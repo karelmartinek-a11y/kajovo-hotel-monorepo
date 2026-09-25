@@ -7,26 +7,24 @@ Tento dokument navazuje na cutover/release runbook a slouží jako praktický UA
 - Testované moduly: Přehled, Snídaně, Ztráty a nálezy, Závady, Skladové hospodářství, Hlášení.
 - Utility stavy: `/intro`, `/offline`, `/maintenance`, `/404`.
 - Každý scénář se provádí minimálně na:
-  - **telefonu** (drawer „Menu“, vyhledávání v menu),
-  - **tabletu** (max. 4 položky top-level, ověřit overflow),
-  - **desktopu** (max. 6 položek top-level, ověřit overflow „Další“).
+  - **telefonu** (pevné záhlaví s vlajkami a spodní lišta ikon dostupných podle role),
+  - **tabletu** (přichycené záhlaví a vodorovná navigace),
+  - **desktopu** (postranní navigace).
 - V každém scénáři ověřte i chování při prázdných datech, chybě API (5xx) a offline režimu.
 
 ## Device & navigace checklist (provedení u každého modulu)
 
 1. **Telefon**
-   - Otevřít drawer přes „Menu“.
-   - Ověřit funkčnost hledání v menu (`Hledat v menu`).
-   - Ověřit, že se všechny aktivní moduly dají otevřít bez ztráty kontextu.
+   - Ověřit, že logo a tři vlajky zůstávají nahoře a ikony modulů a profilu dole při posuvu obsahu.
+   - Ověřit přepnutí všech tří jazyků a správné označení aktivního modulu.
+   - Ověřit, že se všechny moduly povolené aktivní rolí dají otevřít včetně případného vodorovného posuvu lišty.
 2. **Tablet**
-   - Ověřit, že viditelné top-level položky nepřesáhnou 4.
-   - Přebytek je dostupný přes položku **„Další“** (overflow).
+   - Ověřit přichycené záhlaví, přístupný profil a vodorovný posuv navigace bez posuvu celého dokumentu.
 3. **Desktop**
-   - Ověřit, že viditelné top-level položky nepřesáhnou 6.
-   - Přebytek je dostupný přes **„Další“**.
-4. **Overflow navigace**
-   - Přes „Další“ otevřít alespoň 2 moduly ze sekce Evidence.
-   - Návrat zpět na Přehled musí fungovat bez reload loop/runtimových chyb.
+   - Ověřit stálý postranní panel, profil a všechny povolené sekce.
+4. **Navigace mezi moduly**
+   - Otevřít alespoň 2 moduly ze sekce Evidence, pokud je role dovoluje.
+   - Návrat na výchozí modul aktivní role musí fungovat bez smyčky přesměrování a runtime chyb.
 
 ## UAT scénáře (hotel staff)
 
