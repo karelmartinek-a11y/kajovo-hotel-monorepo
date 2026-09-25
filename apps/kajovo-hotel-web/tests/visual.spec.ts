@@ -155,6 +155,9 @@ async function waitForView(page: Page, view: ViewCheck) {
 async function captureAudit(page: Page, testInfo: { outputPath: (name: string) => string }, name: string) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
+  if ((page.viewportSize()?.width ?? 0) <= 599) {
+    await page.screenshot({ path: testInfo.outputPath(`${name}-viewport.png`), fullPage: false });
+  }
   await writeFile(testInfo.outputPath(`${name}.txt`), await page.locator('body').innerText(), 'utf8');
 }
 
@@ -273,9 +276,11 @@ test.describe('KDGS role scénáře portálu', () => {
     test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
       const user = await createPortalUser(request, testInfo, scenario.roles);
       await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
-      await page.locator('.k-shell-profile-link').click();
+      const isPhone = (page.viewportSize()?.width ?? 0) <= 599;
+      const profileLink = isPhone ? page.getByTestId('portal-mobile-tabs').getByRole('link', { name: 'Profil' }) : page.locator('.k-shell-profile-link');
+      await profileLink.click();
       await expect(page).toHaveURL(/\/profil$/);
-      const firstModule = page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first();
+      const firstModule = isPhone ? page.getByTestId('portal-mobile-tabs').locator('a[href]:not([href="/profil"])').first() : page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first();
       const firstModulePath = new URL((await firstModule.getAttribute('href'))!, page.url()).pathname;
       await firstModule.click();
       await expect.poll(() => new URL(page.url()).pathname).toBe(firstModulePath);
@@ -291,11 +296,18 @@ test.describe('KDGS role scénáře portálu', () => {
         for (const view of scenario.views) {
           await waitForView(page, view);
           await assertKdgsGeometry(page, `${scenario.name} / ${view.name} / ${locale}`);
-          await expect(page.locator('.k-shell-profile-link')).toBeVisible();
-          await expect(page.locator('.k-shell-profile-link')).toContainText(locale === 'en' ? 'Profile' : locale === 'uk' ? 'Профіль' : 'Profil');
-          await expect(page.getByTestId('module-navigation')).toBeVisible();
-          if ((page.viewportSize()?.width ?? 0) <= 599 && await page.locator('.k-hk-board').isVisible()) {
-            await expect(page.getByTestId('module-navigation-phone').locator('button')).toBeVisible();
+          const localizedProfile = locale === 'en' ? 'Profile' : locale === 'uk' ? 'Профіль' : 'Profil';
+          if (isPhone) {
+            await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: localizedProfile })).toBeVisible();
+          } else {
+            await expect(page.locator('.k-shell-profile-link')).toBeVisible();
+            await expect(page.locator('.k-shell-profile-link')).toContainText(localizedProfile);
+            await expect(page.getByTestId('module-navigation')).toBeVisible();
+          }
+          if ((page.viewportSize()?.width ?? 0) <= 599) {
+            await expect(page.getByTestId('portal-mobile-tabs')).toBeVisible();
+            await expect(page.getByTestId('module-navigation-phone')).toBeHidden();
+            await expect(page.locator('.k-app-header')).toHaveCSS('position', 'fixed');
           } else {
             await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
           }

@@ -47,7 +47,7 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 
 ## Responzivní kontrakt a ověření
 
-Varianta „Eclipse Adaptive“ používá paletu Space Black `#000000`, Orange `#FF6A2E`, Ivory `#F7F4ED` a Silver `#C0C0C0`. Desktop má tmavý navigační rail a světlé pracovní plátno; tablet a mobil kompaktní aplikační hlavičku. Oddělený seznam/editor a samostatné úlohy zůstávají zachovány. Přehled pokojů má pevně vysoké kompaktní dlaždice; na mobilu drženém na výšku jsou čtyři v řádku. Dlaždice současně ukazuje číslo, aktuální obsazenost, zkrácený náhled pobytů vybraného dne a úklid. Úplné údaje o pobytech a volba stavu jsou ve spodním detailu otevřeném výběrem dlaždice. Ovládání dne zůstává při svislém posuvu přehledu nahoře; otevřené mobilní Menu je nad ním a všechny jeho odkazy lze stisknout. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni. Detail má vnitřní svislý posuv pro dlouhé údaje a po ověřeném zápisu se automaticky zavře.
+Varianta „Eclipse Adaptive“ používá paletu Space Black `#000000`, Orange `#FF6A2E`, Ivory `#F7F4ED` a Silver `#C0C0C0`. Desktop má tmavý navigační rail a světlé pracovní plátno; tablet kompaktní aplikační hlavičku. Mobilní uživatelský portál do šířky 599 px má pevné záhlaví vysoké 44 px s logem a třemi vlajkami pro volbu jazyka. Pevná spodní lišta vysoká 48 px plus systémový bezpečný okraj obsahuje 20px ikony modulů dostupných aktivní roli a profil; odkazy mají dotykovou výšku 44 px, přístupné názvy a při větším počtu modulů se posouvají vodorovně. Hledání a vysouvací Menu v tomto mobilním pohledu nejsou. Přepnutí přiřazené role zůstává v záhlaví, pokud má uživatel více rolí. Administrace používá vlastní mobilní navigaci. Oddělený seznam/editor a samostatné úlohy zůstávají zachovány. Přehled pokojů má pevně vysoké kompaktní dlaždice; na mobilu drženém na výšku jsou čtyři v řádku. Dlaždice současně ukazuje číslo, aktuální obsazenost, zkrácený náhled pobytů vybraného dne a úklid. Úplné údaje o pobytech a volba stavu jsou ve spodním detailu otevřeném výběrem dlaždice. Ovládání dne zůstává při svislém posuvu přehledu nahoře. Na mobilu a tabletu do šířky 1023 px má přehled vlastní zbývající plochu displeje a spodní navigace samostatný řádek mimo ni. Detail má vnitřní svislý posuv pro dlouhé údaje a po ověřeném zápisu se automaticky zavře.
 
 Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu duplicity, validační kroky, probíhající zápis bez tlačítek, automatický návrat, chybu PATCH a obnovu. Responzivní scénář se 37 pokoji a dlouhou zemí/jménem kontroluje 1440 × 900, 834 × 1112, 390 × 844, 320 × 700, 844 × 390 a 667 × 375; kontroluje čtyři stejně velké dlaždice v portrétu, šířku dokumentu a spodní detail ve výšce displeje. Portálový smoke ověřuje tentýž sdílený tok a role ikon.
 
@@ -55,11 +55,11 @@ Admin smoke testy kontrolují skutečné CRUD API, zachování konceptu, chybu d
 
 | Kategorie | Rozhodnutí |
 |---|---|
-| Produkční kód | Aktualizovat sdílený HousekeepingRooms a jeho scoped CSS; API a databázi ověřit beze změny. |
-| Testy | Aktualizovat admin a portálový smoke pro čtyřsloupcový portrét, pevnou velikost, spodní detail, úplné údaje a klikatelnost otevřeného Menu; vizuální scénáře ověřit. |
+| Produkční kód | Aktualizovat portálovou větev AppShell, mobilní styl a jazykové volby; sdílený datový tok pokojů, API a databázi ověřit beze změny. |
+| Testy | Aktualizovat portálový smoke pro role, spodní lištu, profil, pevné záhlaví a vlajky; portálové vizuální scénáře ověřit na mobilu, tabletu i desktopu. Admin testy ověřit beze změny. |
 | CI a gates | Ověřit beze změny: workflow již spouští obě dotčené smoke sady, vizuální testy a release gate. |
 | Dokumentace | Aktualizovat tento aktuální inventář a responzivní kontrakt. Datová schémata a modul Pokoje ověřit beze změny. |
-| Komentáře a poznámky | Aktualizovat pouze účelný popis design vrstvy; funkční TODO, docstringy ani provozní poznámky nejsou změnou dotčeny. |
-| Instrukce | Aktualizovat AGENTS pro čtyři dlaždice v mobilním portrétu a spodní detail. |
-| Fixtures a texty | Aktualizovat EN/UK překlady aktuální obsazenosti a zkratek, testová data a selektory pro nový detail. |
-| Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny; deploy konfiguraci ověřit beze změny. |
+| Komentáře a poznámky | Ověřit beze změny: dotčené komponenty nemají popisný komentář ani TODO se starým chováním. |
+| Instrukce | Aktualizovat AGENTS pro mobilní navigační kontrakt portálu. |
+| Fixtures a texty | Ověřit překlady názvů modulů a jazyků beze změny; vlajky doplnit do UI a nové selektory do testů. |
+| Build a kontrakty | Ověřit oba buildy, OpenAPI a generovaný klient beze změny; CI a deploy konfiguraci ověřit beze změny. |
