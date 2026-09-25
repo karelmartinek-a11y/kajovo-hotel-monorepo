@@ -6,11 +6,8 @@
   },
   "navigation": {
     "rules": {
-      "maxTopLevelItemsDesktop": 6,
-      "overflowLabel": "Další",
       "enableSearchInMenuOnPhone": true,
       "grouping": true,
-      "maxTopLevelItemsTablet": 4,
       "phoneDrawerLabel": "Menu",
       "phoneSearchPlaceholder": "Hledat v menu"
     },

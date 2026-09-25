@@ -4427,7 +4427,7 @@ function AppRoutes(): JSX.Element {
     ...module,
     route: toAdminNavRoute(module.route),
   }));
-  const adminHeaderModuleOrder = ['housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'profile', 'users', 'settings'];
+  const adminHeaderModuleOrder = ['dashboard', 'housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'reports', 'profile', 'users', 'settings'];
   const adminShellModules = auth.role === 'admin'
     ? adminHeaderModuleOrder
       .map((key) => adminNavModules.find((module) => module.key === key))
@@ -4437,8 +4437,6 @@ function AppRoutes(): JSX.Element {
     ? {
       ...ia.navigation.rules,
       grouping: false,
-      maxTopLevelItemsDesktop: adminHeaderModuleOrder.length,
-      maxTopLevelItemsTablet: 4,
     }
     : ia.navigation.rules;
   const roleHomeRoute = effectiveRoleView === 'admin'

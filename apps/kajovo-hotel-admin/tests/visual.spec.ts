@@ -126,12 +126,36 @@ test.describe('KDGS vizuální a geometrická kontrola adminu', () => {
     });
   }
 
-  test('autentizované admin view drží brand a geometrii', async ({ page }) => {
+  test('autentizované admin view drží brand a geometrii', async ({ page }, testInfo) => {
     await adminLogin(page);
+    await page.locator('.k-shell-profile-link').click();
+    await expect(page).toHaveURL(/\/admin\/profil$/);
+    for (const route of ['/', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni', '/uzivatele', '/nastaveni']) {
+      await expect(page.getByTestId('module-navigation-desktop').locator(`a[href="/admin${route === '/' ? '' : route}"]`)).toHaveCount(1);
+    }
+    await page.getByTestId('module-navigation-desktop').locator('a[href="/admin"]').click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
 
     for (const view of adminViews) {
       await waitForView(page, view);
       await assertKdgsGeometry(page, view.name);
+      await expect(page.getByRole('link', { name: 'Profil' }).first()).toBeVisible();
+      await expect(page.getByTestId('module-navigation')).toBeVisible();
+      await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
+      await expect.poll(() => page.locator('.k-wordmark-mark').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBeTruthy();
+      await expect.poll(() => page.locator('.k-wordmark').evaluate((wordmark) => {
+        const mark = wordmark.querySelector('.k-wordmark-mark')?.getBoundingClientRect();
+        const name = wordmark.querySelector('.k-wordmark-name')?.getBoundingClientRect();
+        return Boolean(mark && name && mark.right <= name.left + 1);
+      })).toBeTruthy();
+      if (view.name === 'dashboard') {
+        await page.evaluate(() => window.scrollTo(0, 500));
+        if (await page.evaluate(() => window.scrollY > 0)) {
+          await expect.poll(() => page.locator('.k-app-header').evaluate((header) => Math.round(header.getBoundingClientRect().top))).toBe(0);
+        }
+      }
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: testInfo.outputPath(`${view.name}.png`), fullPage: true });
     }
   });
 });

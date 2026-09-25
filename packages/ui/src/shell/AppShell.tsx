@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { t } from '@kajovo/shared';
 import '../tokens.css';
 import { KajovoWordmark } from './KajovoWordmark';
@@ -17,6 +18,7 @@ type AppShellProps = {
   panelLayout?: PanelLayout;
   brandHref?: string;
   headerControls?: React.ReactNode;
+  profileLabel?: string;
 };
 
 const MAIN_TARGET_ID = 'main-content';
@@ -30,6 +32,7 @@ export function AppShell({
   currentPath,
   brandHref,
   headerControls,
+  profileLabel,
 }: AppShellProps): JSX.Element {
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
   const wordmarkVariant = panelLayout === 'admin' ? 'admin' : 'portal';
@@ -82,11 +85,15 @@ export function AppShell({
         <div className="k-shell-inner k-shell-header">
           {!isIntroView ? <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} /> : null}
           <ModuleNavigation
-            modules={modules}
+            modules={modules.filter((module) => module.key !== 'profile')}
             rules={navigationRules}
             sections={navigationSections}
             currentPath={currentPath}
           />
+          <Link className="k-shell-profile-link" to="/profil" aria-current={currentPath === '/profil' ? 'page' : undefined}>
+            <Icon name="users" className="k-nav-link__icon" />
+            <span>{profileLabel ?? t('Profil')}</span>
+          </Link>
           {headerControls ? <div className="k-shell-header-controls">{headerControls}</div> : null}
         </div>
       </header>

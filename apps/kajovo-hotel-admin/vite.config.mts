@@ -16,6 +16,12 @@ export default defineConfig({
         next();
       });
     },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url?.startsWith('/brand/')) req.url = `/admin${req.url}`;
+        next();
+      });
+    },
   }],
   server: {
     port: 5173,
