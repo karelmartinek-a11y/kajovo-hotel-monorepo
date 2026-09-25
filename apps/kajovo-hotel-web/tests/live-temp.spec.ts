@@ -227,6 +227,11 @@ async function expectCompactBreakfastPhoneLayout(page: Page, roomNumber: string)
   await expectNoViewportOverflow(page);
 }
 
+function visibleBreakfastRow(page: Page, roomNumber: string) {
+  return page.locator('.k-breakfast-serving-page [data-testid="breakfast-serving-mobile-row"]:visible, .k-breakfast-serving-page .k-table-wrap tr:visible')
+    .filter({ hasText: roomNumber });
+}
+
 async function collectNavRoutes(page: Page, testId: string): Promise<string[]> {
   const locator = page.getByTestId(testId);
   if (!(await locator.isVisible())) {
@@ -283,19 +288,20 @@ test.describe('live temp production verification', () => {
       await loginAdmin(page);
       await page.goto('/admin/snidane', { waitUntil: 'networkidle' });
       await selectBreakfastDate(page, serviceDate);
-      await expect(page.getByText(order.room_number, { exact: true })).toBeVisible();
+      const adminRow = visibleBreakfastRow(page, order.room_number);
+      await expect(adminRow).toBeVisible();
       await expect(page.getByRole('button', { name: 'Předchozí den' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Následující den' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Dnes' })).toBeVisible();
       await expect(page.getByLabel(/import pdf/i)).toHaveCount(0);
       await expect(page.getByRole('button', { name: /export snídaní|smazat den|aktualizovat z api/i })).toHaveCount(0);
-      const adminRow = page.getByRole('row').filter({ hasText: order.room_number });
       await expect(adminRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`)).toHaveCount(0);
       await expect(adminRow.getByRole('button', { name: 'Vydat' })).toBeVisible();
       await adminRow.getByRole('button', { name: 'Vydat' }).click();
       await expect(adminRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await page.reload({ waitUntil: 'networkidle' });
-      const reloadedAdminRow = page.getByRole('row').filter({ hasText: order.room_number });
+      await selectBreakfastDate(page, serviceDate);
+      const reloadedAdminRow = visibleBreakfastRow(page, order.room_number);
       await expect(reloadedAdminRow.getByRole('button', { name: 'Vrátit výdej' })).toBeVisible();
       await expectNoViewportOverflow(page);
       await page.screenshot({ path: testInfo.outputPath(`breakfast-admin-${testInfo.project.name}.png`), fullPage: true });
@@ -304,7 +310,7 @@ test.describe('live temp production verification', () => {
       await loginPortalWithCredentials(page, receptionUser.email, receptionUser.password);
       await page.goto('/snidane', { waitUntil: 'networkidle' });
       await selectBreakfastDate(page, serviceDate);
-      const receptionRow = page.getByRole('row').filter({ hasText: order.room_number });
+      const receptionRow = visibleBreakfastRow(page, order.room_number);
       await expect(receptionRow).toBeVisible();
       await expect(page.getByRole('link', { name: 'Export snídaní (PDF)' })).toBeVisible();
       await expect(receptionRow.getByLabel(`Poznámka pro pokoj ${order.room_number}`)).toHaveCount(0);
@@ -319,7 +325,7 @@ test.describe('live temp production verification', () => {
       if (testInfo.project.name === 'phone') {
         await expectCompactBreakfastPhoneLayout(page, order.room_number);
       } else {
-        const breakfastRow = page.getByRole('row').filter({ hasText: order.room_number });
+        const breakfastRow = visibleBreakfastRow(page, order.room_number);
         await expect(breakfastRow).toBeVisible();
         await expect(breakfastRow.locator('input.k-breakfast-note')).toHaveCount(0);
         await expect(breakfastRow.getByRole('button', { name: 'Vydáno' })).toBeVisible();
