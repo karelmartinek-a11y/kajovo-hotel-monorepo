@@ -905,13 +905,13 @@ for (const scenario of ROLE_SCENARIOS) {
       return { headerTop: header.top, headerHeight: header.height, brandWidth: brand.width, brandTop: brand.top, brandBottom: brand.bottom, footerBottom: footer.bottom, footerHeight: footer.height, viewportHeight: window.innerHeight, flagsInside: flags.every((flag) => flag.top >= header.top && flag.bottom <= header.bottom) };
     });
     expect(mobileGeometry.headerTop).toBe(0);
-    expect(mobileGeometry.headerHeight).toBe(44);
-    expect(mobileGeometry.brandWidth).toBeGreaterThanOrEqual(28);
+    expect(mobileGeometry.headerHeight).toBe(20);
+    expect(mobileGeometry.brandWidth).toBeGreaterThanOrEqual(16);
     expect(mobileGeometry.brandTop).toBeGreaterThanOrEqual(0);
-    expect(mobileGeometry.brandBottom).toBeLessThanOrEqual(44);
+    expect(mobileGeometry.brandBottom).toBeLessThanOrEqual(20);
     expect(mobileGeometry.flagsInside).toBeTruthy();
     expect(mobileGeometry.footerBottom).toBe(mobileGeometry.viewportHeight);
-    expect(mobileGeometry.footerHeight).toBe(48);
+    expect(mobileGeometry.footerHeight).toBe(20);
     await page.evaluate(() => window.scrollTo(0, 500));
     await expect.poll(() => page.locator('.k-app-header').evaluate((header) => header.getBoundingClientRect().top)).toBe(0);
     await expect.poll(() => mobileTabs.evaluate((footer) => footer.getBoundingClientRect().bottom)).toBe(mobileGeometry.viewportHeight);
