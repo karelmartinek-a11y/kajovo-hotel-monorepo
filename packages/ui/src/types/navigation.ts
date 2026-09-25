@@ -17,9 +17,6 @@ export type NavigationSection = {
 };
 
 export type NavigationRules = {
-  maxTopLevelItemsDesktop: number;
-  maxTopLevelItemsTablet?: number;
-  overflowLabel: string;
   phoneDrawerLabel?: string;
   phoneSearchPlaceholder?: string;
   enableSearchInMenuOnPhone?: boolean;

@@ -4,7 +4,6 @@ export type AuthContext = 'portal' | 'admin';
 
 export type NavigationCopy = {
   ariaLabel: string;
-  overflowLabel: string;
   phoneDrawerLabel: string;
   phoneSearchPlaceholder: string;
 };
@@ -164,6 +163,7 @@ const MODULE_LABELS: Record<AuthLocale, Record<string, string>> = {
     reports: 'Hlášení',
     users: 'Uživatelé',
     settings: 'Nastavení',
+    profile: 'Profil',
     other: 'Další',
   },
   en: {
@@ -176,25 +176,24 @@ const MODULE_LABELS: Record<AuthLocale, Record<string, string>> = {
     reports: 'Reports',
     users: 'Users',
     settings: 'Settings',
+    profile: 'Profile',
     other: 'More',
   },
-  uk: { dashboard: 'Огляд', breakfast: 'Сніданки', housekeeping: 'Номери', lost_found: 'Бюро знахідок', issues: 'Несправності', inventory: 'Склад', reports: 'Звіти', users: 'Користувачі', settings: 'Налаштування', other: 'Інше' },
+  uk: { dashboard: 'Огляд', breakfast: 'Сніданки', housekeeping: 'Номери', lost_found: 'Бюро знахідок', issues: 'Несправності', inventory: 'Склад', reports: 'Звіти', users: 'Користувачі', settings: 'Налаштування', profile: 'Профіль', other: 'Інше' },
 };
 
 const NAVIGATION_COPY: Record<AuthLocale, NavigationCopy> = {
   cs: {
     ariaLabel: 'Hlavní navigace',
-    overflowLabel: 'Další',
     phoneDrawerLabel: 'Menu',
     phoneSearchPlaceholder: 'Hledat v menu',
   },
   en: {
     ariaLabel: 'Main navigation',
-    overflowLabel: 'More',
     phoneDrawerLabel: 'Menu',
     phoneSearchPlaceholder: 'Search the menu',
   },
-  uk: { ariaLabel: 'Головна навігація', overflowLabel: 'Інше', phoneDrawerLabel: 'Меню', phoneSearchPlaceholder: 'Пошук у меню' },
+  uk: { ariaLabel: 'Головна навігація', phoneDrawerLabel: 'Меню', phoneSearchPlaceholder: 'Пошук у меню' },
 };
 
 const NAVIGATION_SECTIONS: Record<AuthLocale, Record<string, string>> = {

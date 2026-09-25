@@ -2,11 +2,8 @@
 
 ## Navigation
 
-`navigation.rules` supports responsive overflow and phone drawer behavior:
+`navigation.rules` controls grouping and the supplementary phone menu. All authorized active modules appear directly in the navigation row or desktop sidebar:
 
-- `maxTopLevelItemsDesktop` (required)
-- `maxTopLevelItemsTablet` (optional; defaults to desktop limit minus 2)
-- `overflowLabel` (required)
 - `grouping` (required)
 - `enableSearchInMenuOnPhone` (optional)
 - `phoneDrawerLabel` (optional)
@@ -36,10 +33,4 @@ Each `modules[]` item now accepts additional optional metadata without breaking 
 
 All previous fields remain valid (`key`, `label`, `route`, `active`, `routes`).
 
-## Migration notes (1.1.x -> 1.2.x)
-
-1. Keep existing module shape; no mandatory field changes.
-2. Add `navigation.sections` progressively.
-3. Add per-module `section` where grouping should be explicit.
-4. Add `maxTopLevelItemsTablet`, `phoneDrawerLabel`, and `phoneSearchPlaceholder` to tune responsive navigation.
-5. The legacy explicit `other` module can remain in IA but should be `active: false` when overflow menu handles "Další" automatically.
+The explicit `other` module remains inactive; the phone menu lists the same authorized modules as the direct navigation row.

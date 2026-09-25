@@ -153,6 +153,7 @@ async function waitForView(page: Page, view: ViewCheck) {
 }
 
 async function captureAudit(page: Page, testInfo: { outputPath: (name: string) => string }, name: string) {
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
   await writeFile(testInfo.outputPath(`${name}.txt`), await page.locator('body').innerText(), 'utf8');
 }
@@ -272,6 +273,12 @@ test.describe('KDGS role scénáře portálu', () => {
     test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
       const user = await createPortalUser(request, testInfo, scenario.roles);
       await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
+      await page.locator('.k-shell-profile-link').click();
+      await expect(page).toHaveURL(/\/profil$/);
+      const firstModule = page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first();
+      const firstModulePath = new URL((await firstModule.getAttribute('href'))!, page.url()).pathname;
+      await firstModule.click();
+      await expect.poll(() => new URL(page.url()).pathname).toBe(firstModulePath);
 
       for (const locale of ['cs', 'en', 'uk'] as const) {
         if (locale !== 'cs') {
@@ -284,6 +291,16 @@ test.describe('KDGS role scénáře portálu', () => {
         for (const view of scenario.views) {
           await waitForView(page, view);
           await assertKdgsGeometry(page, `${scenario.name} / ${view.name} / ${locale}`);
+          await expect(page.locator('.k-shell-profile-link')).toBeVisible();
+          await expect(page.locator('.k-shell-profile-link')).toContainText(locale === 'en' ? 'Profile' : locale === 'uk' ? 'Профіль' : 'Profil');
+          await expect(page.getByTestId('module-navigation')).toBeVisible();
+          await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
+          if (view.name === 'recepce') {
+            await page.evaluate(() => window.scrollTo(0, 500));
+            if (await page.evaluate(() => window.scrollY > 0)) {
+              await expect.poll(() => page.locator('.k-app-header').evaluate((header) => Math.round(header.getBoundingClientRect().top))).toBe(0);
+            }
+          }
           await captureAudit(page, testInfo, `${locale}-${view.name}`);
         }
       }

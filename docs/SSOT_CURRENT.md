@@ -7,6 +7,7 @@
 - `apps/kajovo-hotel-api` je FastAPI backend s OpenAPI exportem v `apps/kajovo-hotel-api/openapi.json`.
 - `packages/shared` drží RBAC, i18n a generovaný API klient v `packages/shared/src/generated/client.ts`.
 - `packages/ui` drží sdílený shell a UI komponenty.
+- Přihlášené aplikace používají `AppShell`: desktopový postranní panel a přichycené záhlaví na tabletu a mobilu. Profil má stálý samostatný odkaz; odkazy na sekce vycházejí z oprávnění a na úzké obrazovce se posouvají uvnitř navigačního řádku. Podrobnosti jsou v `docs/ui-navigation.md`.
 
 ## Runtime a bezpečnost
 

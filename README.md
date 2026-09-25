@@ -26,6 +26,7 @@ Aktivní current-state dokumentace je centralizovaná v `docs/`.
 - `docs/testing.md`: testovací vrstvy a doporučené lokální běhy
 - `docs/ci-gates.md`: blokující CI guardy a parity kontroly
 - `docs/release-checklist.md`: release checklist pro web, admin a API
+- `docs/ui-navigation.md`: aktuální navigační a responzivní kontrakt portálu a administrace
 
 ## Autorita designu a provozu
 

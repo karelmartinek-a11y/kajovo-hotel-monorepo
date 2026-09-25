@@ -221,13 +221,12 @@ export function PortalRoutes({
   const navigationRules = React.useMemo(
     () => ({
       ...ia.navigation.rules,
-      overflowLabel: navigation.overflowLabel,
       phoneDrawerLabel: navigation.phoneDrawerLabel,
       phoneSearchPlaceholder: navigation.phoneSearchPlaceholder,
       ariaLabel: navigation.ariaLabel,
       defaultGroupLabel: moduleLabels['other'],
     }),
-    [moduleLabels['other'], navigation.ariaLabel, navigation.overflowLabel, navigation.phoneDrawerLabel, navigation.phoneSearchPlaceholder]
+    [moduleLabels['other'], navigation.ariaLabel, navigation.phoneDrawerLabel, navigation.phoneSearchPlaceholder]
   );
   const navigationSections = React.useMemo(
     () =>
@@ -375,6 +374,7 @@ export function PortalRoutes({
   return (
     <AppShell
       panelLayout="portal"
+      profileLabel={moduleLabels.profile}
       modules={navigationModules}
       navigationRules={navigationRules}
       navigationSections={navigationSections}

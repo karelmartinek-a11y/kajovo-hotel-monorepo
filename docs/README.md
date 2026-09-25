@@ -13,6 +13,7 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 - `docs/testing.md`: lokální testy, Playwright vrstvy a minimální kontrolní sada.
 - `docs/how-to-deploy.md`: produkční deploy a release evidence.
 - `docs/ci-gates.md`: skutečné blokující guardy v CI.
+- `docs/ui-navigation.md`: společná navigace portálu a administrace ve třech šířkách.
 
 ## Current-state autority
 
