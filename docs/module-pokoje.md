@@ -30,7 +30,7 @@ Další pokoje z inventáře následují číselně za tímto pořadím. Ostatn�
 
 Pobyty odpovídají vybranému dni; obsazenost a úklid aktuálnímu okamžiku. API uvádí `occupancy_date`, `housekeeping_status_is_current=true`, `housekeeping_status_key` a `ready_for_arrival`. Země se čte z adresy hlavního hosta v expandovaném `guest_list.guest.address` podle `main_guest`; API předá kód země pro jazykově správné zobrazení. Pokud chybí, zobrazuje se lokalizované „Stát neuveden“.
 
-Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá polovina je zelená při stavu `clean` bez ohledu na příjezd, světle zelená při `stay_no_linen` nebo `stay_with_linen`; jinak při plánovaném příjezdu červená a bez příjezdu prázdná. Bez události a bez uklizení zůstává karta neutrální. Současná obsazenost je na každé dlaždici i v detailu výslovně označená textem a kontrastní barvou.
+Pouze pokoj s příjezdem nebo odjezdem má dvě poloviny. Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá polovina je zelená při stavu `clean`, světle zelená při `stay_no_linen` nebo `stay_with_linen`; jinak při plánovaném příjezdu červená a bez příjezdu prázdná. Pokoj bez příjezdu a odjezdu má celou kartu šedou, není-li uklizen; bez pobytu je při `clean` celá zelená. Při pokračujícím pobytu je po `clean`, `stay_no_linen` či `stay_with_linen` celá světle zelená, při `do_not_disturb` celá fialová. Současná obsazenost je na každé dlaždici i v detailu výslovně označená textem a kontrastní barvou.
 
 Priorita aktuální obsazenosti:
 

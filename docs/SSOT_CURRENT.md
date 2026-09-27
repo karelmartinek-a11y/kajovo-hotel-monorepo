@@ -13,7 +13,7 @@
 
 - API registruje routy `auth`, `health`, `reports`, `breakfast`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings` a `profile`.
 - Autentizace běží přes session cookie `kajovo_session` a CSRF cookie `kajovo_csrf` s hlavičkou `x-csrf-token`.
-- Nová webová přihlášení portálu i administrace obnovují session pouze po uživatelské aktivitě přes CSRF chráněný `POST /api/auth/activity`. Po 48 hodinách bez aktivity session vyprší; běžné načítání dat dobu neprodlužuje. Starší session zůstanou platné do svého původního vypršení bez obnovování a nativní Android používá původní samostatný režim.
+- Nová webová přihlášení portálu i administrace obnovují session pouze po uživatelské aktivitě přes CSRF chráněný `POST /api/auth/activity`. Po 48 hodinách bez aktivity session vyprší; běžné načítání dat dobu neprodlužuje. Skrytá karta nekontroluje vypršení relace. Portál po opětovném přihlášení vrátí uživatele na původní interní cestu. Starší session zůstanou platné do svého původního vypršení bez obnovování a nativní Android používá původní samostatný režim.
 - Portál používá `cs`, `en` a `uk`, s preferencí uloženou u účtu přes `PATCH /api/auth/locale`. Přihlašovací stránka začíná vždy česky. Administrace zůstává česky. PDF exporty portálu používají jazyk účtu.
 - RBAC kontrakt je sdílený mezi backendem a frontendy přes `packages/shared/src/rbac.ts`.
 - Produkční compose stack používá `infra/compose.prod.yml` a host override `infra/compose.prod.hotel-hcasc.yml`.

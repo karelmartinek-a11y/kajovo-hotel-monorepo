@@ -35,7 +35,7 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 | Prvek / akce | Vazba a pravidla |
 |---|---|
 | Datum, předchozí/následující den, Dnes | GET `/api/v1/housekeeping/rooms?date=…`; výchozí hotelový den Europe/Prague, ochrana před přepsáním novějšího dne starou odpovědí. |
-| Vysvětlivky barev | Rozbalitelné, bez zápisu; popisují odjezd, úklid nezávislý na příjezdu, pokračující pobyt a prázdnou polovinu. |
+| Vysvětlivky barev | Rozbalitelné, bez zápisu; popisují dělené příjezdy a odjezdy i celé šedé, zelené, světle zelené a fialové dlaždice bez těchto událostí. |
 | Pořadí pokojů | Jedna mřížka ve stanoveném provozním pořadí; další pokoje z živého inventáře následují číselně. |
 | Dlaždice a spodní detail pokoje | Pevná velikost dlaždic, číslo pokoje, výslovná aktuální obsazenost s počtem osob, stručný náhled odjezdů/příjezdů/pokračování vybraného dne a úklid. Spodní detail ukazuje úplné údaje rezervací včetně osob, země, noci pobytu, poznámky pro pokojskou, psa a postýlky. Neprázdná poznámka rozbliká červenou ikonu na dlaždici. Žádné vymyšlené typy pokojů. |
 | Šest stavových tlačítek | PATCH `/api/v1/housekeeping/rooms/{room_id}?date=…`; přesné hodnoty a mapování číselníku jsou v modulu Pokoje. |

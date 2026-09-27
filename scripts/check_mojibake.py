@@ -63,6 +63,7 @@ QUESTION_MARK_ALLOWED_SUBSTRINGS = (
     "??",
     "?.",
     "?state=",
+    "?next=",
     "/api/",
     "low_stock=true",
     "status=new",
