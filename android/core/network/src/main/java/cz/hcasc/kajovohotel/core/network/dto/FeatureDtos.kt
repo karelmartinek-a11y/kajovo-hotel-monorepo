@@ -151,5 +151,9 @@ data class HousekeepingRoomsOverviewDto(
     val rooms: List<HousekeepingRoomDto>,
 )
 
-data class HousekeepingRoomStatusUpdateDto(val status: String, val expected_status: String, val note: String? = null)
+data class HousekeepingRoomStatusUpdateDto(
+    val status: String,
+    val expected_status: String,
+    val note: String? = null,
+)
 data class ReservationAmenityUpdateDto(val version: Int, val state: String)

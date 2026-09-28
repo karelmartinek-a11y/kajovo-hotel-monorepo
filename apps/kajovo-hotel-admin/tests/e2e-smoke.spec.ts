@@ -334,7 +334,8 @@ test.describe('CI smoke auth flows', () => {
     const pendingWrite = new Promise<void>((resolve) => { finishWrite = resolve; });
     const room = {
       room_id: 'room-301', room_number: '301', room_name: '301 KOMFORT', floor: '3',
-      housekeeping_status_id: 'dirty-id', housekeeping_status: 'Neuklizeno', housekeeping_color: '#F57621',
+      housekeeping_status_id: 'dirty-id', housekeeping_status: 'Neuklizeno',
+      housekeeping_status_key: 'dirty', housekeeping_color: '#F57621',
       operational_state: 'checkout_pending', arrival_today: false, departure_today: true,
       occupancy_state: 'departing', departures: [], arrivals: [], stays: [],
       checked_out: false, occupied: false, guest_label: 'Novák', persons: 1,
@@ -346,7 +347,7 @@ test.describe('CI smoke auth flows', () => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ ...room, housekeeping_status: 'Technický problém', housekeeping_status_id: 'technical-id' }),
+          body: JSON.stringify({ ...room, housekeeping_status: 'Technický problém', housekeeping_status_id: 'technical-id', housekeeping_status_key: 'technical_issue' }),
         });
         return;
       }
@@ -372,7 +373,7 @@ test.describe('CI smoke auth flows', () => {
     finishWrite!();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole('button', { name: /pokoj 301/i })).toContainText('Technický problém');
-    expect(patchBody).toEqual({ status: 'technical_issue' });
+    expect(patchBody).toEqual({ status: 'technical_issue', expected_status: 'dirty' });
   });
 
   test('admin mění dietu celého pobytu bez přepsání ostatních příznaků', async ({ page, request }) => {
