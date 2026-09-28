@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -329,8 +329,8 @@ def send_message(payload: ChatMessageCreate, request: Request, db: Session = Dep
     return _message_read(message, actor.id)
 
 
-@router.post("/conversations/{conversation_id}/read", status_code=status.HTTP_204_NO_CONTENT, operation_id="chat_mark_read")
-def mark_read(conversation_id: int, payload: ChatReadThrough, request: Request, db: Session = Depends(get_db)) -> None:
+@router.post("/conversations/{conversation_id}/read", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, operation_id="chat_mark_read")
+def mark_read(conversation_id: int, payload: ChatReadThrough, request: Request, db: Session = Depends(get_db)) -> Response:
     _, actor = _actor_participant(request, db)
     _conversation_for(db, conversation_id, actor.id)
     through = db.get(ChatMessage, payload.through_message_id)
@@ -344,10 +344,11 @@ def mark_read(conversation_id: int, payload: ChatReadThrough, request: Request, 
         ChatMessage.read_at.is_(None),
     ).update({ChatMessage.read_at: now}, synchronize_session=False)
     db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/push/subscriptions", status_code=status.HTTP_204_NO_CONTENT, operation_id="chat_register_push")
-def register_push_subscription(payload: WebPushSubscriptionCreate, request: Request, db: Session = Depends(get_db)) -> None:
+@router.post("/push/subscriptions", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, operation_id="chat_register_push")
+def register_push_subscription(payload: WebPushSubscriptionCreate, request: Request, db: Session = Depends(get_db)) -> Response:
     _, actor = _actor_participant(request, db)
     row = db.execute(select(ChatPushSubscription).where(ChatPushSubscription.endpoint == payload.endpoint)).scalar_one_or_none()
     if row is None:
@@ -358,16 +359,18 @@ def register_push_subscription(payload: WebPushSubscriptionCreate, request: Requ
         row.auth = payload.keys.auth
     db.add(row)
     db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/push/subscriptions", status_code=status.HTTP_204_NO_CONTENT, operation_id="chat_delete_push")
-def unregister_push_subscription(payload: WebPushSubscriptionDelete, request: Request, db: Session = Depends(get_db)) -> None:
+@router.delete("/push/subscriptions", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, operation_id="chat_delete_push")
+def unregister_push_subscription(payload: WebPushSubscriptionDelete, request: Request, db: Session = Depends(get_db)) -> Response:
     _, actor = _actor_participant(request, db)
     db.query(ChatPushSubscription).filter(
         ChatPushSubscription.participant_id == actor.id,
         ChatPushSubscription.endpoint == payload.endpoint,
     ).delete(synchronize_session=False)
     db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def _notification_url(db: Session, participant: ChatParticipant, conversation_id: int) -> str:
