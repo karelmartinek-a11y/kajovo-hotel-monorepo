@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
+import { isSafeToRestore, ownsCurrentProbeStatus, parseRestorePlan } from './android_production_acceptance_policy.mjs';
+
 const origin = (process.env.VERIFY_BASE_URL ?? '').replace(/\/$/, '');
 const restorePlanValue = process.env.VERIFY_ROOM_RESTORE_PLAN ?? '';
+const probeUpdateVerified = process.env.VERIFY_PROBE_UPDATE_VERIFIED === 'true';
 const employeeId = process.env.VERIFY_TEST_EMPLOYEE_ID ?? '';
 
 if (!restorePlanValue && !employeeId) {
@@ -59,29 +62,15 @@ async function login() {
   return { cookies, csrf };
 }
 
-function parseRestorePlan(encoded) {
-  let plan;
-  try { plan = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')); }
-  catch { throw new Error('Persisted room restore plan is invalid JSON.'); }
-  const statuses = new Set(['clean', 'dirty', 'stay_no_linen', 'stay_with_linen', 'do_not_disturb', 'technical_issue']);
-  if (plan?.room_number !== '203' || !plan.room_id || !/^\d{4}-\d{2}-\d{2}$/.test(plan.service_date) ||
-      !statuses.has(plan.original_status) || !statuses.has(plan.probe_status) || plan.original_status === plan.probe_status) {
-    throw new Error('Persisted room restore plan failed validation; do not perform an automatic room write.');
-  }
-  return plan;
-}
-
-function isSafeToRestore(room) {
-  return room?.occupancy_state === 'free' &&
-    ['arrivals', 'departures', 'stays'].every((key) => Array.isArray(room[key]) && room[key].length === 0);
-}
-
 const session = await login();
 let roomResult = 'not-needed';
 const cleanupErrors = [];
 if (restorePlanValue) {
   try {
     const plan = parseRestorePlan(restorePlanValue);
+    if (!probeUpdateVerified) {
+      throw new Error(`Room ${plan.room_number} probe write outcome was not verified; current status was preserved. Inspect the room manually before restoring.`);
+    }
     const path = `/api/v1/housekeeping/rooms?date=${encodeURIComponent(plan.service_date)}`;
     const first = await request(path, { session });
     if (!first.response.ok) throw new Error(`Could not read room ${plan.room_number} during cleanup (HTTP ${first.response.status}).`);
@@ -89,7 +78,7 @@ if (restorePlanValue) {
     if (!room) throw new Error(`Room ${plan.room_number} was missing during cleanup; inspect its status manually.`);
     if (room.housekeeping_status_key === plan.original_status) {
       roomResult = 'already-restored';
-    } else if (room.housekeeping_status_key === plan.probe_status && isSafeToRestore(room)) {
+    } else if (ownsCurrentProbeStatus(plan, room, probeUpdateVerified)) {
       const changed = await request(`/api/v1/housekeeping/rooms/${encodeURIComponent(plan.room_id)}?date=${encodeURIComponent(plan.service_date)}`, {
         method: 'PATCH', session, body: { status: plan.original_status, expected_status: plan.probe_status },
       });

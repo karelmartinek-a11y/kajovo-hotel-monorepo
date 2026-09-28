@@ -40,7 +40,10 @@ jobs:
           node-version: 20
 
       - name: Validate script syntax
-        run: node --check scripts/verify_android_employee_production.mjs
+        run: |
+          node --check scripts/verify_android_employee_production.mjs
+          node --check scripts/cleanup_android_production_acceptance.mjs
+          node --test scripts/android_production_acceptance_policy.test.mjs
 
       - name: Validate protected admin credentials
         run: test -n "$VERIFY_ADMIN_EMAIL" && test -n "$VERIFY_ADMIN_PASSWORD"
@@ -56,5 +59,6 @@ jobs:
           VERIFY_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
           VERIFY_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
           VERIFY_ROOM_RESTORE_PLAN: ${{ steps.production_acceptance.outputs.room_restore_plan }}
+          VERIFY_PROBE_UPDATE_VERIFIED: ${{ steps.production_acceptance.outputs.probe_update_verified }}
           VERIFY_TEST_EMPLOYEE_ID: ${{ steps.production_acceptance.outputs.test_employee_id }}
         run: node scripts/cleanup_android_production_acceptance.mjs

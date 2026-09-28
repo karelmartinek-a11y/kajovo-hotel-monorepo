@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { ownsCurrentProbeStatus } from './android_production_acceptance_policy.mjs';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync } from 'node:fs';
 
@@ -79,6 +80,7 @@ let originalRoomStatus;
 let probeRoomStatus;
 let roomRestorePlan;
 let roomUpdateAttempted = false;
+let probeUpdateVerified = false;
 let roomRestored = false;
 let administratorChatMessageVisible = false;
 let sentMessageId = null;
@@ -157,6 +159,8 @@ try {
   }
   roomUpdateAttempted = true;
   await setRoomStatus(probeRoomStatus);
+  probeUpdateVerified = true;
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, 'probe_update_verified=true\n');
   const beforeRestore = await readCurrentRoom();
   if (beforeRestore.housekeeping_status_key !== probeRoomStatus || !isSafeToProbe(beforeRestore)) {
     if (beforeRestore.housekeeping_status_key === originalRoomStatus) {
@@ -204,8 +208,11 @@ try {
   let cleanupError = null;
   if (roomUpdateAttempted && !roomRestored && originalRoomStatus && employeeSession && roomId) {
     try {
+      if (!probeUpdateVerified) {
+        throw new Error('CRITICAL: Room 203 probe write outcome was not verified; its current status was preserved for manual review.');
+      }
       const current = await readCurrentRoom();
-      if (current.housekeeping_status_key === probeRoomStatus && isSafeToProbe(current)) {
+      if (ownsCurrentProbeStatus(roomRestorePlan, current, probeUpdateVerified)) {
         await setRoomStatus(originalRoomStatus);
         roomRestored = true;
       } else if (current.housekeeping_status_key === originalRoomStatus) {
