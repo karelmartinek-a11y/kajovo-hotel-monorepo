@@ -3125,10 +3125,17 @@ type AuthLoadState =
 function AppRoutes(): JSX.Element {
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
-  const loginWithReturn = `/login?next=${encodeURIComponent(returnTo)}`;
+  const explicitLogout = window.sessionStorage.getItem('kajovo-explicit-logout') === '1';
+  const loginWithReturn = explicitLogout ? '/login' : `/login?next=${encodeURIComponent(returnTo)}`;
   const [authState, setAuthState] = React.useState<AuthLoadState>(() => (
     hasAuthCookieHint() ? { status: 'loading' } : { status: 'unauthenticated' }
   ));
+
+  React.useEffect(() => {
+    if (location.pathname === '/login' && explicitLogout) {
+      window.sessionStorage.removeItem('kajovo-explicit-logout');
+    }
+  }, [explicitLogout, location.pathname]);
 
   React.useEffect(() => {
     if (!hasAuthCookieHint()) {

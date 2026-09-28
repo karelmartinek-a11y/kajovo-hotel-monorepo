@@ -209,6 +209,7 @@ object AppModules {
 private class AndroidClientVersionInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
         val request = chain.request().newBuilder()
+            .header("User-Agent", "okhttp/5.3.0 KajovoHotelAndroid")
             .header("X-Kajovo-Android-Version-Code", BuildConfig.VERSION_CODE.toString())
             .build()
         return chain.proceed(request)

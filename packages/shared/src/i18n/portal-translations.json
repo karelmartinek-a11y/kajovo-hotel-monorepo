@@ -599,7 +599,14 @@
     "Zpět na detail": "Back to details",
     "Zrušit": "Cancel",
     "Zrušit miniaturu": "Remove thumbnail",
-    "Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu.": "We could not send the request. Check your connection and try again."
+    "Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu.": "We could not send the request. Check your connection and try again.",
+    "osob": "people",
+    "Ubytovaný": "Occupied",
+    "Volný": "Free",
+    "připraven": "ready",
+    "čeká na přípravu": "waiting for preparation",
+    "CHECK-OUT": "CHECK-OUT",
+    "před CHECK-OUT": "before CHECK-OUT"
   },
   "uk": {
     ": nepožadováno": ": не потрібно",
@@ -1201,6 +1208,13 @@
     "Zpět na detail": "Повернутися до деталей",
     "Zrušit": "Скасувати",
     "Zrušit miniaturu": "Видалити мініатюру",
-    "Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu.": "Не вдалося надіслати запит. Перевірте з’єднання та спробуйте ще раз."
+    "Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu.": "Не вдалося надіслати запит. Перевірте з’єднання та спробуйте ще раз.",
+    "osob": "осіб",
+    "Ubytovaný": "Зайнято",
+    "Volný": "Вільний",
+    "připraven": "готовий",
+    "čeká na přípravu": "очікує підготовки",
+    "CHECK-OUT": "ВИЇЗД",
+    "před CHECK-OUT": "до ВИЇЗДУ"
   }
 }

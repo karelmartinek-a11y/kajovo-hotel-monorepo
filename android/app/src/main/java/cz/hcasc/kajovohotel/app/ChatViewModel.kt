@@ -1,5 +1,6 @@
 package cz.hcasc.kajovohotel.app
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.messaging.FirebaseMessaging
@@ -11,6 +12,7 @@ import cz.hcasc.kajovohotel.core.network.dto.ChatParticipantDto
 import cz.hcasc.kajovohotel.core.network.dto.ChatReadThroughRequest
 import cz.hcasc.kajovohotel.core.network.dto.ChatFcmTokenRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -34,7 +36,10 @@ data class ChatUiState(
 )
 
 @HiltViewModel
-class ChatViewModel @Inject constructor(private val api: ChatApi) : ViewModel() {
+class ChatViewModel @Inject constructor(
+    private val api: ChatApi,
+    @ApplicationContext private val context: Context,
+) : ViewModel() {
     private val mutableState = MutableStateFlow(ChatUiState())
     val state: StateFlow<ChatUiState> = mutableState.asStateFlow()
 
@@ -56,11 +61,20 @@ class ChatViewModel @Inject constructor(private val api: ChatApi) : ViewModel() 
         viewModelScope.launch { loadMessages(conversation.id) }
     }
 
+    fun selectConversation(conversationId: Int): Boolean {
+        val conversation = mutableState.value.conversations.firstOrNull { it.id == conversationId } ?: return false
+        select(conversation)
+        return true
+    }
+
     fun registerPushToken() {
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            FcmTokenState.savePendingToken(context, token)
             viewModelScope.launch {
                 try {
-                    api.registerFcmToken(ChatFcmTokenRequest(token))
+                    val response = api.registerFcmToken(ChatFcmTokenRequest(token))
+                    if (response.isSuccessful) FcmTokenState.clearPendingToken(context, token)
+                    else setFailure(IllegalStateException("FCM token registration failed (${response.code()})"))
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (error: Exception) {

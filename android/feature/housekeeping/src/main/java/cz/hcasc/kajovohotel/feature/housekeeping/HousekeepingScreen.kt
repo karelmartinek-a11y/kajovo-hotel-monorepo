@@ -141,7 +141,7 @@ fun HousekeepingScreen(
                 ) { Text(localize("Další")) }
             }
         }
-        item { Text(localize("Datum: ${state.selectedDate}"), style = MaterialTheme.typography.titleMedium) }
+        item { Text("${localize("Datum")}: ${state.selectedDate}", style = MaterialTheme.typography.titleMedium) }
         if (state.isLoadingRooms) {
             item { CircularProgressIndicator() }
         }
@@ -165,12 +165,16 @@ fun HousekeepingScreen(
                         modifier = Modifier.fillMaxWidth().padding(KajovoSpacingTokens.S3),
                         verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S1),
                     ) {
-                        Text(localize("Pokoj ${room.room_number}"), style = MaterialTheme.typography.titleMedium)
+                        Text("${localize("Pokoj")} ${room.room_number}", style = MaterialTheme.typography.titleMedium)
                         Text(room.housekeeping_status ?: "Stav úklidu není uveden")
-                        Text(localize("${room.occupancy_state} · ${room.persons} osob"))
+                        Text("${localize(occupancyLabel(room.occupancy_state))} · ${room.persons} ${localize("osob")}")
                         room.guest_label?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-                        if (room.arrival_today) Text(if (room.ready_for_arrival) "Příjezd · připraven" else "Příjezd · čeká na přípravu")
-                        if (room.departure_today) Text(if (room.checked_out) "Odjezd · CHECK-OUT" else "Odjezd · před CHECK-OUT")
+                        if (room.arrival_today) {
+                            Text("${localize("Příjezd")} · ${localize(if (room.ready_for_arrival) "připraven" else "čeká na přípravu")}")
+                        }
+                        if (room.departure_today) {
+                            Text("${localize("Odjezd")} · ${localize(if (room.checked_out) "CHECK-OUT" else "před CHECK-OUT")}")
+                        }
                     }
                 }
             }
@@ -280,7 +284,7 @@ fun HousekeepingScreen(
     if (selectedRoom != null) {
         AlertDialog(
             onDismissRequest = { if (!state.isSavingRoom) viewModel.selectRoom(null) },
-            title = { Text(localize("Pokoj ${selectedRoom.room_number}")) },
+            title = { Text("${localize("Pokoj")} ${selectedRoom.room_number}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                     Text(localize("Vyberte stav pokoje."))
@@ -421,4 +425,11 @@ private fun finalizeHousekeepingCaptureUri(context: Context, uri: Uri) {
 
 private fun deleteHousekeepingCaptureUri(context: Context, uri: Uri) {
     context.contentResolver.delete(uri, null, null)
+}
+
+private fun occupancyLabel(value: String): String = when (value) {
+    "departing" -> "Odjezd"
+    "arrived" -> "Příjezd"
+    "staying" -> "Ubytovaný"
+    else -> "Volný"
 }

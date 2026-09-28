@@ -57,7 +57,9 @@ fun KajovoHotelApp(
     passwordResetToken: String? = null,
     onPasswordResetTokenConsumed: () -> Unit = {},
     openChat: Boolean = false,
+    openChatConversationId: Int? = null,
     onOpenChatConsumed: () -> Unit = {},
+    onChatConversationConsumed: () -> Unit = {},
     viewModel: AppStateViewModel = hiltViewModel(),
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
@@ -157,7 +159,9 @@ fun KajovoHotelApp(
                         onChangePassword = viewModel::changePassword,
                         onLogout = viewModel::logout,
                         openChat = openChat,
+                        openChatConversationId = openChatConversationId,
                         onOpenChatConsumed = onOpenChatConsumed,
+                        onChatConversationConsumed = onChatConversationConsumed,
                     )
                 }
             }
@@ -175,14 +179,16 @@ private fun PortalAppShell(
     onChangePassword: (String, String) -> Unit,
     onLogout: () -> Unit,
     openChat: Boolean,
+    openChatConversationId: Int?,
     onOpenChatConsumed: () -> Unit,
+    onChatConversationConsumed: () -> Unit,
 ) {
     val startRoute = resolveAppRoute(identity)
     val availableRoles = identity.assignedRoles()
 
     key(identity.email, identity.activeRole, identity.permissions.sorted().joinToString()) {
         val navController = rememberNavController()
-        LaunchedEffect(openChat) {
+        LaunchedEffect(openChat, openChatConversationId) {
             if (openChat) {
                 navController.navigate(PortalRoutes.Chat) { launchSingleTop = true }
                 onOpenChatConsumed()
@@ -818,7 +824,10 @@ private fun PortalAppShell(
                     title = "Chat",
                     availableRoles = availableRoles,
                 ) {
-                    ChatScreen()
+                    ChatScreen(
+                        initialConversationId = openChatConversationId,
+                        onInitialConversationHandled = onChatConversationConsumed,
+                    )
                 }
             }
             composable(PortalRoutes.ChangePassword) {

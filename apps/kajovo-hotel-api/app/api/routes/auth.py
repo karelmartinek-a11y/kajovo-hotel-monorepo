@@ -68,6 +68,7 @@ UNLOCK_TOKEN_TTL = timedelta(hours=24)
 FORGOT_THROTTLE = timedelta(hours=1)
 TOKEN_PURPOSE_UNLOCK = "unlock"
 TOKEN_PURPOSE_PASSWORD_RESET = "password_reset"
+TOKEN_PURPOSE_SELF_SERVICE_PASSWORD_RESET = "self_service_password_reset"
 
 
 class HintRequest(BaseModel):
@@ -234,7 +235,7 @@ def _issue_portal_password_reset_token(db: Session, principal: str, now: datetim
         AuthUnlockToken(
             actor_type="portal",
             principal=principal,
-            purpose=TOKEN_PURPOSE_PASSWORD_RESET,
+            purpose=TOKEN_PURPOSE_SELF_SERVICE_PASSWORD_RESET,
             token_hash=hashlib.sha256(token.encode("utf-8")).hexdigest(),
             expires_at=now + UNLOCK_TOKEN_TTL,
         )
@@ -582,31 +583,31 @@ def request_portal_password_reset(
     if not email or len(email) > 255 or "@" not in email:
         return generic_response
 
-    state = _get_lockout_state(db, actor_type="portal", principal=email)
-    if state is None:
-        db.commit()
+    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
+    if user is None or not user.is_active or _is_admin_user(user):
         return generic_response
+
+    state = _get_lockout_state(db, actor_type="portal", principal=email)
+    assert state is not None
     last_sent_at = _as_utc(state.last_forgot_sent_at)
     if last_sent_at is not None and now - last_sent_at < FORGOT_THROTTLE:
         db.commit()
         return generic_response
 
-    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
-    if user is not None and user.is_active and not _is_admin_user(user):
-        token = _issue_portal_password_reset_token(db, email, now)
-        login_url = _password_reset_login_url(request)
-        reset_link = f"{login_url}/reset?{urlencode({'token': token})}"
-        try:
-            service = build_email_service(get_settings(), _stored_smtp_config(db))
-            send_user_password_reset_link(
-                service=service,
-                recipient=email,
-                reset_link=reset_link,
-                login_url=login_url,
-            )
-        except Exception:
-            # Keep the anonymous response identical when mail delivery is unavailable.
-            pass
+    token = _issue_portal_password_reset_token(db, email, now)
+    login_url = _password_reset_login_url(request)
+    reset_link = f"{login_url}/reset?{urlencode({'token': token})}"
+    try:
+        service = build_email_service(get_settings(), _stored_smtp_config(db))
+        send_user_password_reset_link(
+            service=service,
+            recipient=email,
+            reset_link=reset_link,
+            login_url=login_url,
+        )
+    except Exception:
+        # Keep the anonymous response identical when mail delivery is unavailable.
+        pass
 
     state.last_forgot_sent_at = now
     db.add(state)
@@ -673,7 +674,7 @@ def reset_password(
     record = db.execute(
         select(AuthUnlockToken).where(
             AuthUnlockToken.actor_type == "portal",
-            AuthUnlockToken.purpose == TOKEN_PURPOSE_PASSWORD_RESET,
+            AuthUnlockToken.purpose.in_({TOKEN_PURPOSE_PASSWORD_RESET, TOKEN_PURPOSE_SELF_SERVICE_PASSWORD_RESET}),
             AuthUnlockToken.token_hash == token_hash,
             AuthUnlockToken.used_at.is_(None),
         )
@@ -695,7 +696,8 @@ def reset_password(
     db.commit()
     response.delete_cookie(SESSION_COOKIE_NAME, path="/")
     response.delete_cookie(CSRF_COOKIE_NAME, path="/")
-    request.state.audit_detail_override = json.dumps({"password_action": "admin_link_reset", "user_id": user.id})
+    password_action = "self_service_reset" if record.purpose == TOKEN_PURPOSE_SELF_SERVICE_PASSWORD_RESET else "admin_link_reset"
+    request.state.audit_detail_override = json.dumps({"password_action": password_action, "user_id": user.id})
     return LogoutResponse()
 
 

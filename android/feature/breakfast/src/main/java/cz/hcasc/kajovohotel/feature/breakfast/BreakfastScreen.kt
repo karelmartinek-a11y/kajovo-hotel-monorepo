@@ -377,7 +377,7 @@ private fun BreakfastToolbar(
                     enabled = state.queuedDrafts.isNotEmpty() && !state.isSubmitting,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(localize("Uložit změny (${state.queuedDrafts.size})"))
+                    Text("${localize("Uložit změny")} (${state.queuedDrafts.size})")
                 }
                 }
             }

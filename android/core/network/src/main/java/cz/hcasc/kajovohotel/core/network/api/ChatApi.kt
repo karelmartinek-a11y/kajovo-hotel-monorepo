@@ -11,9 +11,9 @@ import cz.hcasc.kajovohotel.core.network.dto.ChatFcmTokenRequest
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
-import retrofit2.http.DELETE
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.HTTP
 import retrofit2.http.Query
 
 interface ChatApi {
@@ -31,5 +31,6 @@ interface ChatApi {
         @Body request: ChatReadThroughRequest,
     ): Response<Unit>
     @POST("/api/v1/chat/fcm-tokens") suspend fun registerFcmToken(@Body request: ChatFcmTokenRequest): Response<Unit>
-    @DELETE("/api/v1/chat/fcm-tokens") suspend fun unregisterFcmToken(@Body request: ChatFcmTokenRequest): Response<Unit>
+    @HTTP(method = "DELETE", path = "/api/v1/chat/fcm-tokens", hasBody = true)
+    suspend fun unregisterFcmToken(@Body request: ChatFcmTokenRequest): Response<Unit>
 }

@@ -38,7 +38,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.hcasc.kajovohotel.core.designsystem.localize
 
 @Composable
-fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
+fun ChatScreen(
+    initialConversationId: Int? = null,
+    onInitialConversationHandled: () -> Unit = {},
+    viewModel: ChatViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -50,6 +54,11 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
         } else {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+    LaunchedEffect(initialConversationId, state.conversations, state.loading) {
+        val id = initialConversationId ?: return@LaunchedEffect
+        if (state.loading) return@LaunchedEffect
+        if (viewModel.selectConversation(id) || state.error == null) onInitialConversationHandled()
     }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

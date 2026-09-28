@@ -46,6 +46,10 @@ def _fcm_data_payload(conversation_id: int) -> dict[str, str]:
     return {"type": "chat_message", "conversation_id": str(conversation_id)}
 
 
+def _undelivered_fcm_tokens(token_rows: list[ChatFcmToken], delivered_token_ids: set[int]) -> list[ChatFcmToken]:
+    return [token_row for token_row in token_rows if token_row.id not in delivered_token_ids]
+
+
 def _portal_name(user: PortalUser) -> str:
     name = " ".join(part.strip() for part in (user.first_name, user.last_name) if part and part.strip())
     return name or user.email
@@ -332,7 +336,8 @@ def send_message(payload: ChatMessageCreate, request: Request, db: Session = Dep
         return _message_read(previous, actor.id)
     conversation.updated_at = utc_now()
     db.add(ChatPushOutbox(message_id=message.id, next_attempt_at=utc_now()))
-    db.add(ChatFcmOutbox(message_id=message.id, next_attempt_at=utc_now()))
+    if get_settings().firebase_service_account_json_b64:
+        db.add(ChatFcmOutbox(message_id=message.id, next_attempt_at=utc_now()))
     db.commit()
     db.refresh(message)
     return _message_read(message, actor.id)
@@ -517,7 +522,8 @@ def dispatch_pending_chat_fcm() -> None:
             recipient_id = conversation.participant_high_id if message.sender_id == conversation.participant_low_id else conversation.participant_low_id
             tokens = db.execute(select(ChatFcmToken).where(ChatFcmToken.participant_id == recipient_id)).scalars().all()
             delivery_failed = False
-            for token_row in tokens:
+            delivered_token_ids = set(row.delivered_token_ids or [])
+            for token_row in _undelivered_fcm_tokens(tokens, delivered_token_ids):
                 try:
                     messaging.send(
                         messaging.Message(
@@ -529,12 +535,14 @@ def dispatch_pending_chat_fcm() -> None:
                         ),
                         app=firebase_app,
                     )
+                    delivered_token_ids.add(token_row.id)
                 except messaging.UnregisteredError:
                     db.delete(token_row)
                 except Exception as exc:
                     delivery_failed = True
                     row.last_error = type(exc).__name__
             if delivery_failed:
+                row.delivered_token_ids = sorted(delivered_token_ids)
                 row.attempts += 1
                 row.next_attempt_at = utc_now() + timedelta(seconds=min(30 * (2 ** min(row.attempts, 7)), 3600))
                 row.last_error = row.last_error or "FcmDeliveryFailed"
