@@ -5,9 +5,13 @@ import { randomBytes, randomUUID } from 'node:crypto';
 const origin = (process.env.VERIFY_BASE_URL ?? '').replace(/\/$/, '');
 const adminEmail = process.env.VERIFY_ADMIN_EMAIL;
 const adminPassword = process.env.VERIFY_ADMIN_PASSWORD;
+const confirmation = process.env.VERIFY_CONFIRM_MUTATIONS;
 const runId = process.env.GITHUB_RUN_ID ?? `local-${Date.now()}`;
 if (!origin || !adminEmail || !adminPassword) {
   throw new Error('VERIFY_BASE_URL, VERIFY_ADMIN_EMAIL and VERIFY_ADMIN_PASSWORD are required.');
+}
+if (confirmation !== 'room-203-and-one-admin-chat') {
+  throw new Error('Set VERIFY_CONFIRM_MUTATIONS to the exact production acceptance choice before running.');
 }
 
 const testEmail = `android.acceptance.${runId}.${randomBytes(4).toString('hex')}@kajovohotel.local`;
@@ -76,7 +80,8 @@ let employeeDeleted = false;
 let administratorChatMessageVisible = false;
 let sentMessageId = null;
 let conversationId = null;
-let roomNumber = '203';
+const roomNumber = '203';
+let reusedPriorMessage = false;
 
 async function setRoomStatus(status, note) {
   await call(employeeSession, `/api/v1/housekeeping/rooms/${encodeURIComponent(roomId)}?date=${encodeURIComponent(serviceDate)}`, {
@@ -134,6 +139,7 @@ try {
   );
 
   if (priorAcceptanceConversation) {
+    reusedPriorMessage = true;
     sentMessageId = priorAcceptanceConversation.last_message.id;
     conversationId = priorAcceptanceConversation.id;
   } else {
@@ -193,5 +199,6 @@ console.log(JSON.stringify({
   administrator_chat_message_visible: administratorChatMessageVisible,
   message_id: sentMessageId,
   conversation_id: conversationId,
+  reused_prior_labeled_message: reusedPriorMessage,
   test_employee_deleted_after_verification: employeeDeleted,
 }, null, 2));

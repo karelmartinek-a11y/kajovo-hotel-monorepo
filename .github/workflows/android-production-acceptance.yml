@@ -15,6 +15,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: android-production-acceptance
+  cancel-in-progress: false
+
 jobs:
   production-acceptance:
     if: inputs.confirm_mutations == 'room-203-and-one-admin-chat'
@@ -22,6 +26,7 @@ jobs:
     timeout-minutes: 10
     env:
       VERIFY_BASE_URL: https://hotel.hcasc.cz
+      VERIFY_CONFIRM_MUTATIONS: ${{ inputs.confirm_mutations }}
       VERIFY_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
       VERIFY_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
       HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
