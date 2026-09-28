@@ -73,6 +73,7 @@ const HOUSEKEEPING_ROOM_FIXTURE = {
   floor: '1',
   housekeeping_status_id: 'dirty-id',
   housekeeping_status: 'Neuklizeno',
+  housekeeping_status_key: 'dirty',
   housekeeping_color: '#F57621',
   operational_state: 'checkout_departed_dirty',
   occupancy_state: 'free',
@@ -431,6 +432,7 @@ test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page,
           ...HOUSEKEEPING_ROOM_FIXTURE,
           housekeeping_status_id: 'clean-id',
           housekeeping_status: 'Uklizeno pro nájezd',
+          housekeeping_status_key: 'clean',
           housekeeping_color: '#138B43',
           operational_state: 'checkout_departed_clean',
         }),
@@ -460,7 +462,7 @@ test('pokojská načte pokoje a změní stav pokoje na uklizeno', async ({ page,
   await dialog.getByRole('button', { name: /^Uklizeno /i }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('Uklizeno pro nájezd');
-  expect(patchBody).toEqual({ status: 'clean' });
+  expect(patchBody).toEqual({ status: 'clean', expected_status: 'dirty' });
 });
 
 test('pokoje obnovují vybraný den po minutě a po návratu z pozadí', async ({ page, request }, testInfo) => {
@@ -860,7 +862,8 @@ test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na 
   await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: /snídaně/i })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
   await page.getByRole('button', { name: 'Odhlásit' }).click();
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
+  await expect(page.locator('#portal-email')).toBeVisible();
 });
 
 for (const scenario of ROLE_SCENARIOS) {

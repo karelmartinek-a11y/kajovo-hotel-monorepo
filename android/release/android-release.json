@@ -1,10 +1,10 @@
 {
-  "version_code": 209,
-  "version_name": "2.0.4 NG",
+  "version_code": 210,
+  "version_name": "2.1.0 NG",
   "download_url": "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk",
   "download_path": "apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk",
-  "sha256": "dd370b859e2cca87314eba82a7f979518d69e907d21f3bb887d8b2e8119fe098",
-  "title": "Aktualizace 2.0.4 NG",
-  "message": "Čitelnější obrazovky, jednodušší ovládání a opravené stahování aktualizací.",
-  "required": false
+  "sha256": "741e9d8b7373071d3e384b36d278456b5de3952cb171e21d72c181882a22d935",
+  "title": "Aktualizace 2.1.0 NG",
+  "message": "Nativní aplikace pro zaměstnance, bezpečné chatové oznámení a opravy přihlášení.",
+  "required": true
 }

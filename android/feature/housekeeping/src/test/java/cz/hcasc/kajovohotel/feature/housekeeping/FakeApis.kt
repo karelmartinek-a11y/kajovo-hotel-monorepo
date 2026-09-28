@@ -39,6 +39,7 @@ internal class FakeHousekeepingApi : HousekeepingApi {
         room_number = "101",
         room_name = "Pokoj 101",
         floor = "1. patro",
+        housekeeping_status_key = "dirty",
         operational_state = "free",
         occupancy_state = "free",
         arrival_today = false,
@@ -51,6 +52,10 @@ internal class FakeHousekeepingApi : HousekeepingApi {
     override suspend fun rooms(date: String) =
         HousekeepingRoomsOverviewDto(date, true, date, "2026-09-18T20:00:00Z", listOf(room))
 
-    override suspend fun updateRoomStatus(roomId: String, date: String, request: HousekeepingRoomStatusUpdateDto) =
-        room.copy(housekeeping_status = request.status)
+    var lastStatusUpdateRequest: HousekeepingRoomStatusUpdateDto? = null
+
+    override suspend fun updateRoomStatus(roomId: String, date: String, request: HousekeepingRoomStatusUpdateDto): HousekeepingRoomDto {
+        lastStatusUpdateRequest = request
+        return room.copy(housekeeping_status = request.status, housekeeping_status_key = request.status)
+    }
 }

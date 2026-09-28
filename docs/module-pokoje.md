@@ -52,7 +52,7 @@ Recepce a admin přidávají (vždy červeně), odebírají a mění barvy. Poko
 ## API portálu
 
 - `GET /api/v1/housekeeping/rooms?date=YYYY-MM-DD` sestaví přehled z aktuálního inventáře, příjezdů, odjezdů, skutečných check-outů a pobytů Better Hotel.
-- `PATCH /api/v1/housekeeping/rooms/{room_id}?date=YYYY-MM-DD` změní stav pokoje a vrátí znovu ověřený detail ve zvoleném denním kontextu.
+- `PATCH /api/v1/housekeeping/rooms/{room_id}?date=YYYY-MM-DD` přijímá `{status, expected_status}`; očekávaný stav musí odpovídat aktuálnímu stavu poskytovatele, jinak API vrací `409`. PostgreSQL advisory lock serializuje souběžné zápisy téhož pokoje přes API workery.
 - `POST /api/v1/housekeeping/reservations/{reservation_id}/amenities/{kind}?room_id=…&date=…&version=…` přidá ikonu, výchozí verze nové dvojice je 0.
 - `PATCH` na stejné cestě s `room_id`, `date` a tělem `{state, version}` mění barvu.
 - `DELETE` na stejné cestě s `room_id`, `date`, `version` ikonu odebere. Přehled vrací i neaktivní položky kvůli verzi, UI je nezobrazuje jako požadavky.

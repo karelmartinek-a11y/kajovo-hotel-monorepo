@@ -127,6 +127,7 @@ data class HousekeepingRoomDto(
     val floor: String,
     val housekeeping_status_id: String? = null,
     val housekeeping_status: String? = null,
+    val housekeeping_status_key: String? = null,
     val housekeeping_color: String? = null,
     val operational_state: String,
     val occupancy_state: String,
@@ -150,5 +151,9 @@ data class HousekeepingRoomsOverviewDto(
     val rooms: List<HousekeepingRoomDto>,
 )
 
-data class HousekeepingRoomStatusUpdateDto(val status: String, val note: String? = null)
+data class HousekeepingRoomStatusUpdateDto(
+    val status: String,
+    val expected_status: String,
+    val note: String? = null,
+)
 data class ReservationAmenityUpdateDto(val version: Int, val state: String)

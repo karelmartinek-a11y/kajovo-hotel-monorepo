@@ -87,9 +87,16 @@ class HousekeepingViewModel @Inject constructor(
         val current = mutableState.value
         val roomId = current.selectedRoomId ?: return
         if (!current.canWriteRooms || current.isSavingRoom || current.roomWriteError != null) return
+        val expectedStatus = current.rooms.firstOrNull { it.room_id == roomId }?.housekeeping_status_key
+        if (expectedStatus == null) {
+            mutableState.value = current.copy(
+                roomWriteError = "Změnu se nepodařilo ověřit. Před dalším pokusem obnovte aktuální stav pokoje.",
+            )
+            return
+        }
         mutableState.value = current.copy(isSavingRoom = true, savingRoomStatus = status)
         viewModelScope.launch {
-            when (val result = repository.updateRoomStatus(roomId, current.selectedDate, status)) {
+            when (val result = repository.updateRoomStatus(roomId, current.selectedDate, status, expectedStatus)) {
                 is AppResult.Success -> {
                     mutableState.value = mutableState.value.copy(
                         isSavingRoom = false,

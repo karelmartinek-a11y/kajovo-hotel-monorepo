@@ -182,6 +182,11 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
 
   const updateStatus = async (status: HousekeepingRoomStatus): Promise<void> => {
     if (!selectedRoom || !canWrite || savingRef.current) return;
+    const expectedStatus = selectedRoom.housekeeping_status_key;
+    if (!expectedStatus) {
+      setError(t('Změnu se nepodařilo ověřit. Před dalším pokusem obnovte aktuální stav pokoje.'));
+      return;
+    }
     savingRef.current = true;
     ++requestSequence.current;
     setSavingStatus(status);
@@ -190,7 +195,7 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
       const updated = await apiClient.updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(
         selectedRoom.room_id,
         { date: selectedDate },
-        { status },
+        { status, expected_status: expectedStatus },
       );
       setOverview((current) => current ? {
         ...current,
