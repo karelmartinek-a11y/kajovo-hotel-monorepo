@@ -88,7 +88,7 @@ let reusedPriorMessage = false;
 
 async function setRoomStatus(status, note) {
   await call(employeeSession, `/api/v1/housekeeping/rooms/${encodeURIComponent(roomId)}?date=${encodeURIComponent(serviceDate)}`, {
-    method: 'PATCH', body: { status, ...(note ? { note } : {}) },
+    method: 'PATCH', body: { status, expected_status: status === probeRoomStatus ? originalRoomStatus : probeRoomStatus, ...(note ? { note } : {}) },
   });
   const overview = await call(employeeSession, `/api/v1/housekeeping/rooms?date=${encodeURIComponent(serviceDate)}`);
   const room = overview.rooms.find((item) => item.room_id === roomId);

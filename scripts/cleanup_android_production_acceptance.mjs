@@ -91,7 +91,7 @@ if (restorePlanValue) {
       roomResult = 'already-restored';
     } else if (room.housekeeping_status_key === plan.probe_status && isSafeToRestore(room)) {
       const changed = await request(`/api/v1/housekeeping/rooms/${encodeURIComponent(plan.room_id)}?date=${encodeURIComponent(plan.service_date)}`, {
-        method: 'PATCH', session, body: { status: plan.original_status },
+        method: 'PATCH', session, body: { status: plan.original_status, expected_status: plan.probe_status },
       });
       if (!changed.response.ok) throw new Error(`Could not restore room ${plan.room_number} (HTTP ${changed.response.status}).`);
       const verified = await request(path, { session });

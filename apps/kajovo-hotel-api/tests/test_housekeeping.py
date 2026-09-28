@@ -209,3 +209,25 @@ def test_housekeeping_status_update_skips_same_status_without_history_side_effec
 
     assert client.patch_body is None
     assert updated["room_status"]["name"] == "Neuklizeno"
+
+
+def test_housekeeping_status_update_accepts_matching_expected_status() -> None:
+    client = FakeHousekeepingClient()
+    client.current_status_key = "clean"
+
+    updated = client.update_room_status("room-101", "dirty", expected_status_key="clean")
+
+    assert client.patch_body == {"room_status_id": "dirty-id", "return_detail": True}
+    assert updated["room_status"]["name"] == "Neuklizeno"
+
+
+def test_housekeeping_status_update_rejects_changed_expected_status_before_patch() -> None:
+    from app.services.housekeeping import HousekeepingRoomStatusConflict
+
+    client = FakeHousekeepingClient()
+    client.current_status_key = "clean"
+
+    with pytest.raises(HousekeepingRoomStatusConflict):
+        client.update_room_status("room-101", "dirty", expected_status_key="do_not_disturb")
+
+    assert client.patch_body is None

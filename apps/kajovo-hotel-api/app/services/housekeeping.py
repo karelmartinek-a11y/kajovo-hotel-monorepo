@@ -69,6 +69,10 @@ class BetterHotelHousekeepingError(RuntimeError):
     pass
 
 
+class HousekeepingRoomStatusConflict(BetterHotelHousekeepingError):
+    pass
+
+
 def _require_dict(value: Any, *, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise BetterHotelHousekeepingError(f"Better Hotel odpověď má neplatnou strukturu: {label} není objekt.")
@@ -230,16 +234,33 @@ class BetterHotelHousekeepingClient:
                 deduplicated[reservation_id] = reservation
         return list(deduplicated.values())
 
-    def update_room_status(self, room_id: str, status_key: str, *, note: str | None = None) -> dict[str, Any]:
+    def update_room_status(
+        self,
+        room_id: str,
+        status_key: str,
+        *,
+        note: str | None = None,
+        expected_status_key: str | None = None,
+    ) -> dict[str, Any]:
         expected_name = STATUS_NAMES.get(status_key)
         if not expected_name:
             raise BetterHotelHousekeepingError("Neznámý cílový stav pokoje.")
-        matches = [item for item in self.list_room_statuses() if str(item.get("name") or "").strip() == expected_name]
+        statuses = self.list_room_statuses()
+        matches = [item for item in statuses if str(item.get("name") or "").strip() == expected_name]
         if len(matches) != 1:
             raise BetterHotelHousekeepingError(f"Stav {expected_name!r} není v Better Hotel číselníku jednoznačný.")
         status_id = str(matches[0].get("id") or "").strip()
         if not status_id:
             raise BetterHotelHousekeepingError(f"Stav {expected_name!r} nemá platné ID.")
+        expected_status_id = None
+        if expected_status_key is not None:
+            expected_name_before_update = STATUS_NAMES.get(expected_status_key)
+            if not expected_name_before_update:
+                raise BetterHotelHousekeepingError("Neznámý očekávaný stav pokoje.")
+            expected_matches = [item for item in statuses if str(item.get("name") or "").strip() == expected_name_before_update]
+            if len(expected_matches) != 1 or not str(expected_matches[0].get("id") or "").strip():
+                raise BetterHotelHousekeepingError(f"Očekávaný stav {expected_name_before_update!r} není v Better Hotel číselníku jednoznačný.")
+            expected_status_id = str(expected_matches[0]["id"]).strip()
         rooms_before_update = self.list_current_rooms()
         room_matches = [item for item in rooms_before_update if str(item.get("room_id") or "").strip() == room_id]
         if len(room_matches) != 1:
@@ -248,6 +269,8 @@ class BetterHotelHousekeepingClient:
         current_status_id = str(room_matches[0].get("room_status_id") or "").strip()
         if isinstance(current_status, dict):
             current_status_id = str(current_status.get("id") or current_status_id).strip()
+        if expected_status_id is not None and current_status_id != expected_status_id:
+            raise HousekeepingRoomStatusConflict("Stav pokoje se mezitím změnil. Obnovte přehled a zkuste to znovu.")
         if current_status_id == status_id:
             return room_matches[0]
         payload = self._request_json(

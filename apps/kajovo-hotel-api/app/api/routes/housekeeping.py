@@ -1,6 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
@@ -14,7 +15,11 @@ from app.api.schemas import (
 from app.config import get_settings
 from app.db.session import get_db
 from app.security.rbac import module_access_dependency
-from app.services.housekeeping import BetterHotelHousekeepingClient, BetterHotelHousekeepingError
+from app.services.housekeeping import (
+    BetterHotelHousekeepingClient,
+    BetterHotelHousekeepingError,
+    HousekeepingRoomStatusConflict,
+)
 from app.services.reservation_amenities import change_amenity, enrich_overview
 
 router = APIRouter(
@@ -45,8 +50,20 @@ def update_housekeeping_room_status(
 ) -> dict:
     client = _client()
     try:
-        client.update_room_status(room_id, payload.status.value, note=payload.note)
+        if db.bind and db.bind.dialect.name == "postgresql":
+            db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:resource, 0))"),
+                {"resource": f"housekeeping:room:{room_id}"},
+            )
+        client.update_room_status(
+            room_id,
+            payload.status.value,
+            note=payload.note,
+            expected_status_key=payload.expected_status.value if payload.expected_status else None,
+        )
         overview = enrich_overview(db, client.build_overview(service_date))
+    except HousekeepingRoomStatusConflict as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except BetterHotelHousekeepingError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     updated = next((item for item in overview["rooms"] if item["room_id"] == room_id), None)

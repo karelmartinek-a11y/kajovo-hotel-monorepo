@@ -272,6 +272,7 @@ export type HousekeepingRoomRead = {
 };
 export type HousekeepingRoomStatus = "clean" | "dirty" | "stay_no_linen" | "stay_with_linen" | "do_not_disturb" | "technical_issue";
 export type HousekeepingRoomStatusUpdate = {
+  "expected_status"?: HousekeepingRoomStatus | null;
   "note"?: string | null;
   "status": HousekeepingRoomStatus;
 };
