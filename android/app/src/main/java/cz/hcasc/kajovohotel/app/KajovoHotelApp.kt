@@ -18,6 +18,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import cz.hcasc.kajovohotel.core.designsystem.KajovoTheme
 import cz.hcasc.kajovohotel.core.designsystem.PortalChrome
+import cz.hcasc.kajovohotel.core.designsystem.StatePane
+import cz.hcasc.kajovohotel.core.designsystem.localize
 import cz.hcasc.kajovohotel.core.model.ActorType
 import cz.hcasc.kajovohotel.core.model.AuthenticatedIdentity
 import cz.hcasc.kajovohotel.core.model.AuthProfile
@@ -54,12 +56,18 @@ import kotlinx.coroutines.launch
 fun KajovoHotelApp(
     passwordResetToken: String? = null,
     onPasswordResetTokenConsumed: () -> Unit = {},
+    openChat: Boolean = false,
+    openChatConversationId: Int? = null,
+    onOpenChatConsumed: () -> Unit = {},
+    onChatConversationConsumed: () -> Unit = {},
     viewModel: AppStateViewModel = hiltViewModel(),
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val signingIn by viewModel.signingIn.collectAsStateWithLifecycle()
+    val resetRequestBusy by viewModel.passwordResetRequestBusy.collectAsStateWithLifecycle()
+    val resetRequestMessage by viewModel.passwordResetRequestMessage.collectAsStateWithLifecycle()
     val appUpdateState by viewModel.appUpdateState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val appUpdater = remember(context) { AndroidAppUpdater(context) }
@@ -80,7 +88,16 @@ fun KajovoHotelApp(
             )
             return@KajovoTheme
         }
-        if (sessionState !is SessionState.Authenticated && updateInfo != null && appUpdateState.shouldPromptBeforeLogin()) {
+        if (appUpdateState.mustBlockApp() && updateInfo == null) {
+            StatePane(
+                title = localize("Povinná aktualizace aplikace"),
+                body = localize("Je známa povinná aktualizace, ale její informace se nepodařilo načíst. Připojte se k internetu a zkuste to znovu."),
+                actionLabel = localize("Zkontrolovat znovu"),
+                onAction = viewModel::refreshAppUpdate,
+            )
+            return@KajovoTheme
+        }
+        if (updateInfo != null && (appUpdateState.mustBlockApp() || (sessionState !is SessionState.Authenticated && appUpdateState.shouldPromptBeforeLogin()))) {
             AppUpdatePromptScreen(
                 title = updateInfo.title,
                 message = updateInfo.message,
@@ -100,6 +117,9 @@ fun KajovoHotelApp(
                 isBusy = signingIn,
                 errorMessage = message,
                 onSubmit = viewModel::signIn,
+                resetRequestBusy = resetRequestBusy,
+                resetRequestMessage = resetRequestMessage,
+                onRequestPasswordReset = viewModel::requestPasswordReset,
             )
 
             is SessionState.Failure -> when (state.utilityState) {
@@ -138,6 +158,10 @@ fun KajovoHotelApp(
                         onProfileSave = viewModel::saveProfile,
                         onChangePassword = viewModel::changePassword,
                         onLogout = viewModel::logout,
+                        openChat = openChat,
+                        openChatConversationId = openChatConversationId,
+                        onOpenChatConsumed = onOpenChatConsumed,
+                        onChatConversationConsumed = onChatConversationConsumed,
                     )
                 }
             }
@@ -154,12 +178,24 @@ private fun PortalAppShell(
     onProfileSave: (String, String, String, String) -> Unit,
     onChangePassword: (String, String) -> Unit,
     onLogout: () -> Unit,
+    openChat: Boolean,
+    openChatConversationId: Int?,
+    onOpenChatConsumed: () -> Unit,
+    onChatConversationConsumed: () -> Unit,
 ) {
+    val chatViewModel: ChatViewModel = hiltViewModel()
+    val chatState by chatViewModel.state.collectAsStateWithLifecycle()
     val startRoute = resolveAppRoute(identity)
     val availableRoles = identity.assignedRoles()
 
     key(identity.email, identity.activeRole, identity.permissions.sorted().joinToString()) {
         val navController = rememberNavController()
+        LaunchedEffect(openChat, openChatConversationId) {
+            if (openChat) {
+                navController.navigate(PortalRoutes.Chat) { launchSingleTop = true }
+                onOpenChatConsumed()
+            }
+        }
         NavHost(navController = navController, startDestination = startRoute) {
             composable(PortalRoutes.AccessDenied) {
                 AccessDeniedScreen(
@@ -177,6 +213,7 @@ private fun PortalAppShell(
                     onRoleChange = onRoleChange,
                     title = "Recepce",
                     availableRoles = availableRoles,
+                    unreadChatCount = chatState.unreadCount,
                 ) {
                     ReceptionHubScreen(
                         onBreakfastClick = { navController.navigate(PortalRoutes.Breakfast) },
@@ -768,7 +805,9 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                     activeRole = identity.activeRole,
                     onRoleSelected = onRoleChange,
-                    sections = PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title },
+                    sections = employeeNavigationSections(identity),
+                    selectedSection = PortalRoutes.Profile,
+                    unreadChatCount = chatState.unreadCount,
                     onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
                 ) {
                     ProfileScreen(
@@ -777,6 +816,23 @@ private fun PortalAppShell(
                         onSave = onProfileSave,
                         onChangePasswordClick = { navController.navigate(PortalRoutes.ChangePassword) },
                         onLogoutClick = onLogout,
+                    )
+                }
+            }
+            composable(PortalRoutes.Chat) {
+                GuardedRoute(
+                    identity = identity,
+                    route = PortalRoutes.Chat,
+                    navController = navController,
+                    onRoleChange = onRoleChange,
+                    title = "Chat",
+                    availableRoles = availableRoles,
+                    unreadChatCount = chatState.unreadCount,
+                ) {
+                    ChatScreen(
+                        initialConversationId = openChatConversationId,
+                        onInitialConversationHandled = onChatConversationConsumed,
+                        viewModel = chatViewModel,
                     )
                 }
             }
@@ -789,7 +845,9 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                     activeRole = identity.activeRole,
                     onRoleSelected = onRoleChange,
-                    sections = PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title },
+                    sections = employeeNavigationSections(identity),
+                    selectedSection = PortalRoutes.Profile,
+                    unreadChatCount = chatState.unreadCount,
                     onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
                 ) {
                     ChangePasswordScreen(message = message, onSubmit = onChangePassword)
@@ -821,6 +879,7 @@ private fun GuardedRoute(
     onRoleChange: (PortalRole) -> Unit,
     title: String,
     availableRoles: List<PortalRole>,
+    unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     if (!identity.canOpenAppDestination(route)) {
@@ -840,11 +899,17 @@ private fun GuardedRoute(
         availableRoles = availableRoles,
         activeRole = identity.activeRole,
         onRoleSelected = onRoleChange,
-                    sections = PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title },
+                    sections = employeeNavigationSections(identity),
+        selectedSection = route.substringBefore("/"),
+        unreadChatCount = unreadChatCount,
                     onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
         content = content,
     )
 }
+
+private fun employeeNavigationSections(identity: AuthenticatedIdentity): List<Pair<String, String>> =
+    listOf(PortalRoutes.Chat to "Chat") +
+        PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title }
 
 private fun NavHostController.backActionOrNull(): (() -> Unit)? {
     return if (previousBackStackEntry != null) {
@@ -871,6 +936,7 @@ private fun resolveAppRoute(identity: AuthenticatedIdentity): String {
 
 private fun AuthenticatedIdentity.canOpenAppDestination(route: String): Boolean {
     val normalizedRoute = route.substringBefore("/")
+    if (normalizedRoute == PortalRoutes.Chat) return actorType == ActorType.PORTAL
     val allowedRoles = routeAllowedRoles(normalizedRoute) ?: return normalizedRoute in setOf(
         PortalRoutes.Profile,
         PortalRoutes.ChangePassword,

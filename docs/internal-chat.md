@@ -10,6 +10,14 @@ Portál a webová administrace sdílejí soukromé konverzace 1:1. Účastníci 
 - Otevřená konverzace se obnovuje každé 3 sekundy; adresář, seznam a počet každých 10 sekund. Při skrytém panelu se periodické načítání pozastaví.
 - Spodní lišta je sdílená pro přihlášený portál i administraci: Chat, dostupné rolemi moduly, Profil. Přebytek se posouvá vodorovně. Portálové rychlé volby nálezu a závady zůstávají zachované.
 
+## Nativní Android klient
+
+Zaměstnanecký Android klient používá stejné `/api/v1/chat` endpointy pro adresář, 1:1 konverzace, idempotentní odeslání, potvrzení přečtení a počet nepřečtených. Nativní spodní navigace zpřístupní Chat všem přihlášeným zaměstnaneckým rolím; administrátorské relace zůstávají mimo Android. Seznam a počet nepřečtených se obnovují po 12 sekundách a otevřená konverzace po 3 sekundách. Klient v této verzi nenačítá historii po stránkách; načítá posledních nejvýše 100 zpráv.
+
+Nativní aplikace registruje FCM token po udělení oprávnění oznámení a ověření zaměstnanecké relace. Obnovení relace i `onNewToken` posílají rotovaný token bez nutnosti znovu otevřít chat; neúspěšná registrace zůstává lokálně jako čekající a další přihlášení/opakování ji zkusí znovu. Při odhlášení se token odstraní ze serveru. API zakládá FCM outbox pouze při nakonfigurovaných Firebase credentials a při retry eviduje úspěšné tokeny, aby přechodná chyba dalšího zařízení nezpůsobila opakované upozornění již doručeným zařízením. Data zprávy neobsahují text ani jméno odesílatele; Android zobrazí obecnou notifikaci podle uložené volby jazyka. Klepnutí otevře příslušnou konverzaci. Projekt `kajovo-hotel-android` má oddělené registrace produkčního i debug package ID.
+
+Pro produkční server nastavte tajný GitHub secret `KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64` jako base64 obsah service-account JSON. CI/deploy jej předá API kontejneru přes `infra/.env`; soubor klíče nepatří do repozitáře. Bez secretu se FCM dispatcher nepokouší odesílat a chat zůstává dostupný pollingem.
+
 ## Web Push
 
 Serverové proměnné prostředí (spravují se na serveru nebo v tajném správci deploymentu; hodnoty nepatří do Gitu):
@@ -35,6 +43,6 @@ Service worker `/service-worker.js` zobrazuje jméno odesílatele a náhled zpr�
 | Komentáře a instrukce | aktualizovat | kořenový `AGENTS.md` stanoví nový společný navigační a chatový kontrakt |
 | Fixtures a texty | aktualizovat | Playwright API uživatel a popisy přístupných akcí, texty chatu v češtině |
 | Build a generování | aktualizovat | migrace, export OpenAPI, generování klienta, oba Vite buildy |
-| Android | nerelevantní | změna se týká pouze webového portálu, webové administrace a API |
+| Android | aktualizovat | zaměstnanecký nativní chat obnovuje rotované FCM tokeny, při logoutu je odebere, lokalizuje obecné oznámení a po klepnutí otevře cílovou konverzaci |
 
 Validace změny: `pnpm typecheck`, `pnpm unit`, `pnpm contract:check`, oba webové buildy, API smoke a relevantní Playwright testy. Produkční push vyžaduje konfigurované VAPID proměnné; ověřte zaměstnanec ↔ admin, stav přečtení, doručení oznámení v podporovaném prohlížeči a otevření cílové konverzace.

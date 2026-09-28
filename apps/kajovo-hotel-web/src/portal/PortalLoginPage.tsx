@@ -7,6 +7,24 @@ type PortalLoginPageProps = {
   initialError?: string | null;
 };
 
+type InstalledRelatedApp = { id?: string; version?: string };
+type RelatedAppsNavigator = Navigator & { getInstalledRelatedApps?: () => Promise<InstalledRelatedApp[]> };
+type AndroidRelease = { version: string; version_code: number; download_url: string };
+
+function compareVersions(left: string, right: string): number | null {
+  const parse = (value: string): number[] | null => {
+    const match = value.match(/(\d+)\.(\d+)\.(\d+)/);
+    return match ? match.slice(1).map(Number) : null;
+  };
+  const a = parse(left);
+  const b = parse(right);
+  if (!a || !b) return null;
+  for (let index = 0; index < 3; index += 1) {
+    if (a[index] !== b[index]) return a[index] > b[index] ? 1 : -1;
+  }
+  return 0;
+}
+
 async function readLoginError(response: Response, fallback: string): Promise<string> {
   await response.body?.cancel();
   if (response.status === 401) {
@@ -31,6 +49,34 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(initialError);
+  const [resetOpen, setResetOpen] = React.useState(false);
+  const [resetBusy, setResetBusy] = React.useState(false);
+  const [resetMessage, setResetMessage] = React.useState<string | null>(null);
+  const [androidRelease, setAndroidRelease] = React.useState<AndroidRelease | null>(null);
+  const [showAndroidDownload, setShowAndroidDownload] = React.useState(true);
+
+  React.useEffect(() => {
+    let active = true;
+    const detect = async (): Promise<void> => {
+      try {
+        const [releaseResponse, installedApps] = await Promise.all([
+          fetch('/api/app/android-release', { credentials: 'include' }),
+          (navigator as RelatedAppsNavigator).getInstalledRelatedApps?.(),
+        ]);
+        if (!releaseResponse.ok) throw new Error('release_unavailable');
+        const release = await releaseResponse.json() as AndroidRelease;
+        const installed = installedApps?.find((app) => app.id === 'cz.hcasc.kajovohotel.app');
+        const comparison = installed?.version ? compareVersions(installed.version, release.version) : null;
+        if (!active) return;
+        setAndroidRelease(release);
+        setShowAndroidDownload(!installed || comparison === null || comparison < 0);
+      } catch {
+        if (active) setShowAndroidDownload(true);
+      }
+    };
+    void detect();
+    return () => { active = false; };
+  }, []);
 
   React.useEffect(() => {
     setError(initialError);
@@ -58,6 +104,26 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
     window.location.assign(next?.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/');
   }
 
+  async function requestPasswordReset(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setResetBusy(true);
+    setResetMessage(null);
+    try {
+      const response = await fetch('/api/auth/request-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!response.ok) throw new Error('request_failed');
+      setResetMessage(copy.forgotInfo);
+    } catch {
+      setResetMessage(t('Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu.'));
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   return (
     <main className="k-login-page" data-testid="portal-login-page">
       <section className="k-login-card" aria-labelledby="portal-login-title">
@@ -66,17 +132,17 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
         <p className="k-login-eyebrow">{copy.eyebrow}</p>
         <h1 id="portal-login-title">{t("Vítejte v Kájovo Hotel")}</h1>
         <p className="k-login-copy">{t("Přihlaste se do provozního portálu. Po ověření účtu navážete přesně tam, kde začíná dnešní směna.")}{' '}</p>
-        <section className="k-login-download k-login-download--mobile-only" data-testid="android-app-download" aria-labelledby="android-app-download-title">
+        {showAndroidDownload ? <section className="k-login-download k-login-download--mobile-only" data-testid="android-app-download" aria-labelledby="android-app-download-title">
           <h2 id="android-app-download-title" className="k-login-download__title">{t("Kájovo Hotel pro Android")}</h2>
           <p className="k-login-download__copy">{t("Stáhněte si plně nativní aplikaci pro rychlý přístup k hotelovému provozu.")}{' '}</p>
           <a
             className="k-button k-login-download__action"
-            href="/downloads/kajovo-hotel-android.apk"
+            href={androidRelease?.download_url ?? '/downloads/kajovo-hotel-android.apk'}
             download="kajovo-hotel-android.apk"
             data-testid="android-app-download-link"
           >{t("Stáhnout aplikaci pro Android")}{' '}</a>
-          <p className="k-login-download__meta">{t("Verze 2.0.4 NG · instalace APK")}</p>
-        </section>
+          <p className="k-login-download__meta">{androidRelease ? t('Verze {version} · instalace APK').replace('{version}', androidRelease.version) : t('Instalace APK')}</p>
+        </section> : null}
         <form className="k-login-form" onSubmit={(event) => void login(event)}>
           <label className="k-login-label" htmlFor="portal-email">{t("Uživatelské jméno")}{' '}</label>
           <input
@@ -111,8 +177,18 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
               {error}
             </p>
           ) : null}
-          <p className="k-login-copy">{t("Reset hesla je samostatný tok z odkazu správce.")}</p>
         </form>
+        <button className="k-button secondary" type="button" onClick={() => { setResetOpen((open) => !open); setResetMessage(null); }}>
+          {resetOpen ? t('Zavřít obnovu hesla') : copy.forgotAction}
+        </button>
+        {resetOpen ? <form className="k-login-form" onSubmit={(event) => void requestPasswordReset(event)}>
+          <label className="k-login-label" htmlFor="portal-reset-request-email">{t('E-mail pro obnovení přístupu')}</label>
+          <input id="portal-reset-request-email" className="k-input" type="email" value={email} autoComplete="username" required onChange={(event) => setEmail(event.target.value)} />
+          <button className="k-button" type="submit" disabled={resetBusy || !email.trim()}>
+            {resetBusy ? t('Odesílám žádost…') : t('Poslat odkaz pro změnu hesla')}
+          </button>
+          {resetMessage ? <p className="k-login-copy" role="status">{resetMessage}</p> : null}
+        </form> : null}
       </section>
       <aside className="k-login-preview" aria-label={t("Přehled provozního portálu")}>
         <div className="k-card">

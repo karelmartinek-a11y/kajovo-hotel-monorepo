@@ -1,5 +1,6 @@
 import http.cookiejar
 import json
+import sqlite3
 import urllib.error
 import urllib.request
 
@@ -36,7 +37,7 @@ def _portal_request(api_base_url: str, email: str, password: str):
     return request
 
 
-def test_chat_exchange_idempotency_unread_read_and_nonmember_denial(api_request, api_base_url):
+def test_chat_exchange_idempotency_unread_read_and_nonmember_denial(api_request, api_base_url, api_db_path):
     admin_directory_status, admin_directory = api_request("/api/v1/chat/directory")
     assert admin_directory_status == 200
     employee = next(person for person in admin_directory if person["email"] == "sklad@example.com")
@@ -45,6 +46,10 @@ def test_chat_exchange_idempotency_unread_read_and_nonmember_denial(api_request,
     message_body = {"recipient_id": employee["id"], "body": "Ahoj z administrace", "client_message_id": "chat-test-once-001"}
     status, first = api_request("/api/v1/chat/messages", "POST", message_body)
     assert status == 201
+    with sqlite3.connect(api_db_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM chat_fcm_outbox WHERE message_id = ?", (first["id"],)
+        ).fetchone()[0] == 0
     status, repeated = api_request("/api/v1/chat/messages", "POST", message_body)
     assert status == 201
     assert repeated["id"] == first["id"]
@@ -103,6 +108,19 @@ def test_chat_write_requires_csrf_and_push_requires_configuration(api_request):
         "endpoint": "http://127.0.0.1/internal",
         "keys": {"p256dh": "not-a-key", "auth": "not-a-key"},
     })
+    assert status == 422
+    status, _ = api_request("/api/v1/chat/fcm-tokens", "POST", {"token": "fcm-device-token-that-is-long-enough"})
+    assert status == 403
+
+
+def test_employee_can_register_and_remove_native_push_token(api_base_url):
+    employee_request = _portal_request(api_base_url, "sklad@example.com", "sklad-pass")
+    token = "fcm-test-device-registration-token-0001"
+    status, _ = employee_request("/api/v1/chat/fcm-tokens", "POST", {"token": token})
+    assert status == 204
+    status, _ = employee_request("/api/v1/chat/fcm-tokens", "DELETE", {"token": token})
+    assert status == 204
+    status, _ = employee_request("/api/v1/chat/fcm-tokens", "POST", {"token": "short"})
     assert status == 422
 
 

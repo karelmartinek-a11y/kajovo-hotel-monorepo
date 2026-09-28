@@ -7,6 +7,7 @@ import cz.hcasc.kajovohotel.core.network.dto.AuthProfileUpdateRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalLoginRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordChangeRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetRequest
+import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetLinkRequest
 import cz.hcasc.kajovohotel.core.network.dto.SelectRoleRequest
 import retrofit2.Response
 import retrofit2.http.Body
@@ -24,4 +25,5 @@ interface AuthApi {
     @PATCH("/api/auth/profile") suspend fun updateProfile(@Body request: AuthProfileUpdateRequest): AuthProfileDto
     @POST("/api/auth/change-password") suspend fun changePassword(@Body request: PortalPasswordChangeRequest): Response<Unit>
     @POST("/api/auth/reset-password") suspend fun resetPassword(@Body request: PortalPasswordResetRequest): Response<Unit>
+    @POST("/api/auth/request-password-reset") suspend fun requestPasswordReset(@Body request: PortalPasswordResetLinkRequest): Response<Unit>
 }

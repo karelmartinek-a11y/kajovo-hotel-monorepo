@@ -17,10 +17,13 @@ data class AppUpdateInfo(
 data class AppUpdateState(
     val isChecking: Boolean = false,
     val availableUpdate: AppUpdateInfo? = null,
+    val knownRequiredVersionCode: Int? = null,
     val wasDismissed: Boolean = false,
     val pendingAutoStartVersionCode: Int? = null,
 ) {
     fun shouldPromptBeforeLogin(): Boolean = availableUpdate != null && !wasDismissed
+    fun mustBlockApp(): Boolean = availableUpdate?.required == true ||
+        (knownRequiredVersionCode ?: 0) > 0
 }
 
 fun AndroidReleaseDto.toAppUpdateInfo(currentVersionCode: Int, currentVersion: String): AppUpdateInfo = AppUpdateInfo(

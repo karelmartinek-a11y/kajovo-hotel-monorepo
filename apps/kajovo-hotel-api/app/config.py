@@ -96,6 +96,7 @@ class Settings(BaseSettings):
     web_push_vapid_public_key: str = ""
     web_push_vapid_private_key: str = ""
     web_push_vapid_subject: str = "mailto:admin@hotel.hcasc.cz"
+    firebase_service_account_json_b64: str = ""
     content_security_policy: str = (
         "default-src 'self'; "
         "img-src 'self' data:; "

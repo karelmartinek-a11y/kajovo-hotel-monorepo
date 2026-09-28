@@ -113,6 +113,7 @@ updates = {
     "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": payload.get("KAJOVO_API_WEB_PUSH_VAPID_SUBJECT", ""),
+    "KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64": payload.get("KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64", ""),
 }
 for key, value in updates.items():
     if value:
@@ -148,6 +149,7 @@ def write_remote_vars(path: Path) -> None:
         "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT",
+        "KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64",
     ]
     payload = {key: env(key) for key in keys}
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

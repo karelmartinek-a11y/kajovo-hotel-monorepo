@@ -21,6 +21,7 @@ RUN pip install --no-cache-dir \
     reportlab==4.5.1 \
     pycountry==24.6.1 \
     pywebpush==2.3.0 \
+    firebase-admin==7.7.0 \
     pillow==11.3.0
 
 COPY apps/kajovo-hotel-api/app /app/app

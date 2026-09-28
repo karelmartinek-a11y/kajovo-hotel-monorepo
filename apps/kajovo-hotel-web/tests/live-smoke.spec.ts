@@ -724,7 +724,7 @@ test('portal bez session skonci na loginu a download aplikace je pouze na mobilu
 
   const appDownload = page.getByTestId('android-app-download');
   const appDownloadLink = page.getByTestId('android-app-download-link');
-  await expect(appDownloadLink).toHaveAttribute('href', '/downloads/kajovo-hotel-android.apk');
+  await expect(appDownloadLink).toHaveAttribute('href', /\/downloads\/kajovo-hotel-android\.apk$/);
   if ((page.viewportSize()?.width ?? 0) <= 767) {
     await expect(appDownload).toBeVisible();
     await expect(appDownloadLink).toBeVisible();

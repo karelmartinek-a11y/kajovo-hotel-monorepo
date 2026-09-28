@@ -3,6 +3,8 @@ import json
 import urllib.request
 from pathlib import Path
 
+from app.main import android_client_requires_update
+
 
 def _load_manifest() -> dict[str, object]:
     manifest_path = Path(__file__).resolve().parents[3] / "android" / "release" / "android-release.json"
@@ -35,3 +37,18 @@ def test_public_apk_matches_release_hash() -> None:
     apk_path = Path(__file__).resolve().parents[3] / str(manifest["download_path"])
     assert apk_path.is_file()
     assert hashlib.sha256(apk_path.read_bytes()).hexdigest() == manifest["sha256"]
+
+
+def test_required_android_release_blocks_stale_native_clients_except_manifest_check() -> None:
+    base = {
+        "user_agent": "okhttp/5.3.0",
+        "path": "/api/auth/me",
+        "release_required": True,
+        "required_version_code": 210,
+    }
+    assert android_client_requires_update(**base, version_code_header=None)
+    assert android_client_requires_update(**base, version_code_header="209")
+    assert not android_client_requires_update(**base, version_code_header="210")
+    assert not android_client_requires_update(**{**base, "path": "/api/app/android-release"}, version_code_header=None)
+    assert not android_client_requires_update(**{**base, "user_agent": "Mozilla/5.0"}, version_code_header=None)
+    assert not android_client_requires_update(**{**base, "release_required": False}, version_code_header=None)

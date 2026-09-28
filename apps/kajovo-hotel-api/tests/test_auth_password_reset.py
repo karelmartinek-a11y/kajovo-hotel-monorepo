@@ -181,3 +181,93 @@ def test_admin_can_issue_password_reset_link_and_user_can_finish_reset(
         assert new_password not in audit_row[0]
         assert '"password_action": "admin_link_reset"' in audit_row[0]
         assert f'"user_id": {user_id}' in audit_row[0]
+
+
+def test_portal_password_reset_request_is_generic_and_throttled(
+    api_request,
+    api_base_url: str,
+    api_mail_capture_path: Path,
+    api_db_path: Path,
+) -> None:
+    email = "self.request@example.com"
+    created_status, created = api_request(
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "first_name": "Self",
+            "last_name": "Request",
+            "email": email,
+            "password": "SelfRequest123",
+            "roles": ["recepce"],
+        },
+    )
+    assert created_status == 201
+
+    anonymous = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+    before = _capture_messages(api_mail_capture_path)
+    existing_status, existing_body = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/request-password-reset",
+        method="POST",
+        payload={"email": email},
+    )
+    unknown_status, unknown_body = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/request-password-reset",
+        method="POST",
+        payload={"email": "not-found@example.com"},
+    )
+    assert existing_status == unknown_status == 200
+    assert existing_body == unknown_body == {"ok": True}
+
+    after = _capture_messages(api_mail_capture_path)
+    reset_mails = [
+        message
+        for message in after[len(before):]
+        if message.get("recipient") == email and "reset hesla" in str(message.get("subject", "")).lower()
+    ]
+    assert len(reset_mails) == 1
+
+    reset_body = str(reset_mails[0].get("body", ""))
+    reset_start = reset_body.find("/login/reset?")
+    assert reset_start >= 0
+    reset_path = reset_body[reset_start:].split()[0]
+    reset_token = urllib.parse.parse_qs(urllib.parse.urlparse(reset_path).query).get("token", [""])[0]
+    reset_status, reset_response = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/reset-password",
+        method="POST",
+        payload={"token": reset_token, "new_password": "SelfReset789"},
+    )
+    assert reset_status == 200
+    assert reset_response == {"ok": True}
+
+    throttled_status, throttled_body = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/request-password-reset",
+        method="POST",
+        payload={"email": email},
+    )
+    assert throttled_status == 200
+    assert throttled_body == existing_body
+    assert len(_capture_messages(api_mail_capture_path)) == len(after)
+
+    with sqlite3.connect(api_db_path) as connection:
+        unknown_lockout_rows = connection.execute(
+            "SELECT COUNT(*) FROM auth_lockout_states WHERE principal = ?",
+            ("not-found@example.com",),
+        ).fetchone()[0]
+        assert unknown_lockout_rows == 0
+        token_purpose = connection.execute(
+            "SELECT purpose FROM auth_unlock_tokens WHERE principal = ? ORDER BY id DESC LIMIT 1",
+            (email,),
+        ).fetchone()[0]
+        assert token_purpose == "self_service_password_reset"
+        audit_detail = connection.execute(
+            "SELECT detail FROM audit_trail WHERE resource = '/api/auth/reset-password' AND status_code = 200 ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0]
+        assert '"password_action": "self_service_reset"' in audit_detail

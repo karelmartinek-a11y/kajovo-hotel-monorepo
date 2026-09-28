@@ -45,3 +45,4 @@ data class AuthProfileUpdateRequest(
 
 data class PortalPasswordChangeRequest(val old_password: String, val new_password: String)
 data class PortalPasswordResetRequest(val token: String, val new_password: String)
+data class PortalPasswordResetLinkRequest(val email: String)

@@ -1,0 +1,4 @@
+<resources>
+    <string name="chat_notification_channel">Внутрішній чат</string>
+    <string name="chat_notification_generic">Нове повідомлення у внутрішньому чаті</string>
+</resources>

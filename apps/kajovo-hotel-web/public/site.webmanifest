@@ -1,0 +1,13 @@
+{
+  "name": "Kájovo Hotel",
+  "short_name": "Kájovo Hotel",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "cz.hcasc.kajovohotel.app"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.inventory
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -109,12 +111,12 @@ fun InventoryScreen(
             ) {
                 OutlinedButton(onClick = {
                     if (onNavigate != null) onNavigate(InventorySection.LIST, null) else section = InventorySection.LIST
-                }, modifier = Modifier.weight(1f)) { Text("Seznam") }
+                }, modifier = Modifier.weight(1f)) { Text(localize("Seznam")) }
 
                 OutlinedButton(onClick = {
                     viewModel.startCreateItem()
                     if (onNavigate != null) onNavigate(InventorySection.CREATE, null) else section = InventorySection.CREATE
-                }, modifier = Modifier.weight(1f)) { Text("Nová") }
+                }, modifier = Modifier.weight(1f)) { Text(localize("Nová")) }
             }
         }
         if (section != InventorySection.LIST && state.errorMessage != null) item {
@@ -282,9 +284,9 @@ private fun DetailCard(
             }
         }
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
-            OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
-            OutlinedButton(onClick = onStartMovement) { Text("Nový pohyb") }
+            OutlinedButton(onClick = onBackToList) { Text(localize("Zpět na seznam")) }
+            OutlinedButton(onClick = onStartEdit) { Text(localize("Upravit")) }
+            OutlinedButton(onClick = onStartMovement) { Text(localize("Nový pohyb")) }
         }
     }
 }
@@ -309,7 +311,7 @@ private fun ItemEditorCard(
             value = draft.name,
             onValueChange = { onDraftChange { current -> current.copy(name = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Název") },
+            label = { Text(localize("Název")) },
         )
         Text(text = "Veličina v 1 ks", style = MaterialTheme.typography.labelLarge)
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
@@ -325,20 +327,20 @@ private fun ItemEditorCard(
             value = draft.amountPerPieceBase,
             onValueChange = { onDraftChange { current -> current.copy(amountPerPieceBase = it.filter(Char::isDigit)) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Hodnota veličiny v 1 ks") },
+            label = { Text(localize("Hodnota veličiny v 1 ks")) },
         )
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         OutlinedTextField(
             value = draft.minStock,
             onValueChange = { onDraftChange { current -> current.copy(minStock = it.filter(Char::isDigit)) } },
             modifier = Modifier.weight(1f),
-            label = { Text("Minimální stav") },
+            label = { Text(localize("Minimální stav")) },
         )
         OutlinedTextField(
             value = draft.currentStock,
             onValueChange = { onDraftChange { current -> current.copy(currentStock = it.filter(Char::isDigit)) } },
             modifier = Modifier.weight(1f),
-            label = { Text("Aktuální stav") },
+            label = { Text(localize("Aktuální stav")) },
         )
         }
         if (state.selectedPictogram != null) {
@@ -353,9 +355,9 @@ private fun ItemEditorCard(
             }
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            OutlinedButton(onClick = onSelectPictogram) { Text("Vybrat miniaturu") }
+            OutlinedButton(onClick = onSelectPictogram) { Text(localize("Vybrat miniaturu")) }
             if (state.selectedPictogram != null) {
-                OutlinedButton(onClick = onClearPictogram) { Text("Zrušit miniaturu") }
+                OutlinedButton(onClick = onClearPictogram) { Text(localize("Zrušit miniaturu")) }
             }
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
@@ -363,7 +365,7 @@ private fun ItemEditorCard(
                 Text(if (state.selectedDetail == null) "Založit položku" else "Uložit úpravy")
             }
             OutlinedButton(onClick = onCancel, enabled = !state.isSavingItem) {
-                Text("Zrušit")
+                Text(localize("Zrušit"))
             }
         }
     }
@@ -386,8 +388,8 @@ private fun MovementCard(
             subtitle = state.successMessage ?: "",
         )
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            FilterChip(selected = !document, onClick = { document = false }, label = { Text("Pohyb") })
-            FilterChip(selected = document, onClick = { document = true }, label = { Text("Doklad") })
+            FilterChip(selected = !document, onClick = { document = false }, label = { Text(localize("Pohyb")) })
+            FilterChip(selected = document, onClick = { document = true }, label = { Text(localize("Doklad")) })
         }
         if (!document) {
         Text(text = "Položka", style = MaterialTheme.typography.labelLarge)
@@ -419,14 +421,14 @@ private fun MovementCard(
             value = draft.quantity,
             onValueChange = { onDraftChange { current -> current.copy(quantity = it.filter(Char::isDigit)) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Množství") },
+            label = { Text(localize("Množství")) },
         )
         } else {
         OutlinedTextField(
             value = draft.documentDate,
             onValueChange = { onDraftChange { current -> current.copy(documentDate = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Datum dokladu") },
+            label = { Text(localize("Datum dokladu")) },
         )
         OutlinedTextField(
             value = draft.documentReference,
@@ -438,17 +440,17 @@ private fun MovementCard(
             value = draft.note,
             onValueChange = { onDraftChange { current -> current.copy(note = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Poznámka (volitelná)") },
+            label = { Text(localize("Poznámka (volitelná)")) },
         )
         }
         if (draft.movementType == InventoryMovementType.IN && draft.documentReference.isBlank()) {
-            Text("Doplňte číslo dokladu na kartě Doklad.", color = MaterialTheme.colorScheme.error)
+            Text(localize("Doplňte číslo dokladu na kartě Doklad."), color = MaterialTheme.colorScheme.error)
         }
         Button(onClick = onSubmitMovement, enabled = state.selectedItemId != null && !state.isSavingMovement && draft.isValid()) {
-            Text("Potvrdit pohyb")
+            Text(localize("Potvrdit pohyb"))
         }
         OutlinedButton(onClick = onBackToDetail, enabled = state.selectedItemId != null && !state.isSavingMovement) {
-            Text("Zpět na detail")
+            Text(localize("Zpět na detail"))
         }
     }
 }

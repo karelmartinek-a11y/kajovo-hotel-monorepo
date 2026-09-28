@@ -1,0 +1,4 @@
+<resources>
+    <string name="chat_notification_channel">Internal chat</string>
+    <string name="chat_notification_generic">New message in internal chat</string>
+</resources>

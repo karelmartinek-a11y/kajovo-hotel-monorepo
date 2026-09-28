@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.lostfound
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
@@ -99,17 +101,17 @@ fun LostFoundScreen(
     LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         if (section == LostFoundSection.LIST) item {
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST }, modifier = Modifier.weight(1f)) { Text("Seznam") }
+                OutlinedButton(onClick = { if (onNavigate != null) onNavigate(LostFoundSection.LIST, null) else section = LostFoundSection.LIST }, modifier = Modifier.weight(1f)) { Text(localize("Seznam")) }
 
                     OutlinedButton(onClick = {
                         viewModel.startCreate()
                         if (onNavigate != null) onNavigate(LostFoundSection.CREATE, null) else section = LostFoundSection.CREATE
-                    }, modifier = Modifier.weight(1f)) { Text("Nový") }
+                    }, modifier = Modifier.weight(1f)) { Text(localize("Nový")) }
                     if (state.selected != null) {
                         OutlinedButton(onClick = {
                             val id = state.selected?.id
                             if (onNavigate != null && id != null) onNavigate(LostFoundSection.EDIT, id) else section = LostFoundSection.EDIT
-                        }, modifier = Modifier.weight(1f)) { Text("Upravit") }
+                        }, modifier = Modifier.weight(1f)) { Text(localize("Upravit")) }
                     }
             }
         }
@@ -212,7 +214,7 @@ fun LostFoundScreen(
                                     enabled = !state.isSaving,
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text("Označit jako převzaté")
+                                    Text(localize("Označit jako převzaté"))
                                 }
                             }
                         }
@@ -258,10 +260,10 @@ private fun ReceptionDetailCard(
             enabled = !state.isSaving,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text("Označit jako převzaté")
+            Text(localize("Označit jako převzaté"))
         }
         OutlinedButton(onClick = onBackToList, modifier = Modifier.fillMaxWidth()) {
-            Text("Zpět na seznam")
+            Text(localize("Zpět na seznam"))
         }
         state.successMessage?.let { Text(text = it, style = MaterialTheme.typography.bodyMedium) }
     }
@@ -280,14 +282,14 @@ private fun FiltersCard(
                 FilterChip(
                     selected = state.filters.itemType == LostFoundItemType.FOUND,
                     onClick = { onFiltersChange { current -> current.copy(itemType = if (current.itemType == LostFoundItemType.FOUND) null else LostFoundItemType.FOUND) } },
-                    label = { Text("Nalezeno") },
+                    label = { Text(localize("Nalezeno")) },
                 )
             }
             item {
                 FilterChip(
                     selected = state.filters.itemType == LostFoundItemType.LOST,
                     onClick = { onFiltersChange { current -> current.copy(itemType = if (current.itemType == LostFoundItemType.LOST) null else LostFoundItemType.LOST) } },
-                    label = { Text("Ztraceno") },
+                    label = { Text(localize("Ztraceno")) },
                 )
             }
         }
@@ -304,11 +306,11 @@ private fun FiltersCard(
             value = state.filters.category,
             onValueChange = { value -> onFiltersChange { current -> current.copy(category = value) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Kategorie") },
+            label = { Text(localize("Kategorie")) },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-            Button(onClick = onRefresh) { Text("Použít filtry") }
-            OutlinedButton(onClick = onStartCreate) { Text("Nový záznam") }
+            Button(onClick = onRefresh) { Text(localize("Použít filtry")) }
+            OutlinedButton(onClick = onStartCreate) { Text(localize("Nový záznam")) }
         }
     }
 }
@@ -361,8 +363,8 @@ private fun DetailCard(
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
-            OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
+            OutlinedButton(onClick = onBackToList) { Text(localize("Zpět na seznam")) }
+            OutlinedButton(onClick = onStartEdit) { Text(localize("Upravit")) }
         }
     }
 }
@@ -408,22 +410,22 @@ private fun EditorCard(
                 )
             }
         }
-        OutlinedTextField(value = draft.category, onValueChange = { onDraftChange { current -> current.copy(category = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kategorie") })
-        OutlinedTextField(value = draft.description, onValueChange = { onDraftChange { current -> current.copy(description = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Popis") })
+        OutlinedTextField(value = draft.category, onValueChange = { onDraftChange { current -> current.copy(category = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Kategorie")) })
+        OutlinedTextField(value = draft.description, onValueChange = { onDraftChange { current -> current.copy(description = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Popis")) })
         }
         if (step == 1) {
-        OutlinedTextField(value = draft.location, onValueChange = { onDraftChange { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Místo nálezu nebo ztráty") })
+        OutlinedTextField(value = draft.location, onValueChange = { onDraftChange { current -> current.copy(location = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Místo nálezu nebo ztráty")) })
         EventAtPickerField(
             eventAt = draft.eventAt,
             context = context,
             onChange = { value -> onDraftChange { current -> current.copy(eventAt = value) } },
         )
-        OutlinedTextField(value = draft.roomNumber, onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Pokoj") })
+        OutlinedTextField(value = draft.roomNumber, onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Pokoj")) })
         }
         if (step == 2) {
-        OutlinedTextField(value = draft.claimantName, onValueChange = { onDraftChange { current -> current.copy(claimantName = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Jméno přebírajícího") })
-        OutlinedTextField(value = draft.claimantContact, onValueChange = { onDraftChange { current -> current.copy(claimantContact = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Kontakt") })
-        OutlinedTextField(value = draft.handoverNote, onValueChange = { onDraftChange { current -> current.copy(handoverNote = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text("Předávací záznam") })
+        OutlinedTextField(value = draft.claimantName, onValueChange = { onDraftChange { current -> current.copy(claimantName = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Jméno přebírajícího")) })
+        OutlinedTextField(value = draft.claimantContact, onValueChange = { onDraftChange { current -> current.copy(claimantContact = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Kontakt")) })
+        OutlinedTextField(value = draft.handoverNote, onValueChange = { onDraftChange { current -> current.copy(handoverNote = it) } }, modifier = Modifier.fillMaxWidth(), label = { Text(localize("Předávací záznam")) })
         Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             Text(text = "Tagy", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
@@ -439,14 +441,14 @@ private fun EditorCard(
         }
         Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             if (step == 1) {
-            Button(onClick = onPickPhotos, modifier = Modifier.fillMaxWidth()) { Text("Vybrat až 3 fotky") }
+            Button(onClick = onPickPhotos, modifier = Modifier.fillMaxWidth()) { Text(localize("Vybrat až 3 fotky")) }
             }
             if (step < 2) {
-                Button(onClick = { step += 1 }, modifier = Modifier.fillMaxWidth()) { Text("Pokračovat") }
+                Button(onClick = { step += 1 }, modifier = Modifier.fillMaxWidth()) { Text(localize("Pokračovat")) }
             } else {
-            Button(onClick = onSave, enabled = !state.isSaving && draft.isValidForSubmit(), modifier = Modifier.fillMaxWidth()) { Text("Uložit záznam") }
+            Button(onClick = onSave, enabled = !state.isSaving && draft.isValidForSubmit(), modifier = Modifier.fillMaxWidth()) { Text(localize("Uložit záznam")) }
             }
-            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Zrušit") }
+            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text(localize("Zrušit")) }
         }
         if (state.pendingPhotos.isNotEmpty()) {
             Text(text = "Vybráno ${state.pendingPhotos.size} nové fotografie")

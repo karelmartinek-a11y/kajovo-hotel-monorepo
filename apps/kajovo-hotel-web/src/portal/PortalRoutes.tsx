@@ -304,6 +304,7 @@ export function PortalRoutes({
   const logout = React.useCallback(async () => {
     setLogoutBusy(true);
     setSwitchError(null);
+    window.sessionStorage.setItem('kajovo-explicit-logout', '1');
     try {
       await unregisterChatPush();
       const response = await fetch('/api/auth/logout', {
@@ -314,6 +315,7 @@ export function PortalRoutes({
       if (!response.ok) throw new Error(t('Odhlášení se nepodařilo dokončit.'));
       window.location.assign('/login');
     } catch (error) {
+      window.sessionStorage.removeItem('kajovo-explicit-logout');
       setLogoutBusy(false);
       setSwitchError(error instanceof Error ? error.message : t('Odhlášení se nepodařilo dokončit.'));
     }

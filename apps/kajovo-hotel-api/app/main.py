@@ -11,7 +11,7 @@ from app.android_release import get_android_release_manifest
 from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
-from app.api.routes.chat import dispatch_pending_chat_pushes
+from app.api.routes.chat import dispatch_pending_chat_fcm, dispatch_pending_chat_pushes
 from app.api.routes.chat import router as chat_router
 from app.api.routes.device import router as device_router
 from app.api.routes.health import router as health_router
@@ -31,6 +31,21 @@ from app.services.admin_credentials import ensure_admin_profile
 from app.services.breakfast.scheduler import breakfast_scheduler_loop
 
 settings = get_settings()
+ANDROID_RELEASE_PATH = "/api/app/android-release"
+
+
+def android_client_requires_update(
+    *,
+    user_agent: str,
+    version_code_header: str | None,
+    path: str,
+    release_required: bool,
+    required_version_code: int,
+) -> bool:
+    if not release_required or path == ANDROID_RELEASE_PATH or not user_agent.lower().startswith("okhttp/"):
+        return False
+    client_version_code = int(version_code_header) if version_code_header and version_code_header.isdigit() else None
+    return client_version_code is None or client_version_code < required_version_code
 
 
 def has_explicit_admin_env() -> bool:
@@ -67,13 +82,25 @@ def create_app() -> FastAPI:
         except HTTPException as exc:
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
-        response = await call_next(request)
+        android_release = get_android_release_manifest()
+        if android_client_requires_update(
+            user_agent=request.headers.get("user-agent", ""),
+            version_code_header=request.headers.get("X-Kajovo-Android-Version-Code"),
+            path=request.url.path,
+            release_required=android_release.required,
+            required_version_code=android_release.version_code,
+        ):
+            response = JSONResponse(
+                status_code=426,
+                content={"detail": "Aktualizace nativní aplikace je povinná."},
+            )
+        else:
+            response = await call_next(request)
         response.headers.setdefault("Content-Security-Policy", settings.content_security_policy)
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Permissions-Policy", "geolocation=()")
-        android_release = get_android_release_manifest()
         response.headers.setdefault("X-Kajovo-Android-Version", android_release.version_name)
         response.headers.setdefault("X-Kajovo-Android-Version-Code", str(android_release.version_code))
         response.headers.setdefault("X-Kajovo-Android-Update-Required", "true" if android_release.required else "false")
@@ -125,6 +152,7 @@ async def chat_push_scheduler_loop() -> None:
     while True:
         try:
             await asyncio.to_thread(dispatch_pending_chat_pushes)
+            await asyncio.to_thread(dispatch_pending_chat_fcm)
         except asyncio.CancelledError:
             raise
         except Exception:

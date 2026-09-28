@@ -109,11 +109,12 @@ class ReadabilityTest {
                 }
             }
         }
+        capture("employee-navigation-small")
         compose.onNodeWithContentDescription("Sekce a profil").performClick()
-        compose.onNodeWithText("Hlášení").performClick()
+        compose.onAllNodesWithText("Hlášení")[1].performClick()
         compose.runOnIdle { assertTrue(destination == "reports") }
         compose.onNodeWithContentDescription("Sekce a profil").performClick()
-        compose.onNodeWithText("Profil").performClick()
+        compose.onAllNodesWithText("Profil")[1].performClick()
         compose.runOnIdle { assertTrue(destination == "profile") }
     }
 
@@ -131,7 +132,7 @@ class ReadabilityTest {
             KajovoTheme(darkTheme = false) {
                 Box(Modifier.requiredSize(320.dp, 480.dp)) {
                     var error by remember { mutableStateOf<String?>(null) }
-                    LoginScreen(false, error) { _, _ -> error = "Nesprávné jméno nebo heslo." }
+                    LoginScreen(isBusy = false, errorMessage = error, onSubmit = { _, _ -> error = "Nesprávné jméno nebo heslo." })
                 }
             }
         }
@@ -148,7 +149,7 @@ class ReadabilityTest {
         compose.setContent {
             KajovoTheme(darkTheme = false) {
                 var error by remember { mutableStateOf<String?>(null) }
-                LoginScreen(false, error) { _, _ -> error = "Nesprávné jméno nebo heslo." }
+                LoginScreen(isBusy = false, errorMessage = error, onSubmit = { _, _ -> error = "Nesprávné jméno nebo heslo." })
             }
         }
         compose.onNodeWithTag("login-username").performTextInput("native-qa@example.test")

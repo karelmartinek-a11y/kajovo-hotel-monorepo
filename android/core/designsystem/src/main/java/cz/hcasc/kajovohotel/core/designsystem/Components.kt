@@ -3,7 +3,9 @@ package cz.hcasc.kajovohotel.core.designsystem
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Menu
@@ -31,6 +33,8 @@ fun PortalChrome(
     onRoleSelected: ((PortalRole) -> Unit)? = null,
     sections: List<Pair<String, String>> = emptyList(),
     onSectionSelected: ((String) -> Unit)? = null,
+    selectedSection: String? = null,
+    unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     var roleMenuExpanded by remember { mutableStateOf(false) }
@@ -98,7 +102,7 @@ fun PortalChrome(
                                 )
                             }
                             DropdownMenuItem(
-                                text = { Text("Profil") },
+                                text = { Text(localize("Profil")) },
                                 onClick = { sectionMenuExpanded = false; onProfileClick() },
                             )
                         }
@@ -109,6 +113,40 @@ fun PortalChrome(
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             )
+        },
+        bottomBar = {
+            if (sections.isNotEmpty() && onSectionSelected != null) {
+                Surface(tonalElevation = 2.dp, color = MaterialTheme.colorScheme.surface) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        sections.forEach { (route, label) ->
+                            TextButton(
+                                onClick = { onSectionSelected(route) },
+                                modifier = Modifier.widthIn(min = 76.dp),
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = if (route == selectedSection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                ),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(localize(label), maxLines = 1)
+                                    if (route == "chat" && unreadChatCount > 0) {
+                                        Badge { Text(unreadChatCount.coerceAtMost(99).toString()) }
+                                    }
+                                }
+                            }
+                        }
+                        TextButton(
+                            onClick = onProfileClick,
+                            modifier = Modifier.widthIn(min = 76.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = if (selectedSection == "profil") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            ),
+                        ) { Text(localize("Profil"), maxLines = 1) }
+                    }
+                }
+            }
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp, vertical = 8.dp)) {

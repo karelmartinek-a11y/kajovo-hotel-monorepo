@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "293089432050",
+    "project_id": "kajovo-hotel-android",
+    "storage_bucket": "kajovo-hotel-android.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293089432050:android:e6b15f438363e90fd55b6b",
+        "android_client_info": {
+          "package_name": "cz.hcasc.kajovohotel.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDsf8g4BbazO3wtQH97eb49uh5nsBgnrM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:293089432050:android:1d42e7842922f8ebd55b6b",
+        "android_client_info": {
+          "package_name": "cz.hcasc.kajovohotel.app.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDsf8g4BbazO3wtQH97eb49uh5nsBgnrM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -96,7 +96,7 @@ export function PortalResetPasswordPage(): JSX.Element {
         <KajovoFullLockup href="/" title={t("Kájovo Hotel")} subtitle={t("Obnova přístupu")} />
         <p className="k-login-eyebrow">{bundle.copy.eyebrow}</p>
         <h1 id="portal-reset-title">{t("Dokončení resetu hesla")}</h1>
-        <p className="k-login-copy">{t("Dokončete reset hesla z odkazu, který vystavil administrátor. Po uložení vás přesměrujeme na přihlášení do hotelového portálu.")}{' '}</p>
+        <p className="k-login-copy">{t("Dokončete změnu hesla pomocí odkazu z e-mailu. Po uložení vás přesměrujeme na přihlášení do hotelového portálu.")}{' '}</p>
         <form className="k-login-form" onSubmit={(event) => void submit(event)}>
           <label className="k-login-label" htmlFor="portal-reset-password">{t("Nové heslo")}{' '}</label>
           <input

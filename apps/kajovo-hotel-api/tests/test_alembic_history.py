@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0036_internal_chat"]
+    assert script.get_heads() == ["0038_chat_fcm_delivery_tracking"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -45,7 +45,8 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "inventory_card_items" in tables
     assert "breakfast_manual_refresh_jobs" in tables
     assert "reservation_amenities" in tables
-    assert {"chat_participants", "chat_conversations", "chat_messages", "chat_push_subscriptions", "chat_push_outbox"} <= tables
+    assert {"chat_participants", "chat_conversations", "chat_messages", "chat_push_subscriptions", "chat_push_outbox", "chat_fcm_tokens", "chat_fcm_outbox"} <= tables
+    assert "delivered_token_ids" in {column["name"] for column in inspector.get_columns("chat_fcm_outbox")}
 
     breakfast_columns = {column["name"] for column in inspector.get_columns("breakfast_orders")}
     assert {"guest_names", "country_code", "reservation_details_json"} <= breakfast_columns
