@@ -600,8 +600,8 @@
 
   .k-breakfast-serving-list {
     display: grid;
-    gap: 0.35rem;
-    padding: 0.45rem;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
   }
 
   .k-breakfast-serving-row {
@@ -610,19 +610,29 @@
     border-radius: var(--k-radius-3);
     background: var(--k-color-surface-raised);
     box-shadow: 0 6px 14px rgba(83, 56, 46, 0.07);
+    width: 100%;
   }
 
   .k-breakfast-serving-row--served {
     opacity: 0.68;
   }
 
-  .k-breakfast-serving-row__main {
+  .k-breakfast-serving-row__header {
     display: grid;
-    grid-template-columns: minmax(2.5rem, 0.42fr) minmax(0, 0.95fr) minmax(0, 1.1fr) auto max-content;
+    grid-template-columns: minmax(2rem, auto) minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.5rem;
     min-width: 0;
-    padding: 0.35rem;
+    padding: 0.65rem 0.75rem 0.25rem;
+  }
+
+  .k-breakfast-serving-row__main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3rem;
+    min-width: 0;
+    padding: 0.25rem 0.75rem 0.75rem;
   }
 
   .k-breakfast-serving-row__room {
@@ -634,15 +644,40 @@
     white-space: nowrap;
   }
 
-  .k-breakfast-serving-row__guest {
+  .k-breakfast-serving-row__company {
     min-width: 0;
     overflow: hidden;
-    color: var(--k-color-ink);
-    font-size: 0.88rem;
-    font-weight: 700;
-    line-height: 1.15;
+    color: var(--k-color-ink-muted);
+    font-size: 0.82rem;
+    font-weight: 650;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .k-breakfast-serving-row__guest {
+    min-width: 0;
+    color: var(--k-color-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .k-breakfast-serving-row__country,
+  .k-breakfast-serving-row__nights,
+  .k-breakfast-serving-row__count,
+  .k-breakfast-serving-row__note-inline {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .k-breakfast-serving-row__nights,
+  .k-breakfast-serving-row__count {
+    color: var(--k-color-ink-muted);
   }
 
   .k-breakfast-serving-row__note-inline,
@@ -658,6 +693,7 @@
 
   .k-breakfast-serving-row__diets {
     min-width: 0;
+    justify-self: end;
   }
 
   .k-breakfast-serving-row__diets .k-diet-toggle-group {
@@ -677,17 +713,17 @@
 
   .k-breakfast-serving-row__action {
     display: flex;
-    justify-content: flex-end;
+    justify-content: stretch;
     min-width: 0;
+    margin-top: 0.15rem;
   }
 
   .k-breakfast-serving-row__action .k-button {
-    width: auto;
-    min-width: 4rem;
-    min-height: 2.2rem;
-    padding: 0 0.55rem;
-    font-size: 0.82rem;
-    line-height: 1;
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.9rem;
+    line-height: 1.2;
   }
 
   .k-breakfast-serving-row__feedback {

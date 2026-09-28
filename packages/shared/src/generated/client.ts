@@ -125,6 +125,11 @@ export type BreakfastOrderUpdate = {
 };
 export type BreakfastReservationRead = {
   "arrival"?: string | null;
+  "breakfast_adults"?: number;
+  "breakfast_age_unknown"?: number;
+  "breakfast_children_0_2"?: number;
+  "breakfast_children_3_17"?: number;
+  "company_name"?: string | null;
   "departure"?: string | null;
   "diet_no_gluten": boolean;
   "diet_no_milk": boolean;

@@ -600,13 +600,17 @@ test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', asy
   expect(createUserResponse.status()).toBe(201);
   const createdUser = await createUserResponse.json() as { id: number };
   const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const arrivalDate = new Date(`${today}T12:00:00Z`);
+  arrivalDate.setUTCDate(arrivalDate.getUTCDate() - 2);
+  const departureDate = new Date(`${today}T12:00:00Z`);
+  departureDate.setUTCDate(departureDate.getUTCDate() + 1);
   const requestedDates: string[] = [];
   let refreshed = false;
   await page.route('**/api/v1/breakfast/daily-overview?**', async (route) => {
     const requestedDate = new URL(route.request().url()).searchParams.get('service_date')!;
     requestedDates.push(requestedDate);
     const orders = [
-      { id: 1, service_date: requestedDate, room_number: '101', guest_name: 'Jan Novák', guest_names: requestedDate === today ? 'Jan Novák; Eva Nováková' : `Den ${requestedDate}`, country_code: 'CZ', guest_count: requestedDate === today ? 2 : 1, note: 'Druhý polštář', status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] },
+      { id: 1, service_date: requestedDate, room_number: '101', guest_name: 'Jan Novák', guest_names: requestedDate === today ? 'Jan Novák; Eva Nováková' : `Den ${requestedDate}`, country_code: 'CZ', guest_count: requestedDate === today ? 2 : 1, note: 'Druhý polštář', status: 'pending', diet_no_gluten: requestedDate === today, diet_no_milk: false, diet_no_pork: false, reservations: requestedDate === today ? [{ reservation_id: 'res-1', guest_name: 'Jan Novák', arrival: arrivalDate.toISOString().slice(0, 10), departure: departureDate.toISOString().slice(0, 10), company_name: 'Příklad s.r.o.', breakfast_adults: 1, breakfast_children_0_2: 1, breakfast_children_3_17: 0, breakfast_age_unknown: 0, diet_no_gluten: true, diet_no_milk: false, diet_no_pork: false, version: 1 }] : [] },
       ...Array.from({ length: 12 }, (_, index) => ({ id: 10 + index, service_date: requestedDate, room_number: String(110 + index), guest_name: `Host ${index}`, guest_names: `Host ${index}`, country_code: 'CZ', guest_count: 1, note: null, status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] })),
       ...(refreshed && requestedDate === today ? [{ id: 2, service_date: requestedDate, room_number: '102', guest_name: 'Petr Svoboda', guest_names: 'Petr Svoboda', country_code: 'SK', guest_count: 1, note: null, status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] }] : []),
     ];
@@ -630,7 +634,6 @@ test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', asy
       ? page.getByTestId('breakfast-serving-mobile-list')
       : page.locator('.k-breakfast-serving-page .k-table-wrap');
     await expect(visibleList.getByText('Jan Novák; Eva Nováková').first()).toBeVisible();
-    await expect(visibleList.getByText('Česko').first()).toBeVisible();
     await expect(visibleList.getByText('Druhý polštář').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /aktualizovat|import pdf/i })).toHaveCount(0);
     await expect(page.getByLabel('Poznámka pro pokoj 101')).toHaveCount(0);
@@ -683,6 +686,21 @@ test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', asy
     }
     const desktopHeadingFontSize = Number.parseFloat(await dateControls.locator('h1').evaluate((element) => getComputedStyle(element).fontSize));
     expect(desktopHeadingFontSize).toBeGreaterThan(32);
+    const mobileCard = page.getByTestId('breakfast-serving-mobile-row').filter({ hasText: '101' });
+    for (const width of [360, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(mobileCard).toBeVisible();
+      await expect(mobileCard).toContainText('Firma: Příklad s.r.o.');
+      await expect(mobileCard).toContainText('Jan Novák; Eva Nováková');
+      await expect(mobileCard.getByText('Česko')).toBeVisible();
+      await expect(mobileCard).toContainText('2/3 nocí');
+      await expect(mobileCard).toContainText('Dospělí: 1');
+      await expect(mobileCard).toContainText('0–2 roky: 1');
+      await expect(mobileCard.locator('.k-breakfast-serving-row__diets .k-diet-icon--active')).toHaveCount(1);
+      await expect(mobileCard.getByRole('button', { name: 'Vydat' })).toBeVisible();
+      const cardBounds = await mobileCard.boundingBox();
+      expect(Math.abs(cardBounds!.width - width)).toBeLessThan(3);
+    }
   } finally {
     await request.post('/api/auth/admin/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
     await request.delete(`/api/v1/users/${createdUser.id}`, { headers: await csrfHeaderFor(request) });

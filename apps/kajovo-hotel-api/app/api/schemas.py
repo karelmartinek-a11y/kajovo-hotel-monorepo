@@ -102,6 +102,11 @@ class BreakfastReservationRead(BaseModel):
     guest_name: str | None = None
     arrival: date | None = None
     departure: date | None = None
+    company_name: str | None = None
+    breakfast_adults: int = 0
+    breakfast_children_0_2: int = 0
+    breakfast_children_3_17: int = 0
+    breakfast_age_unknown: int = 0
     diet_no_gluten: bool
     diet_no_milk: bool
     diet_no_pork: bool

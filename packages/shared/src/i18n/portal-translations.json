@@ -497,7 +497,13 @@
     "Zkontrolujte zadané údaje.": "Check the information you entered.",
     "Požadavek se nepodařilo zpracovat (HTTP {status}).": "Could not process the request (HTTP {status}).",
     "Přehled snídaní": "Breakfast overview",
-    "Snídaně podle vybraného dne se pravidelně aktualizují z Better Hotelu.": "Breakfasts for the selected day update regularly from Better Hotel."
+    "Snídaně podle vybraného dne se pravidelně aktualizují z Better Hotelu.": "Breakfasts for the selected day update regularly from Better Hotel.",
+    "Dospělí": "Adults",
+    "Firma": "Company",
+    "nocí": "nights",
+    "Věk neuveden": "Age not provided",
+    "0–2 roky": "Ages 0–2",
+    "3–17 let": "Ages 3–17"
   },
   "uk": {
     ": nepožadováno": ": не потрібно",
@@ -997,6 +1003,12 @@
     "Zkontrolujte zadané údaje.": "Перевірте введені дані.",
     "Požadavek se nepodařilo zpracovat (HTTP {status}).": "Не вдалося виконати запит (HTTP {status}).",
     "Přehled snídaní": "Огляд сніданків",
-    "Snídaně podle vybraného dne se pravidelně aktualizují z Better Hotelu.": "Сніданки за вибраний день регулярно оновлюються з Better Hotel."
+    "Snídaně podle vybraného dne se pravidelně aktualizují z Better Hotelu.": "Сніданки за вибраний день регулярно оновлюються з Better Hotel.",
+    "Dospělí": "Дорослі",
+    "Firma": "Компанія",
+    "nocí": "ночей",
+    "Věk neuveden": "Вік не вказано",
+    "0–2 roky": "Вік 0–2 роки",
+    "3–17 let": "Вік 3–17 років"
   }
 }

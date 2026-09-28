@@ -1138,6 +1138,24 @@ function BreakfastList(): JSX.Element {
   const countryDisplay = (order: BreakfastOrder): string => order.country_code
     ? new Intl.DisplayNames([getIntlLocale()], { type: 'region' }).of(order.country_code) ?? order.country_code
     : '—';
+  const reservationDisplay = (order: BreakfastOrder) => {
+    const reservations = order.reservations ?? [];
+    const companies = [...new Set(reservations.map((reservation) => reservation.company_name?.trim()).filter((company): company is string => Boolean(company)))];
+    const counts = reservations.reduce((total, reservation) => ({
+      adults: total.adults + (reservation.breakfast_adults ?? 0),
+      children0to2: total.children0to2 + (reservation.breakfast_children_0_2 ?? 0),
+      children3to17: total.children3to17 + (reservation.breakfast_children_3_17 ?? 0),
+      unknown: total.unknown + (reservation.breakfast_age_unknown ?? 0),
+    }), { adults: 0, children0to2: 0, children3to17: 0, unknown: 0 });
+    const calendarDay = (value: string): number => Date.parse(`${value}T00:00:00Z`) / 86_400_000;
+    const nights = reservations.flatMap((reservation) => {
+      if (!reservation.arrival || !reservation.departure) return [];
+      const total = calendarDay(reservation.departure) - calendarDay(reservation.arrival);
+      const elapsed = Math.max(0, Math.min(total, calendarDay(serviceDate) - calendarDay(reservation.arrival)));
+      return [`${elapsed}/${total} ${t('nocí')}`];
+    });
+    return { companies, counts, nights };
+  };
   const breakfastImportStamp = summary?.source_imported_at
     ? formatShortDateTime(summary.source_imported_at)
     : 'nenalezeno';
@@ -1151,6 +1169,7 @@ function BreakfastList(): JSX.Element {
     <div className="k-breakfast-serving-list" data-testid="breakfast-serving-mobile-list">
       {listItems.map((item) => {
         const effectiveItem = mergeOrderWithDraft(item);
+        const reservationInfo = reservationDisplay(effectiveItem);
         return (
           <article
             key={item.id}
@@ -1158,13 +1177,20 @@ function BreakfastList(): JSX.Element {
             data-testid="breakfast-serving-mobile-row"
             data-room-number={effectiveItem.room_number}
           >
-            <div className="k-breakfast-serving-row__main">
+            <div className="k-breakfast-serving-row__header">
               <strong className="k-breakfast-serving-row__room" title={effectiveItem.room_number}>{effectiveItem.room_number}</strong>
-              <span className="k-breakfast-serving-row__guest" title={guestDisplay(effectiveItem)}>{guestDisplay(effectiveItem)}</span>
-              <span className="k-breakfast-serving-row__country">{countryDisplay(effectiveItem)}</span>
-              <span className="k-breakfast-serving-row__count">{t('Snídaní')}: {effectiveItem.guest_count}</span>
-              <span className="k-breakfast-serving-row__note-inline" title={effectiveItem.note ?? ''}>{effectiveItem.note || '—'}</span>
+              {reservationInfo.companies.length ? <span className="k-breakfast-serving-row__company">{t('Firma')}: {reservationInfo.companies.join(', ')}</span> : null}
               <span className="k-breakfast-serving-row__diets">{renderActiveDiets(effectiveItem)}</span>
+            </div>
+            <div className="k-breakfast-serving-row__main">
+              <strong className="k-breakfast-serving-row__guest" title={guestDisplay(effectiveItem)}>{guestDisplay(effectiveItem)}</strong>
+              <span className="k-breakfast-serving-row__country">{countryDisplay(effectiveItem)}</span>
+              {reservationInfo.nights.length ? <span className="k-breakfast-serving-row__nights">{reservationInfo.nights.join(' · ')}</span> : null}
+              <span className="k-breakfast-serving-row__count">
+                {t('Snídaní')}: {effectiveItem.guest_count} · {t('Dospělí')}: {reservationInfo.counts.adults} · {t('0–2 roky')}: {reservationInfo.counts.children0to2} · {t('3–17 let')}: {reservationInfo.counts.children3to17}
+                {reservationInfo.counts.unknown ? ` · ${t('Věk neuveden')}: ${reservationInfo.counts.unknown}` : ''}
+              </span>
+              {effectiveItem.note ? <span className="k-breakfast-serving-row__note-inline" title={effectiveItem.note}>{effectiveItem.note}</span> : null}
               <span className="k-breakfast-serving-row__action">{renderActionButton(item, effectiveItem)}</span>
             </div>
             {canEditDiet ? <details><summary>{t("Diety pobytu")}</summary>{renderReservationDiets(item)}</details> : null}

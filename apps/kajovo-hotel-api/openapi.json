@@ -807,6 +807,37 @@
             ],
             "title": "Arrival"
           },
+          "breakfast_adults": {
+            "default": 0,
+            "title": "Breakfast Adults",
+            "type": "integer"
+          },
+          "breakfast_age_unknown": {
+            "default": 0,
+            "title": "Breakfast Age Unknown",
+            "type": "integer"
+          },
+          "breakfast_children_0_2": {
+            "default": 0,
+            "title": "Breakfast Children 0 2",
+            "type": "integer"
+          },
+          "breakfast_children_3_17": {
+            "default": 0,
+            "title": "Breakfast Children 3 17",
+            "type": "integer"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
           "departure": {
             "anyOf": [
               {
