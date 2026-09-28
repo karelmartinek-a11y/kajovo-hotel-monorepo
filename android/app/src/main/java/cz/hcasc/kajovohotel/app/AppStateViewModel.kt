@@ -134,12 +134,12 @@ class AppStateViewModel @Inject constructor(
                 mutablePasswordResetRequestMessage.value = if (response.isSuccessful) {
                     "Pokud účet existuje, pošleme na zadaný e-mail odkaz pro změnu hesla."
                 } else {
-                    "Žádost se nepodařilo odeslat. Zkuste to znovu."
+                    "Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu."
                 }
             } catch (throwable: CancellationException) {
                 throw throwable
             } catch (throwable: Exception) {
-                mutablePasswordResetRequestMessage.value = throwable.readableMessage("Žádost se nepodařilo odeslat. Zkuste to znovu.")
+                mutablePasswordResetRequestMessage.value = throwable.readableMessage("Žádost se nepodařilo odeslat. Zkontrolujte připojení a zkuste to znovu.")
             } finally {
                 mutablePasswordResetRequestBusy.value = false
             }

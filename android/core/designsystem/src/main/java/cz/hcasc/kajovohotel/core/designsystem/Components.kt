@@ -34,6 +34,7 @@ fun PortalChrome(
     sections: List<Pair<String, String>> = emptyList(),
     onSectionSelected: ((String) -> Unit)? = null,
     selectedSection: String? = null,
+    unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     var roleMenuExpanded by remember { mutableStateOf(false) }
@@ -127,7 +128,14 @@ fun PortalChrome(
                                 colors = ButtonDefaults.textButtonColors(
                                     contentColor = if (route == selectedSection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 ),
-                            ) { Text(localize(label), maxLines = 1) }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(localize(label), maxLines = 1)
+                                    if (route == "chat" && unreadChatCount > 0) {
+                                        Badge { Text(unreadChatCount.coerceAtMost(99).toString()) }
+                                    }
+                                }
+                            }
                         }
                         TextButton(
                             onClick = onProfileClick,

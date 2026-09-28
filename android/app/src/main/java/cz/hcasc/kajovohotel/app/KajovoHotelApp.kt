@@ -183,6 +183,8 @@ private fun PortalAppShell(
     onOpenChatConsumed: () -> Unit,
     onChatConversationConsumed: () -> Unit,
 ) {
+    val chatViewModel: ChatViewModel = hiltViewModel()
+    val chatState by chatViewModel.state.collectAsStateWithLifecycle()
     val startRoute = resolveAppRoute(identity)
     val availableRoles = identity.assignedRoles()
 
@@ -211,6 +213,7 @@ private fun PortalAppShell(
                     onRoleChange = onRoleChange,
                     title = "Recepce",
                     availableRoles = availableRoles,
+                    unreadChatCount = chatState.unreadCount,
                 ) {
                     ReceptionHubScreen(
                         onBreakfastClick = { navController.navigate(PortalRoutes.Breakfast) },
@@ -804,6 +807,7 @@ private fun PortalAppShell(
                     onRoleSelected = onRoleChange,
                     sections = employeeNavigationSections(identity),
                     selectedSection = PortalRoutes.Profile,
+                    unreadChatCount = chatState.unreadCount,
                     onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
                 ) {
                     ProfileScreen(
@@ -823,10 +827,12 @@ private fun PortalAppShell(
                     onRoleChange = onRoleChange,
                     title = "Chat",
                     availableRoles = availableRoles,
+                    unreadChatCount = chatState.unreadCount,
                 ) {
                     ChatScreen(
                         initialConversationId = openChatConversationId,
                         onInitialConversationHandled = onChatConversationConsumed,
+                        viewModel = chatViewModel,
                     )
                 }
             }
@@ -841,6 +847,7 @@ private fun PortalAppShell(
                     onRoleSelected = onRoleChange,
                     sections = employeeNavigationSections(identity),
                     selectedSection = PortalRoutes.Profile,
+                    unreadChatCount = chatState.unreadCount,
                     onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
                 ) {
                     ChangePasswordScreen(message = message, onSubmit = onChangePassword)
@@ -872,6 +879,7 @@ private fun GuardedRoute(
     onRoleChange: (PortalRole) -> Unit,
     title: String,
     availableRoles: List<PortalRole>,
+    unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     if (!identity.canOpenAppDestination(route)) {
@@ -892,7 +900,8 @@ private fun GuardedRoute(
         activeRole = identity.activeRole,
         onRoleSelected = onRoleChange,
                     sections = employeeNavigationSections(identity),
-                    selectedSection = route.substringBefore("/"),
+        selectedSection = route.substringBefore("/"),
+        unreadChatCount = unreadChatCount,
                     onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
         content = content,
     )
