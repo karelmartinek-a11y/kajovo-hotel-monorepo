@@ -243,9 +243,10 @@ def test_housekeeping_status_update_contract_requires_expected_status() -> None:
 
 
 def test_housekeeping_route_returns_http_409_for_stale_status_without_provider_patch(monkeypatch) -> None:
+    from types import SimpleNamespace
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from types import SimpleNamespace
 
     from app.api.routes import housekeeping as route
     from app.db.session import get_db
