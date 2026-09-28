@@ -106,13 +106,39 @@ test('zaměstnanec a administrátor si vymění zprávu a stav přečtení se ob
     ]);
     await employeePage.waitForURL((url) => url.pathname === '/' || url.pathname === '/sklad', { timeout: 10_000 });
     await employeePage.goto('/chat');
+    const portalIcons = employeePage.locator('.k-portal-mobile-tabs__pictogram');
+    await expect(portalIcons.first()).toBeVisible();
+    await expect.poll(() => portalIcons.first().evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBeTruthy();
+    await employeePage.screenshot({ path: '/tmp/kajovo-portal-footer-icons.png' });
     await employeePage.getByRole('button', { name: new RegExp(credentials.email, 'i') }).click();
     await expect(employeePage).toHaveURL(/\/chat\/\d+$/);
+    await expect(employeePage.locator('.k-chat-sidebar')).toBeHidden();
+    await expect(employeePage.getByLabel('Napište zprávu')).toBeVisible();
+    expect(await employeePage.locator('.k-chat-compose').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const navigation = document.querySelector('.k-bottom-nav')!.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= navigation.top;
+    })).toBeTruthy();
+    await employeePage.setViewportSize({ width: 844, height: 390 });
+    await expect(employeePage.getByLabel('Napište zprávu')).toBeVisible();
+    expect(await employeePage.locator('.k-chat-compose').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const navigation = document.querySelector('.k-bottom-nav')!.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= navigation.top;
+    })).toBeTruthy();
     await employeePage.getByLabel('Napište zprávu').fill('Zpráva z mobilního portálu');
+    await expect(employeePage.getByLabel('Napište zprávu')).toBeFocused();
     await employeePage.getByRole('button', { name: 'Odeslat' }).click();
     const ownBubble = employeePage.locator('.k-chat-bubble.is-own').last();
     await expect(ownBubble).toContainText('Zpráva z mobilního portálu');
     await expect(ownBubble).toContainText('Odesláno');
+    await employeePage.locator('.k-chat-back').click({ timeout: 5_000 });
+    await employeePage.waitForURL((url) => url.pathname === '/chat', { timeout: 5_000 });
+    await expect(employeePage.locator('.k-chat-sidebar')).toBeVisible();
+    await employeePage.setViewportSize({ width: 390, height: 844 });
+    await employeePage.locator('.k-chat-sidebar .k-chat-person').first().click();
+    await employeePage.waitForURL((url) => /\/chat\/\d+$/.test(url.pathname));
+    await expect(employeePage.getByLabel('Napište zprávu')).toBeVisible();
 
     await page.context().addCookies(adminState.cookies);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -123,13 +149,19 @@ test('zaměstnanec a administrátor si vymění zprávu a stav přečtení se ob
     await conversation.click();
     await expect(page.getByLabel(displayName).getByText('Zpráva z mobilního portálu')).toBeVisible();
     await page.screenshot({ path: '/tmp/kajovo-chat-desktop.png' });
-
-    await page.setViewportSize({ width: 834, height: 1112 });
-    await expect(page.getByTestId('admin-bottom-navigation')).toBeVisible();
-    await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByTestId('admin-bottom-navigation')).toBeVisible();
-    await expect(page.getByTestId('chat-page')).toBeVisible();
-    await page.screenshot({ path: '/tmp/kajovo-chat-phone.png' });
+    for (const size of [{ width: 834, height: 1112 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+      await page.setViewportSize(size);
+      await expect(page.getByTestId('admin-bottom-navigation')).toBeVisible();
+      await expect(page.getByTestId('chat-page')).toBeVisible();
+      await expect(page.getByLabel('Napište zprávu')).toBeVisible();
+      expect(await page.locator('.k-chat-compose').evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const navigation = document.querySelector('.k-bottom-nav')!.getBoundingClientRect();
+        return rect.top >= 0 && rect.bottom <= navigation.top;
+      })).toBeTruthy();
+      if (size.width === 390) await page.screenshot({ path: '/tmp/kajovo-chat-phone.png' });
+      if (size.width === 844) await page.screenshot({ path: '/tmp/kajovo-chat-admin-landscape.png' });
+    }
     await expect.poll(async () => (await employeePage.locator('.k-chat-bubble.is-own').last().innerText()).includes('Přečteno'), { timeout: 10_000 }).toBeTruthy();
     for (const width of [1440, 834, 390]) {
       await page.setViewportSize({ width, height: width === 834 ? 1112 : 844 });
