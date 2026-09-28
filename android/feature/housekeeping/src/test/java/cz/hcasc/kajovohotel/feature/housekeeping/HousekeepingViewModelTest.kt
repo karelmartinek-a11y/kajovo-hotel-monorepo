@@ -2,6 +2,7 @@ package cz.hcasc.kajovohotel.feature.housekeeping
 
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
 import cz.hcasc.kajovohotel.core.model.HousekeepingCaptureMode
+import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.feature.housekeeping.data.HousekeepingCaptureRepository
 import cz.hcasc.kajovohotel.feature.housekeeping.data.HousekeepingDraftStore
 import cz.hcasc.kajovohotel.feature.housekeeping.data.StoredHousekeepingDraft
@@ -63,6 +64,24 @@ class HousekeepingViewModelTest {
         assertEquals(listOf(expectedPhoto), viewModel.state.value.pendingPhotos)
         assertEquals(0, draftStore.clearCalls)
         assertNotNull(viewModel.state.value.draftNotice.takeIf { it.startsWith("Obnoven lokální koncept z ") })
+    }
+
+    @Test
+    fun roomStatusChangeSendsTheLoadedStatusAsItsPrecondition() = runTest(testDispatcher) {
+        val housekeepingApi = FakeHousekeepingApi()
+        val viewModel = HousekeepingViewModel(
+            repository = HousekeepingCaptureRepository(FakeIssuesApi(), FakeLostFoundApi(), housekeepingApi),
+            draftStore = FakeHousekeepingDraftStore(),
+        )
+
+        viewModel.configure(PortalRole.HOUSEKEEPING, setOf("housekeeping:write"))
+        advanceUntilIdle()
+        viewModel.selectRoom("101")
+        viewModel.updateRoomStatus("clean")
+        advanceUntilIdle()
+
+        assertEquals("clean", housekeepingApi.lastStatusUpdateRequest?.status)
+        assertEquals("dirty", housekeepingApi.lastStatusUpdateRequest?.expected_status)
     }
 
     @Test
