@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.issues
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -84,12 +86,12 @@ fun IssuesScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = {
                     if (onNavigate != null) onNavigate(IssuesSection.LIST, null) else section = IssuesSection.LIST
-                }, modifier = Modifier.weight(1f)) { Text("Seznam") }
+                }, modifier = Modifier.weight(1f)) { Text(localize("Seznam")) }
 
                 OutlinedButton(onClick = {
                     viewModel.startCreate()
                     if (onNavigate != null) onNavigate(IssuesSection.CREATE, null) else section = IssuesSection.CREATE
-                }, modifier = Modifier.weight(1f)) { Text("Nová") }
+                }, modifier = Modifier.weight(1f)) { Text(localize("Nová")) }
             }
         }
         item {
@@ -185,7 +187,7 @@ fun IssuesScreen(
                                 enabled = !state.isSaving,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Text("Označit jako odstraněné")
+                                Text(localize("Označit jako odstraněné"))
                             }
                         }
                     }
@@ -225,17 +227,17 @@ private fun FiltersCard(
             value = state.filters.location,
             onValueChange = { value -> onFiltersChange { current -> current.copy(location = value) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Místo") },
+            label = { Text(localize("Místo")) },
         )
         OutlinedTextField(
             value = state.filters.roomNumber,
             onValueChange = { value -> onFiltersChange { current -> current.copy(roomNumber = value) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Pokoj") },
+            label = { Text(localize("Pokoj")) },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-            Button(onClick = onRefresh) { Text("Použít filtry") }
-            OutlinedButton(onClick = onStartCreate) { Text("Nová závada") }
+            Button(onClick = onRefresh) { Text(localize("Použít filtry")) }
+            OutlinedButton(onClick = onStartCreate) { Text(localize("Nová závada")) }
         }
     }
 }
@@ -295,11 +297,11 @@ private fun DetailCard(
             )
         }
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
+            OutlinedButton(onClick = onBackToList) { Text(localize("Zpět na seznam")) }
             if (selected.status != IssueStatus.RESOLVED && selected.status != IssueStatus.CLOSED) {
-                OutlinedButton(onClick = onMarkResolved, enabled = !state.isSaving) { Text("Označit jako odstraněné") }
+                OutlinedButton(onClick = onMarkResolved, enabled = !state.isSaving) { Text(localize("Označit jako odstraněné")) }
             }
-            OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
+            OutlinedButton(onClick = onStartEdit) { Text(localize("Upravit")) }
         }
     }
 }
@@ -322,40 +324,40 @@ private fun EditorCard(
             subtitle = state.successMessage ?: "",
         )
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            FilterChip(selected = !details, onClick = { details = false }, label = { Text("Závada") })
-            FilterChip(selected = details, onClick = { details = true }, label = { Text("Stav a priorita") })
+            FilterChip(selected = !details, onClick = { details = false }, label = { Text(localize("Závada")) })
+            FilterChip(selected = details, onClick = { details = true }, label = { Text(localize("Stav a priorita")) })
         }
         if (!details) {
         OutlinedTextField(
             value = draft.title,
             onValueChange = { onDraftChange { current -> current.copy(title = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Název závady") },
+            label = { Text(localize("Název závady")) },
         )
         OutlinedTextField(
             value = draft.location,
             onValueChange = { onDraftChange { current -> current.copy(location = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Místo") },
+            label = { Text(localize("Místo")) },
         )
         OutlinedTextField(
             value = draft.roomNumber,
             onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Pokoj") },
+            label = { Text(localize("Pokoj")) },
         )
         OutlinedTextField(
             value = draft.description,
             onValueChange = { onDraftChange { current -> current.copy(description = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Popis") },
+            label = { Text(localize("Popis")) },
         )
         } else {
         OutlinedTextField(
             value = draft.assignee,
             onValueChange = { onDraftChange { current -> current.copy(assignee = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Přiřazeno") },
+            label = { Text(localize("Přiřazeno")) },
         )
         LazyRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
             items(IssueStatus.entries) { status ->
@@ -381,7 +383,7 @@ private fun EditorCard(
                 Text(text = if (state.isEditingExisting) "Uložit úpravy" else "Založit závadu")
             }
             OutlinedButton(onClick = onCancel, enabled = !state.isSaving) {
-                Text("Zrušit")
+                Text(localize("Zrušit"))
             }
         }
         if (state.allowedTransitions.isNotEmpty()) {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from datetime import timedelta
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas import (
     ChatConversationCreate,
     ChatConversationRead,
+    ChatFcmTokenRequest,
     ChatMessageCreate,
     ChatMessageRead,
     ChatParticipantRead,
@@ -23,6 +25,8 @@ from app.config import get_settings
 from app.db.models import (
     AdminProfile,
     ChatConversation,
+    ChatFcmOutbox,
+    ChatFcmToken,
     ChatMessage,
     ChatParticipant,
     ChatPushOutbox,
@@ -32,10 +36,14 @@ from app.db.models import (
 from app.db.session import SessionLocal, get_db
 from app.security.auth import require_session
 from app.security.rbac import normalize_role
-from app.time_utils import utc_now
+from app.time_utils import ensure_utc, utc_now
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+
+
+def _fcm_data_payload(conversation_id: int) -> dict[str, str]:
+    return {"type": "chat_message", "conversation_id": str(conversation_id)}
 
 
 def _portal_name(user: PortalUser) -> str:
@@ -324,6 +332,7 @@ def send_message(payload: ChatMessageCreate, request: Request, db: Session = Dep
         return _message_read(previous, actor.id)
     conversation.updated_at = utc_now()
     db.add(ChatPushOutbox(message_id=message.id, next_attempt_at=utc_now()))
+    db.add(ChatFcmOutbox(message_id=message.id, next_attempt_at=utc_now()))
     db.commit()
     db.refresh(message)
     return _message_read(message, actor.id)
@@ -369,6 +378,30 @@ def unregister_push_subscription(payload: WebPushSubscriptionDelete, request: Re
         ChatPushSubscription.participant_id == actor.id,
         ChatPushSubscription.endpoint == payload.endpoint,
     ).delete(synchronize_session=False)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/fcm-tokens", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, operation_id="chat_register_fcm_token")
+def register_fcm_token(payload: ChatFcmTokenRequest, request: Request, db: Session = Depends(get_db)) -> Response:
+    session, actor = _actor_participant(request, db)
+    if actor.principal_type != "portal" or session.get("active_role") == "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Nativní oznámení jsou dostupná pouze zaměstnaneckému účtu.")
+    row = db.execute(select(ChatFcmToken).where(ChatFcmToken.token == payload.token)).scalar_one_or_none()
+    if row is None:
+        row = ChatFcmToken(participant_id=actor.id, token=payload.token)
+    else:
+        row.participant_id = actor.id
+        row.updated_at = utc_now()
+    db.add(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/fcm-tokens", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, operation_id="chat_delete_fcm_token")
+def unregister_fcm_token(payload: ChatFcmTokenRequest, request: Request, db: Session = Depends(get_db)) -> Response:
+    _, actor = _actor_participant(request, db)
+    db.query(ChatFcmToken).filter(ChatFcmToken.participant_id == actor.id, ChatFcmToken.token == payload.token).delete(synchronize_session=False)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -435,6 +468,76 @@ def dispatch_pending_chat_pushes() -> None:
                 row.attempts += 1
                 row.next_attempt_at = utc_now() + timedelta(seconds=min(30 * (2 ** min(row.attempts, 7)), 3600))
                 row.last_error = row.last_error or "WebPushDeliveryFailed"
+            else:
+                row.sent_at = utc_now()
+                row.last_error = None
+        db.commit()
+
+
+def dispatch_pending_chat_fcm() -> None:
+    settings = get_settings()
+    if not settings.firebase_service_account_json_b64:
+        return
+    try:
+        service_account = json.loads(base64.b64decode(settings.firebase_service_account_json_b64, validate=True))
+        import firebase_admin
+        from firebase_admin import credentials, messaging
+
+        try:
+            firebase_app = firebase_admin.get_app("kajovo-chat-fcm")
+        except ValueError:
+            firebase_app = firebase_admin.initialize_app(
+                credentials.Certificate(service_account),
+                name="kajovo-chat-fcm",
+            )
+    except Exception as exc:
+        logger.error("FCM initialization failed: %s", type(exc).__name__)
+        return
+
+    with SessionLocal() as db:
+        rows = db.execute(
+            select(ChatFcmOutbox).where(
+                ChatFcmOutbox.sent_at.is_(None),
+                ChatFcmOutbox.next_attempt_at <= utc_now(),
+            ).order_by(ChatFcmOutbox.id).limit(20).with_for_update(skip_locked=True)
+        ).scalars().all()
+        if not rows:
+            return
+        for row in rows:
+            created_at = ensure_utc(row.created_at)
+            if created_at is not None and created_at < utc_now() - timedelta(hours=1):
+                row.sent_at = utc_now()
+                row.last_error = "FcmNotificationExpired"
+                continue
+            message = db.get(ChatMessage, row.message_id)
+            conversation = db.get(ChatConversation, message.conversation_id) if message else None
+            if message is None or conversation is None:
+                row.sent_at = utc_now()
+                continue
+            recipient_id = conversation.participant_high_id if message.sender_id == conversation.participant_low_id else conversation.participant_low_id
+            tokens = db.execute(select(ChatFcmToken).where(ChatFcmToken.participant_id == recipient_id)).scalars().all()
+            delivery_failed = False
+            for token_row in tokens:
+                try:
+                    messaging.send(
+                        messaging.Message(
+                            token=token_row.token,
+                            data={
+                                **_fcm_data_payload(conversation.id),
+                            },
+                            android=messaging.AndroidConfig(priority="high", ttl=timedelta(hours=1)),
+                        ),
+                        app=firebase_app,
+                    )
+                except messaging.UnregisteredError:
+                    db.delete(token_row)
+                except Exception as exc:
+                    delivery_failed = True
+                    row.last_error = type(exc).__name__
+            if delivery_failed:
+                row.attempts += 1
+                row.next_attempt_at = utc_now() + timedelta(seconds=min(30 * (2 ** min(row.attempts, 7)), 3600))
+                row.last_error = row.last_error or "FcmDeliveryFailed"
             else:
                 row.sent_at = utc_now()
                 row.last_error = None

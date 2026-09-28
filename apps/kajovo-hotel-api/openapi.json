@@ -1101,6 +1101,22 @@
         "title": "ChatConversationRead",
         "type": "object"
       },
+      "ChatFcmTokenRequest": {
+        "properties": {
+          "token": {
+            "maxLength": 4096,
+            "minLength": 20,
+            "pattern": "^\\S+$",
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "ChatFcmTokenRequest",
+        "type": "object"
+      },
       "ChatMessageCreate": {
         "properties": {
           "body": {
@@ -3860,6 +3876,19 @@
         "title": "PortalPasswordChangeRequest",
         "type": "object"
       },
+      "PortalPasswordResetLinkRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PortalPasswordResetLinkRequest",
+        "type": "object"
+      },
       "PortalPasswordResetRequest": {
         "properties": {
           "new_password": {
@@ -5146,6 +5175,48 @@
         ]
       }
     },
+    "/api/auth/request-password-reset": {
+      "post": {
+        "description": "Send a portal reset link without revealing whether the account exists.",
+        "operationId": "request_portal_password_reset_api_auth_request_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalPasswordResetLinkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Portal Password Reset",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/auth/reset-password": {
       "post": {
         "operationId": "reset_password_api_auth_reset_password_post",
@@ -6280,6 +6351,72 @@
           }
         },
         "summary": "List Directory",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/fcm-tokens": {
+      "delete": {
+        "operationId": "chat_delete_fcm_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFcmTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unregister Fcm Token",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "operationId": "chat_register_fcm_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatFcmTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register Fcm Token",
         "tags": [
           "chat"
         ]

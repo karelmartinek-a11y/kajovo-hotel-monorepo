@@ -102,6 +102,8 @@ def iter_text_files() -> list[Path]:
             if (
                 path.is_dir()
                 or "node_modules" in path.parts
+                or ".venv" in path.parts
+                or ".venv311" in path.parts
                 or "dist" in path.parts
                 or "test-results" in path.parts
                 or "playwright-report" in path.parts

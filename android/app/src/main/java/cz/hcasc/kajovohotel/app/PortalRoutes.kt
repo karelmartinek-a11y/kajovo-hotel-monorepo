@@ -35,6 +35,7 @@ object PortalRoutes {
     const val ReportsDetail = "hlaseni/detail/{reportId}"
     const val ReportsCreate = "hlaseni/nove"
     const val ReportsEdit = "hlaseni/edit/{reportId}"
+    const val Chat = "chat"
     const val Profile = "profil"
     const val ChangePassword = "zmena-hesla"
 

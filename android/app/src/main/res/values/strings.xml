@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">KájovoHotel</string>
+    <string name="chat_notification_channel">Interní chat</string>
+    <string name="chat_notification_generic">Nová zpráva v interním chatu</string>
+    <string name="asset_statements" translatable="false">[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"web\",\"site\":\"https://hotel.hcasc.cz\"}}]</string>
 </resources>

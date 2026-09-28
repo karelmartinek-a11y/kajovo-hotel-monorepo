@@ -9,6 +9,22 @@ import org.junit.Test
 
 class RootDestinationResolverTest {
     @Test
+    fun `chat is available to employee sessions but remains excluded from admin app sessions`() {
+        val employee = AuthenticatedIdentity(
+            email = "recepce@example.com",
+            actorType = ActorType.PORTAL,
+            roleLabel = "recepce",
+            roles = listOf(PortalRole.RECEPTION),
+            activeRole = PortalRole.RECEPTION,
+            permissions = emptySet(),
+        )
+        val admin = employee.copy(actorType = ActorType.ADMIN)
+
+        assertEquals(true, employee.canOpenDestination(PortalRoutes.Chat))
+        assertEquals(false, admin.canOpenDestination(PortalRoutes.Chat))
+    }
+
+    @Test
     fun `unauthenticated state opens login`() {
         assertEquals(PortalRoutes.Login, resolveRootRoute(SessionState.Unauthenticated))
     }

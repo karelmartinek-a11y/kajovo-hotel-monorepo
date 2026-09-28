@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.housekeeping
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -105,8 +107,8 @@ fun HousekeepingScreen(
     LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                FilterChip(selected = !captureMode, onClick = { captureMode = false }, label = { Text("Pokoje") })
-                FilterChip(selected = captureMode, onClick = { captureMode = true }, label = { Text("Nový zápis") })
+                FilterChip(selected = !captureMode, onClick = { captureMode = false }, label = { Text(localize("Pokoje")) })
+                FilterChip(selected = captureMode, onClick = { captureMode = true }, label = { Text(localize("Nový zápis")) })
             }
         }
         if (!captureMode) {
@@ -128,25 +130,25 @@ fun HousekeepingScreen(
                 OutlinedButton(
                     onClick = { viewModel.changeDate(LocalDate.parse(state.selectedDate).minusDays(1).toString()) },
                     enabled = !state.isSavingRoom,
-                ) { Text("Předchozí") }
+                ) { Text(localize("Předchozí")) }
                 OutlinedButton(
                     onClick = { viewModel.changeDate(LocalDate.now(ZoneId.of("Europe/Prague")).toString()) },
                     enabled = !state.isSavingRoom,
-                ) { Text("Dnes") }
+                ) { Text(localize("Dnes")) }
                 OutlinedButton(
                     onClick = { viewModel.changeDate(LocalDate.parse(state.selectedDate).plusDays(1).toString()) },
                     enabled = !state.isSavingRoom,
-                ) { Text("Další") }
+                ) { Text(localize("Další")) }
             }
         }
-        item { Text("Datum: ${state.selectedDate}", style = MaterialTheme.typography.titleMedium) }
+        item { Text(localize("Datum: ${state.selectedDate}"), style = MaterialTheme.typography.titleMedium) }
         if (state.isLoadingRooms) {
             item { CircularProgressIndicator() }
         }
         state.roomsError?.let { message ->
             item {
                 FeatureCard(title = "Přehled pokojů není dostupný", subtitle = message)
-                OutlinedButton(onClick = viewModel::loadRooms, modifier = Modifier.fillMaxWidth()) { Text("Obnovit") }
+                OutlinedButton(onClick = viewModel::loadRooms, modifier = Modifier.fillMaxWidth()) { Text(localize("Obnovit")) }
             }
         }
         state.roomAnnouncement?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.primary) } }
@@ -163,9 +165,9 @@ fun HousekeepingScreen(
                         modifier = Modifier.fillMaxWidth().padding(KajovoSpacingTokens.S3),
                         verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S1),
                     ) {
-                        Text("Pokoj ${room.room_number}", style = MaterialTheme.typography.titleMedium)
+                        Text(localize("Pokoj ${room.room_number}"), style = MaterialTheme.typography.titleMedium)
                         Text(room.housekeeping_status ?: "Stav úklidu není uveden")
-                        Text("${room.occupancy_state} · ${room.persons} osob")
+                        Text(localize("${room.occupancy_state} · ${room.persons} osob"))
                         room.guest_label?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
                         if (room.arrival_today) Text(if (room.ready_for_arrival) "Příjezd · připraven" else "Příjezd · čeká na přípravu")
                         if (room.departure_today) Text(if (room.checked_out) "Odjezd · CHECK-OUT" else "Odjezd · před CHECK-OUT")
@@ -195,13 +197,13 @@ fun HousekeepingScreen(
                     selected = state.draft.mode == HousekeepingCaptureMode.LOST_FOUND,
                     onClick = { viewModel.updateDraft { current -> current.copy(mode = HousekeepingCaptureMode.LOST_FOUND) } },
                     enabled = state.canCreateLostFound,
-                    label = { Text("Nález") },
+                    label = { Text(localize("Nález")) },
                 )
                 FilterChip(
                     selected = state.draft.mode == HousekeepingCaptureMode.ISSUE,
                     onClick = { viewModel.updateDraft { current -> current.copy(mode = HousekeepingCaptureMode.ISSUE) } },
                     enabled = state.canCreateIssue,
-                    label = { Text("Závada") },
+                    label = { Text(localize("Závada")) },
                 )
             }
         }
@@ -241,21 +243,21 @@ fun HousekeepingScreen(
                     enabled = state.pendingPhotos.size < 3,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Vyfotit")
+                    Text(localize("Vyfotit"))
                 }
                 OutlinedButton(
                     onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     enabled = state.pendingPhotos.size < 3,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Přidat z galerie")
+                    Text(localize("Přidat z galerie"))
                 }
                 if (state.pendingPhotos.isNotEmpty()) {
                     OutlinedButton(
                         onClick = viewModel::clearPendingPhotos,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text("Vyčistit fotografie")
+                        Text(localize("Vyčistit fotografie"))
                     }
                 }
                 Button(
@@ -263,7 +265,7 @@ fun HousekeepingScreen(
                     enabled = !state.isSubmitting && state.draft.isValid(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Odeslat")
+                    Text(localize("Odeslat"))
                 }
             }
         }
@@ -278,10 +280,10 @@ fun HousekeepingScreen(
     if (selectedRoom != null) {
         AlertDialog(
             onDismissRequest = { if (!state.isSavingRoom) viewModel.selectRoom(null) },
-            title = { Text("Pokoj ${selectedRoom.room_number}") },
+            title = { Text(localize("Pokoj ${selectedRoom.room_number}")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                    Text("Vyberte stav pokoje.")
+                    Text(localize("Vyberte stav pokoje."))
                     housekeepingStatuses.forEach { (value, label) ->
                         OutlinedButton(
                             onClick = { viewModel.updateRoomStatus(value) },
@@ -289,17 +291,17 @@ fun HousekeepingScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) { Text(label) }
                     }
-                    if (state.isSavingRoom) Text("Ověřuji zápis…")
+                    if (state.isSavingRoom) Text(localize("Ověřuji zápis…"))
                     state.roomWriteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = {
                 if (state.roomWriteError != null) {
-                    Button(onClick = viewModel::recoverRoomState) { Text("Obnovit stav") }
+                    Button(onClick = viewModel::recoverRoomState) { Text(localize("Obnovit stav")) }
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { viewModel.selectRoom(null) }, enabled = !state.isSavingRoom) { Text("Zavřít") }
+                OutlinedButton(onClick = { viewModel.selectRoom(null) }, enabled = !state.isSavingRoom) { Text(localize("Zavřít")) }
             },
         )
     }
@@ -348,7 +350,7 @@ private fun PendingPhotoCard(
                     onClick = onRemove,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Odebrat fotografii")
+                    Text(localize("Odebrat fotografii"))
                 }
             }
         }

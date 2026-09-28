@@ -175,6 +175,9 @@ export type ChatConversationRead = {
   "participant": ChatParticipantRead;
   "unread_count": number;
 };
+export type ChatFcmTokenRequest = {
+  "token": string;
+};
 export type ChatMessageCreate = {
   "body": string;
   "client_message_id": string;
@@ -550,6 +553,9 @@ export type PortalPasswordChangeRequest = {
   "new_password": string;
   "old_password": string;
 };
+export type PortalPasswordResetLinkRequest = {
+  "email": string;
+};
 export type PortalPasswordResetRequest = {
   "new_password": string;
   "token": string;
@@ -768,6 +774,9 @@ export const apiClient = {
   async updateAuthProfileApiAuthProfilePatch(body: AuthProfileUpdate): Promise<AuthProfileRead> {
     return request<AuthProfileRead>('PATCH', `/api/auth/profile`, undefined, body);
   },
+  async requestPortalPasswordResetApiAuthRequestPasswordResetPost(body: PortalPasswordResetLinkRequest): Promise<LogoutResponse> {
+    return request<LogoutResponse>('POST', `/api/auth/request-password-reset`, undefined, body);
+  },
   async resetPasswordApiAuthResetPasswordPost(body: PortalPasswordResetRequest): Promise<LogoutResponse> {
     return request<LogoutResponse>('POST', `/api/auth/reset-password`, undefined, body);
   },
@@ -851,6 +860,12 @@ export const apiClient = {
   },
   async chatDirectory(): Promise<Array<ChatParticipantRead>> {
     return request<Array<ChatParticipantRead>>('GET', `/api/v1/chat/directory`, undefined, undefined);
+  },
+  async chatDeleteFcmToken(body: ChatFcmTokenRequest): Promise<void> {
+    return request<void>('DELETE', `/api/v1/chat/fcm-tokens`, undefined, body);
+  },
+  async chatRegisterFcmToken(body: ChatFcmTokenRequest): Promise<void> {
+    return request<void>('POST', `/api/v1/chat/fcm-tokens`, undefined, body);
   },
   async chatSendMessage(body: ChatMessageCreate): Promise<ChatMessageRead> {
     return request<ChatMessageRead>('POST', `/api/v1/chat/messages`, undefined, body);

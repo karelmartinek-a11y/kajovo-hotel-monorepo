@@ -34,6 +34,7 @@ fun resolveAuthenticatedRoute(identity: AuthenticatedIdentity): String {
 
 fun AuthenticatedIdentity.canOpenDestination(route: String): Boolean {
     val normalizedRoute = route.substringBefore('/')
+    if (normalizedRoute == PortalRoutes.Chat) return actorType == ActorType.PORTAL
     val destination = PortalDestinations.firstOrNull { it.route == normalizedRoute } ?: return normalizedRoute in setOf(
         PortalRoutes.Profile,
         PortalRoutes.ChangePassword,

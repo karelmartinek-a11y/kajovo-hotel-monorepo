@@ -55,6 +55,7 @@ from app.services.mail import (
     build_email_service,
     send_admin_password_hint,
     send_admin_unlock_link,
+    send_user_password_reset_link,
     send_user_unlock_link,
 )
 
@@ -70,6 +71,10 @@ TOKEN_PURPOSE_PASSWORD_RESET = "password_reset"
 
 
 class HintRequest(BaseModel):
+    email: str
+
+
+class PortalPasswordResetLinkRequest(BaseModel):
     email: str
 
 
@@ -221,6 +226,24 @@ def _build_unlock_link(*, request: Request | None, token: str, actor_type: str) 
     if request is not None:
         return f"{str(request.base_url).rstrip('/')}/api/auth/unlock?{query}"
     return f"https://hotel.hcasc.cz/api/auth/unlock?{query}"
+
+
+def _issue_portal_password_reset_token(db: Session, principal: str, now: datetime) -> str:
+    token = secrets.token_urlsafe(32)
+    db.add(
+        AuthUnlockToken(
+            actor_type="portal",
+            principal=principal,
+            purpose=TOKEN_PURPOSE_PASSWORD_RESET,
+            token_hash=hashlib.sha256(token.encode("utf-8")).hexdigest(),
+            expires_at=now + UNLOCK_TOKEN_TTL,
+        )
+    )
+    return token
+
+
+def _password_reset_login_url(request: Request) -> str:
+    return f"{str(request.base_url).rstrip('/')}/login"
 
 
 def _send_unlock_email(
@@ -544,6 +567,51 @@ def portal_login(
         actor_type="portal",
         preferred_locale=user.preferred_locale,
     )
+
+
+@router.post("/request-password-reset", response_model=LogoutResponse)
+def request_portal_password_reset(
+    payload: PortalPasswordResetLinkRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> LogoutResponse:
+    """Send a portal reset link without revealing whether the account exists."""
+    email = payload.email.strip().lower()
+    now = _utc_now()
+    generic_response = LogoutResponse(ok=True)
+    if not email or len(email) > 255 or "@" not in email:
+        return generic_response
+
+    state = _get_lockout_state(db, actor_type="portal", principal=email)
+    if state is None:
+        db.commit()
+        return generic_response
+    last_sent_at = _as_utc(state.last_forgot_sent_at)
+    if last_sent_at is not None and now - last_sent_at < FORGOT_THROTTLE:
+        db.commit()
+        return generic_response
+
+    user = db.execute(select(PortalUser).where(PortalUser.email == email)).scalar_one_or_none()
+    if user is not None and user.is_active and not _is_admin_user(user):
+        token = _issue_portal_password_reset_token(db, email, now)
+        login_url = _password_reset_login_url(request)
+        reset_link = f"{login_url}/reset?{urlencode({'token': token})}"
+        try:
+            service = build_email_service(get_settings(), _stored_smtp_config(db))
+            send_user_password_reset_link(
+                service=service,
+                recipient=email,
+                reset_link=reset_link,
+                login_url=login_url,
+            )
+        except Exception:
+            # Keep the anonymous response identical when mail delivery is unavailable.
+            pass
+
+    state.last_forgot_sent_at = now
+    db.add(state)
+    db.commit()
+    return generic_response
 
 
 @router.post("/logout", response_model=LogoutResponse)

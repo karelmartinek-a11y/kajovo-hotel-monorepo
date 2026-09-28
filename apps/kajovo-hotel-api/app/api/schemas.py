@@ -114,6 +114,10 @@ class WebPushSubscriptionDelete(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2048)
 
 
+class ChatFcmTokenRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=4096, pattern=r"^\S+$")
+
+
 class AndroidAppReleaseRead(BaseModel):
     version_code: int
     version: str

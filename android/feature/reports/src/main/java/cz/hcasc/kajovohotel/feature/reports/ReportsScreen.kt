@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.reports
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -85,17 +87,17 @@ fun ReportsScreen(
             ) {
                 OutlinedButton(onClick = {
                     if (onNavigate != null) onNavigate(ReportsSection.LIST, null) else section = ReportsSection.LIST
-                }, modifier = Modifier.weight(1f)) { Text("Seznam") }
+                }, modifier = Modifier.weight(1f)) { Text(localize("Seznam")) }
 
                 if (canManageReports) {
                     OutlinedButton(onClick = {
                         viewModel.startCreate()
                         if (onNavigate != null) onNavigate(ReportsSection.CREATE, null) else section = ReportsSection.CREATE
-                    }, modifier = Modifier.weight(1f)) { Text("Nové") }
+                    }, modifier = Modifier.weight(1f)) { Text(localize("Nové")) }
                     if (state.selected != null) {
                         OutlinedButton(onClick = {
                             state.selected?.id?.let { id -> onNavigate?.invoke(ReportsSection.EDIT, id) } ?: run { section = ReportsSection.EDIT }
-                        }, modifier = Modifier.weight(1f)) { Text("Upravit") }
+                        }, modifier = Modifier.weight(1f)) { Text(localize("Upravit")) }
                     }
                 }
             }
@@ -210,9 +212,9 @@ private fun FiltersCard(
             }
         }
         if (canManageReports) {
-            OutlinedButton(onClick = onStartCreate) { Text("Nové hlášení") }
+            OutlinedButton(onClick = onStartCreate) { Text(localize("Nové hlášení")) }
         }
-        OutlinedButton(onClick = onRefresh) { Text("Obnovit") }
+        OutlinedButton(onClick = onRefresh) { Text(localize("Obnovit")) }
     }
 }
 
@@ -256,9 +258,9 @@ private fun DetailCard(
             )
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
+            OutlinedButton(onClick = onBackToList) { Text(localize("Zpět na seznam")) }
             if (canManageReports) {
-                OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
+                OutlinedButton(onClick = onStartEdit) { Text(localize("Upravit")) }
             }
         }
     }
@@ -283,14 +285,14 @@ private fun EditorCard(
             value = draft.title,
             onValueChange = { onDraftChange { current -> current.copy(title = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Název hlášení") },
+            label = { Text(localize("Název hlášení")) },
             enabled = canManageReports,
         )
         OutlinedTextField(
             value = draft.description,
             onValueChange = { onDraftChange { current -> current.copy(description = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Popis") },
+            label = { Text(localize("Popis")) },
             enabled = canManageReports,
             minLines = 3,
         )
@@ -310,7 +312,7 @@ private fun EditorCard(
                     Text(text = if (state.isEditingExisting) "Uložit úpravy" else "Založit hlášení")
                 }
                 OutlinedButton(onClick = onCancel, enabled = !state.isSaving) {
-                    Text("Zrušit")
+                    Text(localize("Zrušit"))
                 }
             }
         }

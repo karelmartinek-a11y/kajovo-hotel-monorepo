@@ -659,6 +659,28 @@ class ChatPushOutbox(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class ChatFcmToken(Base):
+    __tablename__ = "chat_fcm_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    participant_id: Mapped[int] = mapped_column(ForeignKey("chat_participants.id", ondelete="CASCADE"), nullable=False, index=True)
+    token: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ChatFcmOutbox(Base):
+    __tablename__ = "chat_fcm_outbox"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message_id: Mapped[int] = mapped_column(ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False, unique=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class PortalSmtpSettings(Base):
     __tablename__ = "portal_smtp_settings"
 

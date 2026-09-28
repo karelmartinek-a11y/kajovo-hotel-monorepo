@@ -15,6 +15,7 @@ import cz.hcasc.kajovohotel.core.network.dto.AuthProfileUpdateRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalLoginRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordChangeRequest
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetRequest
+import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetLinkRequest
 import cz.hcasc.kajovohotel.core.network.dto.SelectRoleRequest
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
@@ -368,6 +369,7 @@ class DefaultSessionRepositoryTest {
         override suspend fun updateProfile(request: AuthProfileUpdateRequest): AuthProfileDto = updateProfileResult.getOrThrow()
         override suspend fun changePassword(request: PortalPasswordChangeRequest): Response<Unit> = changePasswordResult.getOrThrow()
         override suspend fun resetPassword(request: PortalPasswordResetRequest): Response<Unit> = Response.success(Unit)
+        override suspend fun requestPasswordReset(request: PortalPasswordResetLinkRequest): Response<Unit> = Response.success(Unit)
     }
 
     private class FakeCookieStore(

@@ -24,7 +24,7 @@ jobs:
       - name: Build production API image and verify imports
         run: |
           docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
-          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
+          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
 
   release-gate:
     runs-on: ubuntu-latest

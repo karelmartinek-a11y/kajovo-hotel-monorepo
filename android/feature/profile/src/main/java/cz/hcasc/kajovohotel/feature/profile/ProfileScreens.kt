@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.profile
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
@@ -145,14 +147,14 @@ private fun ProfileFormCard(
             value = firstName,
             onValueChange = onFirstNameChange,
             modifier = Modifier.weight(1f),
-            label = { Text("Jméno") },
+            label = { Text(localize("Jméno")) },
             singleLine = true,
         )
         OutlinedTextField(
             value = lastName,
             onValueChange = onLastNameChange,
             modifier = Modifier.weight(1f),
-            label = { Text("Příjmení") },
+            label = { Text(localize("Příjmení")) },
             singleLine = true,
         )
         }
@@ -160,12 +162,12 @@ private fun ProfileFormCard(
             value = phone,
             onValueChange = onPhoneChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Telefon") },
+            label = { Text(localize("Telefon")) },
             supportingText = {
                 if (!isPhoneValid) {
-                    Text("Telefon musí být ve formátu E.164.")
+                    Text(localize("Telefon musí být ve formátu E.164."))
                 } else {
-                    Text("+420123456789")
+                    Text(localize("+420123456789"))
                 }
             },
             isError = !isPhoneValid,
@@ -175,7 +177,7 @@ private fun ProfileFormCard(
             value = note,
             onValueChange = onNoteChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Poznámka") },
+            label = { Text(localize("Poznámka")) },
             minLines = 1,
             maxLines = 2,
         )
@@ -195,19 +197,19 @@ fun ChangePasswordScreen(message: String?, onSubmit: (String, String) -> Unit) {
     var newPassword by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
-        Text("Minimálně 8 znaků.", style = MaterialTheme.typography.bodySmall)
+        Text(localize("Minimálně 8 znaků."), style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             value = oldPassword,
             onValueChange = { oldPassword = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Stávající heslo") },
+            label = { Text(localize("Stávající heslo")) },
             visualTransformation = PasswordVisualTransformation(),
         )
         OutlinedTextField(
             value = newPassword,
             onValueChange = { newPassword = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Nové heslo") },
+            label = { Text(localize("Nové heslo")) },
             visualTransformation = PasswordVisualTransformation(),
         )
         if (!message.isNullOrBlank()) {
@@ -234,19 +236,19 @@ fun ResetPasswordScreen(
 
     Column(modifier = Modifier.imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3)) {
         Text(text = "Obnovení hesla", style = MaterialTheme.typography.titleLarge)
-        Text("Minimálně 8 znaků.", style = MaterialTheme.typography.bodySmall)
+        Text(localize("Minimálně 8 znaků."), style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Nové heslo") },
+            label = { Text(localize("Nové heslo")) },
             visualTransformation = PasswordVisualTransformation(),
         )
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Potvrzení hesla") },
+            label = { Text(localize("Potvrzení hesla")) },
             visualTransformation = PasswordVisualTransformation(),
         )
         if (!passwordsMatch && confirmPassword.isNotEmpty()) {

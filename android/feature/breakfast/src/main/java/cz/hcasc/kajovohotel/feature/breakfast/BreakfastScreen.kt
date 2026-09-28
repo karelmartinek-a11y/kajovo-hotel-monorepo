@@ -1,5 +1,7 @@
 package cz.hcasc.kajovohotel.feature.breakfast
 
+import cz.hcasc.kajovohotel.core.designsystem.localize
+
 import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
@@ -327,9 +329,9 @@ private fun SectionSwitcher(
         horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        OutlinedButton(onClick = onShowList, modifier = Modifier.weight(1f)) { Text("Seznam") }
+        OutlinedButton(onClick = onShowList, modifier = Modifier.weight(1f)) { Text(localize("Seznam")) }
         if (isReceptionMode) {
-            OutlinedButton(onClick = onShowCreate, modifier = Modifier.weight(1f)) { Text("Nová") }
+            OutlinedButton(onClick = onShowCreate, modifier = Modifier.weight(1f)) { Text(localize("Nová")) }
         }
     }
 }
@@ -355,7 +357,7 @@ private fun BreakfastToolbar(
             value = state.searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Hledat dle pokoje nebo hosta") },
+            label = { Text(localize("Hledat dle pokoje nebo hosta")) },
             singleLine = true,
         )
         if (state.role == PortalRole.RECEPTION) {
@@ -363,7 +365,7 @@ private fun BreakfastToolbar(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Button(onClick = onExport, modifier = Modifier.weight(1f)) { Text("Export PDF") }
+                Button(onClick = onExport, modifier = Modifier.weight(1f)) { Text(localize("Export PDF")) }
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
@@ -375,7 +377,7 @@ private fun BreakfastToolbar(
                     enabled = state.queuedDrafts.isNotEmpty() && !state.isSubmitting,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text("Uložit změny (${state.queuedDrafts.size})")
+                    Text(localize("Uložit změny (${state.queuedDrafts.size})"))
                 }
                 }
             }
@@ -385,7 +387,7 @@ private fun BreakfastToolbar(
                     enabled = !state.isSubmitting,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Zahodit rozpracované změny")
+                    Text(localize("Zahodit rozpracované změny"))
                 }
             }
         }
@@ -414,13 +416,13 @@ private fun BreakfastDateSelector(
         parsedDate.dayOfMonth,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(onClick = { onRefresh(parsedDate.minusDays(1).toString()) }) { Text("‹") }
+        OutlinedButton(onClick = { onRefresh(parsedDate.minusDays(1).toString()) }) { Text(localize("‹")) }
         OutlinedButton(onClick = { datePickerDialog.show() }, modifier = Modifier.weight(1f)) {
             Icon(Icons.Outlined.CalendarToday, contentDescription = null)
             Text(formatBreakfastHeadlineDate(serviceDate), Modifier.padding(start = 8.dp))
         }
-        OutlinedButton(onClick = { onRefresh(parsedDate.plusDays(1).toString()) }) { Text("›") }
-        OutlinedButton(onClick = { onRefresh(LocalDate.now().toString()) }) { Text("Dnes") }
+        OutlinedButton(onClick = { onRefresh(parsedDate.plusDays(1).toString()) }) { Text(localize("›")) }
+        OutlinedButton(onClick = { onRefresh(LocalDate.now().toString()) }) { Text(localize("Dnes")) }
     }
 }
 
@@ -532,8 +534,8 @@ private fun ReceptionDetailCard(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-            OutlinedButton(onClick = onBackToList) { Text("Zpět na seznam") }
-            OutlinedButton(onClick = onStartEdit) { Text("Upravit") }
+            OutlinedButton(onClick = onBackToList) { Text(localize("Zpět na seznam")) }
+            OutlinedButton(onClick = onStartEdit) { Text(localize("Upravit")) }
         }
     }
 }
@@ -604,21 +606,21 @@ private fun BreakfastOrderCard(
                     selected = order.noGluten,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_GLUTEN) },
                     enabled = canEditDiet,
-                    label = { Text("Bez lepku") },
+                    label = { Text(localize("Bez lepku")) },
                     leadingIcon = { Icon(Icons.Outlined.Grass, contentDescription = null) },
                 )
                 androidx.compose.material3.FilterChip(
                     selected = order.noMilk,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_MILK) },
                     enabled = canEditDiet,
-                    label = { Text("Bez laktózy") },
+                    label = { Text(localize("Bez laktózy")) },
                     leadingIcon = { Icon(Icons.Outlined.LocalDrink, contentDescription = null) },
                 )
                 androidx.compose.material3.FilterChip(
                     selected = order.noPork,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_PORK) },
                     enabled = canEditDiet,
-                    label = { Text("Bez vepřového") },
+                    label = { Text(localize("Bez vepřového")) },
                     leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
                 )
             }
@@ -641,7 +643,7 @@ private fun BreakfastOrderCard(
                         onClick = onReturnToPending,
                         enabled = order.status == BreakfastStatus.SERVED && !isSubmitting,
                     ) {
-                        Text("Vrátit do čeká")
+                        Text(localize("Vrátit do čeká"))
                     }
                 }
             }
@@ -660,7 +662,7 @@ fun BreakfastDietSummary(
         if (noGluten) DietIconBadge(icon = Icons.Outlined.Grass, label = "Bez lepku", showLabel = showLabels)
         if (noMilk) DietIconBadge(icon = Icons.Outlined.LocalDrink, label = "Bez laktózy", showLabel = showLabels)
         if (noPork) DietIconBadge(icon = Icons.Outlined.Pets, label = "Bez vepřového", showLabel = showLabels)
-        if (!noGluten && !noMilk && !noPork) Text("Bez diet", style = MaterialTheme.typography.bodyMedium)
+        if (!noGluten && !noMilk && !noPork) Text(localize("Bez diet"), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -719,33 +721,33 @@ private fun ManagerEditor(
             subtitle = state.successMessage ?: "",
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            androidx.compose.material3.FilterChip(selected = !details, onClick = { details = false }, label = { Text("Host") })
-            androidx.compose.material3.FilterChip(selected = details, onClick = { details = true }, label = { Text("Stav a diety") })
+            androidx.compose.material3.FilterChip(selected = !details, onClick = { details = false }, label = { Text(localize("Host")) })
+            androidx.compose.material3.FilterChip(selected = details, onClick = { details = true }, label = { Text(localize("Stav a diety")) })
         }
         if (!details) {
         OutlinedTextField(
             value = draft.serviceDate,
             onValueChange = { onDraftChange { current -> current.copy(serviceDate = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Datum služby") },
+            label = { Text(localize("Datum služby")) },
         )
         OutlinedTextField(
             value = draft.roomNumber,
             onValueChange = { onDraftChange { current -> current.copy(roomNumber = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Pokoj") },
+            label = { Text(localize("Pokoj")) },
         )
         OutlinedTextField(
             value = draft.guestName,
             onValueChange = { onDraftChange { current -> current.copy(guestName = it) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Host") },
+            label = { Text(localize("Host")) },
         )
         OutlinedTextField(
             value = draft.guestCount,
             onValueChange = { onDraftChange { current -> current.copy(guestCount = it.filter(Char::isDigit)) } },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Počet hostů") },
+            label = { Text(localize("Počet hostů")) },
         )
         } else {
         BreakfastStatusSelector(
@@ -756,19 +758,19 @@ private fun ManagerEditor(
             androidx.compose.material3.FilterChip(
                 selected = draft.noGluten,
                 onClick = { onDraftChange { current -> current.copy(noGluten = !current.noGluten) } },
-                label = { Text("Bez lepku") },
+                label = { Text(localize("Bez lepku")) },
                 leadingIcon = { Icon(Icons.Outlined.Grass, contentDescription = null) },
             )
             androidx.compose.material3.FilterChip(
                 selected = draft.noMilk,
                 onClick = { onDraftChange { current -> current.copy(noMilk = !current.noMilk) } },
-                label = { Text("Bez laktózy") },
+                label = { Text(localize("Bez laktózy")) },
                 leadingIcon = { Icon(Icons.Outlined.LocalDrink, contentDescription = null) },
             )
             androidx.compose.material3.FilterChip(
                 selected = draft.noPork,
                 onClick = { onDraftChange { current -> current.copy(noPork = !current.noPork) } },
-                label = { Text("Bez vepřového") },
+                label = { Text(localize("Bez vepřového")) },
                 leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
             )
         }
@@ -778,7 +780,7 @@ private fun ManagerEditor(
                 Text(if (state.isCreatingNew || state.selectedOrder == null) "Založit objednávku" else "Uložit změny")
             }
             OutlinedButton(onClick = onCancel, enabled = !state.isSubmitting) {
-                Text("Zrušit")
+                Text(localize("Zrušit"))
             }
         }
     }
@@ -829,12 +831,12 @@ private fun ExportActionsCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                Button(onClick = onOpen, modifier = Modifier.weight(1f)) { Text("Otevřít") }
-                Button(onClick = onShare, modifier = Modifier.weight(1f)) { Text("Sdílet") }
+                Button(onClick = onOpen, modifier = Modifier.weight(1f)) { Text(localize("Otevřít")) }
+                Button(onClick = onShare, modifier = Modifier.weight(1f)) { Text(localize("Sdílet")) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-                OutlinedButton(onClick = onSave, modifier = Modifier.weight(1f)) { Text("Uložit jako") }
-                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Zavřít") }
+                OutlinedButton(onClick = onSave, modifier = Modifier.weight(1f)) { Text(localize("Uložit jako")) }
+                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(localize("Zavřít")) }
             }
         }
     }

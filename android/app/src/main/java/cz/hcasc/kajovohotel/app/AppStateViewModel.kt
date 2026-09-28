@@ -10,12 +10,16 @@ import cz.hcasc.kajovohotel.core.network.AndroidReleaseSignalStore
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEvent
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEventStore
 import cz.hcasc.kajovohotel.core.network.api.AuthApi
+import cz.hcasc.kajovohotel.core.network.api.ChatApi
+import cz.hcasc.kajovohotel.core.network.dto.ChatFcmTokenRequest
+import com.google.firebase.messaging.FirebaseMessaging
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetRequest
 import cz.hcasc.kajovohotel.core.network.readableMessage
 import cz.hcasc.kajovohotel.core.session.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.URI
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +30,7 @@ import kotlinx.coroutines.launch
 class AppStateViewModel @Inject constructor(
     private val sessionRepository: SessionRepository,
     private val authApi: AuthApi,
+    private val chatApi: ChatApi,
     networkEventStore: AuthNetworkEventStore,
     androidReleaseSignalStore: AndroidReleaseSignalStore,
 ) : ViewModel() {
@@ -39,8 +44,18 @@ class AppStateViewModel @Inject constructor(
     val message: StateFlow<String?> = mutableMessage.asStateFlow()
     private val mutableSigningIn = MutableStateFlow(false)
     val signingIn: StateFlow<Boolean> = mutableSigningIn.asStateFlow()
+    private val mutablePasswordResetRequestBusy = MutableStateFlow(false)
+    val passwordResetRequestBusy: StateFlow<Boolean> = mutablePasswordResetRequestBusy.asStateFlow()
+    private val mutablePasswordResetRequestMessage = MutableStateFlow<String?>(null)
+    val passwordResetRequestMessage: StateFlow<String?> = mutablePasswordResetRequestMessage.asStateFlow()
 
-    private val mutableAppUpdateState = MutableStateFlow(AppUpdateState())
+    private val mutableAppUpdateState = MutableStateFlow(
+        AppUpdateState(
+            knownRequiredVersionCode = androidReleaseSignalStore.latest.value
+                ?.takeIf { it.required && it.versionCode > BuildConfig.VERSION_CODE }
+                ?.versionCode,
+        ),
+    )
     val appUpdateState: StateFlow<AppUpdateState> = mutableAppUpdateState.asStateFlow()
     private var lastAutoStartedVersionCode: Int? = null
 
@@ -60,9 +75,12 @@ class AppStateViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            androidReleaseSignalStore.signals.collectLatest { signal ->
+            androidReleaseSignalStore.latest.collectLatest { signal ->
+                val requiredCode = signal?.takeIf { it.required && it.versionCode > BuildConfig.VERSION_CODE }?.versionCode
+                mutableAppUpdateState.value = mutableAppUpdateState.value.copy(knownRequiredVersionCode = requiredCode)
                 val currentKnownVersion = mutableAppUpdateState.value.availableUpdate?.latestVersionCode
                 if (
+                    signal != null &&
                     signal.versionCode > BuildConfig.VERSION_CODE &&
                     signal.versionCode != currentKnownVersion &&
                     signal.versionCode != lastAutoStartedVersionCode
@@ -99,6 +117,30 @@ class AppStateViewModel @Inject constructor(
         }
     }
 
+    fun requestPasswordReset(email: String) {
+        if (mutablePasswordResetRequestBusy.value) return
+        mutablePasswordResetRequestBusy.value = true
+        mutablePasswordResetRequestMessage.value = null
+        viewModelScope.launch {
+            try {
+                val response = authApi.requestPasswordReset(
+                    cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetLinkRequest(email.trim()),
+                )
+                mutablePasswordResetRequestMessage.value = if (response.isSuccessful) {
+                    "Pokud účet existuje, pošleme na zadaný e-mail odkaz pro změnu hesla."
+                } else {
+                    "Žádost se nepodařilo odeslat. Zkuste to znovu."
+                }
+            } catch (throwable: CancellationException) {
+                throw throwable
+            } catch (throwable: Exception) {
+                mutablePasswordResetRequestMessage.value = throwable.readableMessage("Žádost se nepodařilo odeslat. Zkuste to znovu.")
+            } finally {
+                mutablePasswordResetRequestBusy.value = false
+            }
+        }
+    }
+
     fun selectRole(role: PortalRole) {
         viewModelScope.launch {
             mutableMessage.value = null
@@ -108,10 +150,20 @@ class AppStateViewModel @Inject constructor(
     }
 
     fun logout() {
-        viewModelScope.launch {
-            sessionRepository.logout()
-            mutableProfile.value = null
-            mutableMessage.value = null
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            viewModelScope.launch {
+                try {
+                    task.result?.let { chatApi.unregisterFcmToken(ChatFcmTokenRequest(it)) }
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // The session is still cleared locally even when push-token cleanup cannot reach the API.
+                } finally {
+                    sessionRepository.logout()
+                    mutableProfile.value = null
+                    mutableMessage.value = null
+                }
+            }
         }
     }
 
@@ -187,14 +239,15 @@ class AppStateViewModel @Inject constructor(
 
     private suspend fun checkForAppUpdate(autoStart: Boolean = false) {
         mutableAppUpdateState.value = mutableAppUpdateState.value.copy(isChecking = true)
-        runCatching { authApi.androidRelease() }
-            .onSuccess { dto ->
+        try {
+            val dto = authApi.androidRelease()
                 val updateInfo = dto.toAppUpdateInfo(BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME)
                 val isNewer = isRemoteVersionNewer(BuildConfig.VERSION_CODE, dto.version_code) ||
                     isRemoteVersionNameNewer(BuildConfig.VERSION_NAME, dto.version)
                 mutableAppUpdateState.value = mutableAppUpdateState.value.copy(
                     isChecking = false,
                     availableUpdate = if (isNewer) updateInfo else null,
+                    knownRequiredVersionCode = dto.version_code.takeIf { dto.required && isNewer },
                     wasDismissed = false,
                     pendingAutoStartVersionCode = if (
                         isNewer &&
@@ -206,14 +259,19 @@ class AppStateViewModel @Inject constructor(
                         null
                     },
                 )
-            }
-            .onFailure {
-                mutableAppUpdateState.value = mutableAppUpdateState.value.copy(
-                    isChecking = false,
-                    availableUpdate = null,
-                    pendingAutoStartVersionCode = null,
-                )
-            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            mutableAppUpdateState.value = mutableAppUpdateState.value.copy(
+                isChecking = false,
+                availableUpdate = null,
+                pendingAutoStartVersionCode = null,
+            )
+        }
+    }
+
+    fun refreshAppUpdate() {
+        viewModelScope.launch { checkForAppUpdate() }
     }
 
     private fun shouldAutoStartProductionUpdates(): Boolean {

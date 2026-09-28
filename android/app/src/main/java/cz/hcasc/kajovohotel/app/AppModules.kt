@@ -16,11 +16,13 @@ import cz.hcasc.kajovohotel.core.network.AuthNetworkEventStore
 import cz.hcasc.kajovohotel.core.network.AndroidReleaseHeaderInterceptor
 import cz.hcasc.kajovohotel.core.network.AndroidReleaseSignalStore
 import cz.hcasc.kajovohotel.core.network.CsrfTokenInterceptor
-import cz.hcasc.kajovohotel.core.network.InMemoryAndroidReleaseSignalStore
+import cz.hcasc.kajovohotel.core.network.PersistentAndroidReleaseSignalStore
 import cz.hcasc.kajovohotel.core.network.InMemoryAuthNetworkEventStore
 import cz.hcasc.kajovohotel.core.network.RequestIdInterceptor
 import cz.hcasc.kajovohotel.core.network.SessionGuardInterceptor
+import okhttp3.Interceptor
 import cz.hcasc.kajovohotel.core.network.api.AuthApi
+import cz.hcasc.kajovohotel.core.network.api.ChatApi
 import cz.hcasc.kajovohotel.core.network.api.BreakfastApi
 import cz.hcasc.kajovohotel.core.network.api.HousekeepingApi
 import cz.hcasc.kajovohotel.core.network.api.InventoryApi
@@ -90,7 +92,8 @@ object AppModules {
 
     @Provides
     @Singleton
-    fun provideAndroidReleaseSignalStore(): AndroidReleaseSignalStore = InMemoryAndroidReleaseSignalStore()
+    fun provideAndroidReleaseSignalStore(@ApplicationContext context: Context): AndroidReleaseSignalStore =
+        PersistentAndroidReleaseSignalStore(context)
 
     @Provides
     @Singleton
@@ -106,6 +109,7 @@ object AppModules {
             .addInterceptor(CsrfTokenInterceptor(cookieJar))
             .addInterceptor(SessionGuardInterceptor(eventStore))
             .addInterceptor(AndroidReleaseHeaderInterceptor(androidReleaseSignalStore))
+            .addInterceptor(AndroidClientVersionInterceptor())
             .addInterceptor(logging)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -130,6 +134,10 @@ object AppModules {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideChatApi(retrofit: Retrofit): ChatApi = retrofit.create(ChatApi::class.java)
 
     @Provides
     @Singleton
@@ -195,5 +203,14 @@ object AppModules {
             moduleSnapshotDao = moduleSnapshotDao,
             logger = logger,
         )
+    }
+}
+
+private class AndroidClientVersionInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): okhttp3.Response {
+        val request = chain.request().newBuilder()
+            .header("X-Kajovo-Android-Version-Code", BuildConfig.VERSION_CODE.toString())
+            .build()
+        return chain.proceed(request)
     }
 }

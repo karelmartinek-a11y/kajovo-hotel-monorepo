@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import cz.hcasc.kajovohotel.core.common.PortalLocalization
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,16 +16,21 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var resetToken by mutableStateOf<String?>(null)
+    private var openChat by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        PortalLocalization.initialize(applicationContext)
         resetToken = extractResetToken(intent)
+        openChat = intent.getBooleanExtra(InternalChatMessagingService.EXTRA_OPEN_CHAT, false)
         setContent {
             KajovoHotelApp(
                 passwordResetToken = resetToken,
                 onPasswordResetTokenConsumed = { resetToken = null },
+                openChat = openChat,
+                onOpenChatConsumed = { openChat = false },
             )
         }
     }
@@ -33,6 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         resetToken = extractResetToken(intent)
+        openChat = intent.getBooleanExtra(InternalChatMessagingService.EXTRA_OPEN_CHAT, false)
     }
 
     private fun extractResetToken(intent: Intent?): String? {

@@ -104,6 +104,19 @@ def test_chat_write_requires_csrf_and_push_requires_configuration(api_request):
         "keys": {"p256dh": "not-a-key", "auth": "not-a-key"},
     })
     assert status == 422
+    status, _ = api_request("/api/v1/chat/fcm-tokens", "POST", {"token": "fcm-device-token-that-is-long-enough"})
+    assert status == 403
+
+
+def test_employee_can_register_and_remove_native_push_token(api_base_url):
+    employee_request = _portal_request(api_base_url, "sklad@example.com", "sklad-pass")
+    token = "fcm-test-device-registration-token-0001"
+    status, _ = employee_request("/api/v1/chat/fcm-tokens", "POST", {"token": token})
+    assert status == 204
+    status, _ = employee_request("/api/v1/chat/fcm-tokens", "DELETE", {"token": token})
+    assert status == 204
+    status, _ = employee_request("/api/v1/chat/fcm-tokens", "POST", {"token": "short"})
+    assert status == 422
 
 
 def test_deleted_recipient_is_hidden_but_history_remains_readable(api_request):

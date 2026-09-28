@@ -181,3 +181,61 @@ def test_admin_can_issue_password_reset_link_and_user_can_finish_reset(
         assert new_password not in audit_row[0]
         assert '"password_action": "admin_link_reset"' in audit_row[0]
         assert f'"user_id": {user_id}' in audit_row[0]
+
+
+def test_portal_password_reset_request_is_generic_and_throttled(
+    api_request,
+    api_base_url: str,
+    api_mail_capture_path: Path,
+) -> None:
+    email = "self.request@example.com"
+    created_status, created = api_request(
+        "/api/v1/users",
+        method="POST",
+        payload={
+            "first_name": "Self",
+            "last_name": "Request",
+            "email": email,
+            "password": "SelfRequest123",
+            "roles": ["recepce"],
+        },
+    )
+    assert created_status == 201
+
+    anonymous = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(CookieJar()))
+    before = _capture_messages(api_mail_capture_path)
+    existing_status, existing_body = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/request-password-reset",
+        method="POST",
+        payload={"email": email},
+    )
+    unknown_status, unknown_body = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/request-password-reset",
+        method="POST",
+        payload={"email": "not-found@example.com"},
+    )
+    assert existing_status == unknown_status == 200
+    assert existing_body == unknown_body == {"ok": True}
+
+    after = _capture_messages(api_mail_capture_path)
+    reset_mails = [
+        message
+        for message in after[len(before):]
+        if message.get("recipient") == email and "reset hesla" in str(message.get("subject", "")).lower()
+    ]
+    assert len(reset_mails) == 1
+
+    throttled_status, throttled_body = raw_request(
+        anonymous,
+        api_base_url,
+        "/api/auth/request-password-reset",
+        method="POST",
+        payload={"email": email},
+    )
+    assert throttled_status == 200
+    assert throttled_body == existing_body
+    assert len(_capture_messages(api_mail_capture_path)) == len(after)
