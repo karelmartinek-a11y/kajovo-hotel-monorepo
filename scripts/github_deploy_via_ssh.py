@@ -110,6 +110,9 @@ updates = {
     "BETTER_HOTEL_CONNECTOR_BASE_URL": payload.get("BETTER_HOTEL_CONNECTOR_BASE_URL", ""),
     "BETTER_HOTEL_ACCESS_TOKEN": payload.get("BETTER_HOTEL_ACCESS_TOKEN", ""),
     "BETTER_HOTEL_CLIENT_TOKEN": payload.get("BETTER_HOTEL_CLIENT_TOKEN", ""),
+    "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY", ""),
+    "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY", ""),
+    "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": payload.get("KAJOVO_API_WEB_PUSH_VAPID_SUBJECT", ""),
 }
 for key, value in updates.items():
     if value:
@@ -142,6 +145,9 @@ def write_remote_vars(path: Path) -> None:
         "BETTER_HOTEL_CONNECTOR_BASE_URL",
         "BETTER_HOTEL_ACCESS_TOKEN",
         "BETTER_HOTEL_CLIENT_TOKEN",
+        "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY",
+        "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY",
+        "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT",
     ]
     payload = {key: env(key) for key in keys}
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

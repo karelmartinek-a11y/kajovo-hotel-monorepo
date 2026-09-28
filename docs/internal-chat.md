@@ -20,6 +20,8 @@ Serverové proměnné prostředí (spravují se na serveru nebo v tajném správ
 
 Vytvořte pár VAPID klíčů jednou pro produkční prostředí, veřejnou část zpřístupněte API a obě části chraňte jako provozní konfiguraci. Veřejný klíč lze získat z autentizovaného `/api/v1/chat/push/config`. Po konfiguraci znovu nasaďte API. Klient registruje endpoint služby Web Push po souhlasu uživatele; registrace se při přihlášení naváže na aktuální účet a při odhlášení odebere. Aplikace musí běžet na HTTPS; iOS vyžaduje webovou aplikaci přidanou na plochu. Když Push není nakonfigurován nebo doručení selže, zpráva je uložena a outbox ji opakuje s prodlevou.
 
+Produkční deploy čte `KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY` a `KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY` z GitHub Actions environment `production` secrets a volitelný `KAJOVO_API_WEB_PUSH_VAPID_SUBJECT` z environment variables; bezpečně je předá do serverového `infra/.env`. Soukromý klíč se nikdy neukládá do repozitáře ani do artefaktů.
+
 Service worker `/service-worker.js` zobrazuje jméno odesílatele a náhled zprávy a při klepnutí otevře cílovou konverzaci. Neověřená relace po přihlášení pokračuje na původním odkazu. Server odmítá nezabezpečené, lokální a nepodporované push endpointy.
 
 ## Dopadová matice

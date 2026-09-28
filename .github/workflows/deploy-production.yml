@@ -36,6 +36,9 @@ jobs:
       BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1' }}
       BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_TOKEN != '' && secrets.A_TOKEN || secrets.A_token }}
       BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_TOKEN != '' && secrets.C_TOKEN || secrets.C_token }}
+      KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY }}
+      KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY }}
+      KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz' }}
     steps:
       - name: Checkout deploy SHA
         uses: actions/checkout@v5
