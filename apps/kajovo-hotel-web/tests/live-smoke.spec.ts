@@ -600,14 +600,18 @@ test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', asy
   expect(createUserResponse.status()).toBe(201);
   const createdUser = await createUserResponse.json() as { id: number };
   const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const requestedDates: string[] = [];
   let refreshed = false;
   await page.route('**/api/v1/breakfast/daily-overview?**', async (route) => {
+    const requestedDate = new URL(route.request().url()).searchParams.get('service_date')!;
+    requestedDates.push(requestedDate);
     const orders = [
-      { id: 1, service_date: today, room_number: '101', guest_name: 'Jan Novák', guest_names: 'Jan Novák; Eva Nováková', country_code: 'CZ', guest_count: 2, note: 'Druhý polštář', status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] },
-      ...(refreshed ? [{ id: 2, service_date: today, room_number: '102', guest_name: 'Petr Svoboda', guest_names: 'Petr Svoboda', country_code: 'SK', guest_count: 1, note: null, status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] }] : []),
+      { id: 1, service_date: requestedDate, room_number: '101', guest_name: 'Jan Novák', guest_names: requestedDate === today ? 'Jan Novák; Eva Nováková' : `Den ${requestedDate}`, country_code: 'CZ', guest_count: requestedDate === today ? 2 : 1, note: 'Druhý polštář', status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] },
+      ...Array.from({ length: 12 }, (_, index) => ({ id: 10 + index, service_date: requestedDate, room_number: String(110 + index), guest_name: `Host ${index}`, guest_names: `Host ${index}`, country_code: 'CZ', guest_count: 1, note: null, status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] })),
+      ...(refreshed && requestedDate === today ? [{ id: 2, service_date: requestedDate, room_number: '102', guest_name: 'Petr Svoboda', guest_names: 'Petr Svoboda', country_code: 'SK', guest_count: 1, note: null, status: 'pending', diet_no_gluten: false, diet_no_milk: false, diet_no_pork: false, reservations: [] }] : []),
     ];
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-      orders, summary: { service_date: today, total_orders: orders.length, total_guests: orders.reduce((sum, order) => sum + order.guest_count, 0), status_counts: { pending: orders.length, preparing: 0, served: 0, cancelled: 0 }, source_imported_at: new Date().toISOString() },
+      orders, summary: { service_date: requestedDate, total_orders: orders.length, total_guests: orders.reduce((sum, order) => sum + order.guest_count, 0), status_counts: { pending: orders.length, preparing: 0, served: 0, cancelled: 0 }, source_imported_at: new Date().toISOString() },
     }) });
   });
   try {
@@ -634,9 +638,51 @@ test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', asy
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(visibleList.getByText('Petr Svoboda').first()).toBeVisible();
     await page.getByRole('button', { name: 'Předchozí den' }).click();
-    await expect(page.locator('.k-hk-datebar input[type=date]')).not.toHaveValue(today);
+    const selectedDate = page.locator('.k-hk-datebar input[type=date]');
+    await expect(selectedDate).not.toHaveValue(today);
+    const previousDate = await selectedDate.inputValue();
+    await expect(visibleList.getByText(`Den ${previousDate}`, { exact: true }).first()).toBeVisible();
+    await expect(page.locator('.k-grid.cards-3 .k-card').filter({ hasText: 'Snídaní celkem' }).locator('strong')).toHaveText('13');
+    expect(requestedDates).toContain(previousDate);
+    await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+    await expect(selectedDate).toHaveValue(previousDate);
+    await expect(visibleList.getByText(`Den ${previousDate}`, { exact: true }).first()).toBeVisible();
     await page.getByRole('button', { name: 'Dnes' }).click();
-    await expect(page.locator('.k-hk-datebar input[type=date]')).toHaveValue(today);
+    await expect(selectedDate).toHaveValue(today);
+    await expect(visibleList.getByText('Jan Novák; Eva Nováková').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Dnes' }).click();
+    await expect(visibleList.getByText('Jan Novák; Eva Nováková').first()).toBeVisible();
+    await expect(page.locator('.k-grid.cards-3 .k-card').filter({ hasText: 'Snídaní celkem' }).locator('strong')).toHaveText('15');
+    const dateControls = page.locator('.k-breakfast-date-controls');
+    await expect(dateControls).toHaveCSS('position', 'sticky');
+    await page.evaluate(() => window.scrollTo(0, 500));
+    const controlsBounds = await dateControls.boundingBox();
+    const stickyOffset = await dateControls.evaluate((element) => Number.parseFloat(getComputedStyle(element).top));
+    expect(Math.abs(controlsBounds!.y - stickyOffset)).toBeLessThan(2);
+    for (const width of [599, 600, 640, 641, 768, 1024, 1025, 1179, 1180]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      const responsiveOffset = await dateControls.evaluate((element) => Number.parseFloat(getComputedStyle(element).top));
+      if (width <= 1179) {
+        const header = page.locator('.k-app-header');
+        const headerLayout = await header.evaluate((element) => ({
+          position: getComputedStyle(element).position,
+          bottom: element.getBoundingClientRect().bottom,
+        }));
+        const controlsY = (await dateControls.boundingBox())!.y;
+        if (headerLayout.position === 'sticky' || headerLayout.position === 'fixed') {
+          expect(responsiveOffset).toBe(Math.ceil(headerLayout.bottom));
+          expect(Math.abs(controlsY - headerLayout.bottom)).toBeLessThan(2);
+        } else {
+          expect(controlsY).toBeLessThanOrEqual(1);
+        }
+      } else {
+        expect(responsiveOffset).toBe(96);
+      }
+    }
+    const desktopHeadingFontSize = Number.parseFloat(await dateControls.locator('h1').evaluate((element) => getComputedStyle(element).fontSize));
+    expect(desktopHeadingFontSize).toBeGreaterThan(32);
   } finally {
     await request.post('/api/auth/admin/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
     await request.delete(`/api/v1/users/${createdUser.id}`, { headers: await csrfHeaderFor(request) });
