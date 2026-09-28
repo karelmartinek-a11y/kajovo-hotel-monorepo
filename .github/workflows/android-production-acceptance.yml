@@ -21,16 +21,15 @@ concurrency:
 
 jobs:
   production-acceptance:
-    if: inputs.confirm_mutations == 'room-203-and-one-admin-chat'
+    if: github.ref == 'refs/heads/main' && inputs.confirm_mutations == 'room-203-and-one-admin-chat'
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 10
     env:
       VERIFY_BASE_URL: https://hotel.hcasc.cz
       VERIFY_CONFIRM_MUTATIONS: ${{ inputs.confirm_mutations }}
       VERIFY_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-      VERIFY_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
-      HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-      HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+      VERIFY_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -43,8 +42,19 @@ jobs:
       - name: Validate script syntax
         run: node --check scripts/verify_android_employee_production.mjs
 
-      - name: Validate admin credential environment
-        run: python3 scripts/check_admin_credentials_env.py
+      - name: Validate protected admin credentials
+        run: test -n "$VERIFY_ADMIN_EMAIL" && test -n "$VERIFY_ADMIN_PASSWORD"
 
       - name: Verify room 203 restoration and administrator chat
+        id: production_acceptance
         run: node scripts/verify_android_employee_production.mjs
+
+      - name: Restore room status and remove temporary employee
+        if: always()
+        env:
+          VERIFY_BASE_URL: https://hotel.hcasc.cz
+          VERIFY_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD }}
+          VERIFY_ROOM_RESTORE_PLAN: ${{ steps.production_acceptance.outputs.room_restore_plan }}
+          VERIFY_TEST_EMPLOYEE_ID: ${{ steps.production_acceptance.outputs.test_employee_id }}
+        run: node scripts/cleanup_android_production_acceptance.mjs
