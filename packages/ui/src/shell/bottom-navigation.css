@@ -8,7 +8,6 @@
 .k-bottom-nav__badge { position: absolute; top: var(--k-spacing-1); right: var(--k-spacing-2); min-width: 18px; padding: var(--k-spacing-1) var(--k-spacing-1); border-radius: var(--k-radius-pill); background: var(--k-color-error); color: var(--k-color-brand-white); font-size: 10px; line-height: 14px; text-align: center; }
 .k-portal-mobile-tabs__link { display: flex; flex: 0 0 auto; min-width: 76px; height: 56px; align-items: center; justify-content: center; flex-direction: column; gap: var(--k-spacing-1); padding: var(--k-spacing-1) var(--k-spacing-2); border: 0; border-radius: var(--k-radius-1); background: transparent; color: var(--k-color-ink); font: inherit; font-size: 11px; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .k-portal-mobile-tabs__link[aria-current='page'] { background: var(--k-color-brand-red); color: var(--k-color-brand-white); }
-.k-portal-mobile-tabs__pictogram { display: none !important; }
 .k-portal-mobile-tabs__label { color: inherit !important; font-size: inherit !important; white-space: nowrap; }
 @media (min-width: 1180px) {
   .k-app-shell { display: block !important; padding-bottom: calc(var(--k-spacing-6) + var(--k-spacing-5)) !important; }
