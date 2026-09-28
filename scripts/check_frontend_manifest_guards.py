@@ -24,6 +24,7 @@ ALLOWLIST = {
     'apps/kajovo-hotel-admin/src/main.tsx': ('placeholder=',),
     'apps/kajovo-hotel-admin/src/UsersAdmin.tsx': ('placeholder="Jméno, e-mail nebo role"',),
     'apps/kajovo-hotel-web/src/admin/UsersAdmin.tsx': ('placeholder=',),
+    'packages/ui/src/chat/ChatPage.tsx': ("placeholder={t('Napište zprávu…')}",),
 }
 
 

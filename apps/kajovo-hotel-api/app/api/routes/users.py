@@ -19,6 +19,7 @@ from app.config import get_settings
 from app.db.models import (
     AuthLockoutState,
     AuthUnlockToken,
+    ChatParticipant,
     PortalUser,
     PortalUserRole,
 )
@@ -432,6 +433,17 @@ def delete_user(
         )
 
     audit_payload = json.dumps({"user_id": user.id, "email": user.email})
+    chat_identity = db.execute(
+        select(ChatParticipant).where(
+            ChatParticipant.principal_type == "portal",
+            ChatParticipant.principal_id == user.id,
+        )
+    ).scalar_one_or_none()
+    if chat_identity is not None:
+        chat_identity.principal_type = "portal_deleted"
+        chat_identity.principal_id = -chat_identity.id
+        chat_identity.is_active = False
+        db.add(chat_identity)
     revoke_sessions_for_portal_user(db, user.id)
     db.delete(user)
     db.commit()

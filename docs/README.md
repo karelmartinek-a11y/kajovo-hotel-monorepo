@@ -14,6 +14,7 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 - `docs/how-to-deploy.md`: produkční deploy a release evidence.
 - `docs/ci-gates.md`: skutečné blokující guardy v CI.
 - `docs/ui-navigation.md`: společná navigace portálu a administrace ve třech šířkách.
+- `docs/internal-chat.md`: webový 1:1 chat, API, čtení zpráv a provozní nastavení Web Push.
 
 ## Current-state autority
 

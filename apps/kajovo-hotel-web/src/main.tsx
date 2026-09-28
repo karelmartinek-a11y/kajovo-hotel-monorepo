@@ -3170,6 +3170,9 @@ function AppRoutes(): JSX.Element {
   const loginError = authState.status === 'error' ? authState.message : null;
 
   if (authState.status !== 'authenticated') {
+    if (/^\/(?:admin\/)?chat(?:\/\d+)?$/.test(location.pathname)) {
+      window.sessionStorage.setItem('chatReturnPath', `${location.pathname}${location.search}`);
+    }
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />

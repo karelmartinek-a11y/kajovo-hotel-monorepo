@@ -597,6 +597,68 @@ class PortalUserRole(Base):
     user: Mapped[PortalUser] = relationship("PortalUser", back_populates="roles")
 
 
+class ChatParticipant(Base):
+    __tablename__ = "chat_participants"
+    __table_args__ = (UniqueConstraint("principal_type", "principal_id", name="uq_chat_participant_principal"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    principal_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    principal_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ChatConversation(Base):
+    __tablename__ = "chat_conversations"
+    __table_args__ = (UniqueConstraint("participant_low_id", "participant_high_id", name="uq_chat_conversation_participants"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    participant_low_id: Mapped[int] = mapped_column(ForeignKey("chat_participants.id", ondelete="RESTRICT"), nullable=False, index=True)
+    participant_high_id: Mapped[int] = mapped_column(ForeignKey("chat_participants.id", ondelete="RESTRICT"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    __table_args__ = (UniqueConstraint("sender_id", "client_message_id", name="uq_chat_message_client_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("chat_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("chat_participants.id", ondelete="RESTRICT"), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    client_message_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+
+class ChatPushSubscription(Base):
+    __tablename__ = "chat_push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    participant_id: Mapped[int] = mapped_column(ForeignKey("chat_participants.id", ondelete="CASCADE"), nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(String(255), nullable=False)
+    auth: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ChatPushOutbox(Base):
+    __tablename__ = "chat_push_outbox"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message_id: Mapped[int] = mapped_column(ForeignKey("chat_messages.id", ondelete="CASCADE"), nullable=False, unique=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class PortalSmtpSettings(Base):
     __tablename__ = "portal_smtp_settings"
 

@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     web_session_idle_seconds: int = 172800
     device_token_pepper: str = ""
     device_challenge_max_age_seconds: int = 300
+    web_push_vapid_public_key: str = ""
+    web_push_vapid_private_key: str = ""
+    web_push_vapid_subject: str = "mailto:admin@hotel.hcasc.cz"
     content_security_policy: str = (
         "default-src 'self'; "
         "img-src 'self' data:; "

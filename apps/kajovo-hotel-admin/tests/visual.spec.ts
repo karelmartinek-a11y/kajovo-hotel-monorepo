@@ -128,24 +128,20 @@ test.describe('KDGS vizuální a geometrická kontrola adminu', () => {
 
   test('autentizované admin view drží brand a geometrii', async ({ page }, testInfo) => {
     await adminLogin(page);
-    await page.locator('.k-shell-profile-link').click();
+    await page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Profil' }).click();
     await expect(page).toHaveURL(/\/admin\/profil$/);
     for (const route of ['/', '/pokojska', '/snidane', '/ztraty-a-nalezy', '/zavady', '/sklad', '/hlaseni', '/uzivatele', '/nastaveni']) {
-      await expect(page.getByTestId('module-navigation-desktop').locator(`a[href="/admin${route === '/' ? '' : route}"]`)).toHaveCount(1);
+      await expect(page.getByTestId('admin-bottom-navigation').locator(`a[href="/admin${route === '/' ? '' : route}"]`)).toHaveCount(1);
     }
-    await page.getByTestId('module-navigation-desktop').locator('a[href="/admin"]').click();
+    await page.getByTestId('admin-bottom-navigation').locator('a[href="/admin"]').click();
     await expect(page).toHaveURL(/\/admin\/?$/);
 
     for (const view of adminViews) {
       await waitForView(page, view);
       await assertKdgsGeometry(page, view.name);
       await expect(page.getByRole('link', { name: 'Profil' }).first()).toBeVisible();
-      await expect(page.getByTestId('module-navigation')).toBeVisible();
-      if ((page.viewportSize()?.width ?? 0) <= 599 && await page.locator('.k-hk-board').isVisible()) {
-        await expect(page.getByTestId('module-navigation-phone').locator('button')).toBeVisible();
-      } else {
-        await expect(page.getByTestId('module-navigation-desktop').locator('a.k-nav-link').first()).toBeVisible();
-      }
+      await expect(page.getByTestId('admin-bottom-navigation')).toBeVisible();
+      await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Chat' })).toBeVisible();
       await expect.poll(() => page.locator('.k-wordmark-mark').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBeTruthy();
       await expect.poll(() => page.locator('.k-wordmark').evaluate((wordmark) => {
         const mark = wordmark.querySelector('.k-wordmark-mark')?.getBoundingClientRect();

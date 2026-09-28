@@ -11,6 +11,8 @@ from app.android_release import get_android_release_manifest
 from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
+from app.api.routes.chat import dispatch_pending_chat_pushes
+from app.api.routes.chat import router as chat_router
 from app.api.routes.device import router as device_router
 from app.api.routes.health import router as health_router
 from app.api.routes.housekeeping import router as housekeeping_router
@@ -84,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(reports_router)
     app.include_router(breakfast_router)
+    app.include_router(chat_router)
     app.include_router(housekeeping_router)
     app.include_router(device_router)
     app.include_router(lost_found_router)
@@ -100,6 +103,7 @@ def create_app() -> FastAPI:
             ensure_admin_profile(db, settings, sync_from_env=has_explicit_admin_env())
         if settings.breakfast_scheduler_enabled:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
+        app.state.chat_push_scheduler_task = asyncio.create_task(chat_push_scheduler_loop())
 
     @app.on_event("shutdown")
     async def shutdown_scheduler() -> None:
@@ -108,8 +112,26 @@ def create_app() -> FastAPI:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
+        chat_task = getattr(app.state, "chat_push_scheduler_task", None)
+        if chat_task is not None:
+            chat_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await chat_task
 
     return app
+
+
+async def chat_push_scheduler_loop() -> None:
+    while True:
+        try:
+            await asyncio.to_thread(dispatch_pending_chat_pushes)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception("Chat push dispatcher failed")
+        await asyncio.sleep(5)
 
 
 app = create_app()

@@ -61,6 +61,9 @@ const apiCommand = isWin
 const appCommand = isWin
   ? `powershell -NoLogo -NoProfile -Command \"$env:PLAYWRIGHT_API_PORT='18000'; ${pnpmCommand} dev --host 127.0.0.1 --port 4174\"`
   : `PLAYWRIGHT_API_PORT=18000 ${pnpmCommand} dev --host 127.0.0.1 --port 4174`;
+const portalCommand = isWin
+  ? `powershell -NoLogo -NoProfile -Command \"$env:PLAYWRIGHT_API_PORT='18000'; ${pnpmCommand} dev --host 127.0.0.1 --port 4173\"`
+  : `PLAYWRIGHT_API_PORT=18000 ${pnpmCommand} dev --host 127.0.0.1 --port 4173`;
 
 export default defineConfig({
   testDir: './tests',
@@ -84,6 +87,13 @@ export default defineConfig({
       command: appCommand,
       cwd: path.resolve('.'),
       url: `${appBaseUrl}/admin/`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+    },
+    {
+      command: portalCommand,
+      cwd: path.resolve('../kajovo-hotel-web'),
+      url: 'http://127.0.0.1:4173/login',
       timeout: 120_000,
       reuseExistingServer: false,
     },

@@ -368,7 +368,7 @@ test('pokojská používá jediné obrázkové zápatí pro pokoje, nález a zá
   const footer = page.getByTestId('portal-mobile-tabs');
   await expect(footer).toBeVisible();
   await expect(page.locator('.k-housekeeping-toggle')).toHaveCount(0);
-  await expect(footer.locator('a, button')).toHaveCount(4);
+  await expect(footer.locator('a, button')).toHaveCount(5);
   for (const [label, view, kind] of [['Nález', 'lost_found', 'lost_found'], ['Závada', 'issue', 'issue']] as const) {
     await footer.getByRole('link', { name: label }).click();
     expect(new URL(page.url()).pathname).toBe('/pokojska');
@@ -806,12 +806,12 @@ test('multirolni portal uzivatel vidi kazdy dostupny pohled v zapati', async ({ 
 
   await expect(page).toHaveURL(/\/pokojska$/);
   const tabs = page.getByTestId('portal-mobile-tabs');
-  await expect(tabs.locator('a, button')).toHaveCount(9);
-  for (const name of ['Profil', 'Pokoje', 'Recepce', 'Snídaně', 'Nález', 'Závada', 'Ztráty a nálezy', 'Závady', 'Hlášení']) {
+  await expect(tabs.locator('a, button')).toHaveCount(10);
+  for (const name of ['Chat', 'Pokoje', 'Recepce', 'Snídaně', 'Nález', 'Závada', 'Ztráty a nálezy', 'Závady', 'Hlášení', 'Profil']) {
     const tab = tabs.getByRole('link', { name, exact: true }).or(tabs.getByRole('button', { name, exact: true }));
     await expect(tab).toBeVisible();
-    await expect(tab.locator('img')).toHaveAttribute('src', /\/assets\/[^/]+\.webp$/);
-    await expect(tab.locator('span')).toBeVisible();
+    if (name !== 'Chat') await expect(tab.locator('img')).toHaveAttribute('src', /\/assets\/[^/]+\.webp$/);
+    await expect(tab.locator('span').last()).toBeVisible();
   }
   await tabs.getByRole('button', { name: /recepce/i }).click();
   await expect(page).toHaveURL(/\/recepce$/);
@@ -873,13 +873,13 @@ for (const scenario of ROLE_SCENARIOS) {
 
     const expectedVisibleModules = scenario.visibleModules.filter((route) => MODULE_ROOTS.includes(route as typeof MODULE_ROOTS[number]));
     const visibleModuleRoutes = await collectVisibleModuleRoutes(page);
-    expect(visibleModuleRoutes).toEqual(expectedVisibleModules.slice().sort());
+    expect(visibleModuleRoutes).toEqual([...expectedVisibleModules, '/chat'].sort());
 
     await page.setViewportSize({ width: 390, height: 844 });
     const mobileTabs = page.getByTestId('portal-mobile-tabs');
     await expect(mobileTabs).toBeVisible();
-    await expect(mobileTabs.locator('a, button')).toHaveCount(expectedVisibleModules.length + 1 + (scenario.key === 'pokojská' ? 2 : 0));
-    expect(await collectVisibleModuleRoutes(page)).toEqual(expectedVisibleModules.slice().sort());
+    await expect(mobileTabs.locator('a, button')).toHaveCount(expectedVisibleModules.length + 2 + (scenario.key === 'pokojská' ? 2 : 0));
+    expect(await collectVisibleModuleRoutes(page)).toEqual([...expectedVisibleModules, '/chat'].sort());
     await expect(mobileTabs.getByRole('link', { name: 'Profil' })).toBeVisible();
     await mobileTabs.getByRole('link', { name: 'Profil' }).click();
     await expect(page).toHaveURL(/\/profil$/);

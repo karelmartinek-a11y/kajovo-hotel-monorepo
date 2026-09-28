@@ -80,6 +80,67 @@ test('uživatelé mají oddělený editor, validace, zachování konceptu a resp
   } finally { await request.delete(`/api/v1/users/${user.id}`, { headers: { 'x-csrf-token': csrf } }); }
 });
 
+test('zaměstnanec a administrátor si vymění zprávu a stav přečtení se obnoví na mobilu i desktopu', async ({ browser, page, request }) => {
+  const credentials = getAdminCredentials();
+  expect((await request.post('/api/auth/admin/login', { data: credentials })).ok()).toBeTruthy();
+  const adminState = await request.storageState();
+  const csrf = adminState.cookies.find((cookie) => cookie.name === 'kajovo_csrf')!.value;
+  const email = `chat-${Date.now()}@example.com`;
+  const displayName = `Chat Zaměstnanec ${Date.now()}`;
+  const created = await request.post('/api/v1/users', {
+    headers: { 'x-csrf-token': csrf },
+    data: { first_name: 'Chat', last_name: displayName.slice('Chat '.length), email, password: 'Chat-test-pass-2026', roles: ['sklad'] },
+  });
+  expect(created.status()).toBe(201);
+  const user = await created.json();
+  const employeeContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' });
+  const employeePage = await employeeContext.newPage();
+  try {
+    await employeePage.setViewportSize({ width: 390, height: 844 });
+    await employeePage.goto('/login');
+    await employeePage.locator('#portal-email').fill(email);
+    await employeePage.locator('#portal-password').fill('Chat-test-pass-2026');
+    await Promise.all([
+      employeePage.waitForResponse((response) => new URL(response.url()).pathname === '/api/auth/login' && response.status() === 200),
+      employeePage.getByRole('button', { name: /přihlásit/i }).click(),
+    ]);
+    await employeePage.waitForURL((url) => url.pathname === '/' || url.pathname === '/sklad', { timeout: 10_000 });
+    await employeePage.goto('/chat');
+    await employeePage.getByRole('button', { name: new RegExp(credentials.email, 'i') }).click();
+    await expect(employeePage).toHaveURL(/\/chat\/\d+$/);
+    await employeePage.getByLabel('Napište zprávu').fill('Zpráva z mobilního portálu');
+    await employeePage.getByRole('button', { name: 'Odeslat' }).click();
+    const ownBubble = employeePage.locator('.k-chat-bubble.is-own').last();
+    await expect(ownBubble).toContainText('Zpráva z mobilního portálu');
+    await expect(ownBubble).toContainText('Odesláno');
+
+    await page.context().addCookies(adminState.cookies);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/admin/chat');
+    const conversation = page.getByRole('link').filter({ hasText: displayName });
+    await expect(conversation).toBeVisible();
+    await expect(conversation.locator('.k-chat-unread')).toHaveText('1');
+    await conversation.click();
+    await expect(page.getByLabel(displayName).getByText('Zpráva z mobilního portálu')).toBeVisible();
+    await page.screenshot({ path: '/tmp/kajovo-chat-desktop.png' });
+
+    await page.setViewportSize({ width: 834, height: 1112 });
+    await expect(page.getByTestId('admin-bottom-navigation')).toBeVisible();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('admin-bottom-navigation')).toBeVisible();
+    await expect(page.getByTestId('chat-page')).toBeVisible();
+    await page.screenshot({ path: '/tmp/kajovo-chat-phone.png' });
+    await expect.poll(async () => (await employeePage.locator('.k-chat-bubble.is-own').last().innerText()).includes('Přečteno'), { timeout: 10_000 }).toBeTruthy();
+    for (const width of [1440, 834, 390]) {
+      await page.setViewportSize({ width, height: width === 834 ? 1112 : 844 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    }
+  } finally {
+    await employeeContext.close();
+    await request.delete(`/api/v1/users/${user.id}`, { headers: { 'x-csrf-token': csrf } });
+  }
+});
+
 test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní detail a chyba nehlásí úspěch', async ({ page, request }) => {
   expect((await request.post('/api/auth/admin/login', { data: getAdminCredentials() })).ok()).toBeTruthy();
   await page.context().addCookies((await request.storageState()).cookies);
@@ -109,9 +170,9 @@ test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní deta
       await page.locator('.k-hk-board').evaluate((node) => node.scrollTo({ top: 0 }));
     }
     if (size.width <= 390) {
-      await expect(page.locator('.k-shell-profile-link .k-nav-link__icon')).toBeVisible();
-      await page.getByTestId('module-navigation-phone').getByRole('button', { name: 'Menu' }).click();
-      await page.getByRole('dialog', { name: 'Navigace' }).getByRole('menuitem', { name: /Přehled/ }).click();
+      await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Profil' })).toBeVisible();
+      await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Chat' })).toBeVisible();
+      await page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Přehled' }).click();
       await expect(page.getByTestId('dashboard-page')).toBeVisible();
       await page.goto('/admin/pokojska');
       await expect(cards).toHaveCount(38);

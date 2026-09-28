@@ -6,7 +6,7 @@ Tento dokument navazuje na cutover/release runbook a slouží jako praktický UA
 
 - Testované moduly: Přehled, Snídaně, Ztráty a nálezy, Závady, Skladové hospodářství, Hlášení.
 - Utility stavy: `/intro`, `/offline`, `/maintenance`, `/404`.
-- Každý scénář se provádí minimálně na telefonu, tabletu a desktopu. Portál má na všech třech pevné zápatí s ikonami povolených sekcí; administrace používá vlastní navigaci.
+- Každý scénář se provádí minimálně na telefonu, tabletu a desktopu. Portál i administrace mají na všech třech jednu pevnou, vodorovně posuvnou spodní navigaci: Chat, rolemi povolené moduly a Profil.
 - V každém scénáři ověřte i chování při prázdných datech, chybě API (5xx) a offline režimu.
 
 ## Device & navigace checklist (provedení u každého modulu)
