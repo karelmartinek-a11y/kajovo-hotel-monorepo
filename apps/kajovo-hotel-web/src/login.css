@@ -537,6 +537,31 @@
   display: none;
 }
 
+.k-breakfast-date-controls {
+  --k-breakfast-sticky-offset: calc(var(--k-spacing-8) * 2);
+  position: sticky;
+  top: var(--k-breakfast-sticky-offset);
+  z-index: calc(var(--k-z-header) - 1);
+  display: grid;
+  gap: var(--k-spacing-2);
+  margin: calc(-1 * var(--k-spacing-5)) calc(-1 * var(--k-spacing-5)) 0;
+  padding: var(--k-spacing-3) var(--k-spacing-5);
+  border-bottom: 1px solid var(--k-color-border);
+  background: var(--k-color-surface);
+}
+
+.k-breakfast-date-controls h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 1.9rem + 0.8vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.k-breakfast-date-controls .k-hk-datebar {
+  margin: 0;
+  max-width: 690px;
+}
+
 @media (max-width: 960px) {
   .k-login-page {
     grid-template-columns: 1fr;
@@ -560,6 +585,14 @@
     padding-inline: 0;
     overflow-x: clip;
   }
+
+  .k-breakfast-date-controls {
+    margin: 0;
+    padding: var(--k-spacing-2);
+    background: var(--k-color-surface);
+  }
+
+  .k-breakfast-date-controls h1 { font-size: 1.5rem; }
 
   .k-breakfast-serving-page > .k-table-wrap {
     display: none;

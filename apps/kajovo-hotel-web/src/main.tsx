@@ -856,7 +856,16 @@ function BreakfastList(): JSX.Element {
   const minutesNow = currentMinutesForTimeZone(new Date(), 'Europe/Prague');
   const canClearDay = isAdmin;
 
-  const [serviceDate, setServiceDate] = React.useState(defaultServiceDate);
+  const [serviceDate, setServiceDate] = React.useState(() => {
+    try {
+      const storedDate = window.sessionStorage.getItem('kajovo.breakfast.service-date');
+      const validStoredDate = storedDate && /^\d{4}-\d{2}-\d{2}$/.test(storedDate)
+        && new Date(`${storedDate}T12:00:00Z`).toISOString().slice(0, 10) === storedDate;
+      return validStoredDate ? storedDate : defaultServiceDate;
+    } catch {
+      return defaultServiceDate;
+    }
+  });
   const canServe = isAdmin || ((isBreakfast || isRecepce) && serviceDate === today && minutesNow >= 300 && minutesNow <= 660);
   const [items, setItems] = React.useState<BreakfastOrder[]>([]);
   const [summary, setSummary] = React.useState<BreakfastSummary | null>(null);
@@ -894,6 +903,8 @@ function BreakfastList(): JSX.Element {
 
   React.useEffect(() => {
     setSaveInfo(null);
+    setItems([]);
+    setSummary(null);
     const cleanup = loadDay(serviceDate);
     const refresh = () => { if (document.visibilityState === 'visible') loadDay(serviceDate); };
     const timer = window.setInterval(refresh, 60_000);
@@ -908,6 +919,44 @@ function BreakfastList(): JSX.Element {
       document.removeEventListener('visibilitychange', refresh);
     };
   }, [loadDay, serviceDate]);
+
+  React.useEffect(() => {
+    try {
+      window.sessionStorage.setItem('kajovo.breakfast.service-date', serviceDate);
+    } catch {
+      // The in-memory selection still works when browser storage is unavailable.
+    }
+  }, [serviceDate]);
+
+  React.useEffect(() => {
+    const header = document.querySelector<HTMLElement>('.k-app-header');
+    const controls = document.querySelector<HTMLElement>('.k-breakfast-date-controls');
+    if (!header || !controls) return;
+
+    const updateStickyOffset = (): void => {
+      if (window.innerWidth <= 1179) {
+        controls.style.setProperty('--k-breakfast-sticky-offset', `${Math.ceil(header.getBoundingClientRect().height)}px`);
+      } else {
+        controls.style.removeProperty('--k-breakfast-sticky-offset');
+      }
+    };
+    const observer = new ResizeObserver(updateStickyOffset);
+    observer.observe(header);
+    window.addEventListener('resize', updateStickyOffset);
+    updateStickyOffset();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateStickyOffset);
+    };
+  }, []);
+
+  const changeServiceDate = (date: string): void => {
+    if (date === serviceDate) return;
+    setItems([]);
+    setSummary(null);
+    setError(null);
+    setServiceDate(date);
+  };
 
   const visibleItems = React.useMemo(() => prepareBreakfastListItems(items), [items]);
   const mergeOrderWithDraft = (order: BreakfastOrder): BreakfastOrder => order;
@@ -1127,12 +1176,14 @@ function BreakfastList(): JSX.Element {
 
   return (
     <main className="k-page k-breakfast-serving-page" data-testid="breakfast-list-page">
-      <h1>{t("Snídaně")}</h1>
+      <div className="k-breakfast-date-controls">
+        <h1>{t("Snídaně")}</h1>
+        <DateNavigation value={serviceDate} onChange={changeServiceDate} />
+      </div>
       {error ? (
         <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} />
       ) : (
         <>
-          <DateNavigation value={serviceDate} onChange={setServiceDate} />
           {isAdmin ? (
             <div className="k-toolbar">
               <input className="k-input" type="date" aria-label={t("Smazat období od")} value={rangeDeleteFrom} onChange={(event) => setRangeDeleteFrom(event.target.value)} />
