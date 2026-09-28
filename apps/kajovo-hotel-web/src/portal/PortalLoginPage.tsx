@@ -54,7 +54,8 @@ export function PortalLoginPage({ initialError = null }: PortalLoginPageProps = 
       setError(await readLoginError(response, copy.loginError ?? t('Přihlášení se nepodařilo.')));
       return;
     }
-    window.location.assign('/');
+    const next = new URLSearchParams(window.location.search).get('next');
+    window.location.assign(next?.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/');
   }
 
   return (

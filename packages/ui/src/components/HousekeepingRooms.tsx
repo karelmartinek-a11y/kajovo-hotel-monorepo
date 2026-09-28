@@ -89,7 +89,11 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: RoomCardProps)
   const right = room.housekeeping_status_key === 'clean' || room.ready_for_arrival ? 'green'
     : room.housekeeping_status_key === 'stay_no_linen' || room.housekeeping_status_key === 'stay_with_linen' ? 'light-green'
       : room.arrivals.length ? 'red' : 'empty';
-  const split = room.departures.length > 0 || room.arrivals.length > 0 || right !== 'empty';
+  const split = room.departures.length > 0 || room.arrivals.length > 0;
+  const fullColor = room.stays.length > 0
+    ? room.housekeeping_status_key === 'do_not_disturb' ? 'purple'
+      : ['clean', 'stay_no_linen', 'stay_with_linen'].includes(room.housekeeping_status_key ?? '') ? 'light-green' : 'gray'
+    : room.housekeeping_status_key === 'clean' ? 'green' : 'gray';
   const preview = ([
     ['Odj.', room.departures],
     ['Příj.', room.arrivals],
@@ -99,7 +103,7 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: RoomCardProps)
   const hasHousekeepingNote = [...room.departures, ...room.arrivals, ...room.stays].some((stay) => Boolean(stay.housekeeping_note?.trim()));
   return (
     <button
-      className={`k-hk-room${split ? ` k-hk-room--split k-hk-room--left-${left} k-hk-room--right-${right}` : ''}`}
+      className={`k-hk-room${split ? ` k-hk-room--split k-hk-room--left-${left} k-hk-room--right-${right}` : ` k-hk-room--full-${fullColor}`}`}
       type="button"
       onClick={() => onSelect(room)}
       data-room-id={room.room_id}
@@ -263,8 +267,9 @@ export function HousekeepingRooms({ canWrite = true, canManageAmenities = false 
           ['red', t('Odjezd bez check-out / příjezd nepřipraven')],
           ['green', t('Uklizený pokoj')],
           ['light-green', t('Průběžně uklizený pokoj')],
-          ['neutral', t('Odjel / pokračující pobyt')],
-          ['empty', t('Bez příjezdu či odjezdu')],
+          ['purple', t('Nerušenka')],
+          ['neutral', t('Odjel po check-outu')],
+          ['gray', t('Neuklizeno bez příjezdu a odjezdu nebo při pokračujícím pobytu')],
         ] as const).map(([key, label]) => (
           <span key={key} className={`k-hk-legend__item k-hk-legend__item--${key}`}>
             <i aria-hidden="true" />{label}

@@ -172,6 +172,18 @@ async function loginPortalUser(page: import('@playwright/test').Page, email: str
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
 }
 
+test('po návratu na neověřený pohled přihlášení obnoví původní cestu', async ({ page, request }, testInfo) => {
+  const user = await createPortalUserForRole(request, testInfo, 'snidane');
+  await page.context().clearCookies();
+  await page.goto('/snidane');
+  await expect(page).toHaveURL(/\/login\?next=%2Fsnidane$/);
+  await page.locator('#portal-email').fill(user.portalEmail);
+  await page.locator('#portal-password').fill(user.portalPassword);
+  await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+  await expect(page).toHaveURL(/\/snidane$/);
+  await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
+});
+
 async function collectVisibleModuleRoutes(page: import('@playwright/test').Page) {
   const mobileTabs = page.getByTestId('portal-mobile-tabs');
   return Array.from(new Set(await mobileTabs.locator('a[href]:not([href="/profil"])').evaluateAll((links) =>
@@ -231,7 +243,7 @@ test('recepce načte přehled snídaní automaticky', async ({ page, request }, 
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
 });
 
-test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ page, request }, testInfo) => {
+test('pokoje půlí příjezdy a odjezdy, ostatní barví celé a počítají noci', async ({ page, request }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   let checkedOut = false;
@@ -245,11 +257,14 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
       { ...HOUSEKEEPING_ROOM_FIXTURE, ready_for_arrival: ready, departures: [stay], arrivals: [arrival] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '102', room_number: '102', ready_for_arrival: ready, departures: [], arrivals: [arrival] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '103', room_number: '103', departures: [stay], arrivals: [] },
-      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '104', room_number: '104', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
-      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '105', room_number: '105', housekeeping_status_key: 'clean', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '104', room_number: '104', housekeeping_status_key: 'dirty', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '105', room_number: '105', housekeeping_status_key: 'clean', housekeeping_status: 'Uklizeno', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '106', room_number: '106', housekeeping_status_key: 'stay_no_linen', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '107', room_number: '107', housekeeping_status_key: 'stay_with_linen', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
       { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '108', room_number: '108', housekeeping_status_key: 'dirty', ready_for_arrival: false, departures: [], arrivals: [], stays: [] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '109', room_number: '109', housekeeping_status_key: 'do_not_disturb', housekeeping_status: 'Nerušenka', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '110', room_number: '110', housekeeping_status_key: 'stay_no_linen', housekeeping_status: 'Průběžný úklid', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
+      { ...HOUSEKEEPING_ROOM_FIXTURE, room_id: '111', room_number: '111', housekeeping_status_key: 'stay_with_linen', housekeeping_status: 'Průběžný úklid + prádlo', departures: [], arrivals: [], stays: [{ ...stay, departure: '2026-04-01' }] },
     ] } });
   });
   const user = await createPortalUserForRole(request, testInfo, 'pokojska');
@@ -270,16 +285,22 @@ test('pokoje půlí barvy a počítají noci podle vybraného dne', async ({ pag
   await expect(page.getByRole('button', { name: /pokoj 102,/i })).toHaveClass(/k-hk-room--left-empty/);
   await expect(page.getByRole('button', { name: /pokoj 103,/i })).toHaveClass(/k-hk-room--right-empty/);
   const continuing = page.getByRole('button', { name: /pokoj 104,/i });
-  await expect(continuing).not.toHaveClass(/k-hk-room--split/);
+  await expect(continuing).toHaveClass(/k-hk-room--full-gray/);
   await continuing.click();
   await expect(page.getByRole('dialog')).toContainText('Noc pobytu: 2/4');
   await page.getByRole('dialog').getByRole('button', { name: 'Zavřít dialog' }).click();
-  await expect(page.getByRole('button', { name: /pokoj 105,/i })).toHaveClass(/k-hk-room--right-green/);
+  await expect(page.getByRole('button', { name: /pokoj 105,/i })).toHaveClass(/k-hk-room--full-green/);
   await page.getByText('Vysvětlivky barev').click();
   await expect(page.getByText('Uklizený pokoj', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /pokoj 106,/i })).toHaveClass(/k-hk-room--right-light-green/);
-  await expect(page.getByRole('button', { name: /pokoj 107,/i })).toHaveClass(/k-hk-room--right-light-green/);
-  await expect(page.getByRole('button', { name: /pokoj 108,/i })).not.toHaveClass(/k-hk-room--split/);
+  await expect(page.getByRole('button', { name: /pokoj 106,/i })).toHaveClass(/k-hk-room--full-gray/);
+  await expect(page.getByRole('button', { name: /pokoj 107,/i })).toHaveClass(/k-hk-room--full-gray/);
+  await expect(page.getByRole('button', { name: /pokoj 108,/i })).toHaveClass(/k-hk-room--full-gray/);
+  await expect(page.getByRole('button', { name: /pokoj 109,/i })).toHaveClass(/k-hk-room--full-purple/);
+  await expect(page.getByRole('button', { name: /pokoj 110,/i })).toHaveClass(/k-hk-room--full-light-green/);
+  await expect(page.getByRole('button', { name: /pokoj 111,/i })).toHaveClass(/k-hk-room--full-light-green/);
+  for (const [room, color] of [[104, 'rgb(238, 235, 228)'], [105, 'rgb(216, 236, 220)'], [109, 'rgb(234, 220, 244)'], [110, 'rgb(239, 251, 242)']] as const) {
+    await expect(page.getByRole('button', { name: new RegExp(`pokoj ${room},`, 'i') })).toHaveCSS('background-color', color);
+  }
   const bounds = await card.boundingBox();
   const previewBounds = await card.locator('.k-hk-room__preview').boundingBox();
   expect(previewBounds!.width).toBeGreaterThan(bounds!.width * .8);
@@ -624,7 +645,7 @@ test('snidane maji jedinou navigaci data a obnovuji se pri navratu do okna', asy
 
 test('portal bez session skonci na loginu a download aplikace je pouze na mobilu', async ({ page }) => {
   await page.goto('/snidane', { waitUntil: 'networkidle' });
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login\?next=%2Fsnidane$/);
   await expect(page.getByTestId('portal-login-page')).toBeVisible();
   await expect(page.locator('[data-brand-element="true"]')).toHaveCount(1);
   await expect(page).toHaveTitle(/Kájovo Hotel/);

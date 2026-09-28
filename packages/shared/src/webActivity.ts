@@ -23,7 +23,7 @@ export function attachWebActivity(onExpired: () => void): () => void {
         method: 'POST', credentials: 'include', headers: { 'x-csrf-token': token },
       });
       if (response.status === 401 || response.status === 403) {
-        onExpired();
+        if (!document.hidden) onExpired();
       } else if (response.ok) {
         lastSent = Date.now();
       }
@@ -59,8 +59,9 @@ export function attachWebActivity(onExpired: () => void): () => void {
   window.addEventListener('pagehide', pagehide);
   document.addEventListener('visibilitychange', visible);
   const expiryCheck = window.setInterval(() => {
+    if (document.hidden) return;
     void fetch('/api/auth/me', { credentials: 'include' })
-      .then((response) => { if (response.status === 401) onExpired(); })
+      .then((response) => { if (!document.hidden && response.status === 401) onExpired(); })
       .catch(() => {});
   }, 60_000);
   activity();

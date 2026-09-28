@@ -3047,6 +3047,8 @@ type AuthLoadState =
 
 function AppRoutes(): JSX.Element {
   const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}`;
+  const loginWithReturn = `/login?next=${encodeURIComponent(returnTo)}`;
   const [authState, setAuthState] = React.useState<AuthLoadState>(() => (
     hasAuthCookieHint() ? { status: 'loading' } : { status: 'unauthenticated' }
   ));
@@ -3074,7 +3076,7 @@ function AppRoutes(): JSX.Element {
 
   React.useEffect(() => {
     if (authState.status !== 'authenticated') return;
-    return attachWebActivity(() => window.location.assign(authState.profile.actorType === 'admin' ? '/admin/login' : '/login'));
+    return attachWebActivity(() => window.location.assign(authState.profile.actorType === 'admin' ? '/admin/login' : `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`));
   }, [authState]);
 
   if (authState.status === 'loading') {
@@ -3097,7 +3099,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/admin/*" element={<AdminRoutes currentPath={location.pathname} />} />
         <Route path="/login" element={<PortalLoginPage initialError={loginError} />} />
         <Route path="/login/reset" element={<PortalResetPasswordPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to={loginWithReturn} replace />} />
       </Routes>
     );
   }
