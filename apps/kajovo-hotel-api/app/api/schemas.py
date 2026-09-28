@@ -324,7 +324,7 @@ class HousekeepingRoomsOverview(BaseModel):
 
 class HousekeepingRoomStatusUpdate(BaseModel):
     status: HousekeepingRoomStatus
-    expected_status: HousekeepingRoomStatus | None = None
+    expected_status: HousekeepingRoomStatus
     note: str | None = Field(default=None, max_length=500)
 
 

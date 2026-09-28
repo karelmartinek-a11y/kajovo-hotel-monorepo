@@ -30,8 +30,8 @@ class HousekeepingCaptureRepository @Inject constructor(
         AppResult.Error(throwable.readableMessage("Přehled pokojů se nepodařilo načíst."), throwable)
     }
 
-    suspend fun updateRoomStatus(roomId: String, date: String, status: String): AppResult<HousekeepingRoomDto> = try {
-        AppResult.Success(housekeepingApi.updateRoomStatus(roomId, date, HousekeepingRoomStatusUpdateDto(status)))
+    suspend fun updateRoomStatus(roomId: String, date: String, status: String, expectedStatus: String): AppResult<HousekeepingRoomDto> = try {
+        AppResult.Success(housekeepingApi.updateRoomStatus(roomId, date, HousekeepingRoomStatusUpdateDto(status, expectedStatus)))
     } catch (throwable: Throwable) {
         AppResult.Error(
             "Změnu se nepodařilo ověřit. Před dalším pokusem obnovte aktuální stav pokoje.",

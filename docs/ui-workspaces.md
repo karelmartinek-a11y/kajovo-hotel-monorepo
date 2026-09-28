@@ -38,7 +38,7 @@ Při probíhajícím požadavku se blokuje opakovaný zápis. Frontendová kontr
 | Vysvětlivky barev | Rozbalitelné, bez zápisu; popisují dělené příjezdy a odjezdy i celé šedé, zelené, světle zelené a fialové dlaždice bez těchto událostí. |
 | Pořadí pokojů | Jedna mřížka ve stanoveném provozním pořadí; další pokoje z živého inventáře následují číselně. |
 | Dlaždice a spodní detail pokoje | Pevná velikost dlaždic, číslo pokoje, výslovná aktuální obsazenost s počtem osob, stručný náhled odjezdů/příjezdů/pokračování vybraného dne a úklid. Spodní detail ukazuje úplné údaje rezervací včetně osob, země, noci pobytu, poznámky pro pokojskou, psa a postýlky. Neprázdná poznámka rozbliká červenou ikonu na dlaždici. Žádné vymyšlené typy pokojů. |
-| Šest stavových tlačítek | PATCH `/api/v1/housekeeping/rooms/{room_id}?date=…`; přesné hodnoty a mapování číselníku jsou v modulu Pokoje. |
+| Šest stavových tlačítek | PATCH `/api/v1/housekeeping/rooms/{room_id}?date=…` posílá požadovaný i očekávaný aktuální stav; konflikt vyžaduje obnovu přehledu. Přesné hodnoty a mapování číselníku jsou v modulu Pokoje. |
 | Probíhající zápis | Nativní modální dialog „Zapisuji změnu…“, bez zavření a bez potvrzovacích tlačítek. Po ověřené odpovědi automatický návrat k přehledu, lokální aktualizace karty a obnova dat na pozadí. |
 | Chyba zápisu | Nesmí být vydávána za úspěch; dialog zůstává, další zápis je zablokován do obnovení aktuálního stavu. Bez slepého opakování PATCH. |
 | Pobyty a ikony | Samostatná pracovní obrazovka; admin/recepce spravují ikony, pokojská pouze mění barvu. Endpointy rezervace kontrolují ID rezervace, pokoj, den a monotónní verzi. |

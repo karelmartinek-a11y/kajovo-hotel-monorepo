@@ -860,7 +860,8 @@ test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na 
   await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: /snídaně/i })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
   await page.getByRole('button', { name: 'Odhlásit' }).click();
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
+  await expect(page.locator('#portal-email')).toBeVisible();
 });
 
 for (const scenario of ROLE_SCENARIOS) {

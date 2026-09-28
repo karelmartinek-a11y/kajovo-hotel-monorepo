@@ -19,9 +19,11 @@ class HousekeepingCaptureRepositoryTest {
 
     @Test
     fun roomStatusUpdateReturnsVerifiedServerRoom() = runTest {
-        val repository = HousekeepingCaptureRepository(FakeIssuesApi(), FakeLostFoundApi(), FakeHousekeepingApi())
-        val result = repository.updateRoomStatus("101", "2026-09-18", "clean")
+        val housekeepingApi = FakeHousekeepingApi()
+        val repository = HousekeepingCaptureRepository(FakeIssuesApi(), FakeLostFoundApi(), housekeepingApi)
+        val result = repository.updateRoomStatus("101", "2026-09-18", "clean", "dirty")
         assertTrue(result is AppResult.Success)
         assertEquals("clean", (result as AppResult.Success).value.housekeeping_status)
+        assertEquals("dirty", housekeepingApi.lastStatusUpdateRequest?.expected_status)
     }
 }

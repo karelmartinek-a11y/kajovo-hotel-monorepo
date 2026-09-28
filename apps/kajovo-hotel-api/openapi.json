@@ -1670,14 +1670,7 @@
       "HousekeepingRoomStatusUpdate": {
         "properties": {
           "expected_status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/HousekeepingRoomStatus"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/HousekeepingRoomStatus"
           },
           "note": {
             "anyOf": [
@@ -1696,7 +1689,8 @@
           }
         },
         "required": [
-          "status"
+          "status",
+          "expected_status"
         ],
         "title": "HousekeepingRoomStatusUpdate",
         "type": "object"

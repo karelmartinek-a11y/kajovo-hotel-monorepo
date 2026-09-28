@@ -231,3 +231,12 @@ def test_housekeeping_status_update_rejects_changed_expected_status_before_patch
         client.update_room_status("room-101", "dirty", expected_status_key="do_not_disturb")
 
     assert client.patch_body is None
+
+
+def test_housekeeping_status_update_contract_requires_expected_status() -> None:
+    from pydantic import ValidationError
+
+    from app.api.schemas import HousekeepingRoomStatusUpdate
+
+    with pytest.raises(ValidationError):
+        HousekeepingRoomStatusUpdate.model_validate({"status": "clean"})

@@ -112,7 +112,7 @@ def test_rbac_housekeeping_rooms_are_readable_and_writable_by_housekeeping(api_b
         api_base_url,
         "/api/v1/housekeeping/rooms/room-101?date=2026-09-17",
         method="PATCH",
-        payload={"status": "clean"},
+        payload={"status": "clean", "expected_status": "dirty"},
         headers=csrf_header(jar),
     )
     assert status == 502
