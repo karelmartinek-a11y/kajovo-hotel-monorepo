@@ -153,6 +153,23 @@ def _country_code(reservation: dict[str, Any]) -> str | None:
     return country.alpha_2 if country else None
 
 
+def _breakfast_guest_age_group(guest_item: dict[str, Any], service_date: date) -> str:
+    guest = guest_item.get("guest")
+    raw_birth_date = guest.get("birth_date") if isinstance(guest, dict) else None
+    try:
+        birth_date = date.fromisoformat(str(raw_birth_date))
+    except (TypeError, ValueError):
+        return "unknown"
+    age = service_date.year - birth_date.year - ((service_date.month, service_date.day) < (birth_date.month, birth_date.day))
+    if age < 0:
+        return "unknown"
+    if age <= 2:
+        return "children_0_2"
+    if age <= 17:
+        return "children_3_17"
+    return "adults"
+
+
 def build_breakfast_source_key(*, service_date: date, reservation_ids: set[str]) -> str:
     normalized_ids = sorted({reservation_id.strip() for reservation_id in reservation_ids if reservation_id.strip()})
     if not normalized_ids:
@@ -289,6 +306,7 @@ class BetterHotelBreakfastClient:
             breakfast_guest_names: list[str] = []
             all_guest_names = [name for item in guest_list if isinstance(item, dict) if (name := _extract_guest_name(item))]
             country_code = _country_code(reservation)
+            breakfast_guest_items: list[dict[str, Any]] = []
             for guest_item_raw in guest_list:
                 guest_item = _require_dict(guest_item_raw, label=f"reservation[{reservation_id}].guest_list[]")
                 try:
@@ -299,21 +317,17 @@ class BetterHotelBreakfastClient:
                     ) from exc
                 if food_code not in self.breakfast_food_codes:
                     continue
+                breakfast_guest_items.append(guest_item)
                 guest_name = _extract_guest_name(guest_item)
                 if guest_name:
                     breakfast_guest_names.append(guest_name)
 
-            breakfast_guest_count = len(
-                [
-                    guest_item
-                    for guest_item in guest_list
-                    if isinstance(guest_item, dict)
-                    and str(guest_item.get("food", "")).strip().isdigit()
-                    and int(guest_item.get("food")) in self.breakfast_food_codes
-                ]
-            )
+            breakfast_guest_count = len(breakfast_guest_items)
             if breakfast_guest_count <= 0:
                 continue
+
+            company = reservation.get("company")
+            company_name = str(company).strip()[:255] or None if isinstance(company, str) else None
 
             current_day = max(service_start, arrival + timedelta(days=1))
             last_day = min(service_end, departure)
@@ -331,9 +345,17 @@ class BetterHotelBreakfastClient:
                 if note := housekeep_note(reservation):
                     current["housekeeping_notes"].append(note)
                 current["reservation_ids"].add(reservation_id)
+                age_counts = {"adults": 0, "children_0_2": 0, "children_3_17": 0, "unknown": 0}
+                for guest_item in breakfast_guest_items:
+                    age_counts[_breakfast_guest_age_group(guest_item, current_day)] += 1
                 current["reservations"][reservation_id] = {
                     "arrival": arrival, "departure": departure,
                     "guest_name": "; ".join(dict.fromkeys(breakfast_guest_names))[:255] or None,
+                    "company_name": company_name,
+                    "breakfast_adults": age_counts["adults"],
+                    "breakfast_children_0_2": age_counts["children_0_2"],
+                    "breakfast_children_3_17": age_counts["children_3_17"],
+                    "breakfast_age_unknown": age_counts["unknown"],
                 }
                 current_day += timedelta(days=1)
 
@@ -367,11 +389,13 @@ class BetterHotelBreakfastClient:
                         "guest_names": item.guest_names,
                         "country_code": item.country_code,
                         "housekeeping_note": item.housekeeping_note,
+                        "reservations": item.reservations,
                     }
                     for item in aggregates
                 ],
                 ensure_ascii=False,
                 sort_keys=True,
+                default=lambda value: value.isoformat() if isinstance(value, date) else str(value),
             ).encode("utf-8")
         ).hexdigest()
         return aggregates, len(reservations), source_hash
@@ -438,7 +462,15 @@ def sync_breakfast_range(
     processed_days = (range_end - range_start).days + 1
 
     try:
-        ensure_diets(db, {key: value for aggregate in aggregates for key, value in aggregate.reservations.items()})
+        ensure_diets(db, {
+            reservation_id: {
+                key: value[key]
+                for key in ("arrival", "departure", "guest_name")
+                if key in value
+            }
+            for aggregate in aggregates
+            for reservation_id, value in aggregate.reservations.items()
+        })
         for day_offset in range(processed_days):
             target_day = range_start + timedelta(days=day_offset)
             existing_rows = db.scalars(
@@ -481,6 +513,11 @@ def sync_breakfast_range(
                 existing.guest_names = row.guest_names
                 existing.country_code = row.country_code
                 existing.guest_count = max(1, int(row.guest_count))
+                existing.reservation_details_json = json.dumps(
+                    row.reservations,
+                    ensure_ascii=False,
+                    default=lambda value: value.isoformat() if isinstance(value, date) else str(value),
+                )
                 db.flush()
                 retained_ids.add(existing.id)
                 imported_rows += 1

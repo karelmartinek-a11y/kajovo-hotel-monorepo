@@ -1,5 +1,6 @@
 """Reservation-bound diets; daily order flags are a materialized OR projection."""
 
+import json
 from datetime import date
 
 from fastapi import HTTPException, Request
@@ -30,7 +31,22 @@ def enrich_orders(db: Session, orders: list[BreakfastOrder]) -> list[BreakfastOr
         select(ReservationBreakfastDiet).where(ReservationBreakfastDiet.reservation_id.in_(ids))
     )} if ids else {}
     for order in orders:
-        order.reservations = [diets[value] for value in reservation_ids(order.source_key, order.service_date) if value in diets]
+        try:
+            details = json.loads(order.reservation_details_json or "{}")
+        except (TypeError, json.JSONDecodeError):
+            details = {}
+        enriched = []
+        for value in reservation_ids(order.source_key, order.service_date):
+            if value not in diets:
+                continue
+            row = diets[value]
+            detail = details.get(value, {}) if isinstance(details, dict) else {}
+            if not isinstance(detail, dict):
+                detail = {}
+            for key in ("company_name", "breakfast_adults", "breakfast_children_0_2", "breakfast_children_3_17", "breakfast_age_unknown"):
+                setattr(row, key, detail.get(key) if key == "company_name" else int(detail.get(key) or 0))
+            enriched.append(row)
+        order.reservations = enriched
     return orders
 
 

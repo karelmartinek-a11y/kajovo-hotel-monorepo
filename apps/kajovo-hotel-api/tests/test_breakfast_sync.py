@@ -30,12 +30,13 @@ def test_better_hotel_sync_maps_food_flags_to_breakfast_days(monkeypatch) -> Non
                 "arrival": "2026-06-21",
                 "departure": "2026-06-24",
                 "room": {"name": "102 KOMFORT"},
+                "company": "Příklad s.r.o.",
                 "main_guest": "guest-1",
                 "reservation_note": [{"note": "Interní text", "housekeep": "Prosím druhý polštář"}],
                 "guest_list": [
-                    {"food": 1, "guest": {"id": "guest-1", "first_name": "Jan", "last_name": "Novak", "address": {"country": "CZE"}}},
-                    {"food": 2, "guest": {"first_name": "Eva", "last_name": "Nova"}},
-                    {"food": 0, "guest": {"first_name": "Bez", "last_name": "Snidane"}},
+                    {"food": 1, "guest": {"id": "guest-1", "first_name": "Jan", "last_name": "Novak", "birth_date": "1990-01-01", "address": {"country": "CZE"}}},
+                    {"food": 2, "guest": {"first_name": "Eva", "last_name": "Nova", "birth_date": "2025-06-23"}},
+                    {"food": 0, "guest": {"first_name": "Bez", "last_name": "Snidane", "birth_date": "2015-01-01"}},
                 ],
             },
             {
@@ -66,9 +67,23 @@ def test_better_hotel_sync_maps_food_flags_to_breakfast_days(monkeypatch) -> Non
     assert aggregates[0].guest_name == "Jan Novak; Eva Nova"
     assert aggregates[0].guest_names == "Jan Novak; Eva Nova; Bez Snidane"
     assert aggregates[0].country_code == "CZ"
+    assert aggregates[0].reservations["res-1"]["company_name"] == "Příklad s.r.o."
+    assert aggregates[0].reservations["res-1"]["breakfast_adults"] == 1
+    assert aggregates[0].reservations["res-1"]["breakfast_children_0_2"] == 1
+    assert aggregates[0].reservations["res-1"]["breakfast_children_3_17"] == 0
+    assert aggregates[0].reservations["res-1"]["breakfast_age_unknown"] == 0
     assert aggregates[0].housekeeping_note == "Prosím druhý polštář"
     assert aggregates[0].source_key == "2026-06-22|res-1"
     assert aggregates[-1].source_key == "2026-06-24|res-2"
+
+
+def test_breakfast_age_groups_follow_service_date_and_report_missing_birthdays() -> None:
+    from app.services.breakfast.sync import _breakfast_guest_age_group
+
+    assert _breakfast_guest_age_group({"guest": {"birth_date": "2024-06-23"}}, date(2026, 6, 22)) == "children_0_2"
+    assert _breakfast_guest_age_group({"guest": {"birth_date": "2008-06-23"}}, date(2026, 6, 22)) == "children_3_17"
+    assert _breakfast_guest_age_group({"guest": {"birth_date": "2008-06-22"}}, date(2026, 6, 22)) == "adults"
+    assert _breakfast_guest_age_group({"guest": {}}, date(2026, 6, 22)) == "unknown"
 
 
 def test_breakfast_sync_admin_endpoint_and_removed_mailbox(api_request) -> None:
@@ -148,8 +163,18 @@ def test_better_hotel_sync_replaces_local_notes_with_housekeeping_note(
                         source_key="2026-07-24|res-101",
                         room_number="101",
                         guest_count=2,
-                            guest_name="Novy host",
-                            housekeeping_note="Pokojská: polštář navíc",
+                        guest_name="Novy host",
+                        housekeeping_note="Pokojská: polštář navíc",
+                        reservations={"res-101": {
+                            "arrival": date(2026, 7, 22),
+                            "departure": date(2026, 7, 25),
+                            "guest_name": "Novy host",
+                            "company_name": "Příklad s.r.o.",
+                            "breakfast_adults": 1,
+                            "breakfast_children_0_2": 1,
+                            "breakfast_children_3_17": 0,
+                            "breakfast_age_unknown": 0,
+                        }},
                     ),
                     BetterHotelBreakfastAggregate(
                         service_date=target_day,
@@ -184,16 +209,19 @@ def test_better_hotel_sync_replaces_local_notes_with_housekeeping_note(
             .where(BreakfastOrder.service_date == target_day)
             .order_by(BreakfastOrder.room_number.asc())
         ).all()
-
-    assert {row.room_number: row.id for row in rows} == original_ids
-
-    assert [(row.room_number, row.note) for row in rows] == [
-        ("101", "Pokojská: polštář navíc"),
-        ("102", None),
-    ]
-    assert rows[0].diet_no_gluten is True
-    assert rows[0].diet_no_pork is True
-    assert rows[1].diet_no_milk is True
+        assert {row.room_number: row.id for row in rows} == original_ids
+        assert [(row.room_number, row.note) for row in rows] == [
+            ("101", "Pokojská: polštář navíc"),
+            ("102", None),
+        ]
+        assert rows[0].diet_no_gluten is True
+        assert rows[0].diet_no_pork is True
+        assert rows[1].diet_no_milk is True
+        from app.services.breakfast.diets import enrich_orders
+        enrich_orders(db, rows)
+        assert rows[0].reservations[0].company_name == "Příklad s.r.o."
+        assert rows[0].reservations[0].breakfast_adults == 1
+        assert rows[0].reservations[0].breakfast_children_0_2 == 1
 
 
 def test_sync_preserves_matching_manual_state_but_removes_missing_rows(monkeypatch, tmp_path) -> None:

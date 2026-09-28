@@ -34,6 +34,11 @@ if (!Array.isArray(rooms.rooms) || rooms.date !== date) throw new Error('Rooms o
 if (settings.provider !== 'better_hotel_api' || !settings.scheduler_enabled) throw new Error('Automatic Better Hotel sync is inactive.');
 for (const order of breakfast.orders) {
   if (!('guest_names' in order && 'country_code' in order && 'note' in order)) throw new Error('Breakfast guest or note fields missing.');
+  for (const reservation of order.reservations ?? []) {
+    if (!('company_name' in reservation && 'breakfast_adults' in reservation && 'breakfast_children_0_2' in reservation && 'breakfast_children_3_17' in reservation)) {
+      throw new Error('Breakfast reservation display fields missing.');
+    }
+  }
 }
 for (const room of rooms.rooms) {
   for (const stay of [...room.arrivals, ...room.departures, ...room.stays]) {

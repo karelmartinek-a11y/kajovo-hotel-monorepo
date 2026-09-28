@@ -107,6 +107,7 @@ class BreakfastOrder(Base):
     guest_name: Mapped[str] = mapped_column(String(255), nullable=False)
     guest_names: Mapped[str | None] = mapped_column(Text, nullable=True)
     country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    reservation_details_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     guest_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default=BreakfastStatus.PENDING.value
