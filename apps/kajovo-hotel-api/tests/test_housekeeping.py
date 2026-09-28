@@ -240,3 +240,45 @@ def test_housekeeping_status_update_contract_requires_expected_status() -> None:
 
     with pytest.raises(ValidationError):
         HousekeepingRoomStatusUpdate.model_validate({"status": "clean"})
+
+
+def test_housekeeping_route_returns_http_409_for_stale_status_without_provider_patch(monkeypatch) -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from types import SimpleNamespace
+
+    from app.api.routes import housekeeping as route
+    from app.db.session import get_db
+    from app.services.housekeeping import HousekeepingRoomStatusConflict
+
+    class FakeDatabase:
+        bind = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+        def __init__(self) -> None:
+            self.locked_resources: list[str] = []
+
+        def execute(self, _statement, parameters):
+            self.locked_resources.append(parameters["resource"])
+
+    class StaleStatusClient:
+        patch_attempted = False
+
+        def update_room_status(self, *_args, **_kwargs) -> None:
+            raise HousekeepingRoomStatusConflict("Stav pokoje se změnil. Obnovte přehled.")
+
+    database = FakeDatabase()
+    provider = StaleStatusClient()
+    app = FastAPI()
+    app.add_api_route("/rooms/{room_id}", route.update_housekeeping_room_status, methods=["PATCH"])
+    app.dependency_overrides[get_db] = lambda: database
+    monkeypatch.setattr(route, "_client", lambda: provider)
+
+    response = TestClient(app).patch(
+        "/rooms/room-101?date=2026-09-17",
+        json={"status": "dirty", "expected_status": "do_not_disturb"},
+    )
+
+    assert response.status_code == 409
+    assert "změnil" in response.json()["detail"]
+    assert database.locked_resources == ["housekeeping:room:room-101"]
+    assert provider.patch_attempted is False
