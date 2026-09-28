@@ -166,6 +166,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "alembic==1.17.1" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
 
+      - name: Android production acceptance rollback policy
+        run: |
+          node --check scripts/verify_android_employee_production.mjs
+          node --check scripts/cleanup_android_production_acceptance.mjs
+          node --test scripts/android_production_acceptance_policy.test.mjs
+
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
 
