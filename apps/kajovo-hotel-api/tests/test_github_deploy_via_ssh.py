@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 
 
@@ -46,3 +47,23 @@ def test_certificate_verification_requires_validity_beyond_thirty_days() -> None
     assert "/etc/letsencrypt" not in script
     assert "openssl x509" in script
     assert "-checkend 2592000" in script
+
+
+def test_web_push_vapid_configuration_is_forwarded_to_remote_deploy(tmp_path, monkeypatch) -> None:
+    module = _load_deploy_module()
+    expected = {
+        "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY": "public-key",
+        "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY": "private-key",
+        "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": "mailto:admin@example.test",
+    }
+    for key, value in expected.items():
+        monkeypatch.setenv(key, value)
+
+    payload_path = tmp_path / "deploy-vars.json"
+    module.write_remote_vars(payload_path)
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+
+    assert {key: payload[key] for key in expected} == expected
+    script = module.remote_script_text()
+    for key in expected:
+        assert f'"{key}": payload.get("{key}", "")' in script

@@ -166,6 +166,38 @@ export type BreakfastSyncSettingsRead = {
   "scheduler_max_retries": number;
   "scheduler_retry_seconds": number;
 };
+export type ChatConversationCreate = {
+  "recipient_id": number;
+};
+export type ChatConversationRead = {
+  "id": number;
+  "last_message"?: ChatMessageRead | null;
+  "participant": ChatParticipantRead;
+  "unread_count": number;
+};
+export type ChatMessageCreate = {
+  "body": string;
+  "client_message_id": string;
+  "recipient_id": number;
+};
+export type ChatMessageRead = {
+  "body": string;
+  "conversation_id": number;
+  "id": number;
+  "is_mine"?: boolean;
+  "read_at"?: string | null;
+  "sender_id": number;
+  "sent_at": string;
+};
+export type ChatParticipantRead = {
+  "display_name": string;
+  "email": string;
+  "id": number;
+  "is_active": boolean;
+};
+export type ChatReadThrough = {
+  "through_message_id": number;
+};
 export type DeviceChallengeRequest = {
   "device_id": string;
   "device_secret": string;
@@ -645,6 +677,17 @@ export type ValidationError = {
   "msg": string;
   "type": string;
 };
+export type WebPushKeys = {
+  "auth": string;
+  "p256dh": string;
+};
+export type WebPushSubscriptionCreate = {
+  "endpoint": string;
+  "keys": WebPushKeys;
+};
+export type WebPushSubscriptionDelete = {
+  "endpoint": string;
+};
 
 type QueryValue = string | number | boolean | null | undefined;
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -793,6 +836,36 @@ export const apiClient = {
   },
   async updateReservationDietApiV1BreakfastOrderIdReservationsReservationIdDietPatch(order_id: number, reservation_id: string, body: BreakfastDietUpdate): Promise<BreakfastOrderRead> {
     return request<BreakfastOrderRead>('PATCH', `/api/v1/breakfast/${order_id}/reservations/${reservation_id}/diet`, undefined, body);
+  },
+  async chatConversations(): Promise<Array<ChatConversationRead>> {
+    return request<Array<ChatConversationRead>>('GET', `/api/v1/chat/conversations`, undefined, undefined);
+  },
+  async chatCreateConversation(body: ChatConversationCreate): Promise<ChatConversationRead> {
+    return request<ChatConversationRead>('POST', `/api/v1/chat/conversations`, undefined, body);
+  },
+  async chatMessages(conversation_id: number, query: { "before_id"?: number | null; "limit"?: number; }): Promise<Array<ChatMessageRead>> {
+    return request<Array<ChatMessageRead>>('GET', `/api/v1/chat/conversations/${conversation_id}/messages`, query, undefined);
+  },
+  async chatMarkRead(conversation_id: number, body: ChatReadThrough): Promise<void> {
+    return request<void>('POST', `/api/v1/chat/conversations/${conversation_id}/read`, undefined, body);
+  },
+  async chatDirectory(): Promise<Array<ChatParticipantRead>> {
+    return request<Array<ChatParticipantRead>>('GET', `/api/v1/chat/directory`, undefined, undefined);
+  },
+  async chatSendMessage(body: ChatMessageCreate): Promise<ChatMessageRead> {
+    return request<ChatMessageRead>('POST', `/api/v1/chat/messages`, undefined, body);
+  },
+  async chatPushConfig(): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>('GET', `/api/v1/chat/push/config`, undefined, undefined);
+  },
+  async chatDeletePush(body: WebPushSubscriptionDelete): Promise<void> {
+    return request<void>('DELETE', `/api/v1/chat/push/subscriptions`, undefined, body);
+  },
+  async chatRegisterPush(body: WebPushSubscriptionCreate): Promise<void> {
+    return request<void>('POST', `/api/v1/chat/push/subscriptions`, undefined, body);
+  },
+  async chatUnreadCount(): Promise<Record<string, unknown>> {
+    return request<Record<string, unknown>>('GET', `/api/v1/chat/unread-count`, undefined, undefined);
   },
   async issueChallengeApiV1DeviceChallengePost(body: DeviceChallengeRequest): Promise<DeviceChallengeResponse> {
     return request<DeviceChallengeResponse>('POST', `/api/v1/device/challenge`, undefined, body);

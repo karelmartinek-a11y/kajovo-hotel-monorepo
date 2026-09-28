@@ -11,7 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
+import { AppShell, Badge, Card, ChatPage, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline, unregisterChatPush } from '@kajovo/ui';
 import {
   apiClient,
   getAuthBundle,
@@ -3613,6 +3613,7 @@ function AuthSelfServiceProfilePage(): JSX.Element {
     setError(null);
     setMessage(null);
     try {
+      await unregisterChatPush();
       await fetch('/api/auth/admin/logout', {
         method: 'POST',
         credentials: 'include',
@@ -3762,7 +3763,8 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
         },
         body: JSON.stringify({ email: principal, password, web_activity_session: true }),
       });
-      window.location.assign('/admin/');
+      const next = new URLSearchParams(window.location.search).get('next');
+      window.location.assign(next === '/admin/chat' || next?.startsWith('/admin/chat/') ? next : '/admin/');
     } catch (error) {
       if (error instanceof HttpError && error.status === 423) {
         setLoginError({
@@ -3930,7 +3932,8 @@ function AppRoutes(): JSX.Element {
   }
 
   if (!auth || auth.actorType !== 'admin') {
-    return <Navigate to="/login" replace />;
+    const returnTo = location.pathname === '/chat' || location.pathname.startsWith('/chat/') ? `/admin${location.pathname}${location.search}` : null;
+    return <Navigate to={returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : '/login'} replace />;
   }
 
   const adminModules = auth.role === 'admin'
@@ -4024,6 +4027,8 @@ function AppRoutes(): JSX.Element {
         panelLayout={panelLayout}
       >
         <Routes>
+        <Route path="/chat" element={<ChatPage surface="admin" />} />
+        <Route path="/chat/:conversationId" element={<ChatPage surface="admin" />} />
         <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="P\u0159ehled" role={roleViewLabel} userId={auth.userId} />} />
 <Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojsk\u00e1" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="S\u00eddan\u011b" role={roleViewLabel} userId={auth.userId} />} />

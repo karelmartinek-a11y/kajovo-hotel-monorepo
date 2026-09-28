@@ -2,6 +2,8 @@
 
 This repository keeps the API contract deterministic by generating artifacts directly from the FastAPI app source.
 
+The contract includes `/api/v1/chat`. Chat identities come from the authenticated server session, and every conversation operation checks participant membership. See `docs/internal-chat.md` for Web Push deployment settings and delivery behavior.
+
 ## Artifacts
 
 - `apps/kajovo-hotel-api/openapi.json` – canonical OpenAPI contract exported from `create_app()`.

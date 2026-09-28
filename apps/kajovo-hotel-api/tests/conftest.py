@@ -240,7 +240,7 @@ def api_request(api_base_url: str) -> ApiRequest:
     # Keep references for tests that need the authenticated session.
     _request.opener = opener  # type: ignore[attr-defined]
     _request.jar = jar  # type: ignore[attr-defined]
+    _request.api_base_url = api_base_url  # type: ignore[attr-defined]
     return _request
-
 
 

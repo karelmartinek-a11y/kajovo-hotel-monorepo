@@ -1,4 +1,5 @@
 export * from './shell/AppShell';
+export * from './chat/ChatPage';
 export * from './shell/KajovoWordmark';
 export * from './shell/KajovoFullLockup';
 export * from './shell/KajovoStartupSplash';

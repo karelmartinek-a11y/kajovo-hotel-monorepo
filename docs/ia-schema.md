@@ -2,7 +2,7 @@
 
 ## Navigation
 
-`navigation.rules` controls grouping and the supplementary phone menu. All authorized active modules appear directly in the navigation row or desktop sidebar:
+`navigation.rules` controls grouping of the role-filtered modules in the shared, horizontally scrollable bottom navigation. Chat is pinned first and Profil last on phone, tablet, and desktop:
 
 - `grouping` (required)
 - `enableSearchInMenuOnPhone` (optional)
@@ -33,4 +33,4 @@ Each `modules[]` item now accepts additional optional metadata without breaking 
 
 All previous fields remain valid (`key`, `label`, `route`, `active`, `routes`).
 
-The explicit `other` module remains inactive; the phone menu lists the same authorized modules as the direct navigation row.
+The explicit `other` module remains inactive. Both web surfaces expose the same authorized active modules in the shared bottom row; the portal retains its quick housekeeping, lost-found, and issue actions. The native Android application has its own navigation and is not changed by the web chat.

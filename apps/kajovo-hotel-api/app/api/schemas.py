@@ -1,5 +1,8 @@
+import base64
+import ipaddress
 from datetime import date, datetime
 from typing import Literal
+from urllib.parse import urlsplit
 
 try:
     from enum import StrEnum
@@ -24,6 +27,91 @@ class ApiErrorDetail(BaseModel):
 
 class ApiErrorEnvelope(BaseModel):
     error: ApiErrorDetail
+
+
+class ChatParticipantRead(BaseModel):
+    id: int
+    display_name: str
+    email: str
+    is_active: bool
+
+
+class ChatMessageRead(BaseModel):
+    id: int
+    conversation_id: int
+    sender_id: int
+    is_mine: bool = False
+    body: str
+    sent_at: datetime
+    read_at: datetime | None = None
+
+
+class ChatConversationRead(BaseModel):
+    id: int
+    participant: ChatParticipantRead
+    last_message: ChatMessageRead | None = None
+    unread_count: int
+
+
+class ChatConversationCreate(BaseModel):
+    recipient_id: int
+
+
+class ChatMessageCreate(BaseModel):
+    recipient_id: int
+    body: str = Field(min_length=1, max_length=4000)
+    client_message_id: str = Field(min_length=1, max_length=64)
+
+
+class ChatReadThrough(BaseModel):
+    through_message_id: int
+
+
+class WebPushKeys(BaseModel):
+    p256dh: str = Field(min_length=1, max_length=255)
+    auth: str = Field(min_length=1, max_length=255)
+
+    @field_validator("p256dh", "auth")
+    @classmethod
+    def validate_key(cls, value: str) -> str:
+        try:
+            decoded = base64.b64decode(value + "=" * ((4 - len(value) % 4) % 4), altchars=b"-_", validate=True)
+        except Exception as exc:
+            raise ValueError("Push key must be base64url encoded.") from exc
+        if len(decoded) < 16:
+            raise ValueError("Push key is too short.")
+        return value
+
+
+class WebPushSubscriptionCreate(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2048)
+    keys: WebPushKeys
+
+    @field_validator("endpoint")
+    @classmethod
+    def validate_endpoint(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError("Push endpoint must be an HTTPS URL.")
+        if parsed.port not in (None, 443):
+            raise ValueError("Push endpoint must use the default HTTPS port.")
+        try:
+            address = ipaddress.ip_address(parsed.hostname)
+        except ValueError:
+            address = None
+        host = parsed.hostname.lower().rstrip(".")
+        allowed_push_hosts = (".googleapis.com", ".push.services.mozilla.com", ".push.apple.com", ".notify.windows.com")
+        if (
+            host == "localhost"
+            or (address is not None and not address.is_global)
+            or not any(host.endswith(suffix) for suffix in allowed_push_hosts)
+        ):
+            raise ValueError("Push endpoint host is invalid.")
+        return value
+
+
+class WebPushSubscriptionDelete(BaseModel):
+    endpoint: str = Field(min_length=1, max_length=2048)
 
 
 class AndroidAppReleaseRead(BaseModel):

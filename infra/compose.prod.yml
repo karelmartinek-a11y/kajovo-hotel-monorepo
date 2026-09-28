@@ -42,6 +42,9 @@ services:
       KAJOVO_API_SMTP_ENABLED: ${KAJOVO_API_SMTP_ENABLED:-false}
       KAJOVO_API_SMTP_FROM_EMAIL: ${KAJOVO_API_SMTP_FROM_EMAIL:-noreply@kajovohotel.local}
       KAJOVO_API_SMTP_ENCRYPTION_KEY: ${KAJOVO_API_SMTP_ENCRYPTION_KEY:-dev-only-smtp-key-change-in-production}
+      KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY: ${KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY: ${KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${KAJOVO_API_WEB_PUSH_VAPID_SUBJECT:-mailto:admin@hotel.hcasc.cz}
     depends_on:
       postgres:
         condition: service_healthy

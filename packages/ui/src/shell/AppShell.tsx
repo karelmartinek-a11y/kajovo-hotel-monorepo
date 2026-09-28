@@ -2,10 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { t } from '@kajovo/shared';
 import '../tokens.css';
+import './bottom-navigation.css';
 import { KajovoWordmark } from './KajovoWordmark';
 import { Icon } from '../components/Icon';
 import type { PanelLayout } from './panelLayout';
-import { ModuleNavigation } from '../navigation/ModuleNavigation';
+import { ChatUnreadLink } from '../chat/ChatPage';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
 
 type AppShellProps = {
@@ -39,7 +40,7 @@ export function AppShell({
   const wordmarkHref = brandHref ?? (panelLayout === 'admin' ? '/admin/' : '/');
   const wordmarkVariant = panelLayout === 'admin' ? 'admin' : 'portal';
   const isIntroView = currentPath === '/intro' || currentPath.endsWith('/intro');
-  const portalModules = modules.filter((module) => module.active && module.key !== 'profile');
+  const activeModules = modules.filter((module) => module.active && module.key !== 'profile');
 
   React.useEffect(() => {
     const main =
@@ -87,20 +88,13 @@ export function AppShell({
         <a className="k-skip-link" href={`#${MAIN_TARGET_ID}`} onClick={handleSkipToContent}>{t("Přeskočit na obsah")}{' '}</a>
         <div className="k-shell-inner k-shell-header">
           {!isIntroView ? <KajovoWordmark href={wordmarkHref} variant={wordmarkVariant} /> : null}
-          {panelLayout === 'admin' ? <ModuleNavigation
-            modules={portalModules}
-            rules={navigationRules}
-            sections={navigationSections}
-            currentPath={currentPath}
-          /> : null}
-          {panelLayout === 'admin' ? <Link className="k-shell-profile-link" to="/profil" aria-current={currentPath === '/profil' ? 'page' : undefined}>
-            <Icon name="users" className="k-nav-link__icon" />
-            <span>{profileLabel ?? t('Profil')}</span>
-          </Link> : null}
           {headerControls ? <div className="k-shell-header-controls">{headerControls}</div> : null}
         </div>
       </header>
-      {panelLayout === 'portal' ? <nav className="k-portal-mobile-tabs" aria-label={navigationRules.ariaLabel ?? t('Hlavní navigace')} data-testid="portal-mobile-tabs">{portalTabs}</nav> : null}
+      <nav className={`k-bottom-nav ${panelLayout === 'portal' ? 'k-portal-mobile-tabs' : ''}`} aria-label={navigationRules.ariaLabel ?? t('Hlavní navigace')} data-testid={panelLayout === 'portal' ? 'portal-mobile-tabs' : 'admin-bottom-navigation'}>
+        <ChatUnreadLink />
+        {panelLayout === 'admin' ? <>{activeModules.map((module) => <Link key={module.key} className="k-bottom-nav__link" to={module.route} aria-current={currentPath === module.route || (module.route !== '/' && currentPath.startsWith(`${module.route}/`)) ? 'page' : undefined}><Icon name={module.icon} className="k-bottom-nav__icon" /><span>{module.label}</span></Link>)}<Link className="k-bottom-nav__link" to="/profil" aria-current={currentPath === '/profil' ? 'page' : undefined}><Icon name="profile" className="k-bottom-nav__icon" /><span>{profileLabel ?? t('Profil')}</span></Link></> : portalTabs}
+      </nav>
       {children}
     </div>
   );

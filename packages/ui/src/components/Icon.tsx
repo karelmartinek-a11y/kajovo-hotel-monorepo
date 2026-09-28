@@ -8,6 +8,8 @@ type IconProps = {
 
 function pathFor(name?: string | null): JSX.Element {
   switch (name) {
+    case 'message-circle':
+      return <><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.6 8.6 0 0 1-3.6-.8L4 20l1.5-3.6A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></>;
     case 'layout-dashboard':
       return (
         <>

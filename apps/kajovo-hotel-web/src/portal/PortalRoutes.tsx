@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
-import { AppShell, Icon, SkeletonPage, StateView } from '@kajovo/ui';
+import { AppShell, ChatPage, Icon, SkeletonPage, StateView, unregisterChatPush } from '@kajovo/ui';
 import {
   canReadModule,
   canWriteModule,
@@ -305,6 +305,7 @@ export function PortalRoutes({
     setLogoutBusy(true);
     setSwitchError(null);
     try {
+      await unregisterChatPush();
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
@@ -372,7 +373,6 @@ export function PortalRoutes({
   );
 
   const tabs = [
-    { key: 'profile', label: moduleLabels.profile, route: '/profil', pictogram: profilePictogram, module: null, role: null },
     { key: 'housekeeping', label: moduleLabels.housekeeping, route: '/pokojska', pictogram: roomsPictogram, module: 'housekeeping', role: null },
     { key: 'reception', label: localizedRoleLabel('recepce'), route: '/recepce', pictogram: receptionPictogram, module: null, role: 'recepce' as Role },
     { key: 'breakfast', label: moduleLabels.breakfast, route: '/snidane', pictogram: breakfastPictogram, module: 'breakfast', role: null },
@@ -390,6 +390,7 @@ export function PortalRoutes({
     { key: 'issues', label: moduleLabels.issues, route: '/zavady', pictogram: maintenancePictogram, module: 'issues', role: null },
     { key: 'inventory', label: localizedRoleLabel('sklad'), route: '/sklad', pictogram: inventoryPictogram, module: 'inventory', role: null },
     { key: 'reports', label: moduleLabels.reports, route: '/hlaseni', pictogram: reportsPictogram, module: 'reports', role: null },
+    { key: 'profile', label: moduleLabels.profile, route: '/profil', pictogram: profilePictogram, module: null, role: null },
   ].map((tab) => ({
     ...tab,
     targetRole: tab.role ?? (tab.module && canReadModule(auth.permissions, tab.module) ? activeRole : null)
@@ -423,6 +424,8 @@ export function PortalRoutes({
       {switchError ? <div className="k-shell-inner"><StateView title={copy.accessDeniedTitle ?? t('Přístup odepřen')} description={switchError} stateKey="error" /></div> : null}
       {localeError ? <div className="k-shell-inner" role="alert">{localeError}</div> : null}
       <Routes>
+        <Route path="/chat" element={<ChatPage surface="portal" />} />
+        <Route path="/chat/:conversationId" element={<ChatPage surface="portal" />} />
         <Route
           path="/"
           element={primaryRoute !== '/' ? <Navigate to={`${primaryRoute}${currentSearch}`} replace /> : <deps.Dashboard />}
