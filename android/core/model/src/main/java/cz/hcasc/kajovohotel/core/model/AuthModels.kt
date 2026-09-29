@@ -29,8 +29,6 @@ data class AuthenticatedIdentity(
 
     fun assignedRoles(): List<PortalRole> = roles.distinct()
 
-    fun requiresRoleSelection(): Boolean = actorType == ActorType.PORTAL && resolvedActiveRole() == null && assignedRoles().size > 1
-
     fun resolvableRolesForPermissions(): List<PortalRole> = assignedRoles().filter { role -> role.canBeShownBy(this) }
 
     fun resolvedActiveRole(): PortalRole? {
@@ -38,7 +36,9 @@ data class AuthenticatedIdentity(
         return activeRole?.takeIf { it in resolvableRoles } ?: resolvableRoles.singleOrNull()
     }
 
-    fun displayRole(): String = resolvedActiveRole()?.displayName ?: "Vyber roli"
+    fun displayRole(): String = resolvedActiveRole()?.displayName
+        ?: assignedRoles().firstOrNull()?.displayName
+        ?: roleLabel.ifBlank { "Zaměstnanec" }
 }
 
 data class AuthProfile(

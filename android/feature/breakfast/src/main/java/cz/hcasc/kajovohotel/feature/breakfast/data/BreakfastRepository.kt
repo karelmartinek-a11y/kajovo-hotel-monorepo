@@ -110,6 +110,22 @@ private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderDto.toDomain() =
     status = BreakfastStatus.fromWire(status),
     createdAt = created_at,
     updatedAt = updated_at,
+    reservations = reservations.map { reservation ->
+        cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastReservation(
+            reservationId = reservation.reservation_id,
+            guestName = reservation.guest_name,
+            arrival = reservation.arrival,
+            departure = reservation.departure,
+            companyName = reservation.company_name,
+            adults = reservation.breakfast_adults,
+            children0To2 = reservation.breakfast_children_0_2,
+            children3To17 = reservation.breakfast_children_3_17,
+            ageUnknown = reservation.breakfast_age_unknown,
+            noGluten = reservation.diet_no_gluten,
+            noMilk = reservation.diet_no_milk,
+            noPork = reservation.diet_no_pork,
+        )
+    },
 )
 
 private fun cz.hcasc.kajovohotel.core.network.dto.BreakfastDailySummaryDto.toDomain() = BreakfastSummary(

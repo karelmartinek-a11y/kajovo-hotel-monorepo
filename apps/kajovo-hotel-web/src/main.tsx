@@ -2931,7 +2931,7 @@ function PortalProfilePage(): JSX.Element {
       if (auth?.activeRole !== 'sklad') {
         const result = await requestRoleSelection('sklad');
         if (!result.ok) {
-          setError(result.detail ?? t('Výběr role selhal.'));
+          setError(result.detail ?? t('Přepnutí pracovního modulu se nepodařilo.'));
           return;
         }
         window.location.assign(route);
@@ -2939,7 +2939,7 @@ function PortalProfilePage(): JSX.Element {
       }
       await navigate(route);
     } catch (error) {
-      setError(error instanceof Error ? error.message : t('Výběr role selhal.'));
+      setError(error instanceof Error ? error.message : t('Přepnutí pracovního modulu se nepodařilo.'));
     }
   };
 

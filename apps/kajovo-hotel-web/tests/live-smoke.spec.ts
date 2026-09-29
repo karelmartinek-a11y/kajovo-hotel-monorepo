@@ -803,11 +803,11 @@ test('multirolni portal uzivatel vidi kazdy dostupny pohled v zapati', async ({ 
   await page.context().addCookies(portalState.cookies);
   await page.goto('/snidane', { waitUntil: 'networkidle' });
 
-  await expect(page.getByTestId('role-select-page')).toBeVisible();
-  await page.getByRole('button', { name: /pokračovat jako pokojská/i }).click();
-
-  await expect(page).toHaveURL(/\/pokojska$/);
+  await expect(page.getByTestId('role-select-page')).toHaveCount(0);
   const tabs = page.getByTestId('portal-mobile-tabs');
+  const roomsTab = tabs.getByRole('link', { name: 'Pokoje', exact: true }).or(tabs.getByRole('button', { name: 'Pokoje', exact: true }));
+  await roomsTab.click();
+  await expect(page).toHaveURL(/\/pokojska$/);
   await expect(tabs.locator('a, button')).toHaveCount(10);
   for (const name of ['Chat', 'Pokoje', 'Recepce', 'Snídaně', 'Nález', 'Závada', 'Ztráty a nálezy', 'Závady', 'Hlášení', 'Profil']) {
     const tab = tabs.getByRole('link', { name, exact: true }).or(tabs.getByRole('button', { name, exact: true }));
@@ -851,15 +851,16 @@ test('portal uzivatel s rolemi pokojska a snidane se umi z pokojske prepnout na 
 
   await loginPortalUser(page, portalEmail, portalPassword);
 
-  await expect(page.getByTestId('role-select-page')).toBeVisible();
-  await page.getByTestId('role-select-page').getByRole('button').first().click();
-
+  await expect(page.getByTestId('role-select-page')).toHaveCount(0);
+  const tabs = page.getByTestId('portal-mobile-tabs');
+  const roomsTab = tabs.getByRole('link', { name: /pokoje/i }).or(tabs.getByRole('button', { name: /pokoje/i }));
+  await roomsTab.click();
   await expect(page).toHaveURL(/\/pokojska$/);
-  await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: /pokoje/i })).toHaveAttribute('aria-current', 'page');
-  await page.getByTestId('portal-mobile-tabs').getByRole('button', { name: /snídaně/i }).click();
+  await expect(tabs.getByRole('link', { name: /pokoje/i }).or(tabs.getByRole('button', { name: /pokoje/i }))).toHaveAttribute('aria-current', 'page');
+  await tabs.getByRole('button', { name: /snídaně/i }).click();
 
   await expect(page).toHaveURL(/\/snidane$/);
-  await expect(page.getByTestId('portal-mobile-tabs').getByRole('link', { name: /snídaně/i })).toHaveAttribute('aria-current', 'page');
+  await expect(tabs.getByRole('link', { name: /snídaně/i }).or(tabs.getByRole('button', { name: /snídaně/i }))).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('breakfast-list-page')).toBeVisible();
   await page.getByRole('button', { name: 'Odhlásit' }).click();
   await expect(page).toHaveURL(/\/login(?:\?.*)?$/);

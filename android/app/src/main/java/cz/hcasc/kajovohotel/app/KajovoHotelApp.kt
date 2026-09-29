@@ -2,6 +2,7 @@ package cz.hcasc.kajovohotel.app
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -18,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import cz.hcasc.kajovohotel.core.designsystem.KajovoTheme
 import cz.hcasc.kajovohotel.core.designsystem.PortalChrome
+import cz.hcasc.kajovohotel.core.designsystem.LocalPortalLogout
 import cz.hcasc.kajovohotel.core.designsystem.StatePane
 import cz.hcasc.kajovohotel.core.designsystem.localize
 import cz.hcasc.kajovohotel.core.model.ActorType
@@ -27,7 +29,6 @@ import cz.hcasc.kajovohotel.core.model.BlockingUtilityState
 import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.core.model.SessionState
 import cz.hcasc.kajovohotel.feature.auth.login.LoginScreen
-import cz.hcasc.kajovohotel.feature.auth.roles.RoleSelectionScreen
 import cz.hcasc.kajovohotel.feature.breakfast.BreakfastSection
 import cz.hcasc.kajovohotel.feature.breakfast.BreakfastScreen
 import cz.hcasc.kajovohotel.feature.housekeeping.HousekeepingScreen
@@ -138,12 +139,16 @@ fun KajovoHotelApp(
                         roleLabel = state.identity.roleLabel.ifBlank { "bez aktivní role" },
                         userId = state.identity.email,
                     )
-                } else if (activeRole == null && assignedRoles.size > 1) {
-                    RoleSelectionScreen(
-                        roles = assignedRoles,
-                        isBusy = false,
-                        message = message,
-                        onConfirm = viewModel::selectRole,
+                } else if (activeRole == null) {
+                    val defaultRole = assignedRoles.first()
+                    LaunchedEffect(state.identity.email, assignedRoles) {
+                        viewModel.selectRole(defaultRole)
+                    }
+                    StatePane(
+                        title = localize("Připravuji pracovní zobrazení"),
+                        body = message.orEmpty(),
+                        actionLabel = message?.let { localize("Zkusit znovu") },
+                        onAction = message?.let { { viewModel.selectRole(defaultRole) } },
                     )
                 } else {
                     val navigationIdentity = state.identity.copy(
@@ -188,7 +193,7 @@ private fun PortalAppShell(
     val startRoute = resolveAppRoute(identity)
     val availableRoles = identity.assignedRoles()
 
-    key(identity.email, identity.activeRole, identity.permissions.sorted().joinToString()) {
+    key(identity.email) {
         val navController = rememberNavController()
         LaunchedEffect(openChat, openChatConversationId) {
             if (openChat) {
@@ -196,6 +201,7 @@ private fun PortalAppShell(
                 onOpenChatConsumed()
             }
         }
+        CompositionLocalProvider(LocalPortalLogout provides onLogout) {
         NavHost(navController = navController, startDestination = startRoute) {
             composable(PortalRoutes.AccessDenied) {
                 AccessDeniedScreen(
@@ -808,7 +814,10 @@ private fun PortalAppShell(
                     sections = employeeNavigationSections(identity),
                     selectedSection = PortalRoutes.Profile,
                     unreadChatCount = chatState.unreadCount,
-                    onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
+                    onSectionSelected = { target ->
+                        identity.roleForModuleRoute(target)?.takeIf { it != identity.resolvedActiveRole() }?.let(onRoleChange)
+                        navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                    },
                 ) {
                     ProfileScreen(
                         profile = profile,
@@ -848,7 +857,10 @@ private fun PortalAppShell(
                     sections = employeeNavigationSections(identity),
                     selectedSection = PortalRoutes.Profile,
                     unreadChatCount = chatState.unreadCount,
-                    onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
+                    onSectionSelected = { target ->
+                        identity.roleForModuleRoute(target)?.takeIf { it != identity.resolvedActiveRole() }?.let(onRoleChange)
+                        navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                    },
                 ) {
                     ChangePasswordScreen(message = message, onSubmit = onChangePassword)
                 }
@@ -868,6 +880,7 @@ private fun PortalAppShell(
             composable(PortalRoutes.NotFound) { NotFoundScreen(onBack = { navController.popBackStack() }) }
             composable(PortalRoutes.GlobalError) { GlobalBlockingErrorScreen(onRetry = { navController.popBackStack() }) }
         }
+        }
     }
 }
 
@@ -883,6 +896,13 @@ private fun GuardedRoute(
     content: @Composable () -> Unit,
 ) {
     if (!identity.canOpenAppDestination(route)) {
+        val targetRole = routeAllowedRoles(route.substringBefore("/"))
+            ?.firstOrNull { it in identity.assignedRoles() }
+        if (targetRole != null && targetRole != identity.resolvedActiveRole()) {
+            LaunchedEffect(route, targetRole, identity.activeRole) { onRoleChange(targetRole) }
+            StatePane(title = localize("Přepínám pracovní modul"), body = "")
+            return
+        }
         AccessDeniedScreen(
             onBack = { navController.navigate(resolveAppRoute(identity)) },
             moduleLabel = title,
@@ -902,14 +922,27 @@ private fun GuardedRoute(
                     sections = employeeNavigationSections(identity),
         selectedSection = route.substringBefore("/"),
         unreadChatCount = unreadChatCount,
-                    onSectionSelected = { target -> navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true } },
+                    onSectionSelected = { target ->
+                        identity.roleForModuleRoute(target)?.takeIf { it != identity.resolvedActiveRole() }?.let(onRoleChange)
+                        navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
+                    },
         content = content,
     )
 }
 
 private fun employeeNavigationSections(identity: AuthenticatedIdentity): List<Pair<String, String>> =
-    listOf(PortalRoutes.Chat to "Chat") +
-        PortalDestinations.filter { identity.canOpenAppDestination(it.route) }.map { it.route to it.title }
+    listOf(PortalRoutes.Chat to "Chat") + listOf(
+        PortalRoutes.Housekeeping,
+        PortalRoutes.Reception,
+        PortalRoutes.Breakfast,
+        PortalRoutes.LostFound,
+        PortalRoutes.Issues,
+        PortalRoutes.Inventory,
+        PortalRoutes.Reports,
+    ).mapNotNull { route ->
+        val destination = PortalDestinations.firstOrNull { it.route == route } ?: return@mapNotNull null
+        route.takeIf { destination.allowedRoles.any(identity.assignedRoles()::contains) }?.let { it to destination.title }
+    }
 
 private fun NavHostController.backActionOrNull(): (() -> Unit)? {
     return if (previousBackStackEntry != null) {
@@ -923,10 +956,7 @@ private fun resolveAppRoute(identity: AuthenticatedIdentity): String {
     if (identity.actorType == ActorType.ADMIN) {
         return PortalRoutes.AccessDenied
     }
-    if (identity.requiresRoleSelection()) {
-        return PortalRoutes.Roles
-    }
-    val activeRole = identity.resolvedActiveRole() ?: identity.assignedRoles().singleOrNull() ?: return PortalRoutes.Login
+    val activeRole = identity.resolvedActiveRole() ?: identity.assignedRoles().firstOrNull() ?: return PortalRoutes.Login
     return if (identity.canOpenAppDestination(activeRole.homeRoute())) {
         activeRole.homeRoute()
     } else {

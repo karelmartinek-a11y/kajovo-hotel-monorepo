@@ -39,6 +39,23 @@ data class BreakfastOrderDto(
     val status: String = "pending",
     val created_at: String? = null,
     val updated_at: String? = null,
+    val reservations: List<BreakfastReservationDto> = emptyList(),
+)
+
+data class BreakfastReservationDto(
+    val reservation_id: String,
+    val guest_name: String? = null,
+    val arrival: String? = null,
+    val departure: String? = null,
+    val company_name: String? = null,
+    val breakfast_adults: Int = 0,
+    val breakfast_children_0_2: Int = 0,
+    val breakfast_children_3_17: Int = 0,
+    val breakfast_age_unknown: Int = 0,
+    val diet_no_gluten: Boolean = false,
+    val diet_no_milk: Boolean = false,
+    val diet_no_pork: Boolean = false,
+    val version: Int,
 )
 
 data class BreakfastDailySummaryDto(
@@ -108,10 +125,17 @@ data class ReservationAmenityDto(
     val active: Boolean,
 )
 
+data class ReservationAmenityUpdateDto(
+    val version: Int,
+    val state: String,
+)
+
 data class HousekeepingStayDto(
     val reservation_id: String,
     val guest_label: String? = null,
     val country_name: String? = null,
+    val country_code: String? = null,
+    val housekeeping_note: String? = null,
     val persons: Int,
     val arrival: String,
     val departure: String,
@@ -156,4 +180,3 @@ data class HousekeepingRoomStatusUpdateDto(
     val expected_status: String,
     val note: String? = null,
 )
-data class ReservationAmenityUpdateDto(val version: Int, val state: String)

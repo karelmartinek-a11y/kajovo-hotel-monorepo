@@ -13,6 +13,8 @@ import cz.hcasc.kajovohotel.core.network.dto.MediaPhotoDto
 import cz.hcasc.kajovohotel.core.network.dto.HousekeepingRoomDto
 import cz.hcasc.kajovohotel.core.network.dto.HousekeepingRoomStatusUpdateDto
 import cz.hcasc.kajovohotel.core.network.dto.HousekeepingRoomsOverviewDto
+import cz.hcasc.kajovohotel.core.network.dto.ReservationAmenityDto
+import cz.hcasc.kajovohotel.core.network.dto.ReservationAmenityUpdateDto
 import okhttp3.MultipartBody
 
 internal class FakeIssuesApi : IssuesApi {
@@ -58,4 +60,12 @@ internal class FakeHousekeepingApi : HousekeepingApi {
         lastStatusUpdateRequest = request
         return room.copy(housekeeping_status = request.status, housekeeping_status_key = request.status)
     }
+
+    override suspend fun updateReservationAmenity(
+        reservationId: String,
+        kind: String,
+        roomId: String,
+        serviceDate: String,
+        request: ReservationAmenityUpdateDto,
+    ): ReservationAmenityDto = ReservationAmenityDto(kind, request.state, request.version + 1, active = true)
 }

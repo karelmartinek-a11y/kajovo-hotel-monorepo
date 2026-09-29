@@ -55,7 +55,7 @@ class SessionGuardInterceptor(private val eventStore: AuthNetworkEventStore) : I
                     eventStore.publish(AuthNetworkEvent.Unauthorized(detail ?: "Session vypršela nebo už není platná."))
                 }
                 response.code == 403 && detail == "Active role must be selected" -> {
-                    eventStore.publish(AuthNetworkEvent.RoleSelectionRequired("Vyberte aktivní roli pro pokračování."))
+                    eventStore.publish(AuthNetworkEvent.RoleSelectionRequired("Připravuji pracovní přístup."))
                 }
                 response.code == 403 -> {
                     eventStore.publish(AuthNetworkEvent.AccessDenied(detail ?: "Server odmítl přístup k požadované akci."))

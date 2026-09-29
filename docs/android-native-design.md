@@ -13,7 +13,9 @@ Samostatná launcher značka: `docs/android-design/kajovo-hotel-app-mark.png`
 ## Nativní interakce
 
 - Material 3, edge-to-edge, Compose, adaptivní phone/tablet layout.
-- Pevné kompaktní záhlaví s logem, názvem sekce, přepnutím role a menu oprávněných sekcí/profilu. Bez spodního copyrightu, duplicitních nadpisů a vysvětlování implementace.
+- Zaměstnanecké mobilní záhlaví a zápatí kopírují mobilní web: pevné záhlaví 64dp s logem, třemi jazyky a odhlášením; pevné zápatí 72dp s vodorovným posunem, webovými piktogramy modulů, aktivním zvýrazněním a Profilem. V záhlaví není role, nabídka ani navigace. Přístup do dalších přiřazených rolí se řeší při otevření modulu ze zápatí; obrazovka výběru role se nezobrazuje. Obsah každého modulu se posouvá samostatně mezi pevnými pruhy.
+- Pokojská používá stejnou mobilní čtyřsloupcovou mřížku, pořadí pokojů, 106dp dlaždice, barvy odjezdu/příjezdu/pobytu, drobné popisky a spodní detail jako web. Zobrazení odděluje aktuální obsazenost od pobytů vybraného dne, obnovuje se po návratu do aplikace a každou minutu, podporuje pouze čtení i zápis, stejné šest stavových akcí, nejednoznačný zápis s obnovou a přepnutí na podrobné pobyty/ikony. Rezervační ikony se mění přes verzi existujícího API.
+- Snídaňový zaměstnanecký přehled kopíruje mobilní web: bez hledání a správcovských ovládacích prvků, s datem/šipkami/Dnes, názvem, kompaktní kartou, dietními piktogramy, společností, pobytem, věkovými počty, poznámkou a plnošířkovou akcí výdeje. Zrušené a již vydané položky nelze znovu vydat.
 - Systémový bezpatkový font s běžným a tučným řezem; textové dvojice barev se v obou tématech testují na kontrast nejméně 4,5:1. Kompletní černé logo má světlou podložku i v tmavém režimu.
 - Přihlášení zachovává formulář při odeslání, skryje klávesnici a zobrazí chybu nad tlačítkem. Krátké obrazovky se vejdou na telefon; seznamy, dlouhý obsah, malé okno s klávesnicí a velké systémové písmo mohou bezpečně posouvat obsah.
 - Filtry seznamů jsou rozbalovací. Nálezy mají kroky Předmět/Místo/Předání, závady Závada/Stav a priorita, snídaně Host/Stav a diety. Poznámka pro pokojskou u snídaní se čte z Better Hotel API a v editoru se nemění.

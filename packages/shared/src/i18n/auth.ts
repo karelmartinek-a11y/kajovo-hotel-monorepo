@@ -26,10 +26,7 @@ type AuthCopy = {
   credentialsRequired?: string;
   hintAction?: string;
   hintInfo?: string;
-  roleSelectTitle?: string;
-  roleSelectDescription?: string;
-  roleSelectError?: string;
-  continueAs?: (roleLabel: string) => string;
+  moduleSwitchError?: string;
   accessDeniedTitle?: string;
   accessDeniedModule?: (moduleLabel: string, roleLabel: string, userId: string) => string;
   accessDeniedNoModules?: (roleLabel: string, userId: string) => string;
@@ -55,10 +52,7 @@ const AUTH_STRINGS: AuthDictionary = {
       forgotLockedInfo: 'Při blokaci přijde na e-mail odkaz pro odblokování účtu.',
       emailRequired: 'Vyplňte email.',
       credentialsRequired: 'Vyplňte email i heslo.',
-      roleSelectTitle: 'Vyberte roli',
-      roleSelectDescription: 'Pro pokračování zvolte roli, ve které budete pracovat.',
-      roleSelectError: 'Výběr role selhal.',
-      continueAs: (roleLabel: string) => `Pokračovat jako ${roleLabel}`,
+      moduleSwitchError: 'Přepnutí pracovního modulu se nepodařilo.',
       accessDeniedTitle: 'Přístup odepřen',
       accessDeniedModule: (moduleLabel, roleLabel, userId) =>
         `Role ${roleLabel} (uživatel ${userId}) nemá oprávnění pro modul ${moduleLabel}.`,
@@ -81,10 +75,7 @@ const AUTH_STRINGS: AuthDictionary = {
       forgotLockedInfo: 'When the account is locked, an unlock link is sent by email.',
       emailRequired: 'Enter your email.',
       credentialsRequired: 'Enter both email and password.',
-      roleSelectTitle: 'Choose a role',
-      roleSelectDescription: 'Select the role you will use for this session.',
-      roleSelectError: 'Role selection failed.',
-      continueAs: (roleLabel: string) => `Continue as ${roleLabel}`,
+      moduleSwitchError: 'Could not switch the work module.',
       accessDeniedTitle: 'Access denied',
       accessDeniedModule: (moduleLabel, roleLabel, userId) =>
         `Role ${roleLabel} (user ${userId}) doesn't have permission for ${moduleLabel}.`,
@@ -103,8 +94,7 @@ const AUTH_STRINGS: AuthDictionary = {
       forgotInfo: 'Якщо обліковий запис існує, ми надішлемо посилання для зміни пароля на вказану адресу.',
       forgotLockedInfo: 'Якщо обліковий запис заблоковано, посилання для розблокування надійде електронною поштою.',
       emailRequired: 'Введіть адресу електронної пошти.', credentialsRequired: 'Введіть адресу електронної пошти й пароль.',
-      roleSelectTitle: 'Оберіть роль', roleSelectDescription: 'Оберіть роль, у якій працюватимете.',
-      roleSelectError: 'Не вдалося обрати роль.', continueAs: (roleLabel) => `Продовжити як ${roleLabel}`,
+      moduleSwitchError: 'Не вдалося перемкнути робочий модуль.',
       accessDeniedTitle: 'Доступ заборонено',
       accessDeniedModule: (moduleLabel, roleLabel, userId) => `Роль ${roleLabel} (користувач ${userId}) не має доступу до модуля ${moduleLabel}.`,
       accessDeniedNoModules: (roleLabel, userId) => `Для ролі ${roleLabel} (користувач ${userId}) немає доступних модулів.`,

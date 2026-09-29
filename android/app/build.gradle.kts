@@ -120,7 +120,6 @@ dependencies {
     implementation(project(":core:session"))
     implementation(project(":core:database"))
     implementation(project(":feature:auth:login"))
-    implementation(project(":feature:auth:roles"))
     implementation(project(":feature:profile"))
     implementation(project(":feature:utility"))
     implementation(project(":feature:reception"))

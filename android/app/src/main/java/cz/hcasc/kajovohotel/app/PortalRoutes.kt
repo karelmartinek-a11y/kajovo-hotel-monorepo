@@ -5,7 +5,6 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 
 object PortalRoutes {
     const val Login = "login"
-    const val Roles = "roles"
     const val Intro = "intro"
     const val Offline = "offline"
     const val Maintenance = "maintenance"

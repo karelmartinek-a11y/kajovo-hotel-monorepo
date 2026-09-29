@@ -77,14 +77,14 @@ class DefaultSessionRepository(
                         val parsedRoles = loginDto.roles.mapNotNull(PortalRole.Companion::fromWire).distinct()
                         val resolution = if (loginDto.active_role == null && parsedRoles.size > 1) {
                             SessionErrorResolution(
-                                message = "Přihlášení se nepodařilo. Vyberte aktivní roli pro pokračování.",
+                                message = "Přihlášení se nepodařilo. Připravuji pracovní přístup.",
                                 requireRoleSelection = true,
                             )
                         } else {
                             SessionErrorMapper.resolve(
                                 throwable = throwable,
                                 fallbackMessage = "Přihlášení se nepodařilo.",
-                                unauthorizedMessage = "Přihlášení se nepodařilo. Vyberte aktivní roli pro pokračování.",
+                                unauthorizedMessage = "Přihlášení se nepodařilo. Připravuji pracovní přístup.",
                             )
                         }
                         if (!applyRoleSelectionFromIdentity(loginDto, resolution)) {
@@ -133,7 +133,7 @@ class DefaultSessionRepository(
             }
 
             is AuthNetworkEvent.RoleSelectionRequired -> {
-                val message = event.message ?: "Vyberte aktivní roli pro pokračování."
+                val message = event.message ?: "Připravuji pracovní přístup."
                 mutableSessionMessage.value = message
                 val current = mutableSessionState.value as? SessionState.Authenticated
                 if (current != null) {

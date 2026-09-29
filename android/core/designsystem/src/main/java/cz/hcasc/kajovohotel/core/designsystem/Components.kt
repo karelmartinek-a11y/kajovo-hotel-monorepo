@@ -4,12 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,9 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import cz.hcasc.kajovohotel.core.common.Branding
 import cz.hcasc.kajovohotel.core.model.PortalRole
+import cz.hcasc.kajovohotel.core.common.PortalLocalization
+
+val LocalPortalLogout = staticCompositionLocalOf<() -> Unit> { {} }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,122 +40,116 @@ fun PortalChrome(
     unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
-    var roleMenuExpanded by remember { mutableStateOf(false) }
-    var sectionMenuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val locale by PortalLocalization.locale.collectAsState()
+    val logout = LocalPortalLogout.current
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                navigationIcon = {
-                    if (onBackClick != null) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Zpět")
-                        }
-                    } else {
-                        Image(
-                            painterResource(R.drawable.kajovo_mark_logo), Branding.APP_NAME,
-                            Modifier.padding(start = 12.dp).size(36.dp).background(
-                                cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens.SurfaceRaised, RoundedCornerShape(6.dp)),
-                            contentScale = ContentScale.Fit,
-                        )
-                    }
-                },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (onBackClick != null) {
-                            Image(painterResource(R.drawable.kajovo_mark_logo), Branding.APP_NAME,
-                                Modifier.size(28.dp).padding(end = 4.dp).background(
-                                    cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens.SurfaceRaised, RoundedCornerShape(4.dp)), contentScale = ContentScale.Fit)
-                        }
-                        Column {
-                            Text(title, style = MaterialTheme.typography.titleMedium)
-                            if (roleLabel != title) Text(roleLabel, style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                },
-                actions = {
-                    if (availableRoles.size > 1 && onRoleSelected != null) {
-                        Box {
-                            IconButton(onClick = { roleMenuExpanded = true }) {
-                                Icon(Icons.Outlined.SwapHoriz, "Přepnout roli")
-                            }
-                            DropdownMenu(roleMenuExpanded, { roleMenuExpanded = false }) {
-                                availableRoles.forEach { role ->
-                                    DropdownMenuItem(
-                                        text = { Text(role.displayName + if (role == activeRole) " ✓" else "") },
-                                        onClick = {
-                                            roleMenuExpanded = false
-                                            if (role != activeRole) onRoleSelected(role)
-                                        },
-                                    )
-                                }
+            Surface(color = cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens.SurfaceRaised, shadowElevation = 2.dp) {
+                Row(
+                    Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Image(
+                        painterResource(R.drawable.kajovo_full_logo), Branding.APP_NAME,
+                        Modifier.width(132.dp).height(44.dp).background(
+                            cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens.SurfaceRaised, RoundedCornerShape(6.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
+                    Spacer(Modifier.weight(1f))
+                    listOf("cs" to "🇨🇿", "en" to "🇬🇧", "uk" to "🇺🇦").forEach { (code, flag) ->
+                        val selected = locale == code
+                        Surface(
+                            onClick = { PortalLocalization.setLocale(context, code) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            ),
+                        ) {
+                            Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                Text(flag, style = MaterialTheme.typography.titleMedium)
                             }
                         }
                     }
-                    Box {
-                        IconButton(onClick = { sectionMenuExpanded = true }) {
-                            Icon(Icons.Outlined.Menu, "Sekce a profil")
-                        }
-                        DropdownMenu(sectionMenuExpanded, { sectionMenuExpanded = false }) {
-                            sections.forEach { (route, label) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = { sectionMenuExpanded = false; onSectionSelected?.invoke(route) },
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text(localize("Profil")) },
-                                onClick = { sectionMenuExpanded = false; onProfileClick() },
-                            )
-                        }
+                    IconButton(onClick = logout, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Outlined.Logout, contentDescription = localize("Odhlásit"), tint = MaterialTheme.colorScheme.onSurface)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
+                }
+            }
         },
         bottomBar = {
             if (sections.isNotEmpty() && onSectionSelected != null) {
-                Surface(tonalElevation = 2.dp, color = MaterialTheme.colorScheme.surface) {
+                Surface(tonalElevation = 0.dp, color = cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens.SurfaceRaised) {
                     Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 4.dp),
+                        Modifier.fillMaxWidth().height(72.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 2.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         sections.forEach { (route, label) ->
-                            TextButton(
+                            val selected = route == selectedSection
+                            Surface(
                                 onClick = { onSectionSelected(route) },
-                                modifier = Modifier.widthIn(min = 76.dp),
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = if (route == selectedSection) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                ),
+                                modifier = Modifier.widthIn(min = 68.dp).height(56.dp).padding(horizontal = 1.dp),
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(localize(label), maxLines = 1)
+                                Column(
+                                    Modifier.fillMaxSize().padding(horizontal = 3.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    if (route == "chat") {
+                                        Icon(sectionIcon(route), contentDescription = null, modifier = Modifier.size(25.dp), tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                                    } else {
+                                        Image(painterResource(sectionPictogram(route)), null, Modifier.size(28.dp), contentScale = ContentScale.Fit)
+                                    }
+                                    Text(localize(label), maxLines = 1, style = MaterialTheme.typography.labelSmall, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                                     if (route == "chat" && unreadChatCount > 0) {
                                         Badge { Text(unreadChatCount.coerceAtMost(99).toString()) }
                                     }
                                 }
                             }
                         }
-                        TextButton(
+                        val selected = selectedSection == "profil"
+                        Surface(
                             onClick = onProfileClick,
-                            modifier = Modifier.widthIn(min = 76.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = if (selectedSection == "profil") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        ) { Text(localize("Profil"), maxLines = 1) }
+                            modifier = Modifier.widthIn(min = 68.dp).height(56.dp).padding(horizontal = 1.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                        ) {
+                            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                Image(painterResource(R.drawable.portal_tab_profile), null, Modifier.size(28.dp), contentScale = ContentScale.Fit)
+                                Text(localize("Profil"), maxLines = 1, style = MaterialTheme.typography.labelSmall, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
                     }
                 }
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).imePadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Box(Modifier.fillMaxSize().background(cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoColorTokens.Surface).padding(padding).imePadding().padding(horizontal = 8.dp, vertical = 4.dp)) {
             content()
         }
     }
+}
+
+private fun sectionPictogram(route: String): Int = when (route.substringBefore('/')) {
+    "pokojska" -> R.drawable.portal_tab_rooms
+    "recepce" -> R.drawable.portal_tab_reception
+    "snidane" -> R.drawable.portal_tab_breakfast
+    "ztraty-a-nalezy" -> R.drawable.portal_tab_lostfound
+    "zavady" -> R.drawable.portal_tab_maintenance
+    "sklad" -> R.drawable.portal_tab_inventory
+    "hlaseni" -> R.drawable.portal_tab_reports
+    else -> R.drawable.portal_tab_rooms
+}
+
+private fun sectionIcon(route: String) = when (route.substringBefore('/')) {
+    "chat" -> Icons.Outlined.ChatBubbleOutline
+    else -> Icons.Outlined.ChatBubbleOutline
 }
 
 @Composable

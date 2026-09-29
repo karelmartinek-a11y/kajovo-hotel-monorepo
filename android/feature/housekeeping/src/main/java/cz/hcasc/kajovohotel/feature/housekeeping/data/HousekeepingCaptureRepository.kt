@@ -9,6 +9,7 @@ import cz.hcasc.kajovohotel.core.network.api.LostFoundApi
 import cz.hcasc.kajovohotel.core.network.dto.HousekeepingRoomDto
 import cz.hcasc.kajovohotel.core.network.dto.HousekeepingRoomStatusUpdateDto
 import cz.hcasc.kajovohotel.core.network.dto.HousekeepingRoomsOverviewDto
+import cz.hcasc.kajovohotel.core.network.dto.ReservationAmenityUpdateDto
 import cz.hcasc.kajovohotel.core.network.dto.IssueCreateDto
 import cz.hcasc.kajovohotel.core.network.readableMessage
 import cz.hcasc.kajovohotel.feature.housekeeping.domain.HousekeepingCaptureDraft
@@ -48,6 +49,26 @@ class HousekeepingCaptureRepository @Inject constructor(
             "Změnu se nepodařilo ověřit. Před dalším pokusem obnovte aktuální stav pokoje.",
             throwable,
         )
+    }
+
+    suspend fun updateReservationAmenity(
+        reservationId: String,
+        roomId: String,
+        date: String,
+        kind: String,
+        version: Int,
+        nextState: String,
+    ): AppResult<Unit> = try {
+        housekeepingApi.updateReservationAmenity(
+            reservationId = reservationId,
+            kind = kind,
+            roomId = roomId,
+            serviceDate = date,
+            request = ReservationAmenityUpdateDto(version = version, state = nextState),
+        )
+        AppResult.Success(Unit)
+    } catch (throwable: Throwable) {
+        AppResult.Error("Ikonu se nepodařilo uložit. Pobyt nebo ikonu mohl mezitím změnit jiný uživatel; načítám aktuální údaje.", throwable)
     }
 
     suspend fun submit(draft: HousekeepingCaptureDraft, photos: List<BinaryPayload>): AppResult<String> {

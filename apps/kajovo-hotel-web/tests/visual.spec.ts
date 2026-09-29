@@ -130,17 +130,13 @@ async function createPortalUser(
   return { email, password };
 }
 
-async function loginPortal(page: Page, email: string, password: string, landingPath: RegExp, roleName: string) {
+async function loginPortal(page: Page, email: string, password: string, landingPath: RegExp) {
   await page.goto('/login', { waitUntil: 'networkidle' });
   await page.getByLabel(LOGIN_PRINCIPAL_LABEL).fill(email);
   await page.getByLabel(/heslo/i).fill(password);
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
   await expect(page).toHaveURL(landingPath, { timeout: 15000 });
-  const roleSelect = page.getByTestId('role-select-page');
-  if (await roleSelect.isVisible().catch(() => false)) {
-    await page.getByRole('button', { name: new RegExp(`pokračovat jako ${roleName}`, 'i') }).click();
-    await expect(page).toHaveURL(landingPath, { timeout: 15000 });
-  }
+  await expect(page.getByTestId('role-select-page')).toHaveCount(0);
 }
 
 async function waitForView(page: Page, view: ViewCheck) {
@@ -275,7 +271,7 @@ test.describe('KDGS role scénáře portálu', () => {
   for (const scenario of portalScenarios) {
     test(`role ${scenario.name} drží brand a geometrii na dostupných view`, async ({ page, request }, testInfo) => {
       const user = await createPortalUser(request, testInfo, scenario.roles);
-      await loginPortal(page, user.email, user.password, scenario.landingPath, scenario.name);
+      await loginPortal(page, user.email, user.password, scenario.landingPath);
       const profileLink = page.getByTestId('portal-mobile-tabs').getByRole('link', { name: 'Profil' });
       await profileLink.click();
       await expect(page).toHaveURL(/\/profil$/);

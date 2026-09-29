@@ -38,11 +38,11 @@ class SessionErrorMapperTest {
     }
 
     @Test
-    fun `maps active role requirement to role selection`() {
+    fun `maps active role requirement to silent module initialization`() {
         val resolution = SessionErrorMapper.resolve(httpException(403, "Active role must be selected"), "fallback")
 
         assertTrue(resolution.requireRoleSelection)
-        assertEquals("Vyberte aktivní roli pro pokračování.", resolution.message)
+        assertEquals("Připravuji pracovní přístup.", resolution.message)
     }
 
     private fun httpException(code: Int, detail: String): HttpException {

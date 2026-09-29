@@ -20,8 +20,8 @@ import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoTypographyTokens
 private val KajovoFontFamily = FontFamily.SansSerif
 
 private val LightColors: ColorScheme = lightColorScheme(
-    primary = KajovoColorTokens.Ink,
-    onPrimary = KajovoColorTokens.SignWhite,
+    primary = KajovoColorTokens.BrandOrange,
+    onPrimary = KajovoColorTokens.Ink,
     secondary = KajovoColorTokens.InkSecondary,
     onSecondary = KajovoColorTokens.SignWhite,
     tertiary = KajovoColorTokens.Info,

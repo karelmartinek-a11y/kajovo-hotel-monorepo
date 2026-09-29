@@ -99,7 +99,7 @@ class ReadabilityTest {
         compose.onNodeWithText("Nastavit nové heslo").assertIsDisplayed()
     }
 
-    @Test fun navigationOffersSectionsAndProfile() {
+    @Test fun fixedFooterOffersModulesAndProfile() {
         var destination = ""
         compose.setContent {
             KajovoTheme(false) {
@@ -110,11 +110,9 @@ class ReadabilityTest {
             }
         }
         capture("employee-navigation-small")
-        compose.onNodeWithContentDescription("Sekce a profil").performClick()
-        compose.onAllNodesWithText("Hlášení")[1].performClick()
+        compose.onNodeWithText("Hlášení").performClick()
         compose.runOnIdle { assertTrue(destination == "reports") }
-        compose.onNodeWithContentDescription("Sekce a profil").performClick()
-        compose.onAllNodesWithText("Profil")[1].performClick()
+        compose.onNodeWithText("Profil").performClick()
         compose.runOnIdle { assertTrue(destination == "profile") }
     }
 
@@ -139,10 +137,10 @@ class ReadabilityTest {
         compose.onNodeWithTag("login-username").performTextInput("native-qa@example.test")
         compose.onNodeWithTag("login-password").performTextInput("incorrect")
         compose.onNodeWithTag("login-submit").performClick()
+        capture("login-error-small")
         compose.onNodeWithTag("login-error").assertIsDisplayed()
         compose.onNodeWithTag("login-submit").assertIsDisplayed()
         compose.onNodeWithTag("login-username").assertTextContains("native-qa@example.test")
-        capture("login-error-small")
     }
 
     @Test fun imeSubmitShowsErrorWithoutScrolling() {
