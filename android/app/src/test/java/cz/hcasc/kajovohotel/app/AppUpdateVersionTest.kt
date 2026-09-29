@@ -7,7 +7,7 @@ import org.junit.Test
 class AppUpdateVersionTest {
     @Test
     fun requiredUpdateBlocksTheAppEvenAfterItsOptionalPromptWasDismissed() {
-        val required = AppUpdateInfo(209, "2.0.4 NG", 210, "2.1.0 NG", "/app.apk", "hash", "Update", "Required", true)
+        val required = AppUpdateInfo(210, "2.1.0 NG", 211, "2.1.1 NG", "/app.apk", "hash", "Update", "Required", true)
         val state = AppUpdateState(availableUpdate = required, wasDismissed = true)
 
         assertTrue(state.mustBlockApp())
@@ -15,7 +15,7 @@ class AppUpdateVersionTest {
 
     @Test
     fun previouslyObservedRequiredVersionBlocksUntilTheManifestCanBeLoaded() {
-        assertTrue(AppUpdateState(knownRequiredVersionCode = 210).mustBlockApp())
+        assertTrue(AppUpdateState(knownRequiredVersionCode = 211).mustBlockApp())
     }
 
     @Test

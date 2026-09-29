@@ -44,11 +44,11 @@ def test_required_android_release_blocks_stale_native_clients_except_manifest_ch
         "user_agent": "okhttp/5.3.0",
         "path": "/api/auth/me",
         "release_required": True,
-        "required_version_code": 210,
+        "required_version_code": 211,
     }
     assert android_client_requires_update(**base, version_code_header=None)
-    assert android_client_requires_update(**base, version_code_header="209")
-    assert not android_client_requires_update(**base, version_code_header="210")
+    assert android_client_requires_update(**base, version_code_header="210")
+    assert not android_client_requires_update(**base, version_code_header="211")
     assert not android_client_requires_update(**{**base, "path": "/api/app/android-release"}, version_code_header=None)
     assert not android_client_requires_update(**{**base, "user_agent": "Mozilla/5.0"}, version_code_header=None)
     assert not android_client_requires_update(**{**base, "release_required": False}, version_code_header=None)
