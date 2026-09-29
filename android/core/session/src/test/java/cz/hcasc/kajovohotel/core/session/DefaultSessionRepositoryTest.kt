@@ -52,7 +52,7 @@ class DefaultSessionRepositoryTest {
     }
 
     @Test
-    fun `restore session keeps authenticated state with role selection pending`() = runTest {
+    fun `restore session keeps authentication while app initializes a default module`() = runTest {
         val authApi = FakeAuthApi(
             meResult = Result.success(
                 AuthIdentityDto(
@@ -71,7 +71,7 @@ class DefaultSessionRepositoryTest {
         repository.restoreSession()
 
         val state = repository.sessionState.value as SessionState.Authenticated
-        assertTrue(state.identity.requiresRoleSelection())
+        assertNull(state.identity.resolvedActiveRole())
         assertEquals(listOf(PortalRole.RECEPTION, PortalRole.BREAKFAST), state.identity.roles)
         assertEquals("recepce@example.com", metadataStore.lastLogin)
         assertNotNull(metadataStore.snapshot)
@@ -141,7 +141,7 @@ class DefaultSessionRepositoryTest {
         repository.restoreSession()
 
         val state = repository.sessionState.value as SessionState.Authenticated
-        assertTrue(state.identity.requiresRoleSelection())
+        assertNull(state.identity.resolvedActiveRole())
         assertEquals(setOf("breakfast:read", "breakfast:write"), state.identity.permissions)
         assertNull(state.identity.activeRole)
     }
@@ -188,7 +188,7 @@ class DefaultSessionRepositoryTest {
     }
 
     @Test
-    fun `role selection requirement after login keeps authenticated state and exposes guidance message`() = runTest {
+    fun `multi role login keeps session authenticated until the app selects its default module`() = runTest {
         val repository = repository(
             authApi = FakeAuthApi(
                 loginResult = Result.success(
@@ -208,8 +208,8 @@ class DefaultSessionRepositoryTest {
         repository.signIn("recepce@example.com", "spravne-heslo", rememberMe = false)
 
         val state = repository.sessionState.value as SessionState.Authenticated
-        assertTrue(state.identity.requiresRoleSelection())
-        assertEquals("Přihlášení se nepodařilo. Vyberte aktivní roli pro pokračování.", repository.sessionMessage.value)
+        assertNull(state.identity.resolvedActiveRole())
+        assertEquals("Přihlášení se nepodařilo. Připravuji pracovní přístup.", repository.sessionMessage.value)
     }
 
     @Test
@@ -243,7 +243,7 @@ class DefaultSessionRepositoryTest {
 
         val state = repository.sessionState.value as SessionState.Authenticated
         assertEquals(listOf(PortalRole.RECEPTION, PortalRole.BREAKFAST), state.identity.roles)
-        assertTrue(state.identity.requiresRoleSelection())
+        assertNull(state.identity.resolvedActiveRole())
     }
 
     @Test

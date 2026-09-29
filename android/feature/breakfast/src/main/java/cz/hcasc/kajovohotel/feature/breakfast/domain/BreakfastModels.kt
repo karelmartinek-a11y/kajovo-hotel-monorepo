@@ -24,6 +24,22 @@ data class BreakfastOrder(
     val status: BreakfastStatus,
     val createdAt: String? = null,
     val updatedAt: String? = null,
+    val reservations: List<BreakfastReservation> = emptyList(),
+)
+
+data class BreakfastReservation(
+    val reservationId: String,
+    val guestName: String?,
+    val arrival: String?,
+    val departure: String?,
+    val companyName: String?,
+    val adults: Int,
+    val children0To2: Int,
+    val children3To17: Int,
+    val ageUnknown: Int,
+    val noGluten: Boolean,
+    val noMilk: Boolean,
+    val noPork: Boolean,
 )
 
 data class BreakfastSummary(
@@ -64,6 +80,8 @@ fun BreakfastDraft.isValidForSubmit(): Boolean {
     val count = guestCount.toIntOrNull()
     return serviceDate.isNotBlank() && roomNumber.isNotBlank() && guestName.isNotBlank() && count != null && count > 0
 }
+
+fun BreakfastStatus.canBeMarkedServed(): Boolean = this == BreakfastStatus.PENDING || this == BreakfastStatus.PREPARING
 
 fun BreakfastDraft.toCreateRequest() = cz.hcasc.kajovohotel.core.network.dto.BreakfastOrderCreateDto(
     service_date = serviceDate.trim(),

@@ -10,12 +10,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +54,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +67,7 @@ import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cz.hcasc.kajovohotel.core.common.BinaryPayload
+import cz.hcasc.kajovohotel.core.common.PortalLocalization
 import cz.hcasc.kajovohotel.core.designsystem.FeatureCard
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoRadiusTokens
 import cz.hcasc.kajovohotel.core.designsystem.tokens.KajovoSpacingTokens
@@ -64,6 +76,7 @@ import cz.hcasc.kajovohotel.core.model.PortalRole
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDietKey
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
+import cz.hcasc.kajovohotel.feature.breakfast.domain.canBeMarkedServed
 import cz.hcasc.kajovohotel.feature.breakfast.domain.applyDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.breakfastScreenTitle
 import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
@@ -84,6 +97,7 @@ enum class BreakfastSection {
     EDIT,
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BreakfastScreen(
     activeRole: PortalRole,
@@ -149,7 +163,23 @@ fun BreakfastScreen(
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
-        if (section == BreakfastSection.LIST) item {
+        if (isBreakfastMode && section == BreakfastSection.LIST) stickyHeader {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 2.dp,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+                    Text(localize("Snídaně"), style = MaterialTheme.typography.headlineSmall)
+                    BreakfastDateSelector(
+                        serviceDate = state.serviceDate,
+                        onDateChange = viewModel::setServiceDate,
+                        onRefresh = { date -> viewModel.load(activeRole, date) },
+                    )
+                }
+            }
+        }
+        if (section == BreakfastSection.LIST && isReceptionMode) item {
             SectionSwitcher(
                 section = section,
                 isReceptionMode = isReceptionMode,
@@ -171,7 +201,7 @@ fun BreakfastScreen(
                 },
             )
         }
-        if (section == BreakfastSection.LIST) item {
+        if (section == BreakfastSection.LIST && !isBreakfastMode) item {
             BreakfastToolbar(
                 state = state,
                 onDateChange = viewModel::setServiceDate,
@@ -353,7 +383,7 @@ private fun BreakfastToolbar(
             onDateChange = onDateChange,
             onRefresh = onRefresh,
         )
-        OutlinedTextField(
+        if (state.role != PortalRole.BREAKFAST) OutlinedTextField(
             value = state.searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth(),
@@ -415,14 +445,14 @@ private fun BreakfastDateSelector(
         parsedDate.monthValue - 1,
         parsedDate.dayOfMonth,
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2), modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(onClick = { onRefresh(parsedDate.minusDays(1).toString()) }) { Text(localize("‹")) }
-        OutlinedButton(onClick = { datePickerDialog.show() }, modifier = Modifier.weight(1f)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { val date = parsedDate.minusDays(1).toString(); onDateChange(date); onRefresh(date) }, modifier = Modifier.weight(0.8f)) { Text(localize("‹")) }
+        OutlinedButton(onClick = { datePickerDialog.show() }, modifier = Modifier.weight(2.4f)) {
             Icon(Icons.Outlined.CalendarToday, contentDescription = null)
             Text(formatBreakfastHeadlineDate(serviceDate), Modifier.padding(start = 8.dp))
         }
-        OutlinedButton(onClick = { onRefresh(parsedDate.plusDays(1).toString()) }) { Text(localize("›")) }
-        OutlinedButton(onClick = { onRefresh(LocalDate.now().toString()) }) { Text(localize("Dnes")) }
+        OutlinedButton(onClick = { val date = parsedDate.plusDays(1).toString(); onDateChange(date); onRefresh(date) }, modifier = Modifier.weight(0.8f)) { Text(localize("›")) }
+        OutlinedButton(onClick = { val date = LocalDate.now().toString(); onDateChange(date); onRefresh(date) }, modifier = Modifier.weight(1.2f)) { Text(localize("Dnes")) }
     }
 }
 
@@ -504,10 +534,10 @@ private fun ReceptionDetailCard(
             shape = RoundedCornerShape(KajovoRadiusTokens.R12),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
-            Column(
-                modifier = Modifier.padding(KajovoSpacingTokens.S4),
-                verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
-            ) {
+        Column(
+            modifier = Modifier.padding(KajovoSpacingTokens.S4),
+            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
+        ) {
                 DetailValueRow(label = "Datum služby", value = order.serviceDate)
                 DetailValueRow(label = "Pokoj", value = order.roomNumber)
                 DetailValueRow(label = "Ubytovaní", value = order.guestNames ?: order.guestName)
@@ -554,6 +584,7 @@ private fun BreakfastOrderCard(
     onReturnToPending: () -> Unit,
     onToggleDiet: (Int, BreakfastDietKey) -> Unit,
 ) {
+    val localeCode by PortalLocalization.locale.collectAsStateWithLifecycle()
     val cardModifier = if (showCompactLayout) {
         Modifier.fillMaxWidth()
     } else {
@@ -562,33 +593,53 @@ private fun BreakfastOrderCard(
             .clickable { onSelect() }
     }
     Card(
-        modifier = cardModifier,
-        shape = RoundedCornerShape(KajovoRadiusTokens.R12),
+        modifier = cardModifier.alpha(if (showCompactLayout && order.status == BreakfastStatus.SERVED) 0.68f else 1f),
+        shape = RoundedCornerShape(if (showCompactLayout) 8.dp else KajovoRadiusTokens.R12),
+        border = if (showCompactLayout) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
         ),
     ) {
         Column(
-            modifier = Modifier.padding(KajovoSpacingTokens.S4),
-            verticalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S3),
+            modifier = Modifier.padding(if (showCompactLayout) 8.dp else KajovoSpacingTokens.S4),
+            verticalArrangement = Arrangement.spacedBy(if (showCompactLayout) 4.dp else KajovoSpacingTokens.S3),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = order.roomNumber,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = if (showCompactLayout) MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 18.sp) else MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
+                if (showCompactLayout) {
+                    val companies = order.reservations.mapNotNull { it.companyName?.trim()?.takeIf(String::isNotEmpty) }.distinct()
+                    if (companies.isNotEmpty()) Text("${localize("Firma")}: ${companies.joinToString()}", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp), maxLines = 1)
+                    else Spacer(Modifier.weight(1f))
+                    ActiveBreakfastDiets(order)
+                }
                 if (!showCompactLayout) {
                     Text(text = order.status.label, style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            Text(text = order.guestNames ?: order.guestName, style = MaterialTheme.typography.titleMedium)
-            Text(text = order.countryCode?.let { Locale.Builder().setRegion(it).build().getDisplayCountry(Locale.forLanguageTag("cs")) } ?: "—", style = MaterialTheme.typography.bodyMedium)
-            Row(
+            Text(text = order.guestNames ?: order.guestName, style = if (showCompactLayout) MaterialTheme.typography.titleMedium.copy(fontSize = 16.sp, lineHeight = 20.sp) else MaterialTheme.typography.titleMedium, fontWeight = if (showCompactLayout) FontWeight.Bold else FontWeight.Normal)
+            Text(text = order.countryCode?.let { Locale.Builder().setRegion(it).build().getDisplayCountry(Locale.forLanguageTag(localeCode)) } ?: "—", style = MaterialTheme.typography.bodyMedium.copy(fontSize = if (showCompactLayout) 13.sp else MaterialTheme.typography.bodyMedium.fontSize))
+            if (showCompactLayout) {
+                val nights = order.reservations.mapNotNull { reservation ->
+                    val arrival = reservation.arrival?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return@mapNotNull null
+                    val departure = reservation.departure?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return@mapNotNull null
+                    val elapsed = (runCatching { LocalDate.parse(order.serviceDate) }.getOrNull() ?: arrival).toEpochDay().minus(arrival.toEpochDay()).coerceIn(0, departure.toEpochDay() - arrival.toEpochDay())
+                    "${elapsed}/${departure.toEpochDay() - arrival.toEpochDay()} ${localize("nocí")}"
+                }
+                if (nights.isNotEmpty()) Text(nights.joinToString(" · "), style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val adults = order.reservations.sumOf { it.adults }
+                val children0 = order.reservations.sumOf { it.children0To2 }
+                val children3 = order.reservations.sumOf { it.children3To17 }
+                val unknown = order.reservations.sumOf { it.ageUnknown }
+                Text("${localize("Snídaní")}: ${order.guestCount} · ${localize("Dospělí")}: $adults · ${localize("0–2 roky")}: $children0 · ${localize("3–17 let")}: $children3" + if (unknown > 0) " · ${localize("Věk neuveden")}: $unknown" else "", style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp))
+            } else Row(
                 horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -601,7 +652,7 @@ private fun BreakfastOrderCard(
             if (isDirty) {
                 Text(text = "Neuložené změny", style = MaterialTheme.typography.bodyMedium)
             }
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            if (!showCompactLayout) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                 androidx.compose.material3.FilterChip(
                     selected = order.noGluten,
                     onClick = { onToggleDiet(order.id, BreakfastDietKey.NO_GLUTEN) },
@@ -624,7 +675,13 @@ private fun BreakfastOrderCard(
                     leadingIcon = { Icon(Icons.Outlined.Pets, contentDescription = null) },
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
+            if (showCompactLayout) Button(
+                onClick = onMarkServed,
+                enabled = order.status.canBeMarkedServed() && !isSubmitting,
+                modifier = Modifier.fillMaxWidth().height(42.dp),
+                shape = RoundedCornerShape(6.dp),
+            ) { Text(when (order.status) { BreakfastStatus.SERVED -> localize("Vydáno"); BreakfastStatus.CANCELLED -> localize("Zrušeno"); else -> localize("Vydat") }, fontSize = 14.sp) }
+            else Row(horizontalArrangement = Arrangement.spacedBy(KajovoSpacingTokens.S2)) {
                 Button(
                     onClick = onMarkServed,
                     enabled = order.status != BreakfastStatus.SERVED && !isSubmitting,
@@ -648,6 +705,15 @@ private fun BreakfastOrderCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ActiveBreakfastDiets(order: BreakfastOrder) {
+    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (order.noGluten) Image(painterResource(R.drawable.diet_no_gluten), contentDescription = localize("Bezlepková strava"), Modifier.size(22.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(3.dp)))
+        if (order.noMilk) Image(painterResource(R.drawable.diet_no_milk), contentDescription = localize("Bez laktózy"), Modifier.size(22.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(3.dp)))
+        if (order.noPork) Image(painterResource(R.drawable.diet_no_pork), contentDescription = localize("Strava bez vepřového masa"), Modifier.size(22.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(3.dp)))
     }
 }
 

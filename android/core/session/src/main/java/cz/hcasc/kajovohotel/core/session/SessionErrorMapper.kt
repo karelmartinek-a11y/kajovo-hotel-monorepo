@@ -31,7 +31,7 @@ object SessionErrorMapper {
                 clearLocalSession = true,
             )
             httpException?.code() == 403 && detail == "Active role must be selected" -> SessionErrorResolution(
-                message = "Vyberte aktivní roli pro pokračování.",
+                message = "Připravuji pracovní přístup.",
                 requireRoleSelection = true,
             )
             httpException?.code() == 403 -> SessionErrorResolution(

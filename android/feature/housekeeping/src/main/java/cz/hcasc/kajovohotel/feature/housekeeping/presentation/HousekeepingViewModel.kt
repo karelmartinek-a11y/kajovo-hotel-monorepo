@@ -122,6 +122,35 @@ class HousekeepingViewModel @Inject constructor(
         loadRooms()
     }
 
+    fun updateReservationAmenity(reservationId: String, kind: String) {
+        val current = mutableState.value
+        val room = current.rooms.firstOrNull { it.room_id == current.selectedRoomId } ?: return
+        val stay = (room.departures + room.arrivals + room.stays).firstOrNull { it.reservation_id == reservationId } ?: return
+        val amenity = stay.amenities.firstOrNull { it.kind == kind && it.active } ?: return
+        if (!current.canWriteRooms || current.isSavingAmenity) return
+        val nextState = if (amenity.state == "red") "green" else "red"
+        mutableState.value = current.copy(isSavingAmenity = true, amenityError = null)
+        viewModelScope.launch {
+            when (val result = repository.updateReservationAmenity(
+                reservationId = reservationId,
+                roomId = room.room_id,
+                date = current.selectedDate,
+                kind = kind,
+                version = amenity.version,
+                nextState = nextState,
+            )) {
+                is AppResult.Success -> {
+                    mutableState.value = mutableState.value.copy(isSavingAmenity = false, amenityError = null)
+                    loadRooms()
+                }
+                is AppResult.Error -> {
+                    mutableState.value = mutableState.value.copy(isSavingAmenity = false, amenityError = result.message)
+                    loadRooms()
+                }
+            }
+        }
+    }
+
     fun updateDraft(transform: (HousekeepingCaptureDraft) -> HousekeepingCaptureDraft) {
         mutableState.value = mutableState.value.copy(
             draft = transform(mutableState.value.draft),
@@ -218,6 +247,8 @@ data class HousekeepingUiState(
     val selectedRoomId: String? = null,
     val isLoadingRooms: Boolean = false,
     val isSavingRoom: Boolean = false,
+    val isSavingAmenity: Boolean = false,
+    val amenityError: String? = null,
     val savingRoomStatus: String? = null,
     val roomsLoadedAt: String? = null,
     val housekeepingStatusIsCurrent: Boolean = true,

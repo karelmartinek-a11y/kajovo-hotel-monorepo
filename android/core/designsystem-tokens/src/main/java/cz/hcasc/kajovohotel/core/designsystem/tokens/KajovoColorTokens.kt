@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 object KajovoColorTokens {
     val SignRed = Color(0xFFFF0000)
+    val BrandOrange = Color(0xFFFF6A2E)
     val SignWhite = Color(0xFFFFFFFF)
     val Ink = Color(0xFF201A17)
     val InkSecondary = Color(0xFF4F4742)

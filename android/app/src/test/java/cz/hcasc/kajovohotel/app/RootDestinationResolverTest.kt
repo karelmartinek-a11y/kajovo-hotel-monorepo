@@ -30,17 +30,17 @@ class RootDestinationResolverTest {
     }
 
     @Test
-    fun `multi role portal identity without active role opens role selection`() {
+    fun `multi role portal identity without active role opens the first available module`() {
         val identity = AuthenticatedIdentity(
             email = "recepce@example.com",
             actorType = ActorType.PORTAL,
             roleLabel = "recepce",
             roles = listOf(PortalRole.RECEPTION, PortalRole.BREAKFAST),
             activeRole = null,
-            permissions = emptySet(),
+            permissions = setOf("breakfast:read"),
         )
 
-        assertEquals(PortalRoutes.Roles, resolveRootRoute(SessionState.Authenticated(identity)))
+        assertEquals(PortalRoutes.Reception, resolveRootRoute(SessionState.Authenticated(identity)))
     }
 
     @Test
@@ -70,5 +70,20 @@ class RootDestinationResolverTest {
         )
 
         assertEquals(PortalRoutes.Breakfast, resolveRootRoute(SessionState.Authenticated(identity)))
+    }
+
+    @Test
+    fun `breakfast footer route selects breakfast role when employee also has reception access`() {
+        val identity = AuthenticatedIdentity(
+            email = "recepce@example.com",
+            actorType = ActorType.PORTAL,
+            roleLabel = "recepce",
+            roles = listOf(PortalRole.RECEPTION, PortalRole.BREAKFAST),
+            activeRole = PortalRole.RECEPTION,
+            permissions = emptySet(),
+        )
+
+        assertEquals(PortalRole.BREAKFAST, identity.roleForModuleRoute(PortalRoutes.Breakfast))
+        assertEquals(PortalRole.RECEPTION, identity.roleForModuleRoute(PortalRoutes.LostFound))
     }
 }

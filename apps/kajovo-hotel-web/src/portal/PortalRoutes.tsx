@@ -43,12 +43,6 @@ function readCsrfToken(): string {
     ?.split('=')[1] ?? '';
 }
 
-type RoleSelectPageProps = {
-  roles: string[];
-  copy: AuthCopy;
-  roleLabel: (role: string) => string;
-};
-
 export async function requestRoleSelection(role: string): Promise<{ ok: true } | { ok: false; detail?: string }> {
   const csrfToken = readCsrfToken();
   const response = await fetch('/api/auth/select-role', {
@@ -72,57 +66,6 @@ export async function requestRoleSelection(role: string): Promise<{ ok: true } |
   } catch {
     return { ok: false };
   }
-}
-
-function RoleSelectPage({ roles, copy, roleLabel }: RoleSelectPageProps): JSX.Element {
-  const [error, setError] = React.useState<string | null>(null);
-  const [busy, setBusy] = React.useState(false);
-  const continueAs = React.useCallback(
-    (label: string) => (copy.continueAs ? copy.continueAs(label) : `Pokračovat jako ${label}`),
-    [copy]
-  );
-
-  const selectRole = React.useCallback(async (role: string) => {
-    setError(null);
-    setBusy(true);
-    try {
-      const result = await requestRoleSelection(role);
-      if (!result.ok) {
-        setBusy(false);
-        setError(result.detail ?? copy.roleSelectError ?? t('Výběr role selhal.'));
-        return;
-      }
-      window.location.assign('/');
-    } catch (err) {
-      setBusy(false);
-      const message =
-        err instanceof Error && err.message ? `${err.message}` : (copy.roleSelectError ?? t('Výběr role selhal.'));
-      console.error('Role select network error', err);
-      setError(message);
-    }
-  }, [copy]);
-
-  React.useEffect(() => {
-    if (roles.length === 1) {
-      void selectRole(roles[0]);
-    }
-  }, [roles, selectRole]);
-
-  return (
-    <main className="k-page" data-testid="role-select-page">
-      <h1>{copy.roleSelectTitle ?? t('Vyberte roli')}</h1>
-      <p className="k-login-copy">{copy.roleSelectDescription ?? t('Pro pokračování zvolte roli, ve které budete pracovat.')}</p>
-      <div className="k-toolbar">
-        {roles.map((role) => (
-          <button key={role} className="k-button" type="button" onClick={() => void selectRole(role)} disabled={busy}>
-            {continueAs(roleLabel(role))}
-          </button>
-        ))}
-      </div>
-      {error ? <StateView title={copy.accessDeniedTitle ?? t('Přístup odepřen')} description={error} stateKey="error" /> : null}
-      {busy ? <SkeletonPage /> : null}
-    </main>
-  );
 }
 
 function ReceptionHubPage(): JSX.Element {
@@ -240,6 +183,28 @@ export function PortalRoutes({
   const [logoutBusy, setLogoutBusy] = React.useState(false);
   const [localeBusy, setLocaleBusy] = React.useState(false);
   const [localeError, setLocaleError] = React.useState<string | null>(null);
+  const [defaultRoleError, setDefaultRoleError] = React.useState<string | null>(null);
+  const [defaultRoleBusy, setDefaultRoleBusy] = React.useState(false);
+  const assignedRoles = auth.roles;
+  const assignedRoleKey = assignedRoles.join('|');
+  const activeRole = resolveActiveRoleForPermissions(assignedRoles, auth.activeRole, auth.permissions);
+  const initializeDefaultRole = React.useCallback(async () => {
+    const role = assignedRoles[0];
+    if (!role) return;
+    setDefaultRoleBusy(true);
+    setDefaultRoleError(null);
+    try {
+      const result = await requestRoleSelection(role);
+      if (!result.ok) throw new Error(result.detail ?? copy.moduleSwitchError ?? t('Přepnutí pracovního modulu se nepodařilo.'));
+      window.location.assign('/');
+    } catch (error) {
+      setDefaultRoleBusy(false);
+      setDefaultRoleError(error instanceof Error ? error.message : t('Přepnutí pracovního modulu se nepodařilo.'));
+    }
+  }, [assignedRoleKey, copy.moduleSwitchError]);
+  React.useEffect(() => {
+    if (auth.actorType === 'portal' && assignedRoles.length > 0 && !activeRole) void initializeDefaultRole();
+  }, [auth.actorType, assignedRoleKey, activeRole, initializeDefaultRole]);
   const changeLocale = React.useCallback(async (locale: PortalLocale) => {
     if (locale === auth.preferredLocale) return;
     setLocaleBusy(true);
@@ -264,8 +229,6 @@ export function PortalRoutes({
     return <Navigate to="/login" replace />;
   }
 
-  const assignedRoles = auth.roles;
-  const activeRole = resolveActiveRoleForPermissions(assignedRoles, auth.activeRole, auth.permissions);
   if (assignedRoles.length === 0) {
     return (
       <main className="k-page" data-testid="access-denied-page">
@@ -282,7 +245,16 @@ export function PortalRoutes({
     );
   }
   if (!activeRole) {
-    return <RoleSelectPage roles={assignedRoles} copy={copy} roleLabel={localizedRoleLabel} />;
+    return (
+      <main className="k-page" data-testid="default-role-loading">
+        {defaultRoleError ? <StateView
+          title={copy.accessDeniedTitle ?? t('Přístup odepřen')}
+          description={defaultRoleError}
+          stateKey="error"
+          action={<button className="k-button" type="button" onClick={() => void initializeDefaultRole()} disabled={defaultRoleBusy}>{defaultRoleBusy ? t('Načítám…') : t('Zkusit znovu')}</button>}
+        /> : <SkeletonPage />}
+      </main>
+    );
   }
   const activeRoleLabel = localizedRoleLabel(activeRole);
   const switchRole = React.useCallback(async (role: string, route: string) => {
@@ -292,15 +264,15 @@ export function PortalRoutes({
       const result = await requestRoleSelection(role);
       if (!result.ok) {
         setSwitchBusy(false);
-        setSwitchError(result.detail ?? copy.roleSelectError ?? t('Výběr role selhal.'));
+        setSwitchError(result.detail ?? copy.moduleSwitchError ?? t('Přepnutí pracovního modulu se nepodařilo.'));
         return;
       }
       window.location.assign(route);
     } catch (err) {
       setSwitchBusy(false);
-      setSwitchError(err instanceof Error && err.message ? err.message : (copy.roleSelectError ?? t('Výběr role selhal.')));
+      setSwitchError(err instanceof Error && err.message ? err.message : (copy.moduleSwitchError ?? t('Přepnutí pracovního modulu se nepodařilo.')));
     }
-  }, [copy.roleSelectError]);
+  }, [copy.moduleSwitchError]);
   const logout = React.useCallback(async () => {
     setLogoutBusy(true);
     setSwitchError(null);

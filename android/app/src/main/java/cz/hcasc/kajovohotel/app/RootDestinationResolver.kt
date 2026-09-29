@@ -21,14 +21,12 @@ fun resolveAuthenticatedRoute(identity: AuthenticatedIdentity): String {
     if (identity.actorType == ActorType.ADMIN) {
         return PortalRoutes.AccessDenied
     }
-    if (identity.requiresRoleSelection()) {
-        return PortalRoutes.Roles
-    }
-    val activeRole = identity.resolvedActiveRole() ?: identity.assignedRoles().singleOrNull() ?: return PortalRoutes.Login
-    return if (identity.canOpenDestination(activeRole.homeRoute())) {
+    val activeRole = identity.resolvedActiveRole() ?: identity.assignedRoles().firstOrNull() ?: return PortalRoutes.Login
+    val effectiveIdentity = identity.copy(activeRole = activeRole)
+    return if (effectiveIdentity.canOpenDestination(activeRole.homeRoute())) {
         activeRole.homeRoute()
     } else {
-        PortalDestinations.firstOrNull { destination -> destination.isAccessibleBy(identity) }?.route ?: PortalRoutes.Profile
+        PortalDestinations.firstOrNull { destination -> destination.isAccessibleBy(effectiveIdentity) }?.route ?: PortalRoutes.Profile
     }
 }
 
@@ -56,4 +54,15 @@ fun AuthenticatedIdentity.accessibleRoles(): List<PortalRole> {
     return assignedRoles().filter { role ->
         PortalDestinations.any { destination -> destination.allowedRoles.contains(role) }
     }
+}
+
+fun AuthenticatedIdentity.roleForModuleRoute(route: String): PortalRole? {
+    val destination = PortalDestinations.firstOrNull { it.route == route } ?: return null
+    val assigned = assignedRoles()
+    if (route == PortalRoutes.Breakfast && PortalRole.BREAKFAST in assigned) {
+        return PortalRole.BREAKFAST
+    }
+    val current = resolvedActiveRole()
+    if (current in destination.allowedRoles) return current
+    return destination.allowedRoles.firstOrNull { it in assigned }
 }

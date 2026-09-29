@@ -7,6 +7,7 @@ import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrder
 import cz.hcasc.kajovohotel.feature.breakfast.domain.BreakfastOrderDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.applyDraft
 import cz.hcasc.kajovohotel.feature.breakfast.domain.isValidForSubmit
+import cz.hcasc.kajovohotel.feature.breakfast.domain.canBeMarkedServed
 import cz.hcasc.kajovohotel.feature.breakfast.domain.matchesSearch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -14,6 +15,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BreakfastDraftTest {
+    @Test
+    fun `only pending and preparing breakfasts can be marked served`() {
+        assertTrue(BreakfastStatus.PENDING.canBeMarkedServed())
+        assertTrue(BreakfastStatus.PREPARING.canBeMarkedServed())
+        assertFalse(BreakfastStatus.SERVED.canBeMarkedServed())
+        assertFalse(BreakfastStatus.CANCELLED.canBeMarkedServed())
+    }
+
     @Test
     fun validDraftRequiresDateRoomGuestAndPositiveCount() {
         assertFalse(BreakfastDraft().isValidForSubmit())
