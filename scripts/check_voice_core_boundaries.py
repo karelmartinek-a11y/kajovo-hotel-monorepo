@@ -1,4 +1,4 @@
-"""Enforce portable production imports and an empty v1 capability registry."""
+"""Enforce portable imports and tool-free defaults with optional host-owned tools."""
 import ast
 import json
 import re
@@ -9,11 +9,18 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def is_appledouble(file: Path) -> bool:
+    if not file.name.startswith("._"):
+        return False
+    with file.open("rb") as stream:
+        return stream.read(4) == b"\x00\x05\x16\x07"
+
+
 def check() -> list[str]:
     failures = []
     browser = ROOT / "packages/voice-core/src"
     for file in browser.rglob("*"):
-        if file.suffix not in {".ts", ".tsx"}:
+        if file.suffix not in {".ts", ".tsx"} or is_appledouble(file):
             continue
         content = file.read_text()
         for dependency in re.findall(r"(?:from\s*|import\s*\(|import\s*)['\"]([^'\"]+)['\"]", content):
@@ -28,6 +35,8 @@ def check() -> list[str]:
     server = ROOT / "packages/voice-core-server/src/voice_core_server"
     allowed = {"voice_core_server", "pydantic", "httpx", "dataclasses", "typing", "time", "json"}
     for file in server.rglob("*.py"):
+        if is_appledouble(file):
+            continue
         for node in ast.walk(ast.parse(file.read_text())):
             if isinstance(node, ast.Import):
                 names = [alias.name.split(".")[0] for alias in node.names]
@@ -60,6 +69,10 @@ def check() -> list[str]:
     session = session_config(VoiceCoreConfig(), "gpt-realtime-2.1")
     if CAPABILITY_REGISTRY or session.get("tools") or session["tool_choice"] != "none":
         failures.append("v1 capabilities are not empty")
+    tool = {"type": "function", "name": "example", "parameters": {"type": "object"}}
+    extension = session_config(VoiceCoreConfig(), "gpt-realtime-2.1", [tool], "Use only example.")
+    if extension.get("tools") != [tool] or extension["tool_choice"] != "auto":
+        failures.append("Host-owned function tool extension is invalid")
     return failures
 
 

@@ -15,9 +15,11 @@ class RealtimeSessionProvider(Protocol):
 
 
 class RealtimeSessionClient:
-    def __init__(self, telemetry: VoiceTelemetrySink, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(self, telemetry: VoiceTelemetrySink, transport: httpx.AsyncBaseTransport | None = None,
+                 tools: list[dict] | None = None, tool_instructions: str = ""):
         self.telemetry = telemetry
         self.transport = transport
+        self.tools, self.tool_instructions = tools, tool_instructions
 
     async def create(self, sdp: str, config: VoiceCoreConfig, api_key: str) -> tuple[str, str]:
         models = (config.manual_model,) if config.model_mode == "manual" else MODELS
@@ -28,7 +30,7 @@ class RealtimeSessionClient:
                     response = await client.post("https://api.openai.com/v1/realtime/calls",
                         headers={"Authorization": f"Bearer {api_key}"},
                         files={"sdp": (None, sdp, "application/sdp"),
-                               "session": (None, json.dumps(session_config(config, model)), "application/json")})
+                               "session": (None, json.dumps(session_config(config, model, self.tools, self.tool_instructions)), "application/json")})
                 except httpx.TimeoutException:
                     raise VoiceError("provider_timeout") from None
                 except httpx.HTTPError:

@@ -4,13 +4,13 @@ import {VoiceRealtimeClient} from '../dist/runtime.js';
 import {transition} from '../dist/state.js';
 import {capabilityRegistry} from '../dist/contracts.js';
 
-function host({permission, create} = {}) {
+function host({permission, create, toolExecutor} = {}) {
   const peers = [], tracks = [], events = [], audios = [], contexts = [];
   const environment = {
     async getUserMedia() {if (permission) throw permission; const track = {readyState: 'live', enabled: true, stop() {this.readyState = 'ended'; this.stopped = true;}}; tracks.push(track); return {getTracks: () => [track], getAudioTracks: () => [track]};},
     createContext() {const context = {resume: async () => {}, close: async () => {context.closed = true;}}; contexts.push(context); return context;},
     createAudio() {const audio = {setAttribute() {}, play: async () => {}, pause() {audio.paused = true;}, removeAttribute() {}, load() {}}; audios.push(audio); return audio;},
-    createPeer() {const channel = {close() {this.closed = true;}};
+    createPeer() {const channel = {readyState: 'open', sent: [], send(value) {this.sent.push(JSON.parse(value));}, close() {this.closed = true;}};
       const peer = {channel, addTrack() {}, createDataChannel: () => channel,
         createOffer: async () => ({sdp: 'v=0 offer'}), setLocalDescription: async () => {},
         setRemoteDescription: async () => {channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'connected'})});},
@@ -18,7 +18,7 @@ function host({permission, create} = {}) {
       peers.push(peer); return peer;},
   };
   const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'}))};
-  const client = new VoiceRealtimeClient(provider, {emit: (name, attrs) => events.push({name, attrs})}, environment);
+  const client = new VoiceRealtimeClient(provider, {emit: (name, attrs) => events.push({name, attrs})}, environment, toolExecutor);
   const send = event => peers.at(-1).channel.onmessage({data: JSON.stringify(event)});
   return {client, peers, tracks, audios, contexts, events, send};
 }
@@ -83,6 +83,52 @@ test('provider errors expose only taxonomy and terminate the microphone', async 
 test('unexpected tool event stops the session without an executor', async () => {
   const h = host(); await h.client.start(); h.send({type: 'response.output_item.added', item: {type: 'function_call'}});
   assert.equal(h.client.getSnapshot().error.category, 'unsupported_capability'); assert.ok(h.tracks[0].stopped);
+});
+
+test('host tools dispatch complete arguments once and send the correlated result', async () => {
+  const calls = [];
+  const h = host({toolExecutor: {names: ['example'], execute: async (...args) => {calls.push(args); return {status: 'ok'};}}});
+  await h.client.start();
+  const item = {type: 'function_call', name: 'example', call_id: 'call_1', arguments: '{"operation":"search"}'};
+  h.send({type: 'response.output_item.added', item});
+  assert.equal(calls.length, 0);
+  h.send({...item, type: 'response.function_call_arguments.done'});
+  h.send({type: 'response.output_item.done', item});
+  assert.equal(calls.length, 0);
+  h.send({type: 'response.done', response: {status: 'completed', output: [item]}});
+  await new Promise(done => setTimeout(done, 0));
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].slice(0, 3), ['example', 'call_1', {operation: 'search'}]);
+  assert.equal(h.peers[0].channel.sent[0].item.call_id, 'call_1');
+  assert.equal(h.peers[0].channel.sent[0].item.type, 'function_call_output');
+  assert.deepEqual(h.peers[0].channel.sent[1], {type: 'response.create'});
+  await h.client.stop();
+});
+
+test('stop aborts an executing tool and discards its late result', async () => {
+  let resolve, signal;
+  const h = host({toolExecutor: {names: ['example'], execute: (_name, _id, _args, value) => {signal = value; return new Promise(done => {resolve = done;});}}});
+  await h.client.start();
+  h.send({type: 'response.done', response: {status: 'completed', output: [{type: 'function_call', name: 'example', call_id: 'late', arguments: '{}'}]}});
+  await new Promise(done => setTimeout(done, 0));
+  await h.client.stop();
+  assert.ok(signal.aborted);
+  resolve({status: 'ok'});
+  await new Promise(done => setTimeout(done, 0));
+  assert.equal(h.peers[0].channel.sent.length, 0);
+});
+
+test('cancelled generation never dispatches a function despite complete arguments', async () => {
+  let called = false;
+  const h = host({toolExecutor: {names: ['example'], execute: async () => {called = true;}}});
+  await h.client.start();
+  const item = {type: 'function_call', name: 'example', call_id: 'cancelled', arguments: '{}'};
+  h.send({...item, type: 'response.function_call_arguments.done'});
+  h.send({type: 'response.output_item.done', item});
+  h.send({type: 'response.done', response: {status: 'cancelled', output: [item]}});
+  await new Promise(done => setTimeout(done, 0));
+  assert.equal(called, false);
+  await h.client.stop();
 });
 
 

@@ -72,6 +72,6 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 ## Voice Core boundary
 
 - Voice Core is a portable product in `packages/voice-core` and `packages/voice-core-server`; application auth, database, secrets and navigation adapters belong in the host apps. Portable production code must not import host packages or business entities.
-- Voice Core v1 has an empty capability registry, no tools and no action executor. Sessions use server-built fixed instructions and `tool_choice: none`.
+- Voice Core defaults to an empty capability registry and `tool_choice: none`. Hosts may supply server-owned function tools and an optional portable browser executor. Application operations remain in host adapters. Hotel administration exposes only `smart_technologies` when its upstream URL/token are configured; every invocation requires the existing admin session and CSRF. Device-specific keys and Ignoruj policy are enforced by the HA backend.
 - OpenAI API keys use AES-256-GCM with a separate server environment master key; never reuse SMTP encryption or capture voice request bodies, audio, transcripts or provider secrets in audit/log artifacts.
 - Voice validation includes `pnpm ci:voice-core`, isolated copy-out, responsive UI and the actual production API image. Paid smoke calls require `VOICE_CORE_LIVE_SMOKE=1` and never run in ordinary CI.

@@ -24,9 +24,10 @@ jobs:
       - name: Build production API image and verify imports
         run: |
           docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
-          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/sessions' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
+          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/sessions' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/tools' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
 
       - name: Build frontends and verify the production proxy chain
+        # Voice tool requests use the same authenticated /api proxy as sessions.
         run: |
           docker tag kajovo-api-ci voice-core-api-check
           docker build -f apps/kajovo-hotel-admin/Dockerfile -t voice-core-admin-check .

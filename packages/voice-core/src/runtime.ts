@@ -1,5 +1,5 @@
-import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider, type VoiceTelemetrySink } from './contracts.js';
-import { transition, type RealtimeEvent } from './state.js';
+import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceToolExecutor } from './contracts.js';
+import { transition, type RealtimeEvent, type RealtimeToolItem } from './state.js';
 
 export interface VoiceRuntimeEnvironment {
   getUserMedia(): Promise<MediaStream>; createPeer(): RTCPeerConnection;
@@ -32,9 +32,12 @@ export class VoiceRealtimeClient {
   private retries = 0;
   private seen = new Set<string>();
   private lifecycleCleanup: (() => void) | null = null;
+  private toolCalls = new Set<string>();
+  private toolQueue: Promise<void> = Promise.resolve();
 
   constructor(private provider: RealtimeSessionProvider, private telemetry: VoiceTelemetrySink,
-              private environment: VoiceRuntimeEnvironment = browserEnvironment) {}
+              private environment: VoiceRuntimeEnvironment = browserEnvironment,
+              private toolExecutor?: VoiceToolExecutor) {}
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => {this.subscribers.add(listener); return () => {this.subscribers.delete(listener);};};
   private set(patch: Partial<VoiceSnapshot>) {this.snapshot = {...this.snapshot, ...patch}; this.subscribers.forEach(listener => listener());}
@@ -80,7 +83,7 @@ export class VoiceRealtimeClient {
   }
   private async connect(epoch: number) {
     if (!this.stream || epoch !== this.epoch) return;
-    this.cleanupConnection(); this.seen.clear();
+    this.cleanupConnection(); this.seen.clear(); this.toolCalls.clear(); this.toolQueue = Promise.resolve();
     const peer = this.environment.createPeer(); this.peer = peer;
     const audio = this.environment.createAudio(); this.audio = audio; audio.autoplay = true;
     audio.setAttribute('playsinline', '');
@@ -121,12 +124,36 @@ export class VoiceRealtimeClient {
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
     }
     if (event.type === 'error' || (event.type === 'response.done' && event.response?.status === 'failed')) {this.fail('realtime_error'); return;}
-    if (event.item?.type === 'function_call' || event.item?.type === 'mcp_call') {this.fail('unsupported_capability'); return;}
+    if (event.item?.type === 'mcp_call' || (event.item?.type === 'function_call' &&
+        (!this.toolExecutor || !event.item.name || !this.toolExecutor.names.includes(event.item.name)))) {this.fail('unsupported_capability'); return;}
+    // Only a completed response can dispatch an action; cancelled generation cannot.
+    if (event.type === 'response.done' && event.response?.status === 'completed') {
+      for (const item of event.response.output ?? []) if (item.type === 'function_call') this.dispatchTool(item);
+    }
     if (event.type === 'session.created') {
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
     }
     this.set({state: transition(this.snapshot.state, event)});
+  }
+  private dispatchTool(item: RealtimeToolItem) {
+    const executor = this.toolExecutor;
+    if (!executor || !item.name || !executor.names.includes(item.name)) {this.fail('unsupported_capability'); return;}
+    if (!item.call_id || typeof item.arguments !== 'string' || item.arguments.length > 16384) {this.fail('invalid_tool_call'); return;}
+    if (this.toolCalls.has(item.call_id)) return;
+    if (this.toolCalls.size >= 256) {this.fail('tool_call_limit'); return;}
+    this.toolCalls.add(item.call_id);
+    const epoch = this.epoch, channel = this.channel, signal = this.abort?.signal;
+    const name = item.name, callId = item.call_id, argumentsText = item.arguments;
+    this.toolQueue = this.toolQueue.then(async () => {
+      if (epoch !== this.epoch || channel !== this.channel || !signal || signal.aborted) return;
+      let result: unknown;
+      try {result = await executor.execute(name, callId, JSON.parse(argumentsText), signal);}
+      catch {result = {status: 'unknown', code: 'tool_call_unverified'};}
+      if (epoch !== this.epoch || channel !== this.channel || signal.aborted || channel?.readyState !== 'open') return;
+      channel.send(JSON.stringify({type: 'conversation.item.create', item: {type: 'function_call_output', call_id: callId, output: JSON.stringify(result)}}));
+      if (this.snapshot.state !== 'user-speaking') channel.send(JSON.stringify({type: 'response.create'}));
+    }).catch(() => {if (epoch === this.epoch && channel === this.channel) this.fail('tool_delivery_failed');});
   }
   private meters(remote: MediaStream) {
     if (!this.context || !this.stream) return;

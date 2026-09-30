@@ -25,6 +25,13 @@ def test_boundary_gate_rejects_host_imports_and_relative_escape(tmp_path, monkey
     browser.write_text("import {something} from '@kajovo/shared';\n")
     assert any("@kajovo/shared" in error for error in gate.check())
     browser.unlink()
+    # AppleDouble sidecars are binary metadata; similarly named source still gets checked.
+    browser = tmp_path / "packages/voice-core/src/._forbidden.ts"
+    browser.write_text("import {something} from '@kajovo/shared';\n")
+    assert any("@kajovo/shared" in error for error in gate.check())
+    browser.write_bytes(b"\x00\x05\x16\x07\x80metadata")
+    assert gate.check() == []
+    browser.unlink()
     server = tmp_path / "packages/voice-core-server/src/voice_core_server/forbidden.py"
     server.write_text("from ....app import forbidden\n")
     assert any("escapes portable server" in error for error in gate.check())

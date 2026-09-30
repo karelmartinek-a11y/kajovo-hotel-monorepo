@@ -18,6 +18,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("KAJOVO_API_ADMIN_PASSWORD", "HOTEL_ADMIN_PASSWORD"),
     )
     voice_master_key: str = Field(default="", repr=False)
+    smart_technologies_url: str = ""
+    smart_technologies_token: str = Field(default="", repr=False)
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
