@@ -64,6 +64,7 @@ def main() -> int:
     os.chdir(repo_root)
 
     checks: list[tuple[str, list[str], bool]] = [
+        ("voice-core", _pnpm_command("ci:voice-core"), True),
         ("typecheck", _pnpm_command("typecheck"), True),
         ("policy-test", _pnpm_command("ci:policy-test"), True),
         ("policy", _pnpm_command("ci:policy"), True),

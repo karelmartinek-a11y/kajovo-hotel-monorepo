@@ -9,7 +9,8 @@ export type ModuleKey =
   | 'inventory'
   | 'reports'
   | 'users'
-  | 'settings';
+  | 'settings'
+  | 'voice_core';
 
 export type Permission = `${ModuleKey}:${'read' | 'write'}`;
 
@@ -23,6 +24,7 @@ const MODULE_READ_ORDER: ModuleKey[] = [
   'reports',
   'users',
   'settings',
+  'voice_core',
 ];
 
 export const ROLE_ALIASES: Record<string, Role> = {
@@ -61,6 +63,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'users:write',
     'settings:read',
     'settings:write',
+    'voice_core:read',
+    'voice_core:write',
   ],
   recepce: [
     'housekeeping:read',

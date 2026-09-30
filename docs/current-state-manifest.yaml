@@ -32,6 +32,15 @@ shared_packages:
   ui:
     path: packages/ui
 
+portable_products:
+  voice_core:
+    browser: packages/voice-core
+    server: packages/voice-core-server
+    admin_route: /admin/hlasovy-chat
+    api_prefix: /api/v1/admin/voice-core
+    paid_ci: false
+    master_key_environment: KAJOVO_API_VOICE_MASTER_KEY
+
 security:
   session_cookie: kajovo_session
   csrf_cookie: kajovo_csrf
@@ -45,6 +54,7 @@ security:
 ci:
   workflow: .github/workflows/ci-gates.yml
   required_commands:
+    - pnpm ci:voice-core
     - pnpm typecheck
     - pnpm ci:portal-translations
     - python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests

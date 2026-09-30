@@ -4,6 +4,10 @@ This repository keeps the API contract deterministic by generating artifacts dir
 
 The contract includes `/api/v1/chat`. Chat identities come from the authenticated server session, and every conversation operation checks participant membership. See `docs/internal-chat.md` for Web Push deployment settings and delivery behavior.
 
+Voice Core uses `/api/v1/admin/voice-core` with admin session/CSRF enforcement. Configuration uses a monotonic revision; key writes never return the key, and session creation returns only SDP and the selected model. See [Voice Core](voice-core.md).
+
+Install `./packages/voice-core-server` before the API when generating the contract locally.
+
 ## Artifacts
 
 - `apps/kajovo-hotel-api/openapi.json` – canonical OpenAPI contract exported from `create_app()`.

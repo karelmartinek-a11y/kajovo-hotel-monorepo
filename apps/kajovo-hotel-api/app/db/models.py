@@ -30,6 +30,16 @@ class Base(DeclarativeBase):
     pass
 
 
+class VoiceCoreSettings(Base):
+    __tablename__ = "voice_core_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="voice_core_singleton"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    config_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    encrypted_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
 class ReservationAmenity(Base):
     __tablename__ = "reservation_amenities"
     __table_args__ = (

@@ -4,6 +4,7 @@ Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční 
 
 ## Hlavní gate
 
+- `pnpm ci:voice-core`
 - `pnpm ci:policy`
 - `pnpm ci:policy-test`
 - `pnpm ci:tokens`
@@ -22,5 +23,7 @@ Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční 
 
 ## GitHub Actions mapování
 
-- `.github/workflows/ci-gates.yml`: `release-gate`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`
+- `.github/workflows/ci-gates.yml`: `api-runtime-image`, `release-gate`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`, `portable-voice-core`
 - `.github/workflows/deploy-production.yml`: deploy pouze po úspěšném `CI Gates - Kajovo Hotel` na `main`
+
+Voice Core gate ověřuje importy a dependency hranice, izolovaný copy-out, Chromium/WebKit UI a produkční API/admin/web image s celým Nginx řetězcem. Placený smoke vyžaduje `VOICE_CORE_LIVE_SMOKE=1` a je v běžném CI zakázán; viz [Voice Core](voice-core.md).

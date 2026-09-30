@@ -63,6 +63,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install ./packages/voice-core-server
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Validate admin credential environment

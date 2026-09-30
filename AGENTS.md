@@ -68,3 +68,10 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 - Dohledni skutečný deploy, nasazený commit, runtime artefakt, stav služeb a relevantní logy na produkčním serveru.
 - Produkční validace musí ověřit skutečné chování na `https://hotel.hcasc.cz` a/nebo `https://hotel.hcasc.cz/admin`, nikoliv jen HTTP dostupnost. Podle dopadu otestuj přihlášení, RBAC, datový tok, změnu stavu, persistenci, chybové stavy a mobilní/tabletové/desktopové zobrazení.
 - Na konci stručně uveď změněné, vytvořené a odstraněné soubory, uzavřenou matici dopadů, testy a jejich výsledky, commit, push, CI, deploy, nasazené SHA a konkrétní produkční scénáře. Nevydávej zamýšlenou činnost za provedenou.
+
+## Voice Core boundary
+
+- Voice Core is a portable product in `packages/voice-core` and `packages/voice-core-server`; application auth, database, secrets and navigation adapters belong in the host apps. Portable production code must not import host packages or business entities.
+- Voice Core v1 has an empty capability registry, no tools and no action executor. Sessions use server-built fixed instructions and `tool_choice: none`.
+- OpenAI API keys use AES-256-GCM with a separate server environment master key; never reuse SMTP encryption or capture voice request bodies, audio, transcripts or provider secrets in audit/log artifacts.
+- Voice validation includes `pnpm ci:voice-core`, isolated copy-out, responsive UI and the actual production API image. Paid smoke calls require `VOICE_CORE_LIVE_SMOKE=1` and never run in ordinary CI.

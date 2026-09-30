@@ -7,11 +7,12 @@
 - `apps/kajovo-hotel-api` je FastAPI backend s OpenAPI exportem v `apps/kajovo-hotel-api/openapi.json`.
 - `packages/shared` drží RBAC, i18n a generovaný API klient v `packages/shared/src/generated/client.ts`.
 - `packages/ui` drží sdílený shell a UI komponenty.
+- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`.
 - Přihlášené aplikace používají `AppShell`: desktopový postranní panel a přichycené záhlaví na tabletu a mobilu. Profil má stálý samostatný odkaz; odkazy na sekce vycházejí z oprávnění a na úzké obrazovce se posouvají uvnitř navigačního řádku. Podrobnosti jsou v `docs/ui-navigation.md`.
 
 ## Runtime a bezpečnost
 
-- API registruje routy `auth`, `health`, `reports`, `breakfast`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings` a `profile`.
+- API registruje routy `auth`, `health`, `reports`, `breakfast`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings`, `profile`, `chat` a `voice_core`.
 - Autentizace běží přes session cookie `kajovo_session` a CSRF cookie `kajovo_csrf` s hlavičkou `x-csrf-token`.
 - Nová webová přihlášení portálu i administrace obnovují session pouze po uživatelské aktivitě přes CSRF chráněný `POST /api/auth/activity`. Po 48 hodinách bez aktivity session vyprší; běžné načítání dat dobu neprodlužuje. Skrytá karta nekontroluje vypršení relace. Portál po opětovném přihlášení vrátí uživatele na původní interní cestu. Starší session zůstanou platné do svého původního vypršení bez obnovování a nativní Android používá původní samostatný režim.
 - Portál používá `cs`, `en` a `uk`, s preferencí uloženou u účtu přes `PATCH /api/auth/locale`. Přihlašovací stránka začíná vždy česky. Administrace zůstává česky. PDF exporty portálu používají jazyk účtu.
@@ -27,6 +28,7 @@
 
 ## Povinné validace
 
+- `pnpm ci:voice-core`
 - `pnpm typecheck`
 - `pnpm ci:portal-translations`
 - `python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests`

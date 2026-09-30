@@ -32,3 +32,7 @@ Aktivní current-state dokumentace je centralizovaná v `docs/`.
 
 - Aktivní current-state designová autorita je `docs/Kajovo_Design_Governance_Standard_SSOT.md`.
 - Provozní a architektonická current-state autorita je v `docs/SSOT_CURRENT.md` a `docs/current-state-manifest.yaml`.
+
+## Voice Core
+
+Portable admin-only Realtime voice product, host adapters, security and local validation: [Voice Core](docs/voice-core.md).

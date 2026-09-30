@@ -14,6 +14,7 @@
 - `docs/rbac.md`
 - `docs/how-to-run.md`
 - `docs/testing.md`
+- `docs/voice-core.md`
 - `docs/how-to-deploy.md`
 - `docs/ci-gates.md`
 - `docs/release-checklist.md`

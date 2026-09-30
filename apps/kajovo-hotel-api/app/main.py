@@ -3,6 +3,8 @@ import contextlib
 import os
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -23,6 +25,7 @@ from app.api.routes.profile import router as profile_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
+from app.api.routes.voice_core import router as voice_core_router
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
@@ -60,6 +63,14 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(RequestContextMiddleware)
 
+    @app.exception_handler(RequestValidationError)
+    async def safe_validation_error(request: Request, exc: RequestValidationError):
+        if request.url.path.startswith("/api/v1/admin/voice-core/"):
+            return JSONResponse(status_code=422, content={"detail": {"code": "invalid_configuration"}},
+                                headers={"Cache-Control": "no-store"})
+        return await request_validation_exception_handler(request, exc)
+
+
     if settings.trusted_hosts:
         app.add_middleware(
             TrustedHostMiddleware,
@@ -96,6 +107,8 @@ def create_app() -> FastAPI:
             )
         else:
             response = await call_next(request)
+        if request.url.path.startswith("/api/v1/admin/voice-core/"):
+            response.headers["Cache-Control"] = "no-store"
         response.headers.setdefault("Content-Security-Policy", settings.content_security_policy)
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -122,6 +135,7 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(settings_router)
     app.include_router(profile_router)
+    app.include_router(voice_core_router)
 
     @app.on_event("startup")
     async def startup_scheduler() -> None:
