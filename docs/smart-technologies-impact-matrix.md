@@ -9,7 +9,7 @@
 | Comments and docstrings | Update | Default tool-free behavior and optional host capabilities described together. |
 | Instructions | Update | Voice Core boundary permits host-owned tools through portable contracts. |
 | Fixtures and examples | Update | Deterministic HA fixtures and smart function examples; spreadsheet contributes classification only. |
-| Build and deploy | Update | Server-only upstream URL/token configuration; no new runtime dependency. Android is not a voice-tool consumer. UI geometry unchanged. |
+| Build and deploy | Update | Server-only upstream URL/token configuration and private runtime environment-file permissions; no new runtime dependency. Android is not a voice-tool consumer. UI geometry unchanged. |
 
 Source: supplied `aktualni-seznam-home-assistant-mcp_klíč.xlsx`, sheet `Zařízení`, 225 device keys, manual classification in F (`Sloupec1`), 26 ignored and 199 enabled. Names, areas, current values and accepted states are fetched from HA on every request. Missing classifications do not expose newly discovered devices. Blank classifications in subsequent imports preserve the existing decision.
 

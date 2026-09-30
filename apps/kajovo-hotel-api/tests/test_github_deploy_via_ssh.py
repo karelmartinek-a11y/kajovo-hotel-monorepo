@@ -37,6 +37,15 @@ def test_ssh_connection_uses_keepalive(monkeypatch) -> None:
     assert "ServerAliveCountMax=20" in command
 
 
+def test_remote_environment_remains_private_before_move_and_secret_updates() -> None:
+    script = _load_deploy_module().remote_script_text()
+    preserve = 'chmod 600 "$preserve_dir/infra/.env"'
+    publish = 'mv "$preserve_dir/infra/.env" "$deploy_root/infra/.env"'
+    private = 'chmod 600 "$deploy_root/infra/.env"'
+    assert script.index(preserve) < script.index(publish)
+    assert script.index(private) < script.index('export DEPLOY_VARS_PATH="$vars_json"')
+
+
 def test_certificate_verification_requires_validity_beyond_thirty_days() -> None:
     script = _load_deploy_module().certificate_verification_script()
 
