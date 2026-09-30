@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState, useSyncExternalStore} from 'react';
-import {callActive, type VoiceConfigSnapshot, type VoiceCoreConfig, type VoiceConfigStore, type VoiceSecretStore, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceSnapshot} from './contracts.js';
+import {callActive, type VoiceConfigSnapshot, type VoiceCoreConfig, type VoiceConfigStore, type VoiceSecretStore, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceSnapshot, type VoiceToolExecutor} from './contracts.js';
 import {VoiceRealtimeClient} from './runtime.js';
 import {errorMessage, stateLabels} from './messages.js';
 
@@ -11,10 +11,10 @@ function configuration(snapshot: VoiceConfigSnapshot): VoiceCoreConfig {
   const {model_mode, manual_model, response_length, language_mode, manual_language, voice} = snapshot;
   return {model_mode, manual_model, response_length, language_mode, manual_language, voice};
 }
-export function VoiceConsole({configStore, secretStore, sessionProvider, telemetry}: {
-  configStore: VoiceConfigStore; secretStore: VoiceSecretStore; sessionProvider: RealtimeSessionProvider; telemetry: VoiceTelemetrySink;
+export function VoiceConsole({configStore, secretStore, sessionProvider, telemetry, toolExecutor}: {
+  configStore: VoiceConfigStore; secretStore: VoiceSecretStore; sessionProvider: RealtimeSessionProvider; telemetry: VoiceTelemetrySink; toolExecutor?: VoiceToolExecutor;
 }) {
-  const client = useMemo(() => new VoiceRealtimeClient(sessionProvider, telemetry), [sessionProvider, telemetry]);
+  const client = useMemo(() => new VoiceRealtimeClient(sessionProvider, telemetry, undefined, toolExecutor), [sessionProvider, telemetry, toolExecutor]);
   const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
   const [saved, setSaved] = useState<VoiceConfigSnapshot | null>(null);
   const [draft, setDraft] = useState<VoiceCoreConfig | null>(null);

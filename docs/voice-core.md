@@ -19,6 +19,7 @@ The existing signed, persistent and revocable session is authoritative. Every `/
 - `PUT /api-key`: write-only `api_key` secret, returning configured status and settings.
 - `DELETE /api-key`: remove persistent ciphertext, even if its master key is unavailable.
 - `POST /sessions`: SDP offer and expected revision; returns SDP answer and selected model.
+- `POST /tools`: one server-owned `smart_technologies` call with call ID and validated arguments, guarded by admin session and CSRF.
 
 All response models omit secrets. Voice responses are `no-store`. Request bodies, including malformed key submissions and SDP, are excluded from audit capture. Voice validation errors return a safe category without input values. Provider exceptions never expose response bodies or headers.
 
@@ -38,9 +39,9 @@ Automatic mode selects `gpt-realtime-2.1`, then `gpt-realtime-2` only after a do
 
 Defaults: automatic model, automatic language, medium response and `marin`. The central catalog contains the ten documented built-in voices and Czech, English, German and Slovak. Short/medium/long policies prefer 1–2, 3–5 and 6–10 sentences and combine instructions with 512/1024/2048 maximum output tokens. The token limit is a protective ceiling, not a guaranteed sentence count.
 
-Instructions require honest uncertainty, no invented sources or live/private facts, clarification of ambiguous requests, no claims of external actions and the selected language/length. No user-editable prompt is exposed or accepted by the host API. Model compliance is probabilistic, not a zero-hallucination guarantee; instructions are not secret credentials and OpenAI session events may expose their text. The browser application's supported transport sends no prompt/tool configuration updates; a hostile client is not an immutable-policy security boundary for OpenAI's own data-channel API.
+Instructions require honest uncertainty, no invented sources or live/private facts, clarification of ambiguous requests, external-action claims supported by tool results and the selected language/length. No user-editable prompt is exposed or accepted by the host API. Model compliance is probabilistic, not a zero-hallucination guarantee; instructions are not secret credentials and OpenAI session events may expose their text. The browser application's supported transport sends no prompt/tool configuration updates; a hostile client is not an immutable-policy security boundary for OpenAI's own data-channel API.
 
-Capability registries are empty, tool configuration is omitted and `tool_choice` is `none`. There is no invocation/action executor. Future capability contracts describe provider-owned input/output schemas, without implementing any integration in v1.
+Portable capability registries remain empty by default. Hosts may supply tools to the server session client and an optional browser `VoiceToolExecutor`. Without tools, configuration is omitted and `tool_choice` is `none`. The hotel supplies exactly one `smart_technologies` function when its server-only upstream URL/token are configured. The executor forwards completed arguments to the admin API, deduplicates call IDs and returns correlated `function_call_output` items; it aborts pending requests on Stop and discards late results. Application data and device execution remain in host adapters. See [Smart technologies](smart-technologies.md).
 
 Official contracts verified on 2026-09-30:
 
@@ -53,7 +54,7 @@ Official contracts verified on 2026-09-30:
 
 Permission -> connecting -> listening -> user speaking -> processing -> assistant speaking are derived from microphone/peer/data-channel events. Generation completion does not falsely imply that playback has ended. Output-buffer events control speaking state. The ORB uses the same state and optional RMS meters and respects reduced motion.
 
-Semantic VAD automatically creates responses and interrupts ongoing responses. In WebRTC OpenAI clears/truncates unplayed output. The browser does not issue duplicate `response.create` or cancellation loops. Duplicate event IDs are bounded and ignored.
+Semantic VAD automatically creates responses and interrupts ongoing responses. In WebRTC OpenAI clears/truncates unplayed output. The browser sends `response.create` after a completed tool output; it does not issue duplicate response or cancellation loops. Duplicate event and tool call IDs are ignored.
 
 Transient disconnects replace the connection with at most two attempts after 1 and 3 seconds, while keeping one microphone stream. Every handshake revalidates host auth and configuration revision. Interruption of microphone/OS audio and unrecoverable errors require a new user Start gesture. Configuration and key controls are disabled throughout an active call; mute and Stop remain available.
 

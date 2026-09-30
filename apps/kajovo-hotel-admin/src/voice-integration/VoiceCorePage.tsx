@@ -1,5 +1,5 @@
 import React from 'react';
-import {VoiceConsole, type VoiceConfigStore, type VoiceConfigSnapshot, type VoiceSecretStore, type RealtimeSessionProvider, type VoiceTelemetrySink} from '@voice-core/browser';
+import {VoiceConsole, type VoiceConfigStore, type VoiceConfigSnapshot, type VoiceSecretStore, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceToolExecutor} from '@voice-core/browser';
 import '@voice-core/browser/styles.css';
 
 const BASE = '/api/v1/admin/voice-core';
@@ -26,8 +26,12 @@ const secretStore: VoiceSecretStore = {
   delete: async () => remember(await request<VoiceConfigSnapshot>('/api-key', 'DELETE')),
 };
 const sessionProvider: RealtimeSessionProvider = {create: (sdp, signal) => request('/sessions', 'POST', {sdp, revision}, signal)};
+const toolExecutor: VoiceToolExecutor = {
+  names: ['smart_technologies'],
+  execute: (name, callId, argumentsValue, signal) => request('/tools', 'POST', {name, call_id: callId, arguments: argumentsValue}, signal),
+};
 // Browser conversation/audio data is never sent to analytics or persistent telemetry.
 const telemetry: VoiceTelemetrySink = {emit() {}};
 export function VoiceCorePage() {
-  return <main className="k-page"><h1>Hlasový chat</h1><VoiceConsole configStore={configStore} secretStore={secretStore} sessionProvider={sessionProvider} telemetry={telemetry} /></main>;
+  return <main className="k-page"><h1>Hlasový chat</h1><VoiceConsole configStore={configStore} secretStore={secretStore} sessionProvider={sessionProvider} telemetry={telemetry} toolExecutor={toolExecutor} /></main>;
 }

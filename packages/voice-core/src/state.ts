@@ -1,5 +1,6 @@
 import type { VoiceSessionState } from './contracts.js';
-export type RealtimeEvent = {type: string; event_id?: string; response?: {id?: string; status?: string}; item?: {type?: string}};
+export type RealtimeToolItem = {type?: string; name?: string; call_id?: string; arguments?: string};
+export type RealtimeEvent = {type: string; event_id?: string; name?: string; call_id?: string; arguments?: string; response?: {id?: string; status?: string; output?: RealtimeToolItem[]}; item?: RealtimeToolItem};
 
 // Audio buffer events, rather than generation completion, determine audible playback.
 export function transition(state: VoiceSessionState, event: RealtimeEvent): VoiceSessionState {
