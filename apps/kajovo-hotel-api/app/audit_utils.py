@@ -4,6 +4,10 @@ import json
 from typing import Any
 
 SENSITIVE_KEYS = {
+    "api_key",
+    "encrypted_api_key",
+    "authorization",
+    "client_secret",
     "password",
     "old_password",
     "new_password",

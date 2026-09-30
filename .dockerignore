@@ -1,1 +1,15 @@
 .deploy-trash*
+.git
+**/node_modules
+.venv*
+**/__pycache__
+**/.pytest_cache
+artifacts
+**/test-results
+**/playwright-report
+*.tar.gz
+**/dist
+.tmp
+.env*
+**/.env*
+*.db

@@ -1,33 +1,27 @@
-# Produkční deploy hotel.hcasc.cz
+# SSOT scope and status
 
-## Cíl
+## Autorita
 
-- veřejný portál: `https://hotel.hcasc.cz`
-- administrace: `https://hotel.hcasc.cz/admin`
-- produkční server IPv4: `89.221.222.92`
+- Produkční zdrojový kód, aktivní workflow a ověřený runtime jsou nejvyšší zdroj pravdy.
+- Current-state dokumentace v `docs/` popisuje jen aktivní web, admin, API, CI a deploy řetězec.
+- Pokud se dokumentace rozchází s kódem nebo runtime, opravuje se dokumentace, ne funkční produkční kód.
 
-## Zdroj pravdy
+## Závazné current-state soubory
 
-- aktuální commit v repozitáři
-- workflow `.github/workflows/deploy-production.yml`
-- serverový runtime artifact `/home/<deploy-user>/kajovo-deploy-releases/<sha>/artifacts/deploy-runtime/latest.json`
-- živé ověření přes browser a SSH
+- `docs/SSOT_CURRENT.md`
+- `docs/current-state-manifest.yaml`
+- `docs/Kajovo_Design_Governance_Standard_SSOT.md`
+- `docs/rbac.md`
+- `docs/how-to-run.md`
+- `docs/testing.md`
+- `docs/voice-core.md`
+- `docs/how-to-deploy.md`
+- `docs/ci-gates.md`
+- `docs/release-checklist.md`
 
-## Postup
+## Mimo rozsah
 
-1. Ověřit lokální kontroly a čistotu commitu.
-2. Pushnout změny na `main`, aby proběhl workflow `CI Gates - Kajovo Hotel`.
-3. Po úspěšném CI nechat doběhnout workflow `.github/workflows/deploy-production.yml`.
-4. Před uploadem se automaticky odstraní nedokončené release archivy, staré zdrojové stromy kromě nejnovějšího a nepoužívaná Docker build/image cache. Běžící image a pojmenované datové volume se nemažou.
-5. Ověřit release archiv `kajovo-deploy-<sha>.tar.gz`, Docker Compose stack a runtime artifact na serveru.
-6. Ověřit služby, reverse proxy a logy přes `scripts/github_deploy_via_ssh.py`.
-7. Certifikát obnovuje serverový `certbot.timer`; deploy po synchronizaci Nginx konfigurace ověří veřejně servírovaný řetězec, hostname a platnost aktivního certifikátu delší než 30 dní.
-8. Ověřit skutečné chování na živé doméně přes live smoke skripty a browser.
+- Historické audity, cutover plány, migrační poznámky a jednorázové reporty nejsou current-state autorita.
+- Android release chain, APK workflow a parity pravidla nejsou součástí aktivního webového provozu.
 
-## Důležité
-
-- Workflow je navázané jen na úspěšný běh `CI Gates - Kajovo Hotel` pro `main`.
-- Retence na serveru zachovává nejnovější dokončený zdrojový strom jako rollback/runtime-artifact referenci; provozní data zůstávají v pojmenovaných Docker volumes.
-- HTTP ACME challenge se obsluhuje přímo z `/var/www/hotelapp/letsencrypt` bez předčasného HTTPS redirectu; ostatní HTTP požadavky přesměrovává `location /`.
-- Aktivní Nginx certifikát používá Certbot lineage `hotel.hcasc.cz-renewed`; deploy uživateli nepřiděluje obecná root oprávnění a certifikát ověřuje zvenčí stejně jako klient produkční domény.
-- Produkční ověření používá `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`. Pokojský gate pouze čte živý přehled; v deployi záměrně nemění provozní stav skutečného pokoje.
+Voice Core ukládá ciphertext pod samostatným `KAJOVO_API_VOICE_MASTER_KEY`. Volitelný stejnojmenný GitHub secret se přenáší pouze do API runtime; chybějící hodnota nepřepisuje existující serverový master klíč. Jeho změna vyžaduje opětovné zadání OpenAI klíče nebo naplánovanou migraci ciphertextu. Pouhé vytvoření pracovní větve funkci nenasazuje; hlasový smoke v CI není placený. Viz [Voice Core](voice-core.md).

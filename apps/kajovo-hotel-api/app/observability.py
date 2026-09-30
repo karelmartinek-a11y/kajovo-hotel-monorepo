@@ -93,7 +93,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request.state.actor_role = actor_role
 
         request_body: str | None = None
-        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        # Voice request bodies may contain credentials or SDP. Audit only request metadata.
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"} and not request.url.path.startswith("/api/v1/admin/voice-core/"):
             body_bytes = await request.body()
             if body_bytes:
                 raw_body = body_bytes.decode("utf-8", errors="ignore")

@@ -17,14 +17,21 @@ env:
 jobs:
   api-runtime-image:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Build production API image and verify imports
         run: |
           docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
-          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
+          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/sessions' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
+
+      - name: Build frontends and verify the production proxy chain
+        run: |
+          docker tag kajovo-api-ci voice-core-api-check
+          docker build -f apps/kajovo-hotel-admin/Dockerfile -t voice-core-admin-check .
+          docker build -f apps/kajovo-hotel-web/Dockerfile -t voice-core-web-check .
+          python3 scripts/verify_voice_core_proxy.py
 
   release-gate:
     runs-on: ubuntu-latest
@@ -60,6 +67,7 @@ jobs:
       - name: Install API dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install ./packages/voice-core-server
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Validate admin credential environment
@@ -119,6 +127,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
 
+      - name: Install portable Voice Core runtime
+        run: python -m pip install ./packages/voice-core-server
+
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
 
@@ -172,6 +183,9 @@ jobs:
           node --check scripts/cleanup_android_production_acceptance.mjs
           node --test scripts/android_production_acceptance_policy.test.mjs
 
+      - name: Install portable Voice Core runtime
+        run: python -m pip install ./packages/voice-core-server
+
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
 
@@ -219,10 +233,11 @@ jobs:
       - name: Install API dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install ./packages/voice-core-server
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Ruff lint
-        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
+        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py
 
   typecheck:
     runs-on: ubuntu-latest
@@ -273,7 +288,29 @@ jobs:
       - name: Install API dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install ./packages/voice-core-server
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Unit tests
         run: pnpm unit
+
+  portable-voice-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: corepack enable && corepack prepare pnpm@10.34.4 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: python -m pip install ./packages/voice-core-server pytest
+      - run: pnpm ci:voice-core
+      - run: python scripts/verify_voice_core_copy_out.py
+      - run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
+      - run: pnpm --filter @voice-core/browser test:ui
+      - name: Verify live smoke is opt-in
+        run: python scripts/voice_core_live_smoke.py

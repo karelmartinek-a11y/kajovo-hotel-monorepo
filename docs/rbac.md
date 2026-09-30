@@ -49,6 +49,9 @@ Permission používají formát `<modul>:<akce>`, kde akce je `read` nebo `write
 - `reports:read`, `reports:write`
 - `users:read`, `users:write`
 - `settings:read`, `settings:write`
+- `voice_core:read`, `voice_core:write`
+
+Voice Core endpointy navíc vyžadují serverově ověřený typ aktéra `admin` a základní roli `admin`. Portálová session ani podvržené klientské permission nestačí.
 
 ### `pokojská`
 

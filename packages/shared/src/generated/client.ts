@@ -684,6 +684,42 @@ export type ValidationError = {
   "msg": string;
   "type": string;
 };
+export type VoiceCatalog = {
+  "languages": Array<Record<string, unknown>>;
+  "models": Array<string>;
+  "voices": Array<string>;
+};
+export type VoiceConfigRead = {
+  "catalog": VoiceCatalog;
+  "configured": boolean;
+  "language_mode"?: "automatic" | "manual";
+  "manual_language"?: string | null;
+  "manual_model"?: string | null;
+  "model_mode"?: "automatic" | "manual";
+  "response_length"?: "short" | "medium" | "long";
+  "revision": number;
+  "voice"?: string;
+};
+export type VoiceConfigWrite = {
+  "language_mode"?: "automatic" | "manual";
+  "manual_language"?: string | null;
+  "manual_model"?: string | null;
+  "model_mode"?: "automatic" | "manual";
+  "response_length"?: "short" | "medium" | "long";
+  "revision": number;
+  "voice"?: string;
+};
+export type VoiceKeyWrite = {
+  "api_key": string;
+};
+export type VoiceSessionRead = {
+  "model": string;
+  "sdp": string;
+};
+export type VoiceSessionWrite = {
+  "revision": number;
+  "sdp": string;
+};
 export type WebPushKeys = {
   "auth": string;
   "p256dh": string;
@@ -810,6 +846,21 @@ export const apiClient = {
   },
   async testSmtpEmailApiV1AdminSettingsSmtpTestEmailPost(body: SmtpTestEmailRequest): Promise<SmtpTestEmailResponse> {
     return request<SmtpTestEmailResponse>('POST', `/api/v1/admin/settings/smtp/test-email`, undefined, body);
+  },
+  async deleteKeyApiV1AdminVoiceCoreApiKeyDelete(): Promise<VoiceConfigRead> {
+    return request<VoiceConfigRead>('DELETE', `/api/v1/admin/voice-core/api-key`, undefined, undefined);
+  },
+  async putKeyApiV1AdminVoiceCoreApiKeyPut(body: VoiceKeyWrite): Promise<VoiceConfigRead> {
+    return request<VoiceConfigRead>('PUT', `/api/v1/admin/voice-core/api-key`, undefined, body);
+  },
+  async getConfigApiV1AdminVoiceCoreConfigGet(): Promise<VoiceConfigRead> {
+    return request<VoiceConfigRead>('GET', `/api/v1/admin/voice-core/config`, undefined, undefined);
+  },
+  async putConfigApiV1AdminVoiceCoreConfigPut(body: VoiceConfigWrite): Promise<VoiceConfigRead> {
+    return request<VoiceConfigRead>('PUT', `/api/v1/admin/voice-core/config`, undefined, body);
+  },
+  async createSessionApiV1AdminVoiceCoreSessionsPost(body: VoiceSessionWrite): Promise<VoiceSessionRead> {
+    return request<VoiceSessionRead>('POST', `/api/v1/admin/voice-core/sessions`, undefined, body);
   },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);

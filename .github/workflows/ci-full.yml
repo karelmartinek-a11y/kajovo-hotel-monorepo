@@ -29,6 +29,7 @@ jobs:
       - name: Install API dependencies (dev)
         run: |
           python -m pip install --upgrade pip
+          python -m pip install ./packages/voice-core-server
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Ensure SQLite database directory exists
@@ -67,6 +68,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
+          python -m pip install ./packages/voice-core-server
 
       - name: Install Playwright browsers
         run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps
@@ -103,6 +105,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
+          python -m pip install ./packages/voice-core-server
 
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
@@ -149,6 +152,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "alembic==1.17.1" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
+          python -m pip install ./packages/voice-core-server
 
       - name: Validate admin credential environment
         run: python scripts/check_admin_credentials_env.py
@@ -190,6 +194,7 @@ jobs:
       - name: Install API dependencies
         run: |
           python -m pip install --upgrade pip
+          python -m pip install ./packages/voice-core-server
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Validate admin credential environment

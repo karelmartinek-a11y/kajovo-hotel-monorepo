@@ -11,6 +11,7 @@
 1. Nainstalujte JavaScript závislosti podle lockfilu:
    - `pnpm install --frozen-lockfile`
 2. Nainstalujte API závislosti:
+   - `python3.11 -m pip install ./packages/voice-core-server`
    - `python3.11 -m pip install -e ./apps/kajovo-hotel-api[dev]`
 3. Spusťte API:
    - `uvicorn app.main:app --reload --app-dir apps/kajovo-hotel-api --port 8000`
@@ -22,3 +23,5 @@
 ## Rozsah lokálního běhu
 
 Lokální běh kryje pouze `apps/kajovo-hotel-web`, `apps/kajovo-hotel-admin` a `apps/kajovo-hotel-api` nad stejným RBAC a OpenAPI kontraktem.
+
+Hlasový chat je na `/admin/hlasovy-chat`. Uložení OpenAI klíče a hovor vyžadují samostatný serverový `KAJOVO_API_VOICE_MASTER_KEY`; postup, přenositelné balíčky a bezpečnost jsou v [Voice Core](voice-core.md).

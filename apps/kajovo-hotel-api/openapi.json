@@ -4745,6 +4745,247 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VoiceCatalog": {
+        "properties": {
+          "languages": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "voices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Voices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "models",
+          "voices",
+          "languages"
+        ],
+        "title": "VoiceCatalog",
+        "type": "object"
+      },
+      "VoiceConfigRead": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog": {
+            "$ref": "#/components/schemas/VoiceCatalog"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "language_mode": {
+            "default": "automatic",
+            "enum": [
+              "automatic",
+              "manual"
+            ],
+            "title": "Language Mode",
+            "type": "string"
+          },
+          "manual_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Language"
+          },
+          "manual_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Model"
+          },
+          "model_mode": {
+            "default": "automatic",
+            "enum": [
+              "automatic",
+              "manual"
+            ],
+            "title": "Model Mode",
+            "type": "string"
+          },
+          "response_length": {
+            "default": "medium",
+            "enum": [
+              "short",
+              "medium",
+              "long"
+            ],
+            "title": "Response Length",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "voice": {
+            "default": "marin",
+            "title": "Voice",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "configured",
+          "catalog"
+        ],
+        "title": "VoiceConfigRead",
+        "type": "object"
+      },
+      "VoiceConfigWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "language_mode": {
+            "default": "automatic",
+            "enum": [
+              "automatic",
+              "manual"
+            ],
+            "title": "Language Mode",
+            "type": "string"
+          },
+          "manual_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Language"
+          },
+          "manual_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Model"
+          },
+          "model_mode": {
+            "default": "automatic",
+            "enum": [
+              "automatic",
+              "manual"
+            ],
+            "title": "Model Mode",
+            "type": "string"
+          },
+          "response_length": {
+            "default": "medium",
+            "enum": [
+              "short",
+              "medium",
+              "long"
+            ],
+            "title": "Response Length",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "voice": {
+            "default": "marin",
+            "title": "Voice",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "title": "VoiceConfigWrite",
+        "type": "object"
+      },
+      "VoiceKeyWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "format": "password",
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Api Key",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": [
+          "api_key"
+        ],
+        "title": "VoiceKeyWrite",
+        "type": "object"
+      },
+      "VoiceSessionRead": {
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "sdp": {
+            "title": "Sdp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sdp",
+          "model"
+        ],
+        "title": "VoiceSessionRead",
+        "type": "object"
+      },
+      "VoiceSessionWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "revision": {
+            "minimum": 0.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "sdp": {
+            "maxLength": 65536,
+            "minLength": 8,
+            "title": "Sdp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sdp",
+          "revision"
+        ],
+        "title": "VoiceSessionWrite",
+        "type": "object"
+      },
       "WebPushKeys": {
         "properties": {
           "auth": {
@@ -5608,6 +5849,167 @@
         "summary": "Test Smtp Email",
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/api-key": {
+      "delete": {
+        "operationId": "delete_key_api_v1_admin_voice_core_api_key_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Delete Key",
+        "tags": [
+          "voice-core"
+        ]
+      },
+      "put": {
+        "operationId": "put_key_api_v1_admin_voice_core_api_key_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceKeyWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Key",
+        "tags": [
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/config": {
+      "get": {
+        "operationId": "get_config_api_v1_admin_voice_core_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config",
+        "tags": [
+          "voice-core"
+        ]
+      },
+      "put": {
+        "operationId": "put_config_api_v1_admin_voice_core_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceConfigWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceConfigRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Config",
+        "tags": [
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/sessions": {
+      "post": {
+        "operationId": "create_session_api_v1_admin_voice_core_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceSessionWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Session",
+        "tags": [
+          "voice-core"
         ]
       }
     },

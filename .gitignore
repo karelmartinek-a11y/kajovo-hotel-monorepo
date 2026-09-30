@@ -37,3 +37,7 @@ android/local.properties
 
 .venv311
 .pnpm-store
+
+.venv-voice-core/
+packages/voice-core/test-results/
+artifacts/voice-core/

@@ -28,6 +28,7 @@ services:
     volumes:
       - api_data:/app/data
     environment:
+      KAJOVO_API_VOICE_MASTER_KEY: ${KAJOVO_API_VOICE_MASTER_KEY:-}
       KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-Kájovo Hotel API}
       KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
       KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-production}

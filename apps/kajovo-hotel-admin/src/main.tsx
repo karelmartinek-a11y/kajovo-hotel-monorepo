@@ -1,3 +1,4 @@
+import { VoiceCorePage } from './voice-integration/VoiceCorePage';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -209,8 +210,8 @@ function toAdminNavRoute(route: string): string {
   return route;
 }
 
-const ADMIN_PERSISTENT_MODULE_KEYS = new Set(['users', 'settings', 'profile']);
-const ADMIN_PERSISTENT_PERMISSION_PREFIXES = ['users:', 'settings:'];
+const ADMIN_PERSISTENT_MODULE_KEYS = new Set(['users', 'settings', 'profile', 'voice_core']);
+const ADMIN_PERSISTENT_PERMISSION_PREFIXES = ['users:', 'settings:', 'voice_core:'];
 function metricValue(value: number | null): string {
   return value === null ? '—' : String(value);
 }
@@ -3940,6 +3941,7 @@ function AppRoutes(): JSX.Element {
     ? [
       { key: 'users', label: 'Uživatelé', route: '/uzivatele', icon: 'users', active: true, section: 'records', permissions: ['read'] },
       { key: 'settings', label: 'Nastavení', route: '/nastaveni', icon: 'settings', active: true, section: 'records', permissions: ['read'] },
+      { key: 'voice_core', label: 'Hlasový chat', route: '/hlasovy-chat', icon: 'message-circle', active: true, section: 'records', permissions: ['read'] },
       { key: 'profile', label: 'Profil', route: '/profil', icon: 'users', active: true, section: 'records', permissions: [] },
     ]
     : [];
@@ -3987,7 +3989,7 @@ function AppRoutes(): JSX.Element {
     ...module,
     route: toAdminNavRoute(module.route),
   }));
-  const adminHeaderModuleOrder = ['dashboard', 'housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'reports', 'profile', 'users', 'settings'];
+  const adminHeaderModuleOrder = ['dashboard', 'housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'reports', 'profile', 'users', 'settings', 'voice_core'];
   const adminShellModules = auth.role === 'admin'
     ? adminHeaderModuleOrder
       .map((key) => adminNavModules.find((module) => module.key === key))
@@ -4027,6 +4029,7 @@ function AppRoutes(): JSX.Element {
         panelLayout={panelLayout}
       >
         <Routes>
+        <Route path="/hlasovy-chat" element={auth.actorType === 'admin' && auth.role === 'admin' ? <VoiceCorePage /> : <AccessDeniedPage moduleLabel="Hlasový chat" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/chat" element={<ChatPage surface="admin" />} />
         <Route path="/chat/:conversationId" element={<ChatPage surface="admin" />} />
         <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="P\u0159ehled" role={roleViewLabel} userId={auth.userId} />} />
