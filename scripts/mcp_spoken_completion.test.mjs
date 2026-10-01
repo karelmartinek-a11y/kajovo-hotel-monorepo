@@ -112,3 +112,15 @@ test('cleared parent or barge-in invalidates result chain', () => {
     assert.equal(proof.ready(devices),false);
   }
 });
+
+test('late old MCP completion after barge-in cannot ground a new user turn', () => {
+  const proof = new SpokenCompletion();
+  proof.handle({type:'response.done',response:{id:'parent',status:'completed',output:[{type:'mcp_call',id:'search-call'}]}});
+  proof.handle({type:'input_audio_buffer.speech_started'});
+  proof.handle(search('parent'));
+  proof.handle({type:'response.created',response:{id:'grounded'}});
+  proof.handle(event('output_audio_buffer.started')); proof.sample(2);
+  proof.handle({...event('response.output_audio_transcript.done'),transcript:'Synthetic lamp'});
+  proof.handle(done('completed')); proof.handle(event('output_audio_buffer.stopped'));
+  assert.equal(proof.ready(devices),false);
+});

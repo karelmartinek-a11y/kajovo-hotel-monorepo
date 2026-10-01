@@ -6,7 +6,10 @@ export class SpokenCompletion {
     return this.turns.get(id);
   }
   handle(event) {
-    if (event.type === 'input_audio_buffer.speech_started') this.search = null;
+    if (event.type === 'input_audio_buffer.speech_started') {
+      this.search = null;
+      for (const turn of this.turns.values()) turn.blocked = true;
+    }
     const id = event.response_id || event.response?.id;
     if (!id) return;
     const existed = this.turns.has(id);
