@@ -4,9 +4,9 @@ Date: 2026-10-01. **Review PASS; production acceptance NOT RUN.** This is Codex 
 
 ## Reviewed resulting trees
 
-- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → d61aff64091296f3b141cbcf76c2dfc760a5b592`
-  Source fingerprint: `72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01`
-- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → 807836d2b7dd9c14ff08f8bc93347e1785dd793c`
+- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → 69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb`
+  Source fingerprint: `edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b`
+- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → c6fcd431eced1b962c288006c615f9a256a5c466`
   Source fingerprint: `668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1`
 
 The complete tracked tree is bound, including tests, instructions, workflows and other documentation. Only this report and its JSON companion are excluded to avoid a self-referential digest. Report-only commits and merges are valid only when the complete source fingerprint remains identical.
@@ -22,7 +22,7 @@ The complete tracked tree is bound, including tests, instructions, workflows and
 
 ## Findings, fixes and regressions
 
-One duplicate rollback finding (F1) is consolidated into D-1. All 21 distinct findings are resolved: 5 HIGH, 16 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
+One duplicate rollback finding (F1) is consolidated into D-1. All 24 distinct findings are resolved: 7 HIGH, 17 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
 
 The previous e8d8eee/c236a57 production attempt failed the session-echo smoke gate (run 36874755916) and was restored to the exact known-good 0aa675d images/runtime and original routes/backend, with all hotel components healthy. No destructive cleanup or actuator action occurred. This failed attempt is not acceptance evidence. The revised candidate still requires its own complete production acceptance.
 
@@ -49,12 +49,19 @@ The previous e8d8eee/c236a57 production attempt failed the session-echo smoke ga
 | A-LIVE-001 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / session.created/session.updated configValid | Accept only null/omitted unused response selectors while preserving exact canonical URL/label, three-tool allowlist and read-only approval exception; outgoing Calls requests still omit alternate selectors. | scripts/mcp_session_echo_guard.test.mjs: exact session.created/updated nullable native MCP echoes pass; scripts/mcp_session_echo_guard.test.mjs: actual or malformed alternative transports fail closed | A: resolved PASS |
 | F-02 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / injected message listener / final WAV validation | Latch every invalid session echo or exposed credential and refresh/check final safety after Stop; later valid events or successful grounded playback cannot erase a failure. | scripts/mcp_session_echo_guard.test.mjs: late invalid transport, allowlist or approval cannot pass after successful read; scripts/mcp_session_echo_guard.test.mjs: late raw credential exposure cannot be erased by valid echo or grounded read; scripts/mcp_session_echo_guard.test.mjs: actual smoke checks fresh final safety evidence after Stop and before printing PASS | F: resolved PASS |
 | F-CHAT-001 | MEDIUM | `apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts` / chatNavigationLink / mobile admin bottom-navigation smoke assertion | Select chat navigation by its destination and exact visible label; retain and assert positive unread accessibility without weakening conversation assertions. | apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts: full 8 smoke scenarios and positive unread accessible name; independent Chromium selector proof: unread badge 0 and 1 both match exactly one link | F: resolved PASS |
+| D-CI-2 | MEDIUM | `.github/workflows/ci-gates.yml` / release-gate aggregate job | Restore text integrity, frontend manifest, legacy guards and runtime integrity in authoritative CI Gates; propagate every required job failure. | tests/test_release_workflow_contract.py::test_authoritative_gate_executes_each_required_integrity_check; tests/test_release_workflow_contract.py::test_actual_aggregate_script_cannot_pass_any_required_job_failure | D: resolved PASS |
+| D-CI-3 | HIGH | `.github/workflows/deploy-production.yml` / deploy-production job, first checkout, trust gate | Enforce trusted main workflow context and trusted checkout before release validation, candidate checkout and private production credential injection. | tests/test_release_workflow_contract.py::test_only_trusted_main_deployment_context_is_eligible; tests/test_release_workflow_contract.py::test_unverified_candidate_never_supplies_the_gate_code_or_production_secrets; tests/test_release_workflow_contract.py::test_verified_environment_handoff_preserves_multiline_values_without_printing | B: resolved PASS |
+| D-CI-4 | HIGH | `.github/workflows/ci-gates.yml` / cancel-stale-main-ci job and jq selection | Delete unsafe cross-workflow cancellation and bind concurrency to source SHA; old/manual sources cannot cancel newer main source. | tests/test_release_workflow_contract.py::test_old_or_manual_source_cannot_cancel_newer_main_source | F: resolved PASS |
 
 The JSON companion retains concrete original problems, reproducible scenarios, consequences, duplicate mapping and final reviewer report digests. Reviewer findings were reproduced independently; fixes were tested and the affected areas re-reviewed at the final source state.
 
+## Superseded contract observation
+
+The earlier CI Release naming observations D-CI-1/F-CI-001 were withdrawn after the user explicitly confirmed CI Gates as the sole automatic main authority. They are not counted as repaired defects. The independent security, coverage and cancellation defects remain traced as D-CI-2/3/4 with actual fixes and regressions.
+
 ## Objective release gates
 
-Require exact current main CI Gates, CI Full and CI Release, native MCP regressions, architecture guards, secret/redaction tests, deployment/rollback tests, this content-bound six-agent evidence and zero open blocking findings. Branch/PR CI Core must also pass before merge. No paid external reviewer, bot response or quota notice is a release dependency.
+Require exact current main CI Gates as the sole automatic authority, native MCP regressions, architecture guards, secret/redaction tests, deployment/rollback tests, this content-bound six-agent evidence and zero open blocking findings. Branch/PR CI Core must also pass before merge; CI Full and CI Release remain manual diagnostics. Automatic deployment still waits for the root-owned active exact-hotel-SHA transaction after private preflight and rollback preparation. No paid external reviewer, bot response or quota notice is a release dependency.
 
 ## Production gates still required
 
