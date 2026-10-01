@@ -91,3 +91,5 @@ Approval UI displays bounded exact action context from imported schemas, hides s
 Root-managed deployment workers, coordinator serialization and runtime fencing prevent a resumed SSH/build process from mutating production after rollback. Acceptance and rollback deadline are serialized; accepted cleanup is resumable and never revokes completed acceptance.
 
 Admin Chat smoke selects the navigation link by its chat destination and exact visible Chat label. Its accessible name includes the unread count; verify the positive unread badge without removing its accessible description.
+
+CI Gates is the sole automatic main authority; CI Full and CI Release are manual diagnostics. Deployment uses trusted main workflow checkout and verifies exact current main CI/content-bound review before candidate checkout and production credential injection. CI concurrency binds to source SHA and cannot cancel another revision. The coordinated root transaction/runtime fence remains mandatory.

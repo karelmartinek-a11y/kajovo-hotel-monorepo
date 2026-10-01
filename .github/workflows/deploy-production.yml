@@ -29,10 +29,12 @@ permissions:
 jobs:
   deploy-production:
     if: >-
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main') ||
-      github.event_name == 'workflow_dispatch'
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.head_repository.full_name == github.repository) ||
+       github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -41,29 +43,11 @@ jobs:
       REVIEW_PR: ${{ inputs.review_pr || '' }}
       DEPLOY_BASE_URL: https://hotel.hcasc.cz
       PRODUCTION_SERVER_IPV4: 89.221.222.92
-      HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
-      HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
-      HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
-      HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
-      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
-      HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-      HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
-      KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-      KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
-      BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1' }}
-      BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_TOKEN != '' && secrets.A_TOKEN || secrets.A_token }}
-      BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_TOKEN != '' && secrets.C_TOKEN || secrets.C_token }}
-      KAJOVO_API_VOICE_MASTER_KEY: ${{ secrets.KAJOVO_API_VOICE_MASTER_KEY }}
-      KAJOVO_API_MCP_SERVER_URL: ${{ vars.KAJOVO_API_MCP_SERVER_URL }}
-      KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY }}
-      KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY }}
-      KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz' }}
-      KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
     steps:
-      - name: Checkout exact deploy SHA
+      - name: Checkout trusted main workflow SHA
         uses: actions/checkout@v5
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          ref: ${{ github.sha }}
 
       - name: Exact main CI and independent forensic review gate
         env:
@@ -82,6 +66,43 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Supply production environment after verified release gate
+        env:
+          HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
+          HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
+          HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
+          HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
+          HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
+          HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+          HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+          KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+          KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+          BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1' }}
+          BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_TOKEN != '' && secrets.A_TOKEN || secrets.A_token }}
+          BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_TOKEN != '' && secrets.C_TOKEN || secrets.C_token }}
+          KAJOVO_API_VOICE_MASTER_KEY: ${{ secrets.KAJOVO_API_VOICE_MASTER_KEY }}
+          KAJOVO_API_MCP_SERVER_URL: ${{ vars.KAJOVO_API_MCP_SERVER_URL }}
+          KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY }}
+          KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY }}
+          KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz' }}
+          KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, secrets
+          from pathlib import Path
+          names = ('HOTEL_DEPLOY_HOST', 'HOTEL_DEPLOY_PORT', 'HOTEL_DEPLOY_USER', 'HOTEL_DEPLOY_PASS', 'HOTEL_DEPLOY_KEY', 'HOTEL_ADMIN_EMAIL', 'HOTEL_ADMIN_PASSWORD', 'KAJOVO_API_ADMIN_EMAIL', 'KAJOVO_API_ADMIN_PASSWORD', 'BETTER_HOTEL_CONNECTOR_BASE_URL', 'BETTER_HOTEL_ACCESS_TOKEN', 'BETTER_HOTEL_CLIENT_TOKEN', 'KAJOVO_API_VOICE_MASTER_KEY', 'KAJOVO_API_MCP_SERVER_URL', 'KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY', 'KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY', 'KAJOVO_API_WEB_PUSH_VAPID_SUBJECT', 'KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64')
+          target = Path(os.environ['GITHUB_ENV'])
+          with target.open('a', encoding='utf-8') as stream:
+              for name in names:
+                  value = os.environ.get(name, '')
+                  delimiter = 'hotel_env_' + secrets.token_hex(16)
+                  while delimiter in value:
+                      delimiter = 'hotel_env_' + secrets.token_hex(16)
+                  stream.write(f'{name}<<{delimiter}\n{value}\n{delimiter}\n')
+          target.chmod(0o600)
+          PY
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
