@@ -7,6 +7,16 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Restore the hosted Python cache path inside job containers
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Cached pip scripts retain /opt/hostedtoolcache in their shebang;
+        # GitHub mounts that directory at /__t inside container jobs.
+        if [ -d /__t ] && [ ! -e /opt/hostedtoolcache ]; then
+          mkdir -p /opt
+          ln -s /__t /opt/hostedtoolcache
+        fi
     - uses: actions/setup-python@v6
       with:
         python-version: '3.11'

@@ -83,7 +83,10 @@ def classify(paths):
         # portable Voice and unknown files all propagate through every consumer.
         return _full(paths, 'unknown_or_shared_runtime_dependency')
     out['api'] = out['python']
-    out['runtime_images'] = out['deployable'] = out['deploy_required']
+    # CI success is not root-coordinator acceptance: a later timer may roll
+    # back the preceding runtime. Always retain a verified restoration bundle.
+    out['runtime_images'] = True
+    out['deployable'] = out['deploy_required']
     out['reasons'] = sorted(set(out['reasons'])) or ['no_runtime_changes']
     return out
 
@@ -110,10 +113,10 @@ def _github_json(path, token):
 
 
 def base_ci_verified(base):
-    """A scoped delta is safe only after CI *and actual deployment* of its base.
+    """Authenticate completed baseline tests, never production acceptance.
 
-    An observer/preflight workflow success with a skipped production job proves
-    no runtime acceptance. Otherwise a docs push can strand undeployed changes.
+    Every candidate still builds runtime images, and production preparation
+    always consults the live exact-pair coordinator, including cosmetic deltas.
     """
     token = os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
     if not token or not re.fullmatch(r'[a-f0-9]{40}', base or ''):
@@ -126,22 +129,7 @@ def base_ci_verified(base):
         latest = max(matching, key=lambda run: (run.get('created_at', ''), run.get('id', 0), run.get('run_attempt', 1)), default={})
         if latest.get('status') != 'completed' or latest.get('conclusion') != 'success':
             return False
-        deployments = _github_json(f'actions/workflows/deploy-production.yml/runs?head_sha={base}&per_page=100', token)['workflow_runs']
-        deployments = sorted((run for run in deployments if run.get('head_sha') == base
-                              and run.get('head_branch') == 'main'),
-                             key=lambda run: (run.get('created_at', ''), run.get('id', 0)), reverse=True)
-        for run in deployments:
-            jobs = _github_json(f'actions/runs/{run["id"]}/jobs?per_page=100', token)['jobs']
-            deployed = [job for job in jobs if job.get('name') == 'deploy-production'
-                        and job.get('conclusion') != 'skipped']
-            if deployed:
-                job = deployed[-1]
-                return job.get('status') == 'completed' and job.get('conclusion') == 'success'
-            # A running observer may still initiate a production job. The prior
-            # deployment is insufficient to prove the current baseline state.
-            if run.get('status') != 'completed':
-                return False
-        return False
+        return True
     except (OSError, ValueError, KeyError, TypeError):
         return False
 

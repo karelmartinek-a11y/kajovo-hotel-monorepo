@@ -45,10 +45,11 @@ def test_unknown_shared_protocol_security_and_toolchain_changes_fail_closed(path
     assert result['review_profile'] == 'full'
 
 
-def test_documentation_has_no_runtime_deploy_or_browser_work():
+def test_notes_keep_restoration_images_without_unrelated_browser_work():
     result = router.classify(['docs/notes/user-guide.md', 'docs/archive/history.md'])
     assert result['static']
-    assert not any(result[key] for key in router.FLAGS if key != 'static')
+    assert result['runtime_images']
+    assert not any(result[key] for key in router.FLAGS if key not in {'static', 'runtime_images'})
     assert result['review_profile'] == 'none'
 
 
@@ -149,13 +150,13 @@ def test_missing_ci_credentials_cannot_authenticate_baseline(monkeypatch):
 
 
 @pytest.mark.parametrize('production_job,expected', [
-    (None, False),
-    ({'name': 'deploy-production', 'status': 'completed', 'conclusion': 'skipped'}, False),
-    ({'name': 'deploy-production', 'status': 'queued', 'conclusion': None}, False),
-    ({'name': 'deploy-production', 'status': 'completed', 'conclusion': 'failure'}, False),
+    (None, True),
+    ({'name': 'deploy-production', 'status': 'completed', 'conclusion': 'skipped'}, True),
+    ({'name': 'deploy-production', 'status': 'queued', 'conclusion': None}, True),
+    ({'name': 'deploy-production', 'status': 'completed', 'conclusion': 'failure'}, True),
     ({'name': 'deploy-production', 'status': 'completed', 'conclusion': 'success'}, True),
 ])
-def test_green_ci_and_observer_without_actual_deploy_cannot_create_selective_baseline(monkeypatch, production_job, expected):
+def test_test_baseline_does_not_claim_runtime_acceptance_or_omit_restoration(monkeypatch, production_job, expected):
     import io
     import json
     monkeypatch.setenv('GH_TOKEN', 'fixture-no-live-call')
@@ -171,3 +172,10 @@ def test_green_ci_and_observer_without_actual_deploy_cannot_create_selective_bas
         return io.BytesIO(json.dumps(data).encode())
     monkeypatch.setattr(router, 'urlopen', response)
     assert router.base_ci_verified(sha) is expected
+
+
+def test_notes_after_late_root_rollback_still_have_current_candidate_images():
+    result = router.classify(["docs/notes/progress.md"])
+    assert result["runtime_images"] is True
+    assert result["deploy_required"] is False
+    assert result["review_profile"] == "none"

@@ -45,8 +45,8 @@ def validate(needs: dict) -> dict:
             actual = needs[job].get("result")
             if actual != expected:
                 raise ValueError(f"{job}: {actual}, expected {expected}")
-        if scope["deploy_required"] != scope["runtime_images"]:
-            raise ValueError("Deployment scope must require verified immutable images")
+        if scope["runtime_images"] != "true":
+            raise ValueError("Every candidate requires verified immutable restoration images")
         if scope["api"] != scope["python"]:
             raise ValueError("API and Python dependency scopes must agree")
         if scope["full"] == "true" and any(scope[flag] != "true" for flag in FLAGS):

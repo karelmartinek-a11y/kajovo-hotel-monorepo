@@ -106,7 +106,6 @@ jobs:
         run: python3 scripts/read_release_gate_artifact.py --path "artifacts/release-gate/release-gate-${DEPLOY_SHA}.json" --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
       - name: Check root coordinator readiness once after the verified gate
         id: ready
-        if: steps.scope.outputs.deploy_required == 'true'
         env:
           COORDINATED_MCP_SHA: ${{ steps.gate.outputs.mcp_sha }}
           REQUESTED_MCP_SHA: ${{ github.event.client_payload.mcp_sha || '' }}

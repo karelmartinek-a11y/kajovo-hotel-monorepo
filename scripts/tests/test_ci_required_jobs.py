@@ -17,11 +17,13 @@ SPEC.loader.exec_module(GATE)
 
 def evidence(full=False):
     outputs = {flag: str(full).lower() for flag in GATE.FLAGS}
+    outputs["runtime_images"] = "true"
     outputs["review_profile"] = "full" if full else "none"
     jobs = {
         name: {"result": "success" if full or flag is None else "skipped"}
         for name, flag in GATE.REQUIRED_JOBS.items()
     }
+    jobs["api-runtime-image"]["result"] = "success"
     jobs["scope"]["outputs"] = outputs
     return jobs
 
@@ -62,7 +64,7 @@ class RequiredJobsTests(unittest.TestCase):
 
     def test_deployable_candidate_cannot_skip_verified_images(self):
         candidate = evidence()
-        candidate["scope"]["outputs"]["deploy_required"] = "true"
+        candidate["scope"]["outputs"].update(deploy_required="true", runtime_images="false")
         with self.assertRaises(ValueError):
             GATE.validate(candidate)
 
