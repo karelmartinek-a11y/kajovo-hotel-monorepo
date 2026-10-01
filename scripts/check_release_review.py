@@ -8,6 +8,14 @@ def api(path):
     return json.loads(subprocess.check_output(['gh', 'api', path]))
 
 
+def completed_review(review, head):
+    body = review.get('body') or ''
+    return (review['commit_id'] == head and review['state'] in ['APPROVED', 'COMMENTED']
+            and review['user']['login'] == 'copilot-pull-request-reviewer[bot]'
+            and any(heading in body for heading in ['## Copilot review overview', '## Pull request overview'])
+            and 'unable to review' not in body.casefold())
+
+
 def verify(sha, pr):
     repo = 'karelmartinek-a11y/kajovo-hotel-monorepo'
     assert api(f'repos/{repo}/commits/main')['sha'] == sha, 'release_must_be_current_main'
@@ -16,9 +24,7 @@ def verify(sha, pr):
     pull = api(f'repos/{repo}/pulls/{pr}')
     assert pull['merged'] and pull['merge_commit_sha'] == sha, 'reviewed_release_required'
     reviews = api(f'repos/{repo}/pulls/{pr}/reviews')
-    assert any(r['commit_id'] == pull['head']['sha'] and r['state'] in ['APPROVED', 'COMMENTED']
-               and r['user']['login'] == 'copilot-pull-request-reviewer[bot]'
-               for r in reviews), 'completed_head_review_required'
+    assert any(completed_review(r, pull['head']['sha']) for r in reviews), 'completed_head_review_required'
     for number in {122, int(pr)}:
         query = 'query { repository(owner:"karelmartinek-a11y",name:"kajovo-hotel-monorepo") { pullRequest(number:NUMBER) { reviewThreads(first:100) { nodes { isResolved } pageInfo { hasNextPage } } } } }'.replace('NUMBER', str(number))
         data = json.loads(subprocess.check_output(['gh', 'api', 'graphql', '-f', 'query=' + query]))

@@ -127,6 +127,13 @@ def test_release_review_is_independent_of_green_ci(monkeypatch):
         monkeypatch.setattr(review, 'api', lambda path: [{'commit_id': commit, 'state': 'COMMENTED', 'user': {'login': author}}] if path.endswith('/reviews') else original_api(path))
         with pytest.raises(AssertionError, match='completed_head_review_required'):
             review.verify('new', '123')
+    for body in ['', 'Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.',
+                 '## Copilot review overview\nCopilot was unable to review this pull request.']:
+        monkeypatch.setattr(review, 'api', lambda path: [{'commit_id': 'topic', 'state': 'COMMENTED',
+                            'user': {'login': 'copilot-pull-request-reviewer[bot]'}, 'body': body}]
+                            if path.endswith('/reviews') else original_api(path))
+        with pytest.raises(AssertionError, match='completed_head_review_required'):
+            review.verify('new', '123')
 
 
 def test_post_acceptance_cleanup_refuses_to_touch_rollback_early(tmp_path, monkeypatch):
@@ -184,7 +191,8 @@ def test_release_review_checks_resolved_threads_and_pagination(monkeypatch):
         if 'actions/workflows' in endpoint:
             return {'workflow_runs': [{'head_branch': 'main', 'conclusion': 'success'}]}
         if endpoint.endswith('/reviews'):
-            return [{'commit_id': 'topic-sha', 'state': 'COMMENTED', 'user': {'login': 'copilot-pull-request-reviewer[bot]'}}]
+            return [{'commit_id': 'topic-sha', 'state': 'COMMENTED', 'user': {'login': 'copilot-pull-request-reviewer[bot]'},
+                     'body': '## Copilot review overview\nNo new findings.'}]
         return {'merged': True, 'merge_commit_sha': 'main-sha', 'head': {'sha': 'topic-sha'}}
     monkeypatch.setattr(review, 'api', api)
     import pytest
