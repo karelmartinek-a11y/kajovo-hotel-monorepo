@@ -5,7 +5,7 @@ import {SpokenCompletion} from './mcp_spoken_completion.mjs';
 
 const devices = [{name: 'synthetic lamp'}];
 const event = (type, response_id = 'grounded') => ({type, response_id});
-const search = (response_id = 'grounded', status = 'ok') => ({type: 'response.output_item.done', response_id, item: {type: 'mcp_call', name: 'search_devices', arguments: JSON.stringify({name:'recepce'}), output: JSON.stringify({status, devices})}});
+const search = (response_id = 'grounded', status = 'ok') => ({type: 'response.output_item.done', response_id, item: {id:'search-call',type: 'mcp_call', name: 'search_devices', arguments: JSON.stringify({name:'recepce'}), output: JSON.stringify({status, devices})}});
 function speech(proof) {
   proof.handle(search());
   proof.handle(event('output_audio_buffer.started')); proof.sample(2);
@@ -84,4 +84,31 @@ test('duplicate created event cannot promote a preexisting unrelated response', 
   proof.handle({...event('response.output_audio_transcript.done'),transcript:'Synthetic lamp'});
   proof.handle(done('completed')); proof.handle(event('output_audio_buffer.stopped'));
   assert.equal(proof.ready(devices),false);
+});
+
+test('followup requires completed parent and every correlated call terminal', () => {
+  for (const incomplete of ['parent', 'second_call']) {
+    const proof = new SpokenCompletion(); proof.handle(search('parent'));
+    if (incomplete === 'second_call') {
+      proof.handle({type:'response.output_item.added',response_id:'parent',item:{type:'mcp_call',id:'other-call'}});
+      proof.handle({type:'response.done',response:{id:'parent',status:'completed'}});
+    }
+    proof.handle({type:'response.created',response:{id:'grounded'}});
+    proof.handle(event('output_audio_buffer.started')); proof.sample(2);
+    proof.handle({...event('response.output_audio_transcript.done'),transcript:'Synthetic lamp'});
+    proof.handle(done('completed')); proof.handle(event('output_audio_buffer.stopped'));
+    assert.equal(proof.ready(devices),false);
+  }
+});
+test('cleared parent or barge-in invalidates result chain', () => {
+  for (const interruption of [event('output_audio_buffer.cleared','parent'), {type:'input_audio_buffer.speech_started'}]) {
+    const proof = new SpokenCompletion(); proof.handle(search('parent'));
+    proof.handle({type:'response.done',response:{id:'parent',status:'completed'}});
+    proof.handle(interruption);
+    proof.handle({type:'response.created',response:{id:'grounded'}});
+    proof.handle(event('output_audio_buffer.started')); proof.sample(2);
+    proof.handle({...event('response.output_audio_transcript.done'),transcript:'Synthetic lamp'});
+    proof.handle(done('completed')); proof.handle(event('output_audio_buffer.stopped'));
+    assert.equal(proof.ready(devices),false);
+  }
 });

@@ -2,17 +2,22 @@
 export class SpokenCompletion {
   constructor() {this.turns = new Map(); this.playing = null; this.search = null;}
   turn(id) {
-    if (!this.turns.has(id)) this.turns.set(id, {transcript: '', search: null, completed: false, stopped: false, blocked: false, peak: 0});
+    if (!this.turns.has(id)) this.turns.set(id, {transcript: '', search: null, completed: false, stopped: false, blocked: false, peak: 0, pending: new Set(), terminal: new Set()});
     return this.turns.get(id);
   }
   handle(event) {
+    if (event.type === 'input_audio_buffer.speech_started') this.search = null;
     const id = event.response_id || event.response?.id;
     if (!id) return;
     const existed = this.turns.has(id);
     const turn = this.turn(id);
+    if (event.item?.type === 'mcp_call' && event.item.id) {
+      if (event.type === 'response.output_item.added' && !turn.terminal.has(event.item.id)) turn.pending.add(event.item.id);
+      if (event.type === 'response.output_item.done') {turn.terminal.add(event.item.id); turn.pending.delete(event.item.id);}
+    }
     if (event.type === 'response.output_item.done' && event.item?.type === 'mcp_call' && event.item.name === 'search_devices') {
       this.search = null;
-      if (event.item.error || turn.blocked) return;
+      if (event.item.error || !event.item.id || turn.blocked) return;
       try {
         const args = JSON.parse(event.item.arguments);
         let output = JSON.parse(event.item.output);
@@ -27,11 +32,14 @@ export class SpokenCompletion {
         turn.transcript = '';
       } catch {return;}
     }
-    if (event.type === 'response.created' && !existed && this.search && id !== this.search.parent && !turn.blocked) {
+    if (event.type === 'response.created' && !existed && this.search && id !== this.search.parent && this.turn(this.search.parent).completed && !this.turn(this.search.parent).blocked && this.turn(this.search.parent).pending.size === 0 && !turn.blocked) {
       turn.search = this.search;
     }
     if (event.type === 'response.output_audio_transcript.done') turn.transcript += event.transcript || '';
     if (event.type === 'response.done') {
+      for (const item of event.response?.output || []) {
+        if (item.type === 'mcp_call' && !turn.terminal.has(item.id)) turn.pending.add(item.id);
+      }
       turn.completed = event.response?.status === 'completed';
       turn.blocked ||= !turn.completed;
       if (turn.blocked && this.search?.parent === id) this.search = null;
@@ -43,6 +51,7 @@ export class SpokenCompletion {
     }
     if (event.type === 'output_audio_buffer.cleared') {
       turn.blocked = true;
+      if (this.search?.parent === id) this.search = null;
       if (this.playing === id) this.playing = null;
     }
   }
