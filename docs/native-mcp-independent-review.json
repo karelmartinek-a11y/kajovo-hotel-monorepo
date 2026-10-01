@@ -872,7 +872,7 @@
       "correctness": true,
       "production_reliability": true,
       "title": "Property-absence check rejects nullable unused connector echo",
-      "repro": "Canonical URL/label MCP tool with connector_id:null makes previous ! (connector_id in tool) return false. Independently reproduced from a sanitized fixture conforming to the generated official OpenAPI response type.",
+      "repro": "Canonical URL/label MCP tool with unused connector selector:null makes previous ! (unused connector selector in tool) return false. Independently reproduced from a sanitized fixture conforming to the generated official OpenAPI response type.",
       "impact": "Valid native MCP session could fail production acceptance solely due to unused transport echoed as null.",
       "regression_tests": [
         "scripts/mcp_session_echo_guard.test.mjs: exact session.created/updated nullable native MCP echoes pass",
