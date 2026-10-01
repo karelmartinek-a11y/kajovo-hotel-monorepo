@@ -1,0 +1,30 @@
+name: Deterministic workspace dependencies
+description: Install the packageManager version and frozen workspace dependencies from a cached pnpm store.
+inputs:
+  install:
+    description: Install workspace packages (false for dependency-free source checks)
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+    - name: Activate the declared pnpm version
+      shell: bash
+      run: |
+        set -euo pipefail
+        node -e 'if (require("./package.json").packageManager !== "pnpm@10.34.4") throw new Error("Update the CI pnpm pin together with packageManager")'
+        corepack enable
+        corepack prepare pnpm@10.34.4 --activate
+        pnpm config set store-dir "$GITHUB_WORKSPACE/.pnpm-store"
+    - uses: actions/cache@v5
+      if: inputs.install == 'true'
+      with:
+        path: .pnpm-store
+        key: ${{ runner.os }}-${{ runner.arch }}-pnpm-10.34.4-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: ${{ runner.os }}-${{ runner.arch }}-pnpm-10.34.4-
+    - name: Install frozen dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

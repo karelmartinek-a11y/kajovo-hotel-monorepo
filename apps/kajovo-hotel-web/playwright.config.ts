@@ -31,9 +31,13 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: false,
   workers: 4,
+  reporter: process.env.CI
+    ? [['line'], ['junit', { outputFile: 'test-results/junit.xml' }], ['html', { open: 'never' }]]
+    : 'list',
   use: {
     baseURL,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   webServer: {
     command: webServerCommand,

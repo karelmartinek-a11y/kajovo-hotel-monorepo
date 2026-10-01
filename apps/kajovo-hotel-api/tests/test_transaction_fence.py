@@ -18,10 +18,11 @@ def fence(tmp_path):
     executable.write_text('#!' + sys.executable + '\nimport fcntl,sys\nfcntl.flock(int(sys.argv[-1]), fcntl.LOCK_EX)\n')
     executable.chmod(0o755)
     (tmp_path / 'runtime.lock').touch()
+    (tmp_path / '.coordinated-mcp-sha').write_text('c' * 40)
     source = (ROOT / 'infra/ops/deploy-production.sh').read_text()
     fence = source[source.index('TRANSACTION_PUBLIC_DIR='):source.index('require_cmd()')]
     marker = tmp_path / 'mutated'
-    script = 'set -eu\nDEPLOY_SOURCE_SHA=' + 'a' * 40 + '\n' + fence + '\ntouch "' + str(marker) + '"'
+    script = 'set -eu\nROOT_DIR="' + str(tmp_path) + '"\nDEPLOY_SOURCE_SHA=' + 'a' * 40 + '\n' + fence + '\ntouch "' + str(marker) + '"'
     environment = {**os.environ, 'PATH': str(tmp_path) + ':' + os.environ['PATH'], 'TRANSACTION_PUBLIC_DIR': str(tmp_path)}
     # The real Linux image supplies python3; use this test interpreter locally.
     python = tmp_path / 'python3'
@@ -43,7 +44,7 @@ def test_delayed_worker_rechecks_revocation_after_exclusive_fence(tmp_path, fenc
     import fcntl
     script, environment, marker = fence
     status = tmp_path / 'transaction.json'
-    status.write_text(json.dumps({'phase': 'active', 'hotel_sha': 'a' * 40}))
+    status.write_text(json.dumps({'phase': 'active', 'hotel_sha': 'a' * 40, 'sha': 'c' * 40}))
     with (tmp_path / 'runtime.lock').open('r') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         worker = subprocess.Popen(['bash', '-c', script], env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -59,6 +60,15 @@ def test_delayed_worker_rechecks_revocation_after_exclusive_fence(tmp_path, fenc
 
 def test_active_exact_worker_can_continue(tmp_path, fence):
     script, environment, marker = fence
-    (tmp_path / 'transaction.json').write_text(json.dumps({'phase': 'active', 'hotel_sha': 'a' * 40}))
+    (tmp_path / 'transaction.json').write_text(json.dumps({'phase': 'active', 'hotel_sha': 'a' * 40, 'sha': 'c' * 40}))
     subprocess.run(['bash', '-c', script], env=environment, check=True)
     assert marker.exists()
+
+
+def test_same_hotel_sha_with_different_mcp_worker_cannot_mutate_runtime(tmp_path, fence):
+    script, environment, marker = fence
+    (tmp_path / 'transaction.json').write_text(json.dumps({'phase': 'active', 'hotel_sha': 'a' * 40, 'sha': 'd' * 40}))
+    result = subprocess.run(['bash', '-c', script], env=environment, capture_output=True)
+    assert result.returncode != 0
+    assert b'reviewed MCP transaction mismatch' in result.stderr
+    assert not marker.exists()

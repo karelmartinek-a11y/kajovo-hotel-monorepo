@@ -33,6 +33,10 @@ def cleanup(state_path=Path('/var/lib/home-assistant-mcp-control/cutover.json'))
         if not used:
             subprocess.run(['docker', 'image', 'rm', image], check=True, stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL)
+    # Cache maintenance happens only after acceptance, is age bounded, and
+    # keeps a useful cache budget. Runtime images/volumes are not prune inputs.
+    subprocess.run(['docker', 'builder', 'prune', '--force', '--filter', 'until=168h',
+                    '--keep-storage', '2GB'], check=True, stdout=subprocess.DEVNULL)
     print('Accepted hotel release/image cleanup PASS')
 
 

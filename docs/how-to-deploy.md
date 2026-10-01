@@ -28,7 +28,30 @@ Voice Core ukládá ciphertext pod samostatným `KAJOVO_API_VOICE_MASTER_KEY`. V
 
 ## Coordinated native MCP release
 
-Production deploy is automatically armed only by a successful exact-main CI Gates run and remains manually dispatchable for recovery/operations. CI Gates is the sole authoritative automatic full validation on main; CI Full and CI Release are manual diagnostics. check_release_review.py requires the exact current main SHA, its successful CI Gates run and content-bound Independent Codex multi-agent forensic review; a merged PR number is optional provenance because direct pushes to main are supported. The trusted main workflow checkout executes this gate before candidate checkout or production credential injection. CI concurrency is source-SHA-bound and never cancels a different revision. The deploy workflow then waits for the root-owned coordinated MCP transaction to be active for the exact hotel SHA with the rollback deadline armed. Private preflight and rollback preparation therefore remain prerequisites to any runtime mutation. Six distinct reviewers A–F cover cumulative resulting trees of both repositories with zero open CRITICAL/HIGH/MEDIUM findings. Paid external bot reviews are not a release dependency; this evidence is not human review.
+Production deployment is selected by a successful exact-main CI Gates run, an authenticated `coordinated-release-ready` repository dispatch, a ten-minute scheduled readiness observer, or manual workflow dispatch. The observer checks GitHub's successful **actual deployment job** marker first; a green readiness job is never evidence of deployment or coordinated acceptance. It does not rebuild or rerun CI. A completed runtime deployment of the same hotel SHA is skipped by the scheduled observer. Explicit dispatch rechecks the transaction instead of bypassing this check; the managed worker consumes its upload readiness marker on exit so subsequent transactions require fresh preparation.
+
+`check_release_review.py` requires current main, its latest completed successful CI Gates run and the applicable content-bound independent review. It emits the exact CI run ID and the reviewed MCP SHA. Trusted main code executes this gate before candidate checkout or production credential injection. Preparation downloads the successful gate's SHA-bound scope artifact: documentation-only changes do not request a runtime release. Before the first SSH operation, the configured address must resolve solely to the approved production IPv4. A single read checks the root-published transaction: phase `active`, exact hotel SHA, exact **reviewed MCP SHA**, worker not already complete, and an armed rollback timer. If the transaction is not READY, the actual deployment job is skipped immediately; no runner waits thirty minutes for preflight. The next observer or readiness event checks again. GitHub schedules can be delayed; ten minutes is the nominal interval, not a deadline guarantee.
+
+The coordinator may dispatch readiness immediately after its successful activation without any mandatory external code change; the periodic observer provides automatic fallback. A caller with existing authorized GitHub credentials can send:
+
+```sh
+gh api --method POST repos/karelmartinek-a11y/kajovo-hotel-monorepo/dispatches \
+  -f event_type=coordinated-release-ready \
+  -f 'client_payload[deploy_sha]=<exact current main SHA>' \
+  -f 'client_payload[mcp_sha]=<exact reviewed MCP SHA>'
+```
+
+The event is only a wake-up signal; it cannot assert readiness, bypass CI/review, choose another MCP revision, or inject production credentials. The server-owned transaction and timer are checked again before upload and under the runtime fence before publication. Production deployment concurrency never cancels an active cutover. CI validation of superseded revisions is cancelled separately.
+
+## Immutable production image bundle
+
+The authoritative `api-runtime-image` job builds API, web and admin once on `linux/amd64` with independent Docker GHA caches. It executes the API imports and the real host/frontend/API proxy test against the **same immutable image IDs** exported for production. `release-images-<SHA>` contains `manifest.json` and `images.tar.gz`, retained for seven days. The strict manifest binds source SHA, architecture, all three image tags and IDs, successful checks and SHA256 of the whole exported archive. Docker image IDs are SHA256 configuration content digests, not registry manifest digests.
+
+Deployment downloads the bundle only from the exact successful Gates run ID, verifies its hash before production credentials, streams it to the server without buffering a gigabyte in memory, and verifies it again before signaling the worker. The root-managed worker imports and validates the actual image IDs **before stopping any current container**. Its generated Compose override uses those IDs with `pull_policy: never`; production `up` always specifies `--no-build`. There is no remote-build fallback. Missing or expired artifacts require a fresh full CI run for the same current main SHA. The runtime artifact and subsequent server verification compare the running Docker image IDs with the tested manifest.
+
+Deployment runs live browser checks in the version-matched Playwright image rather than installing browser/system dependencies repeatedly. Browser/package mismatch fails explicitly. GitHub stores CI failure traces/reports; live production smoke keeps aggregate evidence and avoids storing secrets, transcripts or request bodies.
+
+Uploaded source archives are removed after extraction. Source releases and captured rollback images stay protected throughout the transaction. Age-bounded Docker build-cache maintenance (`until=168h`, `--keep-storage 2GB`) runs only during accepted cleanup, outside the deployment critical path; runtime images and database/media volumes are not cache prune inputs.
 
 Signing material originates only at /etc/home-assistant-mcp/signing.key. Root MCP provisioning preserves it and hands it to the existing private persisted hotel env. The deploy adapter compares the preserved key against the root-published SHA256 fingerprint before restarting API; it never uploads a GitHub signing key. Neither key nor fingerprint is logged.
 

@@ -1,5 +1,6 @@
 """Check the actual host + frontend Nginx chain using isolated Docker runtimes."""
 import http.client
+import argparse
 import shutil
 import socket
 import ssl
@@ -16,7 +17,8 @@ def run(*args):
     return subprocess.run(args, check=True, capture_output=True, text=True).stdout.strip()
 
 
-def main():
+def main(images=None):
+    images = images or {"api": "voice-core-api-check", "admin": "voice-core-admin-check", "web": "voice-core-web-check"}
     (ROOT / ".tmp").mkdir(exist_ok=True)
     prefix = "voice-proxy-" + uuid.uuid4().hex[:10]
     names = []
@@ -35,7 +37,7 @@ def main():
         (temp / "host.conf").write_text(config)
         run("docker", "network", "create", prefix)
         try:
-            for service, image in [("api", "voice-core-api-check"), ("admin", "voice-core-admin-check"), ("web", "voice-core-web-check")]:
+            for service, image in images.items():
                 name = prefix + "-" + service
                 names.append(name)
                 command = ["docker", "run", "-d", "--name", name, "--network", prefix, "--network-alias", service]
@@ -60,10 +62,13 @@ def main():
                 return status, headers, body
             for attempt in range(60):
                 try:
-                    if request("/backend-health")[0] == 200: break
-                except (OSError, http.client.HTTPException): pass
+                    if request("/backend-health")[0] == 200:
+                        break
+                except (OSError, http.client.HTTPException):
+                    pass
                 time.sleep(.5)
-            else: raise AssertionError("Isolated API did not become healthy")
+            else:
+                raise AssertionError("Isolated API did not become healthy")
             for path, expected, microphone in [("/admin/hlasovy-chat", 200, "microphone=(self)"),
                 ("/", 200, "microphone=()"), ("/api/v1/admin/voice-core/config", 401, "microphone=()")]:
                 status, headers, _body = request(path)
@@ -84,4 +89,9 @@ def main():
 if __name__ == "__main__":
     if not shutil.which("docker"):
         raise SystemExit("Docker is required to verify the production proxy chain")
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--api-image", default="voice-core-api-check")
+    parser.add_argument("--web-image", default="voice-core-web-check")
+    parser.add_argument("--admin-image", default="voice-core-admin-check")
+    args = parser.parse_args()
+    main({"api": args.api_image, "web": args.web_image, "admin": args.admin_image})
