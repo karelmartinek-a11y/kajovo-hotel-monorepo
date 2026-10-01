@@ -5,7 +5,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-
 RELEASE_ROOT = Path('/home/deploy-hotel/kajovo-deploy-releases')
 
 
