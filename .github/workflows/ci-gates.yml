@@ -1,11 +1,14 @@
 name: CI Gates - Kajovo Hotel
 
 on:
-  pull_request:
   push:
     branches:
       - main
   workflow_dispatch:
+
+concurrency:
+  group: ci-gates-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -34,9 +37,8 @@ jobs:
           docker build -f apps/kajovo-hotel-web/Dockerfile -t voice-core-web-check .
           python3 scripts/verify_voice_core_proxy.py
 
-  release-gate:
+  web-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -59,38 +61,57 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install API dependencies
+      - name: Install API Python dependencies (minimal)
         run: |
           python -m pip install --upgrade pip
+          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
           python -m pip install ./packages/voice-core-server
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
-      - name: Validate admin credential environment
-        run: python scripts/check_admin_credentials_env.py
+      - name: Install Playwright browsers
+        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps
 
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
+      - name: Web tests (Playwright)
+        run: pnpm --filter @kajovo/kajovo-hotel-web test
 
-      - name: Run unified release gate
-        env:
-          RUN_FRONTEND_GATES: "1"
-          RUN_E2E_SMOKE: "1"
-        run: python scripts/release_gate.py
+  release-gate:
+    needs:
+      - api-runtime-image
+      - web-tests
+      - e2e-smoke
+      - guardrails
+      - lint
+      - typecheck
+      - unit-tests
+      - portable-voice-core
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ needs.api-runtime-image.result }}" = "success"
+          test "${{ needs.web-tests.result }}" = "success"
+          test "${{ needs.e2e-smoke.result }}" = "success"
+          test "${{ needs.guardrails.result }}" = "success"
+          test "${{ needs.lint.result }}" = "success"
+          test "${{ needs.typecheck.result }}" = "success"
+          test "${{ needs.unit-tests.result }}" = "success"
+          test "${{ needs.portable-voice-core.result }}" = "success"
+          echo "All authoritative main CI jobs PASS for ${GITHUB_SHA}"
+
+      - name: Write release gate artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts/release-gate
+          printf '{"sha":"%s","overall_status":"PASS","workflow":"ci-gates"}\n' "${GITHUB_SHA}" > "artifacts/release-gate/release-gate-${GITHUB_SHA}.json"
 
       - name: Upload release gate artifact
-        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: release-gate-artifact
           path: artifacts/release-gate/*.json
-          if-no-files-found: warn
-
+          if-no-files-found: error
 
   e2e-smoke:
     runs-on: ubuntu-latest

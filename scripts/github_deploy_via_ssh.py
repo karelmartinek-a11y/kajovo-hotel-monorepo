@@ -286,6 +286,32 @@ def cmd_check_helper() -> None:
     )
 
 
+def cmd_check_transaction() -> None:
+    deploy_sha = env("DEPLOY_SHA")
+    if len(deploy_sha) != 40 or any(char not in "0123456789abcdef" for char in deploy_sha):
+        raise SystemExit("Invalid DEPLOY_SHA for coordinated transaction check")
+    quoted_sha = shlex.quote(deploy_sha)
+    run_remote(
+        "set -euo pipefail; "
+        f"DEPLOY_SHA={quoted_sha} python3 - <<'PY'\n"
+        "import json, os\n"
+        "from pathlib import Path\n"
+        "state = json.loads(Path('/etc/home-assistant-mcp-public/transaction.json').read_text())\n"
+        "expected = os.environ['DEPLOY_SHA']\n"
+        "if state.get('phase') != 'active':\n"
+        "    raise SystemExit('coordinated_transaction_not_active')\n"
+        "if state.get('hotel_sha') != expected:\n"
+        "    raise SystemExit('coordinated_transaction_hotel_sha_mismatch')\n"
+        "mcp_sha = str(state.get('sha') or '')\n"
+        "if len(mcp_sha) != 40 or any(c not in '0123456789abcdef' for c in mcp_sha):\n"
+        "    raise SystemExit('coordinated_transaction_mcp_sha_invalid')\n"
+        "print('Exact hotel SHA coordinated transaction: PASS')\n"
+        "PY\n"
+        "systemctl is-active --quiet home-assistant-mcp-rollback.timer; "
+        "echo 'Rollback deadline armed: PASS'"
+    )
+
+
 def cmd_deploy() -> None:
     archive = env("RELEASE_ARCHIVE")
     if not archive:
@@ -337,11 +363,13 @@ def main() -> int:
     if len(sys.argv) != 2:
         raise SystemExit(
             "Usage: github_deploy_via_ssh.py "
-            "<check-helper|deploy|verify-certificate|verify-artifact>"
+            "<check-helper|check-transaction|deploy|verify-certificate|verify-artifact>"
         )
     command = sys.argv[1]
     if command == "check-helper":
         cmd_check_helper()
+    elif command == "check-transaction":
+        cmd_check_transaction()
     elif command == "deploy":
         cmd_deploy()
     elif command == "verify-certificate":

@@ -1,16 +1,21 @@
 name: Deploy - hotel.hcasc.cz
 
 on:
+  workflow_run:
+    workflows:
+      - CI Gates - Kajovo Hotel
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       deploy_sha:
         required: true
         type: string
-        description: Reviewed main SHA with successful CI Gates
+        description: Exact current main SHA with successful CI Gates
       review_pr:
-        required: true
+        required: false
         type: string
-        description: Completed review PR for this release
+        description: Optional merged PR number for additional provenance validation
 
 concurrency:
   group: deploy-hotel-hcasc-production
@@ -23,12 +28,17 @@ permissions:
 
 jobs:
   deploy-production:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: production
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      DEPLOY_SHA: ${{ inputs.deploy_sha }}
+      DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.deploy_sha }}
+      REVIEW_PR: ${{ inputs.review_pr || '' }}
       DEPLOY_BASE_URL: https://hotel.hcasc.cz
       PRODUCTION_SERVER_IPV4: 89.221.222.92
       HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
@@ -50,17 +60,23 @@ jobs:
       KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz' }}
       KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
     steps:
-      - name: Checkout trusted workflow SHA
+      - name: Checkout exact deploy SHA
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Exact main CI and independent forensic review gate
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ inputs.deploy_sha }}
-          REVIEW_PR: ${{ inputs.review_pr }}
-        run: python3 scripts/check_release_review.py --sha "$RELEASE_SHA" --pr "$REVIEW_PR"
+          RELEASE_SHA: ${{ env.DEPLOY_SHA }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--sha "$RELEASE_SHA")
+          if [ -n "${REVIEW_PR:-}" ]; then
+            args+=(--pr "$REVIEW_PR")
+          fi
+          python3 scripts/check_release_review.py "${args[@]}"
 
       - name: Checkout verified deploy SHA
         uses: actions/checkout@v5
@@ -142,6 +158,19 @@ jobs:
             chmod 600 "$RUNNER_TEMP/hotel_deploy_key"
             echo "SSH_IDENTITY_FILE=$RUNNER_TEMP/hotel_deploy_key" >> "$GITHUB_ENV"
           fi
+
+      - name: Wait for coordinated MCP rollback transaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 360); do
+            if python3 scripts/github_deploy_via_ssh.py check-transaction; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "No active coordinated MCP transaction for DEPLOY_SHA=$DEPLOY_SHA" >&2
+          exit 1
 
       - name: Verify remote nginx sync helper
         shell: bash

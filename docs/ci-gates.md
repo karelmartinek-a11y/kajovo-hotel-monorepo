@@ -23,8 +23,10 @@ Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční 
 
 ## GitHub Actions mapování
 
-- `.github/workflows/ci-gates.yml`: `api-runtime-image`, `release-gate`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`, `portable-voice-core`
-- `.github/workflows/deploy-production.yml`: explicitní coordinated deploy po úspěšných exact-main CI Gates, CI Full a CI Release a content-bound Independent Codex multi-agent forensic review
+- `.github/workflows/ci-core.yml`: rychlá validace PR a pushů mimo `main`
+- `.github/workflows/ci-gates.yml`: jediná automatická autoritativní full validace `main`; `api-runtime-image`, `web-tests`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`, `portable-voice-core` běží paralelně a `release-gate` už pouze agreguje jejich výsledky
+- `.github/workflows/ci-full.yml` a `.github/workflows/release.yml`: pouze ruční diagnostika, na `main` se automaticky nespouštějí
+- `.github/workflows/deploy-production.yml`: po úspěšném exact-main CI Gates ověří content-bound Independent Codex review a čeká na aktivní root-owned MCP transakci pro přesný hotel SHA a ozbrojený rollback deadline; teprve potom smí nasadit
 
 Voice Core gate ověřuje importy a dependency hranice, izolovaný copy-out, Chromium/WebKit UI a produkční API/admin/web image s celým Nginx řetězcem. Placený smoke vyžaduje `VOICE_CORE_LIVE_SMOKE=1` a je v běžném CI zakázán; viz [Voice Core](voice-core.md).
 

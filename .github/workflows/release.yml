@@ -1,9 +1,6 @@
 name: CI Release - Kajovo Hotel
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
