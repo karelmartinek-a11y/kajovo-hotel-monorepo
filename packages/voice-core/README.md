@@ -4,4 +4,4 @@ React Voice Console, ORB, typed host ports, WebRTC lifecycle and explicit state 
 
 Install React 18, supply config/secret/session/telemetry adapters, render `VoiceConsole` and import `@voice-core/browser/styles.css`. `pnpm build` produces JavaScript and declarations; `pnpm test` verifies lifecycle behavior. `pnpm test:ui` runs the isolated test host.
 
-Hosts with server-owned function tools can supply an optional `VoiceToolExecutor` to `VoiceConsole`. It lists permitted function names and forwards validated calls to the host backend. The portable runtime deduplicates completed calls, correlates results and aborts/discards pending work on Stop. Default hosts have no executor or tools.
+The generic native MCP lifecycle tracks import readiness and correlates response calls. It waits for response.done and every corresponding tool completion before one follow-up response.create. Barge-in and Stop discard pending continuations; reconnect clears correlation state. The existing console presents MCP status and native approval requests. The browser never executes external capabilities.

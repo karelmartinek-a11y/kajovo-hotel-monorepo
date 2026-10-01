@@ -54,7 +54,7 @@ def test_catalog_is_central_and_defaults_supported():
 
 
 def test_optional_server_owned_tools_replace_tool_free_instructions():
-    tools = [{"type": "function", "name": "example", "parameters": {"type": "object"}}]
+    tools = [{"type": "mcp", "server_label": "example", "server_url": "https://example.test/mcp", "allowed_tools": ["example"], "require_approval": "never"}]
     session = session_config(VoiceCoreConfig(), "gpt-realtime-2.1", tools, "Use only example for connected data.\n")
     assert session["tools"] == tools and session["tool_choice"] == "auto"
     assert "Use only example" in session["instructions"]

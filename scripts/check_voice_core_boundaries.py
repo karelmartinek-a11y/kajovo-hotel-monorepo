@@ -1,4 +1,4 @@
-"""Enforce portable imports and tool-free defaults with optional host-owned tools."""
+"""Enforce portable imports and tool-free defaults with generic native MCP providers."""
 import ast
 import json
 import re
@@ -30,10 +30,10 @@ def check() -> list[str]:
                     failures.append(f"{file.relative_to(ROOT)} escapes portable source")
             elif dependency not in {"react", "react/jsx-runtime"}:
                 failures.append(f"{file.relative_to(ROOT)} imports {dependency}")
-        if re.search(r"Better Hotel|hcasc\.cz|OKO2|@kajovo/|Reservation|HotelVoice|SpeechRecognition|speechSynthesis", content):
+        if re.search(r"agentha|HomeAssistant|home_assistant|smart_technologies|Better Hotel|hcasc\.cz|OKO2|@kajovo/|Reservation|HotelVoice|SpeechRecognition|speechSynthesis", content):
             failures.append(f"{file.relative_to(ROOT)} contains a forbidden business or substitute-engine reference")
     server = ROOT / "packages/voice-core-server/src/voice_core_server"
-    allowed = {"voice_core_server", "pydantic", "httpx", "dataclasses", "typing", "time", "json"}
+    allowed = {"voice_core_server", "pydantic", "httpx", "dataclasses", "typing", "time", "json", "urllib"}
     for file in server.rglob("*.py"):
         if is_appledouble(file):
             continue
@@ -69,10 +69,10 @@ def check() -> list[str]:
     session = session_config(VoiceCoreConfig(), "gpt-realtime-2.1")
     if CAPABILITY_REGISTRY or session.get("tools") or session["tool_choice"] != "none":
         failures.append("v1 capabilities are not empty")
-    tool = {"type": "function", "name": "example", "parameters": {"type": "object"}}
+    tool = {"type": "mcp", "server_label": "example", "server_url": "https://example.test/mcp", "allowed_tools": ["read"], "require_approval": "never"}
     extension = session_config(VoiceCoreConfig(), "gpt-realtime-2.1", [tool], "Use only example.")
     if extension.get("tools") != [tool] or extension["tool_choice"] != "auto":
-        failures.append("Host-owned function tool extension is invalid")
+        failures.append("Generic remote MCP extension is invalid")
     return failures
 
 

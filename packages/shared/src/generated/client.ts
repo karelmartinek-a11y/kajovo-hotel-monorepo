@@ -633,32 +633,6 @@ export type ReservationAmenityUpdate = {
 export type SelectRoleRequest = {
   "role": string;
 };
-export type SmartArguments = {
-  "availability"?: "available" | "partially_available" | "unavailable" | "no_entities" | null;
-  "catalog_version"?: string | null;
-  "device_key"?: string | null;
-  "device_type"?: string | null;
-  "limit"?: number;
-  "location"?: string | null;
-  "max_value"?: number | null;
-  "min_value"?: number | null;
-  "offset"?: number;
-  "operation": "search" | "state" | "execute";
-  "property_key"?: string | null;
-  "query"?: string | null;
-  "state"?: string | null;
-  "state_key"?: string | null;
-};
-export type SmartResult = {
-  "catalog_version"?: string | null;
-  "code"?: string | null;
-  "devices"?: Array<Record<string, unknown>>;
-  "generated_at"?: string | null;
-  "has_more"?: boolean;
-  "offset"?: number;
-  "status": "ok" | "accepted" | "rejected" | "unknown";
-  "total_count"?: number;
-};
 export type SmtpOperationalStatusRead = {
   "can_send_real_email": boolean;
   "configured": boolean;
@@ -745,11 +719,6 @@ export type VoiceSessionRead = {
 export type VoiceSessionWrite = {
   "revision": number;
   "sdp": string;
-};
-export type VoiceToolCall = {
-  "arguments": SmartArguments;
-  "call_id": string;
-  "name": string;
 };
 export type WebPushKeys = {
   "auth": string;
@@ -892,9 +861,6 @@ export const apiClient = {
   },
   async createSessionApiV1AdminVoiceCoreSessionsPost(body: VoiceSessionWrite): Promise<VoiceSessionRead> {
     return request<VoiceSessionRead>('POST', `/api/v1/admin/voice-core/sessions`, undefined, body);
-  },
-  async callToolApiV1AdminVoiceCoreToolsPost(body: VoiceToolCall): Promise<SmartResult> {
-    return request<SmartResult>('POST', `/api/v1/admin/voice-core/tools`, undefined, body);
   },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);

@@ -104,6 +104,9 @@ for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines
     current[key] = value
 
 payload = json.loads(vars_path.read_text(encoding="utf-8"))
+for key in list(current):
+    if key.startswith("KAJOVO_API_" + "SMART_" + "TECHNOLOGIES_"):
+        current.pop(key)
 updates = {
     "KAJOVO_API_ADMIN_EMAIL": payload.get("KAJOVO_API_ADMIN_EMAIL") or payload.get("HOTEL_ADMIN_EMAIL", ""),
     "KAJOVO_API_ADMIN_PASSWORD": payload.get("KAJOVO_API_ADMIN_PASSWORD") or payload.get("HOTEL_ADMIN_PASSWORD", ""),
@@ -113,8 +116,8 @@ updates = {
     "BETTER_HOTEL_ACCESS_TOKEN": payload.get("BETTER_HOTEL_ACCESS_TOKEN", ""),
     "BETTER_HOTEL_CLIENT_TOKEN": payload.get("BETTER_HOTEL_CLIENT_TOKEN", ""),
     "KAJOVO_API_VOICE_MASTER_KEY": payload.get("KAJOVO_API_VOICE_MASTER_KEY", ""),
-    "KAJOVO_API_SMART_TECHNOLOGIES_URL": payload.get("KAJOVO_API_SMART_TECHNOLOGIES_URL", ""),
-    "KAJOVO_API_SMART_TECHNOLOGIES_TOKEN": payload.get("KAJOVO_API_SMART_TECHNOLOGIES_TOKEN", ""),
+    "KAJOVO_API_MCP_SERVER_URL": payload.get("KAJOVO_API_MCP_SERVER_URL", ""),
+    "KAJOVO_API_MCP_SIGNING_KEY": payload.get("KAJOVO_API_MCP_SIGNING_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": payload.get("KAJOVO_API_WEB_PUSH_VAPID_SUBJECT", ""),
@@ -152,8 +155,8 @@ def write_remote_vars(path: Path) -> None:
         "BETTER_HOTEL_ACCESS_TOKEN",
         "BETTER_HOTEL_CLIENT_TOKEN",
         "KAJOVO_API_VOICE_MASTER_KEY",
-        "KAJOVO_API_SMART_TECHNOLOGIES_URL",
-        "KAJOVO_API_SMART_TECHNOLOGIES_TOKEN",
+        "KAJOVO_API_MCP_SERVER_URL",
+        "KAJOVO_API_MCP_SIGNING_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT",

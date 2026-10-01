@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState, useSyncExternalStore} from 'react';
-import {callActive, type VoiceConfigSnapshot, type VoiceCoreConfig, type VoiceConfigStore, type VoiceSecretStore, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceSnapshot, type VoiceToolExecutor} from './contracts.js';
+import {callActive, type VoiceConfigSnapshot, type VoiceCoreConfig, type VoiceConfigStore, type VoiceSecretStore, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceSnapshot} from './contracts.js';
 import {VoiceRealtimeClient} from './runtime.js';
 import {errorMessage, stateLabels} from './messages.js';
 
@@ -11,10 +11,10 @@ function configuration(snapshot: VoiceConfigSnapshot): VoiceCoreConfig {
   const {model_mode, manual_model, response_length, language_mode, manual_language, voice} = snapshot;
   return {model_mode, manual_model, response_length, language_mode, manual_language, voice};
 }
-export function VoiceConsole({configStore, secretStore, sessionProvider, telemetry, toolExecutor}: {
-  configStore: VoiceConfigStore; secretStore: VoiceSecretStore; sessionProvider: RealtimeSessionProvider; telemetry: VoiceTelemetrySink; toolExecutor?: VoiceToolExecutor;
+export function VoiceConsole({configStore, secretStore, sessionProvider, telemetry}: {
+  configStore: VoiceConfigStore; secretStore: VoiceSecretStore; sessionProvider: RealtimeSessionProvider; telemetry: VoiceTelemetrySink;
 }) {
-  const client = useMemo(() => new VoiceRealtimeClient(sessionProvider, telemetry, undefined, toolExecutor), [sessionProvider, telemetry, toolExecutor]);
+  const client = useMemo(() => new VoiceRealtimeClient(sessionProvider, telemetry), [sessionProvider, telemetry]);
   const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
   const [saved, setSaved] = useState<VoiceConfigSnapshot | null>(null);
   const [draft, setDraft] = useState<VoiceCoreConfig | null>(null);
@@ -39,7 +39,10 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
       {snapshot.model && <p className="vc-detail">Model hovoru: {snapshot.model}</p>}
       <button className="vc-primary" disabled={busy || (!active && (!saved?.configured || Boolean(dirty)))} onClick={() => {if (active) void client.stop(); else {setError(null); void client.start();}}}>{active ? 'Ukončit hovor' : 'Zahájit hovor'}</button>
       <button className="vc-button" disabled={!active || !['listening', 'user-speaking', 'assistant-processing', 'assistant-speaking', 'reconnecting'].includes(snapshot.state)} aria-pressed={snapshot.muted} onClick={() => client.setMuted(!snapshot.muted)}>{snapshot.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>
-      <p className="vc-detail">Hovoříte s AI. Tato verze nemá přístup k živým datům ani externím nástrojům.</p>
+      <p className="vc-detail">Hovoříte s AI. Ověřené informace poskytují připojené nástroje.</p>
+      {snapshot.mcpStatus === 'loading' && <p role="status">Připojuji nástroje…</p>}
+      {snapshot.mcpStatus === 'unavailable' && <p role="alert">Momentálně se nemohu spojit se systémem připojených nástrojů.</p>}
+      {snapshot.approval && <div role="alert"><p>Schválit akci nástroje {snapshot.approval.name}?</p><button onClick={() => client.approve(false)}>Odmítnout</button><button onClick={() => client.approve(true)}>Schválit</button></div>}
       {(snapshot.error || error) && <p className="vc-error" role="alert">{snapshot.error ? errorMessage(snapshot.error.category) : error}</p>}
     </div>
     <div className="vc-controls">

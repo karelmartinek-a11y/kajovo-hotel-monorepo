@@ -19,11 +19,9 @@ export interface VoiceAuthProvider { authorized(): Promise<boolean> }
 export interface VoiceTelemetrySink { emit(event: string, attributes: Record<string, string | number>): void }
 export interface CapabilityContract {name: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>}
 export interface CapabilityProvider {contracts(): readonly CapabilityContract[]}
-export interface VoiceToolExecutor {
-  names: readonly string[];
-  execute(name: string, callId: string, argumentsValue: unknown, signal: AbortSignal): Promise<unknown>;
-}
 export const capabilityRegistry: readonly CapabilityContract[] = Object.freeze([]);
-export type VoiceSnapshot = {state: VoiceSessionState; muted: boolean; inputLevel: number; outputLevel: number; model: string | null; error: VoiceError | null};
-export const initialSnapshot: VoiceSnapshot = {state: 'idle', muted: false, inputLevel: 0, outputLevel: 0, model: null, error: null};
+export type McpStatus = 'disconnected' | 'loading' | 'ready' | 'unavailable';
+export type McpApproval = {id: string; name: string};
+export type VoiceSnapshot = {mcpStatus: McpStatus; importedTools: string[]; approval: McpApproval | null; state: VoiceSessionState; muted: boolean; inputLevel: number; outputLevel: number; model: string | null; error: VoiceError | null};
+export const initialSnapshot: VoiceSnapshot = {mcpStatus: 'disconnected', importedTools: [], approval: null, state: 'idle', muted: false, inputLevel: 0, outputLevel: 0, model: null, error: null};
 export const callActive = (state: VoiceSessionState) => !['idle', 'disconnected', 'error'].includes(state);
