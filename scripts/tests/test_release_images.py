@@ -1,8 +1,7 @@
-"""Exercise fail-closed image import and real readiness shell behavior."""
+"""Exercise fail-closed image import and immutable artifact identity."""
 import copy
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,7 +14,7 @@ import read_release_gate_artifact as gate
 import release_images as images
 
 SHA = "a" * 40
-MCP = "b" * 40
+OTHER_SHA = "b" * 40
 
 
 class ReleaseImagesTest(unittest.TestCase):
@@ -46,7 +45,7 @@ class ReleaseImagesTest(unittest.TestCase):
         self.assertFalse(target.exists())
 
     def test_wrong_sha_platform_missing_service_or_failed_checks_fail_closed(self):
-        variations = [{"source_sha": MCP}, {"platform": "linux/arm64"},
+        variations = [{"source_sha": OTHER_SHA}, {"platform": "linux/arm64"},
                       {"images": {"api": self.manifest["images"]["api"]}},
                       {"checks": {"api_import": "PASS", "production_proxy": "FAIL"}}]
         for updates in variations:
@@ -82,45 +81,19 @@ class ReleaseImagesTest(unittest.TestCase):
     def test_gate_artifact_cannot_skip_deploy_using_wrong_source_or_untrusted_boolean(self):
         path = self.root / "gate.json"
         base = {"sha": SHA, "workflow": "ci-gates", "overall_status": "PASS", "deploy_required": True}
-        for update in ({"sha": MCP}, {"deploy_required": "false"}, {"overall_status": "FAIL"}, {"workflow": "ci-full"}):
+        for update in ({"sha": OTHER_SHA}, {"deploy_required": "false"}, {"overall_status": "FAIL"}, {"workflow": "ci-full"}):
             path.write_text(json.dumps({**base, **update}))
             with self.assertRaises(RuntimeError):
                 gate.read(path, SHA)
         path.write_text(json.dumps({**base, "deploy_required": False}))
         self.assertFalse(gate.read(path, SHA))
 
-    def test_readiness_requires_exact_active_transaction_and_armed_timer(self):
-        status = self.root / "transaction.json"
-        binary = self.root / "systemctl"
-        binary.write_text("#!/bin/sh\nexit ${TEST_TIMER_EXIT:-0}\n")
-        binary.chmod(0o755)
-        shell = deploy.readiness_script(SHA, MCP).replace("/etc/home-assistant-mcp-public/transaction.json", str(status))
-        environment = {**os.environ, "PATH": str(self.root) + ":" + os.environ["PATH"]}
-        base = {"phase": "active", "hotel_sha": SHA, "sha": MCP}
-        cases = [(base, 0, True), ({**base, "phase": "prepared"}, 0, False),
-                 ({**base, "phase": "rolled_back"}, 0, False), ({**base, "hotel_sha": MCP}, 0, False),
-                 ({**base, "sha": SHA}, 0, False), ({**base, "hotel_worker": "PASS"}, 0, False),
-                 (base, 1, False)]
-        for state, timer, expected in cases:
-            with self.subTest(state=state, timer=timer):
-                status.write_text(json.dumps(state))
-                result = subprocess.check_output(["bash", "-c", shell], env={**environment, "TEST_TIMER_EXIT": str(timer)}, text=True)
-                self.assertEqual(json.loads(result)["ready"], expected)
-
-    def test_missing_reviewed_mcp_identity_cannot_arm_release(self):
-        with self.assertRaisesRegex(RuntimeError, "exact_mcp_readiness_sha_required"):
-            deploy.readiness_script(SHA, "")
-
-    def test_invalid_readiness_response_cannot_write_github_outputs(self):
-        target = self.root / "outputs"
-        environment = {"DEPLOY_SHA": SHA, "COORDINATED_MCP_SHA": MCP, "GITHUB_OUTPUT": str(target)}
-        with patch.dict(os.environ, environment), patch.object(deploy, "ssh_base", return_value=(["ssh"], None)):
-            for response in ({"ready": "true", "mcp_sha": MCP}, {"ready": True, "mcp_sha": SHA},
-                             {"ready": False, "mcp_sha": "evil\nready=true"}):
-                with self.subTest(response=response), patch.object(deploy.subprocess, "check_output", return_value=json.dumps(response)):
-                    with self.assertRaises(RuntimeError):
-                        deploy.cmd_check_readiness()
-                self.assertFalse(target.exists())
+    def test_release_actions_reject_invalid_sha_before_ssh(self):
+        for sha in ("", "a" * 39, "a" * 40 + "\nanything", "shell; touch /tmp/injected"):
+            with patch.dict(os.environ, {"DEPLOY_SHA": sha}), patch.object(deploy, "run_remote") as remote:
+                with self.assertRaises(SystemExit):
+                    deploy.cmd_release("accept")
+            remote.assert_not_called()
 
 
 if __name__ == "__main__":

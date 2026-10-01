@@ -41,3 +41,6 @@ android/local.properties
 .venv-voice-core/
 packages/voice-core/test-results/
 artifacts/voice-core/
+
+packages/voice-core/playwright-report/
+artifacts/voice-standalone/

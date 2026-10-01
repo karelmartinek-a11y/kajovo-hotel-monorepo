@@ -30,10 +30,10 @@ def test_shared_ui_propagates_to_both_frontends():
     'apps/kajovo-hotel-api/app/api/routes/breakfast.py',
     'apps/kajovo-hotel-api/openapi.json', 'packages/shared/src/generated/client.ts',
     'pnpm-lock.yaml', 'package.json', '.github/workflows/ci-gates.yml', 'AGENTS.md',
-    'apps/kajovo-hotel-web/src/auth/session.ts', 'packages/voice-core/src/mcp.ts',
+    'apps/kajovo-hotel-web/src/auth/session.ts', 'packages/voice-core/src/runtime.ts',
     'infra/docker-compose.yml', 'unexpected/root.txt', 'docs/how-to-deploy.md',
     'apps/kajovo-hotel-web/src/lib/new-helper.ts', 'packages/ui/package.json',
-    'docs/native-mcp-impact-matrix.md', 'docs/ci-gates.md', 'docs/testing.md',
+    'docs/voice-core-impact-matrix.md', 'docs/ci-gates.md', 'docs/testing.md',
     'docs/api-contract.md', 'README.md', 'docs/new-policy.md',
     'apps/kajovo-hotel-web/src/main.tsx', 'apps/kajovo-hotel-admin/src/main.tsx',
     'apps/kajovo-hotel-admin/src/UsersAdmin.tsx', 'packages/ui/src/Button.tsx',
@@ -57,7 +57,7 @@ def test_rename_to_documentation_keeps_old_runtime_path_in_scope(tmp_path):
     def git(*args):
         return subprocess.check_output(['git', '-C', str(tmp_path), *args], text=True).strip()
     git('init', '-q')
-    original = tmp_path / 'packages/voice-core/src/mcp.ts'
+    original = tmp_path / 'packages/voice-core/src/runtime.ts'
     original.parent.mkdir(parents=True)
     original.write_text('export const runtime = 1;')
     git('add', '.')
@@ -69,7 +69,7 @@ def test_rename_to_documentation_keeps_old_runtime_path_in_scope(tmp_path):
     git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'rename')
     result = router.scope(tmp_path, base, base_verified=True)
     assert result['full']
-    assert result['changed_paths'] == ['docs/old.md', 'packages/voice-core/src/mcp.ts']
+    assert result['changed_paths'] == ['docs/old.md', 'packages/voice-core/src/runtime.ts']
 
 
 def test_missing_history_cannot_skip_required_checks(tmp_path):

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-kajovo_hotel}
       POSTGRES_USER: ${POSTGRES_USER:-kajovo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kajovo_dev_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-kajovo_dev_password}
       POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD:-}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -29,8 +29,6 @@ services:
       - api_data:/app/data
     environment:
       KAJOVO_API_VOICE_MASTER_KEY: ${KAJOVO_API_VOICE_MASTER_KEY:-}
-      KAJOVO_API_MCP_SERVER_URL: ${KAJOVO_API_MCP_SERVER_URL:-https://hotel.hcasc.cz/mcp/home-assistant}
-      KAJOVO_API_MCP_SIGNING_KEY: ${KAJOVO_API_MCP_SIGNING_KEY:-}
       KAJOVO_API_APP_NAME: ${KAJOVO_API_APP_NAME:-Kájovo Hotel API}
       KAJOVO_API_APP_VERSION: ${KAJOVO_API_APP_VERSION:-0.1.0}
       KAJOVO_API_ENVIRONMENT: ${KAJOVO_API_ENVIRONMENT:-production}

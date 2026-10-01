@@ -53,14 +53,6 @@ def test_catalog_is_central_and_defaults_supported():
     assert {language["id"] for language in data["languages"]} == {"cs", "en", "de", "sk"}
 
 
-def test_optional_server_owned_tools_replace_tool_free_instructions():
-    tools = [{"type": "mcp", "server_label": "example", "server_url": "https://example.test/mcp", "allowed_tools": ["example"], "require_approval": "never"}]
-    session = session_config(VoiceCoreConfig(), "gpt-realtime-2.1", tools, "Use only example for connected data.\n")
-    assert session["tools"] == tools and session["tool_choice"] == "auto"
-    assert "Use only example" in session["instructions"]
-    assert "You have no tools" not in session["instructions"]
-
-
 def test_automatic_fallback_only_on_model_unavailable():
     calls = []
     sink = Sink()
@@ -105,49 +97,24 @@ def test_timeout_and_bad_success_are_sanitized():
         asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(lambda _: httpx.Response(200, text="SECRET"))).create("v=0", VoiceCoreConfig(), "test-key"))
 
 
-@pytest.mark.parametrize('patch', [
-    {'server_url': 'http://private.invalid'}, {'server_url': 'https://['},
-    {'allowed_tools': []}, {'allowed_tools': ['read', 'read']},
-    {'require_approval': 'invalid'}, {'unexpected': 'invalid'},
-])
-def test_mcp_validation_error_never_discloses_credentials(patch, caplog):
-    from voice_core_server.contracts import McpServerConfig
-    canary = 'Bearer CANARY-MCP-SENSITIVE-INPUT-0123456789'
-    values = {'server_label': 'safe', 'server_url': 'https://example.test/mcp',
-              'authorization': canary, 'allowed_tools': ['read']}
-    values.update(patch)
-    with pytest.raises(ValidationError) as raised:
-        McpServerConfig(**values)
-    for text in [str(raised.value), repr(raised.value), caplog.text]:
-        assert canary not in text and 'CANARY-MCP-SENSITIVE' not in text
-    valid = McpServerConfig(server_label='safe', server_url='https://example.test/mcp',
-                           authorization=canary, allowed_tools=['read'])
-    assert 'CANARY-MCP-SENSITIVE' not in repr(valid)
-    assert 'CANARY-MCP-SENSITIVE' not in valid.model_dump_json()
-    assert valid.session_tool()['authorization'] == canary
-
-
-def test_native_mcp_exact_serialized_realtime_calls_session_contract():
+def test_actual_multipart_session_contains_no_tools_or_connection_metadata():
+    from email import policy
     from email.parser import BytesParser
 
-    from voice_core_server.contracts import McpServerConfig
-    expected = {'type':'mcp','server_label':'home_assistant','server_url':'https://example.test/mcp',
-                'authorization':'test-scoped-token','allowed_tools':['search_devices','get_device_state','execute_device_action'],
-                'require_approval':{'never':{'tool_names':['search_devices','get_device_state']}}}
-    tool = McpServerConfig.model_validate({k:v for k,v in expected.items() if k != 'type'}).session_tool()
-    observed = []
     def respond(request):
-        assert str(request.url) == 'https://api.openai.com/v1/realtime/calls'
-        message = BytesParser().parsebytes(b'Content-Type: '+request.headers['content-type'].encode()+b'\r\n\r\n'+request.content)
-        part = next(p for p in message.walk() if p.get_param('name',header='content-disposition') == 'session')
-        body = json.loads(part.get_payload(decode=True))
-        observed.append(body)
-        assert body['tools'] == [expected]
-        assert 'server_description' not in body['tools'][0]
-        return httpx.Response(201,text='v=0\r\nanswer')
-    sink = Sink()
-    result = asyncio.run(RealtimeSessionClient(sink,httpx.MockTransport(respond),[tool]).create('v=0\r\noffer',VoiceCoreConfig(),'test-key'))
-    assert result[0].startswith('v=0') and len(observed)==1
-    assert 'test-scoped-token' not in str(sink.events)
-    with pytest.raises(ValidationError):
-        McpServerConfig.model_validate({**{k:v for k,v in expected.items() if k != 'type'},'server_description':'unsupported'})
+        assert request.method == 'POST' and str(request.url) == 'https://api.openai.com/v1/realtime/calls'
+        message = BytesParser(policy=policy.default).parsebytes(
+            b'Content-Type: ' + request.headers['content-type'].encode() + b'\r\n\r\n' + request.content)
+        parts = {part.get_param('name', header='content-disposition'): part.get_payload(decode=True)
+                 for part in message.iter_parts()}
+        assert set(parts) == {'sdp', 'session'}
+        assert parts['sdp'].decode() == 'v=0\r\nportable-offer'
+        session = json.loads(parts['session'])
+        assert session['tool_choice'] == 'none'
+        assert not {'tools', 'connector_id', 'tunnel_id', 'authorization'}.intersection(session)
+        assert 'no connected external systems' in session['instructions']
+        return httpx.Response(201, text='v=0\r\nportable-answer')
+
+    result = asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(respond)).create(
+        'v=0\r\nportable-offer', VoiceCoreConfig(), 'test-key'))
+    assert result == ('v=0\r\nportable-answer', 'gpt-realtime-2.1')

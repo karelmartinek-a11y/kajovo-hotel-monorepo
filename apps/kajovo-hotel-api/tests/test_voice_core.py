@@ -28,7 +28,6 @@ def voice_host(monkeypatch):
     monkeypatch.setattr(auth, "SessionLocal", factory)
     monkeypatch.setattr("app.observability.SessionLocal", factory)
     monkeypatch.setattr(get_settings(), "voice_master_key", base64.b64encode(os.urandom(32)).decode())
-    monkeypatch.setattr(get_settings(), "mcp_signing_key", "test-signing-canary" * 3)
     app = create_app()
     def database():
         with factory() as db:
@@ -172,49 +171,3 @@ def test_key_revision_prevents_stale_config_and_wrong_master(voice_host, monkeyp
     response = client.post(BASE + "/sessions", json={"sdp": "v=0\r\noffer", "revision": 1})
     assert response.status_code == 503 and KEY not in response.text
     assert client.delete(BASE + "/api-key").json()["revision"] == 2
-
-
-def test_mcp_host_configuration_is_private_and_replaced_route_is_absent(voice_host, monkeypatch, caplog):
-    client, _, login = voice_host
-    login()
-    client.put(BASE + '/api-key', json={'api_key': KEY})
-    captured=[]
-    async def create(self,sdp,config,key):
-        captured.extend(self.tools)
-        return 'v=0\r\nanswer','gpt-realtime-2.1'
-    monkeypatch.setattr('app.api.routes.voice_core.RealtimeSessionClient.create',create)
-    response=client.post(BASE+'/sessions',json={'sdp':'v=0\r\noffer','revision':1})
-    assert response.status_code==200
-    tool=captured[0]
-    assert tool['type']=='mcp' and tool['server_url']=='https://hotel.hcasc.cz/mcp/home-assistant'
-    assert tool['allowed_tools']==['search_devices','get_device_state','execute_device_action']
-    assert tool['require_approval']=={'never':{'tool_names':['search_devices','get_device_state']}}
-    assert not tool['authorization'].startswith('Bearer ')
-    assert len(tool['authorization'].split('.')) == 2
-    assert 'server_description' not in tool
-    assert tool['authorization'] not in response.text and tool['authorization'] not in caplog.text
-    assert get_settings().mcp_signing_key not in response.text
-    assert set(response.json())=={'sdp','model'}
-    assert all('connector' not in key for key in tool)
-    assert BASE+'/tools' not in client.app.openapi()['paths']
-
-
-@pytest.mark.parametrize('url', ['', 'http://unsafe.invalid', 'https://['])
-def test_invalid_mcp_host_config_is_safe_503(voice_host, monkeypatch, caplog, url):
-    client, factory, login = voice_host
-    login()
-    client.put(BASE + '/api-key', json={'api_key': KEY})
-    monkeypatch.setattr(get_settings(), 'mcp_server_url', url)
-    canary = 'Bearer CANARY-SCOPED-CREDENTIAL-0123456789'
-    original = __import__('app.services.mcp_provider', fromlist=['McpServerConfig']).McpServerConfig
-    def invalid_config(**values):
-        values['authorization'] = canary
-        return original(**values)
-    monkeypatch.setattr('app.services.mcp_provider.McpServerConfig', invalid_config)
-    response = client.post(BASE + '/sessions', json={'sdp': 'v=0\r\noffer', 'revision': 1})
-    assert response.status_code == 503
-    assert 'capability_not_configured' in response.text
-    with factory() as db:
-        audit = repr(db.execute(select(AuditTrail)).scalars().all())
-    for text in [response.text, caplog.text, audit]:
-        assert canary not in text and 'CANARY-SCOPED-CREDENTIAL' not in text and KEY not in text

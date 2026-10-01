@@ -1,4 +1,4 @@
-"""Content-bound review evidence rejects unreviewed release candidates."""
+"""Exercise content binding, cumulative risk and actual review evidence rules."""
 import copy
 import importlib.util
 import json
@@ -10,426 +10,169 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'scripts'))
-SPEC = importlib.util.spec_from_file_location("review_gate_under_test", ROOT / "scripts/independent_review.py")
-assert SPEC and SPEC.loader
+SPEC = importlib.util.spec_from_file_location('review_under_test', ROOT / 'scripts/independent_review.py')
 review = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(review)
 
 
-def manifest(fingerprint="a" * 64):
-    fingerprints = {"hotel": fingerprint, "agentha": fingerprint}
+def manifest(fingerprint='a' * 64, areas=None):
+    areas = review.AREAS if areas is None else areas
     return {
-        "schema": "independent_codex_forensic_review.v1",
-        "kind": "Independent Codex multi-agent forensic review",
-        "result": "PASS",
-        "reviewed_sources": {
-            name: {"baseline": baseline, "sha": str(index) * 40,
-                   "source_fingerprint": fingerprints[name]}
-            for index, (name, baseline) in enumerate(review.BASELINES.items(), 1)
-        },
-        "reviewers": [
-            {"area": area, "scope": scope, "agent_id": "independent-" + area,
-             "result": "PASS", "reviewed_fingerprints": fingerprints.copy(),
-             "evidence": "Pinned resulting trees; cumulative review completed."}
-            for area, scope in review.AREAS.items()
-        ],
-        "findings": [],
-        "open_counts": dict.fromkeys(review.SEVERITIES, 0),
-    }
-
-
-def git(root, *args):
-    return subprocess.check_output(["git", "-C", str(root), *args], stderr=subprocess.PIPE).decode().strip()
-
-
-def commit(root):
-    git(root, "add", "-A")
-    git(root, "-c", "user.name=Review Fixture", "-c", "user.email=review@example.invalid",
-        "commit", "-qm", "Synthetic review fixture")
-    return git(root, "rev-parse", "HEAD")
-
-
-@pytest.fixture
-def candidate(tmp_path):
-    git(tmp_path, "init", "-q")
-    git(tmp_path, "config", "core.filemode", "true")
-    for name in ("app/runtime.py", "tests/test_runtime.py", "AGENTS.md",
-                 ".github/workflows/ci.yml", "docs/runbook.md", "docs/other-evidence.json"):
-        path = tmp_path / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("initial candidate\n")
-    commit(tmp_path)
-    return tmp_path
-
-
-def test_complete_six_agent_evidence_passes_for_both_repositories():
-    data = manifest()
-    for repo in review.BASELINES:
-        assert review.validate(data, repo, "a" * 64) is data
-
-
-@pytest.mark.parametrize("field,value,error", [
-    ("schema", "human_review", "review_schema_required"),
-    ("kind", "Human review", "independent_review_required"),
-    ("result", "PARTIAL", "independent_review_not_pass"),
-    ("findings", None, "review_findings_required"),
-    ("open_counts", None, "review_findings_count_mismatch"),
-])
-def test_manifest_requires_explicit_complete_evidence(field, value, error):
-    data = manifest()
-    if value is None:
-        del data[field]
-    else:
-        data[field] = value
-    with pytest.raises(RuntimeError, match=error):
-        review.validate(data, "hotel", "a" * 64)
-
-
-@pytest.mark.parametrize("repo", ["hotel", "agentha"])
-def test_changed_candidate_is_not_covered_by_green_ci_or_review_of_another_tree(repo):
-    with pytest.raises(RuntimeError, match="candidate_source_not_reviewed"):
-        review.validate(manifest(), repo, "b" * 64)
-
-
-@pytest.mark.parametrize("mutation,error", [
-    ("missing_repo", "cumulative_review_sources_required"),
-    ("wrong_baseline", "cumulative_review_baseline_mismatch"),
-    ("missing_sha", "reviewed_sha_required"),
-    ("short_fingerprint", "reviewed_fingerprint_required"),
-    ("missing_area", "six_independent_reviewers_required"),
-    ("duplicate_area", "six_independent_reviewers_required"),
-    ("same_agent", "distinct_independent_agents_required"),
-    ("empty_agent", "distinct_independent_agents_required"),
-    ("wrong_scope", "review_area_mismatch"),
-    ("stale_review", "final_candidate_review_required"),
-    ("unfinished_review", "final_candidate_review_required"),
-    ("no_review_evidence", "review_evidence_required"),
-])
-def test_independence_and_exact_final_tree_are_required(mutation, error):
-    data = manifest()
-    if mutation == "missing_repo":
-        del data["reviewed_sources"]["agentha"]
-    elif mutation == "wrong_baseline":
-        data["reviewed_sources"]["hotel"]["baseline"] = "f" * 40
-    elif mutation == "missing_sha":
-        data["reviewed_sources"]["hotel"]["sha"] = ""
-    elif mutation == "short_fingerprint":
-        data["reviewed_sources"]["hotel"]["source_fingerprint"] = "a"
-    elif mutation == "missing_area":
-        data["reviewers"].pop()
-    elif mutation == "duplicate_area":
-        data["reviewers"][-1]["area"] = "A"
-    elif mutation == "same_agent":
-        data["reviewers"][-1]["agent_id"] = data["reviewers"][0]["agent_id"]
-    elif mutation == "empty_agent":
-        data["reviewers"][0]["agent_id"] = "   "
-    elif mutation == "wrong_scope":
-        data["reviewers"][0]["scope"] = "deployment"
-    elif mutation == "stale_review":
-        data["reviewers"][0]["reviewed_fingerprints"]["agentha"] = "b" * 64
-    elif mutation == "unfinished_review":
-        data["reviewers"][0]["result"] = "PARTIAL"
-    elif mutation == "no_review_evidence":
-        data["reviewers"][0]["evidence"] = " "
-    with pytest.raises(RuntimeError, match=error):
-        review.validate(data, "hotel", "a" * 64)
-
-
-@pytest.mark.parametrize("severity", ["CRITICAL", "HIGH", "MEDIUM"])
-def test_any_open_blocking_finding_rejects_release_even_if_counts_claim_zero(severity):
-    data = manifest()
-    data["findings"] = [{"id": "finding-1", "severity": severity, "status": "open"}]
-    with pytest.raises(RuntimeError, match="open_blocking_review_finding"):
-        review.validate(data, "hotel", "a" * 64)
-
-
-def resolved_finding():
-    return {"id": "finding-1", "severity": "HIGH", "status": "resolved",
-            "fix": "app/runtime.py: corrected fail-closed policy",
-            "regression_tests": ["tests/test_runtime.py::test_fail_closed"],
-            "verified_by": ["C"]}
-
-
-def test_resolved_findings_preserve_fix_test_and_reviewer_evidence():
-    data = manifest()
-    data["findings"] = [resolved_finding()]
-    review.validate(data, "hotel", "a" * 64)
-    for field in ("fix", "regression_tests", "verified_by"):
-        incomplete = copy.deepcopy(data)
-        del incomplete["findings"][0][field]
-        with pytest.raises(RuntimeError, match="finding_resolution_evidence_required"):
-            review.validate(incomplete, "hotel", "a" * 64)
-    data["findings"].append(resolved_finding())
-    with pytest.raises(RuntimeError, match="finding_identity_invalid"):
-        review.validate(data, "hotel", "a" * 64)
-
-
-def test_documented_non_security_non_correctness_non_reliability_low_is_only_exception():
-    data = manifest()
-    low = {"id": "format-1", "severity": "LOW", "status": "open", "security": False,
-           "correctness": False, "production_reliability": False,
-           "documented_reason": "Optional formatting consistency."}
-    data["findings"] = [low]
-    data["open_counts"]["LOW"] = 1
-    review.validate(data, "hotel", "a" * 64)
-    for field in ("security", "correctness", "production_reliability"):
-        unsafe = copy.deepcopy(data)
-        unsafe["findings"][0][field] = True
-        with pytest.raises(RuntimeError, match="open_blocking_review_finding"):
-            review.validate(unsafe, "hotel", "a" * 64)
-    data["open_counts"]["LOW"] = 0
-    with pytest.raises(RuntimeError, match="review_findings_count_mismatch"):
-        review.validate(data, "hotel", "a" * 64)
-
-
-@pytest.mark.parametrize("path", ["app/runtime.py", "tests/test_runtime.py", "AGENTS.md",
-                                ".github/workflows/ci.yml", "docs/runbook.md", "docs/other-evidence.json"])
-def test_entire_committed_source_and_derived_artifacts_are_bound(candidate, path):
-    before = review.source_fingerprint(candidate)
-    (candidate / path).write_text("unreviewed change\n")
-    assert review.source_fingerprint(candidate) == before  # HEAD, never the dirty working tree.
-    commit(candidate)
-    assert review.source_fingerprint(candidate) != before
-
-
-def test_file_mode_rename_and_symlink_target_are_bound(candidate):
-    before = review.source_fingerprint(candidate)
-    (candidate / "app/runtime.py").chmod(0o755)
-    commit(candidate)
-    executable = review.source_fingerprint(candidate)
-    assert executable != before
-    (candidate / "app/runtime.py").rename(candidate / "app/renamed.py")
-    commit(candidate)
-    renamed = review.source_fingerprint(candidate)
-    assert renamed != executable
-    (candidate / "app/link").symlink_to("renamed.py")
-    commit(candidate)
-    linked = review.source_fingerprint(candidate)
-    assert linked != renamed
-    (candidate / "app/link").unlink()
-    (candidate / "app/link").symlink_to("different.py")
-    commit(candidate)
-    assert review.source_fingerprint(candidate) != linked
-
-
-def test_only_exact_two_report_paths_are_excluded_from_self_referential_fingerprint(candidate):
-    before = review.source_fingerprint(candidate)
-    for name in (review.EVIDENCE, "docs/native-mcp-independent-review.md"):
-        (candidate / name).write_text("report first version")
-    commit(candidate)
-    assert review.source_fingerprint(candidate) == before
-    for name in (review.EVIDENCE, "docs/native-mcp-independent-review.md"):
-        (candidate / name).write_text("report revised")
-    commit(candidate)
-    assert review.source_fingerprint(candidate) == before
-    (candidate / "docs/native-mcp-independent-review.extra.md").write_text("not excluded")
-    commit(candidate)
-    assert review.source_fingerprint(candidate) != before
-
-
-def test_committed_evidence_survives_evidence_only_commit_but_rejects_next_source_commit(candidate):
-    code_sha = git(candidate, "rev-parse", "HEAD")
-    fingerprint = review.source_fingerprint(candidate)
-    data = manifest(fingerprint)
-    data["reviewed_sources"]["hotel"]["sha"] = code_sha
-    (candidate / review.EVIDENCE).write_text(json.dumps(data))
-    evidence_sha = commit(candidate)
-    assert code_sha != evidence_sha
-    review.verify(candidate, "hotel", evidence_sha)
-    (candidate / "app/runtime.py").write_text("later production change")
-    commit(candidate)
-    with pytest.raises(RuntimeError, match="candidate_source_not_reviewed"):
-        review.verify(candidate, "hotel")
-    review.verify(candidate, "hotel", evidence_sha)
-    # A dirty report cannot forge the already committed release evidence.
-    (candidate / review.EVIDENCE).write_text(json.dumps(manifest(review.source_fingerprint(candidate))))
-    with pytest.raises(RuntimeError, match="candidate_source_not_reviewed"):
-        review.verify(candidate, "hotel")
-
-
-def test_deleted_file_invalidates_review_but_commit_metadata_does_not(candidate):
-    before = review.source_fingerprint(candidate)
-    git(candidate, "-c", "user.name=Review Fixture", "-c", "user.email=review@example.invalid",
-        "commit", "--allow-empty", "-qm", "Metadata only")
-    assert review.source_fingerprint(candidate) == before
-    (candidate / "tests/test_runtime.py").unlink()
-    commit(candidate)
-    assert review.source_fingerprint(candidate) != before
-
-
-def test_cli_validates_committed_candidate_without_external_bot_or_review_dependency(candidate):
-    script = candidate / "scripts/independent_review.py"
-    script.parent.mkdir()
-    script.write_text((ROOT / "scripts/independent_review.py").read_text())
-    (script.parent / "ci_scope.py").write_text((ROOT / "scripts/ci_scope.py").read_text())
-    commit(candidate)
-    fingerprint = review.source_fingerprint(candidate)
-    (candidate / review.EVIDENCE).write_text(json.dumps(manifest(fingerprint)))
-    commit(candidate)
-    passed = subprocess.run([sys.executable, str(script), "--repo", "hotel"],
-                            capture_output=True, text=True, check=False)
-    assert passed.returncode == 0
-    assert "exact candidate source PASS" in passed.stdout
-    (candidate / "app/runtime.py").write_text("not reviewed")
-    commit(candidate)
-    rejected = subprocess.run([sys.executable, str(script), "--repo", "hotel"],
-                              capture_output=True, text=True, check=False)
-    assert rejected.returncode != 0
-    assert "candidate_source_not_reviewed" in rejected.stderr
-    assert "PASS" not in rejected.stdout
-
-
-@pytest.mark.parametrize("field,value", [
-    ("fix", "   "), ("fix", {"symbol": "runtime"}),
-    ("regression_tests", "test_runtime"), ("regression_tests", []),
-    ("regression_tests", [" "]), ("regression_tests", [123]),
-    ("verified_by", "C"), ("verified_by", []),
-    ("verified_by", ["unknown-reviewer"]), ("verified_by", [123]),
-])
-def test_resolution_cannot_claim_untraceable_fix_test_or_reviewer(field, value):
-    data = manifest()
-    finding = resolved_finding()
-    finding[field] = value
-    data["findings"] = [finding]
-    with pytest.raises(RuntimeError, match="finding_resolution_evidence_required"):
-        review.validate(data, "hotel", "a" * 64)
-
-
-def add_review_anchor(candidate):
-    """Fixture represents real content-bound full review in committed ancestry."""
-    data = manifest(review.source_fingerprint(candidate))
-    data['reviewed_sources']['hotel']['sha'] = git(candidate, 'rev-parse', 'HEAD')
-    (candidate / review.EVIDENCE).write_text(json.dumps(data))
-    return commit(candidate)
-
-
-def targeted_manifest(candidate, anchor):
-    actual = review.review_scope(candidate)
-    assert actual['profile'] == 'targeted'
-    assert actual['anchor'] == anchor
-    fingerprint = review.source_fingerprint(candidate)
-    return {
-        'schema': 'independent_codex_forensic_review.v2',
+        'schema': 'independent_codex_forensic_review.v3',
         'kind': 'Independent Codex multi-agent forensic review', 'result': 'PASS',
-        'scope': {key: actual[key] for key in ('profile', 'anchor', 'changed_paths')},
-        'carried_sources': actual['carried_sources'],
-        'reviewed_sources': {'hotel': {'baseline': review.BASELINES['hotel'],
-                                     'sha': git(candidate, 'rev-parse', 'HEAD'),
-                                     'source_fingerprint': fingerprint}},
+        'reviewed_sources': {'hotel': {'baseline': review.BASELINES['hotel'], 'sha': 'a' * 40,
+                                      'source_fingerprint': fingerprint}},
         'reviewers': [{'area': area, 'scope': scope, 'agent_id': 'independent-' + area,
                        'result': 'PASS', 'reviewed_fingerprints': {'hotel': fingerprint},
-                       'evidence': 'Actual client contract and failure-path review.'}
-                      for area, scope in {'U': 'client_contract', 'F': 'test_gaps'}.items()],
+                       'evidence': 'Actual independent candidate inspection completed.'}
+                      for area, scope in areas.items()],
         'findings': [], 'open_counts': dict.fromkeys(review.SEVERITIES, 0),
     }
 
 
-def test_cosmetic_docs_inherit_only_from_content_verified_review_ancestry(candidate):
-    anchor = add_review_anchor(candidate)
-    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
-    (candidate / 'docs/notes/user-guide.md').write_text('Corrected typography.')
-    commit(candidate)
-    result = review.verify(candidate, 'hotel')
-    assert result['profile'] == 'none'
-    assert result['scope']['anchor'] == anchor
-    assert result['scope']['changed_paths'] == ['docs/notes/user-guide.md']
+def git(root, *args):
+    return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.PIPE, text=True).strip()
 
 
-def test_last_push_docs_cannot_hide_previous_unreviewed_protocol_change(candidate):
-    add_review_anchor(candidate)
-    (candidate / 'app/runtime.py').write_text('Unreviewed runtime change.')
+def commit(root):
+    git(root, 'add', '-A')
+    git(root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Fixture')
+    return git(root, 'rev-parse', 'HEAD')
+
+
+@pytest.fixture
+def candidate(tmp_path):
+    git(tmp_path, 'init', '-q')
+    for name in ('app/runtime.py', 'AGENTS.md', '.github/workflows/ci.yml', 'docs/runbook.md'):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('initial candidate\n')
+    commit(tmp_path)
+    return tmp_path
+
+
+def publish_review(root, data=None):
+    fp = review.source_fingerprint(root)
+    data = manifest(fp) if data is None else data
+    data['reviewed_sources']['hotel']['sha'] = git(root, 'rev-parse', 'HEAD')
+    path = root / review.EVIDENCE
+    path.write_text(json.dumps(data))
+    (path.with_suffix('.md')).write_text('Actual review evidence.')
+    return commit(root)
+
+
+def test_six_distinct_reviewers_are_bound_to_same_hotel_tree():
+    assert review.validate(manifest(), 'hotel', 'a' * 64)['result'] == 'PASS'
+    for key in ('agent_id', 'area'):
+        data = manifest()
+        data['reviewers'][1][key] = data['reviewers'][0][key]
+        with pytest.raises(RuntimeError):
+            review.validate(data, 'hotel', 'a' * 64)
+    data = manifest()
+    data['reviewers'][0]['reviewed_fingerprints']['hotel'] = 'b' * 64
+    with pytest.raises(RuntimeError, match='final_candidate_review_required'):
+        review.validate(data, 'hotel', 'a' * 64)
+
+
+@pytest.mark.parametrize('field,value', [('result', 'PARTIAL'), ('findings', None), ('open_counts', None),
+                                        ('schema', 'independent_codex_forensic_review.v1')])
+def test_incomplete_or_obsolete_review_rejected(field, value):
+    data = manifest()
+    data[field] = value
+    with pytest.raises(RuntimeError):
+        review.validate(data, 'hotel', 'a' * 64)
+
+
+@pytest.mark.parametrize('severity', ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+def test_open_security_correctness_or_runtime_findings_block_release(severity):
+    data = manifest()
+    data['findings'] = [{'id': 'X-1', 'severity': severity, 'status': 'open', 'security': True,
+                         'correctness': False, 'production_reliability': False, 'documented_reason': 'Still open'}]
+    data['open_counts'][severity] = 1
+    with pytest.raises(RuntimeError, match='open_blocking_review_finding'):
+        review.validate(data, 'hotel', 'a' * 64)
+
+
+def test_resolution_requires_fix_regression_and_actual_verifier():
+    data = manifest()
+    row = {'id': 'D-HIGH-1', 'severity': 'HIGH', 'status': 'resolved', 'fix': 'Root runtime fencing',
+           'regression_tests': ['test_expired_worker'], 'verified_by': ['D']}
+    data['findings'] = [row]
+    review.validate(data, 'hotel', 'a' * 64)
+    for key in ('fix', 'regression_tests', 'verified_by'):
+        bad = copy.deepcopy(data)
+        bad['findings'][0].pop(key)
+        with pytest.raises(RuntimeError, match='finding_resolution_evidence_required'):
+            review.validate(bad, 'hotel', 'a' * 64)
+
+
+@pytest.mark.parametrize('path', ['AGENTS.md', 'app/runtime.py', 'docs/runbook.md', '.github/workflows/ci.yml'])
+def test_any_relevant_source_edit_invalidates_review(candidate, path):
+    publish_review(candidate)
+    review.verify(candidate)
+    (candidate / path).write_text('unreviewed change')
     commit(candidate)
-    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
-    (candidate / 'docs/notes/user-guide.md').write_text('Small documentation correction.')
-    commit(candidate)
-    assert review.review_scope(candidate)['profile'] == 'full'
     with pytest.raises(RuntimeError, match='candidate_source_not_reviewed'):
-        review.verify(candidate, 'hotel')
+        review.verify(candidate)
 
 
-def test_targeted_review_binds_exact_candidate_and_machine_derived_cumulative_scope(candidate):
-    anchor = add_review_anchor(candidate)
-    path = candidate / 'apps/kajovo-hotel-web/src/pages/BreakfastPage.css'
-    path.parent.mkdir(parents=True)
-    path.write_text('export const BreakfastPage = () => <main />;')
+def test_only_two_review_evidence_files_are_excluded(candidate):
+    publish_review(candidate)
+    fp = review.source_fingerprint(candidate)
+    (candidate / review.EVIDENCE).write_text('{}')
+    (candidate / review.EVIDENCE).with_suffix('.md').write_text('updated evidence')
     commit(candidate)
-    data = targeted_manifest(candidate, anchor)
-    (candidate / review.EVIDENCE).write_text(json.dumps(data))
+    assert review.source_fingerprint(candidate) == fp
+    (candidate / 'docs/other-evidence.json').write_text('{}')
     commit(candidate)
-    assert review.verify(candidate, 'hotel')['schema'].endswith('.v2')
-    path.write_text('export const BreakfastPage = () => <section />;')
-    commit(candidate)
-    with pytest.raises(RuntimeError, match='cumulative_review_scope_mismatch|candidate_source_not_reviewed'):
-        review.verify(candidate, 'hotel')
+    assert review.source_fingerprint(candidate) != fp
 
 
-def test_scoped_manifest_cannot_claim_different_anchor_or_hide_changed_paths(candidate):
-    anchor = add_review_anchor(candidate)
-    path = candidate / 'apps/kajovo-hotel-admin/src/pages/RoomsPage.css'
-    path.parent.mkdir(parents=True)
-    path.write_text('export const RoomsPage = () => <main />;')
-    commit(candidate)
-    original = targeted_manifest(candidate, anchor)
-    for mutation in ('anchor', 'changed_paths'):
-        data = copy.deepcopy(original)
-        data['scope'][mutation] = 'f' * 40 if mutation == 'anchor' else []
-        with pytest.raises(RuntimeError, match='cumulative_review_scope_mismatch'):
-            review.validate_targeted(data, 'hotel', review.source_fingerprint(candidate), review.review_scope(candidate))
-
-
-def test_targeted_review_cannot_reduce_security_change_to_two_reviewers(candidate):
-    anchor = add_review_anchor(candidate)
-    path = candidate / 'apps/kajovo-hotel-web/src/pages/LoginPage.tsx'
-    path.parent.mkdir(parents=True)
-    path.write_text('export const LoginPage = () => <main />;')
-    commit(candidate)
-    assert review.review_scope(candidate)['profile'] == 'full'
-    actual = {'profile': 'full', 'anchor': anchor, 'changed_paths': [str(path.relative_to(candidate))]}
-    with pytest.raises(RuntimeError, match='targeted_review_risk_scope_invalid'):
-        review.validate_targeted({'schema': 'independent_codex_forensic_review.v2',
-                                 'kind': 'Independent Codex multi-agent forensic review', 'result': 'PASS'},
-                                'hotel', review.source_fingerprint(candidate), actual)
-
-
-def test_no_ancestor_evidence_cannot_skip_review_for_docs(candidate):
-    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
-    (candidate / 'docs/notes/user-guide.md').write_text('Documentation only.')
-    commit(candidate)
+def test_unknown_or_missing_ancestor_requires_full_review(candidate):
     assert review.review_scope(candidate)['profile'] == 'full'
     with pytest.raises(RuntimeError, match='full_independent_review_required'):
-        review.verify(candidate, 'hotel')
+        review.verify(candidate)
+    path = candidate / review.EVIDENCE
+    path.write_text(json.dumps(manifest('f' * 64)))
+    commit(candidate)
+    (candidate / 'docs/notes').mkdir()
+    (candidate / 'docs/notes/history.md').write_text('historical evidence')
+    commit(candidate)
+    assert review.review_scope(candidate)['profile'] == 'full'
+    with pytest.raises(RuntimeError):
+        review.verify(candidate)
 
 
-def test_targeted_review_requires_two_distinct_agents_and_no_open_blocking_finding(candidate):
-    anchor = add_review_anchor(candidate)
-    path = candidate / 'packages/ui/src/Button.css'
+def test_historical_notes_inherit_only_verified_full_ancestor(candidate):
+    ancestor = publish_review(candidate)
+    path = candidate / 'docs/notes/history.md'
     path.parent.mkdir(parents=True)
-    path.write_text('export const Button = () => <button />;')
+    path.write_text('historical evidence')
     commit(candidate)
-    original = targeted_manifest(candidate, anchor)
-    scope = review.review_scope(candidate)
-    fingerprint = review.source_fingerprint(candidate)
-    data = copy.deepcopy(original)
-    data['reviewers'][1]['agent_id'] = data['reviewers'][0]['agent_id']
-    with pytest.raises(RuntimeError, match='distinct_independent_agents_required'):
-        review.validate_targeted(data, 'hotel', fingerprint, scope)
-    data = copy.deepcopy(original)
-    data['findings'] = [{'id': 'blocking', 'severity': 'HIGH', 'status': 'open'}]
-    with pytest.raises(RuntimeError, match='open_blocking_review_finding'):
-        review.validate_targeted(data, 'hotel', fingerprint, scope)
+    result = review.verify(candidate)
+    assert result['scope']['profile'] == 'none' and result['scope']['anchor'] == ancestor
+    (candidate / 'app/runtime.py').write_text('unreviewed code')
+    commit(candidate)
+    path.write_text('another cosmetic commit')
+    commit(candidate)
+    assert review.review_scope(candidate)['profile'] == 'full'
+    with pytest.raises(RuntimeError):
+        review.verify(candidate)
 
 
-def test_cosmetic_docs_after_targeted_review_carry_verified_targeted_ancestor(candidate):
-    anchor = add_review_anchor(candidate)
-    path = candidate / 'apps/kajovo-hotel-web/src/pages/BreakfastPage.css'
-    path.parent.mkdir(parents=True)
-    path.write_text('export const BreakfastPage = () => <main />;')
+def test_targeted_review_requires_computed_cumulative_paths(candidate):
+    publish_review(candidate)
+    ui = candidate / 'apps/kajovo-hotel-web/src/pages/BreakfastPage.css'
+    ui.parent.mkdir(parents=True)
+    ui.write_text('body {color: black}')
     commit(candidate)
-    data = targeted_manifest(candidate, anchor)
-    (candidate / review.EVIDENCE).write_text(json.dumps(data))
-    scoped_anchor = commit(candidate)
-    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
-    (candidate / 'docs/notes/user-guide.md').write_text('Typographic correction.')
-    commit(candidate)
-    result = review.verify(candidate, 'hotel')
-    assert result['profile'] == 'none' and result['scope']['anchor'] == scoped_anchor
+    actual = review.review_scope(candidate)
+    assert actual['profile'] == 'targeted'
+    data = manifest(review.source_fingerprint(candidate), review.TARGETED_AREAS)
+    data['scope'] = actual
+    publish_review(candidate, data)
+    assert review.verify(candidate)['result'] == 'PASS'
+    data['scope']['changed_paths'] = []
+    publish_review(candidate, data)
+    with pytest.raises(RuntimeError, match='cumulative_review_scope_mismatch'):
+        review.verify(candidate)

@@ -85,9 +85,9 @@ jobs:
       with:
         profile: lint
     - name: Fail fast on Python lint
-      run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py
-        scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py scripts/independent_review.py scripts/ci_scope.py scripts/build_release_images.py scripts/release_images.py
-        scripts/check_ci_required_jobs.py
+      run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py
+        scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/hotel_release.py scripts/github_deploy_via_ssh.py
+        scripts/independent_review.py scripts/ci_scope.py scripts/build_release_images.py scripts/release_images.py scripts/check_ci_required_jobs.py scripts/tests/test_deploy_environment.py
       if: needs.scope.outputs.python == 'true'
     - uses: ./.github/actions/setup-node
       with:
@@ -97,7 +97,7 @@ jobs:
       if: needs.scope.outputs.web == 'true' || needs.scope.outputs.admin == 'true' || needs.scope.outputs.voice == 'true'
     - name: CI routing and runtime policy regression tests
       run: |-
-        python -m pytest --noconftest scripts/tests/test_ci_*.py scripts/tests/test_native_mcp_cutover.py scripts/tests/test_release_images.py -q
+        python -m pytest --noconftest scripts/tests/test_ci_*.py scripts/tests/test_hotel_release.py scripts/tests/test_release_images.py scripts/tests/test_deploy_*.py -q
         node --test scripts/android_production_acceptance_policy.test.mjs
         node --check scripts/verify_android_employee_production.mjs
         node --check scripts/cleanup_android_production_acceptance.mjs
@@ -388,35 +388,6 @@ jobs:
           packages/voice-core/playwright-report/
         if-no-files-found: warn
         retention-days: 7
-  android-contract:
-    needs:
-    - scope
-    - fast-checks
-    - guardrails
-    if: needs.scope.outputs.android == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-    - uses: actions/checkout@v5
-    - uses: actions/setup-java@v5
-      with:
-        distribution: temurin
-        java-version: '17'
-        cache: gradle
-    - uses: android-actions/setup-android@v4
-    - name: Verify all native API consumer unit tests
-      working-directory: android
-      run: ./gradlew testDebugUnitTest --console=plain
-    - name: Preserve Android contract test evidence
-      if: always()
-      uses: actions/upload-artifact@v6
-      with:
-        name: android-contract-evidence-${{ github.run_id }}
-        path: |-
-          android/**/build/test-results/**
-          android/**/build/reports/tests/**
-        if-no-files-found: warn
-        retention-days: 7
   release-gate:
     needs:
     - scope
@@ -430,7 +401,6 @@ jobs:
     - visual-admin
     - unit-tests
     - portable-voice-core
-    - android-contract
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

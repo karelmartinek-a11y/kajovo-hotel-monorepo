@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import shlex
@@ -48,99 +49,81 @@ def ssh_base() -> tuple[list[str], dict[str, str] | None]:
 
 
 def remote_script_text() -> str:
-    return """#!/usr/bin/env bash
+    return r"""#!/usr/bin/env bash
 set -euo pipefail
+umask 077
 upload_home="${DEPLOY_UPLOAD_HOME:?Missing DEPLOY_UPLOAD_HOME}"
 release_archive="${upload_home}/${RELEASE_ARCHIVE}"
 image_upload="${upload_home}/kajovo-release-images-${DEPLOY_SHA}"
-release_root="/opt/kajovo-hotel-monorepo"
-deploy_root="${upload_home}/kajovo-deploy-releases/${DEPLOY_SHA}"
-preserve_dir="$(mktemp -d)"
+release_parent="/home/deploy-hotel/kajovo-deploy-releases"
+deploy_root="${release_parent}/${DEPLOY_SHA}"
 vars_json="${upload_home}/kajovo-deploy-vars.json"
-release_owner="$(id -un)"
-release_group="$(id -gn)"
-# Release preparation also shares the runtime fence, preventing retries from
-# rewriting source/environment underneath a running managed deployment.
-exec 8</etc/home-assistant-mcp-public/runtime.lock
+[[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
+[[ "$RELEASE_ARCHIVE" == "kajovo-deploy-${DEPLOY_SHA}.tar.gz" ]] || exit 1
+mkdir -p "$release_parent"
+exec 8>"$release_parent/.prepare.lock"
 flock -x 8
-python3 - <<'PYPREPARE'
-import json, os
+staging="$(mktemp -d "$release_parent/.prepare-XXXXXXXX")"
+trap 'rm -rf "$staging"; rm -f "$vars_json"' EXIT
+test -f "$release_archive"
+archive_hash="$(sha256sum "$release_archive" | cut -d ' ' -f1)"
+if [ -e "$deploy_root" ]; then
+  # Retries reuse the identical immutable release; never rewrite active source/env.
+  test "$(cat "$deploy_root/.source-archive.sha256")" = "$archive_hash"
+  python3 "$deploy_root/scripts/release_images.py" verify --directory "$deploy_root/artifacts/release-images" --sha "$DEPLOY_SHA"
+else
+  tar -xzf "$release_archive" -C "$staging"
+  mkdir -p "$staging/artifacts"
+  mv "$image_upload" "$staging/artifacts/release-images"
+  python3 "$staging/scripts/release_images.py" verify --directory "$staging/artifacts/release-images" --sha "$DEPLOY_SHA"
+  export DEPLOY_STAGING="$staging" DEPLOY_VARS_PATH="$vars_json"
+  python3 - <<'PYENV'
+import json, os, subprocess
 from pathlib import Path
-state = json.loads(Path('/etc/home-assistant-mcp-public/transaction.json').read_text())
-if state.get('phase') != 'active' or state.get('hotel_sha') != os.environ['DEPLOY_SHA'] or state.get('hotel_worker') == 'PASS':
-    raise SystemExit('Release preparation transaction revoked or already completed')
-if state.get('sha') != os.environ['COORDINATED_MCP_SHA']:
-    raise SystemExit('Release preparation MCP transaction changed')
-PYPREPARE
-can_sudo=0
-if sudo -n true >/dev/null 2>&1; then
-  can_sudo=1
-fi
 
-run_release_root_cmd() {
-  if [ "$can_sudo" -eq 1 ]; then
-    sudo -n "$@"
-  else
-    "$@"
-  fi
-}
-
-if [ ! -f "$release_archive" ]; then
-  echo "Missing uploaded archive: $release_archive" >&2
-  exit 1
-fi
-if run_release_root_cmd test -f "$release_root/infra/.env"; then
-  mkdir -p "$preserve_dir/infra"
-  run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
-  chmod 600 "$preserve_dir/infra/.env"
-fi
-rm -rf "$deploy_root"
-mkdir -p "$deploy_root"
-tar -xzf "$release_archive" -C "$deploy_root"
-mkdir -p "$deploy_root/artifacts"
-mv "$image_upload" "$deploy_root/artifacts/release-images"
-python3 "$deploy_root/scripts/release_images.py" verify \
-  --directory "$deploy_root/artifacts/release-images" --sha "$DEPLOY_SHA"
-printf '%s\\n' "$COORDINATED_MCP_SHA" > "$deploy_root/.coordinated-mcp-sha"
-mkdir -p "$deploy_root/infra"
-if [ "$can_sudo" -eq 1 ]; then
-  sudo -n chown -R "$release_owner:$release_group" "$deploy_root"
-fi
-if [ -f "$preserve_dir/infra/.env" ]; then
-  mv "$preserve_dir/infra/.env" "$deploy_root/infra/.env"
-elif [ ! -f "$deploy_root/infra/.env" ]; then
-  : > "$deploy_root/infra/.env"
-fi
-chmod 600 "$deploy_root/infra/.env"
-export DEPLOY_VARS_PATH="$vars_json"
-export DEPLOY_ROOT="$deploy_root"
-python3 - <<'PY'
-from pathlib import Path
-import json
-import os
-
-env_path = Path(os.environ["DEPLOY_ROOT"]) / "infra/.env"
-vars_path = Path(os.environ["DEPLOY_VARS_PATH"])
+root = Path(os.environ['DEPLOY_STAGING'])
+payload = json.loads(Path(os.environ['DEPLOY_VARS_PATH']).read_text())
+# The live container identifies the active environment; a legacy checkout is not authority.
+container = json.loads(subprocess.check_output(['docker', 'inspect', 'kajovo-prod-api-1']))[0]
+labels = container['Config']['Labels']
+source = labels.get('com.docker.compose.project.environment_file')
+if not source:
+    source = str(Path(labels['com.docker.compose.project.working_dir']) / '.env')
+env_path = Path(source)
+if not env_path.is_file():
+    raise SystemExit('Active production environment unavailable')
 current = {}
-for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
-    if not raw_line or raw_line.lstrip().startswith("#") or "=" not in raw_line:
-        continue
-    key, value = raw_line.split("=", 1)
-    current[key] = value
-
-payload = json.loads(vars_path.read_text(encoding="utf-8"))
-# Root provisioning publishes only this fingerprint; the key is preserved in server env.
-import hashlib
-fingerprint_path = Path('/etc/home-assistant-mcp-public/signing-key.sha256')
-expected = fingerprint_path.read_text().strip()
-key = current.get('KAJOVO_API_MCP_SIGNING_KEY', '')
-if len(key) < 32 or hashlib.sha256(key.encode()).hexdigest() != expected:
-    raise SystemExit('MCP signing key fingerprint mismatch')
-print('Hotel/MCP signing key fingerprint equality PASS')
-
+for line in env_path.read_text().splitlines():
+    if line and not line.lstrip().startswith('#') and '=' in line:
+        key, value = line.split('=', 1)
+        current[key] = value
+runtime = dict(item.split('=', 1) for item in container['Config']['Env'] if '=' in item)
+master = runtime.get('KAJOVO_API_VOICE_MASTER_KEY', '')
+supplied = payload.get('KAJOVO_API_VOICE_MASTER_KEY', '')
+if master and supplied and master != supplied:
+    raise SystemExit('Existing Voice master key must be preserved')
+postgres = json.loads(subprocess.check_output(['docker', 'inspect', 'kajovo-prod-postgres-1']))[0]
+database = dict(item.split('=', 1) for item in postgres['Config']['Env'] if '=' in item)
+# Preserve the effective live database contract, including a deliberately empty password.
+def literal(value):
+    if '\n' in value or '\r' in value:
+        raise SystemExit('Multiline production env value rejected')
+    return json.dumps(value.replace("$", "$$"), ensure_ascii=False)
+for key, value in runtime.items():
+    if key.startswith(('KAJOVO_API_', 'BETTER_HOTEL_', 'HOTEL_ADMIN_')):
+        current[key] = literal(value)
+for key in ('POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_HOST_AUTH_METHOD'):
+    if key in database:
+        current[key] = literal(database[key])
+url = runtime.get('KAJOVO_API_DATABASE_URL', '')
+if not url:
+    raise SystemExit('Active database URL unavailable')
+current['KAJOVO_API_DATABASE_URL'] = literal(url)
+if master:
+    current['KAJOVO_API_VOICE_MASTER_KEY'] = literal(master)
 for key in list(current):
-    if key.startswith("KAJOVO_API_" + "SMART_" + "TECHNOLOGIES_"):
-        current.pop(key)
+    if key.startswith(('KAJOVO_API_MCP_', 'KAJOVO_API_SMART_TECHNOLOGIES_')):
+        del current[key]
 updates = {
     "KAJOVO_API_ADMIN_EMAIL": payload.get("KAJOVO_API_ADMIN_EMAIL") or payload.get("HOTEL_ADMIN_EMAIL", ""),
     "KAJOVO_API_ADMIN_PASSWORD": payload.get("KAJOVO_API_ADMIN_PASSWORD") or payload.get("HOTEL_ADMIN_PASSWORD", ""),
@@ -150,7 +133,6 @@ updates = {
     "BETTER_HOTEL_ACCESS_TOKEN": payload.get("BETTER_HOTEL_ACCESS_TOKEN", ""),
     "BETTER_HOTEL_CLIENT_TOKEN": payload.get("BETTER_HOTEL_CLIENT_TOKEN", ""),
     "KAJOVO_API_VOICE_MASTER_KEY": payload.get("KAJOVO_API_VOICE_MASTER_KEY", ""),
-    "KAJOVO_API_MCP_SERVER_URL": payload.get("KAJOVO_API_MCP_SERVER_URL", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": payload.get("KAJOVO_API_WEB_PUSH_VAPID_SUBJECT", ""),
@@ -158,33 +140,37 @@ updates = {
 }
 for key, value in updates.items():
     if value:
-        current[key] = value
-
-env_path.write_text("".join(f"{key}={value}\\n" for key, value in sorted(current.items())), encoding="utf-8")
-PY
-rm -rf "$preserve_dir"
-rm -f "$release_archive"
-rm -f "$vars_json"
-# Activation owns the deploy service. Upload only signals the exact release ready.
-printf '%s\\n' "$DEPLOY_SHA" > "$deploy_root/.coordinated-ready"
+        if '\n' in value or '\r' in value:
+            raise SystemExit('Multiline production env value rejected')
+        current[key] = literal(value)
+target = root / 'infra/.env'
+target.write_text(''.join(f'{key}={value}\n' for key, value in sorted(current.items())))
+target.chmod(0o600)
+PYENV
+  printf '%s\n' "$archive_hash" > "$staging/.source-archive.sha256"
+  mv "$staging" "$deploy_root"
+fi
+rm -f "$release_archive" "$vars_json"
+sudo -n /usr/local/bin/kajovo-hotel-release prepare "$DEPLOY_SHA"
+sudo -n /usr/local/bin/kajovo-hotel-release activate "$DEPLOY_SHA"
 flock -u 8
-exec 8<&-
+exec 8>&-
+export DEPLOY_ROOT="$deploy_root"
 python3 - <<'PYWORKER'
-import json
-import os
-import time
+import json, os, time
 from pathlib import Path
-status = Path('/etc/home-assistant-mcp-public/transaction.json')
 expected = os.environ['DEPLOY_SHA']
+status = Path('/etc/kajovo-hotel-release-public/transaction.json')
 artifact = Path(os.environ['DEPLOY_ROOT']) / 'artifacts/deploy-runtime/latest.json'
 for _ in range(1800):
     state = json.loads(status.read_text())
-    if state.get('hotel_sha') != expected or state.get('sha') != os.environ['COORDINATED_MCP_SHA'] or state.get('phase') not in {'active', 'accepted_cleanup_pending', 'accepted'}:
-        raise SystemExit('Coordinated hotel deployment revoked')
-    if state.get('hotel_worker') == 'PASS' and artifact.exists():
-        payload = json.loads(artifact.read_text())
-        if payload.get('sha') != expected:
-            raise SystemExit('Coordinated runtime artifact SHA mismatch')
+    if state.get('sha') != expected or state.get('phase') not in {'active', 'accepted'}:
+        raise SystemExit('Hotel deployment revoked')
+    if state.get('worker') == 'FAIL':
+        raise SystemExit('Hotel deployment worker failed')
+    if state.get('worker') == 'PASS' and artifact.exists():
+        if json.loads(artifact.read_text()).get('sha') != expected:
+            raise SystemExit('Hotel runtime artifact SHA mismatch')
         print('Managed exact SHA hotel deployment PASS')
         break
     time.sleep(1)
@@ -204,7 +190,6 @@ def write_remote_vars(path: Path) -> None:
         "BETTER_HOTEL_ACCESS_TOKEN",
         "BETTER_HOTEL_CLIENT_TOKEN",
         "KAJOVO_API_VOICE_MASTER_KEY",
-        "KAJOVO_API_MCP_SERVER_URL",
         "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT",
@@ -261,108 +246,33 @@ def cmd_verify_certificate() -> None:
     run(["bash", "-c", certificate_verification_script()])
 
 
-def pre_upload_cleanup_script() -> str:
-    return r"""set -euo pipefail
-upload_home="$HOME"
-release_dir="$upload_home/kajovo-deploy-releases"
-
-echo "Disk usage before deploy cleanup:"
-df -h "$upload_home"
-
-# This maintenance helper is not invoked before deployment. Remove only aged
-# incomplete uploads; retained release trees/images belong to accepted cleanup.
-find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz' -mtime +7 -delete
-find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz.incomplete' -mtime +7 -delete
-
-echo "Disk usage after deploy cleanup:"
-df -h "$upload_home"
-"""
-
-
-def cmd_prepare_upload() -> None:
-    run_remote(pre_upload_cleanup_script())
+def exact_sha() -> str:
+    sha = env("DEPLOY_SHA")
+    if not re.fullmatch(r"[a-f0-9]{40}", sha):
+        raise SystemExit("Invalid exact DEPLOY_SHA")
+    return sha
 
 
 def cmd_check_helper() -> None:
-    run_remote(
-        "set -euo pipefail; "
-        "sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null; "
-        "test -w /opt/kajovo-hotel-monorepo; "
-        "echo 'Remote nginx sync helper + deploy tree access: PASS'"
-    )
+    checks = ["set -euo pipefail",
+              "sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null",
+              "test -x /usr/local/bin/kajovo-hotel-release",
+              "systemctl is-active --quiet kajovo-hotel-release-deadline.timer"]
+    for name in ("hotel_release.py", "release_images.py"):
+        expected = hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+        path = shlex.quote("/usr/local/lib/kajovo-hotel-release/" + name)
+        checks.extend([f"test -f {path} && test ! -L {path}",
+                       f'test "$(stat -c %u {path})" = 0',
+                       f'test "$(stat -c %a {path})" = 644',
+                       f'test "$(sha256sum {path} | cut -d " " -f1)" = {shlex.quote(expected)}'])
+    checks.append("echo 'Reviewed root hotel controller, deadline and nginx helper PASS'")
+    run_remote("; ".join(checks))
 
 
-def cmd_check_transaction() -> None:
-    deploy_sha = env("DEPLOY_SHA")
-    if len(deploy_sha) != 40 or any(char not in "0123456789abcdef" for char in deploy_sha):
-        raise SystemExit("Invalid DEPLOY_SHA for coordinated transaction check")
-    quoted_sha = shlex.quote(deploy_sha)
-    mcp_sha = env("COORDINATED_MCP_SHA")
-    if len(mcp_sha) != 40 or any(char not in "0123456789abcdef" for char in mcp_sha):
-        raise SystemExit("Invalid COORDINATED_MCP_SHA for coordinated transaction check")
-    run_remote(
-        "set -euo pipefail; "
-        f"DEPLOY_SHA={quoted_sha} COORDINATED_MCP_SHA={shlex.quote(mcp_sha)} python3 - <<'PY'\n"
-        "import json, os\n"
-        "from pathlib import Path\n"
-        "state = json.loads(Path('/etc/home-assistant-mcp-public/transaction.json').read_text())\n"
-        "expected = os.environ['DEPLOY_SHA']\n"
-        "if state.get('phase') != 'active':\n"
-        "    raise SystemExit('coordinated_transaction_not_active')\n"
-        "if state.get('hotel_sha') != expected:\n"
-        "    raise SystemExit('coordinated_transaction_hotel_sha_mismatch')\n"
-        "mcp_sha = str(state.get('sha') or '')\n"
-        "if len(mcp_sha) != 40 or any(c not in '0123456789abcdef' for c in mcp_sha):\n"
-        "    raise SystemExit('coordinated_transaction_mcp_sha_invalid')\n"
-        "if os.environ.get('COORDINATED_MCP_SHA') and mcp_sha != os.environ['COORDINATED_MCP_SHA']:\n"
-        "    raise SystemExit('coordinated_transaction_mcp_sha_mismatch')\n"
-        "print('Exact hotel SHA coordinated transaction: PASS')\n"
-        "PY\n"
-        "systemctl is-active --quiet home-assistant-mcp-rollback.timer; "
-        "echo 'Rollback deadline armed: PASS'"
-    )
-
-
-def readiness_script(sha: str, mcp_sha: str) -> str:
-    if len(sha) != 40 or any(char not in "0123456789abcdef" for char in sha):
-        raise RuntimeError("exact_readiness_sha_required")
-    if len(mcp_sha) != 40 or any(char not in "0123456789abcdef" for char in mcp_sha):
-        raise RuntimeError("exact_mcp_readiness_sha_required")
-    return ("set -euo pipefail; "
-            f"DEPLOY_SHA={shlex.quote(sha)} COORDINATED_MCP_SHA={shlex.quote(mcp_sha)} python3 - <<'PYREADY'\n"
-            "import json, os, subprocess\n"
-            "from pathlib import Path\n"
-            "path = Path('/etc/home-assistant-mcp-public/transaction.json')\n"
-            "state = json.loads(path.read_text()) if path.exists() else {}\n"
-            "mcp = str(state.get('sha') or '')\n"
-            "valid_mcp = len(mcp) == 40 and all(c in '0123456789abcdef' for c in mcp)\n"
-            "ready = (state.get('phase') == 'active' and state.get('hotel_sha') == os.environ['DEPLOY_SHA']\n"
-            "         and state.get('hotel_worker') != 'PASS' and valid_mcp\n"
-            "         and (not os.environ['COORDINATED_MCP_SHA'] or mcp == os.environ['COORDINATED_MCP_SHA']))\n"
-            "if ready:\n"
-            "    ready = subprocess.run(['systemctl', 'is-active', '--quiet', 'home-assistant-mcp-rollback.timer'],\n"
-            "                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0\n"
-            "print(json.dumps({'ready': ready, 'mcp_sha': mcp if valid_mcp else ''}))\n"
-            "PYREADY\n")
-
-
-def cmd_check_readiness() -> None:
-    ssh_cmd, ssh_env = ssh_base()
-    merged = os.environ.copy()
-    if ssh_env:
-        merged.update(ssh_env)
-    payload = json.loads(subprocess.check_output(
-        [*ssh_cmd, readiness_script(env("DEPLOY_SHA"), env("COORDINATED_MCP_SHA"))], env=merged, text=True))
-    if not isinstance(payload.get("ready"), bool):
-        raise RuntimeError("invalid_coordinator_readiness_response")
-    mcp_sha = payload.get("mcp_sha")
-    if (not isinstance(mcp_sha, str) or (mcp_sha and not re.fullmatch(r"[a-f0-9]{40}", mcp_sha))
-            or payload["ready"] and mcp_sha != env("COORDINATED_MCP_SHA")):
-        raise RuntimeError("invalid_coordinator_readiness_identity")
-    if output := env("GITHUB_OUTPUT"):
-        with Path(output).open("a") as stream:
-            stream.write(f"ready={str(payload['ready']).lower()}\nmcp_sha={payload['mcp_sha']}\n")
-    print("Coordinated transaction READY" if payload["ready"] else "Deployment deferred: coordinated transaction is not READY")
+def cmd_release(action: str) -> None:
+    if action not in {"accept", "rollback", "status"}:
+        raise ValueError("Invalid release action")
+    run_remote(f"sudo -n /usr/local/bin/kajovo-hotel-release {action} {shlex.quote(exact_sha())}")
 
 
 def cmd_deploy() -> None:
@@ -371,7 +281,7 @@ def cmd_deploy() -> None:
         raise SystemExit("Missing RELEASE_ARCHIVE")
     bundle = Path(env("RELEASE_IMAGES_DIR", "artifacts/release-images"))
     validate_bundle(bundle, env("DEPLOY_SHA"))
-    cmd_check_transaction()
+    exact_sha()
     upload(Path(archive), f"~/{archive}")
     for filename in ("manifest.json", "images.tar.gz"):
         upload(bundle / filename, f"~/kajovo-release-images-{env('DEPLOY_SHA')}/{filename}")
@@ -389,15 +299,14 @@ def cmd_deploy() -> None:
     run_remote(
         "set -euo pipefail; "
         'upload_home="$HOME"; '
-        f"env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} COORDINATED_MCP_SHA={shlex.quote(env('COORDINATED_MCP_SHA'))} RELEASE_ARCHIVE={shlex.quote(archive)} "
+        f"env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} "
         'bash "$upload_home/kajovo-deploy-remote.sh"; '
         'rm -f "$upload_home/kajovo-deploy-remote.sh"'
     )
 
 
 def cmd_verify_artifact() -> None:
-    deploy_sha = env("DEPLOY_SHA")
-    quoted_sha = shlex.quote(deploy_sha)
+    quoted_sha = shlex.quote(exact_sha())
     run_remote(
         "set -euo pipefail; "
         f"DEPLOY_SHA={quoted_sha} python3 - <<'PY'\n"
@@ -428,15 +337,13 @@ def main() -> int:
     if len(sys.argv) != 2:
         raise SystemExit(
             "Usage: github_deploy_via_ssh.py "
-            "<check-helper|check-transaction|check-readiness|deploy|verify-certificate|verify-artifact>"
+            "<check-helper|deploy|verify-certificate|verify-artifact|accept|rollback|status>"
         )
     command = sys.argv[1]
     if command == "check-helper":
         cmd_check_helper()
-    elif command == "check-transaction":
-        cmd_check_transaction()
-    elif command == "check-readiness":
-        cmd_check_readiness()
+    elif command in {"accept", "rollback", "status"}:
+        cmd_release(command)
     elif command == "deploy":
         cmd_deploy()
     elif command == "verify-certificate":

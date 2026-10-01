@@ -9,7 +9,6 @@ from voice_core_server import RealtimeSessionClient, VoiceCoreConfig, VoiceError
 from app.db.models import VoiceCoreSettings
 from app.db.session import get_db
 from app.security.auth import require_session
-from app.services.mcp_provider import MCP_INSTRUCTIONS, HomeAssistantMcpProvider
 from app.services.voice_core import (
     VoiceConfigAdapter,
     VoiceSecretAdapter,
@@ -77,7 +76,7 @@ def read_config(db: Session) -> VoiceConfigRead:
 
 
 def safe_error(exc: VoiceError) -> HTTPException:
-    status = {"missing_api_key": 409, "secret_store_unavailable": 503, "capability_not_configured": 503,
+    status = {"missing_api_key": 409, "secret_store_unavailable": 503,
               "invalid_api_key": 400, "model_unavailable": 400, "rate_limited": 429}.get(exc.category, 502)
     return HTTPException(status, detail={"code": exc.category})
 
@@ -128,9 +127,7 @@ async def create_session(payload: VoiceSessionWrite, db: Db):
         raise HTTPException(422, detail={"code": "invalid_sdp"})
     try:
         key = VoiceSecretAdapter(db).read()
-        sdp, model = await RealtimeSessionClient(VoiceTelemetry(),
-            tools=HomeAssistantMcpProvider().tools(),
-            tool_instructions=MCP_INSTRUCTIONS).create(
+        sdp, model = await RealtimeSessionClient(VoiceTelemetry()).create(
             payload.sdp, VoiceConfigAdapter(db).read(), key)
     except VoiceError as exc:
         raise safe_error(exc) from None

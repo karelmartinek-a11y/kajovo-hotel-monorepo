@@ -19,6 +19,11 @@ API_CHECK = (
     "assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; "
     "assert '/api/v1/admin/voice-core/sessions' in app.openapi()['paths']; "
     "assert len([p for p in app.openapi()['paths'] if p.startswith('/api/v1/admin/voice-core/')]) == 3; "
+    "from voice_core_server import VoiceCoreConfig, session_config; "
+    "from voice_core_server.contracts import CAPABILITY_REGISTRY; "
+    "assert not CAPABILITY_REGISTRY; "
+    "assert session_config(VoiceCoreConfig(), 'gpt-realtime-2.1')['tool_choice'] == 'none'; "
+    "assert 'tools' not in session_config(VoiceCoreConfig(), 'gpt-realtime-2.1'); "
     "assert any(p.startswith('/api/v1/chat') for p in app.openapi()['paths'])"
 )
 

@@ -1,5 +1,4 @@
 import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider, type VoiceTelemetrySink } from './contracts.js';
-import {McpLifecycle} from './mcp.js';
 import { transition, type RealtimeEvent } from './state.js';
 
 export interface VoiceRuntimeEnvironment {
@@ -33,8 +32,6 @@ export class VoiceRealtimeClient {
   private retries = 0;
   private seen = new Set<string>();
   private lifecycleCleanup: (() => void) | null = null;
-  private mcp = new McpLifecycle();
-  private expectedTools: string[] = [];
 
   constructor(private provider: RealtimeSessionProvider, private telemetry: VoiceTelemetrySink,
               private environment: VoiceRuntimeEnvironment = browserEnvironment) {}
@@ -83,7 +80,7 @@ export class VoiceRealtimeClient {
   }
   private async connect(epoch: number) {
     if (!this.stream || epoch !== this.epoch) return;
-    this.cleanupConnection(); this.seen.clear(); this.mcp.reset(); this.set({mcpStatus: 'loading', importedTools: [], approval: null});
+    this.cleanupConnection(); this.seen.clear();
     const peer = this.environment.createPeer(); this.peer = peer;
     const audio = this.environment.createAudio(); this.audio = audio; audio.autoplay = true;
     audio.setAttribute('playsinline', '');
@@ -124,35 +121,12 @@ export class VoiceRealtimeClient {
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
     }
     if (event.type === 'error' || (event.type === 'response.done' && event.response?.status === 'failed')) {this.fail('realtime_error'); return;}
-    if (event.item?.type === 'function_call') {this.fail('unsupported_capability'); return;}
-    if (event.type === 'session.created' || event.type === 'session.updated') {
-      this.expectedTools = (event.session?.tools ?? []).filter(tool => tool.type === 'mcp').flatMap(tool => tool.allowed_tools ?? []);
-      if (!this.expectedTools.length) this.set({mcpStatus: 'disconnected'});
-    }
-    const result = this.mcp.handle(event);
-    if (result.tools && this.expectedTools.length && JSON.stringify([...result.tools].sort()) !== JSON.stringify([...this.expectedTools].sort())) result.status = 'unavailable';
-    if (result.status) this.set({mcpStatus: result.status});
-    if (result.tools) this.set({importedTools: result.tools});
-    if (result.approval) this.set({approval: result.approval});
-    if (result.followup && this.channel?.readyState === 'open') {
-      try {this.channel.send(JSON.stringify({type: 'response.create'}));}
-      catch {this.fail('connection_failed'); return;}
-    }
+    if (event.item?.type === 'function_call' || event.item?.type === 'mcp_call') {this.fail('unsupported_capability'); return;}
     if (event.type === 'session.created') {
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
     }
     this.set({state: transition(this.snapshot.state, event)});
-  }
-  approve(approvalId: string, approved: boolean) {
-    const request = this.snapshot.approval;
-    if (!request || request.id !== approvalId || (approved && !request.canApprove) || this.channel?.readyState !== 'open') return;
-    // Consume the rendered request before sending or notifying subscribers.
-    const next = this.mcp.resolveApproval(approvalId);
-    this.snapshot = {...this.snapshot, approval: next};
-    try {this.channel.send(JSON.stringify({type: 'conversation.item.create', item: {id: `mcp_approval_${crypto.randomUUID().replaceAll('-', '')}`, type: 'mcp_approval_response', approval_request_id: approvalId, approve: approved}}));}
-    catch {this.fail('connection_failed'); return;}
-    this.subscribers.forEach(listener => listener());
   }
   private meters(remote: MediaStream) {
     if (!this.context || !this.stream) return;
@@ -200,7 +174,6 @@ export class VoiceRealtimeClient {
     this.telemetry.emit('session.ended', {});
   }
   private cleanupConnection() {
-    this.mcp.reset(); this.set({mcpStatus: 'disconnected', importedTools: [], approval: null});
     this.abort?.abort(); this.abort = null;
     if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
     if (this.frame !== null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(this.frame); this.frame = null;
