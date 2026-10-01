@@ -37,7 +37,7 @@ export class McpLifecycle {
       const turn = this.turn(responseId); turn.done = true;
       if (event.response?.status !== 'completed') turn.cancelled = true;
       for (const item of event.response?.output ?? []) if (item.type === 'mcp_call' && item.id) {
-        turn.items.add(item.id); 
+        turn.items.add(item.id);
       }
     }
     for (const turn of this.turns.values()) {
