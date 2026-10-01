@@ -32,7 +32,7 @@
     "ci:visual": "pnpm ci:visual-web && pnpm ci:visual-admin",
     "ops:smoke": "bash ./infra/smoke/smoke.sh",
     "ops:verify-deploy": "bash ./infra/verify/verify-deploy.sh",
-    "ci:voice-core": "pnpm --filter @voice-core/browser test && python3.11 -m pytest packages/voice-core-server/tests && python3.11 scripts/check_voice_core_boundaries.py && python3.11 scripts/check_native_mcp_cutover.py"
+    "ci:voice-core": "node --test scripts/mcp_authorization_guard.test.mjs && pnpm --filter @voice-core/browser test && python3.11 -m pytest packages/voice-core-server/tests && python3.11 scripts/check_voice_core_boundaries.py && python3.11 scripts/check_native_mcp_cutover.py"
   },
   "packageManager": "pnpm@10.34.4"
 }

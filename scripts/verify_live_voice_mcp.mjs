@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {readFile} from 'node:fs/promises';
+import {hasExposedAuthorization} from './mcp_authorization_guard.mjs';
 const require = createRequire(new URL('../apps/kajovo-hotel-admin/package.json', import.meta.url));
 const {chromium} = require('playwright');
 const origin = process.env.VERIFY_BASE_URL || 'https://hotel.hcasc.cz';
@@ -18,6 +19,7 @@ try {
     console.log(JSON.stringify({admin_login:'PASS',voice_config:'PASS',realtime:'NOT_CONFIGURED'}));
   } else {
     const wav = process.env.VERIFY_VOICE_WAV ? (await readFile(process.env.VERIFY_VOICE_WAV)).toString('base64') : null;
+    await context.addInitScript({content: `window.__voiceAuthorizationGuard = ${hasExposedAuthorization.toString()};`});
     await context.addInitScript(({wav}) => {
       window.__mcpEvidence={imported:[],importCompleted:false,credentialsExposed:false,configValid:false,call:null,devices:[],spoken:'',audioPeak:0,error:null};
       const evidence=window.__mcpEvidence;
@@ -32,8 +34,7 @@ try {
         const channel=original.apply(this,args);
         channel.addEventListener('message',async message => {
           const e=JSON.parse(message.data);
-          const secretKeys=(v) => v && typeof v==='object' && Object.entries(v).some(([k,x]) => ((k==='authorization'||k.toLowerCase()==='authorization')&&typeof x==='string'&&x.length>0)||secretKeys(x));
-          if(secretKeys(e)) evidence.credentialsExposed=true;
+          if(window.__voiceAuthorizationGuard(e)) evidence.credentialsExposed=true;
           if(e.type==='error') evidence.error=e.error?.code||'realtime_error';
           if(e.type==='session.created'||e.type==='session.updated') {
             const tools=e.session?.tools||[];const m=tools.find(t=>t.type==='mcp');
