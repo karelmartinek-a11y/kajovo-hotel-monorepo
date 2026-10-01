@@ -16,3 +16,6 @@ Android and employee portal do not consume admin Voice endpoints; verify this wi
 ## Review hotfix scope
 
 All eight categories above require updates for approval wire identity, rendered-request locking, secret-safe validation, host-managed key handoff, Compose defaults, aggregate smoke evidence and transactional release gates. OpenAPI/client and Android are verified unchanged: no public route/body contract changes. Review completion and zero unresolved findings are independent gates from CI. Known-good release trees/images remain protected until coordinated acceptance.
+
+Realtime calls contract correction: update internal MCP config/host producer, exact multipart regression and early status-only smoke failure detection; update core README and instructions. Existing CI/release gates verify all fixes. OpenAPI/client, browser approval wire, Android consumers, fixtures, translations and data schema are verified unchanged because public API bodies and UI behavior do not change. The new calls endpoint returned unknown_parameter for session.tools[0].server_description; no credential/input detail is logged.
+Native MCP authorization follows the documented access-token field: raw scoped token, with its HTTP scheme supplied by OpenAI. Host API regression verifies the unprefixed token and private response boundary; no MCP server authentication relaxation is added.

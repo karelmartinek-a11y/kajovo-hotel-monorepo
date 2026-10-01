@@ -189,6 +189,9 @@ def test_mcp_host_configuration_is_private_and_replaced_route_is_absent(voice_ho
     assert tool['type']=='mcp' and tool['server_url']=='https://hotel.hcasc.cz/mcp/home-assistant'
     assert tool['allowed_tools']==['search_devices','get_device_state','execute_device_action']
     assert tool['require_approval']=={'never':{'tool_names':['search_devices','get_device_state']}}
+    assert not tool['authorization'].startswith('Bearer ')
+    assert len(tool['authorization'].split('.')) == 2
+    assert 'server_description' not in tool
     assert tool['authorization'] not in response.text and tool['authorization'] not in caplog.text
     assert get_settings().mcp_signing_key not in response.text
     assert set(response.json())=={'sdp','model'}

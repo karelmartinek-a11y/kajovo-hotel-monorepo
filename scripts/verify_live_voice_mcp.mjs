@@ -66,7 +66,13 @@ try {
         });return originalTrack.apply(this,args);
       };
     },{wav});
-    const page=await context.newPage();await page.goto(`${origin}/admin/hlasovy-chat`);
+    const page=await context.newPage();
+    page.on('response',async response => {
+      if(new URL(response.url()).pathname==='/api/v1/admin/voice-core/sessions' && response.status()>=400) {
+        await page.evaluate(status=>{window.__mcpEvidence.error=`hotel_session_http_${status}`;},response.status()).catch(()=>{});
+      }
+    });
+    await page.goto(`${origin}/admin/hlasovy-chat`);
     await page.getByTestId('voice-console').waitFor();
     await page.getByRole('button',{name:'Zahájit hovor',exact:true}).click();
     await page.waitForFunction(()=>window.__mcpEvidence.imported.length===3||window.__mcpEvidence.error,{},{timeout:90000});
