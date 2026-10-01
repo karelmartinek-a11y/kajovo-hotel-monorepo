@@ -89,6 +89,9 @@ export class McpLifecycle {
     }
     const responseId = event.response_id ?? event.response?.id;
     const itemId = event.item_id ?? event.item?.id;
+    // Register response creation before any delayed tool events so interruption
+    // permanently cancels that response even if its first call arrives later.
+    if (event.type === 'response.created' && responseId) this.turn(responseId);
     if (responseId && (event.item?.type === 'mcp_call' || event.type.startsWith('response.mcp_call'))) {
       const turn = this.turn(responseId);
       if (itemId) {turn.items.add(itemId); }

@@ -235,3 +235,20 @@ test('reconnect disconnects old playback graph and rejects late tracks and play 
  await h.client.stop();assert.ok(h.sources.every(source=>source.disconnected)&&h.meters.every(meter=>meter.disconnected));
  assert.ok(h.audios.every(item=>item.paused&&item.srcObject===null)&&h.contexts[0].closed&&h.tracks[0].stopped);
 });
+
+test('interruption before delayed first MCP call never sends an old followup', async () => {
+ const h = host(); await h.client.start();
+ h.send({type:'response.created',response:{id:'old'}});
+ h.send({type:'input_audio_buffer.speech_started'});
+ h.send({type:'response.mcp_call.in_progress',response_id:'old',item_id:'late'});
+ h.send({type:'response.done',response:{id:'old',status:'completed',output:[{type:'mcp_call',id:'late'}]}});
+ h.send({type:'response.output_item.done',response_id:'old',item:{type:'mcp_call',id:'late'}});
+ const outgoing = () => h.peers[0].channel.sent.filter(event=>event.type==='response.create');
+ assert.equal(outgoing().length,0);
+ h.send({type:'response.created',response:{id:'new'}});
+ h.send({type:'response.mcp_call.in_progress',response_id:'new',item_id:'current'});
+ h.send({type:'response.done',response:{id:'new',status:'completed',output:[{type:'mcp_call',id:'current'}]}});
+ h.send({type:'response.output_item.done',response_id:'new',item:{type:'mcp_call',id:'current'}});
+ assert.deepEqual(outgoing(),[{type:'response.create'}]);
+ await h.client.stop();
+});

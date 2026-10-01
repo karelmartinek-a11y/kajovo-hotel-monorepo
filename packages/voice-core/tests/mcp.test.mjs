@@ -79,3 +79,16 @@ test('credentials copied into visible action fields cannot leak into approval sn
  const approval=m.handle(request(JSON.stringify({...args,state_key:args.action_token}))).approval;
  assert.equal(approval.canApprove,false);assert.deepEqual(approval.details,[]);assert.ok(!JSON.stringify(approval).includes(args.action_token));
 });
+
+test('barge-in cancels a created response before its first delayed MCP call', () => {
+ const m = new McpLifecycle();
+ m.handle({type:'response.created',response:{id:'old'}});
+ m.handle({type:'input_audio_buffer.speech_started'});
+ m.handle(call('late','old'));
+ m.handle(done(['late'],'completed','old'));
+ assert.ok(!m.handle(completed('late','old')).followup);
+ m.handle({type:'response.created',response:{id:'new'}});
+ m.handle(call('current','new'));
+ m.handle(done(['current'],'completed','new'));
+ assert.equal(m.handle(completed('current','new')).followup,true);
+});
