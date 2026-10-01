@@ -1,5 +1,6 @@
-import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider, type VoiceTelemetrySink, type VoiceToolExecutor } from './contracts.js';
-import { transition, type RealtimeEvent, type RealtimeToolItem } from './state.js';
+import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider, type VoiceTelemetrySink } from './contracts.js';
+import {McpLifecycle} from './mcp.js';
+import { transition, type RealtimeEvent } from './state.js';
 
 export interface VoiceRuntimeEnvironment {
   getUserMedia(): Promise<MediaStream>; createPeer(): RTCPeerConnection;
@@ -32,12 +33,11 @@ export class VoiceRealtimeClient {
   private retries = 0;
   private seen = new Set<string>();
   private lifecycleCleanup: (() => void) | null = null;
-  private toolCalls = new Set<string>();
-  private toolQueue: Promise<void> = Promise.resolve();
+  private mcp = new McpLifecycle();
+  private expectedTools: string[] = [];
 
   constructor(private provider: RealtimeSessionProvider, private telemetry: VoiceTelemetrySink,
-              private environment: VoiceRuntimeEnvironment = browserEnvironment,
-              private toolExecutor?: VoiceToolExecutor) {}
+              private environment: VoiceRuntimeEnvironment = browserEnvironment) {}
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => {this.subscribers.add(listener); return () => {this.subscribers.delete(listener);};};
   private set(patch: Partial<VoiceSnapshot>) {this.snapshot = {...this.snapshot, ...patch}; this.subscribers.forEach(listener => listener());}
@@ -83,7 +83,7 @@ export class VoiceRealtimeClient {
   }
   private async connect(epoch: number) {
     if (!this.stream || epoch !== this.epoch) return;
-    this.cleanupConnection(); this.seen.clear(); this.toolCalls.clear(); this.toolQueue = Promise.resolve();
+    this.cleanupConnection(); this.seen.clear(); this.mcp.reset(); this.set({mcpStatus: 'loading', importedTools: [], approval: null});
     const peer = this.environment.createPeer(); this.peer = peer;
     const audio = this.environment.createAudio(); this.audio = audio; audio.autoplay = true;
     audio.setAttribute('playsinline', '');
@@ -124,36 +124,28 @@ export class VoiceRealtimeClient {
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
     }
     if (event.type === 'error' || (event.type === 'response.done' && event.response?.status === 'failed')) {this.fail('realtime_error'); return;}
-    if (event.item?.type === 'mcp_call' || (event.item?.type === 'function_call' &&
-        (!this.toolExecutor || !event.item.name || !this.toolExecutor.names.includes(event.item.name)))) {this.fail('unsupported_capability'); return;}
-    // Only a completed response can dispatch an action; cancelled generation cannot.
-    if (event.type === 'response.done' && event.response?.status === 'completed') {
-      for (const item of event.response.output ?? []) if (item.type === 'function_call') this.dispatchTool(item);
+    if (event.item?.type === 'function_call') {this.fail('unsupported_capability'); return;}
+    if (event.type === 'session.created' || event.type === 'session.updated') {
+      this.expectedTools = (event.session?.tools ?? []).filter(tool => tool.type === 'mcp').flatMap(tool => tool.allowed_tools ?? []);
+      if (!this.expectedTools.length) this.set({mcpStatus: 'disconnected'});
     }
+    const result = this.mcp.handle(event);
+    if (result.tools && this.expectedTools.length && JSON.stringify([...result.tools].sort()) !== JSON.stringify([...this.expectedTools].sort())) result.status = 'unavailable';
+    if (result.status) this.set({mcpStatus: result.status});
+    if (result.tools) this.set({importedTools: result.tools});
+    if (result.approval) this.set({approval: result.approval});
+    if (result.followup && this.channel?.readyState === 'open') this.channel.send(JSON.stringify({type: 'response.create'}));
     if (event.type === 'session.created') {
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
     }
     this.set({state: transition(this.snapshot.state, event)});
   }
-  private dispatchTool(item: RealtimeToolItem) {
-    const executor = this.toolExecutor;
-    if (!executor || !item.name || !executor.names.includes(item.name)) {this.fail('unsupported_capability'); return;}
-    if (!item.call_id || typeof item.arguments !== 'string' || item.arguments.length > 16384) {this.fail('invalid_tool_call'); return;}
-    if (this.toolCalls.has(item.call_id)) return;
-    if (this.toolCalls.size >= 256) {this.fail('tool_call_limit'); return;}
-    this.toolCalls.add(item.call_id);
-    const epoch = this.epoch, channel = this.channel, signal = this.abort?.signal;
-    const name = item.name, callId = item.call_id, argumentsText = item.arguments;
-    this.toolQueue = this.toolQueue.then(async () => {
-      if (epoch !== this.epoch || channel !== this.channel || !signal || signal.aborted) return;
-      let result: unknown;
-      try {result = await executor.execute(name, callId, JSON.parse(argumentsText), signal);}
-      catch {result = {status: 'unknown', code: 'tool_call_unverified'};}
-      if (epoch !== this.epoch || channel !== this.channel || signal.aborted || channel?.readyState !== 'open') return;
-      channel.send(JSON.stringify({type: 'conversation.item.create', item: {type: 'function_call_output', call_id: callId, output: JSON.stringify(result)}}));
-      if (this.snapshot.state !== 'user-speaking') channel.send(JSON.stringify({type: 'response.create'}));
-    }).catch(() => {if (epoch === this.epoch && channel === this.channel) this.fail('tool_delivery_failed');});
+  approve(approved: boolean) {
+    const request = this.snapshot.approval;
+    if (!request || this.channel?.readyState !== 'open') return;
+    this.channel.send(JSON.stringify({type: 'conversation.item.create', item: {type: 'mcp_approval_response', approval_request_id: request.id, approve: approved}}));
+    this.set({approval: this.mcp.resolveApproval(request.id)});
   }
   private meters(remote: MediaStream) {
     if (!this.context || !this.stream) return;
@@ -201,6 +193,7 @@ export class VoiceRealtimeClient {
     this.telemetry.emit('session.ended', {});
   }
   private cleanupConnection() {
+    this.mcp.reset(); this.set({mcpStatus: 'disconnected', importedTools: [], approval: null});
     this.abort?.abort(); this.abort = null;
     if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
     if (this.frame !== null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(this.frame); this.frame = null;

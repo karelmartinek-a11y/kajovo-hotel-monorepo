@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 MODELS = ("gpt-realtime-2.1", "gpt-realtime-2")
 VOICES = ("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar")
@@ -68,5 +68,33 @@ class CapabilityProvider(Protocol):
     def contracts(self) -> tuple[CapabilityContract, ...]: ...
 
 
-# No providers or invocation executor are installed in this product version.
+# Portable core installs no application-specific capability provider.
 CAPABILITY_REGISTRY: tuple[CapabilityContract, ...] = ()
+
+
+class McpServerConfig(BaseModel):
+    """Server-owned remote capability definition; never a browser settings value."""
+    model_config = ConfigDict(extra="forbid")
+    server_label: str
+    server_url: str
+    authorization: str = Field(default="", repr=False)
+    allowed_tools: list[str]
+    require_approval: Literal['always', 'never'] | dict = 'always'
+    server_description: str = ""
+
+    @model_validator(mode='after')
+    def secure_endpoint(self):
+        from urllib.parse import urlsplit
+        url = urlsplit(self.server_url)
+        if url.scheme != 'https' or not url.hostname or url.username or url.password or url.fragment:
+            raise ValueError('Remote MCP requires an HTTPS endpoint')
+        if not self.allowed_tools or len(set(self.allowed_tools)) != len(self.allowed_tools):
+            raise ValueError('An explicit unique allowlist is required')
+        return self
+
+    def session_tool(self) -> dict:
+        return {'type': 'mcp', **self.model_dump()}
+
+
+class McpCapabilityProvider(Protocol):
+    def tools(self) -> list[dict]: ...

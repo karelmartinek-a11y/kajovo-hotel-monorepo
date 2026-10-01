@@ -1,4 +1,4 @@
-from .contracts import CAPABILITY_REGISTRY, LANGUAGES, MODELS, VOICES, VoiceCoreConfig
+from .contracts import CAPABILITY_REGISTRY, LANGUAGES, MODELS, VOICES, McpServerConfig, VoiceCoreConfig
 
 LENGTH_POLICIES = {
     "short": (512, "Prefer one or two concise sentences. Avoid tangents."),
@@ -24,6 +24,11 @@ def catalog() -> dict:
 
 
 def session_config(config: VoiceCoreConfig, model: str, tools: list[dict] | None = None, tool_instructions: str = "") -> dict:
+    if tools:
+        for tool in tools:
+            if tool.get('type') != 'mcp':
+                raise ValueError('Only native remote MCP capability definitions are supported')
+            McpServerConfig.model_validate({k:v for k,v in tool.items() if k != 'type'})
     tokens, length = LENGTH_POLICIES[config.response_length]
     language = ("Reply in the language the speaker uses; adapt naturally if it changes."
                 if config.language_mode == "automatic"

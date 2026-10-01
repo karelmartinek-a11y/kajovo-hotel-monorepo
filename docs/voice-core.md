@@ -19,7 +19,6 @@ The existing signed, persistent and revocable session is authoritative. Every `/
 - `PUT /api-key`: write-only `api_key` secret, returning configured status and settings.
 - `DELETE /api-key`: remove persistent ciphertext, even if its master key is unavailable.
 - `POST /sessions`: SDP offer and expected revision; returns SDP answer and selected model.
-- `POST /tools`: one server-owned `smart_technologies` call with call ID and validated arguments, guarded by admin session and CSRF.
 
 All response models omit secrets. Voice responses are `no-store`. Request bodies, including malformed key submissions and SDP, are excluded from audit capture. Voice validation errors return a safe category without input values. Provider exceptions never expose response bodies or headers.
 
@@ -41,7 +40,9 @@ Defaults: automatic model, automatic language, medium response and `marin`. The 
 
 Instructions require honest uncertainty, no invented sources or live/private facts, clarification of ambiguous requests, external-action claims supported by tool results and the selected language/length. No user-editable prompt is exposed or accepted by the host API. Model compliance is probabilistic, not a zero-hallucination guarantee; instructions are not secret credentials and OpenAI session events may expose their text. The browser application's supported transport sends no prompt/tool configuration updates; a hostile client is not an immutable-policy security boundary for OpenAI's own data-channel API.
 
-Portable capability registries remain empty by default. Hosts may supply tools to the server session client and an optional browser `VoiceToolExecutor`. Without tools, configuration is omitted and `tool_choice` is `none`. The hotel supplies exactly one `smart_technologies` function when its server-only upstream URL/token are configured. The executor forwards completed arguments to the admin API, deduplicates call IDs and returns correlated `function_call_output` items; it aborts pending requests on Stop and discards late results. Application data and device execution remain in host adapters. See [Smart technologies](smart-technologies.md).
+Portable sessions default to no connected tools. Hotel sessions require its scoped MCP provider, server_label `home_assistant`, canonical server_url `https://hotel.hcasc.cz/mcp/home-assistant`, and exactly `search_devices`, `get_device_state`, `execute_device_action`. Realtime imports and executes those tools directly. Reads skip native approval; execute requires a native approval response, while server domain policy remains authoritative and approval-required domains are rejected. Device text is data, never instructions. Unknown action outcomes are never automatically retried.
+
+`KAJOVO_API_MCP_SIGNING_KEY` is independent of the OpenAI encryption master. Deploy provisions it privately and shares it only with the capability server. Each session receives a scoped credential expiring in one hour; the host API returns only SDP and model. Permanent signing material must never enter browser events or telemetry. Production acceptance checks the full event stream for secret disclosure.
 
 Official contracts verified on 2026-09-30:
 
@@ -54,7 +55,7 @@ Official contracts verified on 2026-09-30:
 
 Permission -> connecting -> listening -> user speaking -> processing -> assistant speaking are derived from microphone/peer/data-channel events. Generation completion does not falsely imply that playback has ended. Output-buffer events control speaking state. The ORB uses the same state and optional RMS meters and respects reduced motion.
 
-Semantic VAD automatically creates responses and interrupts ongoing responses. In WebRTC OpenAI clears/truncates unplayed output. The browser sends `response.create` after a completed tool output; it does not issue duplicate response or cancellation loops. Duplicate event and tool call IDs are ignored.
+Semantic VAD automatically creates responses and interrupts ongoing responses. In WebRTC OpenAI clears/truncates unplayed output. The browser sends exactly one `response.create` after response.done and completion of every MCP call belonging to that response; it does not issue duplicate response or cancellation loops. Duplicate event and tool call IDs are ignored.
 
 Transient disconnects replace the connection with at most two attempts after 1 and 3 seconds, while keeping one microphone stream. Every handshake revalidates host auth and configuration revision. Interruption of microphone/OS audio and unrecoverable errors require a new user Start gesture. Configuration and key controls are disabled throughout an active call; mute and Stop remain available.
 
@@ -90,5 +91,3 @@ python scripts/release_gate.py
 Activate the Python environment for these commands. Portable tests and the isolated harness use test-only fakes; production code uses actual browser/OpenAI/host adapters. CI verifies the API import inside its actual Docker image.
 
 The paid smoke is separate. Start a local host, enter the OpenAI key in its UI, provide a WAV speech fixture with pauses and an interruption utterance, and set `VOICE_CORE_LIVE_SMOKE=1`, `VOICE_CORE_AUDIO_FIXTURE` and optionally `VOICE_CORE_BASE_URL`. Run `python scripts/voice_core_live_smoke.py`. Without the opt-in the runner exits before any network/session request. Traces, screenshots, videos and conversation content capture are disabled. It observes event types only and checks speech, audio output, barge-in and microphone cleanup. Automated browser speech fixtures do not prove physical iPhone/Bluetooth behavior.
-
-This delivery does not merge or deploy production. Header/runtime changes are prepared and tested as artifacts; production enablement still requires a separately authorized deploy and supplying its master key.
