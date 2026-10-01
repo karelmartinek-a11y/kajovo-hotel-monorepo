@@ -5,6 +5,7 @@ import {createRequire} from 'node:module';
 import {readFile} from 'node:fs/promises';
 import {hasExposedAuthorization} from './mcp_authorization_guard.mjs';
 import {SpokenCompletion} from './mcp_spoken_completion.mjs';
+import {isCanonicalMcpSession} from './mcp_session_echo_guard.mjs';
 const require = createRequire(new URL('../apps/kajovo-hotel-admin/package.json', import.meta.url));
 const {chromium} = require('playwright');
 const origin = process.env.VERIFY_BASE_URL || 'https://hotel.hcasc.cz';
@@ -22,6 +23,7 @@ try {
     const wav = process.env.VERIFY_VOICE_WAV ? (await readFile(process.env.VERIFY_VOICE_WAV)).toString('base64') : null;
     await context.addInitScript({content: `window.__voiceAuthorizationGuard = ${hasExposedAuthorization.toString()};`});
     await context.addInitScript({content: `window.__voiceSpokenCompletion = new (${SpokenCompletion.toString()})();`});
+    await context.addInitScript({content: `window.__voiceSessionGuard = ${isCanonicalMcpSession.toString()};`});
     await context.addInitScript(({wav}) => {
       window.__mcpEvidence={imported:[],importCompleted:false,credentialsExposed:false,configValid:false,call:null,devices:[],spoken:'',audioPeak:0,error:null};
       const evidence=window.__mcpEvidence;
@@ -40,8 +42,7 @@ try {
           if(window.__voiceAuthorizationGuard(e)) evidence.credentialsExposed=true;
           if(e.type==='error') evidence.error=e.error?.code||'realtime_error';
           if(e.type==='session.created'||e.type==='session.updated') {
-            const tools=e.session?.tools||[];const m=tools.find(t=>t.type==='mcp');
-            if(m) evidence.configValid=m.server_url==='https://hotel.hcasc.cz/mcp/home-assistant' && m.server_label==='home_assistant' && !('connector_id' in m);
+            evidence.configValid=window.__voiceSessionGuard(e.session);
           }
           if(e.type==='mcp_list_tools.completed') evidence.importCompleted=true;
           if(e.type==='conversation.item.done' && e.item?.type==='mcp_list_tools') {
