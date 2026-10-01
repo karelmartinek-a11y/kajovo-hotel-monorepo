@@ -1,6 +1,6 @@
 # Native MCP review finding mapping
 
-Hotfix branch starts from hotel main e5647b5ffc91917a3152a97df646efc00a2cbf94. PR #123 replaces the incomplete acceptance claim for PR #122. Local verification below is development evidence; exact final commit CI and fresh completed review are separately required before merge and deployment.
+Hotfix branch starts from hotel main e5647b5ffc91917a3152a97df646efc00a2cbf94. PR #123 replaces the incomplete acceptance claim for PR #122. Local verification below is development evidence; exact final commit CI and content-bound Independent Codex multi-agent forensic review are separately required before merge and deployment.
 
 | PR #122 thread / finding | Fixed source/symbol | Regression evidence | Local result |
 |---|---|---|---|
