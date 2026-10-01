@@ -1,0 +1,160 @@
+{
+  "schema": "independent_codex_forensic_review.v3",
+  "kind": "Independent Codex multi-agent forensic review",
+  "result": "PASS",
+  "reviewed_at": "2026-10-01 23:17:35 UTC",
+  "reviewed_sources": {
+    "hotel": {
+      "baseline": "a6e6a35335d683cefefb524f13ed23011ce80329",
+      "sha": "6ef37e32cf19b4b59efe3a2e90fa35f5957b10a6",
+      "tree": "2ee6855d9e315655bac1523864d5b1e6ae6ac43d",
+      "source_fingerprint": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+    }
+  },
+  "reviewers": [
+    {
+      "area": "A",
+      "scope": "protocol",
+      "agent_id": "/root/review_a_protocol",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+      },
+      "evidence": "Actual portable/server multipart, host API/RBAC/CSRF, runtime lifecycle and OpenAPI review; 23 server + 15 host tests and isolated TypeScript/boundary/normalized OpenAPI checks. Independently verified final full fingerprint and unchanged blobs, then rebuilt final runtime and ran 15 browser tests, zero skips."
+    },
+    {
+      "area": "B",
+      "scope": "security",
+      "agent_id": "/root/review_b_security",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+      },
+      "evidence": "Actual security review of AES-GCM, redaction, standalone session, credential timing, literal env/master preservation, narrow root authority and fail-closed runtime fence. 116 Python tests passed on unchanged blobs; final delta/fingerprint independently verified and 15 browser tests including private playback-error redaction passed. B-ENV-SQL resolved."
+    },
+    {
+      "area": "C",
+      "scope": "isolation",
+      "agent_id": "/root/review_c_isolation",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+      },
+      "evidence": "Actual portable/host import, routing, Docker/Compose/Nginx, no external provider/executor and unchanged business/Android/schema/client inspection. 43 Voice/API/tooling + 33 controller/env tests and 300 standalone policy combinations passed on unchanged blobs. Final independent copy-out rebuilt wheel/host ports/TypeScript and passed 23 server + 15 browser tests; boundary passed."
+    },
+    {
+      "area": "D",
+      "scope": "deployment",
+      "agent_id": "/root/review_d_deployment",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+      },
+      "evidence": "Actual exact-main CI/review/image/SSH, installed-root-module hash, worker cgroup/fence/deadline/acceptance and actual topology/source/env/image rollback review. 102 Python tests plus 4 independent PostgreSQL helper subtests passed, and final runtime 15 browser tests passed. Real Compose CLI confirmed PostgreSQL tag versus snapshot-ID hash difference; no live daemon exec-kill test claimed. D-SQL-QUOTE and D-PG-AUTH resolved."
+    },
+    {
+      "area": "E",
+      "scope": "artifact_closure",
+      "agent_id": "/root/review_e_artifact_closure",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+      },
+      "evidence": "Actual file-by-file review of all 76 modified/deleted/created source artifacts, active instructions, docs, fixtures, workflows, constraints and independent Android graph. 176 Python tests plus boundary/runtime-integrity/Ruff/Bash/JS/whitespace checks passed. Independently verified final single-blob delta/fingerprint and ran 15 browser tests, zero skips; no production acceptance claimed."
+    },
+    {
+      "area": "F",
+      "scope": "test_gaps",
+      "agent_id": "/root/review_f_test_gaps",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "01f044a9b9055d631d8378b1d1c6e5a0b3a818c3b7dec317284773459bda6f61"
+      },
+      "evidence": "Actual CI scope/aggregate/exact-main/source review, immutable images/controller/fence/private-env and Voice security/multipart test-gap review. 196 Python tests passed on unchanged blobs; final isolated TypeScript build and 15 browser tests passed, zero skips. Exercised actual Host worker start/stop commands and real Compose CLI hashes/literal env. F-AUDIO-COVERAGE resolved; live Docker daemon/systemd acceptance not claimed."
+    }
+  ],
+  "findings": [
+    {
+      "id": "B-ENV-SQL",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "fix": "Remove both role/database bootstrap/resync blocks; keep password out of SQL and process argv and set PGPASSWORD inside PostgreSQL container.",
+      "regression_tests": [
+        "scripts/tests/test_deploy_fence.py",
+        "scripts/tests/test_deploy_environment.py"
+      ],
+      "verified_by": [
+        "B",
+        "D"
+      ]
+    },
+    {
+      "id": "D-SQL-QUOTE",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "fix": "Managed deployment requires the healthy existing database/revision and no longer interpolates identifiers or secrets into CREATE/ALTER ROLE/DATABASE.",
+      "regression_tests": [
+        "scripts/tests/test_deploy_fence.py"
+      ],
+      "verified_by": [
+        "D"
+      ]
+    },
+    {
+      "id": "D-PG-AUTH",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "fix": "postgres_cmd exports the actual container POSTGRES_PASSWORD for psql/pg_isready, preserving argv and stdin and ignoring unrelated host PGPASSWORD.",
+      "regression_tests": [
+        "scripts/tests/test_deploy_fence.py",
+        "D independent four-canary helper verification"
+      ],
+      "verified_by": [
+        "B",
+        "D"
+      ]
+    },
+    {
+      "id": "R-FENCE-SET-E",
+      "severity": "HIGH",
+      "status": "resolved",
+      "fix": "compose_cmd and Nginx mutation return explicitly on failed fence, including set +e and Bash conditional contexts.",
+      "regression_tests": [
+        "scripts/tests/test_deploy_fence.py"
+      ],
+      "verified_by": [
+        "A",
+        "B",
+        "D"
+      ]
+    },
+    {
+      "id": "F-AUDIO-COVERAGE",
+      "severity": "MEDIUM",
+      "status": "resolved",
+      "fix": "Preserve the four existing pure-audio regression scenarios and sources/meters test harness while removing only integration behavior.",
+      "regression_tests": [
+        "packages/voice-core/tests/runtime.test.mjs: remote audio reject/error",
+        "packages/voice-core/tests/runtime.test.mjs: track without streams and Stop",
+        "packages/voice-core/tests/runtime.test.mjs: reconnect playback graph and late rejection"
+      ],
+      "verified_by": [
+        "A",
+        "B",
+        "C",
+        "E",
+        "F"
+      ]
+    }
+  ],
+  "open_counts": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "limits": [
+    "Source review and stated local checks only; final-SHA GitHub CI, immutable image execution and production acceptance are separate release evidence.",
+    "No paid provider calls, physical microphone, iPhone or Bluetooth acceptance are claimed by these reviewers."
+  ]
+}
