@@ -1,7 +1,7 @@
 """Fail-closed dependency routing for CI; scope is computed from Git, never a label.
 
 UI suites keep their full scenarios and viewport coverage. API consumers include
-Android contract checks without coupling its independent APK/emulator release.
+Android scope metadata; native consumer validation runs in its independent workflow.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path, PurePosixPath
 from urllib.request import Request, urlopen
 
-EXCLUDED_EVIDENCE = {'docs/native-mcp-independent-review.json', 'docs/native-mcp-independent-review.md'}
+EXCLUDED_EVIDENCE = {'docs/voice-core-independent-review.json', 'docs/voice-core-independent-review.md'}
 FLAGS = ('full', 'python', 'api', 'web', 'admin', 'android', 'voice',
          'visual_web', 'visual_admin', 'review_required', 'deploy_required',
          'runtime_images', 'deployable', 'static')
@@ -83,7 +83,7 @@ def classify(paths):
         # portable Voice and unknown files all propagate through every consumer.
         return _full(paths, 'unknown_or_shared_runtime_dependency')
     out['api'] = out['python']
-    # CI success is not root-coordinator acceptance: a later timer may roll
+    # CI success is not production acceptance: a later deadline may roll
     # back the preceding runtime. Always retain a verified restoration bundle.
     out['runtime_images'] = True
     out['deployable'] = out['deploy_required']
@@ -116,7 +116,7 @@ def base_ci_verified(base):
     """Authenticate completed baseline tests, never production acceptance.
 
     Every candidate still builds runtime images, and production preparation
-    always consults the live exact-pair coordinator, including cosmetic deltas.
+    always verifies the live hotel release transaction, including cosmetic deltas.
     """
     token = os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN')
     if not token or not re.fullmatch(r'[a-f0-9]{40}', base or ''):

@@ -6,7 +6,7 @@ import subprocess
 from urllib.request import Request, urlopen
 from pathlib import Path
 
-from independent_review import reviewed_mcp_source, verify as verify_independent
+from independent_review import verify as verify_independent
 
 REQUIRED_WORKFLOWS = ['ci-gates.yml']
 
@@ -42,12 +42,11 @@ def verify(sha, pr=None, github_output=None):
             raise RuntimeError('verified_release_pr_mismatch')
     review = verify_independent(Path(__file__).resolve().parents[1], 'hotel', sha)
     profile = (review or {}).get('scope', {}).get('profile', 'full')
-    mcp_sha = reviewed_mcp_source(review)['sha'] if review else None
     if github_output:
-        if not mcp_sha or not isinstance(latest.get('id'), int) or latest['id'] <= 0:
+        if not isinstance(latest.get('id'), int) or latest['id'] <= 0:
             raise RuntimeError('verified_release_metadata_required')
         with open(github_output, 'a', encoding='utf-8') as output:
-            output.write(f'ci_run_id={latest["id"]}\nreview_profile={profile}\nmcp_sha={mcp_sha}\nreviewed_mcp_sha={mcp_sha}\n')
+            output.write(f'ci_run_id={latest["id"]}\nreview_profile={profile}\n')
     print(f'Exact current-main CI Gates and independent review policy PASS ({profile})')
     return latest.get('id')
 

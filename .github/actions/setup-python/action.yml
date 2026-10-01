@@ -32,7 +32,7 @@ runs:
       run: |
         set -euo pipefail
         case "$DEPENDENCY_PROFILE" in
-          lint) python -m pip install -c requirements/constraints.txt ruff pytest ;;
+          lint) python -m pip install -c requirements/constraints.txt ruff pytest pyyaml ;;
           portable) python -m pip install -c requirements/constraints.txt ./packages/voice-core-server pytest ;;
           runtime) python -m pip install -c requirements/constraints.txt ./packages/voice-core-server -e ./apps/kajovo-hotel-api ;;
           dev) python -m pip install -c requirements/constraints.txt ./packages/voice-core-server -e './apps/kajovo-hotel-api[dev]' ;;

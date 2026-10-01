@@ -71,5 +71,3 @@ cd /opt/kajovo-hotel-monorepo
 ## Preview artifacts
 
 Dokumentované preview artefakty jsou k dispozici z workflow `Preview Build - Kájovo Hotel` (`.github/workflows/preview.yml`). Po spuštění si stáhnete web/admin buildy (`web-preview.tar.gz`, `admin-preview.tar.gz`) pro ruční nasazení na externí prostředí.
-
-Staging MCP URL defaults to https://kajovohotel-staging.hcasc.cz/mcp/home-assistant; configure an explicit valid staging URL when topology differs. Its private signing key must be handed off by that staging host's MCP authority, never copied from production.

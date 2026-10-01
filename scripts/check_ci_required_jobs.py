@@ -17,7 +17,6 @@ REQUIRED_JOBS = {
     "visual-admin": "visual_admin",
     "unit-tests": "python",
     "portable-voice-core": "voice",
-    "android-contract": "android",
 }
 FLAGS = (
     "full", "python", "api", "web", "admin", "android", "voice",

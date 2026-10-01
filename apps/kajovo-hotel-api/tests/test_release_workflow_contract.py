@@ -42,8 +42,8 @@ def deploy_allowed(event, ref='refs/heads/main', branch='main', result='success'
     ('workflow_dispatch', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
     ('workflow_dispatch', 'refs/heads/topic', 'main', 'success', 'hotel/repo', False),
     ('workflow_dispatch', 'refs/tags/release', 'main', 'success', 'hotel/repo', False),
-    ('schedule', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
-    ('repository_dispatch', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
+    ('schedule', 'refs/heads/main', 'main', 'success', 'hotel/repo', False),
+    ('repository_dispatch', 'refs/heads/main', 'main', 'success', 'hotel/repo', False),
     ('workflow_run', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
     ('workflow_run', 'refs/heads/main', 'main', 'failure', 'hotel/repo', False),
     ('workflow_run', 'refs/heads/main', 'main', 'cancelled', 'hotel/repo', False),
@@ -71,7 +71,9 @@ def test_unverified_candidate_never_supplies_the_gate_code_or_production_secrets
             assert not any('secrets.' in value for value in step.get('env', {}).values())
         secret_steps = [i for i, step in enumerate(steps)
                         if any('secrets.' in value for value in step.get('env', {}).values())]
-        assert secret_steps and min(secret_steps) > gate
+        assert all(index > gate for index in secret_steps)
+        if name == 'prepare-release':
+            assert not secret_steps and 'environment' not in job
         if name == 'deploy-production':
             assert checkouts[1][0] > gate and checkouts[1][1] == '${{ env.DEPLOY_SHA }}'
             bundle = next(i for i, step in enumerate(steps) if 'release_images.py verify' in step.get('run', ''))
@@ -90,7 +92,7 @@ def test_verified_environment_handoff_preserves_multiline_values_without_printin
     assert result.returncode == 0 and result.stdout == result.stderr == ''
     assert key in target.read_text() and 'synthetic-voice-canary' in target.read_text()
     assert target.stat().st_mode & 0o777 == 0o600
-    assert 'KAJOVO_API_MCP_SIGNING_KEY' not in step['env']
+    assert not any('MCP' in key for key in step['env'])
 
 
 def test_one_main_authority_and_direct_push_needs_no_pull_request():
@@ -158,13 +160,30 @@ def test_validation_cancellation_and_runtime_transaction_are_separate():
                    for step in job.get('steps', []))
 
 
-def test_hotel_waits_for_root_transaction_before_any_upload_or_runtime_mutation():
+def test_hotel_accepts_after_live_checks_and_restores_on_failure():
     config = workflow('deploy-production.yml')
+    assert set(config['on']) == {'workflow_run', 'workflow_dispatch'}
     assert config['jobs']['prepare-release']['needs'] == 'candidate'
     assert deploy_job()['needs'] == 'prepare-release'
     assert deploy_job()['if'] == "needs.prepare-release.outputs.ready == 'true'"
     steps = deploy_job()['steps']
-    check = next(i for i, step in enumerate(steps) if 'check-transaction' in step.get('run', ''))
-    deploy = next(i for i, step in enumerate(steps) if 'github_deploy_via_ssh.py deploy' in step.get('run', ''))
-    assert check < deploy
-    assert not any('cutover.py' in step.get('run', '') for step in steps)
+    activate = next(i for i, s in enumerate(steps) if s.get('id') == 'activate')
+    accept = next(i for i, s in enumerate(steps) if 'github_deploy_via_ssh.py accept' in s.get('run', ''))
+    checks = [i for i, s in enumerate(steps) if 'verify_live_' in s.get('run', '')]
+    assert checks and activate < min(checks) <= max(checks) < accept
+    restore = next(s for s in steps if 'github_deploy_via_ssh.py rollback' in s.get('run', ''))
+    assert restore['if'] == "failure() && steps.activate.outcome != 'skipped'"
+    text = (ROOT / '.github/workflows/deploy-production.yml').read_text()
+    assert 'COORDINATED' not in text and 'MCP' not in text
+
+
+def test_android_consumer_validation_is_separate_from_hotel_deploy_gate():
+    config = workflow('ci-gates.yml')
+    assert 'android-contract' not in config['jobs'] and 'android-contract' not in config['jobs']['release-gate']['needs']
+    native = workflow('android-ci.yml')
+    for event in ('push', 'pull_request'):
+        assert 'apps/kajovo-hotel-api/openapi.json' in native['on'][event]['paths']
+        assert 'packages/shared/src/**' in native['on'][event]['paths']
+    steps = native['jobs']['native-android']['steps']
+    assert any('testDebugUnitTest' in step.get('run', '') for step in steps)
+    assert any('connectedDebugAndroidTest' in step.get('with', {}).get('script', '') for step in steps)

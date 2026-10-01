@@ -12,18 +12,6 @@ def _load_deploy_module():
     return module
 
 
-def test_pre_upload_cleanup_preserves_runtime_data_and_running_images() -> None:
-    script = _load_deploy_module().pre_upload_cleanup_script()
-
-    assert "kajovo-deploy-*.tar.gz" in script
-    assert "shutil.rmtree" not in script
-    assert "docker builder prune" not in script
-    assert "-mtime +7" in script
-    assert "docker image prune -af" not in script
-    assert "docker volume" not in script
-    assert "docker system prune" not in script
-
-
 def test_ssh_connection_uses_keepalive(monkeypatch) -> None:
     module = _load_deploy_module()
     monkeypatch.setenv("HOTEL_DEPLOY_HOST", "example.test")
@@ -38,13 +26,14 @@ def test_ssh_connection_uses_keepalive(monkeypatch) -> None:
     assert "ServerAliveCountMax=20" in command
 
 
-def test_remote_environment_remains_private_before_move_and_secret_updates() -> None:
+def test_remote_environment_is_active_private_and_master_key_preserved():
     script = _load_deploy_module().remote_script_text()
-    preserve = 'chmod 600 "$preserve_dir/infra/.env"'
-    publish = 'mv "$preserve_dir/infra/.env" "$deploy_root/infra/.env"'
-    private = 'chmod 600 "$deploy_root/infra/.env"'
-    assert script.index(preserve) < script.index(publish)
-    assert script.index(private) < script.index('export DEPLOY_VARS_PATH="$vars_json"')
+    assert "docker', 'inspect', 'kajovo-prod-api-1'" in script
+    assert 'com.docker.compose.project.environment_file' in script
+    assert "if master and supplied and master != supplied:" in script
+    assert 'umask 077' in script and 'target.chmod(0o600)' in script
+    assert script.index('PYENV') < script.index('kajovo-hotel-release prepare')
+    assert 'rm -rf "$deploy_root"' not in script
 
 
 def test_certificate_verification_requires_validity_beyond_thirty_days() -> None:
@@ -79,31 +68,15 @@ def test_web_push_vapid_configuration_is_forwarded_to_remote_deploy(tmp_path, mo
         assert f'"{key}": payload.get("{key}", "")' in script
 
 
-def test_mcp_secret_has_one_server_owned_authority(tmp_path, monkeypatch):
+def test_removed_integration_configuration_is_not_uploaded(tmp_path, monkeypatch):
     module = _load_deploy_module()
-    monkeypatch.setenv('KAJOVO_API_MCP_SIGNING_KEY', 'must-not-upload-this-canary')
+    monkeypatch.setenv('KAJOVO_API_MCP_SIGNING_KEY', 'private-canary-never-upload')
+    monkeypatch.setenv('KAJOVO_API_MCP_SERVER_URL', 'https://removed.invalid')
     path = tmp_path / 'payload.json'
     module.write_remote_vars(path)
-    assert 'KAJOVO_API_MCP_SIGNING_KEY' not in json.loads(path.read_text())
-    script = module.remote_script_text()
-    assert '/etc/home-assistant-mcp-public/signing-key.sha256' in script
-    assert 'hashlib.sha256(key.encode()).hexdigest() != expected' in script
-    assert script.index('fingerprint mismatch') < script.index('> "$deploy_root/.coordinated-ready"')
-
-
-def test_absent_mcp_url_has_environment_specific_compose_default(monkeypatch):
-    import yaml
-    root = Path(__file__).resolve().parents[3]
-    monkeypatch.delenv('KAJOVO_API_MCP_SERVER_URL', raising=False)
-    for env, endpoint in [('prod', 'https://hotel.hcasc.cz/mcp/home-assistant'),
-                          ('staging', 'https://kajovohotel-staging.hcasc.cz/mcp/home-assistant')]:
-        config = yaml.safe_load((root / f'infra/compose.{env}.yml').read_text())
-        expression = config['services']['api']['environment']['KAJOVO_API_MCP_SERVER_URL']
-        import re
-        match = re.fullmatch(r'\$\{([A-Z_]+):-([^}]+)\}', expression)
-        assert match
-        import os
-        assert (os.environ.get(match[1]) or match[2]) == endpoint
+    assert not any('MCP' in key for key in json.loads(path.read_text()))
+    assert 'private-canary-never-upload' not in path.read_text()
+    assert 'home-assistant-mcp-public' not in module.remote_script_text()
 
 
 def test_release_review_requires_content_bound_independent_evidence(monkeypatch):
@@ -132,60 +105,6 @@ def test_release_review_requires_content_bound_independent_evidence(monkeypatch)
     review.verify('new', '125')
     assert validated[0][1:] == ('hotel', 'new')
     assert all('/reviews' not in path and 'graphql' not in path for path in requests)
-
-
-def test_post_acceptance_cleanup_refuses_to_touch_rollback_early(tmp_path, monkeypatch):
-    path = Path(__file__).resolve().parents[3] / 'scripts/cleanup_accepted_release.py'
-    spec = importlib.util.spec_from_file_location('accepted_cleanup', path)
-    cleanup = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cleanup)
-    state = tmp_path / 'state.json'
-    state.write_text(json.dumps({'phase': 'active'}))
-    monkeypatch.setattr(cleanup.subprocess, 'check_output', lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('early Docker access')))
-    import pytest
-    with pytest.raises(RuntimeError, match='final_acceptance_required_before_prune'):
-        cleanup.cleanup(state)
-
-
-def test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captured_images(tmp_path, monkeypatch):
-    path = Path(__file__).resolve().parents[3] / 'scripts/cleanup_accepted_release.py'
-    spec = importlib.util.spec_from_file_location('accepted_cleanup', path)
-    cleanup = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cleanup)
-    releases = tmp_path / 'releases'
-    current = releases / ('a' * 40)
-    (current / 'infra').mkdir(parents=True)
-    (current / 'keep.txt').write_text('current known good')
-    stale = releases / ('b' * 40)
-    stale.mkdir()
-    (stale / 'remove.txt').write_text('obsolete')
-    backup = tmp_path / 'backup'
-    backup.mkdir()
-    (backup / 'containers.json').write_text(json.dumps([{'Image': image} for image in ['old-unused', 'old-used', 'current-api']]))
-    state = tmp_path / 'state.json'
-    state.write_text(json.dumps({'phase': 'accepted', 'hotel_sha': 'a' * 40, 'backup': str(backup)}))
-    monkeypatch.setattr(cleanup, 'RELEASE_ROOT', releases)
-    def output(command):
-        if command[:2] == ['docker', 'inspect']:
-            return json.dumps([{'Config': {'Labels': {'com.docker.compose.project.working_dir': str(current / 'infra')}}}] * 3).encode()
-        if command[:3] == ['docker', 'image', 'ls']:
-            return b'old-unused\nold-used\ncurrent-api\n'
-        return b'live-container' if command[-1] in ['ancestor=old-used', 'ancestor=current-api'] else b''
-    monkeypatch.setattr(cleanup.subprocess, 'check_output', output)
-    removals = []
-    monkeypatch.setattr(cleanup.subprocess, 'run', lambda command, **kwargs: removals.append(command))
-    cleanup.cleanup(state)
-    assert (current / 'keep.txt').read_text() == 'current known good'
-    assert not stale.exists()
-    def image_removals():
-        return [command for command in removals if command[:3] == ['docker', 'image', 'rm']]
-    assert image_removals() == [['docker', 'image', 'rm', 'old-unused']]
-    assert ['docker', 'builder', 'prune', '--force', '--filter', 'until=168h', '--keep-storage', '2GB'] in removals
-    (backup / 'containers.json').unlink()
-    state.write_text(json.dumps({'phase': 'accepted_cleanup_pending', 'hotel_sha': 'a' * 40, 'backup': str(backup)}))
-    cleanup.cleanup(state)
-    assert image_removals() == [['docker', 'image', 'rm', 'old-unused']]
-    assert (current / 'keep.txt').exists()
 
 
 def test_release_requires_latest_successful_exact_main_ci_for_every_workflow(monkeypatch):

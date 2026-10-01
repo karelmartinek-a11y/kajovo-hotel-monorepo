@@ -13,7 +13,7 @@ test.beforeEach(async ({page}) => {
       channel: any; onconnectionstatechange: any; ontrack: any; connectionState = 'new'; closed = false;
       constructor() {state.peers.push(this);}
       addTrack() {} async createOffer() {return {sdp: 'v=0 test-offer'};} async setLocalDescription() {}
-      createDataChannel() {this.channel = {closed: false, readyState: 'open', sent: [] as unknown[], send(value: string) {this.sent.push(JSON.parse(value));}, close() {this.closed = true;}}; state.channels.push(this.channel); return this.channel;}
+      createDataChannel() {this.channel = {closed: false, close() {this.closed = true;}}; state.channels.push(this.channel); return this.channel;}
       async setRemoteDescription() {this.channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'ready'})});}
       close() {this.closed = true;}
     }
@@ -69,50 +69,4 @@ test('reduced motion and keyboard access', async ({page}) => {
   await page.getByRole('button', {name: 'Uložit', exact: true}).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByText('Klíč je uložen.')).toBeVisible();
-});
-
-for (const decision of ['Schválit', 'Odmítnout']) {
-  test(`rendered approval double click ${decision} consumes only A`, async ({page}) => {
-    await page.getByLabel('Nový API klíč').fill('test-key');
-    await page.getByRole('button', {name: 'Uložit', exact: true}).click();
-    await page.getByRole('button', {name: 'Zahájit hovor'}).click();
-    await page.evaluate(() => {
-      const channel = (window as any).voiceTest.channels[0];
-      const fields=['device_key','property_key','state_key','catalog_version','action_token'];
-      channel.onmessage({data:JSON.stringify({type:'conversation.item.done',item:{type:'mcp_list_tools',tools:[{name:'execute_device_action',input_schema:{type:'object',properties:Object.fromEntries(fields.map(key=>[key,{type:'string',minLength:1,maxLength:key==='action_token'?4096:100}])),required:fields,additionalProperties:false}}]}})});
-      for (const id of ['A', 'B']) channel.onmessage({data: JSON.stringify({type: 'conversation.item.done', item: {type: 'mcp_approval_request', id, name: 'execute_device_action', arguments:JSON.stringify({device_key:`device-${id}`,property_key:'power',state_key:id==='A'?'on':'off',catalog_version:'private-version',action_token:'private-token'}),authorization:'private-auth'}})});
-    });
-    await expect(page.getByText('Schválit akci nástroje execute_device_action?')).toBeVisible();
-    await expect(page.getByText('device-A', {exact:true})).toBeVisible();
-    await expect(page.getByText('on', {exact:true})).toBeVisible();
-    expect(await page.locator('body').innerText()).not.toContain('private-');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.getByRole('button', {name: decision, exact: true}).dblclick();
-    await expect(page.getByText('device-B', {exact:true})).toBeVisible();
-    await expect(page.getByText('off', {exact:true})).toBeVisible();
-    await expect(page.getByText('device-A', {exact:true})).toHaveCount(0);
-    expect(await page.evaluate(() => (window as any).voiceTest.channels[0].sent)).toEqual([expect.objectContaining({type: 'conversation.item.create', item: expect.objectContaining({approval_request_id: 'A', approve: decision === 'Schválit'})})]);
-    await page.getByRole('button', {name: decision, exact: true}).click();
-    expect(await page.evaluate(() => (window as any).voiceTest.channels[0].sent.length)).toBe(2);
-    await page.getByRole('button', {name: 'Ukončit hovor'}).click();
-  });
-}
-
-test('unverified approval details disable approve and permit denial without leaking credentials', async ({page}) => {
- await page.getByLabel('Nový API klíč').fill('test-key');
- await page.getByRole('button', {name:'Uložit',exact:true}).click();
- await page.getByRole('button', {name:'Zahájit hovor'}).click();
- await page.evaluate(() => {
-  const channel=(window as any).voiceTest.channels[0];
-  const fields=['device_key','property_key','state_key','catalog_version','action_token'];
-  channel.onmessage({data:JSON.stringify({type:'conversation.item.done',item:{type:'mcp_list_tools',tools:[{name:'execute_device_action',input_schema:{type:'object',properties:Object.fromEntries(fields.map(key=>[key,{type:'string',minLength:1}])),required:fields,additionalProperties:false}}]}})});
-  channel.onmessage({data:JSON.stringify({type:'conversation.item.done',item:{type:'mcp_approval_request',id:'invalid',name:'execute_device_action',arguments:JSON.stringify({device_key:'device-X',action_token:'private-token'}),authorization:'private-auth'}})});
- });
- await expect(page.getByText('Podrobnosti akce nelze bezpečně ověřit. Akci můžete odmítnout.')).toBeVisible();
- await expect(page.getByRole('button',{name:'Schválit',exact:true})).toBeDisabled();
- expect(await page.locator('body').innerText()).not.toContain('private-');
- expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
- await page.getByRole('button',{name:'Odmítnout',exact:true}).click();
- expect(await page.evaluate(() => (window as any).voiceTest.channels[0].sent)).toEqual([expect.objectContaining({item:expect.objectContaining({approval_request_id:'invalid',approve:false})})]);
- await page.getByRole('button',{name:'Ukončit hovor'}).click();
 });

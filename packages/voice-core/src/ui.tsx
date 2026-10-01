@@ -31,7 +31,6 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
     } finally {setBusy(false);}
   };
   const update = (patch: Partial<VoiceCoreConfig>) => {if (!locked && draft) setDraft({...draft, ...patch});};
-  const renderedApproval = snapshot.approval;
   const dirty = saved && draft && JSON.stringify(configuration(saved)) !== JSON.stringify(draft);
   return <section className="vc-console" aria-label="Hlasový chat" data-testid="voice-console">
     <div className="vc-conversation">
@@ -40,10 +39,7 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
       {snapshot.model && <p className="vc-detail">Model hovoru: {snapshot.model}</p>}
       <button className="vc-primary" disabled={busy || (!active && (!saved?.configured || Boolean(dirty)))} onClick={() => {if (active) void client.stop(); else {setError(null); void client.start();}}}>{active ? 'Ukončit hovor' : 'Zahájit hovor'}</button>
       <button className="vc-button" disabled={!active || !['listening', 'user-speaking', 'assistant-processing', 'assistant-speaking', 'reconnecting'].includes(snapshot.state)} aria-pressed={snapshot.muted} onClick={() => client.setMuted(!snapshot.muted)}>{snapshot.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>
-      <p className="vc-detail">Hovoříte s AI. Ověřené informace poskytují připojené nástroje.</p>
-      {snapshot.mcpStatus === 'loading' && <p role="status">Připojuji nástroje…</p>}
-      {snapshot.mcpStatus === 'unavailable' && <p role="alert">Momentálně se nemohu spojit se systémem připojených nástrojů.</p>}
-      {renderedApproval && <div role="alert" key={renderedApproval.id} style={{maxWidth: '100%', overflowWrap: 'anywhere'}}><p>Schválit akci nástroje {renderedApproval.name}?</p>{renderedApproval.canApprove ? <dl>{renderedApproval.details.map(detail => <React.Fragment key={detail.label}><dt>{detail.label}</dt><dd style={{marginInlineStart: 0}}>{detail.value}</dd></React.Fragment>)}</dl> : <p>Podrobnosti akce nelze bezpečně ověřit. Akci můžete odmítnout.</p>}<button onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, false);}}>Odmítnout</button><button disabled={!renderedApproval.canApprove} onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, true);}}>Schválit</button></div>}
+      <p className="vc-detail">Hovoříte s AI. Tato verze nemá přístup k živým datům ani externím nástrojům.</p>
       {(snapshot.error || error) && <p className="vc-error" role="alert">{snapshot.error ? errorMessage(snapshot.error.category) : error}</p>}
     </div>
     <div className="vc-controls">

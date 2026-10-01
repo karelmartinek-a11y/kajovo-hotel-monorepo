@@ -10,7 +10,7 @@ function host({permission, create} = {}) {
     async getUserMedia() {if (permission) throw permission; const track = {readyState: 'live', enabled: true, stop() {this.readyState = 'ended'; this.stopped = true;}}; tracks.push(track); return {getTracks: () => [track], getAudioTracks: () => [track]};},
     createContext() {const context = {resume: async () => {}, close: async () => {context.closed = true;}, createAnalyser() {const meter={fftSize:0,getByteTimeDomainData(data) {data.fill(128);},disconnect() {this.disconnected=true;}};meters.push(meter);return meter;},createMediaStreamSource(stream) {const source={stream,connect(meter) {this.meter=meter;},disconnect() {this.disconnected=true;}};sources.push(source);return source;}}; contexts.push(context); return context;},
     createAudio() {const audio = {setAttribute() {}, play: async () => {}, pause() {audio.paused = true;}, removeAttribute() {}, load() {}}; audios.push(audio); return audio;},
-    createPeer() {const channel = {readyState: 'open', sent: [], sentRaw: [], send(value) {this.sentRaw.push(value); this.sent.push(JSON.parse(value));}, close() {this.closed = true;}};
+    createPeer() {const channel = {close() {this.closed = true;}};
       const peer = {channel, addTrack() {}, createDataChannel: () => channel,
         createOffer: async () => ({sdp: 'v=0 offer'}), setLocalDescription: async () => {},
         setRemoteDescription: async () => {channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'connected'})});},
@@ -80,10 +80,11 @@ test('provider errors expose only taxonomy and terminate the microphone', async 
   assert.ok(h.tracks[0].stopped); assert.ok(!JSON.stringify(h.events).includes('never expose'));
 });
 
-test('unexpected tool event stops the session without an executor', async () => {
-  const h = host(); await h.client.start(); h.send({type: 'response.output_item.added', item: {type: 'function_call'}});
+for (const kind of ['function_call', 'mcp_call']) test('unexpected '+ kind +' stops the session without an executor', async () => {
+  const h = host(); await h.client.start(); h.send({type: 'response.output_item.added', item: {type: kind}});
   assert.equal(h.client.getSnapshot().error.category, 'unsupported_capability'); assert.ok(h.tracks[0].stopped);
 });
+
 
 test('network reconnect is bounded and replaces the old channel', async () => {
   const h = host(); await h.client.start();
@@ -124,73 +125,6 @@ test('microphone interruption and realtime failure both release audio', async ()
   assert.equal(h.client.getSnapshot().error.category, 'realtime_error');
   assert.ok(h.tracks.every(track => track.stopped));
   assert.ok(h.audios.every(audio => audio.paused));
-});
-
-const executeSchema={type:'object',properties:Object.fromEntries(['device_key','property_key','state_key','catalog_version','action_token'].map(key=>[key,{type:'string',minLength:1,maxLength:key==='action_token'?4096:100}])),required:['device_key','property_key','state_key','catalog_version','action_token'],additionalProperties:false};
-const importTools = h => h.send({type:'conversation.item.done',item:{type:'mcp_list_tools',tools:[{name:'execute_device_action',input_schema:executeSchema}]}});
-const approval = id => ({type: 'conversation.item.done', item: {type: 'mcp_approval_request', id, name: 'execute_device_action',arguments:JSON.stringify({device_key:`device-${id}`,property_key:'power',state_key:id==='B'?'off':'on',catalog_version:'private-version',action_token:'private-token'})}});
-for (const approved of [true, false]) {
-  test(`approval wire decision ${approved} binds rendered ID and double click cannot consume B`, async () => {
-    const h = host(); await h.client.start(); importTools(h);
-    h.send(approval('A')); h.send(approval('B')); h.send(approval('A'));
-    assert.deepEqual(h.client.getSnapshot().approval, {id: 'A', name: 'execute_device_action',details:[{label:'device_key',value:'device-A'},{label:'property_key',value:'power'},{label:'state_key',value:'on'}],canApprove:true});
-    assert.ok(!JSON.stringify([h.client.getSnapshot(),h.events]).includes('private-'));
-    h.client.approve('stale', approved); assert.equal(h.peers[0].channel.sent.length, 0);
-    h.client.approve('A', approved); h.client.approve('A', approved);
-    const [wire] = h.peers[0].channel.sent;
-    assert.match(wire.item.id, /^mcp_approval_[a-f0-9]{32}$/);
-    assert.deepEqual(wire, {type: 'conversation.item.create', item: {id: wire.item.id, type: 'mcp_approval_response', approval_request_id: 'A', approve: approved}});
-    assert.equal(h.peers[0].channel.sentRaw[0], JSON.stringify({type: 'conversation.item.create', item: {id: wire.item.id, type: 'mcp_approval_response', approval_request_id: 'A', approve: approved}}));
-    assert.equal(h.peers[0].channel.sent.length, 1);
-    assert.equal(h.client.getSnapshot().approval.id, 'B');
-    assert.deepEqual(h.client.getSnapshot().approval.details,[{label:'device_key',value:'device-B'},{label:'property_key',value:'power'},{label:'state_key',value:'off'}]);
-    h.client.approve('B', approved);
-    const second = h.peers[0].channel.sent[1];
-    assert.notEqual(second.item.id, wire.item.id);
-    assert.deepEqual(second, {type: 'conversation.item.create', item: {id: second.item.id, type: 'mcp_approval_response', approval_request_id: 'B', approve: approved}});
-    assert.equal(h.client.getSnapshot().approval, null);
-    h.send(approval('A')); assert.equal(h.client.getSnapshot().approval, null);
-    await h.client.stop();
-  });
-}
-
-test('stop and reconnect discard approvals and late transport callbacks', async () => {
-  const h = host(); await h.client.start(); h.send(approval('old'));
-  const first = h.peers[0], late = first.channel.onmessage;
-  await h.client.stop(); h.client.approve('old', true); late({data: JSON.stringify(approval('late'))});
-  assert.equal(first.channel.sent.length, 0); assert.equal(h.client.getSnapshot().approval, null);
-  await h.client.start(); h.send(approval('reconnect-old'));
-  const second = h.peers[1]; second.connectionState = 'disconnected'; second.onconnectionstatechange();
-  h.client.approve('reconnect-old', false); assert.equal(second.channel.sent.length, 0);
-  await new Promise(done => setTimeout(done, 1100));
-  h.client.approve('reconnect-old', true); assert.equal(h.peers[2].channel.sent.length, 0);
-  h.send(approval('fresh')); h.client.approve('fresh', false);
-  assert.equal(h.peers[2].channel.sent[0].item.approval_request_id, 'fresh');
-  await h.client.stop();
-});
-
-test('malformed or missing action details block positive wire decisions but permit explicit denial', async () => {
- for(const args of [undefined,'broken','{}',JSON.stringify({device_key:'target',property_key:'power',state_key:'on',action_token:'private-token'})]) {
-  const h=host();await h.client.start();importTools(h);
-  h.send({type:'conversation.item.done',item:{type:'mcp_approval_request',id:'bad',name:'execute_device_action',arguments:args,authorization:'private-auth'}});
-  assert.equal(h.client.getSnapshot().approval.canApprove,false);
-  assert.ok(!JSON.stringify([h.client.getSnapshot(),h.events]).includes('private-'));
-  h.client.approve('bad',true);assert.equal(h.peers[0].channel.sent.length,0);assert.equal(h.client.getSnapshot().approval.id,'bad');
-  h.client.approve('bad',false);assert.equal(h.peers[0].channel.sent[0].item.approve,false);assert.equal(h.client.getSnapshot().approval,null);
-  await h.client.stop();
- }
-});
-
-test('failed MCP followup send closes session and never retries the consumed turn', async () => {
- const h=host();await h.client.start();const channel=h.peers[0].channel;const late=channel.onmessage;
- let attempts=0;channel.send=()=>{attempts++;throw new Error('private-wire-failure');};
- h.send({type:'response.mcp_call.in_progress',item_id:'call',response_id:'response'});
- h.send({type:'response.done',response:{id:'response',status:'completed',output:[{type:'mcp_call',id:'call'}]}});
- assert.doesNotThrow(()=>h.send({type:'response.output_item.done',response_id:'response',item:{type:'mcp_call',id:'call'}}));
- assert.equal(attempts,1);assert.equal(h.client.getSnapshot().error.category,'connection_failed');
- assert.ok(h.tracks[0].stopped&&h.peers[0].closed&&channel.closed&&h.contexts[0].closed&&h.audios[0].paused);
- late({data:JSON.stringify({type:'response.output_item.done',response_id:'response',item:{type:'mcp_call',id:'call'}})});assert.equal(attempts,1);
- assert.ok(!JSON.stringify([h.client.getSnapshot(),h.events]).includes('private-wire'));
 });
 
 for(const failure of ['reject','error']) test(`remote audio ${failure} reports playback failure and releases graph`, async () => {
@@ -234,21 +168,4 @@ test('reconnect disconnects old playback graph and rejects late tracks and play 
  assert.equal(h.client.getSnapshot().state,'listening');assert.equal(h.sources.length,4);
  await h.client.stop();assert.ok(h.sources.every(source=>source.disconnected)&&h.meters.every(meter=>meter.disconnected));
  assert.ok(h.audios.every(item=>item.paused&&item.srcObject===null)&&h.contexts[0].closed&&h.tracks[0].stopped);
-});
-
-test('interruption before delayed first MCP call never sends an old followup', async () => {
- const h = host(); await h.client.start();
- h.send({type:'response.created',response:{id:'old'}});
- h.send({type:'input_audio_buffer.speech_started'});
- h.send({type:'response.mcp_call.in_progress',response_id:'old',item_id:'late'});
- h.send({type:'response.done',response:{id:'old',status:'completed',output:[{type:'mcp_call',id:'late'}]}});
- h.send({type:'response.output_item.done',response_id:'old',item:{type:'mcp_call',id:'late'}});
- const outgoing = () => h.peers[0].channel.sent.filter(event=>event.type==='response.create');
- assert.equal(outgoing().length,0);
- h.send({type:'response.created',response:{id:'new'}});
- h.send({type:'response.mcp_call.in_progress',response_id:'new',item_id:'current'});
- h.send({type:'response.done',response:{id:'new',status:'completed',output:[{type:'mcp_call',id:'current'}]}});
- h.send({type:'response.output_item.done',response_id:'new',item:{type:'mcp_call',id:'current'}});
- assert.deepEqual(outgoing(),[{type:'response.create'}]);
- await h.client.stop();
 });
