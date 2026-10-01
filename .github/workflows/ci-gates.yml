@@ -18,6 +18,40 @@ env:
   KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
 
 jobs:
+  cancel-stale-main-ci:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Cancel stale main CI runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?branch=main&per_page=100" > /tmp/main-runs.json
+          jq -r --arg sha "${GITHUB_SHA}" --argjson current "${GITHUB_RUN_ID}" '
+            .workflow_runs[]
+            | select(
+                .event == "push"
+                and .head_branch == "main"
+                and .head_sha != $sha
+                and .id != $current
+                and (.status == "queued" or .status == "in_progress")
+                and (
+                  .name == "CI Gates - Kajovo Hotel"
+                  or .name == "CI Full - Kajovo Hotel"
+                  or .name == "CI Release - Kajovo Hotel"
+                )
+              )
+            | .id
+          ' /tmp/main-runs.json | while read -r run_id; do
+            [ -n "$run_id" ] || continue
+            echo "Cancelling stale main CI run $run_id"
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/cancel" >/dev/null || true
+          done
+
   api-runtime-image:
     runs-on: ubuntu-latest
     timeout-minutes: 20
