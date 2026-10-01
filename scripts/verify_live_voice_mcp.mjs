@@ -50,7 +50,7 @@ try {
             if(e.item.name==='execute_device_action') evidence.error='unexpected_write';
             if(e.item.name==='search_devices') {
               const args=JSON.parse(e.item.arguments||'{}');evidence.call={name:e.item.name,nameFilter:args.name,success:!e.item.error};
-              try {let output=JSON.parse(e.item.output);if(output?.content) output=JSON.parse(output.content.find(c=>c.type==='text').text);if(output?.structuredContent)output=output.structuredContent;
+              try {let output=JSON.parse(e.item.output);if(Array.isArray(output)) output=JSON.parse(output.find(c=>c.type==='text').text);if(output?.content) output=JSON.parse(output.content.find(c=>c.type==='text').text);if(output?.structuredContent)output=output.structuredContent;
                 if(output.status==='ok') evidence.devices=output.devices.map(d=>({name:d.name,type:d.device_type,availability:d.availability}));
               } catch {evidence.error='tool_output_parse_failed';}
             }
@@ -77,7 +77,7 @@ try {
     assert.equal(evidence.importCompleted,true,'mcp_import_completion_missing');
     assert.deepEqual(evidence.imported.sort(),['execute_device_action','get_device_state','search_devices']);
     if(wav) {
-      await page.waitForFunction(()=>window.__mcpEvidence.spoken.length>0 && window.__mcpEvidence.devices.length>0||window.__mcpEvidence.error,{},{timeout:120000});
+      await page.waitForFunction(()=>{const e=window.__mcpEvidence;const norm=s=>s.toLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[^a-z0-9]/g,'');return e.error||e.devices.length>0&&e.audioPeak>1&&e.devices.every(d=>norm(e.spoken).includes(norm(d.name)));},{},{timeout:120000});
       evidence=await page.evaluate(()=>window.__mcpEvidence);
       assert.equal(evidence.error,null,'realtime_read_failed');assert.equal(evidence.call?.nameFilter,'recepce','incorrect_name_filter');assert(evidence.call.success && evidence.devices.length>0,'live_search_failed');
       const norm=s=>s.toLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[^a-z0-9]/g,'');
