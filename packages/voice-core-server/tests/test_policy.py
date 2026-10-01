@@ -129,6 +129,7 @@ def test_mcp_validation_error_never_discloses_credentials(patch, caplog):
 
 def test_native_mcp_exact_serialized_realtime_calls_session_contract():
     from email.parser import BytesParser
+
     from voice_core_server.contracts import McpServerConfig
     expected = {'type':'mcp','server_label':'home_assistant','server_url':'https://example.test/mcp',
                 'authorization':'test-scoped-token','allowed_tools':['search_devices','get_device_state','execute_device_action'],
