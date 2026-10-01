@@ -194,3 +194,24 @@ def test_mcp_host_configuration_is_private_and_replaced_route_is_absent(voice_ho
     assert set(response.json())=={'sdp','model'}
     assert all('connector' not in key for key in tool)
     assert BASE+'/tools' not in client.app.openapi()['paths']
+
+
+@pytest.mark.parametrize('url', ['', 'http://unsafe.invalid', 'https://['])
+def test_invalid_mcp_host_config_is_safe_503(voice_host, monkeypatch, caplog, url):
+    client, factory, login = voice_host
+    login()
+    client.put(BASE + '/api-key', json={'api_key': KEY})
+    monkeypatch.setattr(get_settings(), 'mcp_server_url', url)
+    canary = 'Bearer CANARY-SCOPED-CREDENTIAL-0123456789'
+    original = __import__('app.services.mcp_provider', fromlist=['McpServerConfig']).McpServerConfig
+    def invalid_config(**values):
+        values['authorization'] = canary
+        return original(**values)
+    monkeypatch.setattr('app.services.mcp_provider.McpServerConfig', invalid_config)
+    response = client.post(BASE + '/sessions', json={'sdp': 'v=0\r\noffer', 'revision': 1})
+    assert response.status_code == 503
+    assert 'capability_not_configured' in response.text
+    with factory() as db:
+        audit = repr(db.execute(select(AuditTrail)).scalars().all())
+    for text in [response.text, caplog.text, audit]:
+        assert canary not in text and 'CANARY-SCOPED-CREDENTIAL' not in text and KEY not in text

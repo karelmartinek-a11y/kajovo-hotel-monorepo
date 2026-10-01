@@ -13,7 +13,7 @@ test.beforeEach(async ({page}) => {
       channel: any; onconnectionstatechange: any; ontrack: any; connectionState = 'new'; closed = false;
       constructor() {state.peers.push(this);}
       addTrack() {} async createOffer() {return {sdp: 'v=0 test-offer'};} async setLocalDescription() {}
-      createDataChannel() {this.channel = {closed: false, close() {this.closed = true;}}; state.channels.push(this.channel); return this.channel;}
+      createDataChannel() {this.channel = {closed: false, readyState: 'open', sent: [] as unknown[], send(value: string) {this.sent.push(JSON.parse(value));}, close() {this.closed = true;}}; state.channels.push(this.channel); return this.channel;}
       async setRemoteDescription() {this.channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'ready'})});}
       close() {this.closed = true;}
     }
@@ -70,3 +70,22 @@ test('reduced motion and keyboard access', async ({page}) => {
   await page.keyboard.press('Enter');
   await expect(page.getByText('Klíč je uložen.')).toBeVisible();
 });
+
+for (const decision of ['Schválit', 'Odmítnout']) {
+  test(`rendered approval double click ${decision} consumes only A`, async ({page}) => {
+    await page.getByLabel('Nový API klíč').fill('test-key');
+    await page.getByRole('button', {name: 'Uložit', exact: true}).click();
+    await page.getByRole('button', {name: 'Zahájit hovor'}).click();
+    await page.evaluate(() => {
+      const channel = (window as any).voiceTest.channels[0];
+      for (const id of ['A', 'B']) channel.onmessage({data: JSON.stringify({type: 'conversation.item.done', item: {type: 'mcp_approval_request', id, name: id}})});
+    });
+    await expect(page.getByText('Schválit akci nástroje A?')).toBeVisible();
+    await page.getByRole('button', {name: decision, exact: true}).dblclick();
+    await expect(page.getByText('Schválit akci nástroje B?')).toBeVisible();
+    expect(await page.evaluate(() => (window as any).voiceTest.channels[0].sent)).toEqual([expect.objectContaining({type: 'conversation.item.create', item: expect.objectContaining({approval_request_id: 'A', approve: decision === 'Schválit'})})]);
+    await page.getByRole('button', {name: decision, exact: true}).click();
+    expect(await page.evaluate(() => (window as any).voiceTest.channels[0].sent.length)).toBe(2);
+    await page.getByRole('button', {name: 'Ukončit hovor'}).click();
+  });
+}

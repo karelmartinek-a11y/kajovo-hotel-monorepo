@@ -84,6 +84,6 @@ try {
       assert(evidence.devices.every(d=>norm(evidence.spoken).includes(norm(d.name))),'spoken_answer_missing_devices');assert(evidence.audioPeak>1,'audio_playback_missing');
     }
     await page.getByRole('button',{name:'Ukončit hovor',exact:true}).click();
-    console.log(JSON.stringify({admin_login:'PASS',voice_route:'PASS',realtime:'PASS',native_mcp_config:'PASS',mcp_import:'PASS',private_auth:'PASS',tools:evidence.imported,...(wav?{name_filter:'PASS',live_search:'PASS',spoken_grounded_answer:'PASS',devices:evidence.devices}:{})}));
+    console.log(JSON.stringify({admin_login:'PASS',voice_route:'PASS',realtime:'PASS',native_mcp_config:'PASS',mcp_import:'PASS',private_auth:'PASS',tools:evidence.imported,...(wav?{name_filter:'PASS',live_search:'PASS',spoken_grounded_answer:'PASS',result_count:evidence.devices.length}:{})}));
   }
 } finally {await context.close();await browser.close();}

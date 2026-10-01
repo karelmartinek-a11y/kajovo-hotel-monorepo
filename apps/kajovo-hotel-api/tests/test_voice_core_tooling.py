@@ -58,3 +58,11 @@ def test_paid_smoke_is_blocked_in_ci_even_with_opt_in(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICE_CORE_AUDIO_FIXTURE", str(fixture))
     monkeypatch.setenv("CI", "true")
     assert runner.main() == 2
+
+
+def test_native_live_smoke_only_emits_aggregate_device_evidence():
+    source = (ROOT / 'scripts/verify_live_voice_mcp.mjs').read_text()
+    logging_lines = [line for line in source.splitlines() if 'console.log' in line]
+    assert any('result_count:evidence.devices.length' in line for line in logging_lines)
+    assert all('devices:evidence.devices' not in line for line in logging_lines)
+    assert all('device_key' not in line and 'action_token' not in line for line in logging_lines)

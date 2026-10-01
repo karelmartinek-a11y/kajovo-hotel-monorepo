@@ -238,7 +238,7 @@ jobs:
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Ruff lint
-        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py
+        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py
 
   typecheck:
     runs-on: ubuntu-latest
@@ -314,4 +314,4 @@ jobs:
       - run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
       - run: pnpm --filter @voice-core/browser test:ui
       - name: Verify live smoke is opt-in
-        run: python scripts/voice_core_live_smoke.py
+        run: python scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py

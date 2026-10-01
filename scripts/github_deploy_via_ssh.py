@@ -104,6 +104,15 @@ for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines
     current[key] = value
 
 payload = json.loads(vars_path.read_text(encoding="utf-8"))
+# Root provisioning publishes only this fingerprint; the key is preserved in server env.
+import hashlib
+fingerprint_path = Path('/etc/home-assistant-mcp-public/signing-key.sha256')
+expected = fingerprint_path.read_text().strip()
+key = current.get('KAJOVO_API_MCP_SIGNING_KEY', '')
+if len(key) < 32 or hashlib.sha256(key.encode()).hexdigest() != expected:
+    raise SystemExit('MCP signing key fingerprint mismatch')
+print('Hotel/MCP signing key fingerprint equality PASS')
+
 for key in list(current):
     if key.startswith("KAJOVO_API_" + "SMART_" + "TECHNOLOGIES_"):
         current.pop(key)
@@ -117,7 +126,6 @@ updates = {
     "BETTER_HOTEL_CLIENT_TOKEN": payload.get("BETTER_HOTEL_CLIENT_TOKEN", ""),
     "KAJOVO_API_VOICE_MASTER_KEY": payload.get("KAJOVO_API_VOICE_MASTER_KEY", ""),
     "KAJOVO_API_MCP_SERVER_URL": payload.get("KAJOVO_API_MCP_SERVER_URL", ""),
-    "KAJOVO_API_MCP_SIGNING_KEY": payload.get("KAJOVO_API_MCP_SIGNING_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY": payload.get("KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY", ""),
     "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": payload.get("KAJOVO_API_WEB_PUSH_VAPID_SUBJECT", ""),
@@ -156,7 +164,6 @@ def write_remote_vars(path: Path) -> None:
         "BETTER_HOTEL_CLIENT_TOKEN",
         "KAJOVO_API_VOICE_MASTER_KEY",
         "KAJOVO_API_MCP_SERVER_URL",
-        "KAJOVO_API_MCP_SIGNING_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY",
         "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT",
@@ -227,30 +234,10 @@ df -h "$upload_home"
 # by the remote deploy script immediately after extraction.
 find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz' -delete
 
-# Containers run from built images and named data volumes, not from these source
-# trees. Keep the newest completed source tree as a rollback/runtime-artifact
-# reference and remove older copies before uploading the next release.
-RELEASE_DIR="$release_dir" python3 - <<'PY'
-import os
-import shutil
-from pathlib import Path
-
-root = Path(os.environ["RELEASE_DIR"])
-if root.is_dir():
-    releases = sorted(
-        (path for path in root.iterdir() if path.is_dir()),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
-    for stale in releases[1:]:
-        print(f"Removing stale deploy source tree: {stale.name}")
-        shutil.rmtree(stale)
-PY
-
-# These commands remove only cache and images that are not referenced by a
-# container. Named database/media volumes and running images are untouched.
+# Preserve all release trees/images until coordinated acceptance. Rollback images
+# are additionally anchored by stopped containers created by the MCP coordinator.
 docker builder prune -af
-docker image prune -af
+# Image pruning is deferred until coordinated production acceptance.
 
 echo "Disk usage after deploy cleanup:"
 df -h "$upload_home"

@@ -6,6 +6,8 @@ import json
 import secrets
 import time
 
+from pydantic import ValidationError
+from voice_core_server import VoiceError
 from voice_core_server.contracts import McpServerConfig
 
 from app.config import get_settings
@@ -25,14 +27,16 @@ class HomeAssistantMcpProvider:
     def tools(self) -> list[dict]:
         settings = get_settings()
         if len(settings.mcp_signing_key) < 32:
-            from voice_core_server import VoiceError
             raise VoiceError('capability_not_configured')
         claims = {'sub': secrets.token_urlsafe(24), 'exp': int(time.time()) + 3600}
         payload = base64.urlsafe_b64encode(json.dumps(claims, sort_keys=True, separators=(',', ':')).encode()).decode().rstrip('=')
         signature = hmac.new(settings.mcp_signing_key.encode(), ('session.' + payload).encode(), hashlib.sha256).digest()
         token = payload + '.' + base64.urlsafe_b64encode(signature).decode().rstrip('=')
-        return [McpServerConfig(server_label='home_assistant', server_url=settings.mcp_server_url,
+        try:
+            return [McpServerConfig(server_label='home_assistant', server_url=settings.mcp_server_url,
             authorization='Bearer ' + token,
             allowed_tools=['search_devices', 'get_device_state', 'execute_device_action'],
             require_approval={'never': {'tool_names': ['search_devices', 'get_device_state']}},
             server_description='Live policy-filtered Home Assistant devices with exact one-time actions.').session_tool()]
+        except (ValidationError, ValueError):
+            raise VoiceError('capability_not_configured') from None
