@@ -140,3 +140,61 @@ def test_post_acceptance_cleanup_refuses_to_touch_rollback_early(tmp_path, monke
     import pytest
     with pytest.raises(RuntimeError, match='final_acceptance_required_before_prune'):
         cleanup.cleanup(state)
+
+
+def test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captured_images(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[3] / 'scripts/cleanup_accepted_release.py'
+    spec = importlib.util.spec_from_file_location('accepted_cleanup', path)
+    cleanup = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cleanup)
+    releases = tmp_path / 'releases'
+    current = releases / ('a' * 40)
+    (current / 'infra').mkdir(parents=True)
+    (current / 'keep.txt').write_text('current known good')
+    stale = releases / ('b' * 40)
+    stale.mkdir()
+    (stale / 'remove.txt').write_text('obsolete')
+    backup = tmp_path / 'backup'
+    backup.mkdir()
+    (backup / 'containers.json').write_text(json.dumps([{'Image': image} for image in ['old-unused', 'old-used', 'current-api']]))
+    state = tmp_path / 'state.json'
+    state.write_text(json.dumps({'phase': 'accepted', 'hotel_sha': 'a' * 40, 'backup': str(backup)}))
+    monkeypatch.setattr(cleanup, 'RELEASE_ROOT', releases)
+    def output(command):
+        if command[:2] == ['docker', 'inspect']:
+            return json.dumps([{'Config': {'Labels': {'com.docker.compose.project.working_dir': str(current / 'infra')}}}] * 3).encode()
+        return b'live-container' if command[-1] in ['ancestor=old-used', 'ancestor=current-api'] else b''
+    monkeypatch.setattr(cleanup.subprocess, 'check_output', output)
+    removals = []
+    monkeypatch.setattr(cleanup.subprocess, 'run', lambda command, **kwargs: removals.append(command))
+    cleanup.cleanup(state)
+    assert (current / 'keep.txt').read_text() == 'current known good'
+    assert not stale.exists()
+    assert removals == [['docker', 'image', 'rm', 'old-unused']]
+
+
+def test_release_review_checks_resolved_threads_and_pagination(monkeypatch):
+    path = Path(__file__).resolve().parents[3] / 'scripts/check_release_review.py'
+    spec = importlib.util.spec_from_file_location('release_review_threads', path)
+    review = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(review)
+    def api(endpoint):
+        if endpoint.endswith('/commits/main'):
+            return {'sha': 'main-sha'}
+        if 'actions/workflows' in endpoint:
+            return {'workflow_runs': [{'head_branch': 'main', 'conclusion': 'success'}]}
+        if endpoint.endswith('/reviews'):
+            return [{'commit_id': 'topic-sha', 'state': 'COMMENTED', 'user': {'login': 'copilot-pull-request-reviewer[bot]'}}]
+        return {'merged': True, 'merge_commit_sha': 'main-sha', 'head': {'sha': 'topic-sha'}}
+    monkeypatch.setattr(review, 'api', api)
+    import pytest
+    for resolved, pagination, expected in [(True, False, None), (False, False, 'unresolved_review_findings'),
+                                           (True, True, 'review_pagination_required')]:
+        threads = {'nodes': [{'isResolved': resolved}], 'pageInfo': {'hasNextPage': pagination}}
+        response = {'data': {'repository': {'pullRequest': {'reviewThreads': threads}}}}
+        monkeypatch.setattr(review.subprocess, 'check_output', lambda *args, **kwargs: json.dumps(response).encode())
+        if expected:
+            with pytest.raises(AssertionError, match=expected):
+                review.verify('main-sha', '123')
+        else:
+            review.verify('main-sha', '123')

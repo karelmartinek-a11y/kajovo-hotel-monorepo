@@ -6,6 +6,9 @@ import subprocess
 from pathlib import Path
 
 
+RELEASE_ROOT = Path('/home/deploy-hotel/kajovo-deploy-releases')
+
+
 def cleanup(state_path=Path('/var/lib/home-assistant-mcp-control/cutover.json')):
     state = json.loads(state_path.read_text())
     if state.get('phase') != 'accepted':
@@ -16,7 +19,7 @@ def cleanup(state_path=Path('/var/lib/home-assistant-mcp-control/cutover.json'))
     if len(roots) != 1:
         raise RuntimeError('runtime_releases_incoherent')
     current = roots.pop()
-    root = Path('/home/deploy-hotel/kajovo-deploy-releases').resolve()
+    root = RELEASE_ROOT.resolve()
     if current.parent != root or current.name != state['hotel_sha']:
         raise RuntimeError('accepted_release_mismatch')
     backup = Path(state['backup'])

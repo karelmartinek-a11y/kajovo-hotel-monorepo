@@ -50,15 +50,22 @@ jobs:
       KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz' }}
       KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
     steps:
-      - name: Checkout deploy SHA
+      - name: Checkout trusted workflow SHA
         uses: actions/checkout@v5
         with:
-          ref: ${{ env.DEPLOY_SHA }}
+          ref: ${{ github.sha }}
 
       - name: Independent CI and completed review gate
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/check_release_review.py --sha "${{ inputs.deploy_sha }}" --pr "${{ inputs.review_pr }}"
+          RELEASE_SHA: ${{ inputs.deploy_sha }}
+          REVIEW_PR: ${{ inputs.review_pr }}
+        run: python3 scripts/check_release_review.py --sha "$RELEASE_SHA" --pr "$REVIEW_PR"
+
+      - name: Checkout verified deploy SHA
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
