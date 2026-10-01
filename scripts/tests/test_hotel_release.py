@@ -13,6 +13,7 @@ import tempfile
 import tarfile
 import threading
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -631,6 +632,39 @@ class HotelReleaseTest(unittest.TestCase):
         self.assertFalse(any(args[:2] == ["docker", "compose"] for args, _ in self.host.calls))
         self.host.legacy_units = ""
         self.assertEqual(self.controller.deadline()["phase"], "rolled_back")
+
+
+class HostCommandResultsTests(unittest.TestCase):
+    listing = ["systemctl", "list-unit-files", "--no-legend", "--no-pager", "home-assistant-mcp*"]
+
+    def test_authority_check_accepts_native_empty_unit_listing_status(self):
+        def native_result(args, **kwargs):
+            self.assertFalse(kwargs["check"])
+            self.assertEqual(kwargs["stderr"], subprocess.PIPE)
+            return subprocess.CompletedProcess(args, 1 if args == self.listing else 0, "", "")
+        with tempfile.TemporaryDirectory() as directory, patch.object(release.subprocess, "run", side_effect=native_result) as run:
+            layout = release.Layout(legacy_state=Path(directory) / "absent.json")
+            release.Host().assert_single_authority(layout)
+        self.assertEqual(run.call_count, 2)
+
+    def test_only_exact_empty_no_match_result_is_accepted(self):
+        for code, stdout, stderr in ((1, "unexpected unit output", ""), (1, "", "private operation failure"), (2, "", "")):
+            with self.subTest(code=code, stdout=bool(stdout), stderr=bool(stderr)):
+                with patch.object(release.subprocess, "run", return_value=subprocess.CompletedProcess(self.listing, code, stdout, stderr)):
+                    with self.assertRaisesRegex(release.ReleaseError, "^host_operation_failed$"):
+                        release.Host().command(self.listing)
+
+    def test_other_failed_commands_and_quiet_listing_remain_fatal(self):
+        for args, quiet in ((["docker", "ps"], False), (["systemctl", "list-unit-files"], False), (self.listing, True)):
+            with self.subTest(args=args, quiet=quiet):
+                with patch.object(release.subprocess, "run", return_value=subprocess.CompletedProcess(args, 1, "", "")):
+                    with self.assertRaisesRegex(release.ReleaseError, "^host_operation_failed$"):
+                        release.Host().command(args, quiet=quiet)
+
+    def test_missing_systemctl_does_not_look_like_an_empty_listing(self):
+        with patch.object(release.subprocess, "run", side_effect=FileNotFoundError("private operation failure")):
+            with self.assertRaisesRegex(release.ReleaseError, "^host_operation_failed$"):
+                release.Host().command(self.listing)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,8 @@ CI sestaví API, admin a web pro linux/amd64. Ověří import API, prázdný reg
 
 Jednorázový root prerequisite je `bash infra/ops/install-hotel-release-controller.sh` z ověřeného zdroje. Instaluje vlastní hotelový controller, nezávislý systemd deadline timer a úzce omezená sudo oprávnění pro deploy-hotel; Nginx oprávnění nerozšiřuje. Controller používá Python 3.11 nebo novější. SSH deploy ověří helpery, aktivní timer a hash/root vlastnictví instalovaných controller/validator modulů proti ověřenému kandidátu.
 
+Kontrola staré deploy autority přijímá prázdný výsledek přesného `systemctl list-unit-files` dotazu i s návratovým kódem 1, který znamená žádnou shodu. Chybový výstup, jiné selhání dotazu nebo aktivní/povolená stará mutační jednotka přípravu odmítne.
+
 Veřejná metadata jsou v `/etc/kajovo-hotel-release-public/transaction.json`; root-only snapshoty v `/var/lib/kajovo-hotel-release`. Root helper přijímá pouze akci a přesné SHA:
 
 ```sh

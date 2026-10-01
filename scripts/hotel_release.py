@@ -258,9 +258,16 @@ class Host:
 
     def command(self, args: list[str], *, env: dict[str, str] | None = None, timeout: int = 300, quiet: bool = False) -> str:
         try:
-            result = subprocess.run(args, env=env or self.clean_env(), stdout=subprocess.DEVNULL if quiet else subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=timeout, check=True)
+            result = subprocess.run(args, env=env or self.clean_env(), stdout=subprocess.DEVNULL if quiet else subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=timeout, check=False)
         except (OSError, subprocess.SubprocessError):
             raise ReleaseError("host_operation_failed") from None
+        # systemctl returns 1, without output, when this exact pattern has no
+        # installed units. Any listing error or other failed command is fatal.
+        no_legacy_units = (not quiet and result.returncode == 1
+                           and args == ["systemctl", "list-unit-files", "--no-legend", "--no-pager", "home-assistant-mcp*"]
+                           and not result.stdout and not result.stderr)
+        if result.returncode and not no_legacy_units:
+            raise ReleaseError("host_operation_failed")
         return result.stdout or ""
 
     @staticmethod
