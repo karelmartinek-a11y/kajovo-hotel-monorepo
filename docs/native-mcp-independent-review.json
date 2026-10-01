@@ -6,12 +6,12 @@
   "reviewed_sources": {
     "hotel": {
       "baseline": "0aa675d2c8d5af471bcb55953b58ddbe0ea67893",
-      "sha": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
-      "source_fingerprint": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01"
+      "sha": "69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb",
+      "source_fingerprint": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b"
     },
     "agentha": {
       "baseline": "251902e614012e84c9b5f86d2a672641ee733bde",
-      "sha": "807836d2b7dd9c14ff08f8bc93347e1785dd793c",
+      "sha": "c6fcd431eced1b962c288006c615f9a256a5c466",
       "source_fingerprint": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
     }
   },
@@ -22,11 +22,11 @@
       "agent_id": "/root/final_a_protocol",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
+        "hotel": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Current official Realtime Calls/MCP wire, response/call/approval lifecycle and spoken completion; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "8e45f03b22c6efe7ac87a9b8c2c0e04c5c94b5cdee6b540c8d90904b3045f3c1",
+      "report_sha256": "96f6413007fd727561b69213208577d9377dac751df876d7a1879aed98e8d1a5",
       "tests": [
         {
           "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api pnpm ci:voice-core",
@@ -43,9 +43,13 @@
           ]
         },
         {
-          "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api python3.11 -m pytest apps/kajovo-hotel-api/tests/test_voice_core.py -q",
-          "passed": 19,
-          "failed": 0
+          "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api python3.11 -m pytest apps/kajovo-hotel-api/tests/test_release_workflow_contract.py apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py -q",
+          "passed": 40,
+          "failed": 0,
+          "breakdown": {
+            "workflow": 29,
+            "release_adapter": 11
+          }
         },
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_mcp_protocol.py tests/test_verify_mcp.py -q",
@@ -64,11 +68,11 @@
       "agent_id": "/root/final_b_security",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
+        "hotel": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Secrets, sole signing authority, scoped credentials, informed approval and durable at-most-once actions; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "9176aaf7d71d64102cca318556c7907356033c23d27670967f50390bcccf1f9f",
+      "report_sha256": "a20692082d84e4c286066ab36b9721a6964f5bbb74d327b51d0a958dcba9c933",
       "tests": [
         {
           "repo": "agentha",
@@ -134,6 +138,16 @@
           "repo": "hotel",
           "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
           "result": "26 passed at d61aff64091296f3b141cbcf76c2dfc760a5b592"
+        },
+        {
+          "repo": "hotel",
+          "command": "PATH=<existing native-realtime-mcp .venv>/bin:$PATH PYTHONPATH=<absolute API/server paths> python -m pytest -q apps/kajovo-hotel-api/tests/test_release_workflow_contract.py apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_independent_review.py",
+          "result": "86 passed at 69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb (29 workflow regressions plus 57 adapter/review tests)"
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "result": "26 passed at 69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb"
         }
       ],
       "official_sources": []
@@ -144,11 +158,11 @@
       "agent_id": "/root/final_c_ha_safety",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
+        "hotel": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Live HA classifications, exact capabilities, stable identity, availability and read-only filters; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "e11c240502af72f18716ee1b50f28a35d5df3346db24e9cc49af9b40ac6d79fd",
+      "report_sha256": "fabb3bd96c45cf8582ec7a4d36b1483a1db7ed6be4ac72bda4e2ad91d89b8092",
       "tests": [
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py tests/test_cutover.py",
@@ -238,6 +252,47 @@
           "result": "PASS",
           "passed": 26,
           "note": "exact clean final HEAD independently verified"
+        },
+        {
+          "command": "node --test scripts/mcp_authorization_guard.test.mjs scripts/mcp_session_echo_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-native-mcp-clean",
+          "source_ref": "98a6ee4a50663699ef18eb03b2b6e797a1602583",
+          "result": "PASS",
+          "passed": 26
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/agentha-native-mcp-clean",
+          "source_ref": "c6fcd431eced1b962c288006c615f9a256a5c466",
+          "result": "PASS",
+          "passed": 38,
+          "warnings": 1,
+          "note": "working HEAD commit differs but git diff requested ref HEAD has zero changed files; content pinned by source fingerprint"
+        },
+        {
+          "command": "node --test scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs scripts/mcp_session_echo_guard.test.mjs",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-native-mcp-clean",
+          "source_ref": "69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb",
+          "result": "PASS",
+          "passed": 26
+        },
+        {
+          "command": "PYTHONPATH=packages/voice-core-server/src hotel-python -m pytest -q tests/test_release_workflow_contract.py tests/test_voice_core.py tests/test_voice_core_tooling.py",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-native-mcp-clean/apps/kajovo-hotel-api",
+          "source_ref": "69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb",
+          "result": "PASS",
+          "passed": 54,
+          "warnings": 81,
+          "python": "/Users/karelmartinek/.codex/worktrees/native-realtime-mcp/kajovo-hotel-monorepo/.venv/bin/python"
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/agentha-native-mcp-clean",
+          "source_ref": "c6fcd431eced1b962c288006c615f9a256a5c466",
+          "result": "PASS",
+          "passed": 38,
+          "warnings": 1,
+          "note": "requested ref and working HEAD have identical complete tree; verified git diff empty"
         }
       ],
       "official_sources": []
@@ -248,11 +303,11 @@
       "agent_id": "/root/review_a_protocol",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
+        "hotel": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Private preflight, immutable releases, managed workers, transactional fencing, deadlines and exact-image rollback; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "32c779ff886d8296f3a5739f96fb4dd49e7a5cd5fb15bd70f38d2dd50efa93bb",
+      "report_sha256": "0b54c251f1036e42ba3e6a37e149f83384b6f2a982757c35848ecae061baf061",
       "tests": [
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_cutover.py tests/test_verify_mcp.py tests/test_independent_review.py -q",
@@ -314,6 +369,32 @@
           "candidate": "807836d2b7dd9c14ff08f8bc93347e1785dd793c",
           "command": "independent D activation/deadline/timeout-lock probes",
           "outcome": "18 activation boundaries PASS, late acceptance rejected PASS, real timeout kills/waits and watchdog lock-release rollback PASS"
+        },
+        {
+          "candidate": "98a6ee4a50663699ef18eb03b2b6e797a1602583",
+          "command": "pytest test_github_deploy_via_ssh.py; static workflow/checker/coverage assertions",
+          "outcome": "11 tests PASS; three release trust/coverage conditions independently reproduced"
+        },
+        {
+          "candidate": "c3b4295758d3a0ec046c6a7ec55848721fa03cdd",
+          "command": "exact workflow jq selector against manual diagnostic old SHA and newer CI Release main run fixture",
+          "outcome": "BUG reproduced: authoritative newer run200 selected for cancellation"
+        },
+        {
+          "candidate": "69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb",
+          "command": "pytest test_release_workflow_contract.py test_github_deploy_via_ssh.py -q",
+          "PASS": 40,
+          "FAIL": 0
+        },
+        {
+          "candidate": "69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb",
+          "command": "independent actual Source and runtime integrity gates shell block, one synthetic failing pnpm command at a time",
+          "outcome": "Each of four required commands propagated exit17; aggregate guardrails dependency mandatory"
+        },
+        {
+          "candidate": "c6fcd431eced1b962c288006c615f9a256a5c466",
+          "command": "independent 18 activation failures, late-success deadline rejection, real subprocess timeout/watchdog lock release",
+          "outcome": "PASS on exact unchanged agent production source"
         }
       ],
       "official_sources": []
@@ -324,11 +405,11 @@
       "agent_id": "/root/final_e_cleanup",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
+        "hotel": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Legacy source/config/process retirement, protected canonical data and resumable post-acceptance cleanup; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "54ecf6411ad5ced1a4798e7c3f0990cacf3e045120ec319f728fc65ba58db51f",
+      "report_sha256": "ebac1f57ed94c75a5b77eb6b0d6ff5b4cc2859129e7bcc529288ff1898e42950",
       "tests": [
         {
           "command": "agentha-native-mcp/.venv/bin/python -m pytest -q tests/test_cutover.py tests/test_forensic_boundary.py (AGENTHA exact c236a57 final HEAD)",
@@ -361,6 +442,27 @@
           "guard_test_count": 10,
           "cleanup_boundary_count": 45,
           "cleanup_boundary_seconds": 1.27
+        },
+        {
+          "command": "Final69a90f1: pytest --noconftest test_release_workflow_contract.py test_github_deploy_via_ssh.py test_transaction_fence.py",
+          "result": "PASS",
+          "count": 46,
+          "seconds": 2.13
+        },
+        {
+          "command": "AGENTHA production-source-equivalent to pinnedc6fcd43: pytest test_cutover.py test_forensic_boundary.py",
+          "result": "PASS",
+          "count": 45,
+          "seconds": 0.4
+        },
+        {
+          "command": "Independent execution actual four-integrity-command CI shell with synthetic failure in each command",
+          "result": "PASS",
+          "failure_injection_cases": 4
+        },
+        {
+          "command": "HOTEL native cutover absence gate; node legacy-removal tests3; own cleanup fixed repro",
+          "result": "PASS"
         }
       ],
       "official_sources": []
@@ -371,11 +473,11 @@
       "agent_id": "/root/final_f_test_gaps",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
+        "hotel": "edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Actual exception, reconnect, race, lifecycle and deployment/rollback test gaps; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "c117db8627014dc5d41a7df6aff4e3f8435eac192cc8bbfccb8a75be634c96da",
+      "report_sha256": "8f76f580b093803eb4ef78ca66e04850a6922a659873aee531a4422a8944109b",
       "tests": [
         {
           "repo": "agentha",
@@ -440,6 +542,14 @@
           "failed": 0,
           "sha": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
           "note": "Exact helper locator matches exactly one link for both badges. Accessible snapshots retain Chat and Chat1 nepřečtených; original exact accessible-name Chat fails positive unread state."
+        },
+        {
+          "repo": "hotel",
+          "command": "pytest -q apps/kajovo-hotel-api/tests/test_release_workflow_contract.py apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_transaction_fence.py",
+          "passed": 46,
+          "failed": 0,
+          "sha": "69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb",
+          "note": "29 new actual-workflow tests plus17 existing deploy/review/fence tests. Extracted shell environment export and aggregate scripts execute locally; AST-safe eval of actual deployment condition verifies10 contexts; cancellation oldmain/manualtopic cases rerun independently."
         }
       ],
       "official_sources": []
@@ -999,21 +1109,97 @@
       "phase": "iterative final re-review",
       "status": "resolved",
       "fix": "Select chat navigation by its destination and exact visible label; retain and assert positive unread accessibility without weakening conversation assertions."
+    },
+    {
+      "repo": "kajovo-hotel-monorepo",
+      "file": ".github/workflows/ci-gates.yml",
+      "symbol": "release-gate aggregate job",
+      "lines": "76-114",
+      "problem": "Replacing unified release_gate.py with job aggregation drops four prior mandatory guards: ci:text-integrity, ci:frontend-manifest, ci:legacy-guards, ci:runtime-integrity.",
+      "reproduction": "At prior reviewed source RUN_FRONTEND_GATES=1 invokes release_gate.py which invokes pnpm ci:gates, containing all four. At 98a no job command invokes ci:gates, release_gate.py or these four commands; static assertion finds all four absent. Other eight jobs can pass and synthetic PASS artifact is still written.",
+      "consequence": "Text corruption, frontend manifest drift, prohibited legacy implementation and runtime integrity failures can bypass the authoritative release checks. API unit tests are still covered by pnpm unit; this finding does not claim they were lost.",
+      "regression_tests": [
+        "tests/test_release_workflow_contract.py::test_authoritative_gate_executes_each_required_integrity_check",
+        "tests/test_release_workflow_contract.py::test_actual_aggregate_script_cannot_pass_any_required_job_failure"
+      ],
+      "verified_by": [
+        "D"
+      ],
+      "resolution_evidence": "Independently inspected actual workflow diff and executed actual workflow-derived condition/aggregate/environment scripts through regression suite. All relevant cases PASS.",
+      "id": "D-CI-2",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Restore text integrity, frontend manifest, legacy guards and runtime integrity in authoritative CI Gates; propagate every required job failure."
+    },
+    {
+      "repo": "kajovo-hotel-monorepo",
+      "file": ".github/workflows/deploy-production.yml",
+      "symbol": "deploy-production job, first checkout, trust gate",
+      "lines": "31-35,38-66,68-79",
+      "problem": "Manual deploy checks out caller-supplied DEPLOY_SHA and executes that candidate check_release_review.py before establishing it is trusted/current-main/reviewed, with production secrets already in job environment.",
+      "reproduction": "Dispatch workflow from main with deploy_sha pointing to a non-main commit whose scripts/check_release_review.py contains arbitrary Python or simply exits zero. Initial checkout selects that commit; step79 executes its code before any trusted main/CI/review validation. Production environment restriction to main workflow ref does not bind input deploy_sha. No production action was performed during this static reproduction.",
+      "consequence": "Unreviewed candidate code executes with hotel SSH credentials, admin/provider/master secrets and GH token; it can bypass gate or access credentials before root transaction checking. The later root runtime fence remains intact but cannot undo runner credential exposure.",
+      "regression_tests": [
+        "tests/test_release_workflow_contract.py::test_only_trusted_main_deployment_context_is_eligible",
+        "tests/test_release_workflow_contract.py::test_unverified_candidate_never_supplies_the_gate_code_or_production_secrets",
+        "tests/test_release_workflow_contract.py::test_verified_environment_handoff_preserves_multiline_values_without_printing"
+      ],
+      "verified_by": [
+        "B"
+      ],
+      "resolution_evidence": "Independently inspected actual workflow diff and executed actual workflow-derived condition/aggregate/environment scripts through regression suite. All relevant cases PASS.",
+      "id": "D-CI-3",
+      "severity": "HIGH",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Enforce trusted main workflow context and trusted checkout before release validation, candidate checkout and private production credential injection."
+    },
+    {
+      "repo": "kajovo-hotel-monorepo",
+      "file": ".github/workflows/ci-gates.yml",
+      "symbol": "cancel-stale-main-ci job and jq selection",
+      "lines": "21-53",
+      "problem": "Cancellation job runs for manual/non-main diagnostics and defines stale as any different SHA. It can cancel newer authoritative current-main release runs.",
+      "reproduction": "Executed exact jq selector from pinned workflow using GITHUB_SHA=a*40/current run100 (manual diagnostic branch) and queued/in-progress CI Release push-main run200 at actual main b*40. Selector outputs200 for cancellation. Job has no push-main-only if condition and never reads actual current main or compares creation order.",
+      "consequence": "A legitimate manual diagnostic run can abort authoritative main validation and block/corrupt release provenance. A delayed/rerun older workflow can likewise target a newer different-SHA release.",
+      "regression_tests": [
+        "tests/test_release_workflow_contract.py::test_old_or_manual_source_cannot_cancel_newer_main_source"
+      ],
+      "verified_by": [
+        "F"
+      ],
+      "resolution_evidence": "Independently inspected actual workflow diff and executed actual workflow-derived condition/aggregate/environment scripts through regression suite. All relevant cases PASS.",
+      "id": "D-CI-4",
+      "severity": "HIGH",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Delete unsafe cross-workflow cancellation and bind concurrency to source SHA; old/manual sources cannot cancel newer main source."
     }
   ],
   "open_counts": {
     "MEDIUM": 0,
+    "CRITICAL": 0,
     "LOW": 0,
-    "HIGH": 0,
-    "CRITICAL": 0
+    "HIGH": 0
   },
   "resolved_counts": {
-    "MEDIUM": 16,
+    "MEDIUM": 17,
+    "CRITICAL": 0,
     "LOW": 0,
-    "HIGH": 5,
-    "CRITICAL": 0
+    "HIGH": 7
   },
   "production_acceptance": "NOT_RUN",
   "scope_limitations": "This is independent Codex review, not human review or production acceptance. Actual private HA, systemd/Docker, canonical transport and grounded Voice acceptance remain mandatory before destructive cleanup.",
+  "superseded_contract_observations": [
+    {
+      "ids": [
+        "D-CI-1",
+        "F-CI-001"
+      ],
+      "status": "withdrawn",
+      "reason": "The user explicitly confirmed CI Gates as the sole main authority after the parallel optimization; earlier CI Release naming expectation no longer applies. This is not represented as a code fix."
+    }
+  ],
   "source_binding": "All tracked source/tests/workflows/instructions/docs are bound. Only these two evidence documents are excluded to avoid self-referential hashing. Report-only commits and merges must retain this exact complete source fingerprint."
 }
