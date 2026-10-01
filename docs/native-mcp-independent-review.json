@@ -6,12 +6,12 @@
   "reviewed_sources": {
     "hotel": {
       "baseline": "0aa675d2c8d5af471bcb55953b58ddbe0ea67893",
-      "sha": "a0e613baf0396e226f7bb3af65515e0a90edc536",
-      "source_fingerprint": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2"
+      "sha": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
+      "source_fingerprint": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01"
     },
     "agentha": {
       "baseline": "251902e614012e84c9b5f86d2a672641ee733bde",
-      "sha": "c236a57e5c62a1ee83f533859be5ffbccfec4329",
+      "sha": "807836d2b7dd9c14ff08f8bc93347e1785dd793c",
       "source_fingerprint": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
     }
   },
@@ -22,11 +22,11 @@
       "agent_id": "/root/final_a_protocol",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
+        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Current official Realtime Calls/MCP wire, response/call/approval lifecycle and spoken completion; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "29f0d196feffbb320d387343ee7d4979baadd802ec50c0c00c83edcb6be6fbff",
+      "report_sha256": "8e45f03b22c6efe7ac87a9b8c2c0e04c5c94b5cdee6b540c8d90904b3045f3c1",
       "tests": [
         {
           "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api pnpm ci:voice-core",
@@ -64,11 +64,11 @@
       "agent_id": "/root/final_b_security",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
+        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Secrets, sole signing authority, scoped credentials, informed approval and durable at-most-once actions; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "aa5ed3754366e5584df19a10283fc264933a547db2c51e39f7c05f505c42ab73",
+      "report_sha256": "9176aaf7d71d64102cca318556c7907356033c23d27670967f50390bcccf1f9f",
       "tests": [
         {
           "repo": "agentha",
@@ -129,6 +129,11 @@
           "repo": "hotel",
           "command": "PATH=<existing native-realtime-mcp .venv>/bin:$PATH PYTHONPATH=<absolute API/server paths> python -m pytest -q apps/kajovo-hotel-api/tests/test_voice_core_tooling.py",
           "result": "6 passed at a0e613baf0396e226f7bb3af65515e0a90edc536"
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "result": "26 passed at d61aff64091296f3b141cbcf76c2dfc760a5b592"
         }
       ],
       "official_sources": []
@@ -139,11 +144,11 @@
       "agent_id": "/root/final_c_ha_safety",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
+        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Live HA classifications, exact capabilities, stable identity, availability and read-only filters; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "dee023da7f413c97eb80a1eeb02a637a3799bfc2f066f31960a56f4df115a267",
+      "report_sha256": "e11c240502af72f18716ee1b50f28a35d5df3346db24e9cc49af9b40ac6d79fd",
       "tests": [
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py tests/test_cutover.py",
@@ -225,6 +230,14 @@
           "result": "PASS",
           "passed": 8,
           "note": "independent in-memory scenarios repeated against exact clean current HEAD"
+        },
+        {
+          "command": "node --test scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs scripts/mcp_session_echo_guard.test.mjs",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/kajovo-hotel-native-mcp-clean",
+          "source_ref": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
+          "result": "PASS",
+          "passed": 26,
+          "note": "exact clean final HEAD independently verified"
         }
       ],
       "official_sources": []
@@ -235,11 +248,11 @@
       "agent_id": "/root/review_a_protocol",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
+        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Private preflight, immutable releases, managed workers, transactional fencing, deadlines and exact-image rollback; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "b35cefbf2bc0e9140c844cb1937e88b1d2a4bdd262584cd8564c7932c13c5b9b",
+      "report_sha256": "32c779ff886d8296f3a5739f96fb4dd49e7a5cd5fb15bd70f38d2dd50efa93bb",
       "tests": [
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_cutover.py tests/test_verify_mcp.py tests/test_independent_review.py -q",
@@ -282,6 +295,25 @@
         {
           "command": "hotel pytest test_github_deploy_via_ssh.py and independent activation/deadline/timeout-lock reproductions rerun on final candidate",
           "outcome": "11 hotel tests PASS; 18 activation faults PASS; real verifier killed/waited and watchdog restores after lock release PASS; late success rejected PASS"
+        },
+        {
+          "candidate": {
+            "hotel": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
+            "agentha": "807836d2b7dd9c14ff08f8bc93347e1785dd793c"
+          },
+          "command": "agent pytest tests/test_cutover.py tests/test_verify_mcp.py -q",
+          "PASS": 47,
+          "FAIL": 0
+        },
+        {
+          "candidate": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
+          "command": "hotel pytest test_github_deploy_via_ssh.py; scripts/check_native_mcp_cutover.py; scripts/check_voice_core_boundaries.py",
+          "outcome": "11 tests PASS, both architecture guards PASS"
+        },
+        {
+          "candidate": "807836d2b7dd9c14ff08f8bc93347e1785dd793c",
+          "command": "independent D activation/deadline/timeout-lock probes",
+          "outcome": "18 activation boundaries PASS, late acceptance rejected PASS, real timeout kills/waits and watchdog lock-release rollback PASS"
         }
       ],
       "official_sources": []
@@ -292,11 +324,11 @@
       "agent_id": "/root/final_e_cleanup",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
+        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Legacy source/config/process retirement, protected canonical data and resumable post-acceptance cleanup; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "8580a3221759cdf91ddb34a14657ce45452dab29f1d19c38911ed802d78a2789",
+      "report_sha256": "54ecf6411ad5ced1a4798e7c3f0990cacf3e045120ec319f728fc65ba58db51f",
       "tests": [
         {
           "command": "agentha-native-mcp/.venv/bin/python -m pytest -q tests/test_cutover.py tests/test_forensic_boundary.py (AGENTHA exact c236a57 final HEAD)",
@@ -322,6 +354,13 @@
         {
           "command": "python3.12 /tmp/native-E-cleanup-fixed-repro.py (unchanged AGENTHA cleanup final c236a57)",
           "result": "PASS: old archives retired while canonical DATA remains"
+        },
+        {
+          "command": "Final d61aff/807836 refresh: python3 scripts/check_native_mcp_cutover.py; node --test scripts/mcp_session_echo_guard.test.mjs; pytest tests/test_cutover.py tests/test_forensic_boundary.py; independent cleanup fixed repro",
+          "result": "PASS",
+          "guard_test_count": 10,
+          "cleanup_boundary_count": 45,
+          "cleanup_boundary_seconds": 1.27
         }
       ],
       "official_sources": []
@@ -332,11 +371,11 @@
       "agent_id": "/root/final_f_test_gaps",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
+        "hotel": "72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Actual exception, reconnect, race, lifecycle and deployment/rollback test gaps; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "ae4af8cb5f0b8c9b3a342de32612e1541aaee536a0eafb1caf3dc50c41afd2a3",
+      "report_sha256": "c117db8627014dc5d41a7df6aff4e3f8435eac192cc8bbfccb8a75be634c96da",
       "tests": [
         {
           "repo": "agentha",
@@ -383,6 +422,24 @@
           "failed": 0,
           "sha": "a0e613baf0396e226f7bb3af65515e0a90edc536",
           "note": "Includes exact production browser listener extracted unchanged, successful grounded read/playback, invalid late transport/allowlist/approval events, credential exposure, later-valid-update non-erasure, final post-Stop safety guard; independent all-functions toString injection reproducer also passed."
+        },
+        {
+          "repo": "hotel",
+          "command": "pnpm --filter @kajovo/kajovo-hotel-admin test:smoke",
+          "passed": 8,
+          "failed": 0,
+          "duration_seconds": 21.2,
+          "sha": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
+          "log": "/tmp/f-final-chat-smoke.log",
+          "note": "Run immediately before commit against the exact committed AGENTS/test/doc candidate; complete resulting source delta independently matched. Unique smoke DB and synthetic distinct admin identity. Existing missing-conversation and unread-message assertions retained unchanged; positive badge accessible name assertion passed."
+        },
+        {
+          "repo": "hotel",
+          "command": "Independent Chromium exact destination/visible-label selector browser proof at unread counts 0 and 1",
+          "passed": 2,
+          "failed": 0,
+          "sha": "d61aff64091296f3b141cbcf76c2dfc760a5b592",
+          "note": "Exact helper locator matches exactly one link for both badges. Accessible snapshots retain Chat and Chat1 nepřečtených; original exact accessible-name Chat fails positive unread state."
         }
       ],
       "official_sources": []
@@ -915,19 +972,46 @@
       "phase": "iterative final re-review",
       "status": "resolved",
       "fix": "Latch every invalid session echo or exposed credential and refresh/check final safety after Stop; later valid events or successful grounded playback cannot erase a failure."
+    },
+    {
+      "repo": "hotel",
+      "file": "apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts",
+      "line": 211,
+      "symbol": "chatNavigationLink / mobile admin bottom-navigation smoke assertion",
+      "problem": "The previous assertion used getByRole(link,{name:Chat,exact:true}). ChatUnreadLink includes an accessible unread badge, so the positive unread state changes the link accessible name from Chat to Chat1 nepřečtených. The gate incorrectly treats an existing visible Chat navigation link as missing.",
+      "untested_path": "Admin chat has one unread message -> mobile housekeeping navigation smoke uses exact accessible name Chat -> locator finds zero links despite visible Chat navigation.",
+      "repro": "Independent real Chromium rendered the actual label/badge topology: unread0 ariaSnapshot link Chat, unread1 ariaSnapshot link Chat1 nepřečtených. Original exact Chat role selector matches0 in unread1 state. Final destination+exact-visible-label selector matches exactly1 for both unread0 and unread1.",
+      "consequence": "False release-gate failure when previous chat flow leaves an unread message; unrelated valid production/navigation behavior may be rejected. This does not establish the separate unreproduced missing-conversation CI failure cause.",
+      "risk": "CI gate correctness defect: valid visible navigation fails its exact-name assertion in positive unread state.",
+      "regression_tests": [
+        "apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts: full 8 smoke scenarios and positive unread accessible name",
+        "independent Chromium selector proof: unread badge 0 and 1 both match exactly one link"
+      ],
+      "verified_by": [
+        "F"
+      ],
+      "resolution_evidence": "Independent full8 admin smoke passed21.2s on identical precommit candidate, verified matching committed d61aff source delta; /tmp/f-final-chat-smoke.log. Unique synthetic distinct-admin identity and unique DB used. Independent Chromium badge0/1 proof passed. Existing missing-conversation visibility and unread-message assertions remain unchanged. Final cumulative reviewed HOTEL SHA/fingerprint unchanged.",
+      "security": false,
+      "correctness": true,
+      "production_reliability": false,
+      "id": "F-CHAT-001",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Select chat navigation by its destination and exact visible label; retain and assert positive unread accessibility without weakening conversation assertions."
     }
   ],
   "open_counts": {
-    "CRITICAL": 0,
-    "HIGH": 0,
     "MEDIUM": 0,
-    "LOW": 0
+    "LOW": 0,
+    "HIGH": 0,
+    "CRITICAL": 0
   },
   "resolved_counts": {
-    "CRITICAL": 0,
+    "MEDIUM": 16,
+    "LOW": 0,
     "HIGH": 5,
-    "MEDIUM": 15,
-    "LOW": 0
+    "CRITICAL": 0
   },
   "production_acceptance": "NOT_RUN",
   "scope_limitations": "This is independent Codex review, not human review or production acceptance. Actual private HA, systemd/Docker, canonical transport and grounded Voice acceptance remain mandatory before destructive cleanup.",

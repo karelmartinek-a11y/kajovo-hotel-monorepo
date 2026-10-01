@@ -4,9 +4,9 @@ Date: 2026-10-01. **Review PASS; production acceptance NOT RUN.** This is Codex 
 
 ## Reviewed resulting trees
 
-- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → a0e613baf0396e226f7bb3af65515e0a90edc536`
-  Source fingerprint: `7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2`
-- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → c236a57e5c62a1ee83f533859be5ffbccfec4329`
+- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → d61aff64091296f3b141cbcf76c2dfc760a5b592`
+  Source fingerprint: `72bbc61c060a184f6b14e41e0380bd4700478a63f3353b8cbe8a529df6ba8b01`
+- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → 807836d2b7dd9c14ff08f8bc93347e1785dd793c`
   Source fingerprint: `668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1`
 
 The complete tracked tree is bound, including tests, instructions, workflows and other documentation. Only this report and its JSON companion are excluded to avoid a self-referential digest. Report-only commits and merges are valid only when the complete source fingerprint remains identical.
@@ -22,7 +22,7 @@ The complete tracked tree is bound, including tests, instructions, workflows and
 
 ## Findings, fixes and regressions
 
-One duplicate rollback finding (F1) is consolidated into D-1. All 20 distinct findings are resolved: 5 HIGH, 15 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
+One duplicate rollback finding (F1) is consolidated into D-1. All 21 distinct findings are resolved: 5 HIGH, 16 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
 
 The previous e8d8eee/c236a57 production attempt failed the session-echo smoke gate (run 36874755916) and was restored to the exact known-good 0aa675d images/runtime and original routes/backend, with all hotel components healthy. No destructive cleanup or actuator action occurred. This failed attempt is not acceptance evidence. The revised candidate still requires its own complete production acceptance.
 
@@ -48,6 +48,7 @@ The previous e8d8eee/c236a57 production attempt failed the session-echo smoke ga
 | F-01 | MEDIUM | `packages/voice-core/src/mcp.ts` / McpLifecycle.handle / turn | Register responses on response.created so interruption before the first delayed MCP call cancels that old response permanently. New legitimate response still gets exactly one follow-up. | packages/voice-core/tests/mcp.test.mjs: barge-in cancels a created response before its first delayed MCP call; packages/voice-core/tests/runtime.test.mjs: interruption before delayed first MCP call never sends an old followup | F: resolved PASS |
 | A-LIVE-001 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / session.created/session.updated configValid | Accept only null/omitted unused response selectors while preserving exact canonical URL/label, three-tool allowlist and read-only approval exception; outgoing Calls requests still omit alternate selectors. | scripts/mcp_session_echo_guard.test.mjs: exact session.created/updated nullable native MCP echoes pass; scripts/mcp_session_echo_guard.test.mjs: actual or malformed alternative transports fail closed | A: resolved PASS |
 | F-02 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / injected message listener / final WAV validation | Latch every invalid session echo or exposed credential and refresh/check final safety after Stop; later valid events or successful grounded playback cannot erase a failure. | scripts/mcp_session_echo_guard.test.mjs: late invalid transport, allowlist or approval cannot pass after successful read; scripts/mcp_session_echo_guard.test.mjs: late raw credential exposure cannot be erased by valid echo or grounded read; scripts/mcp_session_echo_guard.test.mjs: actual smoke checks fresh final safety evidence after Stop and before printing PASS | F: resolved PASS |
+| F-CHAT-001 | MEDIUM | `apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts` / chatNavigationLink / mobile admin bottom-navigation smoke assertion | Select chat navigation by its destination and exact visible label; retain and assert positive unread accessibility without weakening conversation assertions. | apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts: full 8 smoke scenarios and positive unread accessible name; independent Chromium selector proof: unread badge 0 and 1 both match exactly one link | F: resolved PASS |
 
 The JSON companion retains concrete original problems, reproducible scenarios, consequences, duplicate mapping and final reviewer report digests. Reviewer findings were reproduced independently; fixes were tested and the affected areas re-reviewed at the final source state.
 
