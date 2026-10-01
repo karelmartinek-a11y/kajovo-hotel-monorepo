@@ -125,3 +125,41 @@ test('microphone interruption and realtime failure both release audio', async ()
   assert.ok(h.tracks.every(track => track.stopped));
   assert.ok(h.audios.every(audio => audio.paused));
 });
+
+const approval = id => ({type: 'conversation.item.done', item: {type: 'mcp_approval_request', id, name: 'execute_device_action'}});
+for (const approved of [true, false]) {
+  test(`approval wire decision ${approved} binds rendered ID and double click cannot consume B`, async () => {
+    const h = host(); await h.client.start();
+    h.send(approval('A')); h.send(approval('B')); h.send(approval('A'));
+    assert.deepEqual(h.client.getSnapshot().approval, {id: 'A', name: 'execute_device_action'});
+    h.client.approve('stale', approved); assert.equal(h.peers[0].channel.sent.length, 0);
+    h.client.approve('A', approved); h.client.approve('A', approved);
+    const [wire] = h.peers[0].channel.sent;
+    assert.match(wire.item.id, /^mcp_approval_[a-f0-9]{32}$/);
+    assert.deepEqual(wire, {type: 'conversation.item.create', item: {id: wire.item.id, type: 'mcp_approval_response', approval_request_id: 'A', approve: approved}});
+    assert.equal(h.peers[0].channel.sent.length, 1);
+    assert.equal(h.client.getSnapshot().approval.id, 'B');
+    h.client.approve('B', approved);
+    const second = h.peers[0].channel.sent[1];
+    assert.notEqual(second.item.id, wire.item.id);
+    assert.deepEqual(second, {type: 'conversation.item.create', item: {id: second.item.id, type: 'mcp_approval_response', approval_request_id: 'B', approve: approved}});
+    assert.equal(h.client.getSnapshot().approval, null);
+    h.send(approval('A')); assert.equal(h.client.getSnapshot().approval, null);
+    await h.client.stop();
+  });
+}
+
+test('stop and reconnect discard approvals and late transport callbacks', async () => {
+  const h = host(); await h.client.start(); h.send(approval('old'));
+  const first = h.peers[0], late = first.channel.onmessage;
+  await h.client.stop(); h.client.approve('old', true); late({data: JSON.stringify(approval('late'))});
+  assert.equal(first.channel.sent.length, 0); assert.equal(h.client.getSnapshot().approval, null);
+  await h.client.start(); h.send(approval('reconnect-old'));
+  const second = h.peers[1]; second.connectionState = 'disconnected'; second.onconnectionstatechange();
+  h.client.approve('reconnect-old', false); assert.equal(second.channel.sent.length, 0);
+  await new Promise(done => setTimeout(done, 1100));
+  h.client.approve('reconnect-old', true); assert.equal(h.peers[2].channel.sent.length, 0);
+  h.send(approval('fresh')); h.client.approve('fresh', false);
+  assert.equal(h.peers[2].channel.sent[0].item.approval_request_id, 'fresh');
+  await h.client.stop();
+});

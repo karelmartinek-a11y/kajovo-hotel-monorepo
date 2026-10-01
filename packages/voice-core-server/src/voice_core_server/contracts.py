@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 MODELS = ("gpt-realtime-2.1", "gpt-realtime-2")
 VOICES = ("alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse", "marin", "cedar")
@@ -74,10 +74,10 @@ CAPABILITY_REGISTRY: tuple[CapabilityContract, ...] = ()
 
 class McpServerConfig(BaseModel):
     """Server-owned remote capability definition; never a browser settings value."""
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
     server_label: str
     server_url: str
-    authorization: str = Field(default="", repr=False)
+    authorization: SecretStr = Field(default=SecretStr(""), repr=False)
     allowed_tools: list[str]
     require_approval: Literal['always', 'never'] | dict = 'always'
     server_description: str = ""
@@ -93,7 +93,9 @@ class McpServerConfig(BaseModel):
         return self
 
     def session_tool(self) -> dict:
-        return {'type': 'mcp', **self.model_dump()}
+        values = self.model_dump(exclude={'authorization'})
+        values['authorization'] = self.authorization.get_secret_value()
+        return {'type': 'mcp', **values}
 
 
 class McpCapabilityProvider(Protocol):

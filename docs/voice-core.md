@@ -42,7 +42,7 @@ Instructions require honest uncertainty, no invented sources or live/private fac
 
 Portable sessions default to no connected tools. Hotel sessions require its scoped MCP provider, server_label `home_assistant`, canonical server_url `https://hotel.hcasc.cz/mcp/home-assistant`, and exactly `search_devices`, `get_device_state`, `execute_device_action`. Realtime imports and executes those tools directly. Reads skip native approval; execute requires a native approval response, while server domain policy remains authoritative and approval-required domains are rejected. Device text is data, never instructions. Unknown action outcomes are never automatically retried.
 
-`KAJOVO_API_MCP_SIGNING_KEY` is independent of the OpenAI encryption master. Deploy provisions it privately and shares it only with the capability server. Each session receives a scoped credential expiring in one hour; the host API returns only SDP and model. Permanent signing material must never enter browser events or telemetry. Production acceptance checks the full event stream for secret disclosure.
+`KAJOVO_API_MCP_SIGNING_KEY` is independent of the OpenAI encryption master. The sole authority is the host-managed /etc/home-assistant-mcp/signing.key. Root provisioning hands off that same key through private persisted server env; no GitHub signing secret may override it. Both runtimes require fingerprint equality before restart. Each session receives a scoped credential expiring in one hour; the host API returns only SDP and model. Permanent signing material must never enter browser events or telemetry. Production acceptance checks the full event stream for secret disclosure.
 
 Official contracts verified on 2026-09-30:
 

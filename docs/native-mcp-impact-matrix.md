@@ -12,3 +12,7 @@
 | Build/generators/deploy | update | Server signing key mapping, canonical HTTPS proxy, generated contract and live acceptance. |
 
 Android and employee portal do not consume admin Voice endpoints; verify this with full-tree search. Existing admin authentication, CSRF, encrypted OpenAI key storage and audio/session lifecycle remain authoritative.
+
+## Review hotfix scope
+
+All eight categories above require updates for approval wire identity, rendered-request locking, secret-safe validation, host-managed key handoff, Compose defaults, aggregate smoke evidence and transactional release gates. OpenAPI/client and Android are verified unchanged: no public route/body contract changes. Review completion and zero unresolved findings are independent gates from CI. Known-good release trees/images remain protected until coordinated acceptance.

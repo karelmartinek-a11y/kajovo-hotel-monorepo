@@ -31,6 +31,7 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
     } finally {setBusy(false);}
   };
   const update = (patch: Partial<VoiceCoreConfig>) => {if (!locked && draft) setDraft({...draft, ...patch});};
+  const renderedApproval = snapshot.approval;
   const dirty = saved && draft && JSON.stringify(configuration(saved)) !== JSON.stringify(draft);
   return <section className="vc-console" aria-label="Hlasový chat" data-testid="voice-console">
     <div className="vc-conversation">
@@ -42,7 +43,7 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
       <p className="vc-detail">Hovoříte s AI. Ověřené informace poskytují připojené nástroje.</p>
       {snapshot.mcpStatus === 'loading' && <p role="status">Připojuji nástroje…</p>}
       {snapshot.mcpStatus === 'unavailable' && <p role="alert">Momentálně se nemohu spojit se systémem připojených nástrojů.</p>}
-      {snapshot.approval && <div role="alert"><p>Schválit akci nástroje {snapshot.approval.name}?</p><button onClick={() => client.approve(false)}>Odmítnout</button><button onClick={() => client.approve(true)}>Schválit</button></div>}
+      {renderedApproval && <div role="alert" key={renderedApproval.id}><p>Schválit akci nástroje {renderedApproval.name}?</p><button onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, false);}}>Odmítnout</button><button onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, true);}}>Schválit</button></div>}
       {(snapshot.error || error) && <p className="vc-error" role="alert">{snapshot.error ? errorMessage(snapshot.error.category) : error}</p>}
     </div>
     <div className="vc-controls">

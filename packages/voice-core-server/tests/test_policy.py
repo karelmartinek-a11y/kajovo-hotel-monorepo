@@ -103,3 +103,25 @@ def test_timeout_and_bad_success_are_sanitized():
         asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(timeout)).create("v=0", VoiceCoreConfig(), "test-key"))
     with pytest.raises(VoiceError, match="session_creation_failed"):
         asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(lambda _: httpx.Response(200, text="SECRET"))).create("v=0", VoiceCoreConfig(), "test-key"))
+
+
+@pytest.mark.parametrize('patch', [
+    {'server_url': 'http://private.invalid'}, {'server_url': 'https://['},
+    {'allowed_tools': []}, {'allowed_tools': ['read', 'read']},
+    {'require_approval': 'invalid'}, {'unexpected': 'invalid'},
+])
+def test_mcp_validation_error_never_discloses_credentials(patch, caplog):
+    from voice_core_server.contracts import McpServerConfig
+    canary = 'Bearer CANARY-MCP-SENSITIVE-INPUT-0123456789'
+    values = dict(server_label='safe', server_url='https://example.test/mcp',
+                  authorization=canary, allowed_tools=['read'])
+    values.update(patch)
+    with pytest.raises(ValidationError) as raised:
+        McpServerConfig(**values)
+    for text in [str(raised.value), repr(raised.value), caplog.text]:
+        assert canary not in text and 'CANARY-MCP-SENSITIVE' not in text
+    valid = McpServerConfig(server_label='safe', server_url='https://example.test/mcp',
+                           authorization=canary, allowed_tools=['read'])
+    assert 'CANARY-MCP-SENSITIVE' not in repr(valid)
+    assert 'CANARY-MCP-SENSITIVE' not in valid.model_dump_json()
+    assert valid.session_tool()['authorization'] == canary
