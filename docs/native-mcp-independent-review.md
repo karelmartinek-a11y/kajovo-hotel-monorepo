@@ -1,72 +1,108 @@
 # Independent Codex multi-agent forensic review
 
-Date: 2026-10-01. **Review PASS; production acceptance NOT RUN.** This is Codex evidence, not human review.
+Result: **PASS — source review**, 2026-10-01. Production acceptance: **NOT_RUN**.
 
-## Reviewed resulting trees
+Hotel source: `381beeda2f550c4002616280fb0f9589687d02c2`; complete fingerprint `44259f65d6918c1676928870c4273cae812e15b35ae76ba6949bbe8a7f72ce69`.
 
-- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → 69a90f1cbd77be075bf1ab771bf82b13ffa7ebcb`
-  Source fingerprint: `edee38d89fbc78f202db4ab7b647f793a87ba37459449943d08864571014532b`
-- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → c6fcd431eced1b962c288006c615f9a256a5c466`
-  Source fingerprint: `668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1`
+MCP source: `178a87c088a1439864405f4fae340ac702a49a85`; complete fingerprint `668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1`.
 
-The complete tracked tree is bound, including tests, instructions, workflows and other documentation. Only this report and its JSON companion are excluded to avoid a self-referential digest. Report-only commits and merges are valid only when the complete source fingerprint remains identical.
+Six distinct agent sessions actually performed the recorded reviews. A/B/F did not author the implementation; C/D/E independently cross-reviewed other authors’ components and disclose exclusions below. JSON IDs and hashes are consistency evidence, not authentication of execution.
 
-## Independent reviewers
+The successful GitHub PR run [36915890916](https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/36915890916) verified prepared browsers, production images, API/Android/portable contracts and all required jobs. Playwright: 176 web smoke, 8 admin smoke, 88 web visual, 40 admin visual and 20 responsive Voice tests passed. The final source delta after that run corrects an obsolete documentation paragraph; exact released main CI is still mandatory.
 
-- A — protocol; `/root/final_a_protocol`; PASS. Current official Realtime Calls/MCP wire, response/call/approval lifecycle and spoken completion; independently examined final cumulative trees and relevant regression/failure paths.
-- B — security; `/root/final_b_security`; PASS. Secrets, sole signing authority, scoped credentials, informed approval and durable at-most-once actions; independently examined final cumulative trees and relevant regression/failure paths.
-- C — ha_safety; `/root/final_c_ha_safety`; PASS. Live HA classifications, exact capabilities, stable identity, availability and read-only filters; independently examined final cumulative trees and relevant regression/failure paths.
-- D — deployment; `/root/review_a_protocol`; PASS. Private preflight, immutable releases, managed workers, transactional fencing, deadlines and exact-image rollback; independently examined final cumulative trees and relevant regression/failure paths.
-- E — legacy_absence; `/root/final_e_cleanup`; PASS. Legacy source/config/process retirement, protected canonical data and resumable post-acceptance cleanup; independently examined final cumulative trees and relevant regression/failure paths.
-- F — test_gaps; `/root/final_f_test_gaps`; PASS. Actual exception, reconnect, race, lifecycle and deployment/rollback test gaps; independently examined final cumulative trees and relevant regression/failure paths.
+## Review records
 
-## Findings, fixes and regressions
+### A — protocol
 
-One duplicate rollback finding (F1) is consolidated into D-1. All 24 distinct findings are resolved: 7 HIGH, 17 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
+Agent: `/root/review_a_protocol`. Result: **PASS**.
 
-The previous e8d8eee/c236a57 production attempt failed the session-echo smoke gate (run 36874755916) and was restored to the exact known-good 0aa675d images/runtime and original routes/backend, with all hotel components healthy. No destructive cleanup or actuator action occurred. This failed attempt is not acceptance evidence. The revised candidate still requires its own complete production acceptance.
+Actual independent protocol review completed on the frozen source pair. Recomputed hotel complete Git-tree fingerprint and checked 28 relevant working source/test/doc blobs against its immutable objects; recomputed agentha complete fingerprint from its non-truncated recursive Git tree and verified all 44 local blob hashes. Reviewed native MCP exact three-tool/raw authorization wire and pinned counterpart auth/tool tests; immutable SHA/image-ID/archive-checksum build/import/Compose/runtime identity chain; producer/proxy test continuity; CI baseline and cumulative review dependency closure; verified MCP pair propagation; root readiness/runtime fence/worker/rollback/final acceptance lifecycle. Reinspected the final always-images and unconditional-readiness fix, and confirmed the sole 8427265 to 381beeda delta is the obsolete deploy-dedup paragraph correction in docs/how-to-deploy.md. No open CRITICAL/HIGH/MEDIUM finding remains in area A.
 
-| Finding | Severity | Source / symbol | Fix | Regression | Final verification |
-|---|---|---|---|---|---|
-| A-1 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / voice acceptance event observer and completion predicate | Correlate successful grounded transcript, completed response and stopped playback; reject failed/cancelled/cleared responses. | scripts/mcp_spoken_completion.test.mjs: transcript and partial RTP never prove spoken completion | A: resolved PASS |
-| B-1 | HIGH | `packages/voice-core/src/mcp.ts` / McpLifecycle.handle / VoiceConsole approval prompt | Validate bounded approval context against imported schemas and show exact target/property/state without opaque credentials; malformed context blocks approval. | packages/voice-core/tests/mcp.test.mjs: approval context keeps exact target and state and removes opaque credentials; packages/voice-core/tests/console.spec.ts: unverified approval details disable approve | B: resolved PASS |
-| B-2 | MEDIUM | `scripts/cutover.py` / prepare signing key provisioning | Require root-owned regular non-symlink authority with private directory/file modes before reading; never adopt an exposed key or rotate it during deploy. | tests/test_cutover.py::test_existing_nonroot_signing_authority_is_rejected_without_rotation; tests/test_cutover.py::test_signing_authority_owner_and_private_modes_fail_closed | B: resolved PASS |
-| C-1 | HIGH | `app/voice_policy.py` / load_policy / HomeAssistantCapabilityService.snapshot | One classification invariant fails closed across search/state/execute for blank and ignored classifications regardless of enabled flag. | tests/test_capabilities.py::test_enabled_flag_cannot_override_unclassified_or_ignored_policy | C: resolved PASS |
-| C-2 | HIGH | `app/inventory.py` / _light_descriptors / _select_option | Exact raw dynamic choices have deterministic digest-bound unique state keys; ambiguous exact bindings reject. | tests/test_device_inventory.py::test_raw_choices_have_unique_bounded_stable_keys_and_current_value; tests/test_capabilities.py::test_execute_each_colliding_raw_choice_submits_only_its_discovered_payload | C: resolved PASS |
-| C-3 | MEDIUM | `app/inventory.py` / _availability | Unknown entities are unavailable in aggregate state and filters, consistent with individual properties. | tests/test_capabilities.py::test_unknown_entity_states_align_device_availability_and_filters | C: resolved PASS |
-| D-1 | HIGH | `scripts/cutover.py` / rollback | Recognize an already restored real directory and safely retry later recovery failures instead of attempting a symlink over it. | tests/test_cutover.py::test_rollback_restores_routes_and_pinned_hotel_images_without_live_ha_calls | D: resolved PASS |
-| D-2 | HIGH | `agentha/scripts/cutover.py; hotel/infra/ops/deploy-production.sh` / rollback/finalize vs hotel deployment runtime mutations | Root serialization, revoked transaction state, managed process-group termination and a shared runtime fence prevent late deployment from republishing after rollback. | tests/test_cutover.py::test_rollback_cancels_worker_before_exclusive_runtime_restore; tests/test_cutover.py::test_watchdog_serializes_with_acceptance_under_real_process_lock; apps/kajovo-hotel-api/tests/test_transaction_fence.py | D: resolved PASS |
-| D-3 | MEDIUM | `scripts/verify_mcp.py` / verify | Run search, exact state and repeated search in the same authenticated SDK session; later client failures cannot yield preflight PASS. | tests/test_verify_mcp.py::test_preflight_repeats_live_reads_in_one_session_and_returns_aggregate_only; tests/test_verify_mcp.py::test_closed_or_failed_client_on_later_read_cannot_report_preflight_pass | D: resolved PASS |
-| E-1 | MEDIUM | `scripts/cutover.py` / cleanup | Retire confirmed verification/staging roots after acceptance while preserving canonical source and data. | tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance | E: resolved PASS |
-| E-2 | MEDIUM | `scripts/cutover.py` / cleanup | Retire every coordinator-owned obsolete backup generation and image anchor; prune captured obsolete images only when unused. | tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance; apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py::test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captured_images | E: resolved PASS |
-| F-2 | MEDIUM | `packages/voice-core/src/runtime.ts` / VoiceRealtimeClient.handle | Catch follow-up send failure, release resources and never retransmit a consumed continuation. | packages/voice-core/tests/runtime.test.mjs: failed MCP followup send closes session and never retries the consumed turn | F: resolved PASS |
-| F-3 | MEDIUM | `packages/voice-core/src/runtime.ts` / VoiceRealtimeClient.connect peer.ontrack | Behavioral remote-track tests cover rejected playback, audio errors, stream fallback, stale callbacks and graph/resource cleanup. | packages/voice-core/tests/runtime.test.mjs: remote audio reject reports playback failure and releases graph; packages/voice-core/tests/runtime.test.mjs: reconnect disconnects old playback graph and rejects late tracks and play failures | F: resolved PASS |
-| F-4 | MEDIUM | `scripts/cutover.py` / finalize / cleanup | Persist accepted_cleanup_pending and permit idempotent cleanup retry; never roll back completed acceptance due to retirement failure. | tests/test_cutover.py::test_accepted_cleanup_failure_resumes_without_verification_or_rollback; tests/test_cutover.py::test_retirement_failure_keeps_provenance_and_retry_finishes_missing_first_root | F: resolved PASS |
-| A-001 | MEDIUM | `scripts/mcp_spoken_completion.mjs` / SpokenCompletion.handle / ready | Bind semantic successful name-filtered search to its parent or a new follow-up after completed parent/all-call boundary; invalidate interrupted chains and preexisting unrelated responses. | scripts/mcp_spoken_completion.test.mjs: preexisting unrelated playback cannot borrow successful search grounding; scripts/mcp_spoken_completion.test.mjs: followup requires completed parent and every correlated call terminal; scripts/mcp_spoken_completion.test.mjs: late old MCP completion after barge-in cannot ground a new user turn | A: resolved PASS |
-| D-FINAL-1 | MEDIUM | `scripts/cutover.py` / finalize | Bound the final verifier to the remaining rollback deadline and check the deadline again immediately before acceptance commit. | tests/test_cutover.py::test_final_verifier_is_bounded_and_cannot_accept_after_deadline | D: resolved PASS |
-| E-001 | MEDIUM | `scripts/cutover.py` / cleanup | Delete the two confirmed legacy archive roots only after acceptance and canonical data snapshot; retain private aggregate provenance and support interrupted/missing-root retry. | tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance; tests/test_cutover.py::test_actual_cleanup_preacceptance_guard_preserves_confirmed_archive_roots; tests/test_cutover.py::test_retirement_failure_keeps_provenance_and_retry_finishes_missing_first_root | E: resolved PASS |
-| F-01 | MEDIUM | `packages/voice-core/src/mcp.ts` / McpLifecycle.handle / turn | Register responses on response.created so interruption before the first delayed MCP call cancels that old response permanently. New legitimate response still gets exactly one follow-up. | packages/voice-core/tests/mcp.test.mjs: barge-in cancels a created response before its first delayed MCP call; packages/voice-core/tests/runtime.test.mjs: interruption before delayed first MCP call never sends an old followup | F: resolved PASS |
-| A-LIVE-001 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / session.created/session.updated configValid | Accept only null/omitted unused response selectors while preserving exact canonical URL/label, three-tool allowlist and read-only approval exception; outgoing Calls requests still omit alternate selectors. | scripts/mcp_session_echo_guard.test.mjs: exact session.created/updated nullable native MCP echoes pass; scripts/mcp_session_echo_guard.test.mjs: actual or malformed alternative transports fail closed | A: resolved PASS |
-| F-02 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / injected message listener / final WAV validation | Latch every invalid session echo or exposed credential and refresh/check final safety after Stop; later valid events or successful grounded playback cannot erase a failure. | scripts/mcp_session_echo_guard.test.mjs: late invalid transport, allowlist or approval cannot pass after successful read; scripts/mcp_session_echo_guard.test.mjs: late raw credential exposure cannot be erased by valid echo or grounded read; scripts/mcp_session_echo_guard.test.mjs: actual smoke checks fresh final safety evidence after Stop and before printing PASS | F: resolved PASS |
-| F-CHAT-001 | MEDIUM | `apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts` / chatNavigationLink / mobile admin bottom-navigation smoke assertion | Select chat navigation by its destination and exact visible label; retain and assert positive unread accessibility without weakening conversation assertions. | apps/kajovo-hotel-admin/tests/e2e-smoke.spec.ts: full 8 smoke scenarios and positive unread accessible name; independent Chromium selector proof: unread badge 0 and 1 both match exactly one link | F: resolved PASS |
-| D-CI-2 | MEDIUM | `.github/workflows/ci-gates.yml` / release-gate aggregate job | Restore text integrity, frontend manifest, legacy guards and runtime integrity in authoritative CI Gates; propagate every required job failure. | tests/test_release_workflow_contract.py::test_authoritative_gate_executes_each_required_integrity_check; tests/test_release_workflow_contract.py::test_actual_aggregate_script_cannot_pass_any_required_job_failure | D: resolved PASS |
-| D-CI-3 | HIGH | `.github/workflows/deploy-production.yml` / deploy-production job, first checkout, trust gate | Enforce trusted main workflow context and trusted checkout before release validation, candidate checkout and private production credential injection. | tests/test_release_workflow_contract.py::test_only_trusted_main_deployment_context_is_eligible; tests/test_release_workflow_contract.py::test_unverified_candidate_never_supplies_the_gate_code_or_production_secrets; tests/test_release_workflow_contract.py::test_verified_environment_handoff_preserves_multiline_values_without_printing | B: resolved PASS |
-| D-CI-4 | HIGH | `.github/workflows/ci-gates.yml` / cancel-stale-main-ci job and jq selection | Delete unsafe cross-workflow cancellation and bind concurrency to source SHA; old/manual sources cannot cancel newer main source. | tests/test_release_workflow_contract.py::test_old_or_manual_source_cannot_cancel_newer_main_source | F: resolved PASS |
+- PASS: ../hotel-test-venv/bin/python -m pytest -q scripts/tests/test_ci_scope.py scripts/tests/test_ci_required_jobs.py scripts/tests/test_release_images.py apps/kajovo-hotel-api/tests/test_independent_review.py apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_release_workflow_contract.py apps/kajovo-hotel-api/tests/test_transaction_fence.py packages/voice-core-server/tests/test_policy.py apps/kajovo-hotel-api/tests/test_voice_core.py apps/kajovo-hotel-api/tests/test_voice_core_tooling.py.
 
-The JSON companion retains concrete original problems, reproducible scenarios, consequences, duplicate mapping and final reviewer report digests. Reviewer findings were reproduced independently; fixes were tested and the affected areas re-reviewed at the final source state.
+### B — security
 
-## Superseded contract observation
+Agent: `/root/review_b_security`. Result: **PASS**.
 
-The earlier CI Release naming observations D-CI-1/F-CI-001 were withdrawn after the user explicitly confirmed CI Gates as the sole automatic main authority. They are not counted as repaired defects. The independent security, coverage and cancellation defects remain traced as D-CI-2/3/4 with actual fixes and regressions.
+Independent inspection of workflow privileges, PR/cache boundaries, trusted main gate before candidate checkout and credentials, immutable bundle/run/image identity, content-bound review ancestry and MCP identity, root signing authority, transaction fencing and rollback lifecycle. Complete frozen Git tree fingerprint independently computed; 27 reviewed hotel files matched frozen blob IDs. 185 focused hotel tests passed; 90 immutable agentha cutover/review tests passed. All B findings independently verified resolved.
 
-## Objective release gates
+- 185 focused hotel tests passed; 90 agentha cutover/review tests passed: focused reviewer validation.
 
-Require exact current main CI Gates as the sole automatic authority, native MCP regressions, architecture guards, secret/redaction tests, deployment/rollback tests, this content-bound six-agent evidence and zero open blocking findings. Branch/PR CI Core must also pass before merge; CI Full and CI Release remain manual diagnostics. Automatic deployment still waits for the root-owned active exact-hotel-SHA transaction after private preflight and rollback preparation. No paid external reviewer, bot response or quota notice is a release dependency.
+### C — ha_safety
 
-## Production gates still required
+Agent: `/root/ci_implementation`. Result: **PASS**.
 
-Preserve the healthy known-good hotel runtime/images, old backend and original routes. Start only the new private 18103 candidate and exercise authenticated initialize/list of exactly three tools and repeated search/state/search with production HA. Verify key fingerprints and exact image archive before canonical cutover. Then verify all hotel health, public MCP protocol, native Realtime import, name-filtered canonical read and completed grounded speech. Acceptance performs no actuator calls and logs aggregate evidence only. Cleanup starts only after all acceptance gates pass; failure restores the exact known-good runtime.
+Independent cross-review of independently authored deployment and MCP/HA safety sources at the frozen candidate. This agent authored CI orchestration and explicitly did not independently review its own CI implementation. Hotel frozen Git tree fingerprint and the MCP immutable API tree fingerprint were independently recomputed. Eleven reviewed/tested hotel blobs and four MCP blobs matched the frozen objects. Reviewed the trusted content-bound MCP SHA handoff, root signing authority and private key fingerprint, exact-pair readiness/timer, root-owned runtime fence, image import before container stop, managed worker persistence across CI disconnect, known-good image archives/anchors, deadline and final acceptance, and post-acceptance cleanup. Executed 26 isolated hotel safety/image/readiness tests, 44 isolated MCP cutover tests and the actual frozen schedule-candidate JavaScript with a historical artifact lookup trap; all passed. No production actions, HA actuator calls or paid live calls were performed.
 
-## Impact matrix
+CI Core/Gates/Full/Release, setup composites and Playwright configuration were authored by this agent and excluded from this independent C review. C review concerns deployment and MCP/HA source authored separately; it does not assert independent approval of this agent's own implementation.
 
-Production source, unit/protocol/wire/UI/failure tests, CI/deploy/review gates, documentation, instructions and current fixtures are synchronized. OpenAPI/generated client, Android consumers and persistent identity/policy contracts are verified unchanged. Legacy artifacts are physically retired only after final acceptance; canonical persistent data and private aggregate provenance are preserved.
+- PASS: hotel-test-venv/bin/python -m pytest --noconftest apps/kajovo-hotel-api/tests/test_transaction_fence.py apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py scripts/tests/test_release_images.py -q.
+- PASS: PYTHONPATH=agentha-review-source hotel-test-venv/bin/python -m pytest --noconftest agentha-review-source/tests/test_cutover.py -q.
+- PASS: node review_c_candidate_counterexample.js.
+- PASS: bash -n review-c-frozen/infra/ops/deploy-production.sh.
+
+### D — deployment
+
+Agent: `/root/scope_review_implementation`. Result: **PASS**.
+
+Independently inspected immutable-image CI build/test/export/import, trusted exact-run download, SSH readiness/preparation, production image selection and fences, root-owned partner worker/rollback/finalization, and accepted cleanup. Verified frozen Hotel source fingerprint and partner fingerprint/all 44 blob hashes. Executed 52 Hotel deployment tests, 44 partner cutover tests, and production shell syntax validation. No production or actual local Docker execution is claimed.
+
+I authored CI scope/scoped review/release checker/legacy guard changes; D independently cross-reviews deployment files authored by another agent and partner deployment paths. My own changes are excluded from this D independence claim and are independently covered by A/B/F.
+
+- 52 passed: PYTHONPATH=<isolated test dependencies>:<hotel>/scripts python -m pytest --noconftest scripts/tests/test_release_images.py apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_transaction_fence.py apps/kajovo-hotel-api/tests/test_release_workflow_contract.py -q.
+- 44 passed: PYTHONPATH=<isolated test dependencies>:<verified agentha> python -m pytest --noconftest tests/test_cutover.py -q.
+- PASS: bash -n infra/ops/deploy-production.sh.
+
+### E — legacy_absence
+
+Agent: `/root/deploy_implementation`. Result: **PASS**.
+
+Independent cross-review at frozen hotel fingerprint: all 281 configured active-source files were materialized from frozen Git objects; 17 initially missing legacy hotel policy/brand blobs were retrieved by immutable GitHub blob SHA and independently byte-hash checked. Actual semantic guard reports PASS. The five independently reproduced Python alias/keyword/argument/constant-fstring counterexamples are now detected and covered by pinned regressions. Historical docs, docstrings, comments and dedicated negative fixtures remain preserved. Active hotel session route constructs native HomeAssistantMcpProvider tools through McpServerConfig(extra=forbid) and validates them in session_config before GA calls; no active local executor/legacy function wire remains. Agentha active files match immutable tree blob SHAs; main activates only StrictMcp StreamableHTTP and its native service/Nginx route. Scope is source/static-contract absence and its tested guard, not arbitrary dynamic-program proof or production runtime acceptance.
+
+This agent authored deployment optimizations. Area E independently cross-reviews the semantic legacy guard authored by /root/scope_review_implementation and unchanged production MCP producers/consumers. It does not claim independent review of this agent’s own deployment changes.
+
+- PASS: python3 scripts/check_native_mcp_cutover.py.
+- PASS: /workspace/scratch/10ab6106deb5/hotel-test-venv/bin/python -m pytest --noconftest -q scripts/tests/test_native_mcp_cutover.py.
+- PASS: /workspace/scratch/10ab6106deb5/hotel-test-venv/bin/python -m pytest --noconftest -q tests/test_forensic_boundary.py.
+- PASS: Independent SHA256 over immutable Git tree metadata, evidence files excluded; SHA1 Git-blob byte verification for 17 fetched hotel files and 17 active agentha files.
+
+### F — test_gaps
+
+Agent: `/root/review_f_test_gaps`. Result: **PASS**.
+
+Independent final tree/blob verification, nine-file corrective delta review, all CI test discovery/dependency/aggregator invariants and preserved smoke/visual scenarios. 87 script and 99 affected API tests passed. Actual Python cache repair shell independently executed in mounted, absent and existing-destination scenarios twice each; idempotent. Always current-SHA images and unconditional exact-pair root readiness separate test baseline from runtime acceptance.
+
+- 186 tests passed: 87 script and 99 affected API: focused reviewer validation.
+- 3 actual cache-repair shell scenarios passed twice each: focused reviewer validation.
+
+## Findings
+
+| Finding | Severity | Status | Resolution |
+|---|---|---|---|
+| A-001 | HIGH | resolved | scripts/ci_scope.py authenticates the latest completed successful exact-main baseline CI before reducing test scope; missing credentials/history or failed/cancelled/incomplete baseline selects full scope. |
+| A-002 | HIGH | resolved | scripts/independent_review.py carries verified MCP source through reviewed ancestry; check_release_review outputs that SHA; readiness, upload, wait state and runtime fence bind the same hotel/MCP pair before runtime mutation. |
+| A-003 | MEDIUM | resolved | scripts/ci_scope.py limits targeted frontend/shared UI changes to presentation styles and raster assets; executable TS/JS/JSON/SVG and unknown source paths select full dependency closure. |
+| A-004 | HIGH | resolved | Every candidate builds and verifies current-SHA immutable runtime images, independently of code-impact deploy_required; preparation always queries exact root coordinator readiness after CI/review. |
+| A-005 | HIGH | resolved | Historical deployment-job evidence is no longer runtime authority. Selective baseline proves tests only; current active exact-pair root readiness determines cutover/restoration, every candidate retains immutable images, and docs/how-to-deploy.md now states this lifecycle without stale dedup instructions. |
+| B-001 | HIGH | resolved | Only historical non-normative notes/archive qualify for cosmetic scope; current policy and runbooks are full. |
+| B-002 | HIGH | resolved | Scan executed nested template expressions, escapes and constant fragments with negative regression cases. |
+| B-003 | HIGH | resolved | Executable TS/JS/JSON/SVG fail closed to full scope. |
+| B-004 | MEDIUM | resolved | Validate configured target resolves only to approved IPv4 before SSH. |
+| B-005 | MEDIUM | resolved | Trusted bootstrap installs verifier/SSH tools before gate; Python setup precedes checks and credentials. |
+| B-006 | MEDIUM | resolved | All candidates retain verified images and readiness is unconditional; baseline authenticates tests only. |
+| C-001 | MEDIUM | resolved | No MCP source change is required: the trusted gate derives exact MCP SHA from evidence inside the immutable hotel Git commit (or a verified immutable ancestor). Changing that MCP SHA changes the hotel evidence commit and therefore hotel SHA/release path. A same-hotel-SHA/different-MCP-SHA retained readiness marker is an ineligible pair, and the runtime fence correctly rejects it before any container mutation. An eligible same-hotel/same-MCP retry retains matching identity and active root/timer checks. |
+| C-002 | MEDIUM | resolved | Removed historical successful-deployment artifact suppression from the schedule candidate. Exact current main remains eligible; the verified gate and current root transaction readiness determine whether runtime deployment can proceed. A historical GitHub success is not final coordinator acceptance or a current-runtime identity proof. |
+| OPT-E-1 | MEDIUM | resolved | The guard now checks alias import components and aliases, keyword names and argument bindings, and folds constant Python JoinedStr/FormattedValue expressions; the separate guard author added five regression cases. |
+| F-001 | HIGH | resolved | Install constrained pytest in fast profile and invoke actual pytest suite. |
+| F-002 | HIGH | resolved | Only latest successful exact-main baseline tests allow reduced scope; missing/failed/cancelled baseline selects full. |
+| F-003 | MEDIUM | resolved | Wire exact new suites into required fast-checks job. |
+| F-004 | MEDIUM | resolved | Validate profile/review consistency and require verified images for every candidate. |
+| F-005 | MEDIUM | resolved | Synchronize tests with trusted gate and conditional checks; update active runbooks. |
+
+C-001’s original reliability interpretation was withdrawn after immutable-pair analysis; it is an expected rejection, not an MCP code change. Historical deploy SUCCESS is never root acceptance. Every candidate retains current-SHA verified images, and readiness always checks the live exact hotel/MCP transaction.
+
+## Limits
+
+A/B/F are non-author independent reviewers. C/D/E cross-review components authored by other agents and explicitly exclude their own implementations from independence claims. Actual session reviews are recorded; JSON identity does not authenticate execution. Complete tracked source trees are bound; local checkout lacks unrelated unchanged assets/APK. GitHub exact-main CI and coordinated production acceptance remain separate mandatory prerequisites.
+
+No reviewer claims production deployment, private HA actuator execution or paid live OpenAI acceptance. Local Python tests used 3.12; authoritative CI uses 3.11. Unrelated absent binary blobs were retained in the complete tree fingerprint, not locally executed. See JSON for each reviewer’s exact tests, fingerprints and limitations.
