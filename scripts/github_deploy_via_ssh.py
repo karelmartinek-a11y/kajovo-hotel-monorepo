@@ -72,6 +72,7 @@ fi
 if run_release_root_cmd test -f "$release_root/infra/.env"; then
   mkdir -p "$preserve_dir/infra"
   run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
+  chmod 600 "$preserve_dir/infra/.env"
 fi
 rm -rf "$deploy_root"
 mkdir -p "$deploy_root"
@@ -85,6 +86,7 @@ if [ -f "$preserve_dir/infra/.env" ]; then
 elif [ ! -f "$deploy_root/infra/.env" ]; then
   : > "$deploy_root/infra/.env"
 fi
+chmod 600 "$deploy_root/infra/.env"
 export DEPLOY_VARS_PATH="$vars_json"
 export DEPLOY_ROOT="$deploy_root"
 python3 - <<'PY'

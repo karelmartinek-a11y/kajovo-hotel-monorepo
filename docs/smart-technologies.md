@@ -23,6 +23,7 @@ Companion backend in `karelmartinek-a11y/agentha`: `app/smart_technologies.py`, 
 - HA runtime: existing `HA_BASE_URL`/`HA_TOKEN` connect to HA on `ha3.hcasc.cz`. Set dedicated `HA_SMART_TOKEN`; optional `HA_VOICE_POLICY_PATH` defaults to `./config/voice-policy.json` and persistent `HA_SMART_RECEIPTS_PATH` defaults to `./data/smart-receipts.sqlite3`.
 - Publish the agent's authenticated `POST /v1/smart-technologies` through HTTPS explicitly. Publishing `/v1/catalog` does not expose this route automatically.
 - Hotel runtime: `KAJOVO_API_SMART_TECHNOLOGIES_URL` is the exact HTTPS endpoint; server-only `KAJOVO_API_SMART_TECHNOLOGIES_TOKEN` matches `HA_SMART_TOKEN`. Compose and SSH deployment preserve/configure both. GitHub can supply the URL variable and token secret of these names.
+- SSH deployment preserves private `600` permissions on the runtime environment file before moving it into the release tree and before writing secret updates.
 - Without both hotel values, sessions retain tool-free policy and calls return `smart_technologies_not_configured`. Environment changes require API restart and a new voice session.
 
 Import later deltas with `python scripts/import_voice_policy.py SOURCE.xlsx config/voice-policy.json`. Preserve the data directory, stable key registry and receipts across deployments. Verify authenticated search/state before testing an explicitly selected operation. No actuator command is needed for a connectivity check.
