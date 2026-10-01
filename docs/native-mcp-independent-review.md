@@ -4,9 +4,9 @@ Date: 2026-10-01. **Review PASS; production acceptance NOT RUN.** This is Codex 
 
 ## Reviewed resulting trees
 
-- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → 9a9b895ff27b6d12a9975668a710b71be81ed161`
-  Source fingerprint: `70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a`
-- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → c9c291f342eb947ef3dcc7886ad210e4db55724c`
+- HOTEL: `0aa675d2c8d5af471bcb55953b58ddbe0ea67893 → a0e613baf0396e226f7bb3af65515e0a90edc536`
+  Source fingerprint: `7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2`
+- AGENTHA: `251902e614012e84c9b5f86d2a672641ee733bde → c236a57e5c62a1ee83f533859be5ffbccfec4329`
   Source fingerprint: `668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1`
 
 The complete tracked tree is bound, including tests, instructions, workflows and other documentation. Only this report and its JSON companion are excluded to avoid a self-referential digest. Report-only commits and merges are valid only when the complete source fingerprint remains identical.
@@ -22,7 +22,9 @@ The complete tracked tree is bound, including tests, instructions, workflows and
 
 ## Findings, fixes and regressions
 
-One duplicate rollback finding (F1) is consolidated into D-1. All 18 distinct findings are resolved: 5 HIGH, 13 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
+One duplicate rollback finding (F1) is consolidated into D-1. All 20 distinct findings are resolved: 5 HIGH, 15 MEDIUM. Open CRITICAL/HIGH/MEDIUM/LOW: **0/0/0/0**.
+
+The previous e8d8eee/c236a57 production attempt failed the session-echo smoke gate (run 36874755916) and was restored to the exact known-good 0aa675d images/runtime and original routes/backend, with all hotel components healthy. No destructive cleanup or actuator action occurred. This failed attempt is not acceptance evidence. The revised candidate still requires its own complete production acceptance.
 
 | Finding | Severity | Source / symbol | Fix | Regression | Final verification |
 |---|---|---|---|---|---|
@@ -44,6 +46,8 @@ One duplicate rollback finding (F1) is consolidated into D-1. All 18 distinct fi
 | D-FINAL-1 | MEDIUM | `scripts/cutover.py` / finalize | Bound the final verifier to the remaining rollback deadline and check the deadline again immediately before acceptance commit. | tests/test_cutover.py::test_final_verifier_is_bounded_and_cannot_accept_after_deadline | D: resolved PASS |
 | E-001 | MEDIUM | `scripts/cutover.py` / cleanup | Delete the two confirmed legacy archive roots only after acceptance and canonical data snapshot; retain private aggregate provenance and support interrupted/missing-root retry. | tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance; tests/test_cutover.py::test_actual_cleanup_preacceptance_guard_preserves_confirmed_archive_roots; tests/test_cutover.py::test_retirement_failure_keeps_provenance_and_retry_finishes_missing_first_root | E: resolved PASS |
 | F-01 | MEDIUM | `packages/voice-core/src/mcp.ts` / McpLifecycle.handle / turn | Register responses on response.created so interruption before the first delayed MCP call cancels that old response permanently. New legitimate response still gets exactly one follow-up. | packages/voice-core/tests/mcp.test.mjs: barge-in cancels a created response before its first delayed MCP call; packages/voice-core/tests/runtime.test.mjs: interruption before delayed first MCP call never sends an old followup | F: resolved PASS |
+| A-LIVE-001 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / session.created/session.updated configValid | Accept only null/omitted unused response selectors while preserving exact canonical URL/label, three-tool allowlist and read-only approval exception; outgoing Calls requests still omit alternate selectors. | scripts/mcp_session_echo_guard.test.mjs: exact session.created/updated nullable native MCP echoes pass; scripts/mcp_session_echo_guard.test.mjs: actual or malformed alternative transports fail closed | A: resolved PASS |
+| F-02 | MEDIUM | `scripts/verify_live_voice_mcp.mjs` / injected message listener / final WAV validation | Latch every invalid session echo or exposed credential and refresh/check final safety after Stop; later valid events or successful grounded playback cannot erase a failure. | scripts/mcp_session_echo_guard.test.mjs: late invalid transport, allowlist or approval cannot pass after successful read; scripts/mcp_session_echo_guard.test.mjs: late raw credential exposure cannot be erased by valid echo or grounded read; scripts/mcp_session_echo_guard.test.mjs: actual smoke checks fresh final safety evidence after Stop and before printing PASS | F: resolved PASS |
 
 The JSON companion retains concrete original problems, reproducible scenarios, consequences, duplicate mapping and final reviewer report digests. Reviewer findings were reproduced independently; fixes were tested and the affected areas re-reviewed at the final source state.
 

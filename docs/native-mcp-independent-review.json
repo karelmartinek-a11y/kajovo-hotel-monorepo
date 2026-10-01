@@ -6,12 +6,12 @@
   "reviewed_sources": {
     "hotel": {
       "baseline": "0aa675d2c8d5af471bcb55953b58ddbe0ea67893",
-      "sha": "9a9b895ff27b6d12a9975668a710b71be81ed161",
-      "source_fingerprint": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a"
+      "sha": "a0e613baf0396e226f7bb3af65515e0a90edc536",
+      "source_fingerprint": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2"
     },
     "agentha": {
       "baseline": "251902e614012e84c9b5f86d2a672641ee733bde",
-      "sha": "c9c291f342eb947ef3dcc7886ad210e4db55724c",
+      "sha": "c236a57e5c62a1ee83f533859be5ffbccfec4329",
       "source_fingerprint": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
     }
   },
@@ -22,35 +22,34 @@
       "agent_id": "/root/final_a_protocol",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Current official Realtime Calls/MCP wire, response/call/approval lifecycle and spoken completion; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "c51186d6b78cbc73c3572692379c89d906df28c91d431ec8ac334bbbeafa093f",
+      "report_sha256": "29f0d196feffbb320d387343ee7d4979baadd802ec50c0c00c83edcb6be6fbff",
       "tests": [
         {
-          "command": "pnpm --filter @voice-core/browser test",
-          "passed": 41,
-          "failed": 0
+          "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api pnpm ci:voice-core",
+          "passed": 97,
+          "failed": 0,
+          "breakdown": {
+            "guard_spoken_echo": 26,
+            "browser_wire": 41,
+            "server_policy": 30
+          },
+          "gates": [
+            "Voice Core portable boundaries PASS",
+            "Native MCP cutover source PASS"
+          ]
         },
         {
-          "command": "node --test scripts/mcp_spoken_completion.test.mjs scripts/mcp_authorization_guard.test.mjs",
-          "passed": 16,
-          "failed": 0
-        },
-        {
-          "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api python3.11 -m pytest packages/voice-core-server/tests apps/kajovo-hotel-api/tests/test_voice_core.py -q",
-          "passed": 49,
+          "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api python3.11 -m pytest apps/kajovo-hotel-api/tests/test_voice_core.py -q",
+          "passed": 19,
           "failed": 0
         },
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_mcp_protocol.py tests/test_verify_mcp.py -q",
           "passed": 22,
-          "failed": 0
-        },
-        {
-          "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_cutover.py -q",
-          "passed": 44,
           "failed": 0
         }
       ],
@@ -65,11 +64,11 @@
       "agent_id": "/root/final_b_security",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Secrets, sole signing authority, scoped credentials, informed approval and durable at-most-once actions; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "a067281eb1d1e63149548982289cfc29c5b038ebe57b9597bbf0373f80477fa7",
+      "report_sha256": "aa5ed3754366e5584df19a10283fc264933a547db2c51e39f7c05f505c42ab73",
       "tests": [
         {
           "repo": "agentha",
@@ -95,6 +94,41 @@
           "repo": "agentha",
           "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_cutover.py",
           "result": "44 passed at c9c291f342eb947ef3dcc7886ad210e4db55724c; unchanged suites previously passed at 7b18cea"
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "result": "22 passed at 0e7acf10a105f8361a771fe94853032e546b8eb8"
+        },
+        {
+          "repo": "hotel",
+          "command": "PYTHONPATH=packages/voice-core-server/src /tmp/native-mcp-venv/bin/python -m pytest -q packages/voice-core-server/tests/test_policy.py",
+          "result": "30 passed at 0e7acf10a105f8361a771fe94853032e546b8eb8"
+        },
+        {
+          "repo": "hotel",
+          "command": "PATH=<existing native-realtime-mcp .venv>/bin:$PATH PYTHONPATH=<absolute API/server paths> python -m pytest -q apps/kajovo-hotel-api/tests/test_voice_core_tooling.py",
+          "result": "6 passed at 0e7acf10a105f8361a771fe94853032e546b8eb8"
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "result": "26 passed at a0e613baf0396e226f7bb3af65515e0a90edc536"
+        },
+        {
+          "repo": "hotel",
+          "command": "pnpm --filter @voice-core/browser test",
+          "result": "41 passed at a0e613baf0396e226f7bb3af65515e0a90edc536"
+        },
+        {
+          "repo": "hotel",
+          "command": "PYTHONPATH=packages/voice-core-server/src /tmp/native-mcp-venv/bin/python -m pytest -q packages/voice-core-server/tests/test_policy.py",
+          "result": "30 passed at a0e613baf0396e226f7bb3af65515e0a90edc536"
+        },
+        {
+          "repo": "hotel",
+          "command": "PATH=<existing native-realtime-mcp .venv>/bin:$PATH PYTHONPATH=<absolute API/server paths> python -m pytest -q apps/kajovo-hotel-api/tests/test_voice_core_tooling.py",
+          "result": "6 passed at a0e613baf0396e226f7bb3af65515e0a90edc536"
         }
       ],
       "official_sources": []
@@ -105,11 +139,11 @@
       "agent_id": "/root/final_c_ha_safety",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Live HA classifications, exact capabilities, stable identity, availability and read-only filters; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "63a79b70d65f44d4eebbddac09424c590d250bb24b265256181a5280d11ba372",
+      "report_sha256": "dee023da7f413c97eb80a1eeb02a637a3799bfc2f066f31960a56f4df115a267",
       "tests": [
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py tests/test_cutover.py",
@@ -161,6 +195,36 @@
           "result": "PASS",
           "passed": 44,
           "note": "final test file obtained with git show at exact SHA; production scripts identical to preceding pinned tree"
+        },
+        {
+          "command": "node --test scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs scripts/mcp_session_echo_guard.test.mjs",
+          "cwd": "/tmp/native-final-C3-hotel",
+          "source_ref": "a0e613baf0396e226f7bb3af65515e0a90edc536",
+          "result": "PASS",
+          "passed": 26
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py",
+          "cwd": "/Users/karelmartinek/Documents/GitHub/agentha-native-mcp-clean",
+          "source_ref": "c236a57e5c62a1ee83f533859be5ffbccfec4329",
+          "result": "PASS",
+          "passed": 38,
+          "warnings": 1,
+          "note": "clean current HEAD exactly verified"
+        },
+        {
+          "command": "PYTHONPATH=/tmp/native-final-C3-hotel/packages/voice-core-server/src /Users/karelmartinek/.codex/worktrees/native-realtime-mcp/kajovo-hotel-monorepo/.venv/bin/python -m pytest -q packages/voice-core-server/tests/test_policy.py",
+          "cwd": "/tmp/native-final-C3-hotel",
+          "source_ref": "a0e613baf0396e226f7bb3af65515e0a90edc536",
+          "result": "PASS",
+          "passed": 30
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python /tmp/native-final-C3-scenarios.py",
+          "source_ref": "c236a57e5c62a1ee83f533859be5ffbccfec4329",
+          "result": "PASS",
+          "passed": 8,
+          "note": "independent in-memory scenarios repeated against exact clean current HEAD"
         }
       ],
       "official_sources": []
@@ -171,11 +235,11 @@
       "agent_id": "/root/review_a_protocol",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Private preflight, immutable releases, managed workers, transactional fencing, deadlines and exact-image rollback; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "db46e4551ef76a6b015c4207c4e8c928dfd58fc7e0610903e77f309b262a1d4c",
+      "report_sha256": "b35cefbf2bc0e9140c844cb1937e88b1d2a4bdd262584cd8564c7932c13c5b9b",
       "tests": [
         {
           "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_cutover.py tests/test_verify_mcp.py tests/test_independent_review.py -q",
@@ -209,6 +273,15 @@
           "PASS": 6,
           "FAIL": 0,
           "source_delta": "Only test_cutover.py changed; production source byte-identical to previously reviewed 7b18cea. Stronger actual cleanup fixture covers obsolete source, smart verification tree, two backup generations and obsolete images/anchors while retaining current source/image."
+        },
+        {
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs",
+          "PASS": 10,
+          "FAIL": 0
+        },
+        {
+          "command": "hotel pytest test_github_deploy_via_ssh.py and independent activation/deadline/timeout-lock reproductions rerun on final candidate",
+          "outcome": "11 hotel tests PASS; 18 activation faults PASS; real verifier killed/waited and watchdog restores after lock release PASS; late success rejected PASS"
         }
       ],
       "official_sources": []
@@ -219,31 +292,36 @@
       "agent_id": "/root/final_e_cleanup",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Legacy source/config/process retirement, protected canonical data and resumable post-acceptance cleanup; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "658b9c03ef3bde9abd2a3e428aa24ad0d469768c5a2ec96879f171b697f23785",
+      "report_sha256": "8580a3221759cdf91ddb34a14657ce45452dab29f1d19c38911ed802d78a2789",
       "tests": [
         {
-          "command": "agentha-native-mcp/.venv/bin/python -m pytest -q tests/test_cutover.py tests/test_forensic_boundary.py (AGENTHA c9c291f exact final HEAD)",
+          "command": "agentha-native-mcp/.venv/bin/python -m pytest -q tests/test_cutover.py tests/test_forensic_boundary.py (AGENTHA exact c236a57 final HEAD)",
           "result": "PASS",
           "count": 45,
-          "seconds": 0.46
+          "seconds": 1.64
         },
         {
-          "command": "python3 scripts/check_native_mcp_cutover.py (HOTEL exact final HEAD)",
+          "command": "python3 scripts/check_native_mcp_cutover.py (HOTEL exact a0e613b final HEAD)",
           "result": "PASS"
         },
         {
-          "command": "agentha-native-mcp/.venv/bin/python -m pytest --noconftest -q apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_transaction_fence.py (HOTEL exact final HEAD)",
+          "command": "node --test scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs scripts/mcp_session_echo_guard.test.mjs (HOTEL exact a0e613b final HEAD)",
           "result": "PASS",
-          "count": 17,
-          "seconds": 2.99
+          "count": 26
         },
         {
-          "command": "python3.12 /tmp/native-E-cleanup-fixed-repro.py",
-          "result": "PASS: independently mapped temporary filesystem confirms omitted archives now removed while canonical DATA remains"
+          "command": "agentha-native-mcp/.venv/bin/python -m pytest --noconftest -q apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_transaction_fence.py (HOTEL exact a0e613b final HEAD)",
+          "result": "PASS",
+          "count": 17,
+          "seconds": 1.6
+        },
+        {
+          "command": "python3.12 /tmp/native-E-cleanup-fixed-repro.py (unchanged AGENTHA cleanup final c236a57)",
+          "result": "PASS: old archives retired while canonical DATA remains"
         }
       ],
       "official_sources": []
@@ -254,11 +332,11 @@
       "agent_id": "/root/final_f_test_gaps",
       "result": "PASS",
       "reviewed_fingerprints": {
-        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "hotel": "7019fd84d3fd55baf0e1f471d64dab94ba700fb4586687bd8b253152e14e76d2",
         "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
       },
       "evidence": "Actual exception, reconnect, race, lifecycle and deployment/rollback test gaps; independently examined final cumulative trees and relevant regression/failure paths.",
-      "report_sha256": "3e2f80f9cebb8a103de7e7a51aba775e831327946bf48abf5edfeb361799e6ec",
+      "report_sha256": "ae4af8cb5f0b8c9b3a342de32612e1541aaee536a0eafb1caf3dc50c41afd2a3",
       "tests": [
         {
           "repo": "agentha",
@@ -290,6 +368,21 @@
           "deselected": 38,
           "sha": "c9c291f342eb947ef3dcc7886ad210e4db55724c",
           "note": "Only tests/test_cutover.py changed from previously fully tested 7b18cea. Independent targeted rerun verifies expanded fixture exercises source/archive/anchor/image cleanup and active-source/data/image retention."
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "passed": 22,
+          "failed": 0,
+          "sha": "0e7acf10a105f8361a771fe94853032e546b8eb8"
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_session_echo_guard.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "passed": 26,
+          "failed": 0,
+          "sha": "a0e613baf0396e226f7bb3af65515e0a90edc536",
+          "note": "Includes exact production browser listener extracted unchanged, successful grounded read/playback, invalid late transport/allowlist/approval events, credential exposure, later-valid-update non-erasure, final post-Stop safety guard; independent all-functions toString injection reproducer also passed."
         }
       ],
       "official_sources": []
@@ -769,18 +862,71 @@
       "phase": "iterative final re-review",
       "status": "resolved",
       "fix": "Register responses on response.created so interruption before the first delayed MCP call cancels that old response permanently. New legitimate response still gets exactly one follow-up."
+    },
+    {
+      "repo": "hotel",
+      "file": "scripts/verify_live_voice_mcp.mjs",
+      "line": 44,
+      "symbol": "session.created/session.updated configValid",
+      "security": false,
+      "correctness": true,
+      "production_reliability": true,
+      "title": "Property-absence check rejects nullable unused connector echo",
+      "repro": "Canonical URL/label MCP tool with unused connector selector:null makes previous ! (unused connector selector in tool) return false. Independently reproduced from a sanitized fixture conforming to the generated official OpenAPI response type.",
+      "impact": "Valid native MCP session could fail production acceptance solely due to unused transport echoed as null.",
+      "regression_tests": [
+        "scripts/mcp_session_echo_guard.test.mjs: exact session.created/updated nullable native MCP echoes pass",
+        "scripts/mcp_session_echo_guard.test.mjs: actual or malformed alternative transports fail closed"
+      ],
+      "verified_by": [
+        "A"
+      ],
+      "resolution_evidence": "Independently inspected helper/tests/real smoke wiring, fetched current official server-events schema and inspected official generated SDK nullable response connector type. Direct old false rejection/new positive and six wrong-transport/config/policy negative repros passed; 6 new guard tests pass. Native Calls example.invalid live metadata is root-reported; reviewer did not execute production calls. a0e613 final independently inspected actual injected message callback and final-stop assert; direct late invalid configuration/raw credential -> valid echo remains safety false. Actual callback VM tests keep latch false even after successful grounded speech. Root-supplied sanitized diagnostic tool-output extract confirms two created/updated events with diagnostic example.invalid URL equality, expected label, connector/tunnel null, exact allowlist/read exception and always null; only nullable echo proof, not canonical production acceptance.",
+      "id": "A-LIVE-001",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Accept only null/omitted unused response selectors while preserving exact canonical URL/label, three-tool allowlist and read-only approval exception; outgoing Calls requests still omit alternate selectors."
+    },
+    {
+      "repo": "hotel",
+      "file": "scripts/verify_live_voice_mcp.mjs",
+      "line": 45,
+      "symbol": "injected message listener / final WAV validation",
+      "untested_path": "Valid session.created and import pass initial config assertion at line87 -> invalid session.updated arrives during WAV/read -> read/spoken completion succeeds -> final acceptance prints native_mcp_config PASS.",
+      "risk": "Predicate correctly rejects approval/transport/allowlist drift, but listener only overwrites configValid and never signals an error. Final read assertions at lines93-96 do not recheck configValid, so an invalid post-import update can still yield production acceptance PASS. Positive session echo samples and independent predicate negative tests do not cover this integration branch.",
+      "evidence": "Independently executed exact addInitScript browser callback extracted from final script inside node:vm with fake Peer/datachannel, injected actual guard. Valid nullable canonical session.created -> configValid true. Later session.updated with require_approval=\"never\" -> configValid false and error null. 22 guard/spoken Node tests passed unchanged; script line99 unconditionally reports native_mcp_config PASS after read assertions that omit configValid.",
+      "recommended_test": "Execute actual browser listener and acceptance logic with valid-created/import then invalid-updated after initial readiness, followed by successful read/audio. Assert gate fails for changed transport, approval and tool allowlist. Also valid nullable session.updated must continue to pass.",
+      "recommended_fix": "Latch a failure in evidence.error for every noncanonical session.created/session.updated; final acceptance should recheck current configuration and credential exposure, so late invalid updates cannot produce PASS.",
+      "security": true,
+      "correctness": true,
+      "production_reliability": true,
+      "regression_tests": [
+        "scripts/mcp_session_echo_guard.test.mjs: late invalid transport, allowlist or approval cannot pass after successful read",
+        "scripts/mcp_session_echo_guard.test.mjs: late raw credential exposure cannot be erased by valid echo or grounded read",
+        "scripts/mcp_session_echo_guard.test.mjs: actual smoke checks fresh final safety evidence after Stop and before printing PASS"
+      ],
+      "verified_by": [
+        "F"
+      ],
+      "resolution_evidence": "26 helper/actual-listener/spoken Node tests independently passed. Own exact browser-init callback was executed inside node:vm with every injected guard and SpokenCompletion reconstructed using toString serialization; valid created -> invalid updated approval -> valid updated remains final-safety false with latched error. Committed listener integration uses real SpokenCompletion and completed grounded playback to show successful audio/read cannot override invalid session or credential evidence. Fresh final predicate occurs after Stop and before PASS output.",
+      "id": "F-02",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Latch every invalid session echo or exposed credential and refresh/check final safety after Stop; later valid events or successful grounded playback cannot erase a failure."
     }
   ],
   "open_counts": {
     "CRITICAL": 0,
-    "MEDIUM": 0,
     "HIGH": 0,
+    "MEDIUM": 0,
     "LOW": 0
   },
   "resolved_counts": {
     "CRITICAL": 0,
-    "MEDIUM": 13,
     "HIGH": 5,
+    "MEDIUM": 15,
     "LOW": 0
   },
   "production_acceptance": "NOT_RUN",
