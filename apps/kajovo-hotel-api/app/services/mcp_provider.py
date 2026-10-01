@@ -34,9 +34,8 @@ class HomeAssistantMcpProvider:
         token = payload + '.' + base64.urlsafe_b64encode(signature).decode().rstrip('=')
         try:
             return [McpServerConfig(server_label='home_assistant', server_url=settings.mcp_server_url,
-            authorization='Bearer ' + token,
+            authorization=token,
             allowed_tools=['search_devices', 'get_device_state', 'execute_device_action'],
-            require_approval={'never': {'tool_names': ['search_devices', 'get_device_state']}},
-            server_description='Live policy-filtered Home Assistant devices with exact one-time actions.').session_tool()]
+            require_approval={'never': {'tool_names': ['search_devices', 'get_device_state']}}).session_tool()]
         except (ValidationError, ValueError):
             raise VoiceError('capability_not_configured') from None

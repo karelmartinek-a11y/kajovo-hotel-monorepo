@@ -125,3 +125,28 @@ def test_mcp_validation_error_never_discloses_credentials(patch, caplog):
     assert 'CANARY-MCP-SENSITIVE' not in repr(valid)
     assert 'CANARY-MCP-SENSITIVE' not in valid.model_dump_json()
     assert valid.session_tool()['authorization'] == canary
+
+
+def test_native_mcp_exact_serialized_realtime_calls_session_contract():
+    from email.parser import BytesParser
+    from voice_core_server.contracts import McpServerConfig
+    expected = {'type':'mcp','server_label':'home_assistant','server_url':'https://example.test/mcp',
+                'authorization':'test-scoped-token','allowed_tools':['search_devices','get_device_state','execute_device_action'],
+                'require_approval':{'never':{'tool_names':['search_devices','get_device_state']}}}
+    tool = McpServerConfig.model_validate({k:v for k,v in expected.items() if k != 'type'}).session_tool()
+    observed = []
+    def respond(request):
+        assert str(request.url) == 'https://api.openai.com/v1/realtime/calls'
+        message = BytesParser().parsebytes(b'Content-Type: '+request.headers['content-type'].encode()+b'\r\n\r\n'+request.content)
+        part = next(p for p in message.walk() if p.get_param('name',header='content-disposition') == 'session')
+        body = json.loads(part.get_payload(decode=True))
+        observed.append(body)
+        assert body['tools'] == [expected]
+        assert 'server_description' not in body['tools'][0]
+        return httpx.Response(201,text='v=0\r\nanswer')
+    sink = Sink()
+    result = asyncio.run(RealtimeSessionClient(sink,httpx.MockTransport(respond),[tool]).create('v=0\r\noffer',VoiceCoreConfig(),'test-key'))
+    assert result[0].startswith('v=0') and len(observed)==1
+    assert 'test-scoped-token' not in str(sink.events)
+    with pytest.raises(ValidationError):
+        McpServerConfig.model_validate({**{k:v for k,v in expected.items() if k != 'type'},'server_description':'unsupported'})

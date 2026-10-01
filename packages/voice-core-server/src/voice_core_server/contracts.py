@@ -80,7 +80,6 @@ class McpServerConfig(BaseModel):
     authorization: SecretStr = Field(default=SecretStr(""), repr=False)
     allowed_tools: list[str]
     require_approval: Literal['always', 'never'] | dict = 'always'
-    server_description: str = ""
 
     @model_validator(mode='after')
     def secure_endpoint(self):
