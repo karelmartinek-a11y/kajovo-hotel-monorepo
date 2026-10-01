@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 
-def cleanup(state_path=Path('/var/lib/home-assistant-mcp/cutover.json')):
+def cleanup(state_path=Path('/var/lib/home-assistant-mcp-control/cutover.json')):
     state = json.loads(state_path.read_text())
     if state.get('phase') != 'accepted':
         raise RuntimeError('final_acceptance_required_before_prune')

@@ -85,7 +85,7 @@ def test_mcp_secret_has_one_server_owned_authority(tmp_path, monkeypatch):
     module.write_remote_vars(path)
     assert 'KAJOVO_API_MCP_SIGNING_KEY' not in json.loads(path.read_text())
     script = module.remote_script_text()
-    assert 'mcp-signing-key.sha256' in script
+    assert '/etc/home-assistant-mcp-public/signing-key.sha256' in script
     assert 'hashlib.sha256(key.encode()).hexdigest() != expected' in script
     assert script.index('fingerprint mismatch') < script.index('"$deploy_root/infra/ops/deploy-production.sh"')
 

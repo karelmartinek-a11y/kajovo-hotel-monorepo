@@ -106,7 +106,7 @@ for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines
 payload = json.loads(vars_path.read_text(encoding="utf-8"))
 # Root provisioning publishes only this fingerprint; the key is preserved in server env.
 import hashlib
-fingerprint_path = Path('/opt/kajovo-hotel-monorepo/infra/mcp-signing-key.sha256')
+fingerprint_path = Path('/etc/home-assistant-mcp-public/signing-key.sha256')
 expected = fingerprint_path.read_text().strip()
 key = current.get('KAJOVO_API_MCP_SIGNING_KEY', '')
 if len(key) < 32 or hashlib.sha256(key.encode()).hexdigest() != expected:
