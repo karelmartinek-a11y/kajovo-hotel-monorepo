@@ -1,0 +1,19 @@
+# Shared runtime/tool constraints for CI and the production image.
+httpx==0.28.1
+cryptography==43.0.3
+fastapi==0.115.14
+uvicorn==0.30.6
+sqlalchemy==2.0.44
+alembic==1.17.1
+pydantic==2.11.10
+pydantic-settings==2.11.0
+python-multipart==0.0.20
+psycopg==3.2.13
+pypdf==5.9.0
+reportlab==4.5.1
+pycountry==24.6.1
+pywebpush==2.3.0
+firebase-admin==7.7.0
+pillow==11.3.0
+pytest==8.3.5
+ruff==0.15.0

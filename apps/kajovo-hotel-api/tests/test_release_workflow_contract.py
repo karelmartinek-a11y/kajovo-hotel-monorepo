@@ -1,9 +1,11 @@
-"""The release workflow preserves source trust, complete checks and cutover fencing."""
+"""Release source trust, cumulative validation and conditional fail-closed checks."""
 import ast
 import importlib.util
+import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,11 +24,14 @@ def deploy_job():
 
 
 def deploy_allowed(event, ref='refs/heads/main', branch='main', result='success', repository='hotel/repo'):
-    condition = deploy_job()['if'].replace('&&', ' and ').replace('||', ' or ').strip()
+    config = workflow('deploy-production.yml')
+    if event not in config['on']:
+        return False
+    condition = config['jobs']['candidate']['if'].replace('&&', ' and ').replace('||', ' or ').strip()
     tree = ast.parse(condition, mode='eval')
-    allowed = (ast.Expression, ast.BoolOp, ast.And, ast.Or, ast.Compare, ast.Eq,
+    allowed = (ast.Expression, ast.BoolOp, ast.And, ast.Or, ast.Compare, ast.Eq, ast.NotEq,
                ast.Attribute, ast.Name, ast.Constant, ast.Load)
-    assert all(isinstance(node, allowed) for node in ast.walk(tree)), 'unsupported trust condition'
+    assert all(isinstance(node, allowed) for node in ast.walk(tree))
     github = SimpleNamespace(ref=ref, event_name=event, repository='hotel/repo', event=SimpleNamespace(
         workflow_run=SimpleNamespace(conclusion=result, head_branch=branch,
                                      head_repository=SimpleNamespace(full_name=repository))))
@@ -37,6 +42,8 @@ def deploy_allowed(event, ref='refs/heads/main', branch='main', result='success'
     ('workflow_dispatch', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
     ('workflow_dispatch', 'refs/heads/topic', 'main', 'success', 'hotel/repo', False),
     ('workflow_dispatch', 'refs/tags/release', 'main', 'success', 'hotel/repo', False),
+    ('schedule', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
+    ('repository_dispatch', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
     ('workflow_run', 'refs/heads/main', 'main', 'success', 'hotel/repo', True),
     ('workflow_run', 'refs/heads/main', 'main', 'failure', 'hotel/repo', False),
     ('workflow_run', 'refs/heads/main', 'main', 'cancelled', 'hotel/repo', False),
@@ -50,20 +57,25 @@ def test_only_trusted_main_deployment_context_is_eligible(event, ref, branch, re
 
 
 def test_unverified_candidate_never_supplies_the_gate_code_or_production_secrets():
-    job = deploy_job()
-    steps = job['steps']
-    gate = next(i for i, step in enumerate(steps) if 'scripts/check_release_review.py' in step.get('run', ''))
-    checkouts = [(i, step['with']['ref']) for i, step in enumerate(steps)
-                 if step.get('uses', '').startswith('actions/checkout@')]
-    assert checkouts[0] == (0, '${{ github.sha }}')
-    assert checkouts[1][0] > gate
-    assert checkouts[1][1] == '${{ env.DEPLOY_SHA }}'
-    assert not any('secrets.' in value for value in job['env'].values())
-    for step in steps[:gate + 1]:
-        assert not any('secrets.' in value for value in step.get('env', {}).values())
-    secret_steps = [i for i, step in enumerate(steps)
-                    if any('secrets.' in value for value in step.get('env', {}).values())]
-    assert secret_steps and min(secret_steps) > checkouts[1][0]
+    config = workflow('deploy-production.yml')
+    for name in ('prepare-release', 'deploy-production'):
+        job = config['jobs'][name]
+        steps = job['steps']
+        gate = next(i for i, step in enumerate(steps) if 'scripts/check_release_review.py' in step.get('run', ''))
+        checkouts = [(i, step['with']['ref']) for i, step in enumerate(steps)
+                     if step.get('uses', '').startswith('actions/checkout@')]
+        assert checkouts[0][1] == '${{ github.sha }}' and checkouts[0][0] < gate
+        assert not any('scripts/' in step.get('run', '') for step in steps[:checkouts[0][0]])
+        assert not any('secrets.' in value for value in job.get('env', {}).values())
+        for step in steps[:gate + 1]:
+            assert not any('secrets.' in value for value in step.get('env', {}).values())
+        secret_steps = [i for i, step in enumerate(steps)
+                        if any('secrets.' in value for value in step.get('env', {}).values())]
+        assert secret_steps and min(secret_steps) > gate
+        if name == 'deploy-production':
+            assert checkouts[1][0] > gate and checkouts[1][1] == '${{ env.DEPLOY_SHA }}'
+            bundle = next(i for i, step in enumerate(steps) if 'release_images.py verify' in step.get('run', ''))
+            assert checkouts[1][0] < bundle < min(secret_steps)
 
 
 def test_verified_environment_handoff_preserves_multiline_values_without_printing(tmp_path):
@@ -75,26 +87,26 @@ def test_verified_environment_handoff_preserves_multiline_values_without_printin
            'KAJOVO_API_VOICE_MASTER_KEY': 'synthetic-voice-canary'}
     result = subprocess.run(['bash', '-euo', 'pipefail', '-c', step['run']], env=env,
                             capture_output=True, text=True)
-    assert result.returncode == 0
-    assert result.stdout == result.stderr == ''
-    body = target.read_text()
-    assert key in body and 'synthetic-voice-canary' in body
+    assert result.returncode == 0 and result.stdout == result.stderr == ''
+    assert key in target.read_text() and 'synthetic-voice-canary' in target.read_text()
     assert target.stat().st_mode & 0o777 == 0o600
     assert 'KAJOVO_API_MCP_SIGNING_KEY' not in step['env']
 
 
 def test_one_main_authority_and_direct_push_needs_no_pull_request():
     assert 'main' in workflow('ci-gates.yml')['on']['push']['branches']
+    core = workflow('ci-core.yml')
+    assert 'pull_request' in core['on'] and 'push' not in core['on']
+    assert core['jobs']['validate']['uses'] == './.github/workflows/ci-gates.yml'
+    assert 'concurrency' not in core
     for name in ('ci-full.yml', 'release.yml'):
-        assert 'push' not in workflow(name)['on']
-    assert 'pull_request' in workflow('ci-core.yml')['on']
+        assert set(workflow(name)['on']) == {'workflow_dispatch'}
     deploy = workflow('deploy-production.yml')
     assert deploy['on']['workflow_run']['workflows'] == ['CI Gates - Kajovo Hotel']
     assert deploy['on']['workflow_dispatch']['inputs']['review_pr']['required'] == 'false'
     spec = importlib.util.spec_from_file_location('workflow_release_gate', ROOT / 'scripts/check_release_review.py')
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
-    import sys
     sys.path.insert(0, str(ROOT / 'scripts'))
     try:
         spec.loader.exec_module(module)
@@ -111,40 +123,46 @@ def test_authoritative_gate_executes_each_required_integrity_check(command):
     assert any(re.search(r'\bpnpm\s+' + re.escape(command) + r'(?:\s|$)', step.get('run', '')) for step in steps)
 
 
-@pytest.mark.parametrize('failed_job', [
-    'api-runtime-image', 'web-tests', 'e2e-smoke', 'guardrails',
-    'lint', 'typecheck', 'unit-tests', 'portable-voice-core', None,
-])
-def test_actual_aggregate_script_cannot_pass_any_required_job_failure(failed_job):
+@pytest.mark.parametrize('bad_result', ['failure', 'cancelled', 'skipped', '', None])
+def test_actual_aggregate_script_cannot_pass_any_required_job_failure(tmp_path, bad_result):
     aggregate = workflow('ci-gates.yml')['jobs']['release-gate']
     assert aggregate['if'] == 'always()'
-    assert set(aggregate['needs']) == {
-        'api-runtime-image', 'web-tests', 'e2e-smoke', 'guardrails',
-        'lint', 'typecheck', 'unit-tests', 'portable-voice-core'}
-    script = aggregate['steps'][0]['run']
-    for job in aggregate['needs']:
-        script = script.replace('${{ needs.' + job + '.result }}', 'failure' if job == failed_job else 'success')
-    result = subprocess.run(['bash', '-euo', 'pipefail', '-c', script],
-                            env={**os.environ, 'GITHUB_SHA': 'a' * 40}, capture_output=True, text=True)
-    assert (result.returncode == 0) is (failed_job is None)
-    assert ('All authoritative main CI jobs PASS' in result.stdout) is (failed_job is None)
+    script = next(step['run'] for step in aggregate['steps'] if 'check_ci_required_jobs.py' in step.get('run', ''))
+    assert 'python scripts/check_ci_required_jobs.py' in script
+    spec = importlib.util.spec_from_file_location('ci_aggregate', ROOT / 'scripts/check_ci_required_jobs.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert set(aggregate['needs']) == set(module.REQUIRED_JOBS)
+    outputs = {flag: 'true' for flag in module.FLAGS}
+    outputs['review_profile'] = 'full'
+    for job in module.REQUIRED_JOBS:
+        needs = {name: {'result': 'success', 'outputs': {}} for name in module.REQUIRED_JOBS}
+        needs['scope']['outputs'] = outputs
+        needs[job]['result'] = bad_result
+        result = subprocess.run([sys.executable, str(ROOT / 'scripts/check_ci_required_jobs.py')],
+                                cwd=tmp_path, env={**os.environ, 'GITHUB_SHA': 'a' * 40, 'NEEDS_JSON': json.dumps(needs)},
+                                capture_output=True, text=True)
+        assert result.returncode != 0
+        assert not list(tmp_path.glob('artifacts/release-gate/*.json'))
 
 
-@pytest.mark.parametrize('old_ref,new_ref', [
-    ('refs/heads/main', 'refs/heads/main'), ('refs/heads/topic', 'refs/heads/main'),
-])
-def test_old_or_manual_source_cannot_cancel_newer_main_source(old_ref, new_ref):
+def test_validation_cancellation_and_runtime_transaction_are_separate():
     config = workflow('ci-gates.yml')
     group = config['concurrency']['group']
-    def resolve(ref, sha):
-        return group.replace('${{ github.ref }}', ref).replace('${{ github.sha }}', sha)
-    assert resolve(old_ref, 'a' * 40) != resolve(new_ref, 'b' * 40)
-    assert config['concurrency']['cancel-in-progress'] == 'false'
+    assert 'github.ref' in group and 'github.run_id' in group
+    assert config['concurrency']['cancel-in-progress'] == "${{ github.event_name != 'workflow_dispatch' }}"
+    deploy = workflow('deploy-production.yml')
+    assert deploy['concurrency']['cancel-in-progress'] == 'false'
+    assert 'github.sha' not in deploy['concurrency']['group']
     assert not any('/cancel' in step.get('run', '') for job in config['jobs'].values()
                    for step in job.get('steps', []))
 
 
 def test_hotel_waits_for_root_transaction_before_any_upload_or_runtime_mutation():
+    config = workflow('deploy-production.yml')
+    assert config['jobs']['prepare-release']['needs'] == 'candidate'
+    assert deploy_job()['needs'] == 'prepare-release'
+    assert deploy_job()['if'] == "needs.prepare-release.outputs.ready == 'true'"
     steps = deploy_job()['steps']
     check = next(i for i, step in enumerate(steps) if 'check-transaction' in step.get('run', ''))
     deploy = next(i for i, step in enumerate(steps) if 'github_deploy_via_ssh.py deploy' in step.get('run', ''))

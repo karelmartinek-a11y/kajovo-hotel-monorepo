@@ -17,7 +17,8 @@ def test_pre_upload_cleanup_preserves_runtime_data_and_running_images() -> None:
 
     assert "kajovo-deploy-*.tar.gz" in script
     assert "shutil.rmtree" not in script
-    assert "docker builder prune -af" in script
+    assert "docker builder prune" not in script
+    assert "-mtime +7" in script
     assert "docker image prune -af" not in script
     assert "docker volume" not in script
     assert "docker system prune" not in script
@@ -117,7 +118,7 @@ def test_release_review_requires_content_bound_independent_evidence(monkeypatch)
         if path.endswith('/commits/main'):
             return {'sha': 'new'}
         if 'actions/workflows' in path:
-            return {'workflow_runs': [{'head_sha': 'new', 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success'}]}
+            return {'workflow_runs': [{'id': 123, 'head_sha': 'new', 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success'}]}
         if path.endswith('/pulls/125'):
             return {'merged': True, 'merge_commit_sha': 'new'}
         raise AssertionError('No external reviewer or paid review API may be queried')
@@ -176,11 +177,14 @@ def test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captu
     cleanup.cleanup(state)
     assert (current / 'keep.txt').read_text() == 'current known good'
     assert not stale.exists()
-    assert removals == [['docker', 'image', 'rm', 'old-unused']]
+    def image_removals():
+        return [command for command in removals if command[:3] == ['docker', 'image', 'rm']]
+    assert image_removals() == [['docker', 'image', 'rm', 'old-unused']]
+    assert ['docker', 'builder', 'prune', '--force', '--filter', 'until=168h', '--keep-storage', '2GB'] in removals
     (backup / 'containers.json').unlink()
     state.write_text(json.dumps({'phase': 'accepted_cleanup_pending', 'hotel_sha': 'a' * 40, 'backup': str(backup)}))
     cleanup.cleanup(state)
-    assert removals == [['docker', 'image', 'rm', 'old-unused']]
+    assert image_removals() == [['docker', 'image', 'rm', 'old-unused']]
     assert (current / 'keep.txt').exists()
 
 

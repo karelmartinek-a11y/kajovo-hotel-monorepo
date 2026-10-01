@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / 'scripts'))
 SPEC = importlib.util.spec_from_file_location("review_gate_under_test", ROOT / "scripts/independent_review.py")
 assert SPEC and SPEC.loader
 review = importlib.util.module_from_spec(SPEC)
@@ -260,6 +261,7 @@ def test_cli_validates_committed_candidate_without_external_bot_or_review_depend
     script = candidate / "scripts/independent_review.py"
     script.parent.mkdir()
     script.write_text((ROOT / "scripts/independent_review.py").read_text())
+    (script.parent / "ci_scope.py").write_text((ROOT / "scripts/ci_scope.py").read_text())
     commit(candidate)
     fingerprint = review.source_fingerprint(candidate)
     (candidate / review.EVIDENCE).write_text(json.dumps(manifest(fingerprint)))
@@ -291,3 +293,143 @@ def test_resolution_cannot_claim_untraceable_fix_test_or_reviewer(field, value):
     data["findings"] = [finding]
     with pytest.raises(RuntimeError, match="finding_resolution_evidence_required"):
         review.validate(data, "hotel", "a" * 64)
+
+
+def add_review_anchor(candidate):
+    """Fixture represents real content-bound full review in committed ancestry."""
+    data = manifest(review.source_fingerprint(candidate))
+    data['reviewed_sources']['hotel']['sha'] = git(candidate, 'rev-parse', 'HEAD')
+    (candidate / review.EVIDENCE).write_text(json.dumps(data))
+    return commit(candidate)
+
+
+def targeted_manifest(candidate, anchor):
+    actual = review.review_scope(candidate)
+    assert actual['profile'] == 'targeted'
+    assert actual['anchor'] == anchor
+    fingerprint = review.source_fingerprint(candidate)
+    return {
+        'schema': 'independent_codex_forensic_review.v2',
+        'kind': 'Independent Codex multi-agent forensic review', 'result': 'PASS',
+        'scope': {key: actual[key] for key in ('profile', 'anchor', 'changed_paths')},
+        'carried_sources': actual['carried_sources'],
+        'reviewed_sources': {'hotel': {'baseline': review.BASELINES['hotel'],
+                                     'sha': git(candidate, 'rev-parse', 'HEAD'),
+                                     'source_fingerprint': fingerprint}},
+        'reviewers': [{'area': area, 'scope': scope, 'agent_id': 'independent-' + area,
+                       'result': 'PASS', 'reviewed_fingerprints': {'hotel': fingerprint},
+                       'evidence': 'Actual client contract and failure-path review.'}
+                      for area, scope in {'U': 'client_contract', 'F': 'test_gaps'}.items()],
+        'findings': [], 'open_counts': dict.fromkeys(review.SEVERITIES, 0),
+    }
+
+
+def test_cosmetic_docs_inherit_only_from_content_verified_review_ancestry(candidate):
+    anchor = add_review_anchor(candidate)
+    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
+    (candidate / 'docs/notes/user-guide.md').write_text('Corrected typography.')
+    commit(candidate)
+    result = review.verify(candidate, 'hotel')
+    assert result['profile'] == 'none'
+    assert result['scope']['anchor'] == anchor
+    assert result['scope']['changed_paths'] == ['docs/notes/user-guide.md']
+
+
+def test_last_push_docs_cannot_hide_previous_unreviewed_protocol_change(candidate):
+    add_review_anchor(candidate)
+    (candidate / 'app/runtime.py').write_text('Unreviewed runtime change.')
+    commit(candidate)
+    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
+    (candidate / 'docs/notes/user-guide.md').write_text('Small documentation correction.')
+    commit(candidate)
+    assert review.review_scope(candidate)['profile'] == 'full'
+    with pytest.raises(RuntimeError, match='candidate_source_not_reviewed'):
+        review.verify(candidate, 'hotel')
+
+
+def test_targeted_review_binds_exact_candidate_and_machine_derived_cumulative_scope(candidate):
+    anchor = add_review_anchor(candidate)
+    path = candidate / 'apps/kajovo-hotel-web/src/pages/BreakfastPage.css'
+    path.parent.mkdir(parents=True)
+    path.write_text('export const BreakfastPage = () => <main />;')
+    commit(candidate)
+    data = targeted_manifest(candidate, anchor)
+    (candidate / review.EVIDENCE).write_text(json.dumps(data))
+    commit(candidate)
+    assert review.verify(candidate, 'hotel')['schema'].endswith('.v2')
+    path.write_text('export const BreakfastPage = () => <section />;')
+    commit(candidate)
+    with pytest.raises(RuntimeError, match='cumulative_review_scope_mismatch|candidate_source_not_reviewed'):
+        review.verify(candidate, 'hotel')
+
+
+def test_scoped_manifest_cannot_claim_different_anchor_or_hide_changed_paths(candidate):
+    anchor = add_review_anchor(candidate)
+    path = candidate / 'apps/kajovo-hotel-admin/src/pages/RoomsPage.css'
+    path.parent.mkdir(parents=True)
+    path.write_text('export const RoomsPage = () => <main />;')
+    commit(candidate)
+    original = targeted_manifest(candidate, anchor)
+    for mutation in ('anchor', 'changed_paths'):
+        data = copy.deepcopy(original)
+        data['scope'][mutation] = 'f' * 40 if mutation == 'anchor' else []
+        with pytest.raises(RuntimeError, match='cumulative_review_scope_mismatch'):
+            review.validate_targeted(data, 'hotel', review.source_fingerprint(candidate), review.review_scope(candidate))
+
+
+def test_targeted_review_cannot_reduce_security_change_to_two_reviewers(candidate):
+    anchor = add_review_anchor(candidate)
+    path = candidate / 'apps/kajovo-hotel-web/src/pages/LoginPage.tsx'
+    path.parent.mkdir(parents=True)
+    path.write_text('export const LoginPage = () => <main />;')
+    commit(candidate)
+    assert review.review_scope(candidate)['profile'] == 'full'
+    actual = {'profile': 'full', 'anchor': anchor, 'changed_paths': [str(path.relative_to(candidate))]}
+    with pytest.raises(RuntimeError, match='targeted_review_risk_scope_invalid'):
+        review.validate_targeted({'schema': 'independent_codex_forensic_review.v2',
+                                 'kind': 'Independent Codex multi-agent forensic review', 'result': 'PASS'},
+                                'hotel', review.source_fingerprint(candidate), actual)
+
+
+def test_no_ancestor_evidence_cannot_skip_review_for_docs(candidate):
+    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
+    (candidate / 'docs/notes/user-guide.md').write_text('Documentation only.')
+    commit(candidate)
+    assert review.review_scope(candidate)['profile'] == 'full'
+    with pytest.raises(RuntimeError, match='full_independent_review_required'):
+        review.verify(candidate, 'hotel')
+
+
+def test_targeted_review_requires_two_distinct_agents_and_no_open_blocking_finding(candidate):
+    anchor = add_review_anchor(candidate)
+    path = candidate / 'packages/ui/src/Button.css'
+    path.parent.mkdir(parents=True)
+    path.write_text('export const Button = () => <button />;')
+    commit(candidate)
+    original = targeted_manifest(candidate, anchor)
+    scope = review.review_scope(candidate)
+    fingerprint = review.source_fingerprint(candidate)
+    data = copy.deepcopy(original)
+    data['reviewers'][1]['agent_id'] = data['reviewers'][0]['agent_id']
+    with pytest.raises(RuntimeError, match='distinct_independent_agents_required'):
+        review.validate_targeted(data, 'hotel', fingerprint, scope)
+    data = copy.deepcopy(original)
+    data['findings'] = [{'id': 'blocking', 'severity': 'HIGH', 'status': 'open'}]
+    with pytest.raises(RuntimeError, match='open_blocking_review_finding'):
+        review.validate_targeted(data, 'hotel', fingerprint, scope)
+
+
+def test_cosmetic_docs_after_targeted_review_carry_verified_targeted_ancestor(candidate):
+    anchor = add_review_anchor(candidate)
+    path = candidate / 'apps/kajovo-hotel-web/src/pages/BreakfastPage.css'
+    path.parent.mkdir(parents=True)
+    path.write_text('export const BreakfastPage = () => <main />;')
+    commit(candidate)
+    data = targeted_manifest(candidate, anchor)
+    (candidate / review.EVIDENCE).write_text(json.dumps(data))
+    scoped_anchor = commit(candidate)
+    (candidate / 'docs/notes').mkdir(parents=True, exist_ok=True)
+    (candidate / 'docs/notes/user-guide.md').write_text('Typographic correction.')
+    commit(candidate)
+    result = review.verify(candidate, 'hotel')
+    assert result['profile'] == 'none' and result['scope']['anchor'] == scoped_anchor

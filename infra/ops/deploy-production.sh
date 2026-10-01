@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT_DIR/infra/.env}"
 COMPOSE_FILE_BASE="${COMPOSE_FILE_BASE:-$ROOT_DIR/infra/compose.prod.yml}"
 COMPOSE_FILE_HOST="${COMPOSE_FILE_HOST:-$ROOT_DIR/infra/compose.prod.hotel-hcasc.yml}"
+COMPOSE_FILE_IMAGES="$ROOT_DIR/artifacts/release-images/compose.images.yml"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-kajovo-prod}"
 DEPLOY_NETWORK="${DEPLOY_NETWORK:-deploy_hotelapp_net}"
 LOG_FILE="${LOG_FILE:-/var/log/hotelapp/deploy.log}"
@@ -27,14 +28,21 @@ HOST_NGINX_SYNC_HELPER="${HOST_NGINX_SYNC_HELPER:-/usr/local/bin/kajovo-sync-hot
 TRANSACTION_PUBLIC_DIR="${TRANSACTION_PUBLIC_DIR:-/etc/home-assistant-mcp-public}"
 exec 9<"$TRANSACTION_PUBLIC_DIR/runtime.lock"
 flock -x 9
-TRANSACTION_STATUS="$TRANSACTION_PUBLIC_DIR/transaction.json" DEPLOY_SOURCE_SHA="$DEPLOY_SOURCE_SHA" python3 - <<'PYFENCE'
+TRANSACTION_STATUS="$TRANSACTION_PUBLIC_DIR/transaction.json" DEPLOY_SOURCE_SHA="$DEPLOY_SOURCE_SHA" DEPLOY_ROOT="$ROOT_DIR" python3 - <<'PYFENCE'
 import json
 import os
 from pathlib import Path
 state = json.loads(Path(os.environ['TRANSACTION_STATUS']).read_text())
 if state.get('phase') != 'active' or state.get('hotel_sha') != os.environ['DEPLOY_SOURCE_SHA']:
     raise SystemExit('Hotel deployment transaction revoked or wrong SHA')
+expected_mcp = (Path(os.environ['DEPLOY_ROOT']) / '.coordinated-mcp-sha').read_text().strip()
+if len(expected_mcp) != 40 or any(c not in '0123456789abcdef' for c in expected_mcp) or state.get('sha') != expected_mcp:
+    raise SystemExit('Hotel deployment reviewed MCP transaction mismatch')
 PYFENCE
+
+# The root worker consumes one upload signal. A later transaction must wait for
+# fresh preparation rather than accepting a marker left by an older attempt.
+trap 'rm -f "$ROOT_DIR/.coordinated-ready"' EXIT
 
 require_cmd() {
   local name="$1"
@@ -53,35 +61,16 @@ if [[ "$SKIP_GIT_SYNC" != "true" ]]; then
 fi
 
 compose_cmd() {
-  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
-    docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" --env-file "$ENV_FILE" "$@"
-}
-
-docker_build_with_snapshot_retry() {
-  local build_log
-  local status
-  build_log="$(mktemp)"
-
-  set +e
-  compose_cmd build --pull 2>&1 | tee "$build_log"
-  status=${PIPESTATUS[0]}
-  set -e
-
-  if [[ "$status" -eq 0 ]]; then
-    rm -f "$build_log"
-    return 0
+  if [[ "${1:-}" == "up" ]]; then
+    shift
+    COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+      docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" -f "$COMPOSE_FILE_IMAGES" \
+      --env-file "$ENV_FILE" up --no-build "$@"
+  else
+    COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+      docker compose -f "$COMPOSE_FILE_BASE" -f "$COMPOSE_FILE_HOST" -f "$COMPOSE_FILE_IMAGES" \
+      --env-file "$ENV_FILE" "$@"
   fi
-
-  if grep -Eq "failed to prepare extraction snapshot|parent snapshot .* does not exist" "$build_log"; then
-    echo "Detekovan poskozeny Docker build cache snapshot -> provadim builder/image prune a opakuji build."
-    docker builder prune -af || true
-    compose_cmd build --pull
-    rm -f "$build_log"
-    return 0
-  fi
-
-  rm -f "$build_log"
-  return "$status"
 }
 
 wait_for_container_health() {
@@ -269,6 +258,12 @@ fi
 
 cd "$ROOT_DIR"
 
+# Hash and identity checks complete before any current container is stopped.
+# Missing/expired CI artifacts fail closed; production never rebuilds a release.
+python3 "$ROOT_DIR/scripts/release_images.py" import \
+  --directory "$ROOT_DIR/artifacts/release-images" --sha "$DEPLOY_SOURCE_SHA" \
+  --compose-output "$COMPOSE_FILE_IMAGES"
+
 if [[ "$SKIP_GIT_SYNC" == "true" ]]; then
   current_branch="$EXPECTED_BRANCH"
   commit_sha="${DEPLOY_SOURCE_SHA:-artifact-without-sha}"
@@ -371,8 +366,6 @@ if [[ "$sql_ok" -ne 1 ]]; then
 fi
 
 compose_cmd rm -f -s api web admin
-
-docker_build_with_snapshot_retry
 
 set +e
 migration_ok=0
@@ -492,5 +485,25 @@ cat > "$deploy_artifact_dir/latest.json" <<JSON
   }
 }
 JSON
+
+DEPLOY_ROOT="$ROOT_DIR" COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" python3 - <<'PYIMAGES'
+import json
+import os
+import subprocess
+from pathlib import Path
+root = Path(os.environ['DEPLOY_ROOT'])
+manifest = json.loads((root / 'artifacts/release-images/manifest.json').read_text())
+names = [os.environ['COMPOSE_PROJECT_NAME'] + '-' + name + '-1' for name in ['api', 'web', 'admin']]
+rows = json.loads(subprocess.check_output(['docker', 'inspect', *names]))
+for service, row in zip(['api', 'web', 'admin'], rows, strict=True):
+    if row['Image'] != manifest['images'][service]['id']:
+        raise SystemExit('Running image differs from tested CI image')
+path = root / 'artifacts/deploy-runtime/latest.json'
+payload = json.loads(path.read_text())
+payload['images'] = manifest['images']
+payload['image_archive_sha256'] = manifest['archive_sha256']
+path.write_text(json.dumps(payload, indent=2) + '\n')
+print('Running exact tested production image identities PASS')
+PYIMAGES
 
 printf '%s HOTEL web: deploy z monorepa (%s, branch=%s)\n' "$(date '+%F %T')" "$commit_sha" "$current_branch" >> "$LOG_FILE"

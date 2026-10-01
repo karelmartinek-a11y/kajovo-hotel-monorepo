@@ -1,347 +1,451 @@
 name: CI Gates - Kajovo Hotel
-
-on:
+'on':
   push:
     branches:
-      - main
+    - main
   workflow_dispatch:
-
+    inputs:
+      force_full:
+        description: Run every validation suite as a manual diagnostic
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      force_full:
+        type: boolean
+        default: false
+    outputs:
+      deploy_required:
+        description: Whether the exact candidate has verified deployable runtime changes
+        value: ${{ jobs.release-gate.outputs.deploy_required }}
+permissions:
+  contents: read
+  actions: read
 concurrency:
-  group: ci-gates-${{ github.ref }}-${{ github.sha }}
-  cancel-in-progress: false
-
+  group: validation-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-  HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
-  KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-  KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
-
+  HOTEL_ADMIN_EMAIL: admin@ci.invalid
+  HOTEL_ADMIN_PASSWORD: ci-local-admin-password
+  KAJOVO_API_ADMIN_EMAIL: admin@ci.invalid
+  KAJOVO_API_ADMIN_PASSWORD: ci-local-admin-password
+defaults:
+  run:
+    shell: bash
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.route.outputs.full }}
+      python: ${{ steps.route.outputs.python }}
+      api: ${{ steps.route.outputs.api }}
+      web: ${{ steps.route.outputs.web }}
+      admin: ${{ steps.route.outputs.admin }}
+      android: ${{ steps.route.outputs.android }}
+      voice: ${{ steps.route.outputs.voice }}
+      visual_web: ${{ steps.route.outputs.visual_web }}
+      visual_admin: ${{ steps.route.outputs.visual_admin }}
+      review_required: ${{ steps.route.outputs.review_required }}
+      review_profile: ${{ steps.route.outputs.review_profile }}
+      deploy_required: ${{ steps.route.outputs.deploy_required }}
+      runtime_images: ${{ steps.route.outputs.runtime_images }}
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - name: Resolve dependency-aware validation scope
+      id: route
+      env:
+        SCOPE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        FORCE_FULL: ${{ inputs.force_full || false }}
+        GH_TOKEN: ${{ github.token }}
+      run: |-
+        set -euo pipefail
+        base="$SCOPE_BASE"
+        if [ "$FORCE_FULL" = true ]; then base=""; fi
+        python scripts/ci_scope.py --base "$base" --head "$GITHUB_SHA" --github-output "$GITHUB_OUTPUT" > ci-scope.json
+    - name: Preserve routing evidence
+      uses: actions/upload-artifact@v6
+      with:
+        name: ci-scope-${{ github.sha }}
+        path: ci-scope.json
+        if-no-files-found: error
+        retention-days: 7
+  fast-checks:
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: lint
+    - name: Fail fast on Python lint
+      run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py
+        scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py scripts/independent_review.py scripts/ci_scope.py scripts/build_release_images.py scripts/release_images.py
+        scripts/check_ci_required_jobs.py
+      if: needs.scope.outputs.python == 'true'
+    - uses: ./.github/actions/setup-node
+      with:
+        install: ${{ needs.scope.outputs.web == 'true' || needs.scope.outputs.admin == 'true' || needs.scope.outputs.voice == 'true' }}
+    - name: Workspace TypeScript checks
+      run: pnpm lint
+      if: needs.scope.outputs.web == 'true' || needs.scope.outputs.admin == 'true' || needs.scope.outputs.voice == 'true'
+    - name: CI routing and runtime policy regression tests
+      run: |-
+        python -m pytest --noconftest scripts/tests/test_ci_*.py scripts/tests/test_native_mcp_cutover.py scripts/tests/test_release_images.py -q
+        node --test scripts/android_production_acceptance_policy.test.mjs
+        node --check scripts/verify_android_employee_production.mjs
+        node --check scripts/cleanup_android_production_acceptance.mjs
+  guardrails:
+    needs:
+    - scope
+    - fast-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - uses: ./.github/actions/setup-node
+      with:
+        install: 'false'
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - name: Source, policy, tokens, brand and signage checks
+      run: |-
+        pnpm ci:text-integrity
+        pnpm ci:frontend-manifest
+        pnpm ci:legacy-guards
+        pnpm ci:runtime-integrity
+        pnpm ci:policy
+        pnpm ci:policy-test
+        pnpm ci:tokens
+        pnpm ci:brand-assets
+        pnpm ci:signage
+        pnpm ci:portal-translations
+  contract:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-node
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: dev
+    - name: Verify API contract and generated client freshness
+      run: pnpm contract:check
   api-runtime-image:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.runtime_images == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v5
+    - uses: docker/setup-buildx-action@v3
+    - name: Build immutable production api image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: apps/kajovo-hotel-api/Dockerfile
+        platforms: linux/amd64
+        load: true
+        tags: kajovo-hotel-api:${{ github.sha }}
+        cache-from: type=gha,scope=hotel-api
+        cache-to: type=gha,mode=max,scope=hotel-api
+    - name: Build immutable production admin image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: apps/kajovo-hotel-admin/Dockerfile
+        platforms: linux/amd64
+        load: true
+        tags: kajovo-hotel-admin:${{ github.sha }}
+        cache-from: type=gha,scope=hotel-admin
+        cache-to: type=gha,mode=max,scope=hotel-admin
+    - name: Build immutable production web image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: apps/kajovo-hotel-web/Dockerfile
+        platforms: linux/amd64
+        load: true
+        tags: kajovo-hotel-web:${{ github.sha }}
+        cache-from: type=gha,scope=hotel-web
+        cache-to: type=gha,mode=max,scope=hotel-web
+    - name: Verify production images and package their exact IDs
+      run: python scripts/build_release_images.py --existing --sha "$GITHUB_SHA" --output artifacts/release-images
+    - name: Upload verified immutable release images
+      uses: actions/upload-artifact@v6
+      with:
+        name: release-images-${{ github.sha }}
+        compression-level: 0
+        path: artifacts/release-images
+        if-no-files-found: error
+        retention-days: 7
+  web-tests:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Build production API image and verify imports
-        run: |
-          docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
-          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/sessions' in app.openapi()['paths']; assert len([path for path in app.openapi()['paths'] if path.startswith('/api/v1/admin/voice-core/')]) == 3; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
-
-      - name: Build frontends and verify the production proxy chain
-        # Voice sessions use the authenticated /api proxy.
-        run: |
-          docker tag kajovo-api-ci voice-core-api-check
-          docker build -f apps/kajovo-hotel-admin/Dockerfile -t voice-core-admin-check .
-          docker build -f apps/kajovo-hotel-web/Dockerfile -t voice-core-web-check .
-          python3 scripts/verify_voice_core_proxy.py
-
-  web-tests:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-playwright
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: runtime
+    - name: Web live smoke, once
+      run: pnpm ci:web-smoke
+    - name: Preserve browser failure evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: web-browser-evidence-${{ github.run_id }}
+        path: |-
+          apps/*/test-results/
+          apps/*/playwright-report/
+          packages/voice-core/test-results/
+          packages/voice-core/playwright-report/
+        if-no-files-found: warn
+        retention-days: 7
+  e2e-smoke:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.admin == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API Python dependencies (minimal)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
-          python -m pip install ./packages/voice-core-server
-
-      - name: Install Playwright browsers
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps
-
-      - name: Web tests (Playwright)
-        run: pnpm --filter @kajovo/kajovo-hotel-web test
-
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-playwright
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: runtime
+    - name: Admin authentication and functional smoke, once
+      run: pnpm ci:e2e-smoke
+    - name: Preserve browser failure evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: admin-browser-evidence-${{ github.run_id }}
+        path: |-
+          apps/*/test-results/
+          apps/*/playwright-report/
+          packages/voice-core/test-results/
+          packages/voice-core/playwright-report/
+        if-no-files-found: warn
+        retention-days: 7
+  visual-web:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.visual_web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-playwright
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: runtime
+    - name: All portal visual scenarios and viewports
+      run: pnpm ci:visual-web
+    - name: Preserve browser failure evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: visual_web-browser-evidence-${{ github.run_id }}
+        path: |-
+          apps/*/test-results/
+          apps/*/playwright-report/
+          packages/voice-core/test-results/
+          packages/voice-core/playwright-report/
+        if-no-files-found: warn
+        retention-days: 7
+  visual-admin:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.visual_admin == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-playwright
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: runtime
+    - name: All admin visual scenarios and viewports, one worker
+      run: pnpm ci:visual-admin
+    - name: Preserve browser failure evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: visual_admin-browser-evidence-${{ github.run_id }}
+        path: |-
+          apps/*/test-results/
+          apps/*/playwright-report/
+          packages/voice-core/test-results/
+          packages/voice-core/playwright-report/
+        if-no-files-found: warn
+        retention-days: 7
+  unit-tests:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: dev
+    - name: API unit and integration tests
+      run: python -m pytest apps/kajovo-hotel-api/tests --junitxml=artifacts/pytest/api.xml
+    - name: Preserve Python test evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: api-test-evidence-${{ github.run_id }}
+        path: artifacts/pytest
+        if-no-files-found: warn
+        retention-days: 7
+  portable-voice-core:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.voice == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+    - uses: actions/checkout@v5
+    - uses: ./.github/actions/setup-playwright
+    - uses: ./.github/actions/setup-python
+      with:
+        profile: portable
+    - name: Portable Voice Core, copy-out and responsive UI
+      run: |-
+        pnpm ci:voice-core
+        python scripts/verify_voice_core_copy_out.py
+        pnpm --filter @voice-core/browser test:ui
+        python scripts/voice_core_live_smoke.py
+    - name: Preserve browser failure evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: voice-browser-evidence-${{ github.run_id }}
+        path: |-
+          apps/*/test-results/
+          apps/*/playwright-report/
+          packages/voice-core/test-results/
+          packages/voice-core/playwright-report/
+        if-no-files-found: warn
+        retention-days: 7
+  android-contract:
+    needs:
+    - scope
+    - fast-checks
+    - guardrails
+    if: needs.scope.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: '17'
+        cache: gradle
+    - uses: android-actions/setup-android@v4
+    - name: Verify all native API consumer unit tests
+      working-directory: android
+      run: ./gradlew testDebugUnitTest --console=plain
+    - name: Preserve Android contract test evidence
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: android-contract-evidence-${{ github.run_id }}
+        path: |-
+          android/**/build/test-results/**
+          android/**/build/reports/tests/**
+        if-no-files-found: warn
+        retention-days: 7
   release-gate:
     needs:
-      - api-runtime-image
-      - web-tests
-      - e2e-smoke
-      - guardrails
-      - lint
-      - typecheck
-      - unit-tests
-      - portable-voice-core
+    - scope
+    - fast-checks
+    - guardrails
+    - contract
+    - api-runtime-image
+    - web-tests
+    - e2e-smoke
+    - visual-web
+    - visual-admin
+    - unit-tests
+    - portable-voice-core
+    - android-contract
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      deploy_required: ${{ needs.scope.outputs.deploy_required }}
     steps:
-      - name: Verify required jobs
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "${{ needs.api-runtime-image.result }}" = "success"
-          test "${{ needs.web-tests.result }}" = "success"
-          test "${{ needs.e2e-smoke.result }}" = "success"
-          test "${{ needs.guardrails.result }}" = "success"
-          test "${{ needs.lint.result }}" = "success"
-          test "${{ needs.typecheck.result }}" = "success"
-          test "${{ needs.unit-tests.result }}" = "success"
-          test "${{ needs.portable-voice-core.result }}" = "success"
-          echo "All authoritative main CI jobs PASS for ${GITHUB_SHA}"
-
-      - name: Write release gate artifact
-        shell: bash
-        run: |
-          mkdir -p artifacts/release-gate
-          printf '{"sha":"%s","overall_status":"PASS","workflow":"ci-gates"}\n' "${GITHUB_SHA}" > "artifacts/release-gate/release-gate-${GITHUB_SHA}.json"
-
-      - name: Upload release gate artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-gate-artifact
-          path: artifacts/release-gate/*.json
-          if-no-files-found: error
-
-  e2e-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install API Python dependencies (minimal)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
-
-      - name: Install portable Voice Core runtime
-        run: python -m pip install ./packages/voice-core-server
-
-      - name: Validate admin credential environment
-        run: python scripts/check_admin_credentials_env.py
-
-      - name: Install Playwright browser for smoke
-        run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
-
-      - name: E2E smoke (3 deterministic runs)
-        env:
-          API_BASE_URL: http://127.0.0.1:18000
-          SMOKE_DB_PATH: /tmp/kajovo-smoke-e2e.db
-        run: |
-          for i in 1 2 3; do
-            echo "Smoke run #${i}"
-            rm -f "$SMOKE_DB_PATH"
-            pnpm ci:e2e-smoke
-          done
-  guardrails:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API Python dependencies (minimal)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "alembic==1.17.1" "uvicorn[standard]==0.30.6" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
-
-      - name: Android production acceptance rollback policy
-        run: |
-          node --check scripts/verify_android_employee_production.mjs
-          node --check scripts/cleanup_android_production_acceptance.mjs
-          node --test scripts/android_production_acceptance_policy.test.mjs
-
-      - name: Install portable Voice Core runtime
-        run: python -m pip install ./packages/voice-core-server
-
-      - name: Validate admin credential environment
-        run: python scripts/check_admin_credentials_env.py
-
-      - name: Source and runtime integrity gates
-        run: |
-          pnpm ci:text-integrity
-          pnpm ci:frontend-manifest
-          pnpm ci:legacy-guards
-          pnpm ci:runtime-integrity
-
-      - name: Policy sentinel gate
-        run: pnpm ci:policy
-
-      - name: Policy rule unit tests
-        run: pnpm ci:policy-test
-
-      - name: Token-only lint
-        run: pnpm ci:tokens
-
-      - name: Brand assets lint (brand/** whitelist)
-        run: pnpm ci:brand-assets
-
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
-
-      - name: Web live smoke gate
-        run: pnpm ci:web-smoke
-
-      - name: KDGS signage declaration gate
-        run: pnpm ci:signage
-
-      - name: Portal translation completeness
-        run: pnpm ci:portal-translations
-
-      - name: KDGS visual geometry gate
-        run: pnpm ci:visual
-
-      - name: Verify API contract + generated client freshness
-        run: pnpm contract:check
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install ./packages/voice-core-server
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
-
-      - name: Ruff lint
-        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py scripts/independent_review.py
-
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install ./packages/voice-core-server
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
-
-      - name: Unit tests
-        run: pnpm unit
-
-  portable-voice-core:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-      - run: corepack enable && corepack prepare pnpm@10.34.4 --activate
-      - run: pnpm install --frozen-lockfile
-      - run: python -m pip install ./packages/voice-core-server pytest
-      - name: Independent forensic review covers exact candidate source
-        run: python scripts/independent_review.py --repo hotel
-      - run: pnpm ci:voice-core
-      - run: python scripts/verify_voice_core_copy_out.py
-      - run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
-      - run: pnpm --filter @voice-core/browser test:ui
-      - name: Verify live smoke is opt-in
-        run: python scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py
+    - uses: actions/checkout@v5
+    - name: Fail closed on required job results and scope
+      env:
+        NEEDS_JSON: ${{ toJSON(needs) }}
+      run: python scripts/check_ci_required_jobs.py
+    - name: Upload exact-SHA release gate evidence
+      uses: actions/upload-artifact@v6
+      with:
+        name: release-gate-artifact
+        path: artifacts/release-gate/*.json
+        if-no-files-found: error
+        retention-days: 7
