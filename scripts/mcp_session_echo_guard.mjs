@@ -14,3 +14,19 @@ export function isCanonicalMcpSession(session) {
     approval.always == null &&
     exactNames(approval.never?.tool_names, ['search_devices', 'get_device_state']);
 }
+
+// A later valid echo cannot erase a failed configuration or credential event.
+export function recordSessionSafety(evidence, event, configGuard, credentialGuard) {
+  if (credentialGuard(event)) {
+    evidence.credentialsExposed = true;
+    evidence.error ??= 'private_authorization_exposed';
+  }
+  if (event.type === 'session.created' || event.type === 'session.updated') {
+    evidence.configValid = configGuard(event.session);
+    if (!evidence.configValid) evidence.error ??= 'native_mcp_session_configuration_missing';
+  }
+}
+
+export function isSessionSafetyReady(evidence) {
+  return evidence?.error === null && evidence.configValid === true && evidence.credentialsExposed === false;
+}

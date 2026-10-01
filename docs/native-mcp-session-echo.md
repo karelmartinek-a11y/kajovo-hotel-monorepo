@@ -7,6 +7,9 @@ session.updated may echo these unused fields as null. Null or omission denotes
 an unused transport; any actual connector/tunnel value fails the production gate.
 The echo guard also requires the exact URL, label, allowlist and approval policy.
 The independent credential-redaction and completed tool-import guards still apply.
+Every invalid session echo or exposed credential latches a gate error. A later
+valid echo cannot clear it. Final evidence is refreshed and checked after Stop,
+so an invalid update arriving after import or during read/playback cannot pass.
 
 The current official Realtime server-events contract and a direct native Calls
 diagnostic on 2026-10-01 established the nullable echo. The diagnostic used a
@@ -19,7 +22,7 @@ attempt was rolled back before cleanup; it is not acceptance evidence.
 | Category | Disposition and evidence |
 | --- | --- |
 | Production source | Update live acceptance echo guard; host/provider and portable runtime unchanged. |
-| Tests | Add exact nullable echo, transport rejection, configuration/policy mismatch and injected-function regression tests. |
+| Tests | Add exact nullable echo, transport rejection and configuration/policy mismatch tests; exercise the actual injected event listener with late invalid updates/credentials followed by successful grounded read/playback. |
 | CI/release gates | Update ci:voice-core test list; existing workflows execute the same gate. |
 | Documentation | Update this current contract and independent review evidence. |
 | Comments/notes | Replace property-absence assumption with nullable response semantics. |
