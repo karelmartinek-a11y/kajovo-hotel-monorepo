@@ -5,7 +5,9 @@ import hmac
 import json
 import secrets
 import time
+
 from voice_core_server.contracts import McpServerConfig
+
 from app.config import get_settings
 
 MCP_INSTRUCTIONS = """Connected device data comes only from home_assistant MCP tools.

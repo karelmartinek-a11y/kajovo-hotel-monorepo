@@ -9,7 +9,7 @@ from voice_core_server import RealtimeSessionClient, VoiceCoreConfig, VoiceError
 from app.db.models import VoiceCoreSettings
 from app.db.session import get_db
 from app.security.auth import require_session
-from app.services.mcp_provider import HomeAssistantMcpProvider, MCP_INSTRUCTIONS
+from app.services.mcp_provider import MCP_INSTRUCTIONS, HomeAssistantMcpProvider
 from app.services.voice_core import (
     VoiceConfigAdapter,
     VoiceSecretAdapter,

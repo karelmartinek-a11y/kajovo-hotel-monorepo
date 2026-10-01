@@ -1,4 +1,11 @@
-from .contracts import CAPABILITY_REGISTRY, LANGUAGES, MODELS, VOICES, McpServerConfig, VoiceCoreConfig
+from .contracts import (
+    CAPABILITY_REGISTRY,
+    LANGUAGES,
+    MODELS,
+    VOICES,
+    McpServerConfig,
+    VoiceCoreConfig,
+)
 
 LENGTH_POLICIES = {
     "short": (512, "Prefer one or two concise sentences. Avoid tangents."),
