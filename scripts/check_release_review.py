@@ -1,7 +1,12 @@
-"""Independent release gates: exact main CI and completed, resolved code review."""
+"""Independent release gates: exact main CI and content-bound Codex forensic review."""
 import argparse
 import json
 import subprocess
+from pathlib import Path
+
+from independent_review import verify as verify_independent
+
+REQUIRED_WORKFLOWS = ['ci-gates.yml', 'ci-full.yml', 'release.yml']
 
 
 def api(path):
@@ -10,22 +15,19 @@ def api(path):
 
 def verify(sha, pr):
     repo = 'karelmartinek-a11y/kajovo-hotel-monorepo'
-    assert api(f'repos/{repo}/commits/main')['sha'] == sha, 'release_must_be_current_main'
-    runs = api(f'repos/{repo}/actions/workflows/ci-gates.yml/runs?head_sha={sha}')['workflow_runs']
-    assert any(r['head_branch'] == 'main' and r['conclusion'] == 'success' for r in runs), 'exact_main_ci_required'
+    if api(f'repos/{repo}/commits/main')['sha'] != sha:
+        raise RuntimeError('release_must_be_current_main')
+    for workflow in REQUIRED_WORKFLOWS:
+        runs = api(f'repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}')['workflow_runs']
+        matching = [run for run in runs if run['head_branch'] == 'main' and run['head_sha'] == sha]
+        latest = max(matching, key=lambda run: (run.get('created_at', ''), run.get('id', 0)), default={})
+        if latest.get('status') != 'completed' or latest.get('conclusion') != 'success':
+            raise RuntimeError('exact_main_ci_required')
     pull = api(f'repos/{repo}/pulls/{pr}')
-    assert pull['merged'] and pull['merge_commit_sha'] == sha, 'reviewed_release_required'
-    reviews = api(f'repos/{repo}/pulls/{pr}/reviews')
-    assert any(r['commit_id'] == pull['head']['sha'] and r['state'] in ['APPROVED', 'COMMENTED']
-               and r['user']['login'] == 'copilot-pull-request-reviewer[bot]'
-               for r in reviews), 'completed_head_review_required'
-    for number in {122, int(pr)}:
-        query = 'query { repository(owner:"karelmartinek-a11y",name:"kajovo-hotel-monorepo") { pullRequest(number:NUMBER) { reviewThreads(first:100) { nodes { isResolved } pageInfo { hasNextPage } } } } }'.replace('NUMBER', str(number))
-        data = json.loads(subprocess.check_output(['gh', 'api', 'graphql', '-f', 'query=' + query]))
-        threads = data['data']['repository']['pullRequest']['reviewThreads']
-        assert not threads['pageInfo']['hasNextPage'], 'review_pagination_required'
-        assert all(t['isResolved'] for t in threads['nodes']), 'unresolved_review_findings'
-    print('Exact SHA CI and completed/resolved review PASS')
+    if not pull['merged'] or pull['merge_commit_sha'] != sha:
+        raise RuntimeError('verified_release_pr_required')
+    verify_independent(Path(__file__).resolve().parents[1], 'hotel', sha)
+    print('Exact main CI, regressions and Independent Codex forensic review PASS')
 
 
 if __name__ == '__main__':

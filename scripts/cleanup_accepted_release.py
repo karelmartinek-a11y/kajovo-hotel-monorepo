@@ -10,7 +10,7 @@ RELEASE_ROOT = Path('/home/deploy-hotel/kajovo-deploy-releases')
 
 def cleanup(state_path=Path('/var/lib/home-assistant-mcp-control/cutover.json')):
     state = json.loads(state_path.read_text())
-    if state.get('phase') != 'accepted':
+    if state.get('phase') not in {'accepted_cleanup_pending', 'accepted'}:
         raise RuntimeError('final_acceptance_required_before_prune')
     rows = json.loads(subprocess.check_output(['docker', 'inspect',
                       'kajovo-prod-api-1', 'kajovo-prod-web-1', 'kajovo-prod-admin-1']))
@@ -22,12 +22,13 @@ def cleanup(state_path=Path('/var/lib/home-assistant-mcp-control/cutover.json'))
     if current.parent != root or current.name != state['hotel_sha']:
         raise RuntimeError('accepted_release_mismatch')
     backup = Path(state['backup'])
-    previous = json.loads((backup / 'containers.json').read_text())
+    previous = json.loads((backup / 'containers.json').read_text()) if (backup / 'containers.json').exists() else []
     # Only hotel source trees and the captured obsolete hotel images are affected.
     for release in root.iterdir():
         if release.is_dir() and release.resolve() != current:
             shutil.rmtree(release)
-    for image in {row['Image'] for row in previous}:
+    present = set(subprocess.check_output(['docker', 'image', 'ls', '--quiet', '--no-trunc']).decode().splitlines())
+    for image in {row['Image'] for row in previous} & present:
         used = subprocess.check_output(['docker', 'ps', '-aq', '--filter', 'ancestor=' + image]).strip()
         if not used:
             subprocess.run(['docker', 'image', 'rm', image], check=True, stdout=subprocess.DEVNULL,

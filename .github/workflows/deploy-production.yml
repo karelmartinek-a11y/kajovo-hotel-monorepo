@@ -55,7 +55,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Independent CI and completed review gate
+      - name: Exact main CI and independent forensic review gate
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ inputs.deploy_sha }}

@@ -22,6 +22,20 @@ HOST_NGINX_SITE_PATH="${HOST_NGINX_SITE_PATH:-/etc/nginx/sites-available/hotel.h
 HOST_NGINX_ENABLED_PATH="${HOST_NGINX_ENABLED_PATH:-/etc/nginx/sites-enabled/hotel.hcasc.cz.conf}"
 HOST_NGINX_SYNC_HELPER="${HOST_NGINX_SYNC_HELPER:-/usr/local/bin/kajovo-sync-hotel-nginx}"
 
+# Every runtime mutation holds the coordinator's root-owned fence. A worker
+# delayed behind rollback must check phase and exact SHA after acquiring it.
+TRANSACTION_PUBLIC_DIR="${TRANSACTION_PUBLIC_DIR:-/etc/home-assistant-mcp-public}"
+exec 9<"$TRANSACTION_PUBLIC_DIR/runtime.lock"
+flock -x 9
+TRANSACTION_STATUS="$TRANSACTION_PUBLIC_DIR/transaction.json" DEPLOY_SOURCE_SHA="$DEPLOY_SOURCE_SHA" python3 - <<'PYFENCE'
+import json
+import os
+from pathlib import Path
+state = json.loads(Path(os.environ['TRANSACTION_STATUS']).read_text())
+if state.get('phase') != 'active' or state.get('hotel_sha') != os.environ['DEPLOY_SOURCE_SHA']:
+    raise SystemExit('Hotel deployment transaction revoked or wrong SHA')
+PYFENCE
+
 require_cmd() {
   local name="$1"
   if ! command -v "$name" >/dev/null 2>&1; then
@@ -61,7 +75,6 @@ docker_build_with_snapshot_retry() {
   if grep -Eq "failed to prepare extraction snapshot|parent snapshot .* does not exist" "$build_log"; then
     echo "Detekovan poskozeny Docker build cache snapshot -> provadim builder/image prune a opakuji build."
     docker builder prune -af || true
-    docker image prune -af || true
     compose_cmd build --pull
     rm -f "$build_log"
     return 0

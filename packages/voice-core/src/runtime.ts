@@ -134,7 +134,10 @@ export class VoiceRealtimeClient {
     if (result.status) this.set({mcpStatus: result.status});
     if (result.tools) this.set({importedTools: result.tools});
     if (result.approval) this.set({approval: result.approval});
-    if (result.followup && this.channel?.readyState === 'open') this.channel.send(JSON.stringify({type: 'response.create'}));
+    if (result.followup && this.channel?.readyState === 'open') {
+      try {this.channel.send(JSON.stringify({type: 'response.create'}));}
+      catch {this.fail('connection_failed'); return;}
+    }
     if (event.type === 'session.created') {
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
@@ -143,7 +146,7 @@ export class VoiceRealtimeClient {
   }
   approve(approvalId: string, approved: boolean) {
     const request = this.snapshot.approval;
-    if (!request || request.id !== approvalId || this.channel?.readyState !== 'open') return;
+    if (!request || request.id !== approvalId || (approved && !request.canApprove) || this.channel?.readyState !== 'open') return;
     // Consume the rendered request before sending or notifying subscribers.
     const next = this.mcp.resolveApproval(approvalId);
     this.snapshot = {...this.snapshot, approval: next};

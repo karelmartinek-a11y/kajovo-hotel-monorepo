@@ -87,7 +87,7 @@ def test_mcp_secret_has_one_server_owned_authority(tmp_path, monkeypatch):
     script = module.remote_script_text()
     assert '/etc/home-assistant-mcp-public/signing-key.sha256' in script
     assert 'hashlib.sha256(key.encode()).hexdigest() != expected' in script
-    assert script.index('fingerprint mismatch') < script.index('"$deploy_root/infra/ops/deploy-production.sh"')
+    assert script.index('fingerprint mismatch') < script.index('> "$deploy_root/.coordinated-ready"')
 
 
 def test_absent_mcp_url_has_environment_specific_compose_default(monkeypatch):
@@ -105,28 +105,32 @@ def test_absent_mcp_url_has_environment_specific_compose_default(monkeypatch):
         assert (os.environ.get(match[1]) or match[2]) == endpoint
 
 
-def test_release_review_is_independent_of_green_ci(monkeypatch):
+def test_release_review_requires_content_bound_independent_evidence(monkeypatch):
     script_path = Path(__file__).resolve().parents[3] / 'scripts/check_release_review.py'
+    monkeypatch.syspath_prepend(str(script_path.parent))
     spec = importlib.util.spec_from_file_location('release_review', script_path)
     review = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(review)
+    requests = []
     def api(path):
+        requests.append(path)
         if path.endswith('/commits/main'):
             return {'sha': 'new'}
         if 'actions/workflows' in path:
-            return {'workflow_runs': [{'head_branch': 'main', 'conclusion': 'success'}]}
-        if path.endswith('/reviews'):
-            return []
-        return {'merged': True, 'merge_commit_sha': 'new', 'head': {'sha': 'topic'}}
+            return {'workflow_runs': [{'head_sha': 'new', 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success'}]}
+        if path.endswith('/pulls/125'):
+            return {'merged': True, 'merge_commit_sha': 'new'}
+        raise AssertionError('No external reviewer or paid review API may be queried')
     monkeypatch.setattr(review, 'api', api)
+    monkeypatch.setattr(review, 'verify_independent', lambda *args: (_ for _ in ()).throw(RuntimeError('independent_review_not_pass')))
     import pytest
-    with pytest.raises(AssertionError, match='completed_head_review_required'):
-        review.verify('new', '123')
-    original_api = api
-    for author, commit in [('karelmartinek-a11y', 'topic'), ('copilot-pull-request-reviewer[bot]', 'old-topic')]:
-        monkeypatch.setattr(review, 'api', lambda path: [{'commit_id': commit, 'state': 'COMMENTED', 'user': {'login': author}}] if path.endswith('/reviews') else original_api(path))
-        with pytest.raises(AssertionError, match='completed_head_review_required'):
-            review.verify('new', '123')
+    with pytest.raises(RuntimeError, match='independent_review_not_pass'):
+        review.verify('new', '125')
+    validated = []
+    monkeypatch.setattr(review, 'verify_independent', lambda *args: validated.append(args))
+    review.verify('new', '125')
+    assert validated[0][1:] == ('hotel', 'new')
+    assert all('/reviews' not in path and 'graphql' not in path for path in requests)
 
 
 def test_post_acceptance_cleanup_refuses_to_touch_rollback_early(tmp_path, monkeypatch):
@@ -163,6 +167,8 @@ def test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captu
     def output(command):
         if command[:2] == ['docker', 'inspect']:
             return json.dumps([{'Config': {'Labels': {'com.docker.compose.project.working_dir': str(current / 'infra')}}}] * 3).encode()
+        if command[:3] == ['docker', 'image', 'ls']:
+            return b'old-unused\nold-used\ncurrent-api\n'
         return b'live-container' if command[-1] in ['ancestor=old-used', 'ancestor=current-api'] else b''
     monkeypatch.setattr(cleanup.subprocess, 'check_output', output)
     removals = []
@@ -171,30 +177,33 @@ def test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captu
     assert (current / 'keep.txt').read_text() == 'current known good'
     assert not stale.exists()
     assert removals == [['docker', 'image', 'rm', 'old-unused']]
+    (backup / 'containers.json').unlink()
+    state.write_text(json.dumps({'phase': 'accepted_cleanup_pending', 'hotel_sha': 'a' * 40, 'backup': str(backup)}))
+    cleanup.cleanup(state)
+    assert removals == [['docker', 'image', 'rm', 'old-unused']]
+    assert (current / 'keep.txt').exists()
 
 
-def test_release_review_checks_resolved_threads_and_pagination(monkeypatch):
+def test_release_requires_latest_successful_exact_main_ci_for_every_workflow(monkeypatch):
     path = Path(__file__).resolve().parents[3] / 'scripts/check_release_review.py'
-    spec = importlib.util.spec_from_file_location('release_review_threads', path)
+    monkeypatch.syspath_prepend(str(path.parent))
+    spec = importlib.util.spec_from_file_location('release_ci', path)
     review = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(review)
-    def api(endpoint):
-        if endpoint.endswith('/commits/main'):
-            return {'sha': 'main-sha'}
-        if 'actions/workflows' in endpoint:
-            return {'workflow_runs': [{'head_branch': 'main', 'conclusion': 'success'}]}
-        if endpoint.endswith('/reviews'):
-            return [{'commit_id': 'topic-sha', 'state': 'COMMENTED', 'user': {'login': 'copilot-pull-request-reviewer[bot]'}}]
-        return {'merged': True, 'merge_commit_sha': 'main-sha', 'head': {'sha': 'topic-sha'}}
-    monkeypatch.setattr(review, 'api', api)
+    monkeypatch.setattr(review, 'verify_independent', lambda *args: None)
     import pytest
-    for resolved, pagination, expected in [(True, False, None), (False, False, 'unresolved_review_findings'),
-                                           (True, True, 'review_pagination_required')]:
-        threads = {'nodes': [{'isResolved': resolved}], 'pageInfo': {'hasNextPage': pagination}}
-        response = {'data': {'repository': {'pullRequest': {'reviewThreads': threads}}}}
-        monkeypatch.setattr(review.subprocess, 'check_output', lambda *args, **kwargs: json.dumps(response).encode())
-        if expected:
-            with pytest.raises(AssertionError, match=expected):
-                review.verify('main-sha', '123')
-        else:
-            review.verify('main-sha', '123')
+    for blocked_workflow in review.REQUIRED_WORKFLOWS:
+        for failure in [{'head_sha': 'other', 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success'},
+                        {'head_sha': 'sha', 'head_branch': 'topic', 'status': 'completed', 'conclusion': 'success'},
+                        {'head_sha': 'sha', 'head_branch': 'main', 'status': 'in_progress', 'conclusion': None},
+                        {'head_sha': 'sha', 'head_branch': 'main', 'status': 'completed', 'conclusion': 'failure'}]:
+            def api(endpoint):
+                if endpoint.endswith('/commits/main'):
+                    return {'sha': 'sha'}
+                if 'actions/workflows' in endpoint:
+                    run = failure if blocked_workflow in endpoint else {'head_sha': 'sha', 'head_branch': 'main', 'status': 'completed', 'conclusion': 'success'}
+                    return {'workflow_runs': [run]}
+                return {'merged': True, 'merge_commit_sha': 'sha'}
+            monkeypatch.setattr(review, 'api', api)
+            with pytest.raises(RuntimeError, match='exact_main_ci_required'):
+                review.verify('sha', '125')

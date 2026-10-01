@@ -43,7 +43,7 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
       <p className="vc-detail">Hovoříte s AI. Ověřené informace poskytují připojené nástroje.</p>
       {snapshot.mcpStatus === 'loading' && <p role="status">Připojuji nástroje…</p>}
       {snapshot.mcpStatus === 'unavailable' && <p role="alert">Momentálně se nemohu spojit se systémem připojených nástrojů.</p>}
-      {renderedApproval && <div role="alert" key={renderedApproval.id}><p>Schválit akci nástroje {renderedApproval.name}?</p><button onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, false);}}>Odmítnout</button><button onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, true);}}>Schválit</button></div>}
+      {renderedApproval && <div role="alert" key={renderedApproval.id} style={{maxWidth: '100%', overflowWrap: 'anywhere'}}><p>Schválit akci nástroje {renderedApproval.name}?</p>{renderedApproval.canApprove ? <dl>{renderedApproval.details.map(detail => <React.Fragment key={detail.label}><dt>{detail.label}</dt><dd style={{marginInlineStart: 0}}>{detail.value}</dd></React.Fragment>)}</dl> : <p>Podrobnosti akce nelze bezpečně ověřit. Akci můžete odmítnout.</p>}<button onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, false);}}>Odmítnout</button><button disabled={!renderedApproval.canApprove} onClick={event => {if (event.detail < 2) client.approve(renderedApproval.id, true);}}>Schválit</button></div>}
       {(snapshot.error || error) && <p className="vc-error" role="alert">{snapshot.error ? errorMessage(snapshot.error.category) : error}</p>}
     </div>
     <div className="vc-controls">

@@ -24,6 +24,8 @@ Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční 
 ## GitHub Actions mapování
 
 - `.github/workflows/ci-gates.yml`: `api-runtime-image`, `release-gate`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`, `portable-voice-core`
-- `.github/workflows/deploy-production.yml`: deploy pouze po úspěšném `CI Gates - Kajovo Hotel` na `main`
+- `.github/workflows/deploy-production.yml`: explicitní coordinated deploy po úspěšných exact-main CI Gates, CI Full a CI Release a content-bound Independent Codex multi-agent forensic review
 
 Voice Core gate ověřuje importy a dependency hranice, izolovaný copy-out, Chromium/WebKit UI a produkční API/admin/web image s celým Nginx řetězcem. Placený smoke vyžaduje `VOICE_CORE_LIVE_SMOKE=1` a je v běžném CI zakázán; viz [Voice Core](voice-core.md).
+
+The independent review checker binds the full candidate source tree to all six final reviewer records and rejects stale fingerprints, missing reviewers, unresolved blocking findings or count discrepancies. Evidence lives in `native-mcp-independent-review.json` and its readable report.

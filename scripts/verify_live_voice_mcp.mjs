@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {readFile} from 'node:fs/promises';
+import {hasExposedAuthorization} from './mcp_authorization_guard.mjs';
+import {SpokenCompletion} from './mcp_spoken_completion.mjs';
 const require = createRequire(new URL('../apps/kajovo-hotel-admin/package.json', import.meta.url));
 const {chromium} = require('playwright');
 const origin = process.env.VERIFY_BASE_URL || 'https://hotel.hcasc.cz';
@@ -18,6 +20,8 @@ try {
     console.log(JSON.stringify({admin_login:'PASS',voice_config:'PASS',realtime:'NOT_CONFIGURED'}));
   } else {
     const wav = process.env.VERIFY_VOICE_WAV ? (await readFile(process.env.VERIFY_VOICE_WAV)).toString('base64') : null;
+    await context.addInitScript({content: `window.__voiceAuthorizationGuard = ${hasExposedAuthorization.toString()};`});
+    await context.addInitScript({content: `window.__voiceSpokenCompletion = new (${SpokenCompletion.toString()})();`});
     await context.addInitScript(({wav}) => {
       window.__mcpEvidence={imported:[],importCompleted:false,credentialsExposed:false,configValid:false,call:null,devices:[],spoken:'',audioPeak:0,error:null};
       const evidence=window.__mcpEvidence;
@@ -32,8 +36,8 @@ try {
         const channel=original.apply(this,args);
         channel.addEventListener('message',async message => {
           const e=JSON.parse(message.data);
-          const secretKeys=(v) => v && typeof v==='object' && Object.entries(v).some(([k,x]) => ((k==='authorization'||k.toLowerCase()==='authorization')&&typeof x==='string'&&x.length>0)||secretKeys(x));
-          if(secretKeys(e)) evidence.credentialsExposed=true;
+          window.__voiceSpokenCompletion.handle(e);
+          if(window.__voiceAuthorizationGuard(e)) evidence.credentialsExposed=true;
           if(e.type==='error') evidence.error=e.error?.code||'realtime_error';
           if(e.type==='session.created'||e.type==='session.updated') {
             const tools=e.session?.tools||[];const m=tools.find(t=>t.type==='mcp');
@@ -62,7 +66,7 @@ try {
       RTCPeerConnection.prototype.setRemoteDescription=function (...args) {
         this.addEventListener('track',event => {
           const meter=audioContext.createAnalyser();audioContext.createMediaStreamSource(event.streams[0]||new MediaStream([event.track])).connect(meter);
-          const tick=()=>{const data=new Uint8Array(meter.fftSize);meter.getByteTimeDomainData(data);evidence.audioPeak=Math.max(evidence.audioPeak,...data.map(x=>Math.abs(x-128)));requestAnimationFrame(tick);};tick();
+          const tick=()=>{const data=new Uint8Array(meter.fftSize);meter.getByteTimeDomainData(data);const peak=Math.max(...data.map(x=>Math.abs(x-128)));evidence.audioPeak=Math.max(evidence.audioPeak,peak);window.__voiceSpokenCompletion.sample(peak);requestAnimationFrame(tick);};tick();
         });return originalTrack.apply(this,args);
       };
     },{wav});
@@ -83,13 +87,14 @@ try {
     assert.equal(evidence.importCompleted,true,'mcp_import_completion_missing');
     assert.deepEqual(evidence.imported.sort(),['execute_device_action','get_device_state','search_devices']);
     if(wav) {
-      await page.waitForFunction(()=>{const e=window.__mcpEvidence;const norm=s=>s.toLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[^a-z0-9]/g,'');return e.error||e.devices.length>0&&e.audioPeak>1&&e.devices.every(d=>norm(e.spoken).includes(norm(d.name)));},{},{timeout:120000});
+      await page.waitForFunction(()=>window.__mcpEvidence.error||window.__voiceSpokenCompletion.ready(window.__mcpEvidence.devices),{},{timeout:120000});
       evidence=await page.evaluate(()=>window.__mcpEvidence);
       assert.equal(evidence.error,null,'realtime_read_failed');assert.equal(evidence.call?.nameFilter,'recepce','incorrect_name_filter');assert(evidence.call.success && evidence.devices.length>0,'live_search_failed');
       const norm=s=>s.toLowerCase().normalize('NFD').replace(/\p{M}/gu,'').replace(/[^a-z0-9]/g,'');
       assert(evidence.devices.every(d=>norm(evidence.spoken).includes(norm(d.name))),'spoken_answer_missing_devices');assert(evidence.audioPeak>1,'audio_playback_missing');
+      assert(await page.evaluate(()=>window.__voiceSpokenCompletion.ready(window.__mcpEvidence.devices)),'grounded_response_and_playback_completion_missing');
     }
     await page.getByRole('button',{name:'Ukončit hovor',exact:true}).click();
-    console.log(JSON.stringify({admin_login:'PASS',voice_route:'PASS',realtime:'PASS',native_mcp_config:'PASS',mcp_import:'PASS',private_auth:'PASS',tools:evidence.imported,...(wav?{name_filter:'PASS',live_search:'PASS',spoken_grounded_answer:'PASS',result_count:evidence.devices.length}:{})}));
+    console.log(JSON.stringify({admin_login:'PASS',voice_route:'PASS',realtime:'PASS',native_mcp_config:'PASS',mcp_import:'PASS',private_auth:'PASS',tools:evidence.imported,...(wav?{name_filter:'PASS',live_search:'PASS',spoken_grounded_answer:'PASS',spoken_completion:'PASS',result_count:evidence.devices.length}:{})}));
   }
 } finally {await context.close();await browser.close();}

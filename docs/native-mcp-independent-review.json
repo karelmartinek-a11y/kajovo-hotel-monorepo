@@ -1,0 +1,789 @@
+{
+  "schema": "independent_codex_forensic_review.v1",
+  "kind": "Independent Codex multi-agent forensic review",
+  "date": "2026-10-01",
+  "result": "PASS",
+  "reviewed_sources": {
+    "hotel": {
+      "baseline": "0aa675d2c8d5af471bcb55953b58ddbe0ea67893",
+      "sha": "9a9b895ff27b6d12a9975668a710b71be81ed161",
+      "source_fingerprint": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a"
+    },
+    "agentha": {
+      "baseline": "251902e614012e84c9b5f86d2a672641ee733bde",
+      "sha": "c9c291f342eb947ef3dcc7886ad210e4db55724c",
+      "source_fingerprint": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+    }
+  },
+  "reviewers": [
+    {
+      "area": "A",
+      "scope": "protocol",
+      "agent_id": "/root/final_a_protocol",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+      },
+      "evidence": "Current official Realtime Calls/MCP wire, response/call/approval lifecycle and spoken completion; independently examined final cumulative trees and relevant regression/failure paths.",
+      "report_sha256": "c51186d6b78cbc73c3572692379c89d906df28c91d431ec8ac334bbbeafa093f",
+      "tests": [
+        {
+          "command": "pnpm --filter @voice-core/browser test",
+          "passed": 41,
+          "failed": 0
+        },
+        {
+          "command": "node --test scripts/mcp_spoken_completion.test.mjs scripts/mcp_authorization_guard.test.mjs",
+          "passed": 16,
+          "failed": 0
+        },
+        {
+          "command": "PYTHONPATH=packages/voice-core-server/src:apps/kajovo-hotel-api python3.11 -m pytest packages/voice-core-server/tests apps/kajovo-hotel-api/tests/test_voice_core.py -q",
+          "passed": 49,
+          "failed": 0
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_mcp_protocol.py tests/test_verify_mcp.py -q",
+          "passed": 22,
+          "failed": 0
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_cutover.py -q",
+          "passed": 44,
+          "failed": 0
+        }
+      ],
+      "official_sources": [
+        "https://developers.openai.com/api/docs/guides/realtime-mcp",
+        "https://developers.openai.com/api/docs/guides/voice-webrtc?voice-api=realtime"
+      ]
+    },
+    {
+      "area": "B",
+      "scope": "security",
+      "agent_id": "/root/final_b_security",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+      },
+      "evidence": "Secrets, sole signing authority, scoped credentials, informed approval and durable at-most-once actions; independently examined final cumulative trees and relevant regression/failure paths.",
+      "report_sha256": "a067281eb1d1e63149548982289cfc29c5b038ebe57b9597bbf0373f80477fa7",
+      "tests": [
+        {
+          "repo": "agentha",
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_mcp_protocol.py tests/test_cutover.py tests/test_independent_review.py tests/test_capabilities.py",
+          "result": "125 passed"
+        },
+        {
+          "repo": "hotel",
+          "command": "pnpm --filter @voice-core/browser test",
+          "result": "41 passed"
+        },
+        {
+          "repo": "hotel",
+          "command": "node --test scripts/mcp_spoken_completion.test.mjs scripts/mcp_authorization_guard.test.mjs",
+          "result": "16 passed"
+        },
+        {
+          "repo": "hotel",
+          "command": "PATH=<native-realtime-mcp worktree .venv>/bin:$PATH PYTHONPATH=<absolute API/server paths> python -m pytest -q apps/kajovo-hotel-api/tests/test_voice_core.py apps/kajovo-hotel-api/tests/test_voice_core_tooling.py apps/kajovo-hotel-api/tests/test_independent_review.py packages/voice-core-server/tests/test_policy.py",
+          "result": "101 passed"
+        },
+        {
+          "repo": "agentha",
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_cutover.py",
+          "result": "44 passed at c9c291f342eb947ef3dcc7886ad210e4db55724c; unchanged suites previously passed at 7b18cea"
+        }
+      ],
+      "official_sources": []
+    },
+    {
+      "area": "C",
+      "scope": "ha_safety",
+      "agent_id": "/root/final_c_ha_safety",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+      },
+      "evidence": "Live HA classifications, exact capabilities, stable identity, availability and read-only filters; independently examined final cumulative trees and relevant regression/failure paths.",
+      "report_sha256": "63a79b70d65f44d4eebbddac09424c590d250bb24b265256181a5280d11ba372",
+      "tests": [
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_capabilities.py tests/test_device_inventory.py tests/test_mcp_protocol.py tests/test_forensic_boundary.py tests/test_cutover.py",
+          "cwd": "/tmp/native-final-C2-agentha",
+          "result": "PASS",
+          "passed": 82,
+          "warnings": 1
+        },
+        {
+          "command": "PYTHONPATH=/tmp/native-final-C2-hotel/packages/voice-core-server/src /tmp/native-mcp-venv/bin/python -m pytest -q packages/voice-core-server/tests/test_policy.py",
+          "cwd": "/tmp/native-final-C2-hotel",
+          "result": "PASS",
+          "passed": 30
+        },
+        {
+          "command": "./node_modules/.bin/tsc -p tsconfig.build.json && node --test tests/mcp.test.mjs tests/runtime.test.mjs ../../scripts/mcp_spoken_completion.test.mjs",
+          "cwd": "/tmp/native-final-C2-hotel/packages/voice-core",
+          "result": "PASS",
+          "passed": 53,
+          "note": "existing dependency directory symlinked into pinned archive; source compiled from pinned tree"
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python /tmp/native-final-C2-scenarios.py",
+          "result": "PASS",
+          "passed": 8,
+          "scenarios": [
+            "live_rename_location_stable_device_key",
+            "name_vs_location_diacritics",
+            "66_matches_4_pages_no_duplicates",
+            "exact_token_tuple_no_fuzzy_toggle_or_stale_catalog",
+            "unknown_receipt_replay_one_submission",
+            "rediscovery_no_new_token_after_unknown",
+            "Ignoruj_even_enabled_true_hidden",
+            "outage_error_not_zero_matches"
+          ],
+          "cwd": ""
+        },
+        {
+          "command": "PATH=/Users/karelmartinek/.codex/worktrees/native-realtime-mcp/kajovo-hotel-monorepo/.venv/bin:$PATH PYTHONPATH=/tmp/native-final-C2-hotel/packages/voice-core-server/src /Users/karelmartinek/.codex/worktrees/native-realtime-mcp/kajovo-hotel-monorepo/.venv/bin/python -m pytest -q tests/test_voice_core.py tests/test_voice_core_tooling.py",
+          "cwd": "/tmp/native-final-C2-hotel/apps/kajovo-hotel-api",
+          "result": "PASS",
+          "passed": 25,
+          "warnings": 81
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_cutover.py",
+          "cwd": "/tmp/native-final-C2-agentha",
+          "source_ref": "c9c291f342eb947ef3dcc7886ad210e4db55724c",
+          "result": "PASS",
+          "passed": 44,
+          "note": "final test file obtained with git show at exact SHA; production scripts identical to preceding pinned tree"
+        }
+      ],
+      "official_sources": []
+    },
+    {
+      "area": "D",
+      "scope": "deployment",
+      "agent_id": "/root/review_a_protocol",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+      },
+      "evidence": "Private preflight, immutable releases, managed workers, transactional fencing, deadlines and exact-image rollback; independently examined final cumulative trees and relevant regression/failure paths.",
+      "report_sha256": "db46e4551ef76a6b015c4207c4e8c928dfd58fc7e0610903e77f309b262a1d4c",
+      "tests": [
+        {
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest tests/test_cutover.py tests/test_verify_mcp.py tests/test_independent_review.py -q",
+          "PASS": 93,
+          "FAIL": 0
+        },
+        {
+          "command": "hotel Python -m pytest apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py -q",
+          "PASS": 11,
+          "FAIL": 0
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python /tmp/native-final-D-faults.py",
+          "PASS": 18,
+          "FAIL": 0
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python /tmp/native-final-D-deadline-fixed.py",
+          "outcome": "PASS: late acceptance rejected, active phase retained"
+        },
+        {
+          "command": "/tmp/native-mcp-venv/bin/python /tmp/native-final-D-timeout-lock.py",
+          "outcome": "PASS: real verifier killed/waited and watchdog rolled back after real lock release"
+        },
+        {
+          "command": "test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance; test_actual_cleanup_preacceptance_guard_preserves_confirmed_archive_roots; test_retirement_failure_keeps_provenance_and_retry_finishes_missing_first_root",
+          "outcome": "PASS: all accepted cleanup, four preacceptance guards and interrupted retirement cases"
+        },
+        {
+          "command": "python -m pytest tests/test_cutover.py -k \"actual_accepted_cleanup or actual_cleanup_preacceptance or retirement_failure\" -q",
+          "PASS": 6,
+          "FAIL": 0,
+          "source_delta": "Only test_cutover.py changed; production source byte-identical to previously reviewed 7b18cea. Stronger actual cleanup fixture covers obsolete source, smart verification tree, two backup generations and obsolete images/anchors while retaining current source/image."
+        }
+      ],
+      "official_sources": []
+    },
+    {
+      "area": "E",
+      "scope": "legacy_absence",
+      "agent_id": "/root/final_e_cleanup",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+      },
+      "evidence": "Legacy source/config/process retirement, protected canonical data and resumable post-acceptance cleanup; independently examined final cumulative trees and relevant regression/failure paths.",
+      "report_sha256": "658b9c03ef3bde9abd2a3e428aa24ad0d469768c5a2ec96879f171b697f23785",
+      "tests": [
+        {
+          "command": "agentha-native-mcp/.venv/bin/python -m pytest -q tests/test_cutover.py tests/test_forensic_boundary.py (AGENTHA c9c291f exact final HEAD)",
+          "result": "PASS",
+          "count": 45,
+          "seconds": 0.46
+        },
+        {
+          "command": "python3 scripts/check_native_mcp_cutover.py (HOTEL exact final HEAD)",
+          "result": "PASS"
+        },
+        {
+          "command": "agentha-native-mcp/.venv/bin/python -m pytest --noconftest -q apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py apps/kajovo-hotel-api/tests/test_transaction_fence.py (HOTEL exact final HEAD)",
+          "result": "PASS",
+          "count": 17,
+          "seconds": 2.99
+        },
+        {
+          "command": "python3.12 /tmp/native-E-cleanup-fixed-repro.py",
+          "result": "PASS: independently mapped temporary filesystem confirms omitted archives now removed while canonical DATA remains"
+        }
+      ],
+      "official_sources": []
+    },
+    {
+      "area": "F",
+      "scope": "test_gaps",
+      "agent_id": "/root/final_f_test_gaps",
+      "result": "PASS",
+      "reviewed_fingerprints": {
+        "hotel": "70a23438dc0004f3650e167c1210f381088a18071a63fd162a5c7fc4014e969a",
+        "agentha": "668324b49c01d451f9650c0b216d4bd8d446b498987c9eb17aafc1fb2f773ad1"
+      },
+      "evidence": "Actual exception, reconnect, race, lifecycle and deployment/rollback test gaps; independently examined final cumulative trees and relevant regression/failure paths.",
+      "report_sha256": "3e2f80f9cebb8a103de7e7a51aba775e831327946bf48abf5edfeb361799e6ec",
+      "tests": [
+        {
+          "repo": "agentha",
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q",
+          "passed": 131,
+          "failed": 0,
+          "sha": "7b18cea99c65d277a8041a140d2d027b74671556"
+        },
+        {
+          "repo": "hotel",
+          "command": "NODE_V8_COVERAGE=/tmp/f-hotel-v8-final node --test packages/voice-core/tests/*.test.mjs scripts/mcp_authorization_guard.test.mjs scripts/mcp_spoken_completion.test.mjs",
+          "passed": 57,
+          "failed": 0,
+          "sha": "9a9b895ff27b6d12a9975668a710b71be81ed161",
+          "coverage_output": "/tmp/f-hotel-v8-final"
+        },
+        {
+          "repo": "hotel",
+          "command": "pytest -q test_voice_core.py test_voice_core_tooling.py test_github_deploy_via_ssh.py test_transaction_fence.py voice-core-server/tests/test_policy.py",
+          "passed": 72,
+          "failed": 0,
+          "sha": "9a9b895ff27b6d12a9975668a710b71be81ed161"
+        },
+        {
+          "repo": "agentha",
+          "command": "/tmp/native-mcp-venv/bin/python -m pytest -q tests/test_cutover.py -k 'actual_accepted_cleanup or actual_cleanup_preacceptance or retirement_failure'",
+          "passed": 6,
+          "failed": 0,
+          "deselected": 38,
+          "sha": "c9c291f342eb947ef3dcc7886ad210e4db55724c",
+          "note": "Only tests/test_cutover.py changed from previously fully tested 7b18cea. Independent targeted rerun verifies expanded fixture exercises source/archive/anchor/image cleanup and active-source/data/image retention."
+        }
+      ],
+      "official_sources": []
+    }
+  ],
+  "findings": [
+    {
+      "repo": "kajovo-hotel-monorepo",
+      "file": "scripts/verify_live_voice_mcp.mjs",
+      "symbol": "voice acceptance event observer and completion predicate",
+      "lines": "59,87-94",
+      "problem": "Spoken acceptance checks generated transcript plus any non-silent audio sample, then stops the call without tracking successful response completion or drained output playback.",
+      "reproduction": "Evaluate the exact line-87 waitForFunction predicate with fixture devices=[{name:\"test fixture\"}], spoken=\"test fixture\", audioPeak=2 and error=null, after transcript.done but before response.done or output_audio_buffer.stopped. It returns true. The next path clicks Stop and emits spoken_grounded_answer PASS.",
+      "consequence": "Production acceptance may truncate the spoken answer or pass before a later response failure; required spoken completion has not been proved.",
+      "id": "A-1",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Correlate successful grounded transcript, completed response and stopped playback; reject failed/cancelled/cleared responses.",
+      "regression_tests": [
+        "scripts/mcp_spoken_completion.test.mjs: transcript and partial RTP never prove spoken completion"
+      ],
+      "verified_by": [
+        "A"
+      ]
+    },
+    {
+      "repo": "kajovo-hotel-monorepo",
+      "file": "packages/voice-core/src/mcp.ts",
+      "line": 32,
+      "symbol": "McpLifecycle.handle / VoiceConsole approval prompt",
+      "problem": "Approval event arguments are discarded; UI shows only tool name. Every execute_device_action approval has the same visible description regardless of device/property/requested state.",
+      "reproduction": "Feed two mcp_approval_request items with name execute_device_action and different state_key arguments. Actual compiled McpLifecycle returns objects with only id/name; UI displays identical prompts. Locally reproduced using dist/mcp.js.",
+      "consequence": "User approves an actuator operation without seeing its target or requested change. ID/double-click guards do not establish informed authorization.",
+      "id": "B-1",
+      "severity": "HIGH",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Validate bounded approval context against imported schemas and show exact target/property/state without opaque credentials; malformed context blocks approval.",
+      "regression_tests": [
+        "packages/voice-core/tests/mcp.test.mjs: approval context keeps exact target and state and removes opaque credentials",
+        "packages/voice-core/tests/console.spec.ts: unverified approval details disable approve"
+      ],
+      "verified_by": [
+        "B"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/cutover.py",
+      "line": 97,
+      "symbol": "prepare signing key provisioning",
+      "problem": "Existing signing-key directory and file are chmodded but neither ownership enforced nor validated. Later chown targets only APP/CONTROL/PUBLIC.",
+      "reproduction": "Pre-existing SECRET directory and signing.key owned by service UID with modes0700/0600 retain that owner after the exact chmod operations. Local synthetic filesystem repro confirms chmod preserves non-root owner. No production secret accessed.",
+      "consequence": "Existing misowned authority remains accessible and writable by service user, violating root-only host-managed signing authority; service compromise can mint session/action credentials.",
+      "id": "B-2",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Require root-owned regular non-symlink authority with private directory/file modes before reading; never adopt an exposed key or rotate it during deploy.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_existing_nonroot_signing_authority_is_rejected_without_rotation",
+        "tests/test_cutover.py::test_signing_authority_owner_and_private_modes_fail_closed"
+      ],
+      "verified_by": [
+        "B"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "app/voice_policy.py",
+      "line": 17,
+      "symbol": "load_policy / HomeAssistantCapabilityService.snapshot",
+      "problem": "Enabled entries with blank, whitespace-only or Ignoruj classification pass validation and are both discoverable and executable.",
+      "scenario": "Using existing LiveClient fixture, replace lamp policy entry with enabled=true and device_type=\"\", \"   \", or \"Ignoruj\"; search returns count1 and exact off execute returns accepted in all three cases.",
+      "consequence": "Malformed/inconsistent manual policy can grant access to explicitly ignored or unclassified devices, violating authoritative fail-closed safety.",
+      "id": "C-1",
+      "severity": "HIGH",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "One classification invariant fails closed across search/state/execute for blank and ignored classifications regardless of enabled flag.",
+      "regression_tests": [
+        "tests/test_capabilities.py::test_enabled_flag_cannot_override_unclassified_or_ignored_policy"
+      ],
+      "verified_by": [
+        "C"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "app/inventory.py",
+      "line": 402,
+      "symbol": "_light_descriptors / _select_option",
+      "problem": "Slug-derived allowed-state keys are not injective; distinct HA effects/options can share identical state_key, so exact tuple cannot identify the requested state.",
+      "scenario": "Fake light.effect_list=[\"calm-night\",\"calm night\"] yields two allowed states both effect_calm_night. Select the second public state and execute exact tuple; mock HA receives effect=\"calm-night\" (first state), although second displayed label is calm night. Analogous select options differ only punctuation/diacritics/case, or map two raw aliases to same canonical key.",
+      "consequence": "Approved exact state executes a different HA action payload, defeating the exact device/property/state contract.",
+      "id": "C-2",
+      "severity": "HIGH",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Exact raw dynamic choices have deterministic digest-bound unique state keys; ambiguous exact bindings reject.",
+      "regression_tests": [
+        "tests/test_device_inventory.py::test_raw_choices_have_unique_bounded_stable_keys_and_current_value",
+        "tests/test_capabilities.py::test_execute_each_colliding_raw_choice_submits_only_its_discovered_payload"
+      ],
+      "verified_by": [
+        "C"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "app/inventory.py",
+      "line": 334,
+      "symbol": "_availability",
+      "problem": "Device aggregate availability treats HA unknown state as available, while _current_value marks it unavailable.",
+      "scenario": "_availability([{entity_id:\"light.test\"}], {\"light.test\":{state:\"unknown\"}}) returns available/active. Search availability=available therefore includes a device with only unknown properties.",
+      "consequence": "Availability filter and spoken grounding can claim a device is available despite no usable current state; mixed unknown/available devices are incorrectly fully available.",
+      "id": "C-3",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Unknown entities are unavailable in aggregate state and filters, consistent with individual properties.",
+      "regression_tests": [
+        "tests/test_capabilities.py::test_unknown_entity_states_align_device_availability_and_filters"
+      ],
+      "verified_by": [
+        "C"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/cutover.py",
+      "lines": "328-331",
+      "symbol": "rollback",
+      "problem": "Rollback is not retry-safe when previous canonical source was a directory.",
+      "scenario": "previous_mcp_directory=true and previous_mcp_path=/opt/home-assistant-mcp; restored directory already exists and backup/previous-mcp-source is absent. This happens before activation moved it, or after a first rollback restored it and failed later at compose/health. Retry executes CANONICAL.symlink_to(previous_mcp_path) over existing directory.",
+      "reproduction": "/tmp/review-d-repro.py with fake operations: FileExistsError restored_directory_exists=True phase=active",
+      "consequence": "Persistent watchdog retries stop before restoring legacy unit, Nginx and exact hotel runtime; a transient rollback failure becomes unrecoverable automatically.",
+      "id": "D-1",
+      "severity": "HIGH",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Recognize an already restored real directory and safely retry later recovery failures instead of attempting a symlink over it.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_rollback_restores_routes_and_pinned_hotel_images_without_live_ha_calls"
+      ],
+      "verified_by": [
+        "D"
+      ],
+      "duplicate_reports": [
+        "F1"
+      ]
+    },
+    {
+      "repo": "agentha + kajovo-hotel-monorepo",
+      "file": "agentha/scripts/cutover.py; hotel/infra/ops/deploy-production.sh",
+      "lines": "309-366,370-391; hotel451-453",
+      "symbol": "rollback/finalize vs hotel deployment runtime mutations",
+      "problem": "Rollback is not fenced against concurrent deployment or final acceptance.",
+      "scenario": "Pause hotel deploy in long-running build. Rollback deadline fires, restores exact images/old routes/backend, marks rolled_back and disables timer. Resume deploy: it unconditionally force-recreates candidate containers and syncs candidate Nginx. Equally, finalize and deadline rollback can both pass their initial active-state check before either changes state.",
+      "reproduction": "Deterministic interleaving of actual reachable commands: build paused -> rollback docker-compose known-good -> state rolled_back -> hotel line451 candidate up -> line453 candidate nginx reload. No transaction lock, process-group cancellation or phase guard is present in either mutation path.",
+      "consequence": "Lasting half-cutover: candidate hotel/Nginx with canonical MCP stopped and old backend active, after watchdog protection has been disabled. Concurrent finalize can also delete rollback source while rollback is using it.",
+      "id": "D-2",
+      "severity": "HIGH",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Root serialization, revoked transaction state, managed process-group termination and a shared runtime fence prevent late deployment from republishing after rollback.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_rollback_cancels_worker_before_exclusive_runtime_restore",
+        "tests/test_cutover.py::test_watchdog_serializes_with_acceptance_under_real_process_lock",
+        "apps/kajovo-hotel-api/tests/test_transaction_fence.py"
+      ],
+      "verified_by": [
+        "D"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/verify_mcp.py",
+      "lines": "25-34",
+      "symbol": "verify",
+      "problem": "Private production preflight currently proves only one search, not repeated HA-backed calls or get_device_state.",
+      "scenario": "A candidate whose HA transport fails after first search passes this preflight; no state request or second search is attempted in the same SDK session.",
+      "consequence": "The explicit required client-lifetime gate is absent and a previously observed premature-client-close class can reach destructive cutover.",
+      "id": "D-3",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Run search, exact state and repeated search in the same authenticated SDK session; later client failures cannot yield preflight PASS.",
+      "regression_tests": [
+        "tests/test_verify_mcp.py::test_preflight_repeats_live_reads_in_one_session_and_returns_aggregate_only",
+        "tests/test_verify_mcp.py::test_closed_or_failed_client_on_later_read_cannot_report_preflight_pass"
+      ],
+      "verified_by": [
+        "D"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/cutover.py",
+      "lines": [
+        405,
+        410
+      ],
+      "symbol": "cleanup",
+      "title": "Final cleanup misses an observed complete legacy verification checkout",
+      "scenario": "After successful finalize, cleanup removes /opt/home-assistant-agent and /home/ha-agent-deploy/agentha only. The production host also has /home/ha-agent-deploy/smart-verify.Wccqx5 containing app/agent.py and mcp-handler/manifest.json, which is outside all deletion roots.",
+      "consequence": "Replaced OpenAI agent and MCP handler source/dependencies remain physically installed after claimed final cleanup.",
+      "id": "E-1",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Retire confirmed verification/staging roots after acceptance while preserving canonical source and data.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance"
+      ],
+      "verified_by": [
+        "E"
+      ]
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/cutover.py",
+      "lines": [
+        413,
+        426
+      ],
+      "symbol": "cleanup",
+      "title": "Final cleanup only removes the latest rollback generation and its anchors",
+      "scenario": "Host has prior rollback directories 20261001T101053207081Z, 20261001T112059339250Z, 20261001T084757Z and 20261001T083834Z with old route/config/env artifacts. Six stopped mcp-rollback hotel anchor containers from the first two generations remain. cleanup loads anchors.json exclusively from state[backup] and deletes only that backup.",
+      "consequence": "Prior legacy units/routes/env snapshots survive final PASS. Historical anchors can keep replaced hotel images referenced, causing hotel cleanup_accepted_release.py lines 30-34 to skip their deletion.",
+      "id": "E-2",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Retire every coordinator-owned obsolete backup generation and image anchor; prune captured obsolete images only when unused.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance",
+        "apps/kajovo-hotel-api/tests/test_github_deploy_via_ssh.py::test_post_acceptance_cleanup_preserves_current_and_only_removes_unused_captured_images"
+      ],
+      "verified_by": [
+        "E"
+      ]
+    },
+    {
+      "repo": "HOTEL",
+      "file": "packages/voice-core/src/runtime.ts",
+      "lines": [
+        132,
+        142
+      ],
+      "symbol": "VoiceRealtimeClient.handle",
+      "kind": "proven unhandled exception branch missing test",
+      "untested_path": "MCP completion requires followup and channel.readyState remains open, but channel.send throws.",
+      "scenario_risk": "McpLifecycle has already set followed=true at mcp.ts:44–45. runtime.ts:137 sends response.create without a catch. A send exception escapes the event handler, leaves microphone/peer active, and consumes the sole followup, so the tool result never reaches a spoken continuation. Approval send already catches failures at runtime.ts:150–151, but followup does not.",
+      "test_evidence": [
+        {
+          "file": "packages/voice-core/tests/runtime.test.mjs",
+          "lines": [
+            13,
+            23
+          ],
+          "detail": "Fake send always succeeds; no runtime MCP followup transport assertion."
+        },
+        {
+          "file": "packages/voice-core/tests/mcp.test.mjs",
+          "lines": [
+            15,
+            33
+          ],
+          "detail": "Only pure lifecycle followup boolean, disconnected from wire and exception cleanup."
+        }
+      ],
+      "regression_test": "Drive session.created plus mcp_call and response.done through runtime; fake channel.send throws for response.create while readyState is open. Assert explicit connection_failed/reconnect outcome, cleanup of stream/peer/audio and no unhandled exception; also assert exactly one response.create on success.",
+      "id": "F-2",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Catch follow-up send failure, release resources and never retransmit a consumed continuation.",
+      "regression_tests": [
+        "packages/voice-core/tests/runtime.test.mjs: failed MCP followup send closes session and never retries the consumed turn"
+      ],
+      "verified_by": [
+        "F"
+      ]
+    },
+    {
+      "repo": "HOTEL",
+      "file": "packages/voice-core/src/runtime.ts",
+      "lines": [
+        104,
+        109
+      ],
+      "symbol": "VoiceRealtimeClient.connect peer.ontrack",
+      "kind": "test gap without reproduced source defect",
+      "untested_path": "Actual remote track/playback route, rejected audio.play, audio.onerror, stale ontrack after reconnect, meter node lifetimes.",
+      "scenario_risk": "Current browser and unit tests can pass without any remote track or playback ever arriving. A regression that drops incoming audio, never calls play or releases neither nodes nor srcObject would keep assistant-speaking UI tests green because they inject output_audio_buffer.started only.",
+      "test_evidence": [
+        {
+          "file": "packages/voice-core/tests/runtime.test.mjs",
+          "lines": [
+            7,
+            23
+          ],
+          "detail": "Fake peer never calls ontrack; fake AudioContext has only resume and close."
+        },
+        {
+          "file": "packages/voice-core/tests/console.spec.ts",
+          "lines": [
+            13,
+            24
+          ],
+          "detail": "Fake peer never delivers ontrack; fake AudioContext lacks analyser/source implementation."
+        },
+        {
+          "file": "packages/voice-core/tests/console.spec.ts",
+          "lines": [
+            47,
+            50
+          ],
+          "detail": "Speaking UI asserted by synthetic data-channel event."
+        }
+      ],
+      "regression_test": "Emit ontrack with fake remote stream and full analyser/source doubles; assert audio.srcObject and play, successful meter updates, stop/reconnect disconnects nodes and clears srcObject. Reject play and trigger audio.onerror: assert playback_failed with complete release. Invoke saved old ontrack after reconnect: assert it cannot reattach old audio.",
+      "id": "F-3",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Behavioral remote-track tests cover rejected playback, audio errors, stream fallback, stale callbacks and graph/resource cleanup.",
+      "regression_tests": [
+        "packages/voice-core/tests/runtime.test.mjs: remote audio reject reports playback failure and releases graph",
+        "packages/voice-core/tests/runtime.test.mjs: reconnect disconnects old playback graph and rejects late tracks and play failures"
+      ],
+      "verified_by": [
+        "F"
+      ]
+    },
+    {
+      "repo": "AGENTHA",
+      "file": "scripts/cutover.py",
+      "lines": [
+        388,
+        391
+      ],
+      "symbol": "finalize / cleanup",
+      "kind": "untested post-acceptance partial failure recovery",
+      "untested_path": "Cleanup command fails after durable accepted phase and rollback timer disabled.",
+      "scenario_risk": "finalize persists accepted and disables deadline before invoking cleanup. CLI exception handler invokes rollback, which immediately returns for accepted phase. Retrying finalize raises no_active_transaction. Thus a transient docker-rm/cleanup subprocess failure leaves partially retired runtime/backup artifacts with no idempotent finalize retry covered by tests. This is an operational recovery gap, not proof that the accepted runtime is wrong.",
+      "test_evidence": [
+        {
+          "file": "tests/test_cutover.py",
+          "lines": [
+            54,
+            68
+          ],
+          "detail": "Only rejects unaccepted cleanup/missing proof."
+        },
+        {
+          "file": "tests/test_cutover.py",
+          "lines": [
+            206,
+            218
+          ],
+          "detail": "Only rejects wrong exact release; no successful finalize plus cleanup failure/retry."
+        }
+      ],
+      "regression_test": "Exercise complete successful finalize with safe fakes. Inject each cleanup external failure after one earlier destructive step succeeds, then rerun the supported recovery phase and assert eventual completion, current runtime/source preserved, artifacts removed exactly once, and state accurately exposes accepted-but-cleanup-incomplete until completion.",
+      "id": "F-4",
+      "severity": "MEDIUM",
+      "phase": "initial cumulative review",
+      "status": "resolved",
+      "fix": "Persist accepted_cleanup_pending and permit idempotent cleanup retry; never roll back completed acceptance due to retirement failure.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_accepted_cleanup_failure_resumes_without_verification_or_rollback",
+        "tests/test_cutover.py::test_retirement_failure_keeps_provenance_and_retry_finishes_missing_first_root"
+      ],
+      "verified_by": [
+        "F"
+      ]
+    },
+    {
+      "repo": "hotel",
+      "file": "scripts/mcp_spoken_completion.mjs",
+      "line": 9,
+      "symbol": "SpokenCompletion.handle / ready",
+      "security": false,
+      "correctness": true,
+      "production_reliability": true,
+      "title": "Late MCP completion restores interrupted parent grounding after barge-in",
+      "repro": "Emit response.done(parent,status completed,output [{type:mcp_call,id:call}]); emit input_audio_buffer.speech_started; emit late response.output_item.done(parent,item call search_devices,args {name:recepce},output {status:ok,devices:[synthetic lamp]}); emit response.created(new-user-turn); matching names transcript plus sampled playback and completed/stopped new-user-turn causes ready(devices) true.",
+      "impact": "The native guide explicitly permits response.done before MCP completion. In that supported ordering, a new user interruption invalidates the pending parent in actual McpLifecycle but not in spoken acceptance: the late old result can falsely ground the next user turn.",
+      "partial_fix_verified": "Original, pending-parent and cleared-parent false-positive reproductions all now rejected. The remaining late-result-after-barge-in reproduction still returns true.",
+      "regression_tests": [
+        "scripts/mcp_spoken_completion.test.mjs: preexisting unrelated playback cannot borrow successful search grounding",
+        "scripts/mcp_spoken_completion.test.mjs: followup requires completed parent and every correlated call terminal",
+        "scripts/mcp_spoken_completion.test.mjs: late old MCP completion after barge-in cannot ground a new user turn"
+      ],
+      "verified_by": [
+        "A"
+      ],
+      "resolution_evidence": "Independent direct reproductions: original preexisting/cancelled-parent, pending-parent, cleared-parent and response.done-before-late-tool barge-in all false; completed-parent valid follow-up true. Actual browser runtime wire regression old follow-up 0 and new legitimate response.create exactly 1 passed.",
+      "id": "A-001",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Bind semantic successful name-filtered search to its parent or a new follow-up after completed parent/all-call boundary; invalidate interrupted chains and preexisting unrelated responses."
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/cutover.py",
+      "symbol": "finalize",
+      "lines": "530-550",
+      "problem": "Absolute acceptance deadline is checked only before the potentially blocking final MCP verifier, while finalize holds the transaction lock. Verification may complete after the deadline and still disable rollback and publish acceptance.",
+      "reproduction": "/tmp/native-final-D-deadline-repro.py executes actual finalize with successful mock runtime/proof/key checks. Clock initially deadline minus one second; final subprocess advances it to deadline plus 120 seconds. finalize completes and publishes accepted. Existing real-process watchdog test establishes the watchdog waits on the same lock.",
+      "consequence": "A transaction still unaccepted at its configured deadline can evade automatic rollback; stalled verification blocks watchdog beyond its deadline.",
+      "regression_test": "Clock-crossing successful verifier must never publish accepted/accepted_cleanup_pending or call cleanup; timed-out verifier must release lock and allow watchdog rollback.",
+      "regression_tests": [
+        "tests/test_cutover.py::test_final_verifier_is_bounded_and_cannot_accept_after_deadline"
+      ],
+      "verified_by": [
+        "D"
+      ],
+      "resolution_evidence": "Actual prior clock-crossing reproduction now raises cutover_acceptance_deadline_expired and retains active phase. Independent real sleeping subprocess was killed and waited on timeout; real watchdog process remained blocked while transaction lock held and performed rollback after lock release.",
+      "id": "D-FINAL-1",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Bound the final verifier to the remaining rollback deadline and check the deadline again immediately before acceptance commit."
+    },
+    {
+      "repo": "agentha",
+      "file": "scripts/cutover.py",
+      "line": 601,
+      "symbol": "cleanup",
+      "repro": "Run /tmp/native-E-cleanup-repro.py. accepted_cleanup_pending cleanup removes OLD and smart-verify.*, but does not visit /var/backups/smart-technologies or /var/backups/home-assistant-mcp-image-preflight. Passive SSH metadata confirms /var/backups/smart-technologies/20260930T234812Z/{ha-runtime-source.tar.gz,ha-staging-source.tar.gz}; tar path listing confirms ./app/agent.py and ./app/action_executor.py in both archives. Passive metadata also confirms 166456320-byte /var/backups/home-assistant-mcp-image-preflight/hotel-images.tar with hotel-images.json.",
+      "impact": "Post-acceptance cleanup cannot satisfy complete known legacy-generation retirement: old OpenAI agent source archives/env/nginx snapshots and obsolete standalone hotel image preflight archive survive. Their current pre-cutover existence is expected and is not an active-runtime defect. Canonical persistent DATA and provenance history must remain preserved.",
+      "security": false,
+      "correctness": false,
+      "production_reliability": true,
+      "regression_tests": [
+        "tests/test_cutover.py::test_actual_accepted_cleanup_retires_confirmed_archives_and_preserves_data_provenance",
+        "tests/test_cutover.py::test_actual_cleanup_preacceptance_guard_preserves_confirmed_archive_roots",
+        "tests/test_cutover.py::test_retirement_failure_keeps_provenance_and_retry_finishes_missing_first_root"
+      ],
+      "verified_by": [
+        "E"
+      ],
+      "id": "E-001",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Delete the two confirmed legacy archive roots only after acceptance and canonical data snapshot; retain private aggregate provenance and support interrupted/missing-root retry."
+    },
+    {
+      "repo": "hotel",
+      "file": "packages/voice-core/src/mcp.ts",
+      "line": 87,
+      "symbol": "McpLifecycle.handle / turn",
+      "untested_path": "response.created(old) -> input_audio_buffer.speech_started -> first response.mcp_call.in_progress(old) -> response.done(completed,old) -> response.output_item.done(old)",
+      "risk": "Response.created does not allocate a turn. Barge-in only cancels turns already allocated by an MCP event or response.done. A pre-barge-in response whose first MCP event arrives afterwards is allocated with cancelled=false and emits followup=true after completion; VoiceRealtimeClient then sends response.create while the user is speaking, resuming an interrupted old response.",
+      "evidence": "Local Node fake against dist/mcp.js (source hash matched requested source) produced followup:true for final event. Existing mcp.test.mjs:29-33 allocates call(a) and completes response.done before speech_started, so that test cannot detect this ordering.",
+      "recommended_test": "Add a lifecycle regression with response.created before speech_started but MCP progress/completion afterwards; assert no followup. Exercise same sequence through VoiceRealtimeClient and assert no response.create wire item. Also assert a genuinely new response.created after speech_started may follow up normally.",
+      "recommended_fix": "Allocate/track every response on response.created so barge-in invalidates responses even before their first MCP call; retain per-response cancellation when later events register calls.",
+      "security": false,
+      "correctness": true,
+      "production_reliability": true,
+      "regression_tests": [
+        "packages/voice-core/tests/mcp.test.mjs: barge-in cancels a created response before its first delayed MCP call",
+        "packages/voice-core/tests/runtime.test.mjs: interruption before delayed first MCP call never sends an old followup"
+      ],
+      "verified_by": [
+        "F"
+      ],
+      "resolution_evidence": "Independent local sequence repeats original failing ordering against final dist/mcp.js: old response yields zero followups, newly created response yields exactly one, duplicate old/new completions yield zero additional followups. Committed regression includes actual VoiceRealtimeClient wire assertions for zero old response.create and exactly one new response.create.",
+      "id": "F-01",
+      "severity": "MEDIUM",
+      "phase": "iterative final re-review",
+      "status": "resolved",
+      "fix": "Register responses on response.created so interruption before the first delayed MCP call cancels that old response permanently. New legitimate response still gets exactly one follow-up."
+    }
+  ],
+  "open_counts": {
+    "CRITICAL": 0,
+    "MEDIUM": 0,
+    "HIGH": 0,
+    "LOW": 0
+  },
+  "resolved_counts": {
+    "CRITICAL": 0,
+    "MEDIUM": 13,
+    "HIGH": 5,
+    "LOW": 0
+  },
+  "production_acceptance": "NOT_RUN",
+  "scope_limitations": "This is independent Codex review, not human review or production acceptance. Actual private HA, systemd/Docker, canonical transport and grounded Voice acceptance remain mandatory before destructive cleanup.",
+  "source_binding": "All tracked source/tests/workflows/instructions/docs are bound. Only these two evidence documents are excluded to avoid self-referential hashing. Report-only commits and merges must retain this exact complete source fingerprint."
+}

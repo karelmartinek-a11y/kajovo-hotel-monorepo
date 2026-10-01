@@ -238,7 +238,7 @@ jobs:
           python -m pip install -e ./apps/kajovo-hotel-api[dev]
 
       - name: Ruff lint
-        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py
+        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py scripts/check_release_review.py scripts/cleanup_accepted_release.py scripts/independent_review.py
 
   typecheck:
     runs-on: ubuntu-latest
@@ -309,6 +309,8 @@ jobs:
       - run: corepack enable && corepack prepare pnpm@10.34.4 --activate
       - run: pnpm install --frozen-lockfile
       - run: python -m pip install ./packages/voice-core-server pytest
+      - name: Independent forensic review covers exact candidate source
+        run: python scripts/independent_review.py --repo hotel
       - run: pnpm ci:voice-core
       - run: python scripts/verify_voice_core_copy_out.py
       - run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit

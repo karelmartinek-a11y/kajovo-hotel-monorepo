@@ -52,6 +52,17 @@ preserve_dir="$(mktemp -d)"
 vars_json="${upload_home}/kajovo-deploy-vars.json"
 release_owner="$(id -un)"
 release_group="$(id -gn)"
+# Release preparation also shares the runtime fence, preventing retries from
+# rewriting source/environment underneath a running managed deployment.
+exec 8</etc/home-assistant-mcp-public/runtime.lock
+flock -x 8
+python3 - <<'PYPREPARE'
+import json, os
+from pathlib import Path
+state = json.loads(Path('/etc/home-assistant-mcp-public/transaction.json').read_text())
+if state.get('phase') != 'active' or state.get('hotel_sha') != os.environ['DEPLOY_SHA'] or state.get('hotel_worker') == 'PASS':
+    raise SystemExit('Release preparation transaction revoked or already completed')
+PYPREPARE
 can_sudo=0
 if sudo -n true >/dev/null 2>&1; then
   can_sudo=1
@@ -140,16 +151,32 @@ PY
 rm -rf "$preserve_dir"
 rm -f "$release_archive"
 rm -f "$vars_json"
-export SKIP_GIT_SYNC=true
-export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
-"$deploy_root/infra/ops/deploy-production.sh"
-cd "$deploy_root"
-export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
-docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
-docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
-docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
-docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=80 || true
-docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=80 || true
+# Activation owns the deploy service. Upload only signals the exact release ready.
+printf '%s\\n' "$DEPLOY_SHA" > "$deploy_root/.coordinated-ready"
+flock -u 8
+exec 8<&-
+python3 - <<'PYWORKER'
+import json
+import os
+import time
+from pathlib import Path
+status = Path('/etc/home-assistant-mcp-public/transaction.json')
+expected = os.environ['DEPLOY_SHA']
+artifact = Path(os.environ['DEPLOY_ROOT']) / 'artifacts/deploy-runtime/latest.json'
+for _ in range(1800):
+    state = json.loads(status.read_text())
+    if state.get('hotel_sha') != expected or state.get('phase') not in {'active', 'accepted_cleanup_pending', 'accepted'}:
+        raise SystemExit('Coordinated hotel deployment revoked')
+    if state.get('hotel_worker') == 'PASS' and artifact.exists():
+        payload = json.loads(artifact.read_text())
+        if payload.get('sha') != expected:
+            raise SystemExit('Coordinated runtime artifact SHA mismatch')
+        print('Managed exact SHA hotel deployment PASS')
+        break
+    time.sleep(1)
+else:
+    raise SystemExit('Managed hotel deployment timeout')
+PYWORKER
 """
 
 
@@ -234,6 +261,8 @@ df -h "$upload_home"
 # by the remote deploy script immediately after extraction.
 find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz' -delete
 
+exec 8</etc/home-assistant-mcp-public/runtime.lock
+flock -x 8
 # Preserve all release trees/images until coordinated acceptance. Rollback images
 # are additionally anchored by stopped containers created by the MCP coordinator.
 docker builder prune -af
