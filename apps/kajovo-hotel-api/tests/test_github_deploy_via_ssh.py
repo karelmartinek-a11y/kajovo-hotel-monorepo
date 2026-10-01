@@ -122,6 +122,11 @@ def test_release_review_is_independent_of_green_ci(monkeypatch):
     import pytest
     with pytest.raises(AssertionError, match='completed_head_review_required'):
         review.verify('new', '123')
+    original_api = api
+    for author, commit in [('karelmartinek-a11y', 'topic'), ('copilot-pull-request-reviewer[bot]', 'old-topic')]:
+        monkeypatch.setattr(review, 'api', lambda path: [{'commit_id': commit, 'state': 'COMMENTED', 'user': {'login': author}}] if path.endswith('/reviews') else original_api(path))
+        with pytest.raises(AssertionError, match='completed_head_review_required'):
+            review.verify('new', '123')
 
 
 def test_post_acceptance_cleanup_refuses_to_touch_rollback_early(tmp_path, monkeypatch):

@@ -17,9 +17,10 @@ def verify(sha, pr):
     assert pull['merged'] and pull['merge_commit_sha'] == sha, 'reviewed_release_required'
     reviews = api(f'repos/{repo}/pulls/{pr}/reviews')
     assert any(r['commit_id'] == pull['head']['sha'] and r['state'] in ['APPROVED', 'COMMENTED']
+               and r['user']['login'] == 'copilot-pull-request-reviewer[bot]'
                for r in reviews), 'completed_head_review_required'
     for number in {122, int(pr)}:
-        query = 'query { repository(owner:"karelmartinek-a11y",name:"kajovo-hotel-monorepo") { pullRequest(number:%d) { reviewThreads(first:100) { nodes { isResolved } pageInfo { hasNextPage } } } } }' % number
+        query = 'query { repository(owner:"karelmartinek-a11y",name:"kajovo-hotel-monorepo") { pullRequest(number:NUMBER) { reviewThreads(first:100) { nodes { isResolved } pageInfo { hasNextPage } } } } }'.replace('NUMBER', str(number))
         data = json.loads(subprocess.check_output(['gh', 'api', 'graphql', '-f', 'query=' + query]))
         threads = data['data']['repository']['pullRequest']['reviewThreads']
         assert not threads['pageInfo']['hasNextPage'], 'review_pagination_required'
