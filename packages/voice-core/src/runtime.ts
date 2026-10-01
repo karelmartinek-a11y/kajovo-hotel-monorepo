@@ -147,7 +147,8 @@ export class VoiceRealtimeClient {
     // Consume the rendered request before sending or notifying subscribers.
     const next = this.mcp.resolveApproval(approvalId);
     this.snapshot = {...this.snapshot, approval: next};
-    this.channel.send(JSON.stringify({type: 'conversation.item.create', item: {id: `mcp_approval_${crypto.randomUUID().replaceAll('-', '')}`, type: 'mcp_approval_response', approval_request_id: approvalId, approve: approved}}));
+    try {this.channel.send(JSON.stringify({type: 'conversation.item.create', item: {id: `mcp_approval_${crypto.randomUUID().replaceAll('-', '')}`, type: 'mcp_approval_response', approval_request_id: approvalId, approve: approved}}));}
+    catch {this.fail('connection_failed'); return;}
     this.subscribers.forEach(listener => listener());
   }
   private meters(remote: MediaStream) {

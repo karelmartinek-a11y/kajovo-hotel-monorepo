@@ -106,7 +106,6 @@ def test_absent_mcp_url_has_environment_specific_compose_default(monkeypatch):
 
 
 def test_release_review_is_independent_of_green_ci(monkeypatch):
-    module = _load_deploy_module()
     script_path = Path(__file__).resolve().parents[3] / 'scripts/check_release_review.py'
     spec = importlib.util.spec_from_file_location('release_review', script_path)
     review = importlib.util.module_from_spec(spec)
@@ -123,3 +122,16 @@ def test_release_review_is_independent_of_green_ci(monkeypatch):
     import pytest
     with pytest.raises(AssertionError, match='completed_head_review_required'):
         review.verify('new', '123')
+
+
+def test_post_acceptance_cleanup_refuses_to_touch_rollback_early(tmp_path, monkeypatch):
+    path = Path(__file__).resolve().parents[3] / 'scripts/cleanup_accepted_release.py'
+    spec = importlib.util.spec_from_file_location('accepted_cleanup', path)
+    cleanup = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cleanup)
+    state = tmp_path / 'state.json'
+    state.write_text(json.dumps({'phase': 'active'}))
+    monkeypatch.setattr(cleanup.subprocess, 'check_output', lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('early Docker access')))
+    import pytest
+    with pytest.raises(RuntimeError, match='final_acceptance_required_before_prune'):
+        cleanup.cleanup(state)

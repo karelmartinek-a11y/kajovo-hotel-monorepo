@@ -113,8 +113,8 @@ def test_timeout_and_bad_success_are_sanitized():
 def test_mcp_validation_error_never_discloses_credentials(patch, caplog):
     from voice_core_server.contracts import McpServerConfig
     canary = 'Bearer CANARY-MCP-SENSITIVE-INPUT-0123456789'
-    values = dict(server_label='safe', server_url='https://example.test/mcp',
-                  authorization=canary, allowed_tools=['read'])
+    values = {'server_label': 'safe', 'server_url': 'https://example.test/mcp',
+              'authorization': canary, 'allowed_tools': ['read']}
     values.update(patch)
     with pytest.raises(ValidationError) as raised:
         McpServerConfig(**values)

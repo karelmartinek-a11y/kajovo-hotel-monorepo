@@ -10,7 +10,7 @@ function host({permission, create} = {}) {
     async getUserMedia() {if (permission) throw permission; const track = {readyState: 'live', enabled: true, stop() {this.readyState = 'ended'; this.stopped = true;}}; tracks.push(track); return {getTracks: () => [track], getAudioTracks: () => [track]};},
     createContext() {const context = {resume: async () => {}, close: async () => {context.closed = true;}}; contexts.push(context); return context;},
     createAudio() {const audio = {setAttribute() {}, play: async () => {}, pause() {audio.paused = true;}, removeAttribute() {}, load() {}}; audios.push(audio); return audio;},
-    createPeer() {const channel = {readyState: 'open', sent: [], send(value) {this.sent.push(JSON.parse(value));}, close() {this.closed = true;}};
+    createPeer() {const channel = {readyState: 'open', sent: [], sentRaw: [], send(value) {this.sentRaw.push(value); this.sent.push(JSON.parse(value));}, close() {this.closed = true;}};
       const peer = {channel, addTrack() {}, createDataChannel: () => channel,
         createOffer: async () => ({sdp: 'v=0 offer'}), setLocalDescription: async () => {},
         setRemoteDescription: async () => {channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'connected'})});},
@@ -137,6 +137,7 @@ for (const approved of [true, false]) {
     const [wire] = h.peers[0].channel.sent;
     assert.match(wire.item.id, /^mcp_approval_[a-f0-9]{32}$/);
     assert.deepEqual(wire, {type: 'conversation.item.create', item: {id: wire.item.id, type: 'mcp_approval_response', approval_request_id: 'A', approve: approved}});
+    assert.equal(h.peers[0].channel.sentRaw[0], JSON.stringify({type: 'conversation.item.create', item: {id: wire.item.id, type: 'mcp_approval_response', approval_request_id: 'A', approve: approved}}));
     assert.equal(h.peers[0].channel.sent.length, 1);
     assert.equal(h.client.getSnapshot().approval.id, 'B');
     h.client.approve('B', approved);
