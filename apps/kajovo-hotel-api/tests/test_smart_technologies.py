@@ -648,3 +648,18 @@ def test_revision_metadata_is_valid_on_search_and_overview():
         if operation == "operation_status":
             payload["request_id"] = "original-request"
         assert SmartArguments.model_validate(payload).catalog_revision == "r1"
+
+
+def test_acceptance_restore_waits_for_observed_state_without_replaying_control(monkeypatch):
+    from scripts.voice_smart_live_smoke import wait_for_light_restore
+    async def scenario():
+        calls = []
+        async def read(payload):
+            calls.append(payload)
+            return {"rows": [43], "devices": [[None, None, None, [], [], [["r1", "vypnuto" if len(calls) == 1 else "zapnuto"]], [], None]]}, []
+        async def no_delay(seconds):
+            assert seconds == 1
+        monkeypatch.setattr(asyncio, "sleep", no_delay)
+        await wait_for_light_restore(read, "r1", 43, "r1", "zapnuto")
+        assert calls == [{"operation": "read", "catalog_revision": "r1", "rows": [43]}] * 2
+    asyncio.run(scenario())

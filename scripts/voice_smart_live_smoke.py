@@ -4,10 +4,24 @@ import asyncio
 import logging
 import os
 import sys
+import json
+import tempfile
 import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+async def wait_for_light_restore(call, revision, row_id, state_function, original):
+    """Explicit acceptance readback; accepted sends are not synchronous physical changes."""
+    for attempt in range(20):
+        observed, _ = await call({"operation": "read", "catalog_revision": revision, "rows": [row_id]})
+        device = observed["devices"][observed["rows"].index(row_id)]
+        if dict(device[5])[state_function] == original:
+            return
+        if attempt < 19:
+            await asyncio.sleep(1)
+    raise RuntimeError("approved_light_restore_unconfirmed")
 
 
 async def guarded_browser() -> int:
@@ -41,6 +55,13 @@ async def guarded_browser() -> int:
             print("BLOCKED: original light state is not known")
             return 2
         restore_action = "vypnout" if original == "vypnuto" else "zapnout"
+        rid = "acceptance-restore-" + uuid.uuid4().hex
+        fd, marker_name = tempfile.mkstemp(prefix="hotel-voice-light-restore-", suffix=".json")
+        marker = Path(marker_name)
+        with os.fdopen(fd, "w") as file:
+            json.dump({"request_id": rid, "session_id": session, "row": row_id,
+                       "catalog_revision": details["catalog_revision"], "original_state": original,
+                       "restore_action": restore_action}, file)
         status = 2
         try:
             process = await asyncio.create_subprocess_exec(
@@ -57,7 +78,6 @@ async def guarded_browser() -> int:
             status = await process.wait()
         finally:
             # Separate, explicit acceptance read verifies the restore guard; the voice adapter never reads after control.
-            rid = "acceptance-restore-" + uuid.uuid4().hex
             payload = {"operation": "control", "catalog_revision": details["catalog_revision"], "rows": [row_id], "action": restore_action, "request_id": rid}
             try:
                 restored, _ = await call(payload)
@@ -65,10 +85,8 @@ async def guarded_browser() -> int:
                 restored, _ = await call({"operation": "operation_status", "request_id": rid})
             if not (restored.get("summary", {}).get("accepted") or any(r.get("status") == "accepted" for r in restored.get("results", []))):
                 raise RuntimeError("approved_light_restore_send_unconfirmed")
-            observed, _ = await call({"operation": "read", "catalog_revision": details["catalog_revision"], "rows": [row_id]})
-            device = observed["devices"][observed["rows"].index(row_id)]
-            if dict(device[5])[state_function] != original:
-                raise RuntimeError("approved_light_restore_unconfirmed")
+            await wait_for_light_restore(call, details["catalog_revision"], row_id, state_function, original)
+            marker.unlink()
             print("PASS: approved light restored to its original observed state")
         return status
 
