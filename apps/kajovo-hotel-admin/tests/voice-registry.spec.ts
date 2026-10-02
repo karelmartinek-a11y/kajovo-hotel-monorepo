@@ -20,7 +20,9 @@ test('read-only exact proposal uses real owner-scoped API and stops polling with
   await expect(page.getByText('Klíč je uložen.')).toBeVisible();
   await page.getByRole('button', {name: 'Zahájit hovor'}).click();
   await expect(panel.getByRole('status')).toContainText('Potvrďte tento návrh hlasem');
-  await expect(panel.locator('li')).toHaveCount(3);
+  await expect(panel.locator('li')).toHaveCount(5);
+  await expect(panel).toContainText('řádek 89, původní místnost Testovna A');
+  await expect(panel).toContainText('řádek 90, původní místnost Testovna B');
   await expect(panel).toContainText('protected_members');
   await expect(panel).toContainText('Zařízení zůstanou zachována');
   await expect(panel.getByRole('button')).toHaveCount(0);
@@ -28,6 +30,12 @@ test('read-only exact proposal uses real owner-scoped API and stops polling with
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await panel.scrollIntoViewIfNeeded();
   await page.screenshot({path: info.outputPath('registry-proposal.png'), fullPage: true});
+  const last = panel.locator('li').last();
+  await last.evaluate(element => element.scrollIntoView({block: 'center'}));
+  const target = await last.boundingBox(), navigation = await page.getByTestId('admin-bottom-navigation').boundingBox();
+  expect(target!.y).toBeGreaterThan(0);
+  expect(target!.y + target!.height).toBeLessThanOrEqual(navigation!.y);
+  await page.screenshot({path: info.outputPath('registry-last-target.png')});
   await page.getByRole('button', {name: 'Ukončit hovor'}).click();
   await expect(panel).toContainText('během hlasového hovoru');
   const stopped = reads;

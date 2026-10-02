@@ -118,11 +118,17 @@ def own_operation(owner: str, rid: str) -> bool:
         return bool(record and record.owner_session_id == owner)
 
 
-def operation_finished(rid: str, status: str):
+def operation_finished(rid: str, status: str, registry=None):
     with SessionLocal() as db:
         record = db.get(VoiceSmartOperation, rid)
         if record:
             record.status = status
+            plan = db.scalar(select(VoiceRegistryPlan).where(VoiceRegistryPlan.request_id == rid,
+                VoiceRegistryPlan.owner_session_id == record.owner_session_id))
+            if plan:
+                plan.state = "applied" if status == "completed" else "applying" if status == "pending" else "uncertain"
+                if registry and registry.plan and registry.identity == plan.id:
+                    registry.state = plan.state
             db.commit()
 
 
@@ -140,6 +146,8 @@ class VoiceBridge:
         self.last_rooms = None
         self.registry = RegistryConfirmation(owner, self.id, SessionLocal)
         self.input_language = "cs"
+        self.auto_response_enabled = False
+        self.registry_generation_queued = False
         self.image_items: list[str] = []
         self.unresolved_requests: set[str] = set()
         self.unresolved_items: dict[str, set[str]] = {}
@@ -256,6 +264,16 @@ class VoiceBridge:
             {"type": "session.update", "session": value},
             lambda e: e.get("type") == "session.updated",
         )
+        self.auto_response_enabled = value["audio"]["input"]["turn_detection"]["create_response"]
+
+    async def queue_registry_action(self, action):
+        if action == "generate":
+            self.registry.expiry_pending = False
+            # A terminal proposal must not create a second response beside normal VAD.
+            if self.auto_response_enabled or self.registry_generation_queued:
+                return
+            self.registry_generation_queued = True
+        await self.queue.put({"registry": action})
 
     async def update_transcription(self):
         automatic = bool(self.memory_buffer and self.memory_buffer.enabled and not self.memory_privacy_paused)
@@ -468,10 +486,10 @@ class VoiceBridge:
                     future.set_exception(exc)
             typ = event.get("type")
             registry_dialog = self.registry.state in {"reading", "awaiting_confirmation"}
-            registry_event = self.registry.plan and typ in {"response.created", "response.done", "input_audio_buffer.speech_started", "output_audio_buffer.stopped", "output_audio_buffer.cleared", "conversation.item.input_audio_transcription.completed"}
+            registry_event = self.registry.plan and typ in {"response.created", "response.done", "input_audio_buffer.speech_started", "output_audio_buffer.stopped", "output_audio_buffer.cleared", "conversation.item.input_audio_transcription.completed", "conversation.item.input_audio_transcription.failed"}
             registry_action = self.registry.event(event) if registry_event and authorized(self.owner) else None
             if registry_action:
-                await self.queue.put({"registry": registry_action})
+                await self.queue_registry_action(registry_action)
             if self.memory_buffer and not registry_dialog:
                 self.memory_buffer.event(event)
             if typ == "conversation.item.input_audio_transcription.completed" and not registry_dialog:
@@ -632,8 +650,11 @@ class VoiceBridge:
             )
             public, images = decode_result(result)
             validate_public(public)
+            if args.operation == "rooms_list" and "rooms" in public:
+                public["has_more"] = (args.offset or 0) + len(public["rooms"]) < public["total"]
             if not public.get("error") and args.operation == "registry_prepare" and public.get("plan"):
                 self.registry.prepare(public["plan"], self.config.manual_language if self.config.language_mode == "manual" else self.input_language)
+                public["plan"] = self.registry.plan.model_dump(exclude_none=True)
             if args.operation == "registry_apply" and rid:
                 self.registry.state = "uncertain" if public.get("error") or public.get("summary", {}).get("uncertain") or any(r.get("status") == "uncertain" for r in public.get("results", [])) else "applied"
                 self.registry.persist()
@@ -657,12 +678,12 @@ class VoiceBridge:
                 statuses.update(key for key, count in public.get("summary", {}).items() if count)
                 status = (
                     "uncertain"
-                    if "uncertain" in statuses or public.get("error") or not any(statuses)
+                    if statuses & {"uncertain", "not_found", "unknown_operation"} or public.get("error") or not any(statuses)
                     else "pending"
                     if statuses & {"queued", "recording"}
                     else "completed"
                 )
-                operation_finished(tracked, status)
+                operation_finished(tracked, status, self.registry)
                 if status == "completed":
                     self.unresolved_requests.discard(tracked)
                     self.unresolved_items.pop(tracked, None)
@@ -814,6 +835,7 @@ class VoiceBridge:
                     await self.update_transcription()
                     await self.configure(self.catalog_ready)
                     await self.send({"type": "response.create"}, lambda e: e.get("type") == "response.created")
+                    self.registry_generation_queued = False
                 continue
             if calls is None:
                 await self.configure(self.catalog_ready, create_response=False)
@@ -855,8 +877,7 @@ class VoiceBridge:
             if self.registry.state in {"prepared", "reading", "awaiting_confirmation", "confirmed"}:
                 self.registry.valid()
             if self.registry.expiry_pending:
-                self.registry.expiry_pending = False
-                await self.queue.put({"registry": "generate"})
+                await self.queue_registry_action("generate")
 
     async def initialize_technologies(self):
         async with AsyncExitStack() as stack:

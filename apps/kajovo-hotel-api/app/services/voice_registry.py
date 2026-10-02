@@ -47,10 +47,10 @@ def normalize(text):
 
 # Fixed templates cover every manually selectable Voice Core language.
 TEMPLATES = {
-    "cs": ("Návrh změn.", "Vytvořit místnost {new}.", "Přejmenovat místnost {old} na {new}.", "Smazat místnost {old}. Její zařízení budou bez přiřazené místnosti.", "Přesunout zařízení {old} do místnosti {location}.", "Odebrat zařízení {old} z místnosti.", "Přejmenovat zařízení {old} na {new}.", "Beze změny", "Odmítnuto", "Potvrzujete tento přesný návrh? Odpovězte ano nebo ne."),
-    "en": ("Proposed changes.", "Create room {new}.", "Rename room {old} to {new}.", "Delete room {old}. Its devices will have no assigned room.", "Move device {old} to room {location}.", "Unassign device {old} from its room.", "Rename device {old} to {new}.", "Unchanged", "Rejected", "Do you confirm this exact proposal? Answer yes or no."),
-    "de": ("Vorgeschlagene Änderungen.", "Raum {new} erstellen.", "Raum {old} in {new} umbenennen.", "Raum {old} löschen. Seine Geräte haben danach keinen zugewiesenen Raum.", "Gerät {old} in Raum {location} verschieben.", "Gerät {old} aus seinem Raum entfernen.", "Gerät {old} in {new} umbenennen.", "Unverändert", "Abgelehnt", "Bestätigen Sie genau diesen Vorschlag? Antworten Sie ja oder nein."),
-    "sk": ("Návrh zmien.", "Vytvoriť miestnosť {new}.", "Premenovať miestnosť {old} na {new}.", "Zmazať miestnosť {old}. Jej zariadenia budú bez priradenej miestnosti.", "Presunúť zariadenie {old} do miestnosti {location}.", "Odobrať zariadenie {old} z miestnosti.", "Premenovať zariadenie {old} na {new}.", "Bez zmeny", "Odmietnuté", "Potvrdzujete tento presný návrh? Odpovedzte áno alebo nie."),
+    "cs": ("Návrh změn.", "Vytvořit místnost {new}.", "Přejmenovat místnost {old} na {new}.", "Smazat místnost {old}. Její zařízení budou bez přiřazené místnosti.", "Přesunout zařízení {old} do místnosti {location}.", "Odebrat zařízení {old} z místnosti.", "Přejmenovat zařízení {old} na {new}.", "Beze změny", "Odmítnuto", "Potvrzujete tento přesný návrh? Odpovězte ano nebo ne.", "{old} v řádku {row}, původní místnost {location}", "bez přiřazené místnosti"),
+    "en": ("Proposed changes.", "Create room {new}.", "Rename room {old} to {new}.", "Delete room {old}. Its devices will have no assigned room.", "Move device {old} to room {location}.", "Unassign device {old} from its room.", "Rename device {old} to {new}.", "Unchanged", "Rejected", "Do you confirm this exact proposal? Answer yes or no.", "{old} at row {row}, original room {location}", "no assigned room"),
+    "de": ("Vorgeschlagene Änderungen.", "Raum {new} erstellen.", "Raum {old} in {new} umbenennen.", "Raum {old} löschen. Seine Geräte haben danach keinen zugewiesenen Raum.", "Gerät {old} in Raum {location} verschieben.", "Gerät {old} aus seinem Raum entfernen.", "Gerät {old} in {new} umbenennen.", "Unverändert", "Abgelehnt", "Bestätigen Sie genau diesen Vorschlag? Antworten Sie ja oder nein.", "{old} in Zeile {row}, ursprünglicher Raum {location}", "kein zugewiesener Raum"),
+    "sk": ("Návrh zmien.", "Vytvoriť miestnosť {new}.", "Premenovať miestnosť {old} na {new}.", "Zmazať miestnosť {old}. Jej zariadenia budú bez priradenej miestnosti.", "Presunúť zariadenie {old} do miestnosti {location}.", "Odobrať zariadenie {old} z miestnosti.", "Premenovať zariadenie {old} na {new}.", "Bez zmeny", "Odmietnuté", "Potvrdzujete tento presný návrh? Odpovedzte áno alebo nie.", "{old} v riadku {row}, pôvodná miestnosť {location}", "bez priradenej miestnosti"),
 }
 ACTIONS = {a: i + 1 for i, a in enumerate(("create_room", "rename_room", "delete_room", "assign_devices", "remove_devices", "rename_devices"))}
 YES = {normalize(v) for v in ("ano", "ano potvrzuji", "potvrzuji", "áno", "potvrdzujem", "yes", "yes I confirm", "I confirm", "ja", "ich bestätige", "так", "підтверджую")}
@@ -70,6 +70,10 @@ def script(plan, language):
             raise SmartError("invalid_registry_plan")
         if change.action == "assign_devices" and not location:
             raise SmartError("invalid_registry_plan")
+        if change.action in {"assign_devices", "remove_devices", "rename_devices"}:
+            if not change.row:
+                raise SmartError("invalid_registry_plan")
+            old = t[10].format(old=old, row=change.row, location=change.old_location or t[11])
         sentence = t[ACTIONS[change.action]].format(old=old or "", new=new or "", location=location or "")
         if change.status == "unchanged":
             sentence = t[7] + ": " + sentence
@@ -141,6 +145,9 @@ class RegistryConfirmation:
     def prepare(self, value, language):
         self.invalidate()
         plan = PublicPlan.model_validate(value)
+        # The host owns confirmation policy; a tool result cannot relax destructive/bulk consent.
+        if any(c.action == "delete_room" for c in plan.changes) or sum(c.action in {"rename_room", "rename_devices"} for c in plan.changes) > 1:
+            plan.requires_confirmation = True
         expires = datetime.fromisoformat(plan.expires_at.replace("Z", "+00:00"))
         if not expires.tzinfo or expires <= utc_now() or (expires - utc_now()).total_seconds() > 310:
             raise SmartError("invalid_registry_plan")
@@ -187,11 +194,14 @@ class RegistryConfirmation:
                     self.next_audio_id = iid
             if self.state in {"reading", "confirmed"}:
                 self.invalidate()
-        if typ == "conversation.item.input_audio_transcription.completed" and self.state in {"invalidated", "expired", "failed"} and event.get("item_id") in self.input_starts:
+        if typ in {"conversation.item.input_audio_transcription.completed", "conversation.item.input_audio_transcription.failed"} and self.state in {"invalidated", "expired", "failed"} and event.get("item_id") in self.input_starts:
             self.input_starts.pop(event["item_id"], None)
             return "generate"
         if not self.plan or not self.valid() or not self.plan.requires_confirmation:
             return None
+        if typ == "conversation.item.input_audio_transcription.failed" and self.state == "awaiting_confirmation" and event.get("item_id") == self.next_audio_id and self.input_starts.get(event.get("item_id"), 0) > self.armed_at:
+            self.invalidate("ambiguous")
+            return "generate"
         if typ == "response.done" and event.get("response", {}).get("id") == self.response_id:
             response = event["response"]
             transcript = " ".join(part.get("transcript", "") for item in response.get("output", []) for part in item.get("content", []) if part.get("type") in {"audio", "output_audio"})

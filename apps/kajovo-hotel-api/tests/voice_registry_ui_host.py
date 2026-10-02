@@ -22,6 +22,8 @@ async def create_fixture(sdp, config, key, owner, token):
             {"action": "rename_room", "room_ref": "room-public-a", "old_name": "Zkušební místnost s dlouhým názvem " + "A" * 100, "new_name": "Nová testovací místnost", "status": "planned"},
             {"action": "delete_room", "room_ref": "room-public-b", "old_name": "Druhá testovací místnost", "status": "planned"},
             {"action": "delete_room", "room_ref": "room-public-c", "old_name": "Chráněná testovací místnost", "status": "protected_members"},
+            {"action": "rename_devices", "row": 89, "old_name": "Stejné světlo", "old_location": "Testovna A", "new_name": "Nové světlo 1", "status": "planned"},
+            {"action": "rename_devices", "row": 90, "old_name": "Stejné světlo", "old_location": "Testovna B", "new_name": "Nové světlo 2", "status": "planned"},
         ]}, "cs")
     bridge.registry.begin_readback("readback-fixture")
     bridge.registry.event({"type": "response.done", "response": {"id": "readback-fixture", "status": "completed",

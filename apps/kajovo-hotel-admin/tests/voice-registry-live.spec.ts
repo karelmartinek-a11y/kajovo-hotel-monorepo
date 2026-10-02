@@ -1,4 +1,4 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {expect, test} from '@playwright/test';
 import {getAdminCredentials} from '../test-admin-credentials';
@@ -10,8 +10,11 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
   await page.addInitScript(() => {
     const ctx = new AudioContext();
     const output = ctx.createMediaStreamDestination();
+    // Keep the media graph active between utterances so WebRTC delivers silence for VAD.
+    const clock = ctx.createOscillator(), silence = ctx.createGain();
+    silence.gain.value = 0; clock.connect(silence); silence.connect(output); clock.start();
     navigator.mediaDevices.getUserMedia = async () => {await ctx.resume(); return output.stream;};
-    (window as any).registryAudio = {ctx, output, speech: 0, audio: 0, bufferStops: 0, operations: {}, errors: 0, frames: []};
+    (window as any).registryAudio = {ctx, output, speech: 0, speechStops: 0, responses: 0, audio: 0, bufferStops: 0, operations: {}, errors: 0, frames: []};
     const create = RTCPeerConnection.prototype.createDataChannel;
     RTCPeerConnection.prototype.createDataChannel = function(...args) {
       const channel = create.apply(this, args);
@@ -19,11 +22,13 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
         try {
           const value = JSON.parse(event.data), metrics = (window as any).registryAudio;
           if (value.type === 'input_audio_buffer.speech_started') metrics.speech++;
+          if (value.type === 'input_audio_buffer.speech_stopped') metrics.speechStops++;
+          if (value.type === 'response.created') metrics.responses++;
           if (value.type === 'output_audio_buffer.started') metrics.audio++;
           if (value.type === 'output_audio_buffer.stopped') metrics.bufferStops++;
           if (value.type === 'error') metrics.errors++;
           const item = value.item;
-          if (item?.type === 'function_call' && item.name === 'smart_technologie' && item.arguments) {
+          if (value.type === 'response.output_item.done' && item?.type === 'function_call' && item.name === 'smart_technologie' && item.arguments) {
             const operation = JSON.parse(item.arguments).operation;
             metrics.operations[operation] = (metrics.operations[operation] ?? 0) + 1;
           }
@@ -80,7 +85,19 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
     await expect(page.getByTestId('voice-capability-status')).toHaveText('Smart technologie jsou připravené.', {timeout: 60000});
     await speak('list');
     await expect.poll(() => page.evaluate(() => (window as any).registryAudio.operations.rooms_list ?? 0), {timeout: 120000}).toBeGreaterThan(0);
+    console.log('Voice registry: rooms_list PASS');
     await speak('create'); await applied();
+    const created = async () => page.evaluate(() => {
+      const frame = [...(window as any).registryAudio.frames].reverse().find(f => f.results?.some((r: any) => r.status === 'created'));
+      return frame?.results.filter((r: any) => r.status === 'created').map((r: any) => r.room_ref) ?? [];
+    });
+    await expect.poll(async () => (await created()).length, {timeout: 30000}).toBe(2);
+    const recordPath = join(directory, 'cleanup.json'), record = JSON.parse(readFileSync(recordPath, 'utf8'));
+    const refs = await created();
+    expect(new Set(refs).size).toBe(2);
+    expect(refs.some((ref: string) => record.baseline_refs.includes(ref))).toBe(false);
+    writeFileSync(recordPath, JSON.stringify({...record, created_refs: refs}), {mode: 0o600});
+    console.log('Voice registry: temporary-room creation PASS');
     await speak('rename'); const rejected = await awaitPlan();
     const panel = page.getByTestId('voice-registry');
     for (const [name, width, height] of [['desktop', 1440, 900], ['tablet', 768, 1024], ['phone', 390, 844]] as const) {
@@ -94,24 +111,29 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
     await page.setViewportSize({width: 1440, height: 900});
     await speak('no');
     await expect.poll(async () => (await view())?.state, {timeout: 60000}).toBe('refused');
+    console.log('Voice registry: audio refusal and responsive proposal PASS');
     await speak('rename'); await awaitPlan(rejected);
     await speak('yes'); await applied();
+    console.log('Voice registry: audio-confirmed rename PASS');
     await speak('delete-both'); const original = await awaitPlan();
     await speak('delete-first'); await awaitPlan(original);
+    console.log('Voice registry: changed target requires a new proposal PASS');
     await speak('yes'); await applied();
     await speak('delete-last'); await awaitPlan();
     await speak('yes'); await applied();
+    console.log('Voice registry: audio-confirmed test-room deletion PASS');
     await speak('verify-list');
-    await expect.poll(() => page.evaluate(names => {
+    await expect.poll(() => page.evaluate(({names, expected, refs}) => {
       const frame = [...(window as any).registryAudio.frames].reverse().find(f => Array.isArray(f.rooms));
-      return frame && frame.has_more === false && !frame.rooms.some((r: any) => names.includes(r.name));
-    }, manifest.allowed_names), {timeout: 120000}).toBe(true);
+      const normalized = (name: string) => name.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().match(/[\p{L}\p{N}]+/gu)?.join(' ') ?? '';
+      return frame && frame.total === expected && frame.rooms.length === expected && !frame.rooms.some((r: any) => refs.includes(r.room_ref) || names.map(normalized).includes(normalized(r.name)));
+    }, {names: manifest.allowed_names, expected: record.baseline_refs.length, refs}), {timeout: 120000}).toBe(true);
     expect(await page.evaluate(() => (window as any).registryAudio.operations.control ?? 0)).toBe(0);
     expect(await page.evaluate(() => (window as any).registryAudio.operations.read ?? 0)).toBe(0);
   } finally {
     console.log('Registry live aggregate evidence:', await page.evaluate(() => {
-      const {speech, audio, bufferStops, operations, errors} = (window as any).registryAudio;
-      return {speech, audio, bufferStops, operations, errors};
+      const {speech, speechStops, responses, audio, bufferStops, operations, errors} = (window as any).registryAudio;
+      return {speech, speechStops, responses, audio, bufferStops, operations, errors};
     }));
     const end = page.getByRole('button', {name: 'Ukončit hovor'});
     if (await end.isVisible()) await end.click();

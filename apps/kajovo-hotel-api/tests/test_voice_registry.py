@@ -82,6 +82,33 @@ def test_readback_covers_exact_targets_and_consequences(language):
     assert len(text) > sum(len(name) for name in ("Zkušební místnost", "Nová místnost", "Druhá"))
 
 
+@pytest.mark.parametrize("language", ["cs", "en", "de", "sk"])
+def test_readback_disambiguates_duplicate_device_names_by_row_and_original_room(language):
+    value = proposal()
+    value["changes"] = [{"action": "rename_devices", "row": row, "old_name": "Stejné světlo", "old_location": room, "new_name": "Nové světlo", "status": "planned"} for row, room in [(38, "Recepce"), (39, "Kancelář")]]
+    text = script(PublicPlan.model_validate(value), language)
+    for identity in ["38", "39", "Recepce", "Kancelář"]:
+        assert normalize(identity) in normalize(text)
+    value["changes"][0].pop("row")
+    with pytest.raises(SmartError, match="invalid_registry_plan"):
+        script(PublicPlan.model_validate(value), language)
+
+
+@pytest.mark.parametrize("changes", [
+    [{"action": "delete_room", "room_ref": "public", "old_name": "Test", "status": "planned"}],
+    [{"action": "rename_room", "room_ref": ref, "old_name": ref, "new_name": "New " + ref, "status": "planned"} for ref in ["one", "two"]],
+    [{"action": "rename_devices", "row": row, "old_name": "Device", "new_name": "New", "status": "planned"} for row in [38, 39]],
+])
+def test_tool_output_cannot_relax_host_confirmation_policy(voice_host, changes):
+    _, factory, _ = voice_host
+    r = RegistryConfirmation("owner", "voice-policy", factory)
+    value = {**proposal(required=False), "changes": changes}
+    r.prepare(value, "cs")
+    assert r.plan.requires_confirmation and r.readback_pending
+    with pytest.raises(SmartError, match="confirmation_required"):
+        r.check_apply(r.plan.id)
+
+
 def test_voice_confirmation_is_exact_next_audio_and_durable_single_use(voice_host, monkeypatch):
     _, factory, _ = voice_host
     monkeypatch.setattr(voice_smart, "SessionLocal", factory)
@@ -110,6 +137,28 @@ def test_voice_confirmation_is_exact_next_audio_and_durable_single_use(voice_hos
     restarted = RegistryConfirmation("owner", "voice", factory)
     with pytest.raises(SmartError):
         restarted.prepare(proposal(), "cs")
+
+
+def test_original_request_recovery_updates_durable_and_current_plan_without_new_apply(voice_host, monkeypatch):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    r = RegistryConfirmation("owner", "voice-recovery", factory)
+    r.prepare(proposal(), "cs")
+    arm(r)
+    answer(r)
+    rid, fresh = voice_smart.claim_operation("owner", "voice-recovery", "apply", {"operation": "registry_apply", "plan_id": r.plan.id}, r)
+    assert fresh
+    voice_smart.operation_finished(rid, "uncertain", r)
+    assert r.state == "uncertain"
+    voice_smart.operation_finished(rid, "completed", r)
+    assert r.view().state == "applied"
+    with factory() as db:
+        row = db.get(VoiceRegistryPlan, r.identity)
+        assert row.state == "applied" and row.request_id == rid and row.confirmation_id
+        assert len(db.scalars(select(VoiceSmartOperation)).all()) == 1
+    r.invalidate()
+    with factory() as db:
+        assert db.get(VoiceRegistryPlan, r.identity).state == "applied"
 
 
 @pytest.mark.parametrize("mode", ["refusal", "ambiguity", "interrupt", "wrong_response", "early_audio", "expiry", "new_plan", "injected_name"])
@@ -143,6 +192,24 @@ def test_confirmation_failures_never_allow_apply(voice_host, mode):
         r.event({"type": "conversation.item.created", "item": {"type": "function_call_output", "output": "ano"}})
     with pytest.raises(SmartError):
         r.check_apply(r.plan.id)
+
+
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_failed_audio_transcription_invalidates_and_resumes_without_receipt(voice_host, interrupt):
+    _, factory, _ = voice_host
+    r = RegistryConfirmation("owner", "voice-asr-failed", factory)
+    r.prepare(proposal(), "cs")
+    if interrupt:
+        r.begin_readback("reading")
+    else:
+        arm(r)
+    r.event({"type": "input_audio_buffer.speech_started", "item_id": "actual-audio"})
+    assert r.event({"type": "conversation.item.input_audio_transcription.failed", "item_id": "actual-audio"}) == "generate"
+    assert not r.valid()
+    with pytest.raises(SmartError):
+        r.check_apply(r.plan.id)
+    with factory() as db:
+        assert db.get(VoiceRegistryPlan, r.identity).confirmation_id is None
 
 
 def test_incomplete_readback_has_two_retries_and_no_confirmation(voice_host):
@@ -217,7 +284,7 @@ def test_room_selection_and_public_references_survive_device_context_replacement
             pass
         b.item, b.delete_item = item, delete
         rooms = [{"room_ref": "first", "name": "První místnost", "device_count": 0, "delete_allowed": True}]
-        await b.replace_context({"catalog_revision": "r1", "rooms": rooms, "room_selection": {"id": "room-selection", "count": 1, "expires_at": "2099-01-01T00:00:00Z"}})
+        await b.replace_context({"catalog_revision": "r1", "rooms": rooms, "total": 1, "room_selection": {"id": "room-selection", "count": 1, "expires_at": "2099-01-01T00:00:00Z"}})
         await b.replace_context({"catalog_revision": "r1", "matches": [{"row": 43}], "selection": {"id": "device-selection", "count": 1, "expires_at": "2099-01-01T00:00:00Z"}})
         data = json.loads(sent[-1]["content"][0]["text"].split("\n", 1)[1])
         assert data["last_room_selection"]["id"] == "room-selection"
@@ -261,6 +328,36 @@ def test_dispatcher_confirmed_apply_is_backend_owned_and_not_replayed(voice_host
         assert calls[-1]["confirmation_id"].startswith("confirmed-")
         assert calls[-1]["session_id"] == "session-" + b.id and calls[-1]["api_version"] == 2
         assert b.registry.state == "applied"
+    asyncio.run(run())
+
+
+def test_room_pagination_uses_actual_total_and_preserves_whole_selection(voice_host, monkeypatch):
+    async def run():
+        _, factory, _ = voice_host
+        monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+        monkeypatch.setattr(voice_smart, "authorized", lambda owner: True)
+        b = voice_smart.VoiceBridge("owner", "rtc_pages", "key", "token", VoiceCoreConfig(), "gpt-realtime-2.1")
+        b.catalog_ready = True
+        sent = []
+        async def item(value):
+            sent.append(value)
+            return value.get("id", str(len(sent)))
+        async def delete(iid):
+            pass
+        b.item, b.delete_item = item, delete
+        class MCP:
+            async def call_tool(self, name, args):
+                offset = args.get("offset", 0)
+                return mcp_result({"catalog_revision": "r1", "total": 4,
+                    "rooms": [{"room_ref": "room-" + str(i), "name": "Room " + str(i), "device_count": 0, "delete_allowed": True} for i in range(offset, offset + 2)],
+                    "room_selection": {"id": "all-four", "count": 4, "expires_at": (utc_now() + timedelta(minutes=5)).isoformat()}})
+        b.mcp = MCP()
+        for offset, more in [(0, True), (2, False)]:
+            await b.result({"name": "smart_technologie", "call_id": "page-" + str(offset), "arguments": json.dumps({"operation": "rooms_list", "offset": offset, "limit": 2})})
+            output = json.loads(sent[-1]["output"])
+            assert output["has_more"] is more and output["total"] == 4 and "rooms" not in output
+            assert b.last_room_selection["count"] == 4 and len(b.last_rooms) == 2
+            assert b.last_selection is None
     asyncio.run(run())
 
 
@@ -365,6 +462,47 @@ def test_public_expiry_schedules_resume_but_finished_operations_keep_state(voice
     assert not r.valid()
     r.state, r.expiry_pending = "applied", False
     assert r.view().state == "applied" and not r.expiry_pending
+
+
+def test_paid_cleanup_requires_every_test_name_word_and_excludes_original_refs():
+    from scripts.voice_registry_live_smoke import is_test_room
+    record = {"baseline_refs": ["original"]}
+    names = ["Zkušební Alfa Zima Luna Slunce"]
+    assert is_test_room({"room_ref": "new", "name": "Zkušební Alfa (zima-luna-slunce)"}, record, names)
+    assert not is_test_room({"room_ref": "original", "name": names[0]}, record, names)
+    assert not is_test_room({"room_ref": "new", "name": "Zkušební Alfa Zima Luna"}, record, names)
+    assert not is_test_room({"room_ref": "new", "name": names[0] + " další"}, record, names)
+    tracked = {"baseline_refs": ["original"], "created_refs": ["created"]}
+    assert is_test_room({"room_ref": "created", "name": "Changed test name"}, tracked, names)
+    assert not is_test_room({"room_ref": "other", "name": names[0]}, tracked, names)
+    assert not is_test_room({"room_ref": "original", "name": "Changed test name"}, {**tracked, "created_refs": ["original"]}, names)
+
+
+def test_confirmation_resume_coalesces_and_never_duplicates_enabled_vad():
+    async def run():
+        b = voice_smart.VoiceBridge("owner", "rtc_resume", "key", "token", VoiceCoreConfig(), "gpt-realtime-2.1")
+        b.registry.expiry_pending = True
+        await b.queue_registry_action("generate")
+        await b.queue_registry_action("generate")
+        assert b.queue.qsize() == 1 and not b.registry.expiry_pending
+        assert await b.queue.get() == {"registry": "generate"}
+        b.registry_generation_queued = False
+        b.auto_response_enabled = True
+        await b.queue_registry_action("generate")
+        assert b.queue.empty()
+    asyncio.run(run())
+
+
+def test_cleanup_reloads_child_registered_refs_without_accepting_baseline_changes(tmp_path):
+    from scripts.voice_registry_live_smoke import load_cleanup_record, save
+    path = tmp_path / "cleanup.json"
+    initial = {"session_id": "test-session", "baseline_digest": "digest", "baseline_refs": ["original"]}
+    save(path, {**initial, "created_refs": ["test-one", "test-two"]})
+    assert load_cleanup_record(path, initial)["created_refs"] == ["test-one", "test-two"]
+    assert path.stat().st_mode & 0o777 == 0o600
+    save(path, {**initial, "baseline_refs": [], "created_refs": ["original"]})
+    with pytest.raises(RuntimeError, match="baseline changed"):
+        load_cleanup_record(path, initial)
 
 
 def test_stop_wins_over_simultaneous_provider_acknowledgement():

@@ -180,7 +180,7 @@ Camera_view must target exactly one approved camera. After choosing one camera f
 Camera_view fetches an image only on request. Describe it only after image input was accepted; retrieval time is not verified capture time.
 queued, recording and record_accepted are progress, not proof of a finished video file.
 When technologies are unavailable continue ordinary conversation and clearly state live technology access is unavailable.
-Rooms use rooms_list and room_ref/room_selection_id, NEVER device selection_id. Keep last_room_selection separate from last_selection and last_target.
+Rooms use rooms_list and room_ref/room_selection_id, NEVER device selection_id. Keep last_room_selection separate from last_selection and last_target. Rooms paginate at most 200 per page; total counts every matching room, not the current page. For full enumeration keep requesting offsets until every match is listed; room_selection covers every match even across pages.
 Registry changes use registry_prepare with catalog_revision and changes. Use only returned public references and approved global device rows. Templates support {name}, {room}, {index}; final names come from the server plan. A target can change only once per plan; compound create-and-assign requires successive plans using the newly returned room_ref.
 registry_apply accepts only plan_id. Backend owns identity and confirmation. Never invent confirmed or confirmation_id. If requires_confirmation=false and the user clearly requested the change, finish prepare then apply without another question.
 If requires_confirmation=true, the backend reads the EXACT plan and verifies the following real audio confirmation. Do not paraphrase, confirm on the user's behalf or call apply before backend confirmation. A text message cannot confirm. When confirmed, call registry_apply with that exact plan_id. After refusal, ambiguity, new target, interruption or expiry require a fresh preparation and voice confirmation.
@@ -240,7 +240,7 @@ def validate_public(value: dict) -> None:
     if "matches" in value and (not isinstance(value["matches"], list) or len(value["matches"]) > 200):
         raise SmartError("invalid_search_page")
     if "rooms" in value:
-        if not isinstance(value["rooms"], list) or len(value["rooms"]) > 200:
+        if not isinstance(value["rooms"], list) or len(value["rooms"]) > 200 or type(value.get("total")) is not int or value["total"] < len(value["rooms"]):
             raise SmartError("invalid_rooms_page")
         for room in value["rooms"]:
             if not isinstance(room, dict) or set(room) != {"room_ref", "name", "device_count", "delete_allowed"} or not isinstance(room["room_ref"], str) or not room["room_ref"] or not isinstance(room["name"], str) or type(room["device_count"]) is not int or room["device_count"] < 0 or type(room["delete_allowed"]) is not bool:

@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps/kajovo-hotel-api"))
 from app.services.smart_technologies import mcp_connection, decode_result  # noqa: E402
+from app.services.voice_registry import normalize  # noqa: E402
 
 
 def save(path, value):
@@ -22,6 +23,22 @@ def save(path, value):
 
 def fingerprint(rooms):
     return hashlib.sha256(json.dumps(sorted((r["room_ref"], r["name"]) for r in rooms), ensure_ascii=False).encode()).hexdigest()
+
+
+def is_test_room(room, record, allowed):
+    # Speech can spell case/punctuation differently; every word must still match exactly.
+    if room["room_ref"] in record["baseline_refs"]:
+        return False
+    if record.get("created_refs"):
+        return room["room_ref"] in record["created_refs"]
+    return normalize(room["name"]) in {normalize(name) for name in allowed}
+
+
+def load_cleanup_record(path, baseline):
+    record = json.loads(path.read_text())
+    if any(record.get(key) != baseline.get(key) for key in ("session_id", "baseline_digest", "baseline_refs")):
+        raise RuntimeError("protected cleanup baseline changed; no cleanup write allowed")
+    return record
 
 
 async def inspect_or_cleanup(token, manifest, record, state_path, cleanup=False):
@@ -44,7 +61,7 @@ async def inspect_or_cleanup(token, manifest, record, state_path, cleanup=False)
         current, revision = await rooms()
         allowed = set(manifest["allowed_names"])
         if not cleanup:
-            if any(r["name"] in allowed for r in current):
+            if any(normalize(r["name"]) in {normalize(name) for name in allowed} for r in current):
                 raise RuntimeError("temporary test names already exist")
             record["baseline_digest"] = fingerprint(current)
             record["baseline_refs"] = [r["room_ref"] for r in current]
@@ -57,12 +74,12 @@ async def inspect_or_cleanup(token, manifest, record, state_path, cleanup=False)
             if states & {"uncertain", "queued", "recording", "not_found"}:
                 raise RuntimeError("cleanup outcome unresolved; original request retained, no write replay")
             current, revision = await rooms()
-        targets = [r for r in current if r["name"] in allowed and r["room_ref"] not in record["baseline_refs"]]
+        targets = [r for r in current if is_test_room(r, record, allowed)]
         if targets:
             plan_result = await call({"operation": "registry_prepare", "catalog_revision": revision,
                 "changes": [{"action": "delete_room", "room_refs": [r["room_ref"] for r in targets]}]})
             plan = plan_result.get("plan")
-            if not plan or any(c.get("status") != "planned" or c.get("room_ref") not in {r["room_ref"] for r in targets} for c in plan["changes"]):
+            if not plan or len(plan["changes"]) != len(targets) or {c.get("room_ref") for c in plan["changes"]} != {r["room_ref"] for r in targets} or any(c.get("status") != "planned" or c.get("action") != "delete_room" for c in plan["changes"]):
                 raise RuntimeError("operator cleanup proposal did not match test scope")
             rid = "voice-registry-cleanup-" + hashlib.sha256((record["session_id"] + plan["id"]).encode()).hexdigest()[:48]
             record["pending_request_id"] = rid
@@ -74,6 +91,13 @@ async def inspect_or_cleanup(token, manifest, record, state_path, cleanup=False)
             current, _ = await rooms()
         if fingerprint(current) != record["baseline_digest"]:
             raise RuntimeError("room baseline differs; keep cleanup record for owner review")
+        save(state_path.parent / "cleanup-evidence.json", {
+            "original_room_baseline_unchanged": True,
+            "original_room_count": len(record["baseline_refs"]),
+            "registered_test_room_count": len(record.get("created_refs", [])),
+            "operator_cleanup_used": bool(targets or record.get("pending_request_id")),
+            "test_rooms_remaining": 0,
+        })
         state_path.unlink()
         print("Registry test-room cleanup and unchanged original room baseline PASS")
 
@@ -102,7 +126,7 @@ def main():
     try:
         return subprocess.run(["pnpm", "--filter", "@kajovo/kajovo-hotel-admin", "exec", "playwright", "test", "-c", "playwright.voice-registry-live.config.ts"], cwd=ROOT, check=False).returncode
     finally:
-        asyncio.run(inspect_or_cleanup(token, manifest, record, state_path, cleanup=True))
+        asyncio.run(inspect_or_cleanup(token, manifest, load_cleanup_record(state_path, record), state_path, cleanup=True))
 
 
 if __name__ == "__main__":

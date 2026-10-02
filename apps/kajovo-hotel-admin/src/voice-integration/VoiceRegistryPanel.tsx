@@ -40,6 +40,7 @@ export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
       <p>Platnost návrhu do {new Date(view.plan.expires_at).toLocaleTimeString('cs-CZ', {timeZone: 'Europe/Prague'})}. {view.plan.requires_confirmation ? 'Vyžaduje hlasové potvrzení.' : 'Další potvrzení není potřebné.'}</p>
       <ol>{view.plan.changes.map((change, index) => <li key={index}>
         <strong>{actions[change.action] ?? change.action}: </strong>{change.old_name ?? change.name ?? change.new_name}
+        {change.row && <> (řádek {change.row}{change.old_location ? `, původní místnost ${change.old_location}` : ', bez přiřazené místnosti'})</>}
         {change.new_name && change.action !== 'create_room' && <> → {change.new_name}</>}
         {change.new_location && <> → {change.new_location}</>}
         {' — '}{change.status === 'planned' ? 'navrženo' : change.status === 'unchanged' ? 'beze změny' : `odmítnuto: ${change.status}`}
