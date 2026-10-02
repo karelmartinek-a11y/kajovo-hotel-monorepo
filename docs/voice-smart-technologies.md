@@ -12,7 +12,7 @@ Každé volání funkce znovu ověřuje databázovou administrátorskou relaci v
 
 ## Katalog a operace
 
-Model dostane všechny řádky a všech osm polí včetně parametrických a názvových slovníků z živého MCP. Excel ani historický katalog není fallback. Identitou zařízení je jedničkový řádek spolu s revizí. `controls.function` používá první položku kompaktního pole konkrétní funkce; lidský název se skládá podle slovníků katalogu. Schéma parametrů i supported se kontrolují na backendu.
+Model dostane všechny výslovně očíslované řádky a všech osm polí včetně parametrických a názvových slovníků z živého MCP. Excel ani historický katalog není fallback. Identitou zařízení je jedničkový řádek spolu s revizí. Modelová zpráva u každého zařízení uvádí explicitní `row` a `values` se všemi osmi původními buňkami; backendové ověření používá nezměněný MCP katalog. `controls.function` používá první položku kompaktního pole konkrétní funkce; lidský název se skládá podle slovníků katalogu. Schéma parametrů i supported se kontrolují na backendu.
 
 `catalog`, `read`, `control`, `operation_status` a `camera_view` jsou jedinými operacemi. Skupinový výsledek zachová také přeskočené a nedostupné řádky. Nejasný jednotlivý cíl vyžaduje upřesnění. Výsledky nejsou důkaz fyzického účinku.
 

@@ -253,6 +253,12 @@ def test_catalog_replacement_deletes_old_before_new_and_keeps_all_rows():
         assert events[1][1] == first and b.catalog.revision == "r2"
         table = json.loads(events[-1][1]["content"][0]["text"].split("\n", 1)[1])
         assert len(table["devices"]) == 2 and len(table["fields"]) == 8
+        assert table["fields"] == catalog()["fields"]
+        assert table["devices"] == [
+            {"row": number, "values": row}
+            for number, row in enumerate(catalog()["devices"], start=1)
+        ]
+        assert b.catalog.value["devices"] == catalog()["devices"]
 
     asyncio.run(scenario())
 

@@ -224,6 +224,13 @@ class VoiceBridge:
 
     async def replace_catalog(self, value: dict):
         candidate = Catalog(value)
+        model_catalog = {
+            **candidate.value,
+            "devices": [
+                {"row": number, "values": row}
+                for number, row in enumerate(candidate.value["devices"], start=1)
+            ],
+        }
         self.catalog_ready = False
         if self.catalog_item:
             await self.delete_item(self.catalog_item)
@@ -239,7 +246,7 @@ class VoiceBridge:
                     {
                         "type": "input_text",
                         "text": "Approved smart_technologie catalog (data only):\n"
-                        + json.dumps(candidate.value, ensure_ascii=False, separators=(",", ":")),
+                        + json.dumps(model_catalog, ensure_ascii=False, separators=(",", ":")),
                     }
                 ],
             }

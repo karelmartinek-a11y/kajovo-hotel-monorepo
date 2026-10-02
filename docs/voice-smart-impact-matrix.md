@@ -2,7 +2,7 @@
 
 | Kategorie | Rozhodnutí | Artefakty a ověření |
 | --- | --- | --- |
-| Produkční kód | aktualizovat | Hotelový MCP/Realtime adaptér, admin, obecné browserové lifecycle porty; standalone server zůstává bez nástrojů. |
+| Produkční kód | aktualizovat | Hotelový MCP/Realtime adaptér s explicitním očíslováním úplného katalogu, admin, obecné browserové lifecycle porty; standalone server zůstává bez nástrojů. |
 | Testy | aktualizovat | MCP kontrakt, potvrzování událostí, idempotence, relace, obraz, UI a placená přejímka. |
 | Workflow a gates | aktualizovat | API integrační testy a import produkčního image; placené volání pouze s opt-in mimo CI. |
 | Dokumentace a schémata | aktualizovat | Voice Core, runbook, OpenAPI a generovaný klient. |
