@@ -95,6 +95,45 @@ def test_verified_environment_handoff_preserves_multiline_values_without_printin
     assert not any('MCP' in key for key in step['env'])
 
 
+def test_container_git_trust_uses_only_exact_workspace_before_source_gate(tmp_path):
+    steps = deploy_job()['steps']
+    trust = next(i for i, step in enumerate(steps)
+                 if step.get('name') == 'Trust exact workspace for container Git verification')
+    checkout = next(i for i, step in enumerate(steps)
+                    if step.get('uses', '').startswith('actions/checkout@'))
+    gate = next(i for i, step in enumerate(steps)
+                if 'scripts/check_release_review.py' in step.get('run', ''))
+    assert checkout < trust < gate
+    script = steps[trust]['run']
+    assert script == 'git config --global --add safe.directory "$GITHUB_WORKSPACE"'
+    home = tmp_path / 'isolated-home'
+    home.mkdir()
+    env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
+    env.update(HOME=str(home), GIT_CONFIG_NOSYSTEM='1', LANG='C')
+    repos = [tmp_path / 'reviewed workspace', tmp_path / 'untrusted workspace']
+    for repo in repos:
+        subprocess.run(['git', 'init', '--quiet', str(repo)], env=env, check=True)
+        subprocess.run(['git', '-C', str(repo), '-c', 'user.name=Trust fixture',
+                        '-c', 'user.email=trust@example.test', 'commit', '--allow-empty',
+                        '--quiet', '-m', 'Synthetic trust scope'], env=env, check=True)
+    env.update(GIT_TEST_ASSUME_DIFFERENT_OWNER='1', GITHUB_WORKSPACE=str(repos[0]))
+    def inspect(repo):
+        return subprocess.run(['git', '-C', str(repo), 'ls-tree', 'HEAD'], env=env,
+                              capture_output=True, text=True)
+    for repo in repos:
+        before = inspect(repo)
+        assert before.returncode == 128 and 'dubious ownership' in before.stderr
+    result = subprocess.run(['bash', '-euo', 'pipefail', '-c', script], env=env,
+                            capture_output=True, text=True)
+    assert result.returncode == 0 and result.stdout == result.stderr == ''
+    assert inspect(repos[0]).returncode == 0
+    candidate = subprocess.run(['git', '-C', str(repos[0]), 'checkout', '--detach', 'HEAD'],
+                               env=env, capture_output=True, text=True)
+    assert candidate.returncode == 0 and inspect(repos[0]).returncode == 0
+    other = inspect(repos[1])
+    assert other.returncode == 128 and 'dubious ownership' in other.stderr
+
+
 def test_one_main_authority_and_direct_push_needs_no_pull_request():
     assert 'main' in workflow('ci-gates.yml')['on']['push']['branches']
     core = workflow('ci-core.yml')

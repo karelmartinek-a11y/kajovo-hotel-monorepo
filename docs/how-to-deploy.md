@@ -30,6 +30,8 @@ Voice Core ukládá ciphertext pod samostatným `KAJOVO_API_VOICE_MASTER_KEY`. V
 
 `deploy-production.yml` navazuje na úspěšné CI Gates aktuálního main. Ruční workflow dispatch vyžaduje stejné přesné SHA a kontroly. `check_release_review.py` ověřuje aktuální main, poslední dokončené úspěšné CI Gates pro toto SHA a obsahově vázané skutečně provedené nezávislé review. Výstupem je přesné CI run ID a profil review. Připravovací job nemá produkční credentials. Důvěryhodný main kód provede gate před checkoutem kandidáta a před vložením produkčních secrets.
 
+Kontejnerový release job přidává před Git kontrolou zdroje pouze přesnou cestu `GITHUB_WORKSPACE` do `safe.directory`. Důvěryhodný i následný ověřený checkout používají stejný adresář; wildcard důvěra se nepovoluje.
+
 CI sestaví API, admin a web pro linux/amd64. Ověří import API, prázdný registr schopností a skutečný proxy řetězec proti týmž image IDs, které exportuje do `release-images-<SHA>`. Manifest váže zdrojové SHA, všechny tři image IDs, úspěšné kontroly a SHA256 image archivu. Deploy stáhne artefakt z přesného ověřeného CI běhu a ověří jej před vložením credentials i před publikací na serveru. Chybějící nebo expirovaný artefakt vyžaduje nové úspěšné CI téhož aktuálního SHA. Compose používá přesné IDs, pull_policy: never a up --no-build.
 
 ## Root controller a obnova

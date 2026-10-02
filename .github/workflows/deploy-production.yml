@@ -108,6 +108,9 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: '3.11'
+    - name: Trust exact workspace for container Git verification
+      shell: bash
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
     - name: Exact main CI and independent forensic review gate
       env:
         GH_TOKEN: ${{ github.token }}
