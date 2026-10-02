@@ -251,7 +251,7 @@ class TurnBuffer:
             except Exception:
                 self.reset()
                 return
-            if not enabled or not self.turns or not self.authorize():
+            if not self.enabled or not enabled or not self.turns or not self.authorize():
                 self.reset()
                 return
             if time.monotonic() - self.window >= 3600:

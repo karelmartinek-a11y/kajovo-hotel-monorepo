@@ -5,7 +5,7 @@ Běžné testy jsou deterministické a nevolají placené API. Názvy níže odk
 | # | Požadavek | Automatizovaný důkaz |
 |---|---|---|
 | 1 | memory CRUD | M test_memory_crud_remember_correct_deactivate_forget |
-| 2 | remember/forget | M stejné + test_forget_blocks_late_curator_and_purges_summaries + test_forget_deletes_automatic_derivatives_and_their_history |
+| 2 | remember/forget | M stejné + test_forget_blocks_late_curator_and_purges_summaries + test_forget_deletes_automatic_derivatives_and_their_history; P test_forget_pauses_active_curation_until_a_fresh_session |
 | 3 | rozpor | M CRUD odmítne duplicitní konfliktní remember a update uloží revision |
 | 4 | note create | M test_note_full_structured_lifecycle; P notes sequence |
 | 5 | rename | M note lifecycle; UI |

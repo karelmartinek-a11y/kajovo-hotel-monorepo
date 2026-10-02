@@ -146,6 +146,7 @@ class VoiceBridge:
         self.task = None
         self.closed = False
         self.renew = False
+        self.memory_privacy_paused = False
         self.seen_calls: dict[str, str] = {}
         self.dialog_items: list[str] = []
         self.call_items: dict[str, set[str]] = {}
@@ -287,7 +288,7 @@ class VoiceBridge:
                 if not session or not authorized(self.owner):
                     raise voice_memory.MemoryError("unauthorized")
                 self.memory_principal = voice_memory.principal(db, _serialize_session(session))
-                automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic
+                automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic and not self.memory_privacy_paused
             self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner))
             self.memory_buffer.enabled = automatic
             await self.send({"type": "session.update", "session": {"type": "realtime", "audio": {"input": {"transcription": {"model": "gpt-4o-mini-transcribe"} if automatic else None}}}}, lambda e: e.get("type") == "session.updated")

@@ -130,6 +130,7 @@ async def bridge_for(host, monkeypatch, provider, *, token=""):
         pass
 
     monkeypatch.setattr(bridge, "hangup", hangup)
+    monkeypatch.setitem(voice_smart.manager.sessions, bridge.id, bridge)
     bridge.task = asyncio.create_task(bridge.run())
     await asyncio.wait_for(bridge.ready.wait(), 3)
     return bridge
@@ -191,6 +192,70 @@ def test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_m
         await wait_for(lambda: len(second_provider.answers) == 1)
         assert second_provider.answers[0]["memories"][0]["content"] == "Krátké odpovědi."
         await second.close()
+
+    asyncio.run(scenario())
+
+
+def test_forget_pauses_active_curation_until_a_fresh_session(host, monkeypatch):
+    from app.api.routes.voice_memory import invalidate
+
+    provider = FakeRealtime(
+        "Zapamatuj si preference.",
+        {
+            "operation": "memory_remember",
+            "kind": "preference",
+            "subject": "Odpovědi",
+            "content": "Krátce",
+            "tags": [],
+        },
+    )
+
+    async def scenario():
+        bridge = await bridge_for(host, monkeypatch, provider)
+        await provider.user_phrase()
+        await wait_for(lambda: len(provider.answers) == 1)
+        row = provider.answers[0]["memory"]
+        provider.phrase = "Zapomeň na tuto preferenci."
+        provider.arguments = {
+            "operation": "memory_forget",
+            "id": row["id"],
+            "revision": row["revision"],
+        }
+        await provider.user_phrase("forget")
+        await wait_for(lambda: len(provider.answers) == 2)
+        assert provider.answers[1]["code"] == "ok"
+        assert bridge.memory_privacy_paused and not bridge.memory_buffer.enabled
+        await invalidate(bridge.memory_principal)
+        assert not bridge.memory_buffer.enabled
+        assert any(
+            e.get("session", {}).get("audio", {}).get("input", {}).get("transcription", "absent")
+            is None
+            for e in provider.sent
+        )
+
+        async def forbidden(*args):
+            raise AssertionError("forgotten provider context must not be curated again")
+
+        bridge.memory_buffer.extractor = forbidden
+        bridge.memory_buffer.add("late-paraphrase", 0, "assistant", "Krátce")
+        await bridge.memory_buffer.flush()
+        assert not bridge.memory_buffer.turns
+        provider.arguments = {
+            "operation": "note_create",
+            "title": "Po zapomenutí",
+            "kind": "list",
+            "items": [],
+            "content": None,
+        }
+        await provider.user_phrase("explicit-still-works")
+        await wait_for(lambda: len(provider.answers) == 3)
+        assert provider.answers[2]["code"] == "ok"
+        await asyncio.wait_for(bridge.close(), 10)
+        with host[1]() as db:
+            assert db.scalar(select(func.count()).select_from(VoiceMemory)) == 0
+        fresh = await bridge_for(host, monkeypatch, FakeRealtime("Nový rozhovor.", {}))
+        assert fresh.memory_buffer.enabled and not fresh.memory_privacy_paused
+        await asyncio.wait_for(fresh.close(), 10)
 
     asyncio.run(scenario())
 

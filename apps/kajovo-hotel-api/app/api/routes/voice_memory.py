@@ -43,12 +43,20 @@ async def invalidate(pid, *, deleted=False):
 
     for bridge in list(manager.sessions.values()):
         if getattr(bridge, "memory_principal", None) == pid and not bridge.closed:
+            if deleted:
+                # The provider's live dialogue can still paraphrase old user turns.
+                # Resume automatic extraction only in a fresh conversation.
+                bridge.memory_privacy_paused = True
             if bridge.memory_buffer:
                 bridge.memory_buffer.reset(invalidate=True)
                 try:
                     with bridge.memory_buffer.factory() as db:
                         config = db.get(VoiceMemorySettings, pid)
-                        automatic = config.automatic if config else False
+                        automatic = (
+                            config.automatic and not bridge.memory_privacy_paused
+                            if config
+                            else False
+                        )
                 except Exception:
                     automatic = False
                     bridge.memory_status = "unavailable"
