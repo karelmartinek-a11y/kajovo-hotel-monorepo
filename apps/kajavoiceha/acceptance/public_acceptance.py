@@ -52,10 +52,12 @@ def main():
  p=argparse.ArgumentParser();p.add_argument('--env',required=True);p.add_argument('--camera',action='store_true');p.add_argument('--private-catalog');a=p.parse_args();q=Probe(a.env)
  for token in [False,'invalid-acceptance-token']:
   code,_=q.http('/healthz',token=token);assert code==401,('auth',code)
+  code,_=q.http(payload={'jsonrpc':'2.0','id':999,'method':'initialize','params':{'protocolVersion':'2025-11-25','capabilities':{},'clientInfo':{'name':'auth-probe','version':'1'}}},token=token);assert code==401,('mcp_auth',code)
  code,body=q.http('/healthz');assert code==200 and json.loads(body)['status']=='ready'
  code,_=q.http('/healthz',extra={'Origin':'https://unrelated.invalid'});assert code==403
  hello=q.rpc('initialize',{'protocolVersion':'2025-11-25','capabilities':{},'clientInfo':{'name':'KajaVoiceHA-acceptance','version':'1'}})
  q.protocol=hello['protocolVersion'];assert hello['serverInfo']['name']=='KajaVoiceHA'
+ code,_=q.http(payload={'jsonrpc':'2.0','method':'notifications/initialized','params':{}});assert code in [200,202,204],('initialized_notification',code)
  listed=q.rpc('tools/list',{});assert [x['name'] for x in listed['tools']]==['smart_technologie']
  assert not re.search(r'home[ _-]*assistant|entity_id|device_id',json.dumps(listed),re.I)
  _,table=q.tool({'operation':'catalog'});rev=table['catalog_revision'];names=[x[0] for x in table['devices']]

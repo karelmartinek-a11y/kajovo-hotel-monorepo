@@ -62,7 +62,7 @@ def main():
   restore_params,restore_raw=params_from(baseline['attributes']);recovery['baseline']=baseline;save()
   assert 'rgb' in on['parameters']['properties'] and 'brightness_percent' in on['parameters']['properties']
   command(on,{'brightness_percent':65,'rgb':[0,0,255]},'blue65')
-  seen=wait(lambda s:s['state']=='on' and abs(s['attributes'].get('brightness',-999)-round(.65*255))<=3 and (s['attributes'].get('hs_color') or [-1,-1])[0]>=230 and (s['attributes'].get('hs_color') or [-1,-1])[0]<=250)
+  seen=wait(lambda s:s['state']=='on' and abs(s['attributes'].get('brightness',-999)-round(.65*255))<=3 and (s['attributes'].get('hs_color') or [-1,-1])[0]>=230 and (s['attributes'].get('hs_color') or [-1,-1])[0]<=250 and (s['attributes'].get('hs_color') or [-1,-1])[1]>=95 and s['attributes'].get('color_mode') in ['hs','rgb','xy'])
   tested=True
  finally:
   try:
