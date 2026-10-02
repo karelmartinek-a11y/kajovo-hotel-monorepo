@@ -663,3 +663,36 @@ def test_acceptance_restore_waits_for_observed_state_without_replaying_control(m
         await wait_for_light_restore(read, "r1", 43, "r1", "zapnuto")
         assert calls == [{"operation": "read", "catalog_revision": "r1", "rows": [43]}] * 2
     asyncio.run(scenario())
+
+
+def test_camera_mixed_targets_are_rejected_with_safe_correction(voice_host, monkeypatch):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_smart, "authorized", lambda owner: True)
+
+    async def scenario():
+        b = bridge()
+        b.catalog_ready = True
+        sent, calls = [], []
+        class MCP:
+            async def call_tool(self, name, payload):
+                calls.append(payload)
+                return mcp_result({"catalog_revision": "r1", "results": []})
+        async def item(value):
+            sent.append(value)
+            return value.get("id", "test-item")
+        async def replace(value):
+            pass
+        b.mcp, b.item, b.replace_context = MCP(), item, replace
+        args = {"operation": "camera_view", "catalog_revision": "r1", "selection_id": "private-selection", "rows": [43]}
+        await b.result({"name": "smart_technologie", "call_id": "mixed", "arguments": json.dumps(args)})
+        output = json.loads(next(value["output"] for value in sent if value["type"] == "function_call_output"))
+        assert calls == []
+        assert output["error"] == "invalid_arguments"
+        assert output["validation_issue"] == "exactly_one_target_required"
+        assert "private-selection" not in json.dumps(output)
+        del args["selection_id"]
+        await b.result({"name": "smart_technologie", "call_id": "corrected", "arguments": json.dumps(args)})
+        assert len(calls) == 1 and calls[0]["rows"] == [43]
+        assert "selection_id" not in calls[0]
+    asyncio.run(scenario())

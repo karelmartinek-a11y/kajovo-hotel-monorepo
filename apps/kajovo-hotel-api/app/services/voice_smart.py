@@ -461,6 +461,17 @@ class VoiceBridge:
                 if rid
                 else "Požadavek nebyl potvrzen. Oprav výběr podle katalogu nebo oznam nedostupnost; netvrď úspěch.",
             }
+            if isinstance(exc, ValidationError) and any(
+                str(error.get("ctx", {}).get("error", "")) == "exactly_one_target_required"
+                for error in exc.errors(include_input=False, include_url=False)
+            ):
+                output["validation_issue"] = "exactly_one_target_required"
+                output["message"] = (
+                    "Požadavek nebyl odeslán. Použij právě jeden způsob výběru: selection_id, "
+                    "nebo rows s catalog_revision, nebo controls s catalog_revision. "
+                    "Pro jednu vybranou kameru použij pouze rows:[globální řádek] s catalog_revision "
+                    "a vynech selection_id i controls."
+                )
             if rid:
                 output["request_id"] = rid
             images = []

@@ -39,12 +39,12 @@ class SmartArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     operation: Literal["catalog", "search", "describe", "read", "control", "operation_status", "camera_view"]
     catalog_revision: str | None = Field(default=None, min_length=1)
-    selection_id: str | None = Field(default=None, min_length=1)
+    selection_id: str | None = Field(default=None, min_length=1, description="Entire saved search selection. Mutually exclusive with rows and controls; omit this field when choosing a specific global row.")
     query: str | None = Field(default=None, max_length=200)
     filters: Filters | None = None
     offset: int | None = Field(default=None, ge=0)
     limit: int | None = Field(default=None, ge=1, le=200, description="Search: up to 200 names; describe/read: up to 8 device details.")
-    rows: list[int] | None = Field(default=None, min_length=1, max_length=1000)
+    rows: list[int] | None = Field(default=None, min_length=1, max_length=1000, description="Explicit global row identities with catalog_revision. Omit selection_id and controls. Camera_view requires exactly one row.")
     controls: list[Control] | None = Field(default=None, min_length=1, max_length=1000)
     action: Literal["zapnout", "vypnout", "prepnout", "nastavit"] | None = None
     parameters: dict | None = None
@@ -119,6 +119,7 @@ For ordinary main-component commands use action; for other functions use describ
 Read live state ONLY on an explicit user question using read or filters.state. NEVER automatically read state after control.
 For accepted say “Pokyn byl odeslán.” This proves sending, NOT physical execution. For groups report accepted and all skipped/rejected/unavailable/uncertain counts from summary and results.
 Preserve unresolved_request_ids in working context; recover those original operations with operation_status. For uncertain delivery use operation_status with the ORIGINAL request_id. Never repeat the control under a new identity. Interruption of speech does not cancel sent commands.
+Camera_view must target exactly one approved camera. After choosing one camera from search/describe, call camera_view with catalog_revision and rows:[the_global_row] ONLY; OMIT selection_id, controls, action, limit and offset. Never attach the earlier search selection alongside the chosen row.
 Camera_view fetches an image only on request. Describe it only after image input was accepted; retrieval time is not verified capture time.
 queued, recording and record_accepted are progress, not proof of a finished video file.
 When technologies are unavailable continue ordinary conversation and clearly state live technology access is unavailable.
