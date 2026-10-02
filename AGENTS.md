@@ -75,3 +75,12 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 - Voice Core v1 has an empty capability registry, no tools and no action executor. Sessions use server-built fixed instructions and `tool_choice: none`.
 - OpenAI API keys use AES-256-GCM with a separate server environment master key; never reuse SMTP encryption or capture voice request bodies, audio, transcripts or provider secrets in audit/log artifacts.
 - Voice validation includes `pnpm ci:voice-core`, isolated copy-out, responsive UI and the actual production API image. Paid smoke calls require `VOICE_CORE_LIVE_SMOKE=1` and never run in ordinary CI.
+
+## KajaVoiceHA boundary
+
+- `apps/kajavoiceha` je samostatný Go MCP server. Neimportuje hotelové entity do portable Voice Core a jeho nasazení nemění hotelové kontejnery, databáze ani hlasový chat.
+- Jediný nástroj `smart_technologie` poskytuje úplný osmipolový katalog. Privátní mapování, backendové identifikátory, URL a credentials nesmějí do veřejných popisů/výsledků/chyb.
+- Klienti včetně aplikací na stejném hostu používají výhradně veřejné HTTPS `apimcpkajavoiceha.hcasc.cz/mcp`; proces má pouze Unix socket s omezenými právy. Nový vhost má vlastní certifikát, nemění hotelovou Certbot lineage.
+- Ověření nové služby chrání `.github/workflows/kajavoiceha.yml`. Nasadit jen artefakt odpovídající úspěšnému CI SHA a ověřit public ingress/auth, katalog, živé čtení a schválený vratný test světla. Hotelový deployment nevyvolávat kvůli izolované MCP změně.
+- Reálné konfigurace a tokeny necommitovat. Změny uživatelského katalogu vyžadují validaci a novou revizi; zařízení mimo něj a Ignoruj se nikdy automaticky nepřidávají.
+- Snímky pro hlasový popis jsou obrazové vstupy, nikoli base64 v textovém kontextu. Přenos do Realtime provádí backend hlasové aplikace; snímky ani tajné hodnoty se nelogují.

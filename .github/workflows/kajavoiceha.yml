@@ -1,0 +1,50 @@
+name: KajaVoiceHA
+
+on:
+  push:
+    paths:
+      - 'apps/kajavoiceha/**'
+      - '.github/workflows/kajavoiceha.yml'
+  pull_request:
+    paths:
+      - 'apps/kajavoiceha/**'
+      - '.github/workflows/kajavoiceha.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.1'
+          cache-dependency-path: apps/kajavoiceha/go.sum
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Ověřit Go službu
+        working-directory: apps/kajavoiceha
+        run: |
+          go vet ./...
+          go test -race ./...
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o dist/kajavoiceha ./cmd/kajavoiceha
+      - name: Ověřit katalog a deploy skripty
+        working-directory: apps/kajavoiceha
+        run: |
+          python -m unittest discover -s catalog -p 'test_*.py'
+          python -m unittest discover -s deploy -p 'test_*.py'
+          bash -n deploy/install.sh
+          bash -n deploy/activate-release.sh
+          node --experimental-strip-types --test docs/test-voice-bridge.mjs
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kajavoiceha-linux-amd64
+          path: apps/kajavoiceha/dist/kajavoiceha

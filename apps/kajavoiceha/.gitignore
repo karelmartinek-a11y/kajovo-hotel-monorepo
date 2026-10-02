@@ -1,0 +1,7 @@
+catalog/catalog.private.json
+catalog/live.state.json
+catalog/*.private.json
+*.env
+__pycache__/
+dist/
+node_modules/

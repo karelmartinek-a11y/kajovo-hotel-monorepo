@@ -1,0 +1,17 @@
+[Unit]
+Description=Clean only KajaVoiceHA generated private recordings
+After=libvirtd.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/kajavoiceha/current/deploy/backend-media.py --operation cleanup
+TimeoutStartSec=100
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_UNIX
+MemoryMax=96M
+CPUQuota=20%

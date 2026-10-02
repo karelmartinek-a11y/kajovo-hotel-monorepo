@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly cleanup of KajaVoiceHA private recordings
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=120
+Persistent=true
+Unit=kajavoiceha-media-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,7 @@
+*.private.json
+*.state.json
+*.public.json
+*.png
+node_modules
+__pycache__
+*.pyc
