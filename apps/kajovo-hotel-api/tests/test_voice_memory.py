@@ -305,6 +305,9 @@ def test_sensitive_payloads_never_echo_to_logs_or_audit(host, caplog):
         ).status_code
         == 422
     )
+    malformed = client.post(BASE, json={"content": sentinel})
+    assert malformed.status_code == 404
+    assert malformed.headers["cache-control"] == "no-store"
     with factory() as db:
         assert sentinel not in str([r.detail for r in db.scalars(select(AuditTrail))])
     assert sentinel not in caplog.text

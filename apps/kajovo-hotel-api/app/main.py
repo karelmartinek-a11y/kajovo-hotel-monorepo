@@ -67,7 +67,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def safe_validation_error(request: Request, exc: RequestValidationError):
-        if request.url.path.startswith(("/api/v1/admin/voice-core/", "/api/v1/admin/voice-memory/")):
+        if request.url.path.startswith(("/api/v1/admin/voice-core", "/api/v1/admin/voice-memory")):
             return JSONResponse(status_code=422, content={"detail": {"code": "invalid_configuration"}},
                                 headers={"Cache-Control": "no-store"})
         return await request_validation_exception_handler(request, exc)
@@ -109,7 +109,7 @@ def create_app() -> FastAPI:
             )
         else:
             response = await call_next(request)
-        if request.url.path.startswith(("/api/v1/admin/voice-core/", "/api/v1/admin/voice-memory/")):
+        if request.url.path.startswith(("/api/v1/admin/voice-core", "/api/v1/admin/voice-memory")):
             response.headers["Cache-Control"] = "no-store"
         response.headers.setdefault("Content-Security-Policy", settings.content_security_policy)
         response.headers.setdefault("Referrer-Policy", "no-referrer")
