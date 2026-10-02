@@ -9,6 +9,6 @@
 | Komentáře a poznámky | aktualizovat | Tvrzení o chybějících nástrojích platí jen pro standalone. |
 | Instrukce | aktualizovat | AGENTS.md odděluje portable v1 od hotelového adaptéru. |
 | Fixtures a texty | aktualizovat | Kontraktové fixtures nejsou provozní katalog; host ukazuje dostupnost technologií. |
-| Build a deploy | aktualizovat | Python MCP SDK, WebSocket, JSON Schema, explicitní Docker závislosti a backendový secret. |
+| Build a deploy | aktualizovat | Python MCP SDK, WebSocket, JSON Schema, explicitní Docker závislosti a backendový secret včetně zachování práv 0600 při SSH deployi. |
 
 Portál a Android: ověřit beze změny, žádný hlasový endpoint ani oprávnění nepřibývá. MCP server a jeho registr zařízení: ověřit beze změny, hotel používá pouze veřejný schválený kontrakt.

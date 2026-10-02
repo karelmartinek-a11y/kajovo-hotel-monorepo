@@ -44,6 +44,7 @@ def ssh_base() -> tuple[list[str], dict[str, str] | None]:
 def remote_script_text() -> str:
     return """#!/usr/bin/env bash
 set -euo pipefail
+umask 077
 upload_home="${DEPLOY_UPLOAD_HOME:?Missing DEPLOY_UPLOAD_HOME}"
 release_archive="${upload_home}/${RELEASE_ARCHIVE}"
 release_root="/opt/kajovo-hotel-monorepo"
@@ -121,6 +122,7 @@ for key, value in updates.items():
         current[key] = value
 
 env_path.write_text("".join(f"{key}={value}\\n" for key, value in sorted(current.items())), encoding="utf-8")
+env_path.chmod(0o600)
 PY
 rm -rf "$preserve_dir"
 rm -f "$release_archive"
