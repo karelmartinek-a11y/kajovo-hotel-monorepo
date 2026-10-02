@@ -64,6 +64,24 @@ class VoiceSmartDelivery(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class VoiceRegistryPlan(Base):
+    """Confirmation metadata only. Plan names, transcripts and audio stay transient."""
+    __tablename__ = "voice_registry_plans"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    voice_session_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    plan_id: Mapped[str] = mapped_column(String(256), nullable=False)
+    digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    requires_confirmation: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    response_id: Mapped[str | None] = mapped_column(String(128))
+    input_event_id: Mapped[str | None] = mapped_column(String(256))
+    confirmation_id: Mapped[str | None] = mapped_column(String(80))
+    request_id: Mapped[str | None] = mapped_column(String(80), unique=True)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ReservationAmenity(Base):
     __tablename__ = "reservation_amenities"
     __table_args__ = (

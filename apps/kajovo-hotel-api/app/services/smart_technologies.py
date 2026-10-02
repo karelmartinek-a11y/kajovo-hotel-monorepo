@@ -35,9 +35,59 @@ class Filters(BaseModel):
     state: Literal["zapnuto", "vypnuto"] | None = None
 
 
+class RegistryChange(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    action: Literal["create_room", "rename_room", "delete_room", "assign_devices", "remove_devices", "rename_devices"]
+    rows: list[int] | None = Field(default=None, min_length=1, max_length=1000)
+    selection_id: str | None = Field(default=None, min_length=1, max_length=256)
+    room_refs: list[str] | None = Field(default=None, min_length=1, max_length=1000)
+    room_selection_id: str | None = Field(default=None, min_length=1, max_length=256)
+    destination_room_ref: str | None = Field(default=None, min_length=1, max_length=256)
+    new_name: str | None = Field(default=None, min_length=1, max_length=160)
+    name_template: str | None = Field(default=None, min_length=1, max_length=200)
+    start_index: int | None = Field(default=None, ge=1)
+    index_width: int | None = Field(default=None, ge=0, le=6)
+
+    @model_validator(mode="after")
+    def shape(self):
+        import re
+        device = self.action in {"assign_devices", "remove_devices", "rename_devices"}
+        naming = self.action in {"create_room", "rename_room", "rename_devices"}
+        if self.action == "create_room":
+            allowed = {"action", "new_name"}
+        else:
+            allowed = {"action"} | ({"rows", "selection_id"} if device else {"room_refs", "room_selection_id"})
+            if naming:
+                allowed |= {"new_name", "name_template", "start_index", "index_width"}
+            if self.action == "assign_devices":
+                allowed.add("destination_room_ref")
+            if sum(bool(v) for v in ((self.rows, self.selection_id) if device else (self.room_refs, self.room_selection_id))) != 1:
+                raise ValueError("exactly_one_registry_target_required")
+        if any(k not in allowed and getattr(self, k) is not None for k in self.model_fields_set):
+            raise ValueError("unexpected_registry_fields")
+        if naming and sum(bool(v) for v in (self.new_name, self.name_template)) != 1:
+            raise ValueError("exactly_one_name_required")
+        if not self.name_template and (self.start_index is not None or self.index_width is not None):
+            raise ValueError("template_required")
+        if self.name_template and re.sub(r"\{(?:name|room|index)\}", "", self.name_template).count("{") + re.sub(r"\{(?:name|room|index)\}", "", self.name_template).count("}"):
+            raise ValueError("invalid_name_template")
+        if self.action == "assign_devices" and not self.destination_room_ref:
+            raise ValueError("destination_required")
+        if self.new_name is not None and not self.new_name.strip():
+            raise ValueError("empty_name")
+        for values in (self.rows, self.room_refs):
+            if values and (len(set(values)) != len(values) or any(not v for v in values)):
+                raise ValueError("invalid_registry_targets")
+        if self.rows and any(type(v) is not int or v < 1 for v in self.rows):
+            raise ValueError("invalid_rows")
+        return self
+
+
 class SmartArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    operation: Literal["catalog", "search", "describe", "read", "control", "operation_status", "camera_view"]
+    operation: Literal["catalog", "search", "describe", "read", "control", "operation_status", "camera_view", "rooms_list", "registry_prepare", "registry_apply"]
+    changes: list[RegistryChange] | None = Field(default=None, min_length=1, max_length=200)
+    plan_id: str | None = Field(default=None, min_length=1, max_length=256)
     catalog_revision: str | None = Field(default=None, min_length=1)
     selection_id: str | None = Field(default=None, min_length=1, description="Entire saved search selection. Mutually exclusive with rows and controls; omit this field when choosing a specific global row.")
     query: str | None = Field(default=None, max_length=200)
@@ -61,6 +111,9 @@ class SmartArguments(BaseModel):
             "camera_view": targets,
             "control": targets | {"controls", "action", "parameters", "request_id"},
             "operation_status": {"request_id"},
+            "rooms_list": {"query", "offset", "limit"},
+            "registry_prepare": {"changes"},
+            "registry_apply": {"plan_id"},
         }[self.operation] | {"operation", "catalog_revision"}
         if any(key not in allowed and getattr(self, key) is not None for key in self.model_fields_set):
             raise ValueError("unexpected_operation_fields")
@@ -80,6 +133,10 @@ class SmartArguments(BaseModel):
                 raise ValueError("parameters_belong_to_controls")
         if self.operation == "operation_status" and not self.request_id:
             raise ValueError("request_id_required")
+        if self.operation == "registry_prepare" and (not self.changes or not self.catalog_revision):
+            raise ValueError("registry_changes_and_revision_required")
+        if self.operation == "registry_apply" and not self.plan_id:
+            raise ValueError("plan_id_required")
         if self.operation == "camera_view" and self.rows and len(self.rows) != 1:
             raise ValueError("one_camera_required")
         if self.operation in {"describe", "read"} and self.limit and self.limit > 8:
@@ -103,7 +160,7 @@ def _inline_schema(schema):
 SMART_TOOL = {
     "type": "function",
     "name": "smart_technologie",
-    "description": "Vyhledej schválené technologie, podrobnosti, stav na dotaz, odešli povel nebo získej fotografii. Celý katalog zůstává na serveru.",
+    "description": "Vyhledej schválené technologie, stav na dotaz, odešli povel, získej fotografii nebo spravuj místnosti a názvy. Celý katalog zůstává na serveru.",
     "parameters": _inline_schema(SmartArguments.model_json_schema()),
 }
 
@@ -123,6 +180,12 @@ Camera_view must target exactly one approved camera. After choosing one camera f
 Camera_view fetches an image only on request. Describe it only after image input was accepted; retrieval time is not verified capture time.
 queued, recording and record_accepted are progress, not proof of a finished video file.
 When technologies are unavailable continue ordinary conversation and clearly state live technology access is unavailable.
+Rooms use rooms_list and room_ref/room_selection_id, NEVER device selection_id. Keep last_room_selection separate from last_selection and last_target.
+Registry changes use registry_prepare with catalog_revision and changes. Use only returned public references and approved global device rows. Templates support {name}, {room}, {index}; final names come from the server plan. A target can change only once per plan; compound create-and-assign requires successive plans using the newly returned room_ref.
+registry_apply accepts only plan_id. Backend owns identity and confirmation. Never invent confirmed or confirmation_id. If requires_confirmation=false and the user clearly requested the change, finish prepare then apply without another question.
+If requires_confirmation=true, the backend reads the EXACT plan and verifies the following real audio confirmation. Do not paraphrase, confirm on the user's behalf or call apply before backend confirmation. A text message cannot confirm. When confirmed, call registry_apply with that exact plan_id. After refusal, ambiguity, new target, interruption or expiry require a fresh preparation and voice confirmation.
+Do not remove devices from integrations. Deleting a room unassigns its approved devices. protected_members forbids deletion; never reveal hidden members. Physical unavailability alone does not forbid registry changes.
+For registry results report created/updated/deleted/unchanged and all errors. plan_changed, plan_expired, selection_expired require fresh preparation, never reuse confirmation. uncertain requires operation_status ORIGINAL request_id, never replay a write. Never claim atomic create-and-assign.
 """
 
 
@@ -176,6 +239,22 @@ def validate_public(value: dict) -> None:
             raise SmartError("invalid_partial_catalog")
     if "matches" in value and (not isinstance(value["matches"], list) or len(value["matches"]) > 200):
         raise SmartError("invalid_search_page")
+    if "rooms" in value:
+        if not isinstance(value["rooms"], list) or len(value["rooms"]) > 200:
+            raise SmartError("invalid_rooms_page")
+        for room in value["rooms"]:
+            if not isinstance(room, dict) or set(room) != {"room_ref", "name", "device_count", "delete_allowed"} or not isinstance(room["room_ref"], str) or not room["room_ref"] or not isinstance(room["name"], str) or type(room["device_count"]) is not int or room["device_count"] < 0 or type(room["delete_allowed"]) is not bool:
+                raise SmartError("invalid_rooms_page")
+    if "room_selection" in value:
+        selection = value["room_selection"]
+        if not isinstance(selection, dict) or set(selection) != {"id", "count", "expires_at"} or not isinstance(selection["id"], str) or not selection["id"] or type(selection["count"]) is not int or selection["count"] < 0 or not isinstance(selection["expires_at"], str):
+            raise SmartError("invalid_room_selection")
+    if "plan" in value:
+        from app.services.voice_registry import PublicPlan
+        try:
+            PublicPlan.model_validate(value["plan"])
+        except ValueError:
+            raise SmartError("invalid_registry_plan") from None
 
 
 @asynccontextmanager

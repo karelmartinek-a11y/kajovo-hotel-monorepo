@@ -48,3 +48,5 @@ Zelené CI dokládá uvedené scénáře, nikoliv úplnou funkčnost produkce. S
 Historické `CI Core`, `CI Full` a `CI Release` nemají samostatný aktuální kontrakt; jejich povinné validační vrstvy zajišťuje jediný plán, proto jsou jejich workflow odstraněná. Staré běhy v GitHub historii zůstávají důkazem minulého stavu.
 
 The validate plan includes voice-memory-ui (real API, desktop/tablet/phone, no transcript traces). api-runtime-image additionally verifies voice memory migrations and transactions against PostgreSQL 16.4 with scripts/verify_voice_memory_postgres.py. Existing jobs and deploy dependencies are unchanged.
+
+Voice-registry-ui ověřuje read-only návrh přes skutečné HTTP/auth/DB na desktopu/tabletu/telefonu s izolovaným provider portem. API testy zahrnují hlasové potvrzení a obnovu; PostgreSQL runtime kontrola ověřuje také migraci 0043 a transakční rezervaci registry zápisu. Placená registry přejímka běží samostatně mimo CI.

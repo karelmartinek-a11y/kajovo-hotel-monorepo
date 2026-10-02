@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0042_voice_memory"]
+    assert script.get_heads() == ["0043_voice_registry_plans"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(

@@ -90,3 +90,9 @@ voice_memory:
   ui_validation: pnpm --filter @kajovo/kajovo-hotel-admin test:voice-memory
   postgres_validation: scripts/verify_voice_memory_postgres.py
   persistent_transcript: false
+
+voice_registry:
+  version: KajaVoiceHA-2.1
+  migration: 0043_voice_registry_plans
+  confirmation: audio_only
+  documentation: docs/voice-registry.md

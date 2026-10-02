@@ -16,6 +16,7 @@ from app.services.voice_core import (
     get_record,
 )
 from app.services.voice_smart import manager
+from app.services.voice_registry import RegistryView
 
 
 class VoiceAuthAdapter:
@@ -165,6 +166,11 @@ def owned_bridge(session_id: str, request: Request):
 @router.get("/sessions/{session_id}", response_model=VoiceSessionStatus)
 def session_status(session_id: str, request: Request):
     return owned_bridge(session_id, request).public_status()
+
+
+@router.get("/sessions/{session_id}/registry-plan", response_model=RegistryView)
+def registry_plan(session_id: str, request: Request):
+    return owned_bridge(session_id, request).registry.view()
 
 
 @router.post("/sessions/{session_id}/heartbeat", response_model=VoiceSessionStatus)

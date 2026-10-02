@@ -62,22 +62,7 @@ async def invalidate(pid, *, deleted=False):
                     bridge.memory_status = "unavailable"
                 bridge.memory_buffer.enabled = automatic
                 try:
-                    await bridge.send(
-                        {
-                            "type": "session.update",
-                            "session": {
-                                "type": "realtime",
-                                "audio": {
-                                    "input": {
-                                        "transcription": {"model": "gpt-4o-mini-transcribe"}
-                                        if automatic
-                                        else None
-                                    }
-                                },
-                            },
-                        },
-                        lambda e: e.get("type") == "session.updated",
-                    )
+                    await bridge.update_transcription()
                 except Exception:
                     bridge.memory_status = "unavailable"
             if deleted:

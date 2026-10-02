@@ -721,9 +721,31 @@ export type PortalUserUpdate = {
   "phone"?: string | null;
   "roles": Array<string>;
 };
+export type PublicChange = {
+  "action": "create_room" | "rename_room" | "delete_room" | "assign_devices" | "remove_devices" | "rename_devices";
+  "name"?: string | null;
+  "new_location"?: string | null;
+  "new_name"?: string | null;
+  "old_location"?: string | null;
+  "old_name"?: string | null;
+  "room_ref"?: string | null;
+  "row"?: number | null;
+  "status": string;
+};
+export type PublicPlan = {
+  "changes": Array<PublicChange>;
+  "expires_at": string;
+  "id": string;
+  "requires_confirmation": boolean;
+};
 export type ReadMemory = {
   "id": string;
   "operation": string;
+};
+export type RegistryView = {
+  "attempts"?: number;
+  "plan"?: PublicPlan | null;
+  "state"?: string;
 };
 export type Remember = {
   "content": string;
@@ -1061,6 +1083,9 @@ export const apiClient = {
   },
   async sessionHeartbeatApiV1AdminVoiceCoreSessionsSessionIdHeartbeatPost(session_id: string): Promise<VoiceSessionStatus> {
     return request<VoiceSessionStatus>('POST', `/api/v1/admin/voice-core/sessions/${session_id}/heartbeat`, undefined, undefined);
+  },
+  async registryPlanApiV1AdminVoiceCoreSessionsSessionIdRegistryPlanGet(session_id: string): Promise<RegistryView> {
+    return request<RegistryView>('GET', `/api/v1/admin/voice-core/sessions/${session_id}/registry-plan`, undefined, undefined);
   },
   async memoriesApiV1AdminVoiceMemoryMemoriesGet(query: { "limit"?: number; "offset"?: number; }): Promise<MemoryResult> {
     return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/memories`, query, undefined);

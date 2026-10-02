@@ -32,3 +32,5 @@
 - Produkční image a proxy ověřuje samostatný `api-runtime-image` job.
 - Rozsáhlé smoke a vizuální sady se spouštějí podle změny modulu, Android zůstává samostatný.
 - Live ověření deploye používá `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`.
+
+- Správa místností a názvů KajaVoiceHA 2.1: [aktuální kontrakt](voice-registry.md), potvrzení pouze hlasem a read-only přehled v administraci.

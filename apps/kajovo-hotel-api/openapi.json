@@ -5097,6 +5097,155 @@
         "title": "PortalUserUpdate",
         "type": "object"
       },
+      "PublicChange": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "create_room",
+              "rename_room",
+              "delete_room",
+              "assign_devices",
+              "remove_devices",
+              "rename_devices"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "new_location": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Location"
+          },
+          "new_name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Name"
+          },
+          "old_location": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Location"
+          },
+          "old_name": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Name"
+          },
+          "room_ref": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Room Ref"
+          },
+          "row": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row"
+          },
+          "status": {
+            "maxLength": 64,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "status"
+        ],
+        "title": "PublicChange",
+        "type": "object"
+      },
+      "PublicPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/PublicChange"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Changes",
+            "type": "array"
+          },
+          "expires_at": {
+            "maxLength": 64,
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "requires_confirmation": {
+            "title": "Requires Confirmation",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "expires_at",
+          "requires_confirmation",
+          "changes"
+        ],
+        "title": "PublicPlan",
+        "type": "object"
+      },
       "ReadMemory": {
         "additionalProperties": false,
         "properties": {
@@ -5116,6 +5265,32 @@
           "id"
         ],
         "title": "ReadMemory",
+        "type": "object"
+      },
+      "RegistryView": {
+        "properties": {
+          "attempts": {
+            "default": 0,
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "default": "idle",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "title": "RegistryView",
         "type": "object"
       },
       "Remember": {
@@ -7455,6 +7630,48 @@
           }
         },
         "summary": "Session Heartbeat",
+        "tags": [
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/sessions/{session_id}/registry-plan": {
+      "get": {
+        "operationId": "registry_plan_api_v1_admin_voice_core_sessions__session_id__registry_plan_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Registry Plan",
         "tags": [
           "voice-core"
         ]

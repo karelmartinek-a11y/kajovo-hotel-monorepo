@@ -31,6 +31,7 @@
     "test:smoke": "playwright test -c playwright.smoke.config.ts",
     "test:visual": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/visual.spec.ts",
     "test:baseline": "playwright test -c playwright.baseline.config.ts",
-    "test:voice-memory": "playwright test -c playwright.voice-memory.config.ts"
+    "test:voice-memory": "playwright test -c playwright.voice-memory.config.ts",
+    "test:voice-registry": "playwright test -c playwright.voice-registry.config.ts"
   }
 }

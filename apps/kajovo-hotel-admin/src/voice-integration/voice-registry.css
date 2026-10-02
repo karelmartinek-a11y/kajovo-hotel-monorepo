@@ -1,0 +1,4 @@
+.voice-registry { margin-block: var(--k-spacing-4); padding: var(--k-spacing-4); border: 1px solid var(--k-color-border); border-radius: var(--k-radius-2); min-width: 0; }
+.voice-registry ol { padding-inline-start: var(--k-spacing-5); }
+.voice-registry li { margin-block: var(--k-spacing-3); overflow-wrap: anywhere; }
+.voice-registry p { overflow-wrap: anywhere; }

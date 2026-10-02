@@ -79,7 +79,7 @@ from app.services.voice_memory import principal,execute
 from app.services.voice_memory_contract import MemoryRequest
 from sqlalchemy import select,func,text
 with SessionLocal() as db:
-    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0042_voice_memory'
+    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0043_voice_registry_plans'
     p=principal(db,{'actor_type':'admin','role':'admin','email':'test@example.invalid'})
     request=MemoryRequest.model_validate({'request':{'operation':'note_create','title':'PG','kind':'list','items':['a','b'],'content':None}})
     first=execute(db,p,request,session_id='pg',call_id='call')
@@ -110,6 +110,27 @@ with SessionLocal() as db:
     assert db.scalar(select(func.count()).select_from(VoiceNoteItem))==0
     assert db.scalar(select(func.count()).select_from(VoiceMemoryOperation))==0
 print('PostgreSQL migration, retries, revisions, ordering and cascades PASS')
+from app.services.voice_registry import RegistryConfirmation
+from app.services.voice_smart import claim_operation
+from app.db.models import VoiceRegistryPlan
+from app.time_utils import utc_now
+from datetime import timedelta
+r=RegistryConfirmation('pg-registry','pg-voice',SessionLocal)
+r.prepare({'id':'pg-plan','expires_at':(utc_now()+timedelta(minutes=5)).isoformat(),'requires_confirmation':True,'changes':[{'action':'delete_room','old_name':'Transient PG room','room_ref':'public','status':'planned'}]},'en')
+r.begin_readback('pg-response')
+r.event({'type':'response.done','response':{'id':'pg-response','status':'completed','output':[{'content':[{'type':'audio','transcript':r.text}]}]}})
+r.event({'type':'output_audio_buffer.stopped','response_id':'pg-response'})
+r.event({'type':'input_audio_buffer.speech_started','item_id':'pg-audio'})
+r.event({'type':'conversation.item.input_audio_transcription.completed','event_id':'pg-event','item_id':'pg-audio','transcript':'yes'})
+args={'operation':'registry_apply','plan_id':'pg-plan'}
+rid,fresh=claim_operation('pg-registry','pg-voice','pg-call',args,r)
+assert fresh
+assert claim_operation('pg-registry','pg-voice','pg-call',args,r)==(rid,False)
+with SessionLocal() as db:
+    row=db.get(VoiceRegistryPlan,r.identity)
+    assert row.request_id==rid and row.confirmation_id.startswith('confirmed-')
+    assert 'Transient PG room' not in str(row.__dict__)
+print('PostgreSQL registry confirmation and atomic write reservation PASS')
 """
         print(api("python", "-c", code))
         api("alembic", "downgrade", "0041_voice_smart_deliveries")
