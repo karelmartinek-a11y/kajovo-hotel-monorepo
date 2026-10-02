@@ -9,7 +9,7 @@ Jediné automatické web/API workflow je `.github/workflows/ci-gates.yml` (`CI G
 | `validate` | TypeScript/Python lint, API a portable unit/integrační testy, izolovaný Voice Core copy-out, OpenAPI/klient, build obou frontendů, brand/token/text/překladové kontroly a základní browser scénáře. |
 | `api-runtime-image` | Skutečný produkční Docker build API/admin/web, import runtime závislostí a Nginx proxy řetězec. |
 
-Lokální ekvivalent `validate` je `pnpm ci:gates` nebo `python3.11 scripts/release_gate.py`. Runner nemá přepínače vynechávající povinné kontroly. Každá chyba nebo chybějící příkaz znamená FAIL; JSON obsahuje SHA, příkazy, návratové kódy a časy. Izolovaný copy-out záměrně testuje balíčky podruhé v jiném hostiteli, protože dokládá přenositelnost.
+Lokální ekvivalent `validate` je `pnpm ci:gates` nebo `python3.11 scripts/release_gate.py`. Runner nemá přepínače vynechávající povinné kontroly. Python lint používá explicitní konfiguraci `apps/kajovo-hotel-api/pyproject.toml` a pravidla `E,F` pro chyby syntaxe a problematický kód. Abecední pořadí importů není release podmínka; lokální a GitHub pravidla jsou stejná. Každá chyba nebo chybějící příkaz znamená FAIL; JSON obsahuje SHA, příkazy, návratové kódy a časy. Izolovaný copy-out záměrně testuje balíčky podruhé v jiném hostiteli, protože dokládá přenositelnost.
 
 ## Browser základ
 
