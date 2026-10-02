@@ -12,7 +12,7 @@ Každé volání funkce znovu ověřuje databázovou administrátorskou relaci v
 
 ## Katalog a operace
 
-Každý MCP požadavek obsahuje `api_version:2` a backendem určené `session_id`. Model tyto hodnoty nemůže změnit. Úvodní `catalog` vrací krátký přehled 199 schválených zařízení; celý katalog zůstává na MCP. `search` hledá fulltextem a filtry jména, umístění, druhu, funkce a skutečných schopností. Stav se čte pouze na výslovný dotaz přes `read` nebo `filters.state`.
+Každý MCP požadavek obsahuje `api_version:2` a backendem určené `session_id`. Model tyto hodnoty nemůže změnit. `catalog_revision` je přípustné společné referenční metadata také u hledání a přehledu. Úvodní `catalog` vrací krátký přehled 199 schválených zařízení; celý katalog zůstává na MCP. `search` hledá fulltextem a filtry jména, umístění, druhu, funkce a skutečných schopností. Stav se čte pouze na výslovný dotaz přes `read` nebo `filters.state`.
 
 Operace jsou `catalog`, `search`, `describe`, `read`, `control`, `operation_status`, `camera_view`. Search vrací až 200 názvů na stránku a `total`/`has_more`; vyjmenování všech shod vyžaduje potřebné stránky. `selection.id` pokrývá všechny shody, je izolovaný podle klienta a hlasové relace a platí 30 minut. Hromadná akce používá celý výběr. Prázdný dotaz nesmí vést k ovládání všech zařízení bez výslovného pokynu. Nejasný jednotlivý cíl vyžaduje upřesnění.
 

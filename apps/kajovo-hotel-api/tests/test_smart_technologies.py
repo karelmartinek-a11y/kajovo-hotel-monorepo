@@ -109,7 +109,7 @@ def test_operation_shape_is_strict(body):
 
 
 def test_v2_supports_search_selection_and_global_partial_rows():
-    SmartArguments.model_validate({"operation": "search", "filters": {"capabilities": ["barva"]}, "limit": 200, "offset": 20})
+    SmartArguments.model_validate({"operation": "search", "catalog_revision": "r1", "filters": {"capabilities": ["barva"]}, "limit": 200, "offset": 20})
     SmartArguments.model_validate({"operation": "control", "selection_id": "all-matches", "action": "vypnout"})
     value = catalog()
     validate_public(value)
@@ -640,3 +640,11 @@ def test_camera_history_is_bounded_and_explicit_target_survives_overview(voice_h
         assert b.last_target == {"rows": [43], "catalog_revision": "r1"}
         assert b.last_selection["id"] == "old-group"
     asyncio.run(scenario())
+
+
+def test_revision_metadata_is_valid_on_search_and_overview():
+    for operation in ("catalog", "search", "operation_status"):
+        payload = {"operation": operation, "catalog_revision": "r1"}
+        if operation == "operation_status":
+            payload["request_id"] = "original-request"
+        assert SmartArguments.model_validate(payload).catalog_revision == "r1"
