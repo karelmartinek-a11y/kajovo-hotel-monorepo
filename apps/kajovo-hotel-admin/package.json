@@ -21,13 +21,13 @@
     "vite": "^5.4.11"
   },
   "scripts": {
+    "pretest": "playwright install chromium",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "pnpm test:smoke",
     "test:smoke": "playwright test -c playwright.smoke.config.ts",
-    "test:visual": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/visual.spec.ts",
-    "test:install-browsers": "playwright install --with-deps chromium"
+    "test:visual": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-admin tests/visual.spec.ts"
   }
 }

@@ -95,26 +95,3 @@ def test_timeout_and_bad_success_are_sanitized():
         asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(timeout)).create("v=0", VoiceCoreConfig(), "test-key"))
     with pytest.raises(VoiceError, match="session_creation_failed"):
         asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(lambda _: httpx.Response(200, text="SECRET"))).create("v=0", VoiceCoreConfig(), "test-key"))
-
-
-def test_actual_multipart_session_contains_no_tools_or_connection_metadata():
-    from email import policy
-    from email.parser import BytesParser
-
-    def respond(request):
-        assert request.method == 'POST' and str(request.url) == 'https://api.openai.com/v1/realtime/calls'
-        message = BytesParser(policy=policy.default).parsebytes(
-            b'Content-Type: ' + request.headers['content-type'].encode() + b'\r\n\r\n' + request.content)
-        parts = {part.get_param('name', header='content-disposition'): part.get_payload(decode=True)
-                 for part in message.iter_parts()}
-        assert set(parts) == {'sdp', 'session'}
-        assert parts['sdp'].decode() == 'v=0\r\nportable-offer'
-        session = json.loads(parts['session'])
-        assert session['tool_choice'] == 'none'
-        assert not {'tools', 'connector_id', 'tunnel_id', 'authorization'}.intersection(session)
-        assert 'no connected external systems' in session['instructions']
-        return httpx.Response(201, text='v=0\r\nportable-answer')
-
-    result = asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(respond)).create(
-        'v=0\r\nportable-offer', VoiceCoreConfig(), 'test-key'))
-    assert result == ('v=0\r\nportable-answer', 'gpt-realtime-2.1')

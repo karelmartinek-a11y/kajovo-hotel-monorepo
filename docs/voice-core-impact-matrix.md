@@ -1,16 +1,16 @@
-# Standalone Voice Core impact matrix
+# Voice Core v1 impact matrix
 
-| Category | Disposition | Technical closure |
+| Category | Action | Verification |
 |---|---|---|
-| Production source | Update/remove | Standalone portable browser/server and API sessions; remove integration provider, tools and approval UI. AES encryption, auth and host navigation remain. |
-| Tests | Update/remove | Restore policy/lifecycle/UI tests; multipart absence and rejected tool events; remove integration suites; test review, image identity, root rollback, deadline and transport. |
-| GitHub and gates | Update | Existing reusable Gates graph and complete viewports; hotel-only successful-main automatic deploy; exact container workspace trust before source verification; genuine source-bound independent review gates acceptance. |
-| Current documentation/schemas | Update/verify unchanged | Current Voice, CI/deploy and validation runbooks updated. OpenAPI, generated client and migrations unchanged because sessions/config/key contracts are identical. |
-| Comments/notes | Update/remove | Remove active integration descriptions; repository occurrence audit retains only absence guards and rollback fixtures. |
-| Active instructions | Update | Portable no-tool policy; actual six-area review; independent hotel worker/fence/deadline and immutable images. |
-| Fixtures/selectors/text | Update/remove | Restore standalone Voice UI text/tests; preserve existing hotel smoke viewports and Chat unread description. |
-| Build/generators/deploy | Update/verify unchanged | Central constrained dependencies, frozen pnpm, CI-built immutable images; preserve active env/master and live DB revision; never rebuild/prune on server. |
-| Other hotel modules/Android | Verify unchanged | No business route/auth/data/schema or native consumer contract change. Android release/emulator remains separate. |
-| Production runtime | Update | Exact verified candidate images, live responsive Voice/security and hotel regression acceptance; previous runtime retained for rollback. |
+| Production source | Update | Portable packages, admin host, FastAPI adapter, existing admin session |
+| Tests | Update | Policy, encryption, authorization, lifecycle, UI, architecture, isolated host |
+| CI and gates | Update | Portable checks, opt-in guard, API image import, release gate |
+| Current documentation and schemas | Update | Architecture, security, OpenAPI, generated client, local runbook |
+| Comments and operational notes | Update | New current contracts; repository-wide occurrence audit |
+| Active instructions | Update | Portable boundary and no paid CI in AGENTS.md |
+| Fixtures, selectors and text | Update | Test-only providers, responsive Voice Console, Czech labels, exact internal-chat selectors |
+| Build and runtime | Update | Workspace, Python installation, Docker, master-key injection, microphone policy |
+| Production deployment and merge | Verify unchanged | This delivery is a working branch; no merge or production deploy |
+| Native Android voice | Not relevant | Admin-only feature; Android has no admin scope; auth permission parsing checked |
 
-The release evidence records actual verification results separately from these required actions.
+No existing business behavior is removed. Test fakes exist only in isolated test hosts.

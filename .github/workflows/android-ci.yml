@@ -1,6 +1,25 @@
 name: Android CI - Kajovo Hotel
+
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk'
+      - 'scripts/check_android_release_integrity.py'
+      - '.github/workflows/android-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'android/**'
+      - 'apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk'
+      - 'scripts/check_android_release_integrity.py'
+      - '.github/workflows/android-ci.yml'
+  workflow_dispatch:
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   native-android:
     runs-on: ubuntu-latest
@@ -9,61 +28,46 @@ jobs:
       run:
         working-directory: android
     steps:
-    - name: Checkout
-      uses: actions/checkout@v5
-    - name: Setup Java
-      uses: actions/setup-java@v5
-      with:
-        distribution: temurin
-        java-version: '17'
-        cache: gradle
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v4
-    - name: Verify published release integrity
-      working-directory: .
-      run: python3 scripts/check_android_release_integrity.py
-    - name: Build, unit test and lint native app
-      run: ./gradlew :app:assembleDebug testDebugUnitTest lintDebug --console=plain
-    - name: Enable KVM
-      run: |
-        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-        sudo udevadm control --reload-rules
-        sudo udevadm trigger --name-match=kvm
-    - name: Verify native readability and navigation
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 35
-        arch: x86_64
-        disable-animations: true
-        script: android/gradlew :app:connectedDebugAndroidTest --console=plain
-    - name: Upload debug APK and reports
-      if: always()
-      uses: actions/upload-artifact@v6
-      with:
-        name: kajovo-hotel-android-debug
-        path: |
-          android/app/build/outputs/apk/debug/app-debug.apk
-          android/**/build/reports/**
-        if-no-files-found: warn
-'on':
-  pull_request:
-    paths:
-    - android/**
-    - apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk
-    - scripts/check_android_release_integrity.py
-    - .github/workflows/android-ci.yml
-    - apps/kajovo-hotel-api/openapi.json
-    - apps/kajovo-hotel-api/app/api/routes/**
-    - packages/shared/src/**
-  push:
-    branches:
-    - main
-    paths:
-    - android/**
-    - apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk
-    - scripts/check_android_release_integrity.py
-    - .github/workflows/android-ci.yml
-    - apps/kajovo-hotel-api/openapi.json
-    - apps/kajovo-hotel-api/app/api/routes/**
-    - packages/shared/src/**
-  workflow_dispatch: null
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Verify published release integrity
+        working-directory: .
+        run: python3 scripts/check_android_release_integrity.py
+
+      - name: Build, unit test and lint native app
+        run: ./gradlew :app:assembleDebug testDebugUnitTest lintDebug --console=plain
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Verify native readability and navigation
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          disable-animations: true
+          script: android/gradlew :app:connectedDebugAndroidTest --console=plain
+
+      - name: Upload debug APK and reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: kajovo-hotel-android-debug
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/**/build/reports/**
+          if-no-files-found: warn

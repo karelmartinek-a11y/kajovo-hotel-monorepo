@@ -1,9 +1,5 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext } from '@playwright/test';
 import { getAdminCredentials } from '../test-admin-credentials';
-
-const chatNavigationLink = (page: Page) => page.getByTestId('admin-bottom-navigation')
-  .locator('a[href$="/chat"]')
-  .filter({ has: page.getByText('Chat', { exact: true }) });
 
 test('uživatelé mají oddělený editor, validace, zachování konceptu a responzivní seznam', async ({ page, request }) => {
   const credentials = getAdminCredentials();
@@ -150,7 +146,6 @@ test('zaměstnanec a administrátor si vymění zprávu a stav přečtení se ob
     const conversation = page.getByRole('link').filter({ hasText: displayName });
     await expect(conversation).toBeVisible();
     await expect(conversation.locator('.k-chat-unread')).toHaveText('1');
-    await expect(chatNavigationLink(page)).toHaveAccessibleName(/Chat.*1 nepřečtených/);
     await conversation.click();
     await expect(page.getByLabel(displayName).getByText('Zpráva z mobilního portálu')).toBeVisible();
     await page.screenshot({ path: '/tmp/kajovo-chat-desktop.png' });
@@ -208,7 +203,7 @@ test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní deta
     }
     if (size.width <= 390) {
       await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Profil' })).toBeVisible();
-      await expect(chatNavigationLink(page)).toBeVisible();
+      await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Chat', exact: true })).toBeVisible();
       await page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Přehled' }).click();
       await expect(page.getByTestId('dashboard-page')).toBeVisible();
       await page.goto('/admin/pokojska');

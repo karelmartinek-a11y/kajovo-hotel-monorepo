@@ -9,12 +9,25 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements/constraints.txt /opt/requirements/constraints.txt
+RUN pip install --no-cache-dir \
+    httpx==0.28.1 \
+    cryptography==43.0.3 \
+    fastapi==0.115.14 \
+    "uvicorn[standard]==0.30.6" \
+    sqlalchemy==2.0.44 \
+    alembic==1.17.1 \
+    pydantic-settings==2.11.0 \
+    python-multipart==0.0.20 \
+    "psycopg[binary]==3.2.13" \
+    pypdf==5.9.0 \
+    reportlab==4.5.1 \
+    pycountry==24.6.1 \
+    pywebpush==2.3.0 \
+    firebase-admin==7.7.0 \
+    pillow==11.3.0
+
 COPY packages/voice-core-server /opt/voice-core-server
-COPY apps/kajovo-hotel-api/pyproject.toml /opt/hotel-api/pyproject.toml
-RUN pip install --no-cache-dir -c /opt/requirements/constraints.txt /opt/voice-core-server \
-    && python -c "import pathlib, tomllib; p=tomllib.loads(pathlib.Path('/opt/hotel-api/pyproject.toml').read_text()); pathlib.Path('/tmp/runtime-requirements.txt').write_text(chr(10).join(p['project']['dependencies']))" \
-    && pip install --no-cache-dir -c /opt/requirements/constraints.txt -r /tmp/runtime-requirements.txt
+RUN pip install --no-cache-dir /opt/voice-core-server
 
 COPY apps/kajovo-hotel-api/app /app/app
 COPY apps/kajovo-hotel-api/alembic /app/alembic

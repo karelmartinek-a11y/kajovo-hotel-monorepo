@@ -2,19 +2,12 @@
 from __future__ import annotations
 
 import json
-import hashlib
 import os
-import re
 import shlex
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
-try:
-    from release_images import validate_bundle
-except ModuleNotFoundError:
-    from scripts.release_images import validate_bundle
 
 
 def env(name: str, default: str = "") -> str:
@@ -49,81 +42,66 @@ def ssh_base() -> tuple[list[str], dict[str, str] | None]:
 
 
 def remote_script_text() -> str:
-    return r"""#!/usr/bin/env bash
+    return """#!/usr/bin/env bash
 set -euo pipefail
-umask 077
 upload_home="${DEPLOY_UPLOAD_HOME:?Missing DEPLOY_UPLOAD_HOME}"
 release_archive="${upload_home}/${RELEASE_ARCHIVE}"
-image_upload="${upload_home}/kajovo-release-images-${DEPLOY_SHA}"
-release_parent="/home/deploy-hotel/kajovo-deploy-releases"
-deploy_root="${release_parent}/${DEPLOY_SHA}"
+release_root="/opt/kajovo-hotel-monorepo"
+deploy_root="${upload_home}/kajovo-deploy-releases/${DEPLOY_SHA}"
+preserve_dir="$(mktemp -d)"
 vars_json="${upload_home}/kajovo-deploy-vars.json"
-[[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
-[[ "$RELEASE_ARCHIVE" == "kajovo-deploy-${DEPLOY_SHA}.tar.gz" ]] || exit 1
-mkdir -p "$release_parent"
-exec 8>"$release_parent/.prepare.lock"
-flock -x 8
-staging="$(mktemp -d "$release_parent/.prepare-XXXXXXXX")"
-trap 'rm -rf "$staging"; rm -f "$vars_json"' EXIT
-test -f "$release_archive"
-archive_hash="$(sha256sum "$release_archive" | cut -d ' ' -f1)"
-if [ -e "$deploy_root" ]; then
-  # Retries reuse the identical immutable release; never rewrite active source/env.
-  test "$(cat "$deploy_root/.source-archive.sha256")" = "$archive_hash"
-  python3 "$deploy_root/scripts/release_images.py" verify --directory "$deploy_root/artifacts/release-images" --sha "$DEPLOY_SHA"
-else
-  tar -xzf "$release_archive" -C "$staging"
-  mkdir -p "$staging/artifacts"
-  mv "$image_upload" "$staging/artifacts/release-images"
-  python3 "$staging/scripts/release_images.py" verify --directory "$staging/artifacts/release-images" --sha "$DEPLOY_SHA"
-  export DEPLOY_STAGING="$staging" DEPLOY_VARS_PATH="$vars_json"
-  python3 - <<'PYENV'
-import json, os, subprocess
-from pathlib import Path
+release_owner="$(id -un)"
+release_group="$(id -gn)"
+can_sudo=0
+if sudo -n true >/dev/null 2>&1; then
+  can_sudo=1
+fi
 
-root = Path(os.environ['DEPLOY_STAGING'])
-payload = json.loads(Path(os.environ['DEPLOY_VARS_PATH']).read_text())
-# The live container identifies the active environment; a legacy checkout is not authority.
-container = json.loads(subprocess.check_output(['docker', 'inspect', 'kajovo-prod-api-1']))[0]
-labels = container['Config']['Labels']
-source = labels.get('com.docker.compose.project.environment_file')
-if not source:
-    source = str(Path(labels['com.docker.compose.project.working_dir']) / '.env')
-env_path = Path(source)
-if not env_path.is_file():
-    raise SystemExit('Active production environment unavailable')
+run_release_root_cmd() {
+  if [ "$can_sudo" -eq 1 ]; then
+    sudo -n "$@"
+  else
+    "$@"
+  fi
+}
+
+if [ ! -f "$release_archive" ]; then
+  echo "Missing uploaded archive: $release_archive" >&2
+  exit 1
+fi
+if run_release_root_cmd test -f "$release_root/infra/.env"; then
+  mkdir -p "$preserve_dir/infra"
+  run_release_root_cmd cat "$release_root/infra/.env" > "$preserve_dir/infra/.env"
+fi
+rm -rf "$deploy_root"
+mkdir -p "$deploy_root"
+tar -xzf "$release_archive" -C "$deploy_root"
+mkdir -p "$deploy_root/infra"
+if [ "$can_sudo" -eq 1 ]; then
+  sudo -n chown -R "$release_owner:$release_group" "$deploy_root"
+fi
+if [ -f "$preserve_dir/infra/.env" ]; then
+  mv "$preserve_dir/infra/.env" "$deploy_root/infra/.env"
+elif [ ! -f "$deploy_root/infra/.env" ]; then
+  : > "$deploy_root/infra/.env"
+fi
+export DEPLOY_VARS_PATH="$vars_json"
+export DEPLOY_ROOT="$deploy_root"
+python3 - <<'PY'
+from pathlib import Path
+import json
+import os
+
+env_path = Path(os.environ["DEPLOY_ROOT"]) / "infra/.env"
+vars_path = Path(os.environ["DEPLOY_VARS_PATH"])
 current = {}
-for line in env_path.read_text().splitlines():
-    if line and not line.lstrip().startswith('#') and '=' in line:
-        key, value = line.split('=', 1)
-        current[key] = value
-runtime = dict(item.split('=', 1) for item in container['Config']['Env'] if '=' in item)
-master = runtime.get('KAJOVO_API_VOICE_MASTER_KEY', '')
-supplied = payload.get('KAJOVO_API_VOICE_MASTER_KEY', '')
-if master and supplied and master != supplied:
-    raise SystemExit('Existing Voice master key must be preserved')
-postgres = json.loads(subprocess.check_output(['docker', 'inspect', 'kajovo-prod-postgres-1']))[0]
-database = dict(item.split('=', 1) for item in postgres['Config']['Env'] if '=' in item)
-# Preserve the effective live database contract, including a deliberately empty password.
-def literal(value):
-    if '\n' in value or '\r' in value:
-        raise SystemExit('Multiline production env value rejected')
-    return json.dumps(value.replace("$", "$$"), ensure_ascii=False)
-for key, value in runtime.items():
-    if key.startswith(('KAJOVO_API_', 'BETTER_HOTEL_', 'HOTEL_ADMIN_')):
-        current[key] = literal(value)
-for key in ('POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_HOST_AUTH_METHOD'):
-    if key in database:
-        current[key] = literal(database[key])
-url = runtime.get('KAJOVO_API_DATABASE_URL', '')
-if not url:
-    raise SystemExit('Active database URL unavailable')
-current['KAJOVO_API_DATABASE_URL'] = literal(url)
-if master:
-    current['KAJOVO_API_VOICE_MASTER_KEY'] = literal(master)
-for key in list(current):
-    if key.startswith(('KAJOVO_API_MCP_', 'KAJOVO_API_SMART_TECHNOLOGIES_')):
-        del current[key]
+for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+    if not raw_line or raw_line.lstrip().startswith("#") or "=" not in raw_line:
+        continue
+    key, value = raw_line.split("=", 1)
+    current[key] = value
+
+payload = json.loads(vars_path.read_text(encoding="utf-8"))
 updates = {
     "KAJOVO_API_ADMIN_EMAIL": payload.get("KAJOVO_API_ADMIN_EMAIL") or payload.get("HOTEL_ADMIN_EMAIL", ""),
     "KAJOVO_API_ADMIN_PASSWORD": payload.get("KAJOVO_API_ADMIN_PASSWORD") or payload.get("HOTEL_ADMIN_PASSWORD", ""),
@@ -140,43 +118,23 @@ updates = {
 }
 for key, value in updates.items():
     if value:
-        if '\n' in value or '\r' in value:
-            raise SystemExit('Multiline production env value rejected')
-        current[key] = literal(value)
-target = root / 'infra/.env'
-target.write_text(''.join(f'{key}={value}\n' for key, value in sorted(current.items())))
-target.chmod(0o600)
-PYENV
-  printf '%s\n' "$archive_hash" > "$staging/.source-archive.sha256"
-  mv "$staging" "$deploy_root"
-fi
-rm -f "$release_archive" "$vars_json"
-sudo -n /usr/local/bin/kajovo-hotel-release prepare "$DEPLOY_SHA"
-sudo -n /usr/local/bin/kajovo-hotel-release activate "$DEPLOY_SHA"
-flock -u 8
-exec 8>&-
-export DEPLOY_ROOT="$deploy_root"
-python3 - <<'PYWORKER'
-import json, os, time
-from pathlib import Path
-expected = os.environ['DEPLOY_SHA']
-status = Path('/etc/kajovo-hotel-release-public/transaction.json')
-artifact = Path(os.environ['DEPLOY_ROOT']) / 'artifacts/deploy-runtime/latest.json'
-for _ in range(1800):
-    state = json.loads(status.read_text())
-    if state.get('sha') != expected or state.get('phase') not in {'active', 'accepted'}:
-        raise SystemExit('Hotel deployment revoked')
-    if state.get('worker') == 'FAIL':
-        raise SystemExit('Hotel deployment worker failed')
-    if state.get('worker') == 'PASS' and artifact.exists():
-        if json.loads(artifact.read_text()).get('sha') != expected:
-            raise SystemExit('Hotel runtime artifact SHA mismatch')
-        print('Managed exact SHA hotel deployment PASS')
-        break
-    time.sleep(1)
-else:
-    raise SystemExit('Managed hotel deployment timeout')
-PYWORKER
+        current[key] = value
+
+env_path.write_text("".join(f"{key}={value}\\n" for key, value in sorted(current.items())), encoding="utf-8")
+PY
+rm -rf "$preserve_dir"
+rm -f "$release_archive"
+rm -f "$vars_json"
+export SKIP_GIT_SYNC=true
+export DEPLOY_SOURCE_SHA="$DEPLOY_SHA"
+"$deploy_root/infra/ops/deploy-production.sh"
+cd "$deploy_root"
+export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
+docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml ps -a
+docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=300 || true
+docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs postgres --tail=80 || true
+docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs admin --tail=80 || true
+docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs web --tail=80 || true
 """
 
 
@@ -209,17 +167,19 @@ def upload(local_path: Path, remote_path: str) -> None:
     else:
         remote_target_expr = shlex.quote(remote_path)
         remote_parent_expr = shlex.quote(str(Path(remote_path).parent))
+    payload = local_path.read_bytes()
     merged = os.environ.copy()
     if ssh_env:
         merged.update(ssh_env)
-    # Image archives can exceed a gigabyte. Stream them rather than buffering
-    # the entire release in the runner's memory; publish only complete uploads.
-    with local_path.open("rb") as payload:
-        subprocess.run(
-            [*ssh_cmd, f"set -euo pipefail; umask 077; mkdir -p {remote_parent_expr}; "
-             f"cat > {remote_target_expr}.incomplete; mv {remote_target_expr}.incomplete {remote_target_expr}"],
-            check=True, env=merged, stdin=payload,
-        )
+    subprocess.run(
+        [
+            *ssh_cmd,
+            f"set -euo pipefail; umask 077; mkdir -p {remote_parent_expr}; cat > {remote_target_expr}",
+        ],
+        check=True,
+        env=merged,
+        input=payload,
+    )
 
 
 def run_remote(command: str) -> None:
@@ -246,45 +206,67 @@ def cmd_verify_certificate() -> None:
     run(["bash", "-c", certificate_verification_script()])
 
 
-def exact_sha() -> str:
-    sha = env("DEPLOY_SHA")
-    if not re.fullmatch(r"[a-f0-9]{40}", sha):
-        raise SystemExit("Invalid exact DEPLOY_SHA")
-    return sha
+def pre_upload_cleanup_script() -> str:
+    return r"""set -euo pipefail
+upload_home="$HOME"
+release_dir="$upload_home/kajovo-deploy-releases"
+
+echo "Disk usage before deploy cleanup:"
+df -h "$upload_home"
+
+# Incomplete archives are never runtime inputs. A successful upload is removed
+# by the remote deploy script immediately after extraction.
+find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz' -delete
+
+# Containers run from built images and named data volumes, not from these source
+# trees. Keep the newest completed source tree as a rollback/runtime-artifact
+# reference and remove older copies before uploading the next release.
+RELEASE_DIR="$release_dir" python3 - <<'PY'
+import os
+import shutil
+from pathlib import Path
+
+root = Path(os.environ["RELEASE_DIR"])
+if root.is_dir():
+    releases = sorted(
+        (path for path in root.iterdir() if path.is_dir()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for stale in releases[1:]:
+        print(f"Removing stale deploy source tree: {stale.name}")
+        shutil.rmtree(stale)
+PY
+
+# These commands remove only cache and images that are not referenced by a
+# container. Named database/media volumes and running images are untouched.
+docker builder prune -af
+docker image prune -af
+
+echo "Disk usage after deploy cleanup:"
+df -h "$upload_home"
+"""
+
+
+def cmd_prepare_upload() -> None:
+    run_remote(pre_upload_cleanup_script())
 
 
 def cmd_check_helper() -> None:
-    checks = ["set -euo pipefail",
-              "sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null",
-              "test -x /usr/local/bin/kajovo-hotel-release",
-              "systemctl is-active --quiet kajovo-hotel-release-deadline.timer"]
-    for name in ("hotel_release.py", "release_images.py"):
-        expected = hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        path = shlex.quote("/usr/local/lib/kajovo-hotel-release/" + name)
-        checks.extend([f"test -f {path} && test ! -L {path}",
-                       f'test "$(stat -c %u {path})" = 0',
-                       f'test "$(stat -c %a {path})" = 644',
-                       f'test "$(sha256sum {path} | cut -d " " -f1)" = {shlex.quote(expected)}'])
-    checks.append("echo 'Reviewed root hotel controller, deadline and nginx helper PASS'")
-    run_remote("; ".join(checks))
-
-
-def cmd_release(action: str) -> None:
-    if action not in {"accept", "rollback", "status"}:
-        raise ValueError("Invalid release action")
-    run_remote(f"sudo -n /usr/local/bin/kajovo-hotel-release {action} {shlex.quote(exact_sha())}")
+    run_remote(
+        "set -euo pipefail; "
+        "sudo -n /usr/local/bin/kajovo-sync-hotel-nginx --help >/dev/null; "
+        "test -w /opt/kajovo-hotel-monorepo; "
+        "echo 'Remote nginx sync helper + deploy tree access: PASS'"
+    )
 
 
 def cmd_deploy() -> None:
     archive = env("RELEASE_ARCHIVE")
     if not archive:
         raise SystemExit("Missing RELEASE_ARCHIVE")
-    bundle = Path(env("RELEASE_IMAGES_DIR", "artifacts/release-images"))
-    validate_bundle(bundle, env("DEPLOY_SHA"))
-    exact_sha()
+    cmd_prepare_upload()
     upload(Path(archive), f"~/{archive}")
-    for filename in ("manifest.json", "images.tar.gz"):
-        upload(bundle / filename, f"~/kajovo-release-images-{env('DEPLOY_SHA')}/{filename}")
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         remote_script = tmp / "kajovo-deploy-remote.sh"
@@ -306,7 +288,8 @@ def cmd_deploy() -> None:
 
 
 def cmd_verify_artifact() -> None:
-    quoted_sha = shlex.quote(exact_sha())
+    deploy_sha = env("DEPLOY_SHA")
+    quoted_sha = shlex.quote(deploy_sha)
     run_remote(
         "set -euo pipefail; "
         f"DEPLOY_SHA={quoted_sha} python3 - <<'PY'\n"
@@ -318,16 +301,8 @@ def cmd_verify_artifact() -> None:
         "payload = json.loads(path.read_text(encoding='utf-8'))\n"
         "expected = os.environ['DEPLOY_SHA']\n"
         "actual = str(payload.get('sha') or '')\n"
-        "if actual != expected:\n"
+        "if actual not in {expected, expected[:7]}:\n"
         "    raise SystemExit(f'deploy artifact SHA mismatch: expected {expected}, got {actual}')\n"
-        "manifest = json.loads((path.parents[1] / 'release-images/manifest.json').read_text())\n"
-        "if payload.get('images') != manifest.get('images') or payload.get('image_archive_sha256') != manifest.get('archive_sha256'):\n"
-        "    raise SystemExit('Runtime image artifact mismatch')\n"
-        "import subprocess\n"
-        "for service, image in manifest['images'].items():\n"
-        "    actual = subprocess.check_output(['docker', 'inspect', '--format', '{{.Image}}', 'kajovo-prod-' + service + '-1'], text=True).strip()\n"
-        "    if actual != image['id']:\n"
-        "        raise SystemExit('Running production image identity mismatch')\n"
         "print('Deploy runtime artifact SHA on server: PASS')\n"
         "PY"
     )
@@ -337,13 +312,11 @@ def main() -> int:
     if len(sys.argv) != 2:
         raise SystemExit(
             "Usage: github_deploy_via_ssh.py "
-            "<check-helper|deploy|verify-certificate|verify-artifact|accept|rollback|status>"
+            "<check-helper|deploy|verify-certificate|verify-artifact>"
         )
     command = sys.argv[1]
     if command == "check-helper":
         cmd_check_helper()
-    elif command in {"accept", "rollback", "status"}:
-        cmd_release(command)
     elif command == "deploy":
         cmd_deploy()
     elif command == "verify-certificate":

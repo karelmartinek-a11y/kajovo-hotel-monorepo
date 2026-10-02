@@ -1,395 +1,259 @@
 name: Deploy - hotel.hcasc.cz
+
+on:
+  workflow_run:
+    workflows: ["CI Gates - Kajovo Hotel"]
+    types:
+      - completed
+    branches:
+      - main
+
 concurrency:
   group: deploy-hotel-hcasc-production
-  cancel-in-progress: false
-permissions:
-  actions: read
-  contents: read
-  pull-requests: read
+  cancel-in-progress: true
+
+permissions: {}
+
 jobs:
-  candidate:
-    if: |-
-      github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_repository.full_name == github.repository))
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    outputs:
-      candidate: ${{ steps.current.outputs.candidate }}
-      sha: ${{ steps.current.outputs.sha }}
-    steps:
-    - name: Select exact current main and skip superseded revisions
-      id: current
-      uses: actions/github-script@v7
-      env:
-        REQUESTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.deploy_sha || '' }}
-      with:
-        script: |
-          const repo = {...context.repo};
-          const main = (await github.rest.repos.getCommit({...repo, ref: 'main'})).data.sha;
-          const requested = process.env.REQUESTED_SHA || main;
-          if (!/^[a-f0-9]{40}$/.test(requested)) throw new Error('Exact deploy SHA required');
-          core.setOutput('sha', requested);
-          if (requested !== main) {
-            core.setOutput('candidate', 'false');
-            core.notice('Superseded main revision: deployment skipped');
-            return;
-          }
-          core.setOutput('candidate', 'true');
-  prepare-release:
-    needs: candidate
-    if: needs.candidate.outputs.candidate == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      ready: ${{ steps.ready.outputs.ready }}
-      sha: ${{ needs.candidate.outputs.sha }}
-      ci_run_id: ${{ steps.gate.outputs.ci_run_id }}
-    env:
-      DEPLOY_SHA: ${{ needs.candidate.outputs.sha }}
-      REVIEW_PR: ${{ inputs.review_pr || '' }}
-    steps:
-    - name: Checkout trusted main workflow SHA
-      uses: actions/checkout@v5
-      with:
-        ref: ${{ github.sha }}
-        fetch-depth: 0
-    - name: Exact main CI and independent forensic review gate
-      id: gate
-      env:
-        GH_TOKEN: ${{ github.token }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        args=(--sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT")
-        if [ -n "${REVIEW_PR:-}" ]; then args+=(--pr "$REVIEW_PR"); fi
-        python3 scripts/check_release_review.py "${args[@]}"
-    - name: Download exact successful CI gate scope
-      uses: actions/download-artifact@v5
-      with:
-        name: release-gate-artifact
-        path: artifacts/release-gate
-        github-token: ${{ github.token }}
-        run-id: ${{ steps.gate.outputs.ci_run_id }}
-    - name: Read CI-bound deployment scope
-      id: scope
-      run: python3 scripts/read_release_gate_artifact.py --path "artifacts/release-gate/release-gate-${DEPLOY_SHA}.json" --sha "$DEPLOY_SHA" --github-output "$GITHUB_OUTPUT"
-    - name: Release is eligible after exact CI and source review
-      id: ready
-      run: echo "ready=true" >> "$GITHUB_OUTPUT"
   deploy-production:
-    needs: prepare-release
-    if: needs.prepare-release.outputs.ready == 'true'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    container:
-      image: mcr.microsoft.com/playwright:v1.58.2-noble
     environment: production
     env:
-      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      DEPLOY_SHA: ${{ needs.prepare-release.outputs.sha }}
-      REVIEW_PR: ${{ inputs.review_pr || '' }}
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
       DEPLOY_BASE_URL: https://hotel.hcasc.cz
       PRODUCTION_SERVER_IPV4: 89.221.222.92
+      HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
+      HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
+      HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
+      HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
+      HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
+      HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+      HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+      KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
+      KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
+      BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1' }}
+      BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_TOKEN != '' && secrets.A_TOKEN || secrets.A_token }}
+      BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_TOKEN != '' && secrets.C_TOKEN || secrets.C_token }}
+      KAJOVO_API_VOICE_MASTER_KEY: ${{ secrets.KAJOVO_API_VOICE_MASTER_KEY }}
+      KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY }}
+      KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY }}
+      KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz' }}
+      KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
     steps:
-    - name: Install release verification and SSH tools in the browser image
-      shell: bash
-      run: |
-        apt-get update
-        apt-get install -y --no-install-recommends git gh openssh-client sshpass
-    - name: Checkout trusted main workflow SHA
-      uses: actions/checkout@v5
-      with:
-        ref: ${{ github.sha }}
-        fetch-depth: 0
-    - name: Setup Python before release verification
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-    - name: Trust exact workspace for container Git verification
-      shell: bash
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-    - name: Exact main CI and independent forensic review gate
-      env:
-        GH_TOKEN: ${{ github.token }}
-        RELEASE_SHA: ${{ env.DEPLOY_SHA }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        args=(--sha "$RELEASE_SHA")
-        if [ -n "${REVIEW_PR:-}" ]; then
-          args+=(--pr "$REVIEW_PR")
-        fi
-        python3 scripts/check_release_review.py "${args[@]}"
-    - name: Checkout verified deploy SHA
-      uses: actions/checkout@v5
-      with:
-        ref: ${{ env.DEPLOY_SHA }}
-    - name: Download immutable images from the exact successful CI run
-      uses: actions/download-artifact@v5
-      with:
-        name: release-images-${{ env.DEPLOY_SHA }}
-        path: artifacts/release-images
-        github-token: ${{ github.token }}
-        run-id: ${{ needs.prepare-release.outputs.ci_run_id }}
-    - name: Verify tested image bundle before production credentials
-      run: python3 scripts/release_images.py verify --directory artifacts/release-images --sha "$DEPLOY_SHA"
-    - name: Supply production environment after verified release gate
-      env:
-        HOTEL_DEPLOY_HOST: ${{ secrets.HOTEL_DEPLOY_HOST != '' && secrets.HOTEL_DEPLOY_HOST || vars.HOTEL_DEPLOY_HOST }}
-        HOTEL_DEPLOY_PORT: ${{ secrets.HOTEL_DEPLOY_PORT != '' && secrets.HOTEL_DEPLOY_PORT || vars.HOTEL_DEPLOY_PORT }}
-        HOTEL_DEPLOY_USER: ${{ secrets.HOTEL_DEPLOY_USER != '' && secrets.HOTEL_DEPLOY_USER || vars.HOTEL_DEPLOY_USER }}
-        HOTEL_DEPLOY_PASS: ${{ secrets.HOTEL_DEPLOY_PASS != '' && secrets.HOTEL_DEPLOY_PASS || vars.HOTEL_DEPLOY_PASS }}
-        HOTEL_DEPLOY_KEY: ${{ secrets.HOTEL_DEPLOY_KEY }}
-        HOTEL_ADMIN_EMAIL: ${{ secrets.HOTEL_ADMIN_EMAIL != '' && secrets.HOTEL_ADMIN_EMAIL || vars.HOTEL_ADMIN_EMAIL }}
-        HOTEL_ADMIN_PASSWORD: ${{ secrets.HOTEL_ADMIN_PASSWORD != '' && secrets.HOTEL_ADMIN_PASSWORD || vars.HOTEL_ADMIN_PASSWORD }}
-        KAJOVO_API_ADMIN_EMAIL: ${{ secrets.KAJOVO_API_ADMIN_EMAIL != '' && secrets.KAJOVO_API_ADMIN_EMAIL || vars.KAJOVO_API_ADMIN_EMAIL || secrets.HOTEL_ADMIN_EMAIL
-          || vars.HOTEL_ADMIN_EMAIL }}
-        KAJOVO_API_ADMIN_PASSWORD: ${{ secrets.KAJOVO_API_ADMIN_PASSWORD != '' && secrets.KAJOVO_API_ADMIN_PASSWORD || vars.KAJOVO_API_ADMIN_PASSWORD || secrets.HOTEL_ADMIN_PASSWORD
-          || vars.HOTEL_ADMIN_PASSWORD }}
-        BETTER_HOTEL_CONNECTOR_BASE_URL: ${{ vars.BETTER_HOTEL_CONNECTOR_BASE_URL != '' && vars.BETTER_HOTEL_CONNECTOR_BASE_URL || 'https://api.better-hotel.com/api/connector/v/1'
-          }}
-        BETTER_HOTEL_ACCESS_TOKEN: ${{ secrets.A_TOKEN != '' && secrets.A_TOKEN || secrets.A_token }}
-        BETTER_HOTEL_CLIENT_TOKEN: ${{ secrets.C_TOKEN != '' && secrets.C_TOKEN || secrets.C_token }}
-        KAJOVO_API_VOICE_MASTER_KEY: ${{ secrets.KAJOVO_API_VOICE_MASTER_KEY }}
-        KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY }}
-        KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY: ${{ secrets.KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY }}
-        KAJOVO_API_WEB_PUSH_VAPID_SUBJECT: ${{ vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT != '' && vars.KAJOVO_API_WEB_PUSH_VAPID_SUBJECT || 'mailto:admin@hotel.hcasc.cz'
-          }}
-        KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64: ${{ secrets.KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64 }}
-      shell: bash
-      run: |
-        python3 - <<'PY'
-        import os, secrets
-        from pathlib import Path
-        names = ('HOTEL_DEPLOY_HOST', 'HOTEL_DEPLOY_PORT', 'HOTEL_DEPLOY_USER', 'HOTEL_DEPLOY_PASS', 'HOTEL_DEPLOY_KEY', 'HOTEL_ADMIN_EMAIL', 'HOTEL_ADMIN_PASSWORD', 'KAJOVO_API_ADMIN_EMAIL', 'KAJOVO_API_ADMIN_PASSWORD', 'BETTER_HOTEL_CONNECTOR_BASE_URL', 'BETTER_HOTEL_ACCESS_TOKEN', 'BETTER_HOTEL_CLIENT_TOKEN', 'KAJOVO_API_VOICE_MASTER_KEY', 'KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY', 'KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY', 'KAJOVO_API_WEB_PUSH_VAPID_SUBJECT', 'KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64')
-        target = Path(os.environ['GITHUB_ENV'])
-        with target.open('a', encoding='utf-8') as stream:
-            for name in names:
-                value = os.environ.get(name, '')
-                delimiter = 'hotel_env_' + secrets.token_hex(16)
-                while delimiter in value:
-                    delimiter = 'hotel_env_' + secrets.token_hex(16)
-                stream.write(f'{name}<<{delimiter}\n{value}\n{delimiter}\n')
-        target.chmod(0o600)
-        PY
-    - name: Setup pinned pnpm
-      uses: pnpm/action-setup@v4
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: 20
-        cache: pnpm
-    - name: Validate deploy target environment
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [ -z "${HOTEL_DEPLOY_HOST:-}" ]; then
-          echo "Missing HOTEL_DEPLOY_HOST in GitHub secrets or variables." >&2
-          exit 1
-        fi
-        if [ -z "${HOTEL_DEPLOY_PORT:-}" ]; then
-          echo "Missing HOTEL_DEPLOY_PORT in GitHub secrets or variables." >&2
-          exit 1
-        fi
-        if [ -z "${HOTEL_DEPLOY_USER:-}" ]; then
-          echo "Missing HOTEL_DEPLOY_USER in GitHub secrets or variables." >&2
-          exit 1
-        fi
-        if [ -z "${HOTEL_DEPLOY_PASS:-}" ] && [ -z "${HOTEL_DEPLOY_KEY:-}" ]; then
-          echo "Missing HOTEL_DEPLOY_PASS or HOTEL_DEPLOY_KEY in GitHub secrets or variables." >&2
-          exit 1
-        fi
-        resolved_ipv4=""
-        if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          resolved_ipv4="$HOTEL_DEPLOY_HOST"
-        else
-          resolved_ipv4="$(getent ahostsv4 "$HOTEL_DEPLOY_HOST" | awk '{print $1}' | sort -u | paste -sd ',' -)"
-        fi
-        if [[ -z "$resolved_ipv4" ]]; then
-          echo "Nepodarilo se zjistit IPv4 adresu pro HOTEL_DEPLOY_HOST=$HOTEL_DEPLOY_HOST" >&2
-          exit 1
-        fi
-        if [[ ",$resolved_ipv4," != *",${PRODUCTION_SERVER_IPV4},"* ]]; then
-          echo "HOTEL_DEPLOY_HOST nemiri na produkcni server ${PRODUCTION_SERVER_IPV4}. Resolved IPv4: ${resolved_ipv4}" >&2
-          exit 1
-        fi
-        echo "Deploy target environment check: PASS"
-    - name: Validate admin credential environment
-      run: python scripts/check_admin_credentials_env.py
-    - name: Validate Better Hotel credential environment
-      run: python scripts/check_better_hotel_credentials_env.py
-    - name: Build release archive
-      shell: bash
-      run: |
-        set -euo pipefail
-        archive="kajovo-deploy-${DEPLOY_SHA}.tar.gz"
-        git archive --format=tar.gz --output "$archive" "$DEPLOY_SHA"
-        echo "RELEASE_ARCHIVE=$archive" >> "$GITHUB_ENV"
-    - name: Setup SSH deploy tooling
-      shell: bash
-      run: |
-        set -euo pipefail
-        mkdir -p "$HOME/.ssh"
-        chmod 700 "$HOME/.ssh"
-        ssh-keyscan -p "$HOTEL_DEPLOY_PORT" "$HOTEL_DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
-        chmod 600 "$HOME/.ssh/known_hosts"
-        if [ -n "${HOTEL_DEPLOY_KEY:-}" ]; then
-          printf '%s\n' "$HOTEL_DEPLOY_KEY" > "$RUNNER_TEMP/hotel_deploy_key"
-          chmod 600 "$RUNNER_TEMP/hotel_deploy_key"
-          echo "SSH_IDENTITY_FILE=$RUNNER_TEMP/hotel_deploy_key" >> "$GITHUB_ENV"
-        fi
-    - name: Verify root hotel controller, deadline and nginx helper
-      shell: bash
-      run: |
-        python3 scripts/github_deploy_via_ssh.py check-helper
-    - name: Deploy uploaded release via SSH
-      shell: bash
-      run: |
-        python3 scripts/github_deploy_via_ssh.py deploy
-      id: activate
-    - name: Verify production TLS certificate validity
-      shell: bash
-      run: |
-        python3 scripts/github_deploy_via_ssh.py verify-certificate
-    - name: Verify deploy runtime artifact on server
-      shell: bash
-      run: |
-        python3 scripts/github_deploy_via_ssh.py verify-artifact
-    - name: Write deploy verification artifact
-      shell: bash
-      run: |
-        set -euo pipefail
-        mkdir -p artifacts
-        python - <<'PY'
-        import json
-        import os
-        from datetime import datetime, timezone
-        from pathlib import Path
+      - name: Checkout deploy SHA
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
-        payload = {
-            "verified_at": datetime.now(timezone.utc).isoformat(),
-            "sha": os.environ["DEPLOY_SHA"],
-            "base_url": os.environ["DEPLOY_BASE_URL"],
-            "workflow_run_id": os.environ["GITHUB_RUN_ID"],
-            "remote_runtime_artifact": f"/home/{os.environ['HOTEL_DEPLOY_USER']}/kajovo-deploy-releases/{os.environ['DEPLOY_SHA']}/artifacts/deploy-runtime/latest.json",
-            "server_runtime_artifact_sha_verified": True,
-        }
-        Path("artifacts/latest.json").write_text(
-            json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-        PY
-    - name: Route deploy verification to target host
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "$HOTEL_DEPLOY_HOST hotel.hcasc.cz" >> /etc/hosts
-          getent hosts hotel.hcasc.cz
-        else
-          echo "HOTEL_DEPLOY_HOST is not an IPv4 address; live verification will use DNS."
-        fi
-    - name: Post-deploy HTTP gate
-      shell: bash
-      run: |
-        set -euo pipefail
-        check_endpoint() {
-          local url="$1"
-          local label="$2"
-          local expected="$3"
-          local code=""
-          for attempt in $(seq 1 30); do
-            code=$(curl -sS -o /tmp/deploy-check-body.txt -w '%{http_code}' "$url" || true)
-            if [[ "$code" == "$expected" ]]; then
-              echo "$label PASS ($code)"
-              return 0
-            fi
-            echo "$label attempt $attempt/30 -> HTTP $code"
-            sleep 10
-          done
-          echo "$label FAIL -> expected HTTP $expected, got $code" >&2
-          return 1
-        }
-        check_endpoint "$DEPLOY_BASE_URL/" "public root" "200"
-        check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
-        check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
-    - name: Verify live breakfast and housekeeping overview
-      run: node scripts/verify_live_breakfast_overview.mjs
-      env:
-        VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
-        VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}
-        VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD }}
-        VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
-    - name: Verify live housekeeping rooms overview
-      run: node scripts/verify_live_housekeeping_rooms.mjs
-      env:
-        VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
-        VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}
-        VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD }}
-    - name: Verify live admin login with GitHub credentials
-      env:
-        VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
-        VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL != '' && env.KAJOVO_API_ADMIN_EMAIL || env.HOTEL_ADMIN_EMAIL }}
-        VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
-      run: node scripts/verify_live_admin_login.mjs
-    - name: Install Voice verification runtime
-      run: |
-        pnpm install --frozen-lockfile
-        node -e "if (require('./apps/kajovo-hotel-admin/node_modules/playwright/package.json').version !== '1.58.2') throw Error('Playwright image/package version mismatch')"
-    - name: Verify standalone Voice UI, security and absence of integrations
-      env:
-        VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
-        VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}
-        VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD }}
-      run: node scripts/verify_live_voice_standalone.mjs
-    - name: Verify live admin user-management smoke
-      env:
-        VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
-        VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL != '' && env.KAJOVO_API_ADMIN_EMAIL || env.HOTEL_ADMIN_EMAIL }}
-        VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
-        VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
-      run: node scripts/verify_live_admin_users_smoke.mjs
-    - name: Accept exact hotel runtime after all live checks
-      run: python3 scripts/github_deploy_via_ssh.py accept
-    - name: Restore previous runtime after deployment failure
-      if: failure() && steps.activate.outcome != 'skipped'
-      run: python3 scripts/github_deploy_via_ssh.py rollback
-    - name: Upload deploy runtime artifact
-      if: always()
-      uses: actions/upload-artifact@v6
-      with:
-        name: deploy-runtime-artifact
-        path: |
-          artifacts/latest.json
-          artifacts/release-images/manifest.json
-        if-no-files-found: ignore
-        retention-days: 30
-    - name: Record successfully verified runtime deployment
-      if: success()
-      uses: actions/upload-artifact@v6
-      with:
-        name: deploy-success-${{ env.DEPLOY_SHA }}
-        path: artifacts/latest.json
-        if-no-files-found: error
-        retention-days: 90
-'on':
-  workflow_run:
-    workflows:
-    - CI Gates - Kajovo Hotel
-    types:
-    - completed
-    branches:
-    - main
-  workflow_dispatch:
-    inputs:
-      deploy_sha:
-        required: true
-        type: string
-        description: Exact current main SHA with successful CI Gates
-      review_pr:
-        required: false
-        type: string
-        description: Optional merged PR number for additional provenance validation
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Validate deploy target environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${HOTEL_DEPLOY_HOST:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_HOST in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          if [ -z "${HOTEL_DEPLOY_PORT:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_PORT in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          if [ -z "${HOTEL_DEPLOY_USER:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_USER in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          if [ -z "${HOTEL_DEPLOY_PASS:-}" ] && [ -z "${HOTEL_DEPLOY_KEY:-}" ]; then
+            echo "Missing HOTEL_DEPLOY_PASS or HOTEL_DEPLOY_KEY in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          resolved_ipv4=""
+          if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            resolved_ipv4="$HOTEL_DEPLOY_HOST"
+          else
+            resolved_ipv4="$(getent ahostsv4 "$HOTEL_DEPLOY_HOST" | awk '{print $1}' | sort -u | paste -sd ',' -)"
+          fi
+          if [[ -z "$resolved_ipv4" ]]; then
+            echo "Nepodarilo se zjistit IPv4 adresu pro HOTEL_DEPLOY_HOST=$HOTEL_DEPLOY_HOST" >&2
+            exit 1
+          fi
+          if [[ ",$resolved_ipv4," != *",${PRODUCTION_SERVER_IPV4},"* ]]; then
+            echo "HOTEL_DEPLOY_HOST nemiri na produkcni server ${PRODUCTION_SERVER_IPV4}. Resolved IPv4: ${resolved_ipv4}" >&2
+            exit 1
+          fi
+          echo "Deploy target environment check: PASS"
+
+      - name: Validate admin credential environment
+        run: python scripts/check_admin_credentials_env.py
+
+      - name: Validate Better Hotel credential environment
+        run: python scripts/check_better_hotel_credentials_env.py
+
+      - name: Build release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="kajovo-deploy-${DEPLOY_SHA}.tar.gz"
+          git archive --format=tar.gz --output "$archive" "$DEPLOY_SHA"
+          echo "RELEASE_ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Setup SSH deploy tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends openssh-client sshpass
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          ssh-keyscan -p "$HOTEL_DEPLOY_PORT" "$HOTEL_DEPLOY_HOST" >> "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+          if [ -n "${HOTEL_DEPLOY_KEY:-}" ]; then
+            printf '%s\n' "$HOTEL_DEPLOY_KEY" > "$RUNNER_TEMP/hotel_deploy_key"
+            chmod 600 "$RUNNER_TEMP/hotel_deploy_key"
+            echo "SSH_IDENTITY_FILE=$RUNNER_TEMP/hotel_deploy_key" >> "$GITHUB_ENV"
+          fi
+
+      - name: Verify remote nginx sync helper
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py check-helper
+
+      - name: Deploy uploaded release via SSH
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py deploy
+
+      - name: Verify production TLS certificate validity
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py verify-certificate
+
+      - name: Verify deploy runtime artifact on server
+        shell: bash
+        run: |
+          python3 scripts/github_deploy_via_ssh.py verify-artifact
+
+      - name: Write deploy verification artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          payload = {
+              "verified_at": datetime.now(timezone.utc).isoformat(),
+              "sha": os.environ["DEPLOY_SHA"],
+              "base_url": os.environ["DEPLOY_BASE_URL"],
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "remote_runtime_artifact": f"/home/{os.environ['HOTEL_DEPLOY_USER']}/kajovo-deploy-releases/{os.environ['DEPLOY_SHA']}/artifacts/deploy-runtime/latest.json",
+              "server_runtime_artifact_sha_verified": True,
+          }
+          Path("artifacts/latest.json").write_text(
+              json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Route deploy verification to target host
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$HOTEL_DEPLOY_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$HOTEL_DEPLOY_HOST hotel.hcasc.cz" | sudo tee -a /etc/hosts >/dev/null
+            getent hosts hotel.hcasc.cz
+          else
+            echo "HOTEL_DEPLOY_HOST is not an IPv4 address; live verification will use DNS."
+          fi
+
+      - name: Post-deploy HTTP gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_endpoint() {
+            local url="$1"
+            local label="$2"
+            local expected="$3"
+            local code=""
+            for attempt in $(seq 1 30); do
+              code=$(curl -k -sS -o /tmp/deploy-check-body.txt -w '%{http_code}' "$url" || true)
+              if [[ "$code" == "$expected" ]]; then
+                echo "$label PASS ($code)"
+                return 0
+              fi
+              echo "$label attempt $attempt/30 -> HTTP $code"
+              sleep 10
+            done
+            echo "$label FAIL -> expected HTTP $expected, got $code" >&2
+            cat /tmp/deploy-check-body.txt >&2 || true
+            return 1
+          }
+          check_endpoint "$DEPLOY_BASE_URL/" "public root" "200"
+          check_endpoint "$DEPLOY_BASE_URL/admin/login" "admin login page" "200"
+          check_endpoint "$DEPLOY_BASE_URL/api/health" "api health" "200"
+
+      - name: Verify live breakfast and housekeeping overview
+        run: node scripts/verify_live_breakfast_overview.mjs
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD }}
+          VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify live housekeeping rooms overview
+        run: node scripts/verify_live_housekeeping_rooms.mjs
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD }}
+
+      - name: Verify live admin login with GitHub credentials
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL != '' && env.KAJOVO_API_ADMIN_EMAIL || env.HOTEL_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
+        run: node scripts/verify_live_admin_login.mjs
+
+      - name: Verify live admin user-management smoke
+        env:
+          VERIFY_BASE_URL: ${{ env.DEPLOY_BASE_URL }}
+          VERIFY_ADMIN_EMAIL: ${{ env.KAJOVO_API_ADMIN_EMAIL != '' && env.KAJOVO_API_ADMIN_EMAIL || env.HOTEL_ADMIN_EMAIL }}
+          VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
+          VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+        run: node scripts/verify_live_admin_users_smoke.mjs
+
+      - name: Dump API logs after failed live users smoke
+        if: failure()
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ env.HOTEL_DEPLOY_HOST }}
+          username: ${{ env.HOTEL_DEPLOY_USER }}
+          password: ${{ env.HOTEL_DEPLOY_PASS }}
+          key: ${{ env.HOTEL_DEPLOY_KEY }}
+          port: ${{ env.HOTEL_DEPLOY_PORT }}
+          script: |
+            set -euo pipefail
+            cd /opt/kajovo-hotel-monorepo
+            export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-kajovo-prod}
+            docker compose -f infra/compose.prod.yml -f infra/compose.prod.hotel-hcasc.yml logs api --tail=200 || true
+
+      - name: Upload deploy runtime artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: deploy-runtime-artifact
+          path: artifacts/latest.json
+          if-no-files-found: ignore

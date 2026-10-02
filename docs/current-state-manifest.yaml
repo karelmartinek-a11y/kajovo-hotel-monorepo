@@ -38,8 +38,6 @@ portable_products:
     server: packages/voice-core-server
     admin_route: /admin/hlasovy-chat
     api_prefix: /api/v1/admin/voice-core
-    tool_choice: none
-    external_tools: []
     paid_ci: false
     master_key_environment: KAJOVO_API_VOICE_MASTER_KEY
 

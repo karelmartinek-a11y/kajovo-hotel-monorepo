@@ -23,17 +23,11 @@ Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční 
 
 ## GitHub Actions mapování
 
-- `.github/workflows/ci-gates.yml`: `scope`, `fast-checks`, `guardrails`, `contract`, `api-runtime-image`, `web-tests`, `e2e-smoke`, `visual-web`, `visual-admin`, `unit-tests`, `portable-voice-core`, `release-gate`
-- `.github/workflows/deploy-production.yml`: automatický hotelový deploy po úspěšném exact-main CI a content-bound release review; vlastní root worker, runtime fence, deadline a acceptance po živých kontrolách
+- `.github/workflows/ci-gates.yml`: `api-runtime-image`, `release-gate`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`, `portable-voice-core`
+- `.github/workflows/deploy-production.yml`: deploy pouze po úspěšném `CI Gates - Kajovo Hotel` na `main`
 
 Voice Core gate ověřuje importy a dependency hranice, izolovaný copy-out, Chromium/WebKit UI a produkční API/admin/web image s celým Nginx řetězcem. Placený smoke vyžaduje `VOICE_CORE_LIVE_SMOKE=1` a je v běžném CI zakázán; viz [Voice Core](voice-core.md).
 
 ## Voice Core
 
 `pnpm ci:voice-core` pokrývá přechody hovoru, opakovaný start/stop, přerušení, souběh s pozdní odpovědí, nejvýše dvě obnovy a portable hranice. API testy ověřují admin session, CSRF, monotónní revize, AES-GCM, mazání a redakci. Izolovaný harness používá fakes pouze v testech. Responsive UI se ověřuje v Chromium a WebKit; admin visual gate navíc kontroluje WCAG AA včetně kontrastu. Postup skutečného opt-in hovoru je v [Voice Core](voice-core.md). Fyzický iPhone, Bluetooth a změny OS audio routingu vyžadují vlastní zařízení; emulace jejich ověření nenahrazuje.
-
-## CI environment and failure evidence
-
-Routine CI runs each complete web/admin smoke suite once. Three-run admin stability verification is separate. Visual web/admin suites preserve every scenario and viewport and use isolated jobs; admin stays workers: 1. Prepared Playwright containers match the frozen lockfile. Local browser installation is explicit via test:install-browsers, not a repeated pretest hook. Retained traces, JUnit/HTML reports and screenshots are uploaded on failure. Shared Python constraints apply to CI and runtime; see [CI gates](ci-gates.md).
-
-Android CI samostatně ověřuje nativní spotřebitele i při změnách API rout, OpenAPI nebo shared klienta; APK a emulátor neblokují webový deploy.
