@@ -195,10 +195,12 @@ def test_context_replacement_preserves_global_rows_and_resets_stale_selection():
         b.item, b.delete_item = item, delete
         search = {"catalog_revision": "r1", "selection": {"id": "s", "count": 199, "expires_at": "2099-01-01T00:00:00Z"}, "total": 199, "matches": [{"row": 8}], "has_more": True}
         b.last_search = {"query": "light"}
+        b.unresolved_requests.add("voice-pending")
         await b.replace_context(search)
         first = b.catalog_item
         await b.replace_context(catalog())
         data = json.loads(events[-1][1]["content"][0]["text"].split("\n", 1)[1])
+        assert data["unresolved_request_ids"] == ["voice-pending"]
         assert data["rows"] == [8, 43] and data["devices"] == catalog()["devices"]
         assert data["last_selection"]["count"] == 199 and data["last_search"] == {"query": "light"}
         assert events[1] == ("delete", first)
@@ -289,6 +291,8 @@ def test_control_timeout_returns_original_identity_and_camera_is_input_image(
             await b.result({"name": "smart_technologie", "call_id": "control1", "arguments": "{}"})
         assert len(calls) == 1
         assert not b.catalog_ready and b.technologies == "unavailable"
+        assert output["request_id"] in b.unresolved_requests
+        assert b.unresolved_items[output["request_id"]]
         # A fresh MCP connection/catalog is required before further device calls.
         b.catalog_ready = True
         await b.result(
@@ -590,13 +594,49 @@ def test_unacknowledged_output_requires_renewal_without_replay(voice_host, monke
             if value["type"] == "function_call_output":
                 raise SmartError("realtime_event_rejected")
             return value["id"]
-        call = {"name": "smart_technologie", "call_id": "lost", "arguments": '{"operation":"catalog"}'}
+        call = {"name": "smart_technologie", "call_id": "lost", "arguments": '{"operation":"control","selection_id":"s","action":"vypnout"}'}
         b = bridge()
         b.catalog_ready = True
         b.mcp, b.item = MCP(), item
         with pytest.raises(SmartError):
             await b.result(call)
+        from app.db.models import VoiceSmartOperation
+        with factory() as db:
+            assert db.get(VoiceSmartOperation, calls[0]["request_id"]).status == "uncertain"
         recovered = bridge()
         await recovered.result(call)
         assert recovered.renew and not recovered.catalog_ready and len(calls) == 1
+    asyncio.run(scenario())
+
+
+def test_camera_history_is_bounded_and_explicit_target_survives_overview(voice_host, monkeypatch):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_smart, "authorized", lambda owner: True)
+
+    async def scenario():
+        b = bridge()
+        b.catalog_ready = True
+        b.last_selection = {"id": "old-group", "count": 20}
+        events = []
+        class MCP:
+            async def call_tool(self, name, payload):
+                image = ImageContent(type="image", mimeType="image/jpeg", data=base64.b64encode(b"\xff\xd8\xffcamera").decode())
+                return mcp_result({"catalog_revision": "r1", "results": []}, [image] if payload["operation"] == "camera_view" else [])
+        async def item(value):
+            iid = value.get("id", "test-output")
+            events.append(("create", iid))
+            return iid
+        async def delete(iid):
+            events.append(("delete", iid))
+        b.mcp, b.item, b.delete_item = MCP(), item, delete
+        for cid in ("photo1", "photo2"):
+            await b.result({"name": "smart_technologie", "call_id": cid, "arguments": json.dumps({"operation": "camera_view", "catalog_revision": "r1", "rows": [43]})})
+            if cid == "photo1":
+                first_image = b.image_items[0]
+        assert len(b.image_items) == 1 and ("delete", first_image) in events
+        assert events.index(("delete", first_image)) < events.index(("create", b.image_items[0]))
+        await b.result({"name": "smart_technologie", "call_id": "overview", "arguments": '{"operation":"catalog"}'})
+        assert b.last_target == {"rows": [43], "catalog_revision": "r1"}
+        assert b.last_selection["id"] == "old-group"
     asyncio.run(scenario())

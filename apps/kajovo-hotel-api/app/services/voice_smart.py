@@ -126,6 +126,8 @@ class VoiceBridge:
         self.last_search = None
         self.last_target = None
         self.image_items: list[str] = []
+        self.unresolved_requests: set[str] = set()
+        self.unresolved_items: dict[str, set[str]] = {}
         self.catalog_item: str | None = None
         self.catalog_ready = False
         self.mcp = None
@@ -246,7 +248,7 @@ class VoiceBridge:
             self.last_selection = None
             if self.last_target and self.last_target.get("selection_id"):
                 self.last_target = None
-        data = {**value, "last_selection": self.last_selection, "last_search": self.last_search, "last_target": self.last_target}
+        data = {**value, "last_selection": self.last_selection, "last_search": self.last_search, "last_target": self.last_target, "unresolved_request_ids": sorted(self.unresolved_requests)}
         text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
         if len(text) > 100000:
             raise SmartError("result_too_large_narrow_selection")
@@ -404,6 +406,8 @@ class VoiceBridge:
                     payload = {"operation": "operation_status", "request_id": rid}
                 else:
                     payload["request_id"] = rid
+            if rid:
+                self.unresolved_requests.add(rid)
             result = await asyncio.wait_for(
                 self.mcp.call_tool("smart_technologie", self.mcp_payload(payload)), timeout=40
             )
@@ -416,7 +420,6 @@ class VoiceBridge:
                     self.last_target = {"selection_id": args.selection_id, "catalog_revision": public["catalog_revision"]}
                 else:
                     self.last_target = {"rows": args.rows or list(dict.fromkeys(c.row for c in args.controls or [])), "catalog_revision": public["catalog_revision"]}
-            await self.replace_context(public)
             output = {key: value for key, value in public.items() if key not in {"fields", "devices", "matches", "overview"}}
             if rid:
                 output["request_id"] = rid
@@ -425,18 +428,25 @@ class VoiceBridge:
                 statuses = {r.get("status") for r in public.get("results", [])}
                 statuses.add((public.get("operation") or {}).get("status"))
                 statuses.update(key for key, count in public.get("summary", {}).items() if count)
-                operation_finished(
-                    tracked,
+                status = (
                     "uncertain"
                     if "uncertain" in statuses or public.get("error") or not any(statuses)
                     else "pending"
                     if statuses & {"queued", "recording"}
-                    else "completed",
+                    else "completed"
                 )
+                operation_finished(tracked, status)
+                if status == "completed":
+                    self.unresolved_requests.discard(tracked)
+                    self.unresolved_items.pop(tracked, None)
+                else:
+                    self.unresolved_requests.add(tracked)
+            await self.replace_context(public)
             if images and args.operation != "camera_view":
                 raise SmartError("unexpected_image")
         except Exception as exc:
             if rid:
+                self.unresolved_requests.add(rid)
                 operation_finished(rid, "uncertain")
             if not isinstance(exc, (SmartError, ValidationError)):
                 self.technologies = "unavailable"
@@ -466,15 +476,25 @@ class VoiceBridge:
                     }
                 },
             )
-        iid = await self.item(
-            {
-                "id": "kvout_" + delivery[-24:],
-                "type": "function_call_output",
-                "call_id": cid,
-                "output": json.dumps(output, ensure_ascii=False),
-            }
-        )
+        try:
+            iid = await self.item(
+                {
+                    "id": "kvout_" + delivery[-24:],
+                    "type": "function_call_output",
+                    "call_id": cid,
+                    "output": json.dumps(output, ensure_ascii=False),
+                }
+            )
+        except Exception:
+            if rid:
+                self.unresolved_requests.add(rid)
+                operation_finished(rid, "uncertain")
+            self.renew = True
+            self.catalog_ready = False
+            raise
         self.protected_items.add(iid)
+        if rid and rid in self.unresolved_requests:
+            self.unresolved_items.setdefault(rid, set()).add(iid)
         if images:
             for old_image in self.image_items:
                 await self.delete_item(old_image)
@@ -562,7 +582,9 @@ class VoiceBridge:
                 await self.result(call)
             if self.technologies == "unavailable" and not self.catalog_ready:
                 await self.configure(False)
-            self.protected_items = {self.catalog_item} if self.catalog_item else set()
+            self.protected_items = ({self.catalog_item} if self.catalog_item else set()) | {
+                iid for items in self.unresolved_items.values() for iid in items
+            }
             await self.prune()
             if calls and not self.renew:
                 await self.send(
@@ -598,7 +620,6 @@ class VoiceBridge:
                     )
                     if public.get("error"):
                         raise SmartError("catalog_unavailable")
-                    await self.replace_context(public)
                     with SessionLocal() as db:
                         pending = list(
                             db.scalars(
@@ -608,21 +629,8 @@ class VoiceBridge:
                                 )
                             )
                         )
-                    if pending:
-                        await self.item(
-                            {
-                                "type": "message",
-                                "role": "system",
-                                "content": [
-                                    {
-                                        "type": "input_text",
-                                        "text": "Previous unconfirmed controls: "
-                                        + json.dumps(pending)
-                                        + ". Check operation_status; do not replay.",
-                                    }
-                                ],
-                            }
-                        )
+                    self.unresolved_requests.update(pending)
+                    await self.replace_context(public)
                     self.technologies = "ready"
                 except Exception:
                     self.technologies = "unavailable"
