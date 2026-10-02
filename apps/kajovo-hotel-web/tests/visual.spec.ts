@@ -1,5 +1,4 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
-// @ts-expect-error Playwright runs this spec in Node; the browser app tsconfig has no Node declarations.
 import { writeFile } from 'node:fs/promises';
 import { getAdminCredentials } from '../test-admin-credentials';
 

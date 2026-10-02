@@ -1464,6 +1464,33 @@
         "title": "DeviceVerifyResponse",
         "type": "object"
       },
+      "Forget": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "memory_forget",
+            "title": "Operation",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision"
+        ],
+        "title": "Forget",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3255,6 +3282,167 @@
         "title": "IssueUpdate",
         "type": "object"
       },
+      "ItemAdd": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_item_add",
+            "title": "Operation",
+            "type": "string"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "content",
+          "position"
+        ],
+        "title": "ItemAdd",
+        "type": "object"
+      },
+      "ItemMove": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_item_move",
+            "title": "Operation",
+            "type": "string"
+          },
+          "position": {
+            "maximum": 99.0,
+            "minimum": 0.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "item_id",
+          "position"
+        ],
+        "title": "ItemMove",
+        "type": "object"
+      },
+      "ItemRemove": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_item_remove",
+            "title": "Operation",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "item_id"
+        ],
+        "title": "ItemRemove",
+        "type": "object"
+      },
+      "ItemUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_item_update",
+            "title": "Operation",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "item_id",
+          "content"
+        ],
+        "title": "ItemUpdate",
+        "type": "object"
+      },
       "LocaleUpdate": {
         "properties": {
           "locale": {
@@ -3830,6 +4018,694 @@
         "title": "MediaPhotoRead",
         "type": "object"
       },
+      "MemoryList": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "memory_list",
+            "title": "Operation",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "inactive",
+                  "superseded"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "operation",
+          "status",
+          "limit",
+          "offset"
+        ],
+        "title": "MemoryList",
+        "type": "object"
+      },
+      "MemoryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "importance": {
+            "title": "Importance",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "preference",
+              "fact",
+              "project",
+              "decision",
+              "open_point"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "origin": {
+            "enum": [
+              "explicit",
+              "automatic"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Session Id"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "subject",
+          "content",
+          "tags",
+          "status",
+          "origin",
+          "pinned",
+          "importance",
+          "revision",
+          "created_at",
+          "updated_at",
+          "last_used_at",
+          "source_session_id"
+        ],
+        "title": "MemoryRead",
+        "type": "object"
+      },
+      "MemoryRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "request": {
+            "discriminator": {
+              "mapping": {
+                "memory_forget": "#/components/schemas/Forget",
+                "memory_list": "#/components/schemas/MemoryList",
+                "memory_read": "#/components/schemas/ReadMemory",
+                "memory_remember": "#/components/schemas/Remember",
+                "memory_search": "#/components/schemas/Search",
+                "memory_update": "#/components/schemas/UpdateMemory",
+                "note_archive": "#/components/schemas/NoteState",
+                "note_clear": "#/components/schemas/NoteState",
+                "note_create": "#/components/schemas/NoteCreate",
+                "note_delete": "#/components/schemas/NoteState",
+                "note_item_add": "#/components/schemas/ItemAdd",
+                "note_item_move": "#/components/schemas/ItemMove",
+                "note_item_remove": "#/components/schemas/ItemRemove",
+                "note_item_update": "#/components/schemas/ItemUpdate",
+                "note_list": "#/components/schemas/NoteList",
+                "note_read": "#/components/schemas/NoteRead",
+                "note_rename": "#/components/schemas/NoteRename",
+                "note_text_update": "#/components/schemas/NoteText",
+                "summary_read": "#/components/schemas/SummaryRead"
+              },
+              "propertyName": "operation"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Remember"
+              },
+              {
+                "$ref": "#/components/schemas/Search"
+              },
+              {
+                "$ref": "#/components/schemas/ReadMemory"
+              },
+              {
+                "$ref": "#/components/schemas/MemoryList"
+              },
+              {
+                "$ref": "#/components/schemas/UpdateMemory"
+              },
+              {
+                "$ref": "#/components/schemas/Forget"
+              },
+              {
+                "$ref": "#/components/schemas/NoteCreate"
+              },
+              {
+                "$ref": "#/components/schemas/NoteList"
+              },
+              {
+                "$ref": "#/components/schemas/NoteRead"
+              },
+              {
+                "$ref": "#/components/schemas/NoteRename"
+              },
+              {
+                "$ref": "#/components/schemas/NoteState"
+              },
+              {
+                "$ref": "#/components/schemas/ItemAdd"
+              },
+              {
+                "$ref": "#/components/schemas/ItemUpdate"
+              },
+              {
+                "$ref": "#/components/schemas/ItemRemove"
+              },
+              {
+                "$ref": "#/components/schemas/ItemMove"
+              },
+              {
+                "$ref": "#/components/schemas/NoteText"
+              },
+              {
+                "$ref": "#/components/schemas/SummaryRead"
+              }
+            ],
+            "title": "Request"
+          }
+        },
+        "required": [
+          "request"
+        ],
+        "title": "MemoryRequest",
+        "type": "object"
+      },
+      "MemoryResult": {
+        "additionalProperties": false,
+        "properties": {
+          "api_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Api Version",
+            "type": "integer"
+          },
+          "code": {
+            "enum": [
+              "ok",
+              "ambiguous",
+              "not_found",
+              "revision_conflict",
+              "invalid_arguments",
+              "unavailable",
+              "identity_conflict",
+              "sensitive_content_rejected"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "has_more": {
+            "default": false,
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryRead"
+            },
+            "title": "Memories",
+            "type": "array"
+          },
+          "memory": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MemoryRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NoteRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/NoteRecord"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "operation": {
+            "enum": [
+              "unknown",
+              "memory_remember",
+              "memory_search",
+              "memory_read",
+              "memory_list",
+              "memory_update",
+              "memory_forget",
+              "note_create",
+              "note_list",
+              "note_read",
+              "note_rename",
+              "note_archive",
+              "note_delete",
+              "note_clear",
+              "note_item_add",
+              "note_item_update",
+              "note_item_remove",
+              "note_item_move",
+              "note_text_update",
+              "summary_read"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "replayed": {
+            "default": false,
+            "title": "Replayed",
+            "type": "boolean"
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryRecord"
+            },
+            "title": "Summaries",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SummaryRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "operation",
+          "code"
+        ],
+        "title": "MemoryResult",
+        "type": "object"
+      },
+      "NoteCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "items": {
+            "items": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "list",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_create",
+            "title": "Operation",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "title",
+          "kind",
+          "items",
+          "content"
+        ],
+        "title": "NoteCreate",
+        "type": "object"
+      },
+      "NoteItemRead": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "position"
+        ],
+        "title": "NoteItemRead",
+        "type": "object"
+      },
+      "NoteList": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "limit": {
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "note_list",
+            "title": "Operation",
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 160,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "query",
+          "archived",
+          "limit",
+          "offset"
+        ],
+        "title": "NoteList",
+        "type": "object"
+      },
+      "NoteRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_read",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "id"
+        ],
+        "title": "NoteRead",
+        "type": "object"
+      },
+      "NoteRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NoteItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "list",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "content",
+          "status",
+          "revision",
+          "created_at",
+          "updated_at",
+          "items",
+          "item_count"
+        ],
+        "title": "NoteRecord",
+        "type": "object"
+      },
+      "NoteRename": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_rename",
+            "title": "Operation",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "title"
+        ],
+        "title": "NoteRename",
+        "type": "object"
+      },
+      "NoteState": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "note_archive",
+              "note_delete",
+              "note_clear"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision"
+        ],
+        "title": "NoteState",
+        "type": "object"
+      },
+      "NoteText": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "note_text_update",
+            "title": "Operation",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "content"
+        ],
+        "title": "NoteText",
+        "type": "object"
+      },
       "PortalLoginRequest": {
         "properties": {
           "email": {
@@ -4221,6 +5097,79 @@
         "title": "PortalUserUpdate",
         "type": "object"
       },
+      "ReadMemory": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "memory_read",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "id"
+        ],
+        "title": "ReadMemory",
+        "type": "object"
+      },
+      "Remember": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "preference",
+              "fact",
+              "project",
+              "decision",
+              "open_point"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation": {
+            "const": "memory_remember",
+            "title": "Operation",
+            "type": "string"
+          },
+          "subject": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Subject",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 60,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation",
+          "kind",
+          "subject",
+          "content",
+          "tags"
+        ],
+        "title": "Remember",
+        "type": "object"
+      },
       "ReportCreate": {
         "properties": {
           "description": {
@@ -4425,6 +5374,81 @@
         "title": "ReservationAmenityUpdate",
         "type": "object"
       },
+      "Search": {
+        "additionalProperties": false,
+        "properties": {
+          "date_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          },
+          "limit": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "memory_search",
+            "title": "Operation",
+            "type": "string"
+          },
+          "query": {
+            "maxLength": 240,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "memories",
+              "summaries",
+              "all"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 60,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation",
+          "query",
+          "scope",
+          "tags",
+          "date_from",
+          "date_to",
+          "limit"
+        ],
+        "title": "Search",
+        "type": "object"
+      },
       "SelectRoleRequest": {
         "properties": {
           "role": {
@@ -4438,6 +5462,44 @@
           "role"
         ],
         "title": "SelectRoleRequest",
+        "type": "object"
+      },
+      "SettingsRead": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic": {
+            "title": "Automatic",
+            "type": "boolean"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "automatic",
+          "revision"
+        ],
+        "title": "SettingsRead",
+        "type": "object"
+      },
+      "SettingsWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic": {
+            "title": "Automatic",
+            "type": "boolean"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "automatic",
+          "revision"
+        ],
+        "title": "SettingsWrite",
         "type": "object"
       },
       "SmtpOperationalStatusRead": {
@@ -4682,6 +5744,166 @@
           "message"
         ],
         "title": "SmtpTestEmailResponse",
+        "type": "object"
+      },
+      "SummaryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "summary_read",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "id"
+        ],
+        "title": "SummaryRead",
+        "type": "object"
+      },
+      "SummaryRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "continuation": {
+            "title": "Continuation",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "open_points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Points",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "topics",
+          "content",
+          "decisions",
+          "open_points",
+          "continuation",
+          "created_at",
+          "updated_at",
+          "revision"
+        ],
+        "title": "SummaryRecord",
+        "type": "object"
+      },
+      "UpdateMemory": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "importance": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Importance",
+            "type": "integer"
+          },
+          "operation": {
+            "const": "memory_update",
+            "title": "Operation",
+            "type": "string"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subject": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Subject",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 60,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation",
+          "id",
+          "revision",
+          "subject",
+          "content",
+          "tags",
+          "status",
+          "pinned",
+          "importance"
+        ],
+        "title": "UpdateMemory",
         "type": "object"
       },
       "UserPasswordResetLinkResponse": {
@@ -4953,12 +6175,32 @@
             "title": "Closed",
             "type": "boolean"
           },
+          "connection_state": {
+            "default": "connecting",
+            "enum": [
+              "connecting",
+              "ready",
+              "waiting"
+            ],
+            "title": "Connection State",
+            "type": "string"
+          },
           "managed_functions": {
             "items": {
               "type": "string"
             },
             "title": "Managed Functions",
             "type": "array"
+          },
+          "memory": {
+            "default": "unavailable",
+            "enum": [
+              "connecting",
+              "ready",
+              "unavailable"
+            ],
+            "title": "Memory",
+            "type": "string"
           },
           "model": {
             "title": "Model",
@@ -5002,6 +6244,26 @@
           "closed": {
             "title": "Closed",
             "type": "boolean"
+          },
+          "connection_state": {
+            "default": "connecting",
+            "enum": [
+              "connecting",
+              "ready",
+              "waiting"
+            ],
+            "title": "Connection State",
+            "type": "string"
+          },
+          "memory": {
+            "default": "unavailable",
+            "enum": [
+              "connecting",
+              "ready",
+              "unavailable"
+            ],
+            "title": "Memory",
+            "type": "string"
           },
           "renew": {
             "title": "Renew",
@@ -6195,6 +7457,458 @@
         "summary": "Session Heartbeat",
         "tags": [
           "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/memories": {
+      "get": {
+        "operationId": "memories_api_v1_admin_voice_memory_memories_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Memories",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/memories/{identity}": {
+      "get": {
+        "operationId": "read_memory_api_v1_admin_voice_memory_memories__identity__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Memory",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/notes": {
+      "get": {
+        "operationId": "notes_api_v1_admin_voice_memory_notes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Archived",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Notes",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/notes/{identity}": {
+      "get": {
+        "operationId": "read_note_api_v1_admin_voice_memory_notes__identity__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Note",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/operations": {
+      "post": {
+        "operationId": "operation_api_v1_admin_voice_memory_operations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Operation",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/search": {
+      "post": {
+        "operationId": "search_api_v1_admin_voice_memory_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Search"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/settings": {
+      "get": {
+        "operationId": "settings_api_v1_admin_voice_memory_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Settings",
+        "tags": [
+          "voice-memory"
+        ]
+      },
+      "put": {
+        "operationId": "write_settings_api_v1_admin_voice_memory_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Write Settings",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/summaries": {
+      "get": {
+        "operationId": "summaries_api_v1_admin_voice_memory_summaries_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Summaries",
+        "tags": [
+          "voice-memory"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-memory/summaries/{identity}": {
+      "get": {
+        "operationId": "read_summary_api_v1_admin_voice_memory_summaries__identity__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Summary",
+        "tags": [
+          "voice-memory"
         ]
       }
     },

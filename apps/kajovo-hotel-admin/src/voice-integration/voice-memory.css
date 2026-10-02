@@ -1,0 +1,95 @@
+.voice-memory {
+  margin-top: var(--k-spacing-6);
+  padding: var(--k-spacing-4);
+  border: 1px solid var(--k-color-border);
+  border-radius: var(--k-radius-2);
+}
+.voice-memory * {
+  box-sizing: border-box;
+}
+.voice-memory [role="tablist"],
+.vm-actions,
+.vm-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--k-spacing-2);
+  align-items: end;
+  margin-block: 0.75rem;
+}
+.voice-memory button {
+  min-height: 2.75rem;
+  padding: var(--k-spacing-2) var(--k-spacing-3);
+  cursor: pointer;
+  border: 1px solid var(--k-color-metal-accessible);
+  border-radius: var(--k-radius-1);
+  background: var(--k-color-surface);
+  color: var(--k-color-ink);
+}
+.voice-memory button[aria-selected="true"] {
+  background: var(--k-color-ink);
+  color: var(--k-color-surface);
+}
+.voice-memory button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.voice-memory label {
+  display: block;
+  margin-block: var(--k-spacing-2);
+}
+.voice-memory input:not([type="checkbox"]),
+.voice-memory textarea {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--k-color-metal-accessible);
+  border-radius: var(--k-radius-1);
+  padding: var(--k-spacing-2);
+  color: var(--k-color-ink);
+  background: var(--k-color-surface);
+}
+.voice-memory textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.vm-layout {
+  display: grid;
+  grid-template-columns: minmax(1var(--k-spacing-6), 1fr) minmax(0, 2fr);
+  gap: var(--k-spacing-5);
+}
+.vm-list > button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: var(--k-spacing-2);
+  overflow-wrap: anywhere;
+}
+.vm-list small {
+  display: block;
+  margin-top: var(--k-spacing-1);
+}
+.vm-detail,
+.vm-list {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vm-detail ol {
+  padding-left: var(--k-spacing-5);
+}
+.vm-hint {
+  font-size: var(--k-font-size-sm);
+}
+.vm-create {
+  border-top: 1px solid var(--k-color-border);
+  margin-top: var(--k-spacing-5);
+  padding-top: var(--k-spacing-4);
+}
+@media (max-width: 700px) {
+  .vm-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vm-search > label {
+    width: 100%;
+  }
+}

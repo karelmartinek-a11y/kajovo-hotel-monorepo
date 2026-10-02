@@ -46,3 +46,5 @@ Zelené CI dokládá uvedené scénáře, nikoliv úplnou funkčnost produkce. S
 | `preview.yml` | Ruční build a export frontendů pro náhled. |
 
 Historické `CI Core`, `CI Full` a `CI Release` nemají samostatný aktuální kontrakt; jejich povinné validační vrstvy zajišťuje jediný plán, proto jsou jejich workflow odstraněná. Staré běhy v GitHub historii zůstávají důkazem minulého stavu.
+
+The validate plan includes voice-memory-ui (real API, desktop/tablet/phone, no transcript traces). api-runtime-image additionally verifies voice memory migrations and transactions against PostgreSQL 16.4 with scripts/verify_voice_memory_postgres.py. Existing jobs and deploy dependencies are unchanged.

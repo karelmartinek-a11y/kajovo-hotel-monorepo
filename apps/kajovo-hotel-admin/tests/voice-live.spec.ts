@@ -2,7 +2,6 @@ import {test, expect} from '@playwright/test';
 import {getAdminCredentials} from '../test-admin-credentials';
 
 test('explicit opt-in real speech, response, interruption and cleanup', async ({page}) => {
-  // @ts-expect-error Node environment is provided by Playwright.
   test.skip(process.env.VOICE_CORE_LIVE_SMOKE !== '1', 'Paid calls require explicit opt-in');
   await page.addInitScript(() => {
     const originalMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);

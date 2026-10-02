@@ -8,7 +8,7 @@ from app.db.models import Base
 
 settings = get_settings()
 
-engine = create_engine(settings.database_url, future=True)
+engine = create_engine(settings.database_url, future=True, hide_parameters=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=Session)
 
 

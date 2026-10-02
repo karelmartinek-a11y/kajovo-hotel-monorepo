@@ -19,15 +19,15 @@ depends_on: Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "breakfast_orders",
-        sa.Column("diet_no_gluten", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("diet_no_gluten", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
     op.add_column(
         "breakfast_orders",
-        sa.Column("diet_no_milk", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("diet_no_milk", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
     op.add_column(
         "breakfast_orders",
-        sa.Column("diet_no_pork", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("diet_no_pork", sa.Boolean(), nullable=False, server_default=sa.false()),
     )
 
     with op.batch_alter_table("breakfast_orders") as batch_op:

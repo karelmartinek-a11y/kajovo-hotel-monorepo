@@ -170,7 +170,13 @@ async function loginPortalUser(page: import('@playwright/test').Page, email: str
   await principalInput.waitFor({ state: 'visible' });
   await principalInput.fill(email);
   await passwordInput.fill(password);
+  const loginResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === '/api/auth/login' && response.request().method() === 'POST',
+  );
   await page.getByRole('button', { name: /prihlasit|přihlásit/i }).click();
+  expect((await loginResponse).status()).toBe(200);
+  await page.waitForURL((url) => url.pathname !== '/login');
+  await page.waitForLoadState('networkidle');
 }
 
 test('po návratu na neověřený pohled přihlášení obnoví původní cestu', async ({ page, request }, testInfo) => {
@@ -200,7 +206,7 @@ async function expectAllowedRoute(page: import('@playwright/test').Page, route: 
 }
 
 async function expectDeniedRoute(page: import('@playwright/test').Page, route: string) {
-  await page.goto(route, { waitUntil: 'domcontentloaded' });
+  await page.goto(route, { waitUntil: 'networkidle' });
   await expect(page).toHaveURL(new RegExp(`${route.replace(/\//g, '\\/')}$`));
   await expect(page.getByTestId('access-denied-page')).toBeVisible();
 }

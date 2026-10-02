@@ -1,10 +1,10 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy import update
 from sqlalchemy.orm import Session
-from voice_core_server import RealtimeSessionClient, VoiceCoreConfig, VoiceError, catalog
+from voice_core_server import VoiceCoreConfig, VoiceError, catalog
 
 from app.config import get_settings
 from app.db.models import VoiceCoreSettings
@@ -13,7 +13,6 @@ from app.security.auth import require_session
 from app.services.voice_core import (
     VoiceConfigAdapter,
     VoiceSecretAdapter,
-    VoiceTelemetry,
     get_record,
 )
 from app.services.voice_smart import manager
@@ -70,6 +69,8 @@ class VoiceSessionRead(BaseModel):
     sdp: str
     model: str
     session_id: str | None = None
+    connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
+    memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
     technologies: str = "unavailable"
     managed_functions: list[str] = Field(default_factory=list)
     renew: bool = False
@@ -78,6 +79,8 @@ class VoiceSessionRead(BaseModel):
 
 class VoiceSessionStatus(BaseModel):
     session_id: str
+    connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
+    memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
     technologies: str
     renew: bool
     closed: bool
@@ -141,19 +144,15 @@ async def create_session(payload: VoiceSessionWrite, db: Db, request: Request):
         raise HTTPException(422, detail={"code": "invalid_sdp"})
     try:
         key = VoiceSecretAdapter(db).read()
-        if get_settings().kajavoiceha_mcp_token:
-            try:
-                return await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
-                    str(require_session(request)["session_id"]), get_settings().kajavoiceha_mcp_token)
-            except VoiceError:
-                raise
-            except Exception:
-                raise VoiceError("provider_unavailable") from None
-        sdp, model = await RealtimeSessionClient(VoiceTelemetry()).create(
-            payload.sdp, VoiceConfigAdapter(db).read(), key)
+        try:
+            return await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
+                str(require_session(request)["session_id"]), get_settings().kajavoiceha_mcp_token)
+        except VoiceError:
+            raise
+        except Exception:
+            raise VoiceError("provider_unavailable") from None
     except VoiceError as exc:
         raise safe_error(exc) from None
-    return VoiceSessionRead(sdp=sdp, model=model)
 
 
 def owned_bridge(session_id: str, request: Request):

@@ -26,6 +26,7 @@ from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
 from app.api.routes.voice_core import router as voice_core_router
+from app.api.routes.voice_memory import router as voice_memory_router
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
@@ -66,7 +67,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def safe_validation_error(request: Request, exc: RequestValidationError):
-        if request.url.path.startswith("/api/v1/admin/voice-core/"):
+        if request.url.path.startswith(("/api/v1/admin/voice-core/", "/api/v1/admin/voice-memory/")):
             return JSONResponse(status_code=422, content={"detail": {"code": "invalid_configuration"}},
                                 headers={"Cache-Control": "no-store"})
         return await request_validation_exception_handler(request, exc)
@@ -108,7 +109,7 @@ def create_app() -> FastAPI:
             )
         else:
             response = await call_next(request)
-        if request.url.path.startswith("/api/v1/admin/voice-core/"):
+        if request.url.path.startswith(("/api/v1/admin/voice-core/", "/api/v1/admin/voice-memory/")):
             response.headers["Cache-Control"] = "no-store"
         response.headers.setdefault("Content-Security-Policy", settings.content_security_policy)
         response.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -137,6 +138,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_router)
     app.include_router(profile_router)
     app.include_router(voice_core_router)
+    app.include_router(voice_memory_router)
 
     @app.on_event("startup")
     async def startup_scheduler() -> None:

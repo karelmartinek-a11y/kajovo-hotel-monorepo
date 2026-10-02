@@ -18,6 +18,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -835,3 +836,213 @@ class AuthUnlockToken(Base):
     )
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class VoiceMemoryPrincipal(Base):
+    __tablename__ = "voice_memory_principals"
+    __table_args__ = (
+        CheckConstraint(
+            "(portal_user_id IS NULL) <> (admin_profile_id IS NULL)",
+            name="ck_voice_memory_owner",
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    portal_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("portal_users.id", ondelete="CASCADE"), unique=True
+    )
+    admin_profile_id: Mapped[int | None] = mapped_column(
+        ForeignKey("admin_profile.id", ondelete="CASCADE"), unique=True
+    )
+
+
+class VoiceMemorySettings(Base):
+    __tablename__ = "voice_memory_settings"
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memory_principals.id", ondelete="CASCADE"), primary_key=True
+    )
+    automatic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    generation: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class VoiceMemory(Base):
+    __tablename__ = "voice_memories"
+    __table_args__ = (
+        Index(
+            "ix_voice_memory_context",
+            "principal_id",
+            "status",
+            "pinned",
+            "importance",
+            "updated_at",
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memory_principals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    subject: Mapped[str] = mapped_column(String(160), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    search_text: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active", index=True
+    )
+    origin: Mapped[str] = mapped_column(String(16), nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    importance: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    source_session_id: Mapped[str | None] = mapped_column(String(128))
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class VoiceMemoryRevision(Base):
+    __tablename__ = "voice_memory_revisions"
+    __table_args__ = (
+        UniqueConstraint("memory_id", "revision", name="uq_voice_memory_revision"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    memory_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memories.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    subject: Mapped[str] = mapped_column(String(160), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_session_id: Mapped[str | None] = mapped_column(String(128))
+    reason: Mapped[str] = mapped_column(String(24), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class VoiceNote(Base):
+    __tablename__ = "voice_notes"
+    __table_args__ = (
+        Index("ix_voice_note_owner_status", "principal_id", "status", "updated_at"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memory_principals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(160), nullable=False)
+    normalized_title: Mapped[str] = mapped_column(
+        String(320), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    content: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class VoiceNoteItem(Base):
+    __tablename__ = "voice_note_items"
+    __table_args__ = (
+        UniqueConstraint("note_id", "position", name="uq_voice_note_position"),
+        CheckConstraint("position >= 0", name="ck_voice_note_position"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    note_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_notes.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class VoiceConversationSummary(Base):
+    __tablename__ = "voice_conversation_summaries"
+    __table_args__ = (
+        UniqueConstraint("principal_id", "session_id", name="uq_voice_summary_session"),
+        Index("ix_voice_summary_owner_recency", "principal_id", "updated_at"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memory_principals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    session_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    topics: Mapped[list] = mapped_column(JSON, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    decisions: Mapped[list] = mapped_column(JSON, nullable=False)
+    open_points: Mapped[list] = mapped_column(JSON, nullable=False)
+    continuation: Mapped[str] = mapped_column(String(400), nullable=False)
+    memory_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+    source_note_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    search_text: Mapped[str] = mapped_column(Text, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class VoiceMemoryOperation(Base):
+    __tablename__ = "voice_memory_operations"
+    __table_args__ = (
+        UniqueConstraint(
+            "principal_id", "session_id", "call_id", name="uq_voice_memory_call"
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memory_principals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    session_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    call_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    operation: Mapped[str] = mapped_column(String(32), nullable=False)
+    arguments_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_code: Mapped[str] = mapped_column(String(24), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String(36))
+    entity_revision: Mapped[int | None] = mapped_column(Integer)
+    delivered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class VoiceMemoryDependency(Base):
+    __tablename__ = "voice_memory_dependencies"
+    __table_args__ = (
+        CheckConstraint(
+            "(source_memory_id IS NULL) <> (source_note_id IS NULL)",
+            name="ck_voice_memory_dependency_source",
+        ),
+        UniqueConstraint(
+            "memory_id", "source_memory_id", name="uq_voice_memory_dependency_memory"
+        ),
+        UniqueConstraint(
+            "memory_id", "source_note_id", name="uq_voice_memory_dependency_note"
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    memory_id: Mapped[str] = mapped_column(
+        ForeignKey("voice_memories.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source_memory_id: Mapped[str | None] = mapped_column(
+        ForeignKey("voice_memories.id", ondelete="CASCADE"), index=True
+    )
+    source_note_id: Mapped[str | None] = mapped_column(
+        ForeignKey("voice_notes.id", ondelete="CASCADE"), index=True
+    )

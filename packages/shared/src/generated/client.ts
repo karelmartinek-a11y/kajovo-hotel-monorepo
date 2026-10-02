@@ -241,6 +241,11 @@ export type DeviceVerifyResponse = {
   "token": string;
   "token_type"?: string;
 };
+export type Forget = {
+  "id": string;
+  "operation": string;
+  "revision": number;
+};
 export type HTTPValidationError = {
   "detail"?: Array<ValidationError>;
 };
@@ -472,6 +477,33 @@ export type IssueUpdate = {
   "status"?: IssueStatus | null;
   "title"?: string | null;
 };
+export type ItemAdd = {
+  "content": string;
+  "id": string;
+  "operation": string;
+  "position": number | null;
+  "revision": number;
+};
+export type ItemMove = {
+  "id": string;
+  "item_id": string;
+  "operation": string;
+  "position": number;
+  "revision": number;
+};
+export type ItemRemove = {
+  "id": string;
+  "item_id": string;
+  "operation": string;
+  "revision": number;
+};
+export type ItemUpdate = {
+  "content": string;
+  "id": string;
+  "item_id": string;
+  "operation": string;
+  "revision": number;
+};
 export type LocaleUpdate = {
   "locale": "cs" | "en" | "uk";
 };
@@ -544,6 +576,96 @@ export type MediaPhotoRead = {
   "sort_order": number;
   "thumb_path": string;
 };
+export type MemoryList = {
+  "limit": number;
+  "offset": number;
+  "operation": string;
+  "status": "active" | "inactive" | "superseded" | null;
+};
+export type MemoryRead = {
+  "content": string;
+  "created_at": string;
+  "id": string;
+  "importance": number;
+  "kind": "preference" | "fact" | "project" | "decision" | "open_point";
+  "last_used_at": string | null;
+  "origin": "explicit" | "automatic";
+  "pinned": boolean;
+  "revision": number;
+  "source_session_id": string | null;
+  "status": "active" | "inactive" | "superseded";
+  "subject": string;
+  "tags": Array<string>;
+  "updated_at": string;
+};
+export type MemoryRequest = {
+  "request": Remember | Search | ReadMemory | MemoryList | UpdateMemory | Forget | NoteCreate | NoteList | NoteRead | NoteRename | NoteState | ItemAdd | ItemUpdate | ItemRemove | ItemMove | NoteText | SummaryRead;
+};
+export type MemoryResult = {
+  "api_version"?: number;
+  "code": "ok" | "ambiguous" | "not_found" | "revision_conflict" | "invalid_arguments" | "unavailable" | "identity_conflict" | "sensitive_content_rejected";
+  "has_more"?: boolean;
+  "memories"?: Array<MemoryRead>;
+  "memory"?: MemoryRead | null;
+  "note"?: NoteRecord | null;
+  "notes"?: Array<NoteRecord>;
+  "operation": "unknown" | "memory_remember" | "memory_search" | "memory_read" | "memory_list" | "memory_update" | "memory_forget" | "note_create" | "note_list" | "note_read" | "note_rename" | "note_archive" | "note_delete" | "note_clear" | "note_item_add" | "note_item_update" | "note_item_remove" | "note_item_move" | "note_text_update" | "summary_read";
+  "replayed"?: boolean;
+  "summaries"?: Array<SummaryRecord>;
+  "summary"?: SummaryRecord | null;
+};
+export type NoteCreate = {
+  "content": string | null;
+  "items": Array<string>;
+  "kind": "list" | "text";
+  "operation": string;
+  "title": string;
+};
+export type NoteItemRead = {
+  "content": string;
+  "id": string;
+  "position": number;
+};
+export type NoteList = {
+  "archived": boolean;
+  "limit": number;
+  "offset": number;
+  "operation": string;
+  "query": string;
+};
+export type NoteRead = {
+  "id": string;
+  "operation": string;
+};
+export type NoteRecord = {
+  "content": string | null;
+  "created_at": string;
+  "id": string;
+  "item_count": number;
+  "items": Array<NoteItemRead>;
+  "kind": "list" | "text";
+  "revision": number;
+  "status": "active" | "archived";
+  "title": string;
+  "updated_at": string;
+};
+export type NoteRename = {
+  "id": string;
+  "operation": string;
+  "revision": number;
+  "title": string;
+};
+export type NoteState = {
+  "id": string;
+  "operation": "note_archive" | "note_delete" | "note_clear";
+  "revision": number;
+};
+export type NoteText = {
+  "content": string;
+  "id": string;
+  "operation": string;
+  "revision": number;
+};
 export type PortalLoginRequest = {
   "email": string;
   "password": string;
@@ -599,6 +721,17 @@ export type PortalUserUpdate = {
   "phone"?: string | null;
   "roles": Array<string>;
 };
+export type ReadMemory = {
+  "id": string;
+  "operation": string;
+};
+export type Remember = {
+  "content": string;
+  "kind": "preference" | "fact" | "project" | "decision" | "open_point";
+  "operation": string;
+  "subject": string;
+  "tags": Array<string>;
+};
 export type ReportCreate = {
   "description"?: string | null;
   "status"?: string;
@@ -630,8 +763,25 @@ export type ReservationAmenityUpdate = {
   "state": ReservationAmenityState;
   "version": number;
 };
+export type Search = {
+  "date_from": string | null;
+  "date_to": string | null;
+  "limit": number;
+  "operation": string;
+  "query": string;
+  "scope": "memories" | "summaries" | "all";
+  "tags": Array<string>;
+};
 export type SelectRoleRequest = {
   "role": string;
+};
+export type SettingsRead = {
+  "automatic": boolean;
+  "revision": number;
+};
+export type SettingsWrite = {
+  "automatic": boolean;
+  "revision": number;
 };
 export type SmtpOperationalStatusRead = {
   "can_send_real_email": boolean;
@@ -672,6 +822,32 @@ export type SmtpTestEmailResponse = {
   "message": string;
   "ok"?: boolean;
   "send_attempted": boolean;
+};
+export type SummaryRead = {
+  "id": string;
+  "operation": string;
+};
+export type SummaryRecord = {
+  "content": string;
+  "continuation": string;
+  "created_at": string;
+  "decisions": Array<string>;
+  "id": string;
+  "open_points": Array<string>;
+  "revision": number;
+  "topics": Array<string>;
+  "updated_at": string;
+};
+export type UpdateMemory = {
+  "content": string;
+  "id": string;
+  "importance": number;
+  "operation": string;
+  "pinned": boolean;
+  "revision": number;
+  "status": "active" | "inactive" | "superseded";
+  "subject": string;
+  "tags": Array<string>;
 };
 export type UserPasswordResetLinkResponse = {
   "connected": boolean;
@@ -714,7 +890,9 @@ export type VoiceKeyWrite = {
 };
 export type VoiceSessionRead = {
   "closed"?: boolean;
+  "connection_state"?: "connecting" | "ready" | "waiting";
   "managed_functions"?: Array<string>;
+  "memory"?: "connecting" | "ready" | "unavailable";
   "model": string;
   "renew"?: boolean;
   "sdp": string;
@@ -723,6 +901,8 @@ export type VoiceSessionRead = {
 };
 export type VoiceSessionStatus = {
   "closed": boolean;
+  "connection_state"?: "connecting" | "ready" | "waiting";
+  "memory"?: "connecting" | "ready" | "unavailable";
   "renew": boolean;
   "session_id": string;
   "technologies": string;
@@ -881,6 +1061,36 @@ export const apiClient = {
   },
   async sessionHeartbeatApiV1AdminVoiceCoreSessionsSessionIdHeartbeatPost(session_id: string): Promise<VoiceSessionStatus> {
     return request<VoiceSessionStatus>('POST', `/api/v1/admin/voice-core/sessions/${session_id}/heartbeat`, undefined, undefined);
+  },
+  async memoriesApiV1AdminVoiceMemoryMemoriesGet(query: { "limit"?: number; "offset"?: number; }): Promise<MemoryResult> {
+    return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/memories`, query, undefined);
+  },
+  async readMemoryApiV1AdminVoiceMemoryMemoriesIdentityGet(identity: string): Promise<MemoryResult> {
+    return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/memories/${identity}`, undefined, undefined);
+  },
+  async notesApiV1AdminVoiceMemoryNotesGet(query: { "limit"?: number; "offset"?: number; "archived"?: boolean; }): Promise<MemoryResult> {
+    return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/notes`, query, undefined);
+  },
+  async readNoteApiV1AdminVoiceMemoryNotesIdentityGet(identity: string): Promise<MemoryResult> {
+    return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/notes/${identity}`, undefined, undefined);
+  },
+  async operationApiV1AdminVoiceMemoryOperationsPost(body: MemoryRequest): Promise<MemoryResult> {
+    return request<MemoryResult>('POST', `/api/v1/admin/voice-memory/operations`, undefined, body);
+  },
+  async searchApiV1AdminVoiceMemorySearchPost(body: Search): Promise<MemoryResult> {
+    return request<MemoryResult>('POST', `/api/v1/admin/voice-memory/search`, undefined, body);
+  },
+  async settingsApiV1AdminVoiceMemorySettingsGet(): Promise<SettingsRead> {
+    return request<SettingsRead>('GET', `/api/v1/admin/voice-memory/settings`, undefined, undefined);
+  },
+  async writeSettingsApiV1AdminVoiceMemorySettingsPut(body: SettingsWrite): Promise<SettingsRead> {
+    return request<SettingsRead>('PUT', `/api/v1/admin/voice-memory/settings`, undefined, body);
+  },
+  async summariesApiV1AdminVoiceMemorySummariesGet(query: { "limit"?: number; "offset"?: number; }): Promise<MemoryResult> {
+    return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/summaries`, query, undefined);
+  },
+  async readSummaryApiV1AdminVoiceMemorySummariesIdentityGet(identity: string): Promise<MemoryResult> {
+    return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/summaries/${identity}`, undefined, undefined);
   },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);

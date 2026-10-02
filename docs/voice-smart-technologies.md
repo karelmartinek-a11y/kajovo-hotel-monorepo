@@ -24,7 +24,7 @@ Backend uchovává jednu malou pracovní zprávu `kvha_` s aktuálním výsledke
 
 Technologie používají `gpt-realtime-2.1`, vypnuté automatické truncation a strop výstupu 4096. Jiný ručně zvolený model zůstává obyčejným hovorem. Nad 110000 vstupních tokenů backend odstraňuje staré dokončené položky; aktuální kontext a rozpracovaná volání zachovává. Při další kapacitní chybě browser řízeně obnoví relaci s novým přehledem a identitami nevyřešených povelů.
 
-Výpadek MCP deaktivuje technologie; běžný rozhovor pokračuje. Nové zahájení hovoru znovu ověří MCP a načte katalog; nepotvrzené změny dohledává přes původní request_id. Porucha sidebandu vyžádá nový hovor, protože staré spojení nemůže bezpečně vykonávat funkce. Browser má původní omezený počet automatických pokusů o obnovu.
+Výpadek MCP deaktivuje technologie; běžný rozhovor a nezávislá [paměť](voice-memory.md) pokračují. Sdílený hotelový sideband vzniká také bez MCP tokenu a generic connection_state není readiness technologií. Nové zahájení hovoru znovu ověří MCP a načte katalog; nepotvrzené změny dohledává přes původní request_id. Porucha sidebandu vyžádá nový hovor, protože staré spojení nemůže bezpečně vykonávat funkce. Browser má původní omezený počet automatických pokusů o obnovu.
 
 Provider `rate_limit_exceeded` pozastaví mikrofon a automatické odpovědi. Backend počká podle resetu z rate_limits.updated (nejméně 60 sekund, nejvýše 120 sekund) a nejvýše dvakrát obnoví pouze generaci z již potvrzených výsledků. MCP změnový povel znovu nevolá. Nedostatek kreditu nebo jiná neobnovitelná chyba zůstává chybou služby.
 

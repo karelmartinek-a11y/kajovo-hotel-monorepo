@@ -1,6 +1,4 @@
-// @ts-expect-error Node builtin is available in Playwright/Vite test runtime.
 import { existsSync, readFileSync } from 'fs';
-// @ts-expect-error Node builtin is available in Playwright/Vite test runtime.
 import { dirname, join, resolve } from 'path';
 
 type EnvMap = Record<string, string | undefined>;

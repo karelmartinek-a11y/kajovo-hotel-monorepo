@@ -203,7 +203,9 @@ test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní deta
     }
     if (size.width <= 390) {
       await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Profil' })).toBeVisible();
-      await expect(page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Chat', exact: true })).toBeVisible();
+      const chatLink = page.getByTestId('admin-bottom-navigation').getByRole('link', { name: /^Chat(?: \d+\+? nepřečtených)?$/ });
+      await expect(chatLink).toBeVisible();
+      await expect(chatLink).toHaveAttribute('href', '/admin/chat');
       await page.getByTestId('admin-bottom-navigation').getByRole('link', { name: 'Přehled' }).click();
       await expect(page.getByTestId('dashboard-page')).toBeVisible();
       await page.goto('/admin/pokojska');

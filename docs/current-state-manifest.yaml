@@ -78,3 +78,15 @@ observability:
   runtime_integrity_script: scripts/check_runtime_integrity.mjs
   deploy_verifier: infra/verify/verify-deploy.sh
   smoke_script: infra/smoke/smoke.sh
+
+voice_memory:
+  host_api: apps/kajovo-hotel-api
+  admin_route: /admin/hlasovy-chat
+  api_prefix: /api/v1/admin/voice-memory
+  tool: assistant_memory
+  api_version: 1
+  migration: 0042_voice_memory
+  documentation: docs/voice-memory.md
+  ui_validation: pnpm --filter @kajovo/kajovo-hotel-admin test:voice-memory
+  postgres_validation: scripts/verify_voice_memory_postgres.py
+  persistent_transcript: false

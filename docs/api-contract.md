@@ -36,3 +36,5 @@ pnpm contract:check
 ## CI enforcement
 
 CI runs `pnpm contract:check`. If an endpoint/schema changed without committing regenerated files, the pipeline fails.
+
+Admin voice memory uses typed closed models under /api/v1/admin/voice-memory, authenticated admin sessions and CSRF (including POST search). Content search is never a query-string parameter. Optimistic edits return 409. See [voice-memory](voice-memory.md) and its exact [tool schema](assistant-memory.schema.json).

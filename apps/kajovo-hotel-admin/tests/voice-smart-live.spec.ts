@@ -2,7 +2,6 @@ import {test, expect} from '@playwright/test';
 import {getAdminCredentials} from '../test-admin-credentials';
 
 test('opt-in real voice control, live read and camera input through backend sideband', async ({page}) => {
-  // @ts-expect-error Playwright provides the Node environment.
   test.skip(process.env.VOICE_CORE_LIVE_SMOKE !== '1', 'Paid calls require explicit opt-in');
   await page.addInitScript(() => {
     const streams: MediaStream[] = [];

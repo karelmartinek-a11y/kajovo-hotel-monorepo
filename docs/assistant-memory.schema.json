@@ -1,0 +1,1121 @@
+{
+  "tool": {
+    "type": "function",
+    "name": "assistant_memory",
+    "description": "Trvalá soukromá paměť, strukturované lístky a stručné souhrny minulých rozhovorů. Nejprve vyhledej přesný cíl, pak použij jeho ID a revision.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "request": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "memory_remember",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "preference",
+                    "fact",
+                    "project",
+                    "decision",
+                    "open_point"
+                  ],
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "subject": {
+                  "maxLength": 160,
+                  "minLength": 1,
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "maxLength": 60,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "operation",
+                "kind",
+                "subject",
+                "content",
+                "tags"
+              ],
+              "title": "Remember",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "memory_search",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "query": {
+                  "maxLength": 240,
+                  "title": "Query",
+                  "type": "string"
+                },
+                "scope": {
+                  "enum": [
+                    "memories",
+                    "summaries",
+                    "all"
+                  ],
+                  "title": "Scope",
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "maxLength": 60,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                },
+                "date_from": {
+                  "anyOf": [
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Date From"
+                },
+                "date_to": {
+                  "anyOf": [
+                    {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Date To"
+                },
+                "limit": {
+                  "maximum": 20,
+                  "minimum": 1,
+                  "title": "Limit",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "query",
+                "scope",
+                "tags",
+                "date_from",
+                "date_to",
+                "limit"
+              ],
+              "title": "Search",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "memory_read",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id"
+              ],
+              "title": "ReadMemory",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "memory_list",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "active",
+                        "inactive",
+                        "superseded"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Status"
+                },
+                "limit": {
+                  "maximum": 50,
+                  "minimum": 1,
+                  "title": "Limit",
+                  "type": "integer"
+                },
+                "offset": {
+                  "maximum": 10000,
+                  "minimum": 0,
+                  "title": "Offset",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "status",
+                "limit",
+                "offset"
+              ],
+              "title": "MemoryList",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "memory_update",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "subject": {
+                  "maxLength": 160,
+                  "minLength": 1,
+                  "title": "Subject",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                },
+                "tags": {
+                  "items": {
+                    "maxLength": 60,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 8,
+                  "title": "Tags",
+                  "type": "array"
+                },
+                "status": {
+                  "enum": [
+                    "active",
+                    "inactive",
+                    "superseded"
+                  ],
+                  "title": "Status",
+                  "type": "string"
+                },
+                "pinned": {
+                  "title": "Pinned",
+                  "type": "boolean"
+                },
+                "importance": {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "title": "Importance",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "subject",
+                "content",
+                "tags",
+                "status",
+                "pinned",
+                "importance"
+              ],
+              "title": "UpdateMemory",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "memory_forget",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision"
+              ],
+              "title": "Forget",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_create",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "title": {
+                  "maxLength": 160,
+                  "minLength": 1,
+                  "title": "Title",
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "list",
+                    "text"
+                  ],
+                  "title": "Kind",
+                  "type": "string"
+                },
+                "items": {
+                  "items": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "title": "Items",
+                  "type": "array"
+                },
+                "content": {
+                  "anyOf": [
+                    {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Content"
+                }
+              },
+              "required": [
+                "operation",
+                "title",
+                "kind",
+                "items",
+                "content"
+              ],
+              "title": "NoteCreate",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_list",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "query": {
+                  "maxLength": 160,
+                  "title": "Query",
+                  "type": "string"
+                },
+                "archived": {
+                  "title": "Archived",
+                  "type": "boolean"
+                },
+                "limit": {
+                  "maximum": 50,
+                  "minimum": 1,
+                  "title": "Limit",
+                  "type": "integer"
+                },
+                "offset": {
+                  "maximum": 10000,
+                  "minimum": 0,
+                  "title": "Offset",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "query",
+                "archived",
+                "limit",
+                "offset"
+              ],
+              "title": "NoteList",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_read",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id"
+              ],
+              "title": "NoteRead",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_rename",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "title": {
+                  "maxLength": 160,
+                  "minLength": 1,
+                  "title": "Title",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "title"
+              ],
+              "title": "NoteRename",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "enum": [
+                    "note_archive",
+                    "note_delete",
+                    "note_clear"
+                  ],
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision"
+              ],
+              "title": "NoteState",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_item_add",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "content": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                },
+                "position": {
+                  "anyOf": [
+                    {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Position"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "content",
+                "position"
+              ],
+              "title": "ItemAdd",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_item_update",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "item_id": {
+                  "format": "uuid",
+                  "title": "Item Id",
+                  "type": "string"
+                },
+                "content": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "item_id",
+                "content"
+              ],
+              "title": "ItemUpdate",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_item_remove",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "item_id": {
+                  "format": "uuid",
+                  "title": "Item Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "item_id"
+              ],
+              "title": "ItemRemove",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_item_move",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "item_id": {
+                  "format": "uuid",
+                  "title": "Item Id",
+                  "type": "string"
+                },
+                "position": {
+                  "maximum": 99,
+                  "minimum": 0,
+                  "title": "Position",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "item_id",
+                "position"
+              ],
+              "title": "ItemMove",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "note_text_update",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                },
+                "revision": {
+                  "minimum": 1,
+                  "title": "Revision",
+                  "type": "integer"
+                },
+                "content": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "title": "Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id",
+                "revision",
+                "content"
+              ],
+              "title": "NoteText",
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "operation": {
+                  "const": "summary_read",
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "id": {
+                  "format": "uuid",
+                  "title": "Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "operation",
+                "id"
+              ],
+              "title": "SummaryRead",
+              "type": "object"
+            }
+          ],
+          "title": "Request"
+        }
+      },
+      "required": [
+        "request"
+      ],
+      "title": "MemoryRequest",
+      "type": "object"
+    }
+  },
+  "result_schema": {
+    "$defs": {
+      "MemoryRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "preference",
+              "fact",
+              "project",
+              "decision",
+              "open_point"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "inactive",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "explicit",
+              "automatic"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "importance": {
+            "title": "Importance",
+            "type": "integer"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          },
+          "source_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Session Id"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "subject",
+          "content",
+          "tags",
+          "status",
+          "origin",
+          "pinned",
+          "importance",
+          "revision",
+          "created_at",
+          "updated_at",
+          "last_used_at",
+          "source_session_id"
+        ],
+        "title": "MemoryRead",
+        "type": "object"
+      },
+      "NoteItemRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "position"
+        ],
+        "title": "NoteItemRead",
+        "type": "object"
+      },
+      "NoteRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "list",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/NoteItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "content",
+          "status",
+          "revision",
+          "created_at",
+          "updated_at",
+          "items",
+          "item_count"
+        ],
+        "title": "NoteRecord",
+        "type": "object"
+      },
+      "SummaryRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "open_points": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Open Points",
+            "type": "array"
+          },
+          "continuation": {
+            "title": "Continuation",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "topics",
+          "content",
+          "decisions",
+          "open_points",
+          "continuation",
+          "created_at",
+          "updated_at",
+          "revision"
+        ],
+        "title": "SummaryRecord",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "api_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Api Version",
+        "type": "integer"
+      },
+      "operation": {
+        "enum": [
+          "unknown",
+          "memory_remember",
+          "memory_search",
+          "memory_read",
+          "memory_list",
+          "memory_update",
+          "memory_forget",
+          "note_create",
+          "note_list",
+          "note_read",
+          "note_rename",
+          "note_archive",
+          "note_delete",
+          "note_clear",
+          "note_item_add",
+          "note_item_update",
+          "note_item_remove",
+          "note_item_move",
+          "note_text_update",
+          "summary_read"
+        ],
+        "title": "Operation",
+        "type": "string"
+      },
+      "code": {
+        "enum": [
+          "ok",
+          "ambiguous",
+          "not_found",
+          "revision_conflict",
+          "invalid_arguments",
+          "unavailable",
+          "identity_conflict",
+          "sensitive_content_rejected"
+        ],
+        "title": "Code",
+        "type": "string"
+      },
+      "memory": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/MemoryRead"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "note": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/NoteRecord"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "summary": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SummaryRecord"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "memories": {
+        "items": {
+          "$ref": "#/$defs/MemoryRead"
+        },
+        "title": "Memories",
+        "type": "array"
+      },
+      "notes": {
+        "items": {
+          "$ref": "#/$defs/NoteRecord"
+        },
+        "title": "Notes",
+        "type": "array"
+      },
+      "summaries": {
+        "items": {
+          "$ref": "#/$defs/SummaryRecord"
+        },
+        "title": "Summaries",
+        "type": "array"
+      },
+      "has_more": {
+        "default": false,
+        "title": "Has More",
+        "type": "boolean"
+      },
+      "replayed": {
+        "default": false,
+        "title": "Replayed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "operation",
+      "code"
+    ],
+    "title": "MemoryResult",
+    "type": "object"
+  }
+}

@@ -7,12 +7,12 @@
 - `apps/kajovo-hotel-api` je FastAPI backend s OpenAPI exportem v `apps/kajovo-hotel-api/openapi.json`.
 - `packages/shared` drží RBAC, i18n a generovaný API klient v `packages/shared/src/generated/client.ts`.
 - `packages/ui` drží sdílený shell a UI komponenty.
-- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`.
+- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`. Hotelový backend obsluhuje nezávislé assistant_memory a smart_technologie funkce přes společný serverový sideband; paměť není MCP ani agent a portable balíčky neobsahují hotelová data. Viz `docs/voice-memory.md`.
 - Přihlášené aplikace používají `AppShell` s pevným záhlavím a spodní navigací v jedné vodorovně posuvné řadě na desktopu, tabletu i telefonu. Chat je první, následují moduly podle role a nakonec Profil. Podrobnosti jsou v `docs/ui-navigation.md`.
 
 ## Runtime a bezpečnost
 
-- API registruje routy `auth`, `app_meta`, `health`, `reports`, `breakfast`, `housekeeping`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings`, `profile`, `chat` a `voice_core`.
+- API registruje routy `auth`, `app_meta`, `health`, `reports`, `breakfast`, `housekeeping`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings`, `profile`, `chat`, `voice_core` a `voice_memory`.
 - Autentizace běží přes session cookie `kajovo_session` a CSRF cookie `kajovo_csrf` s hlavičkou `x-csrf-token`.
 - Nová webová přihlášení portálu i administrace obnovují session pouze po uživatelské aktivitě přes CSRF chráněný `POST /api/auth/activity`. Po 48 hodinách bez aktivity session vyprší; běžné načítání dat dobu neprodlužuje. Skrytá karta nekontroluje vypršení relace. Portál po opětovném přihlášení vrátí uživatele na původní interní cestu. Starší session zůstanou platné do svého původního vypršení bez obnovování a nativní Android používá původní samostatný režim.
 - Portál používá `cs`, `en` a `uk`, s preferencí uloženou u účtu přes `PATCH /api/auth/locale`. Přihlašovací stránka začíná vždy česky. Administrace zůstává česky. PDF exporty portálu používají jazyk účtu.

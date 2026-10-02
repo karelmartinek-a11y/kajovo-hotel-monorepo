@@ -163,3 +163,17 @@ test('managed rate limit pauses microphone without executing a tool or ending th
   h.client.setMuted(false); assert.equal(h.tracks[0].enabled, false);
   await h.client.stop();
 });
+
+test('generic connection readiness is independent of unavailable host capabilities', async () => {
+  let ready;
+  const h = host({create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'opaque', technologies: 'unavailable', connection_state: 'connecting', managed_functions: ['host_function']}),
+    heartbeat: () => new Promise(resolve => {ready = resolve;})});
+  await h.client.start();
+  h.client.setMuted(false);
+  assert.equal(h.tracks[0].enabled, false);
+  ready({technologies: 'unavailable', connection_state: 'ready', renew: false, closed: false});
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(h.tracks[0].enabled, true);
+  assert.equal(h.client.getSnapshot().state, 'listening');
+  await h.client.stop();
+});

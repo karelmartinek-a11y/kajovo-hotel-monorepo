@@ -7,8 +7,8 @@ export type VoiceCoreConfig = {
 };
 export type VoiceCatalog = {models: string[]; voices: string[]; languages: {id: string; label: string}[]};
 export type VoiceConfigSnapshot = VoiceCoreConfig & {revision: number; configured: boolean; catalog: VoiceCatalog};
-export type RealtimeSessionAnswer = {sdp: string; model: string; session_id?: string | null; managed_functions?: string[]; technologies?: string};
-export type RealtimeSessionStatus = {technologies: string; renew: boolean; closed: boolean};
+export type RealtimeSessionAnswer = {sdp: string; model: string; session_id?: string | null; managed_functions?: string[]; connection_state?: string; technologies?: string};
+export type RealtimeSessionStatus = {connection_state?: string; technologies: string; renew: boolean; closed: boolean};
 export interface RealtimeSessionProvider {
   create(sdp: string, signal: AbortSignal): Promise<RealtimeSessionAnswer>;
   heartbeat?(sessionId: string, signal: AbortSignal): Promise<RealtimeSessionStatus>;

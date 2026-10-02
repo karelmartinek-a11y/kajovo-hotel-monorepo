@@ -17,6 +17,10 @@ class Settings(BaseSettings):
         default="admin123",
         validation_alias=AliasChoices("KAJOVO_API_ADMIN_PASSWORD", "HOTEL_ADMIN_PASSWORD"),
     )
+    voice_memory_context_max_tokens: int = Field(default=2000, ge=128, le=12000, validation_alias="VOICE_MEMORY_CONTEXT_MAX_TOKENS")
+    voice_memory_curator_model: str = "gpt-4.1-mini-2025-04-14"
+    voice_memory_batch_seconds: int = Field(default=90, ge=15, le=300)
+    voice_memory_max_calls_per_hour: int = Field(default=40, ge=1, le=120)
     voice_master_key: str = Field(default="", repr=False)
     kajavoiceha_mcp_token: str = Field(default="", repr=False, validation_alias="KAJAVOICEHA_MCP_TOKEN")
     smtp_enabled: bool = False

@@ -33,6 +33,12 @@ from app.services.smart_technologies import (
     request_id,
 )
 from app.time_utils import utc_now
+from app.config import get_settings
+from app.services import voice_memory
+from app.services.voice_memory_contract import MEMORY_TOOL, MEMORY_INSTRUCTIONS, MemoryRequest, MemoryResult
+from app.services.voice_memory_curator import TurnBuffer
+from app.db.models import VoiceMemoryOperation, VoiceMemorySettings
+from app.security.auth import _serialize_session
 
 logger = logging.getLogger("kajovo.voice")
 
@@ -149,11 +155,18 @@ class VoiceBridge:
         self.pruned = False
         self.rate_reset_at = 0.0
         self.rate_retries = 0
+        self.memory_principal = None
+        self.memory_buffer = None
+        self.memory_item = None
+        self.memory_outputs = set()
+        self.memory_status = "connecting"
 
     def public_status(self):
         return {
             "session_id": self.id,
             "technologies": self.technologies,
+            "memory": self.memory_status,
+            "connection_state": "waiting" if self.technologies == "waiting" else "ready" if self.ready.is_set() else "connecting",
             "renew": self.renew,
             "closed": self.closed,
         }
@@ -204,11 +217,12 @@ class VoiceBridge:
         )
         value = {
             "type": "realtime",
-            "tools": [SMART_TOOL] if enabled else [],
-            "tool_choice": "auto" if enabled else "none",
+            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL],
+            "tool_choice": "auto",
             "truncation": "disabled",
             "max_output_tokens": 4096,
-            "instructions": SMART_INSTRUCTIONS
+            "instructions": (SMART_INSTRUCTIONS if enabled else "You are a natural voice interface. Be honest about uncertainty.\n")
+            + MEMORY_INSTRUCTIONS + "\nToday in Europe/Prague: " + utc_now().astimezone(__import__("zoneinfo").ZoneInfo("Europe/Prague")).date().isoformat() + "\n"
             + language
             + "\n"
             + LENGTH_POLICIES[self.config.response_length][1],
@@ -266,6 +280,128 @@ class VoiceBridge:
         self.protected_items.add(self.catalog_item)
         self.catalog_ready = True
 
+    async def initialize_memory(self):
+        try:
+            with SessionLocal() as db:
+                session = db.scalar(select(AuthSession).where(AuthSession.session_id == self.owner))
+                if not session or not authorized(self.owner):
+                    raise voice_memory.MemoryError("unauthorized")
+                self.memory_principal = voice_memory.principal(db, _serialize_session(session))
+                automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic
+            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner))
+            self.memory_buffer.enabled = automatic
+            await self.send({"type": "session.update", "session": {"type": "realtime", "audio": {"input": {"transcription": {"model": "gpt-4o-mini-transcribe"} if automatic else None}}}}, lambda e: e.get("type") == "session.updated")
+            self.memory_status = "ready"
+            await self.refresh_memory_context()
+        except Exception:
+            self.memory_status = "unavailable"
+
+    async def refresh_memory_context(self):
+        try:
+            if self.memory_item:
+                await self.delete_item(self.memory_item)
+                self.protected_items.discard(self.memory_item)
+                if self.memory_item in self.dialog_items:
+                    self.dialog_items.remove(self.memory_item)
+                self.memory_item = None
+            if not self.memory_principal:
+                return
+            with SessionLocal() as db:
+                data = voice_memory.context(db, self.memory_principal, get_settings().voice_memory_context_max_tokens)
+            if data:
+                if self.memory_buffer:
+                    for entry in json.loads(data).get("memory_data", []):
+                        kind = entry.get("type")
+                        if kind in {"memory", "note"}:
+                            self.memory_buffer.reference(kind, entry["id"])
+                        elif kind == "summary":
+                            with SessionLocal() as db:
+                                from app.db.models import VoiceConversationSummary
+                                row = db.scalar(select(VoiceConversationSummary).where(VoiceConversationSummary.id == entry["id"], VoiceConversationSummary.principal_id == self.memory_principal))
+                                if row:
+                                    for identity in row.memory_ids:
+                                        self.memory_buffer.reference("memory", identity)
+                                    for identity in row.source_note_ids:
+                                        self.memory_buffer.reference("note", identity)
+                self.memory_item = await self.item({"type": "message", "role": "user", "content": [{"type": "input_text", "text": data}]})
+                self.protected_items.add(self.memory_item)
+        except Exception:
+            self.memory_status = "unavailable"
+
+    async def memory_work(self):
+        while True:
+            await asyncio.sleep(5)
+            if self.memory_buffer and self.memory_buffer.due():
+                try:
+                    await self.memory_buffer.flush()
+                except Exception:
+                    self.memory_buffer.reset()
+                    self.memory_status = "unavailable"
+
+    async def memory_result(self, call):
+        cid = call.get("call_id", "")
+        if not cid:
+            raise SmartError("invalid_call_identity")
+        fingerprint = hashlib.sha256(call.get("arguments", "").encode()).hexdigest()
+        if cid in self.seen_calls:
+            if self.seen_calls[cid] != fingerprint:
+                raise SmartError("delivery_identity_conflict")
+            return
+        output = MemoryResult(operation="unknown", code="unavailable")
+        receipt_id = None
+        try:
+            if not authorized(self.owner):
+                raise SmartError("unauthorized")
+            request = MemoryRequest.model_validate_json(call["arguments"])
+            if not self.memory_principal:
+                await self.initialize_memory()
+            if not self.memory_principal:
+                raise voice_memory.MemoryError("unavailable")
+            with SessionLocal() as db:
+                # Revalidate stable account ownership for every operation, never trust a cached model identity.
+                auth_session = db.scalar(select(AuthSession).where(AuthSession.session_id == self.owner))
+                pid = voice_memory.principal(db, _serialize_session(auth_session))
+                if pid != self.memory_principal:
+                    raise voice_memory.MemoryError("unavailable")
+                receipt_id = hashlib.sha256(f"{pid}:{self.id}:{cid}".encode()).hexdigest()
+                receipt = db.get(VoiceMemoryOperation, receipt_id)
+                if receipt and receipt.delivered:
+                    if receipt.arguments_digest != hashlib.sha256(request.model_dump_json().encode()).hexdigest():
+                        raise SmartError("delivery_identity_conflict")
+                    self.seen_calls[cid] = fingerprint
+                    return
+                sensitive_text = " ".join(str(getattr(request.request, field, "")) for field in ("subject", "title", "content", "items", "tags"))
+                if voice_memory.sensitive_content(sensitive_text):
+                    user_turns = self.memory_buffer.turns if self.memory_buffer else []
+                    if not any(t["role"] == "user" and any(word in voice_memory.normalize(t["text"]) for word in ("zapamatuj", "uloz", "napis", "pripis", "zapis")) for t in user_turns[-2:]):
+                        output = MemoryResult(operation=request.request.operation, code="sensitive_content_rejected")
+                    else:
+                        output = voice_memory.execute(db, pid, request, session_id=self.id, call_id=cid)
+                else:
+                    output = voice_memory.execute(db, pid, request, session_id=self.id, call_id=cid)
+            if output.code == "ok" and request.request.operation in {"memory_forget", "note_delete"}:
+                from app.api.routes.voice_memory import invalidate
+                await invalidate(self.memory_principal, deleted=True)
+            if self.memory_buffer:
+                for row in [*output.memories, *([output.memory] if output.memory else [])]:
+                    self.memory_buffer.reference("memory", row.id)
+                for row in [*output.notes, *([output.note] if output.note else [])]:
+                    self.memory_buffer.reference("note", row.id)
+            self.memory_status = "unavailable" if output.code == "unavailable" else "ready"
+        except ValidationError:
+            output = MemoryResult(operation="unknown", code="invalid_arguments")
+        except Exception:
+            output = MemoryResult(operation="unknown", code="unavailable")
+        iid = await self.item({"id": "kvmout_" + hashlib.sha256(f"{self.id}:{cid}".encode()).hexdigest()[:24], "type": "function_call_output", "call_id": cid, "output": output.model_dump_json()})
+        if receipt_id:
+            with contextlib.suppress(Exception):
+                with SessionLocal() as db:
+                    db.execute(__import__("sqlalchemy").update(VoiceMemoryOperation).where(VoiceMemoryOperation.id == receipt_id).values(delivered=True))
+                    db.commit()
+        self.seen_calls[cid] = fingerprint
+        self.protected_items.add(iid)
+        self.memory_outputs.add(iid)
+
     async def read_events(self):
         async for raw in self.ws:
             event = json.loads(raw)
@@ -278,6 +414,8 @@ class VoiceBridge:
                 except SmartError as exc:
                     future.set_exception(exc)
             typ = event.get("type")
+            if self.memory_buffer:
+                self.memory_buffer.event(event)
             if typ == "rate_limits.updated":
                 resets = [
                     float(limit.get("reset_seconds", 0))
@@ -309,10 +447,12 @@ class VoiceBridge:
                     item
                     for item in response.get("output", [])
                     if item.get("type") == "function_call"
+                    and response.get("status") == "completed"
+                    and item.get("status", "completed") == "completed"
                 ]
                 failure = (response.get("status_details") or {}).get("error", {}).get("code")
                 logger.info(
-                    "voice.smart.response",
+                    "voice.host.response",
                     extra={
                         "context": {
                             "function_calls": len(calls),
@@ -347,15 +487,21 @@ class VoiceBridge:
                         self.catalog_ready = False
                 elif not calls:
                     self.rate_retries = 0
+            if typ == "response.done":
+                del response, calls
             if typ == "error" and event.get("error", {}).get("code") in {
                 "context_length_exceeded",
                 "input_too_large",
             }:
                 self.renew = True
                 self.catalog_ready = False
+            del raw, event
         raise SmartError("sideband_disconnected")
 
     async def result(self, call: dict):
+        if call.get("name") == "assistant_memory":
+            await self.memory_result(call)
+            return
         cid = call.get("call_id", "")
         if not cid:
             raise SmartError("invalid_call_identity")
@@ -591,13 +737,16 @@ class VoiceBridge:
                 continue
             for call in calls:
                 await self.result(call)
+            had_calls = bool(calls)
+            calls.clear()
+            call = None
             if self.technologies == "unavailable" and not self.catalog_ready:
                 await self.configure(False)
-            self.protected_items = ({self.catalog_item} if self.catalog_item else set()) | {
+            self.protected_items = ({self.catalog_item} if self.catalog_item else set()) | ({self.memory_item} if self.memory_item else set()) | {
                 iid for items in self.unresolved_items.values() for iid in items
             }
             await self.prune()
-            if calls and not self.renew:
+            if had_calls and not self.renew:
                 await self.send(
                     {"type": "response.create"}, lambda e: e.get("type") == "response.created"
                 )
@@ -605,25 +754,14 @@ class VoiceBridge:
     async def lease(self):
         while True:
             await asyncio.sleep(5)
-            if time.monotonic() - self.last_heartbeat > 45 or not authorized(self.owner):
+            if self.closed or time.monotonic() - self.last_heartbeat > 45 or not authorized(self.owner):
                 return
 
-    async def run(self):
-        tasks = []
-        try:
-            async with AsyncExitStack() as stack:
-                self.ws = await stack.enter_async_context(
-                    connect(
-                        "wss://api.openai.com/v1/realtime?call_id=" + self.call_id,
-                        additional_headers={"Authorization": f"Bearer {self.key}"},
-                        max_size=16 * 1024 * 1024,
-                        open_timeout=10,
-                    )
-                )
-                reader = asyncio.create_task(self.read_events())
-                tasks.append(reader)
-                try:
-                    if self.model != "gpt-realtime-2.1":
+    async def initialize_technologies(self):
+        async with AsyncExitStack() as stack:
+            try:
+                async with asyncio.timeout(20):
+                    if not self.token or self.model != "gpt-realtime-2.1":
                         raise SmartError("model_unsupported")
                     self.mcp = await stack.enter_async_context(mcp_connection(self.token))
                     public, _ = decode_result(
@@ -642,19 +780,43 @@ class VoiceBridge:
                         )
                     self.unresolved_requests.update(pending)
                     await self.replace_context(public)
+                    await self.configure(True)
                     self.technologies = "ready"
-                except Exception:
-                    self.technologies = "unavailable"
-                    self.catalog_ready = False
-                await self.configure(self.catalog_ready)
-                logger.info(
-                    "voice.smart.ready",
-                    extra={"context": {"technologies": self.technologies, "model": self.model}},
+            except Exception:
+                self.technologies = "unavailable"
+                self.catalog_ready = False
+            logger.info("voice.host.technologies", extra={"context": {"technologies": self.technologies}})
+            # A completed optional capability setup must not terminate the voice lifecycle.
+            await asyncio.Future()
+
+    async def run(self):
+        tasks = []
+        try:
+            async with AsyncExitStack() as stack:
+                self.ws = await stack.enter_async_context(
+                    connect(
+                        "wss://api.openai.com/v1/realtime?call_id=" + self.call_id,
+                        additional_headers={"Authorization": f"Bearer {self.key}"},
+                        max_size=16 * 1024 * 1024,
+                        open_timeout=10,
+                    )
                 )
+                reader = asyncio.create_task(self.read_events())
+                tasks.append(reader)
+                await self.initialize_memory()
+                await self.configure(False)
                 self.ready.set()
-                tasks += [asyncio.create_task(self.work()), asyncio.create_task(self.lease())]
-                await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-                if not self.renew and authorized(self.owner):
+                logger.info("voice.host.ready", extra={"context": {"memory": self.memory_status, "model": self.model}})
+                tasks += [
+                    asyncio.create_task(self.work()),
+                    asyncio.create_task(self.lease()),
+                    asyncio.create_task(self.memory_work()),
+                    asyncio.create_task(self.initialize_technologies()),
+                ]
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                if reader in done:
+                    self.renew = True
+                if not self.closed and not self.renew and authorized(self.owner):
                     with contextlib.suppress(Exception):
                         await self.configure(False)
                 for task in tasks:
@@ -667,6 +829,8 @@ class VoiceBridge:
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            if self.memory_buffer:
+                await self.memory_buffer.close()
             self.closed = True
             self.ready.set()
             for _, future in self.waiters:
@@ -684,6 +848,7 @@ class VoiceBridge:
                 )
 
     async def close(self):
+        self.closed = True
         self.renew = False
         if self.task:
             self.task.cancel()
@@ -751,7 +916,7 @@ class VoiceBridgeManager:
             "sdp": response.text,
             "model": model,
             **bridge.public_status(),
-            "managed_functions": ["smart_technologie"],
+            "managed_functions": ["assistant_memory", "smart_technologie"],
         }
 
     def get(self, sid: str, owner: str):

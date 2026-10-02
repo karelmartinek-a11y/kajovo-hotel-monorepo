@@ -139,10 +139,10 @@ def test_session_uses_server_snapshot_only(voice_host, monkeypatch):
     login()
     client.put(BASE + "/api-key", json={"api_key": KEY})
     calls = []
-    async def create(self, sdp, config, key):
+    async def create(sdp, config, key, owner, token):
         calls.append((sdp, config, key))
-        return "v=0\r\nanswer", "gpt-realtime-2.1"
-    monkeypatch.setattr("app.api.routes.voice_core.RealtimeSessionClient.create", create)
+        return {"sdp": "v=0\r\nanswer", "model": "gpt-realtime-2.1", "session_id": "test-host", "technologies": "unavailable", "managed_functions": ["assistant_memory"]}
+    monkeypatch.setattr("app.api.routes.voice_core.manager.create", create)
     result = client.post(BASE + "/sessions", json={"sdp": "v=0\r\noffer", "revision": 1})
     assert result.status_code == 200 and KEY not in result.text
     assert len(calls) == 1 and calls[0][2] == KEY
