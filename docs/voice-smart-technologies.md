@@ -12,13 +12,17 @@ Každé volání funkce znovu ověřuje databázovou administrátorskou relaci v
 
 ## Katalog a operace
 
-Model dostane všechny výslovně očíslované řádky a všech osm polí včetně parametrických a názvových slovníků z živého MCP. Excel ani historický katalog není fallback. Identitou zařízení je jedničkový řádek spolu s revizí. Modelová zpráva u každého zařízení uvádí explicitní `row` a `values` se všemi osmi původními buňkami; backendové ověření používá nezměněný MCP katalog. `controls.function` používá první položku kompaktního pole konkrétní funkce; lidský název se skládá podle slovníků katalogu. Schéma parametrů i supported se kontrolují na backendu.
+Každý MCP požadavek obsahuje `api_version:2` a backendem určené `session_id`. Model tyto hodnoty nemůže změnit. Úvodní `catalog` vrací krátký přehled 199 schválených zařízení; celý katalog zůstává na MCP. `search` hledá fulltextem a filtry jména, umístění, druhu, funkce a skutečných schopností. Stav se čte pouze na výslovný dotaz přes `read` nebo `filters.state`.
 
-`catalog`, `read`, `control`, `operation_status` a `camera_view` jsou jedinými operacemi. Skupinový výsledek zachová také přeskočené a nedostupné řádky. Nejasný jednotlivý cíl vyžaduje upřesnění. Výsledky nejsou důkaz fyzického účinku.
+Operace jsou `catalog`, `search`, `describe`, `read`, `control`, `operation_status`, `camera_view`. Search vrací až 200 názvů na stránku a `total`/`has_more`; vyjmenování všech shod vyžaduje potřebné stránky. `selection.id` pokrývá všechny shody, je izolovaný podle klienta a hlasové relace a platí 30 minut. Hromadná akce používá celý výběr. Prázdný dotaz nesmí vést k ovládání všech zařízení bez výslovného pokynu. Nejasný jednotlivý cíl vyžaduje upřesnění.
 
-Katalog je v jedné zprávě. Každá obnova čeká na potvrzené odstranění předchozí a potvrzené vložení celé nové tabulky. Během mezery je vykonávání zablokováno. Function output obsahuje jen metadata bez tabulky a bez base64. Realtime command errors a timeout potvrzení nejsou úspěch. Kamera používá potvrzený JPEG/PNG `input_image`; nepřijatý obraz se nepovažuje za prohlédnutý.
+Describe/read vrací až osm zařízení. `devices[i]` náleží globálnímu `rows[i]`, nikoli i+1. Osm schválených polí a jejich slovníky se zachovávají beze změny. Explicitní řádky vyžadují revizi; výběr se nekombinuje s rows/controls. Konkrétní funkce a parametry validuje MCP podle schváleného katalogu. Pro hlavní komponentu lze použít `action`; pro další funkce model nejprve načte describe. Při změně revize nebo expiraci se znovu hledá.
 
-Technologie jsou podporovány pro ověřený `gpt-realtime-2.1`, s vypnutým automatickým truncation a stropem výstupu 4096. Ručně vybraný jiný model zůstává obyčejným hovorem. Nad 110000 vstupních tokenů backend odstraňuje staré dokončené položky; katalog a rozpracovaná volání zachovává. Při další kapacitní chybě nebo nedostatečném prostoru browser řízeně obnoví relaci a znovu načte celý katalog.
+Backend uchovává jednu malou pracovní zprávu `kvha_` s aktuálním výsledkem, posledním hledáním, celým výběrem a posledním explicitním cílem. Potvrzené odstranění předchozí zprávy předchází potvrzenému vložení nové. Function output obsahuje metadata bez duplicitních tabulek a base64. Interní kontext používá systémovou roli, proto se nezobrazuje jako lidský výrok. Kamera používá skutečný potvrzený JPEG/PNG `input_image`; před dalším snímkem se potvrzeně odstraní staré obrazové položky. Nepřijatý obraz se nepovažuje za prohlédnutý.
+
+`accepted` znamená pouze „Pokyn byl odeslán.“ Backend ani model automaticky nečtou stav po povelu a netvrdí fyzické provedení. Skupinový výsledek zachovává počty i výjimky, včetně nedostupných a nepodporovaných cílů. Nejistý výsledek se dohledává pomocí původního request_id, nikdy novým povelem. Přerušení řeči neruší již odeslaný požadavek.
+
+Technologie používají `gpt-realtime-2.1`, vypnuté automatické truncation a strop výstupu 4096. Jiný ručně zvolený model zůstává obyčejným hovorem. Nad 110000 vstupních tokenů backend odstraňuje staré dokončené položky; aktuální kontext a rozpracovaná volání zachovává. Při další kapacitní chybě browser řízeně obnoví relaci s novým přehledem a identitami nevyřešených povelů.
 
 Výpadek MCP deaktivuje technologie; běžný rozhovor pokračuje. Nové zahájení hovoru znovu ověří MCP a načte katalog; nepotvrzené změny dohledává přes původní request_id. Porucha sidebandu vyžádá nový hovor, protože staré spojení nemůže bezpečně vykonávat funkce. Browser má původní omezený počet automatických pokusů o obnovu.
 
@@ -26,7 +30,7 @@ Provider `rate_limit_exceeded` pozastaví mikrofon a automatické odpovědi. Bac
 
 ## Změnové požadavky
 
-`voice_smart_operations` obsahuje pouze request_id, identitu vlastníka, provider call_id, hash argumentů, stav a čas. Request ID je stabilní SHA256 z identity hlasové relace a funkčního volání. Duplicitní požadavek zjišťuje stav původní operace. Po transportní nejistotě se změna neposílá znovu; při obnovení se model dozví identifikátory nepotvrzených operací stejného vlastníka. Metadata se odstraňují po 30 dnech. Přepisy, zvuk a kamerové obrázky se neukládají.
+`voice_smart_operations` obsahuje pouze request_id, identitu vlastníka, provider call_id, hash argumentů, stav a čas. Request ID je stabilní SHA256 z identity hlasové relace a funkčního volání. Duplicitní požadavek zjišťuje stav původní operace. Po transportní nejistotě se změna neposílá znovu; při obnovení se model dozví identifikátory nepotvrzených operací stejného vlastníka. `voice_smart_deliveries` trvale eviduje hash argumentů a potvrzení doručení každého function output. Identita hlasové relace vychází z autentizovaného vlastníka a provider call_id; opakovaný event po restartu neodesílá povel ani výstup znovu. Nepotvrzené doručení vyžaduje obnovu hovoru a dohledání původních nevyřešených povelů. Metadata obou tabulek se odstraňují po 30 dnech. Přepisy, zvuk a kamerové obrázky se neukládají.
 
 `queued`, `recording` a `record_accepted` popisují průběh požadavku na nahrávání. Neověřují vznik ani obsah videosouboru. Limity a retenci nahrávání vynucuje MCP server.
 
@@ -36,4 +40,6 @@ Spustit `pnpm ci:voice-core`, `pnpm typecheck`, `pnpm unit`, generování a kont
 
 Placená přejímka běží příkazem `python scripts/voice_smart_live_smoke.py` a vyžaduje explicitní `VOICE_CORE_LIVE_SMOKE=1` mimo CI, `VOICE_CORE_AUDIO_FIXTURE` se syntetickým WAV a `VOICE_CORE_BASE_URL` cílového hostu. Administrátorské přihlašovací údaje a MCP token se předávají pouze chráněným prostředím procesu. Produkční test smí ovládat pouze schválené světlo `0P0BSvetlo` a musí v finally obnovit původní stav. Živé hromadné ovládání ani nahrávání nejsou součástí této přejímky. Závěrečný protokol odděluje MCP stav, modelový výsledek, slyšitelný výstup, fyzické pozorování a nasazené SHA.
 
-Při rollbacku použít předchozí ověřený release. Migrace přidává samostatnou tabulku a nemění existující data; token může zůstat v backendovém secret storage. Nedowngradovat databázi během běžného rollbacku aplikace.
+Při rollbacku použít předchozí ověřený release. Migrace přidávají samostatné tabulky a nemění existující data; token může zůstat v backendovém secret storage. Nedowngradovat databázi během běžného rollbacku aplikace.
+
+Matice dopadů: [MCP v2](voice-smart-impact-matrix.md).

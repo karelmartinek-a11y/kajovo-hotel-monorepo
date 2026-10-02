@@ -53,6 +53,16 @@ class VoiceSmartOperation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class VoiceSmartDelivery(Base):
+    """Provider delivery receipt only; no tool output, image or transcript storage."""
+    __tablename__ = "voice_smart_deliveries"
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    arguments_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ReservationAmenity(Base):
     __tablename__ = "reservation_amenities"
     __table_args__ = (

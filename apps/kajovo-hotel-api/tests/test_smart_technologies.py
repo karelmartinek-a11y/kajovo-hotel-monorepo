@@ -9,14 +9,16 @@ from voice_core_server import VoiceCoreConfig
 
 from app.services import voice_smart
 from app.services.smart_technologies import (
-    Catalog,
+    validate_public,
     SmartArguments,
     SmartError,
     decode_result,
     request_id,
 )
 
-from .test_voice_core import voice_host as voice_host
+from .test_voice_core import voice_host as _voice_host
+
+voice_host = _voice_host
 
 
 def catalog(revision="r1"):
@@ -82,93 +84,41 @@ def catalog(revision="r1"):
         "fields": fields,
         "devices": devices,
         "results": [],
+        "rows": [8, 43],
     }
 
 
-@pytest.mark.parametrize(
-    "body,category",
-    [
-        ({"operation": "read", "catalog_revision": "old", "rows": [1]}, "catalog_revision_changed"),
-        ({"operation": "read", "catalog_revision": "r1", "rows": [3]}, "invalid_rows"),
-        (
-            {
-                "operation": "control",
-                "catalog_revision": "r1",
-                "controls": [{"row": 1, "function": "imaginary"}],
-            },
-            "function_not_allowed",
-        ),
-        (
-            {
-                "operation": "control",
-                "catalog_revision": "r1",
-                "controls": [
-                    {"row": 1, "function": "c1", "parameters": {"brightness_percent": 101}}
-                ],
-            },
-            "invalid_control_parameters",
-        ),
-    ],
-)
-def test_catalog_rejects_stale_rows_functions_and_parameters(body, category):
-    with pytest.raises(SmartError, match=category):
-        Catalog(catalog()).validate(SmartArguments.model_validate(body))
-
-
-@pytest.mark.parametrize(
-    "body",
-    [
-        {"operation": "read", "catalog_revision": "r1", "rows": [0]},
-        {"operation": "read", "catalog_revision": "r1", "rows": [True]},
-        {"operation": "read", "catalog_revision": "r1", "rows": [1, 1]},
-        {"operation": "catalog", "rows": [1]},
-        {"operation": "camera_view"},
-        {"operation": "unknown"},
-        {"operation": "catalog", "url": "http://127.0.0.1"},
-    ],
-)
+@pytest.mark.parametrize("body", [
+    {"operation": "read", "catalog_revision": "r1", "rows": [0]},
+    {"operation": "read", "catalog_revision": "r1", "rows": [True]},
+    {"operation": "read", "catalog_revision": "r1", "rows": [1, 1]},
+    {"operation": "catalog", "rows": [1]},
+    {"operation": "camera_view"},
+    {"operation": "unknown"},
+    {"operation": "catalog", "api_version": 2},
+    {"operation": "search", "session_id": "model-controlled"},
+    {"operation": "search", "filters": {"capabilities": ["imaginary"]}},
+    {"operation": "control", "selection_id": "s", "rows": [8], "action": "vypnout"},
+    {"operation": "control", "selection_id": "s", "action": "nastavit"},
+    {"operation": "describe", "selection_id": "s", "limit": 9},
+    {"operation": "camera_view", "catalog_revision": "r1", "rows": [8, 43]},
+])
 def test_operation_shape_is_strict(body):
     with pytest.raises(ValueError):
         SmartArguments.model_validate(body)
 
 
-def test_full_catalog_preserves_duplicate_names_and_unavailable_group_rows():
-    value = Catalog(catalog())
-    assert len(value.value["devices"]) == 2
-    assert value.value["devices"][0][0] == value.value["devices"][1][0]
-    value.validate(
-        SmartArguments.model_validate(
-            {
-                "operation": "control",
-                "catalog_revision": "r1",
-                "controls": [{"row": row, "function": "c1"} for row in [1, 2]],
-            }
-        )
-    )
-    bad = catalog()
-    bad["devices"][0][3][0][4] = False
-    with pytest.raises(SmartError, match="function_not_allowed"):
-        Catalog(bad).validate(
-            SmartArguments.model_validate(
-                {
-                    "operation": "control",
-                    "catalog_revision": "r1",
-                    "controls": [{"row": 1, "function": "c1"}],
-                }
-            )
-        )
-
-
-def test_dictionary_and_catalog_shape_validation():
-    for change in [
-        lambda v: v["devices"][0].pop(),
-        lambda v: v["devices"][0][3][0].__setitem__(3, "missing"),
-        lambda v: v["fields"][3]["parameter_definitions"].__setitem__("p", {"type": "imaginary"}),
-    ]:
-        value = catalog()
-        change(value)
-        with pytest.raises(SmartError, match="invalid_catalog"):
-            Catalog(value)
+def test_v2_supports_search_selection_and_global_partial_rows():
+    SmartArguments.model_validate({"operation": "search", "filters": {"capabilities": ["barva"]}, "limit": 200, "offset": 20})
+    SmartArguments.model_validate({"operation": "control", "selection_id": "all-matches", "action": "vypnout"})
+    value = catalog()
+    validate_public(value)
+    assert value["rows"] == [8, 43]
+    for change in [lambda v: v["rows"].pop(), lambda v: v["devices"][0].pop(), lambda v: v["fields"].pop()]:
+        bad = copy.deepcopy(value)
+        change(bad)
+        with pytest.raises(SmartError):
+            validate_public(bad)
 
 
 def mcp_result(value, images=None, error=False):
@@ -233,33 +183,28 @@ def test_realtime_writer_waits_for_acceptance_and_rejects_correlated_error():
     asyncio.run(scenario())
 
 
-def test_catalog_replacement_deletes_old_before_new_and_keeps_all_rows():
+def test_context_replacement_preserves_global_rows_and_resets_stale_selection():
     async def scenario():
         b = bridge()
         events = []
-
         async def item(value):
             events.append(("create", copy.deepcopy(value)))
-            return "table-" + str(len(events))
-
+            return value["id"]
         async def delete(iid):
             events.append(("delete", iid))
-
         b.item, b.delete_item = item, delete
-        await b.replace_catalog(catalog())
+        search = {"catalog_revision": "r1", "selection": {"id": "s", "count": 199, "expires_at": "2099-01-01T00:00:00Z"}, "total": 199, "matches": [{"row": 8}], "has_more": True}
+        b.last_search = {"query": "light"}
+        await b.replace_context(search)
         first = b.catalog_item
-        await b.replace_catalog(catalog("r2"))
-        assert [e[0] for e in events] == ["create", "delete", "create"]
-        assert events[1][1] == first and b.catalog.revision == "r2"
-        table = json.loads(events[-1][1]["content"][0]["text"].split("\n", 1)[1])
-        assert len(table["devices"]) == 2 and len(table["fields"]) == 8
-        assert table["fields"] == catalog()["fields"]
-        assert table["devices"] == [
-            {"row": number, "values": row}
-            for number, row in enumerate(catalog()["devices"], start=1)
-        ]
-        assert b.catalog.value["devices"] == catalog()["devices"]
-
+        await b.replace_context(catalog())
+        data = json.loads(events[-1][1]["content"][0]["text"].split("\n", 1)[1])
+        assert data["rows"] == [8, 43] and data["devices"] == catalog()["devices"]
+        assert data["last_selection"]["count"] == 199 and data["last_search"] == {"query": "light"}
+        assert events[1] == ("delete", first)
+        await b.replace_context({"catalog_revision": "r2", "overview": {}, "total": 199})
+        assert b.last_selection is b.last_search is b.last_target is None
+        assert events[-1][1]["id"].startswith("kvha_")
     asyncio.run(scenario())
 
 
@@ -291,7 +236,7 @@ def test_control_timeout_returns_original_identity_and_camera_is_input_image(
 
     async def scenario():
         b = bridge()
-        b.catalog = Catalog(catalog())
+        b.revision = "r1"
         b.catalog_ready = True
         sent = []
         calls = []
@@ -301,9 +246,9 @@ def test_control_timeout_returns_original_identity_and_camera_is_input_image(
             return str(len(sent))
 
         async def replace(value):
-            b.catalog = Catalog(value)
+            b.revision = value["catalog_revision"]
 
-        b.item, b.replace_catalog = item, replace
+        b.item, b.replace_context = item, replace
 
         class MCP:
             async def call_tool(self, name, args):
@@ -339,7 +284,9 @@ def test_control_timeout_returns_original_identity_and_camera_is_input_image(
         assert output["request_id"] == calls[0]["request_id"] and "private" not in json.dumps(
             output
         )
-        await b.result({"name": "smart_technologie", "call_id": "control1", "arguments": "{}"})
+        await b.result({"name": "smart_technologie", "call_id": "control1", "arguments": json.dumps({"operation": "control", "catalog_revision": "r1", "controls": [{"row": 1, "function": "c1"}]})})
+        with pytest.raises(SmartError, match="delivery_identity_conflict"):
+            await b.result({"name": "smart_technologie", "call_id": "control1", "arguments": "{}"})
         assert len(calls) == 1
         assert not b.catalog_ready and b.technologies == "unavailable"
         # A fresh MCP connection/catalog is required before further device calls.
@@ -468,14 +415,14 @@ def test_failed_image_acceptance_warns_model_without_claiming_inspection(voice_h
 
     async def scenario():
         b = bridge()
-        b.catalog = Catalog(catalog())
+        b.revision = "r1"
         b.catalog_ready = True
         sent = []
 
         class MCP:
             async def call_tool(self, name, args):
                 return mcp_result(
-                    {"results": [{"row": 1, "status": "observed"}]},
+                    {"catalog_revision": "r1", "results": [{"row": 1, "status": "observed"}]},
                     [
                         ImageContent(
                             type="image",
@@ -501,7 +448,7 @@ def test_failed_image_acceptance_warns_model_without_claiming_inspection(voice_h
                 ),
             }
         )
-        assert len(sent) == 2 and "nebyl potvrzen" in sent[-1]["content"][0]["text"]
+        assert len(sent) == 3 and "nebyl potvrzen" in sent[-1]["content"][0]["text"]
 
     asyncio.run(scenario())
 
@@ -513,14 +460,14 @@ def test_group_results_preserve_skipped_rows_and_queued_record_is_pending(voice_
 
     async def scenario():
         b = bridge()
-        b.catalog = Catalog(catalog())
+        b.revision = "r1"
         b.catalog_ready = True
         sent = []
         results = [{"row": 1, "status": "queued"}, {"row": 2, "status": "skipped_unavailable"}]
 
         class MCP:
             async def call_tool(self, name, args):
-                return mcp_result({"results": results, "operation": {"status": "queued"}})
+                return mcp_result({"catalog_revision": "r1", "results": results, "operation": {"status": "queued"}})
 
         async def item(value):
             sent.append(value)
@@ -540,7 +487,7 @@ def test_group_results_preserve_skipped_rows_and_queued_record_is_pending(voice_
                 ),
             }
         )
-        output = json.loads(sent[0]["output"])
+        output = json.loads(next(item["output"] for item in sent if item["type"] == "function_call_output"))
         assert output["results"] == results
         from app.db.models import VoiceSmartOperation
 
@@ -560,7 +507,6 @@ def test_optional_nulls_do_not_invalidate_camera_arguments():
             "controls": None,
         }
     )
-    Catalog(catalog()).validate(args)
     assert args.model_dump(exclude_none=True) == {
         "operation": "camera_view",
         "catalog_revision": "r1",
@@ -600,4 +546,57 @@ def test_rate_limit_resumes_generation_without_replaying_tools(monkeypatch):
         assert sent == [{"type": "response.create"}]
         assert b.technologies == "ready"
 
+    asyncio.run(scenario())
+
+
+def test_durable_delivery_receipt_blocks_duplicate_output_after_restart(voice_host, monkeypatch):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_smart, "authorized", lambda owner: True)
+    async def scenario():
+        calls, sent = [], []
+        class MCP:
+            async def call_tool(self, name, payload):
+                calls.append(payload)
+                return mcp_result({"catalog_revision": "r1", "summary": {"accepted": 199, "unavailable": 2}, "results": []})
+        async def item(value):
+            sent.append(value)
+            return value.get("id", "test")
+        call = {"name": "smart_technologie", "call_id": "stable", "arguments": json.dumps({"operation": "control", "selection_id": "s", "action": "vypnout"})}
+        for _ in range(2):
+            b = bridge()
+            b.catalog_ready = True
+            b.mcp, b.item = MCP(), item
+            await b.result(call)
+        assert len(calls) == 1 and calls[0]["api_version"] == 2
+        assert calls[0]["session_id"] == "session-" + bridge().id
+        outputs = [i for i in sent if i["type"] == "function_call_output"]
+        assert len(outputs) == 1 and json.loads(outputs[0]["output"])["summary"]["accepted"] == 199
+        assert not any(p["operation"] == "read" for p in calls)
+    asyncio.run(scenario())
+
+
+def test_unacknowledged_output_requires_renewal_without_replay(voice_host, monkeypatch):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_smart, "authorized", lambda owner: True)
+    async def scenario():
+        calls = []
+        class MCP:
+            async def call_tool(self, name, payload):
+                calls.append(payload)
+                return mcp_result({"catalog_revision": "r1", "overview": {}, "results": []})
+        async def item(value):
+            if value["type"] == "function_call_output":
+                raise SmartError("realtime_event_rejected")
+            return value["id"]
+        call = {"name": "smart_technologie", "call_id": "lost", "arguments": '{"operation":"catalog"}'}
+        b = bridge()
+        b.catalog_ready = True
+        b.mcp, b.item = MCP(), item
+        with pytest.raises(SmartError):
+            await b.result(call)
+        recovered = bridge()
+        await recovered.result(call)
+        assert recovered.renew and not recovered.catalog_ready and len(calls) == 1
     asyncio.run(scenario())

@@ -30,8 +30,8 @@ const sessionProvider: RealtimeSessionProvider = {
   heartbeat: (id, signal) => request(`/sessions/${encodeURIComponent(id)}/heartbeat`, 'POST', undefined, signal),
   close: async id => {await request(`/sessions/${encodeURIComponent(id)}`, 'DELETE');},
   connectionTimeoutMs: 60000,
-  disclosure: 'Hovoříte s AI. Smart technologie používají výhradně schválený MCP katalog a povolené funkce zařízení.',
-  capabilityLabels: {ready: 'Smart technologie jsou připravené.', connecting: 'Načítám Smart technologie…', waiting: 'Čekám na obnovení limitu hlasové služby. Provedený povel se nebude opakovat.', unavailable: 'Smart technologie jsou nedostupné. Běžný rozhovor může pokračovat.'},
+  disclosure: 'Hovoříte s AI. Smart technologie používají MCP v2 pro hledání schválených zařízení. Potvrzení povelu znamená jeho odeslání.',
+  capabilityLabels: {ready: 'Smart technologie jsou připravené.', connecting: 'Načítám Smart technologie…', waiting: 'Čekám na obnovení limitu hlasové služby. Odeslaný povel se nebude opakovat.', unavailable: 'Smart technologie jsou nedostupné. Běžný rozhovor může pokračovat.'},
 };
 // Browser conversation/audio data is never sent to analytics or persistent telemetry.
 const telemetry: VoiceTelemetrySink = {emit() {}};

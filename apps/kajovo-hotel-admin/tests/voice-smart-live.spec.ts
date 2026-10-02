@@ -7,7 +7,7 @@ test('opt-in real voice control, live read and camera input through backend side
   await page.addInitScript(() => {
     const streams: MediaStream[] = [];
     // No transcripts, images, raw arguments or outputs are retained in test artifacts.
-    const evidence = {streams, channel: null as RTCDataChannel | null, speech: 0, audio: 0, images: 0, controls: 0, reads: 0, camera: 0, confirmed: 0, errors: 0, lastOutput: 0};
+    const evidence = {streams, channel: null as RTCDataChannel | null, speech: 0, audio: 0, images: 0, controls: 0, searches: 0, accepted: 0, contextChars: 0, reads: 0, camera: 0, confirmed: 0, errors: 0, lastOutput: 0};
     Object.assign(window, {voiceSmartEvidence: evidence});
     const media = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getUserMedia = async constraints => {const stream = await media(constraints); streams.push(stream); return stream;};
@@ -20,12 +20,14 @@ test('opt-in real voice control, live read and camera input through backend side
           const event = JSON.parse(message.data);
           if (event.type === 'input_audio_buffer.speech_started') evidence.speech++;
           if (event.type === 'output_audio_buffer.started') evidence.audio++;
-          if (!['conversation.item.created', 'conversation.item.done', 'response.output_item.done'].includes(event.type) || !event.item?.id || seen.has(event.item.id)) return;
+          if (!['conversation.item.created', 'conversation.item.added', 'conversation.item.done', 'response.output_item.done'].includes(event.type) || !event.item?.id || seen.has(event.item.id)) return;
           if (event.item.type === 'function_call' && event.type !== 'response.output_item.done') return;
           seen.add(event.item.id);
           if (event.item.content?.some((part: {type: string}) => part.type === 'input_image')) evidence.images++;
+          if (event.item.id.startsWith('kvha_')) evidence.contextChars = Math.max(evidence.contextChars, event.item.content?.find((part: {type: string}) => part.type === 'input_text')?.text?.length ?? 0);
           if (event.item.type === 'function_call' && event.item.name === 'smart_technologie') {
             const operation = JSON.parse(event.item.arguments).operation;
+            if (operation === 'search') evidence.searches++;
             if (operation === 'control') evidence.controls++;
             if (operation === 'read') evidence.reads++;
             if (operation === 'camera_view') evidence.camera++;
@@ -34,6 +36,7 @@ test('opt-in real voice control, live read and camera input through backend side
             const value = JSON.parse(event.item.output);
             evidence.lastOutput++;
             if (value.error) evidence.errors++;
+            evidence.accepted += value.summary?.accepted ?? value.results?.filter((row: {status: string}) => row.status === 'accepted').length ?? 0;
             if (value.results?.some((row: {status: string}) => ['completed', 'executed', 'accepted', 'success', 'observed', 'image_fetched', 'ok'].includes(row.status))) evidence.confirmed++;
           }
         } catch { /* Never report raw provider events. */ }
@@ -66,7 +69,10 @@ test('opt-in real voice control, live read and camera input through backend side
     });
     await expect.poll(() => metric('speech'), {timeout: 60000}).toBeGreaterThan(0);
     await expect.poll(() => metric('controls'), {timeout: 90000}).toBeGreaterThan(0);
-    await expect.poll(() => metric('lastOutput'), {timeout: 60000}).toBeGreaterThan(0);
+    await expect.poll(() => metric('accepted'), {timeout: 60000}).toBeGreaterThan(0);
+    expect(await metric('reads')).toBe(0);
+    expect(await metric('searches')).toBeGreaterThan(0);
+    expect(await metric('contextChars')).toBeLessThan(100500);
     await expect.poll(() => metric('audio'), {timeout: 60000}).toBeGreaterThan(0);
     await expect(page.getByTestId('voice-state')).toHaveText('Poslouchám', {timeout: 60000});
     await page.waitForTimeout(60000);
@@ -84,8 +90,8 @@ test('opt-in real voice control, live read and camera input through backend side
     expect(await metric('errors')).toBe(0);
   } finally {
     console.log('Smart voice event counts:', await page.evaluate(() => {
-      const {speech, audio, images, controls, reads, camera, confirmed, errors, lastOutput} = (window as any).voiceSmartEvidence;
-      return {speech, audio, images, controls, reads, camera, confirmed, errors, lastOutput};
+      const {speech, audio, images, controls, searches, accepted, contextChars, reads, camera, confirmed, errors, lastOutput} = (window as any).voiceSmartEvidence;
+      return {speech, audio, images, controls, searches, accepted, contextChars, reads, camera, confirmed, errors, lastOutput};
     }));
     const end = page.getByRole('button', {name: 'Ukončit hovor'});
     if (await end.isVisible()) await end.click();
