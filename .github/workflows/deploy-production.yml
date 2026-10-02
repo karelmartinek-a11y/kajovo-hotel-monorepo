@@ -12,11 +12,12 @@ concurrency:
   group: deploy-hotel-hcasc-production
   cancel-in-progress: true
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   deploy-production:
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -127,6 +128,13 @@ jobs:
         shell: bash
         run: |
           python3 scripts/github_deploy_via_ssh.py check-helper
+
+      - name: Reject superseded CI commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')
+          test "$DEPLOY_SHA" = "$current_sha" || { echo "CI commit is no longer current main; refusing deploy."; exit 1; }
 
       - name: Deploy uploaded release via SSH
         shell: bash

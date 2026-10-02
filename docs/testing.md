@@ -1,33 +1,7 @@
-# CI gates
+# Testování
 
-Aktivní blokující kontroly jsou zaměřené na web, admin, API a produkční deploy integritu.
+Základní úplný plán, příkazy, GitHub jobs a meze důkazu jsou v [CI gates](ci-gates.md). Dopady změny CI jsou v [matici](ci-impact-matrix.md).
 
-## Hlavní gate
+Před lokálním během použij Python 3.11, pnpm 10.34.4, `pnpm install --frozen-lockfile`, instalaci `packages/voice-core-server` a `apps/kajovo-hotel-api[dev]` a Playwright Chromium/WebKit. Poté `pnpm ci:gates`. Docker job vyžaduje běžící Docker a produkční Dockerfile všech tří aplikací; proxy se ověřuje `scripts/verify_voice_core_proxy.py`.
 
-- `pnpm ci:voice-core`
-- `pnpm ci:policy`
-- `pnpm ci:policy-test`
-- `pnpm ci:tokens`
-- `pnpm ci:brand-assets`
-- `pnpm ci:signage`
-- `pnpm ci:text-integrity`
-- `pnpm ci:portal-translations`
-- `pnpm ci:frontend-manifest`
-- `pnpm ci:runtime-integrity`
-- `pnpm ci:web-smoke`
-- `pnpm ci:visual`
-- `pnpm contract:check`
-- `pnpm typecheck`
-- `python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests`
-- `python3.11 scripts/release_gate.py`
-
-## GitHub Actions mapování
-
-- `.github/workflows/ci-gates.yml`: `api-runtime-image`, `release-gate`, `e2e-smoke`, `guardrails`, `lint`, `typecheck`, `unit-tests`, `portable-voice-core`
-- `.github/workflows/deploy-production.yml`: deploy pouze po úspěšném `CI Gates - Kajovo Hotel` na `main`
-
-Voice Core gate ověřuje importy a dependency hranice, izolovaný copy-out, Chromium/WebKit UI a produkční API/admin/web image s celým Nginx řetězcem. Placený smoke vyžaduje `VOICE_CORE_LIVE_SMOKE=1` a je v běžném CI zakázán; viz [Voice Core](voice-core.md).
-
-## Voice Core
-
-`pnpm ci:voice-core` pokrývá přechody hovoru, opakovaný start/stop, přerušení, souběh s pozdní odpovědí, nejvýše dvě obnovy a portable hranice. API testy ověřují admin session, CSRF, monotónní revize, AES-GCM, mazání a redakci. Izolovaný harness používá fakes pouze v testech. Responsive UI se ověřuje v Chromium a WebKit; admin visual gate navíc kontroluje WCAG AA včetně kontrastu. Postup skutečného opt-in hovoru je v [Voice Core](voice-core.md). Fyzický iPhone, Bluetooth a změny OS audio routingu vyžadují vlastní zařízení; emulace jejich ověření nenahrazuje.
+API testy pokrývají session/CSRF/RBAC, správu uživatelů, rezervace a jejich diety/amenity verze, snídaně, housekeeping, chat a hlasovou bezpečnost. Browser baseline používá skutečné API a ukládání do testovací databáze. Podrobná regrese modulu se spouští podle změny; existující visual suite zachovává viewporty a admin `workers: 1`.

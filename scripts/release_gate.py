@@ -25,13 +25,19 @@ def _utc_now_iso() -> str:
 
 def _run_check(name: str, command: list[str]) -> CheckResult:
     started_at = _utc_now_iso()
-    completed = subprocess.run(command, check=False)
+    print(f"CHECK: {name}", flush=True)
+    try:
+        completed = subprocess.run(command, check=False)
+        return_code = completed.returncode
+    except OSError:
+        print(f"FAIL: {name} could not start", flush=True)
+        return_code = 127
     finished_at = _utc_now_iso()
     return CheckResult(
         name=name,
         command=command,
-        status="PASS" if completed.returncode == 0 else "FAIL",
-        return_code=completed.returncode,
+        status="PASS" if return_code == 0 else "FAIL",
+        return_code=return_code,
         started_at=started_at,
         finished_at=finished_at,
     )
@@ -59,39 +65,38 @@ def _git_sha() -> str:
     return completed.stdout.strip() or "unknown"
 
 
+def check_plan() -> list[tuple[str, list[str]]]:
+    """Every mandatory check runs once; no opt-out flags or paid provider calls."""
+    return [
+        ("ci-runner-tests", _python_command("-m", "unittest", "discover", "-s", "scripts/tests", "-p", "test_release_gate.py")),
+        ("typecheck", _pnpm_command("typecheck")),
+        ("python-lint", _python_command("-m", "ruff", "check", "apps/kajovo-hotel-api/app", "apps/kajovo-hotel-api/tests", "packages/voice-core-server", "scripts/release_gate.py", "scripts/tests/test_release_gate.py", "scripts/check_voice_core_boundaries.py", "scripts/verify_voice_core_copy_out.py", "scripts/verify_voice_core_proxy.py", "scripts/voice_core_live_smoke.py", "scripts/voice_smart_live_smoke.py")),
+        ("api-and-voice-tests", _python_command("-m", "pytest", "apps/kajovo-hotel-api/tests", "packages/voice-core-server/tests", "-q")),
+        ("voice-browser-tests", _pnpm_command("--filter", "@voice-core/browser", "test")),
+        ("voice-boundaries", _python_command("scripts/check_voice_core_boundaries.py")),
+        ("voice-copy-out", _python_command("scripts/verify_voice_core_copy_out.py")),
+        ("api-contract", _pnpm_command("contract:check")),
+        ("web-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "build")),
+        ("admin-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "build")),
+        ("design-tokens", _pnpm_command("ci:tokens")),
+        ("brand-assets", _pnpm_command("ci:brand-assets")),
+        ("brand-signage", _pnpm_command("ci:signage")),
+        ("text-integrity", _pnpm_command("ci:text-integrity")),
+        ("portal-translations", _pnpm_command("ci:portal-translations")),
+        ("frontend-manifest", _pnpm_command("ci:frontend-manifest")),
+        ("runtime-integrity", _pnpm_command("ci:runtime-integrity")),
+        ("android-acceptance-policy", ["node", "--test", "scripts/android_production_acceptance_policy.test.mjs"]),
+        ("browser-baseline", _pnpm_command("ci:baseline")),
+        ("voice-ui", _pnpm_command("--filter", "@voice-core/browser", "test:ui")),
+    ]
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     os.chdir(repo_root)
 
-    checks: list[tuple[str, list[str], bool]] = [
-        ("voice-core", _pnpm_command("ci:voice-core"), True),
-        ("typecheck", _pnpm_command("typecheck"), True),
-        ("policy-test", _pnpm_command("ci:policy-test"), True),
-        ("policy", _pnpm_command("ci:policy"), True),
-        ("web-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "build"), True),
-        ("admin-build", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "build"), True),
-        ("api-unit-tests", _python_command("-m", "pytest", "apps/kajovo-hotel-api/tests", "-q"), True),
-        ("frontend-ci-gates", _pnpm_command("ci:gates"), os.getenv("RUN_FRONTEND_GATES") == "1"),
-        ("e2e-smoke", _pnpm_command("ci:e2e-smoke"), os.getenv("RUN_E2E_SMOKE") == "1"),
-    ]
-
-    results: list[CheckResult] = []
-    for name, command, enabled in checks:
-        if not enabled:
-            results.append(
-                CheckResult(
-                    name=name,
-                    command=command,
-                    status="SKIPPED",
-                    return_code=0,
-                    started_at=_utc_now_iso(),
-                    finished_at=_utc_now_iso(),
-                )
-            )
-            continue
-        results.append(_run_check(name, command))
-
-    overall = "PASS" if all(result.status in {"PASS", "SKIPPED"} for result in results) else "FAIL"
+    results = [_run_check(name, command) for name, command in check_plan()]
+    overall = "PASS" if results and all(result.status == "PASS" for result in results) else "FAIL"
     sha = _git_sha()
     generated_at = _utc_now_iso()
 

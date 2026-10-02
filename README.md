@@ -38,3 +38,7 @@ Aktivní current-state dokumentace je centralizovaná v `docs/`.
 Portable admin-only Realtime voice product, host adapters, security and local validation: [Voice Core](docs/voice-core.md).
 
 Hotel-only live device integration and production acceptance: [Smart technologie](docs/voice-smart-technologies.md).
+
+## Vývoj a CI
+
+Commit a push přímo na `main`, bez nových PR. Před pushem `pnpm ci:gates`; GitHub spouští jediný základní validační plán a kontrolu produkčních Docker image. Úspěšné CI nad aktuálním main SHA dovolí deploy. Rozsah a omezení důkazu: [CI gates](docs/ci-gates.md).

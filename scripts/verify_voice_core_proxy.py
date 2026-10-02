@@ -60,10 +60,13 @@ def main():
                 return status, headers, body
             for attempt in range(60):
                 try:
-                    if request("/backend-health")[0] == 200: break
-                except (OSError, http.client.HTTPException): pass
+                    if request("/backend-health")[0] == 200:
+                        break
+                except (OSError, http.client.HTTPException):
+                    pass
                 time.sleep(.5)
-            else: raise AssertionError("Isolated API did not become healthy")
+            else:
+                raise AssertionError("Isolated API did not become healthy")
             for path, expected, microphone in [("/admin/hlasovy-chat", 200, "microphone=(self)"),
                 ("/", 200, "microphone=()"), ("/api/v1/admin/voice-core/config", 401, "microphone=()")]:
                 status, headers, _body = request(path)

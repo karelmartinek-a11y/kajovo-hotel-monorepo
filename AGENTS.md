@@ -61,6 +61,13 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 - Produkční Nginx musí obsloužit HTTP ACME challenge bez předčasného HTTPS redirectu, používat aktivní Certbot lineage `hotel.hcasc.cz-renewed` a deploy musí vyžadovat platnost certifikátu delší než 30 dní bez rozšíření sudo oprávnění deploy uživatele.
 - Selhání testu, buildu, CI, commitu, pushe, deploye nebo produkční validace analyzuj, oprav a celý dotčený řetězec zopakuj. Zastav se pouze na doloženém blockeru chybějícího oprávnění, tajného údaje, externí služby nebo rozhodnutí vlastníka.
 
+## Main-only CI
+
+- Nová PR jsou zakázaná (`has_pull_requests=false`). Změny commituj a pushuj přímo na `main`; nevytvářej feature větve ani PR. Pokud main používá jiný worktree, pracuj nad přesným `origin/main` v detached checkoutu a pushuj `HEAD:main` bez přepisování historie.
+- Ostatní větve mají zakázané creation/update; main je chráněný proti deletion/non_fast_forward. Lokální kontroly jsou před pushem, GitHub status checks po pushi blokují deploy.
+- Jediné základní CI má jobs `validate` a `api-runtime-image`. `pnpm ci:gates` je úplný plán `scripts/release_gate.py` bez přeskočení. Browser baseline má dva skutečné API toky na desktopu/tabletu/telefonu, `workers: 1`, bez retry/mock rout. Podrobné existující smoke/visual sady jsou povinné podle dopadu změny, ne jako duplicitní běh každého commitu.
+- Docker runtime/proxy, přenositelnost Voice Core a Android oddělení zůstávají povinné. Placené provider volání do běžného CI nepatří. Deploy přijímá pouze úspěšný push CI nad stále aktuálním main SHA.
+
 ## Commit, deploy a produkční ověření
 
 - Před commitem zkontroluj celý diff soubor po souboru a ověř, že nezmizela nesouvisející funkce.

@@ -1,12 +1,6 @@
 name: Android CI - Kajovo Hotel
 
 on:
-  pull_request:
-    paths:
-      - 'android/**'
-      - 'apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk'
-      - 'scripts/check_android_release_integrity.py'
-      - '.github/workflows/android-ci.yml'
   push:
     branches:
       - main

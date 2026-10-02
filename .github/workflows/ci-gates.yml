@@ -1,11 +1,16 @@
 name: CI Gates - Kajovo Hotel
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotel-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,6 +21,7 @@ env:
 
 jobs:
   api-runtime-image:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -33,270 +39,10 @@ jobs:
           docker build -f apps/kajovo-hotel-web/Dockerfile -t voice-core-web-check .
           python3 scripts/verify_voice_core_proxy.py
 
-  release-gate:
+  validate:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install API dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install ./packages/voice-core-server
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
-
-      - name: Validate admin credential environment
-        run: python scripts/check_admin_credentials_env.py
-
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
-
-      - name: Run unified release gate
-        env:
-          RUN_FRONTEND_GATES: "1"
-          RUN_E2E_SMOKE: "1"
-        run: python scripts/release_gate.py
-
-      - name: Upload release gate artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-gate-artifact
-          path: artifacts/release-gate/*.json
-          if-no-files-found: warn
-
-
-  e2e-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install API Python dependencies (minimal)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "uvicorn[standard]==0.34.3" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
-
-      - name: Install portable Voice Core runtime
-        run: python -m pip install ./packages/voice-core-server -e './apps/kajovo-hotel-api[dev]'
-
-      - name: Validate admin credential environment
-        run: python scripts/check_admin_credentials_env.py
-
-      - name: Install Playwright browser for smoke
-        run: pnpm --filter @kajovo/kajovo-hotel-admin exec playwright install --with-deps chromium
-
-      - name: E2E smoke (3 deterministic runs)
-        env:
-          API_BASE_URL: http://127.0.0.1:18000
-          SMOKE_DB_PATH: /tmp/kajovo-smoke-e2e.db
-        run: |
-          for i in 1 2 3; do
-            echo "Smoke run #${i}"
-            rm -f "$SMOKE_DB_PATH"
-            pnpm ci:e2e-smoke
-          done
-  guardrails:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API Python dependencies (minimal)
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "fastapi==0.115.14" "pydantic==2.11.10" "pydantic-settings==2.11.0" "sqlalchemy==2.0.44" "alembic==1.17.1" "uvicorn[standard]==0.34.3" "python-multipart==0.0.20" "cryptography==43.0.3" "pypdf==5.9.0" "pycountry==24.6.1" "reportlab==4.5.1"
-
-      - name: Android production acceptance rollback policy
-        run: |
-          node --check scripts/verify_android_employee_production.mjs
-          node --check scripts/cleanup_android_production_acceptance.mjs
-          node --test scripts/android_production_acceptance_policy.test.mjs
-
-      - name: Install portable Voice Core runtime
-        run: python -m pip install ./packages/voice-core-server -e './apps/kajovo-hotel-api[dev]'
-
-      - name: Validate admin credential environment
-        run: python scripts/check_admin_credentials_env.py
-
-      - name: Policy sentinel gate
-        run: pnpm ci:policy
-
-      - name: Policy rule unit tests
-        run: pnpm ci:policy-test
-
-      - name: Token-only lint
-        run: pnpm ci:tokens
-
-      - name: Brand assets lint (brand/** whitelist)
-        run: pnpm ci:brand-assets
-
-      - name: Install Playwright browser
-        run: pnpm --filter @kajovo/kajovo-hotel-web exec playwright install --with-deps chromium
-
-      - name: Web live smoke gate
-        run: pnpm ci:web-smoke
-
-      - name: KDGS signage declaration gate
-        run: pnpm ci:signage
-
-      - name: Portal translation completeness
-        run: pnpm ci:portal-translations
-
-      - name: KDGS visual geometry gate
-        run: pnpm ci:visual
-
-      - name: Verify API contract + generated client freshness
-        run: pnpm contract:check
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install ./packages/voice-core-server
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
-
-      - name: Ruff lint
-        run: python -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests packages/voice-core-server scripts/check_voice_core_boundaries.py scripts/verify_voice_core_copy_out.py scripts/verify_voice_core_proxy.py scripts/voice_core_live_smoke.py scripts/voice_smart_live_smoke.py
-
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
-
-      - name: Enable pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.11'
-
-      - name: Install API dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install ./packages/voice-core-server
-          python -m pip install -e ./apps/kajovo-hotel-api[dev]
-
-      - name: Unit tests
-        run: pnpm unit
-
-  portable-voice-core:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v6
@@ -305,12 +51,27 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - run: corepack enable && corepack prepare pnpm@10.34.4 --activate
-      - run: pnpm install --frozen-lockfile
-      - run: python -m pip install ./packages/voice-core-server pytest
-      - run: pnpm ci:voice-core
-      - run: python scripts/verify_voice_core_copy_out.py
-      - run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
-      - run: pnpm --filter @voice-core/browser test:ui
-      - name: Verify live smoke is opt-in
-        run: python scripts/voice_core_live_smoke.py scripts/voice_smart_live_smoke.py
+      - name: Install pinned pnpm and locked dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.34.4 --activate
+          pnpm install --frozen-lockfile
+      - name: Install API and test dependencies
+        run: python -m pip install ./packages/voice-core-server -e './apps/kajovo-hotel-api[dev]'
+      - name: Validate test credential configuration
+        run: python scripts/check_admin_credentials_env.py
+      - name: Install browser engines
+        run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
+      - name: Validate the complete SSOT test plan once
+        run: python scripts/release_gate.py
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: validation-evidence
+          path: |
+            artifacts/release-gate/*.json
+            apps/kajovo-hotel-web/test-results/
+            apps/kajovo-hotel-admin/test-results/
+            packages/voice-core/test-results/
+          if-no-files-found: warn

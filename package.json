@@ -18,7 +18,7 @@
     "ci:legacy-guards": "node --test apps/kajovo-hotel/ci/legacy-removal.test.mjs",
     "ci:runtime-integrity": "node scripts/check_runtime_integrity.mjs",
     "ci:web-smoke": "pnpm --filter @kajovo/kajovo-hotel-web test:smoke",
-    "ci:gates": "pnpm ci:voice-core && pnpm ci:tokens && pnpm ci:brand-assets && pnpm ci:signage && pnpm ci:text-integrity && pnpm ci:portal-translations && pnpm ci:frontend-manifest && pnpm ci:policy-test && pnpm ci:legacy-guards && pnpm ci:runtime-integrity && pnpm ci:web-smoke && pnpm ci:visual",
+    "ci:gates": "python3.11 scripts/release_gate.py",
     "api:generate-contract": "python3.11 apps/kajovo-hotel-api/scripts/export_openapi.py",
     "shared:generate-client": "pnpm --filter @kajovo/shared generate:client",
     "contract:generate": "pnpm api:generate-contract && pnpm shared:generate-client",
@@ -32,7 +32,8 @@
     "ci:visual": "pnpm ci:visual-web && pnpm ci:visual-admin",
     "ops:smoke": "bash ./infra/smoke/smoke.sh",
     "ops:verify-deploy": "bash ./infra/verify/verify-deploy.sh",
-    "ci:voice-core": "pnpm --filter @voice-core/browser test && python3.11 -m pytest packages/voice-core-server/tests && python3.11 scripts/check_voice_core_boundaries.py"
+    "ci:voice-core": "pnpm --filter @voice-core/browser test && python3.11 -m pytest packages/voice-core-server/tests && python3.11 scripts/check_voice_core_boundaries.py",
+    "ci:baseline": "pnpm --filter @kajovo/kajovo-hotel-admin test:baseline"
   },
   "packageManager": "pnpm@10.34.4"
 }

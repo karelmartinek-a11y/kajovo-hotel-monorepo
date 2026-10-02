@@ -53,15 +53,14 @@ security:
 
 ci:
   workflow: .github/workflows/ci-gates.yml
+  branch: main
+  pull_requests: disabled
+  jobs: [validate, api-runtime-image]
   required_commands:
-    - pnpm ci:voice-core
-    - pnpm typecheck
-    - pnpm ci:portal-translations
-    - python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests
-    - pnpm unit
-    - pnpm contract:check
     - pnpm ci:gates
-    - python3.11 scripts/release_gate.py
+  plan_source: scripts/release_gate.py
+  browser_baseline: pnpm ci:baseline
+  targeted_regression: [pnpm ci:web-smoke, pnpm ci:e2e-smoke, pnpm ci:visual]
 
 deploy:
   workflow: .github/workflows/deploy-production.yml

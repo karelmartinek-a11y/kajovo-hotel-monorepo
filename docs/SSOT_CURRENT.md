@@ -8,11 +8,11 @@
 - `packages/shared` drží RBAC, i18n a generovaný API klient v `packages/shared/src/generated/client.ts`.
 - `packages/ui` drží sdílený shell a UI komponenty.
 - `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`.
-- Přihlášené aplikace používají `AppShell`: desktopový postranní panel a přichycené záhlaví na tabletu a mobilu. Profil má stálý samostatný odkaz; odkazy na sekce vycházejí z oprávnění a na úzké obrazovce se posouvají uvnitř navigačního řádku. Podrobnosti jsou v `docs/ui-navigation.md`.
+- Přihlášené aplikace používají `AppShell` s pevným záhlavím a spodní navigací v jedné vodorovně posuvné řadě na desktopu, tabletu i telefonu. Chat je první, následují moduly podle role a nakonec Profil. Podrobnosti jsou v `docs/ui-navigation.md`.
 
 ## Runtime a bezpečnost
 
-- API registruje routy `auth`, `health`, `reports`, `breakfast`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings`, `profile`, `chat` a `voice_core`.
+- API registruje routy `auth`, `app_meta`, `health`, `reports`, `breakfast`, `housekeeping`, `device`, `lost_found`, `issues`, `inventory`, `users`, `settings`, `profile`, `chat` a `voice_core`.
 - Autentizace běží přes session cookie `kajovo_session` a CSRF cookie `kajovo_csrf` s hlavičkou `x-csrf-token`.
 - Nová webová přihlášení portálu i administrace obnovují session pouze po uživatelské aktivitě přes CSRF chráněný `POST /api/auth/activity`. Po 48 hodinách bez aktivity session vyprší; běžné načítání dat dobu neprodlužuje. Skrytá karta nekontroluje vypršení relace. Portál po opětovném přihlášení vrátí uživatele na původní interní cestu. Starší session zůstanou platné do svého původního vypršení bez obnovování a nativní Android používá původní samostatný režim.
 - Portál používá `cs`, `en` a `uk`, s preferencí uloženou u účtu přes `PATCH /api/auth/locale`. Přihlašovací stránka začíná vždy česky. Administrace zůstává česky. PDF exporty portálu používají jazyk účtu.
@@ -21,19 +21,14 @@
 
 ## CI a deploy
 
-- Hlavní CI workflow je `.github/workflows/ci-gates.yml`.
+- Změny se pushují přímo na `main`; nová PR jsou zakázaná. Hlavní CI workflow `.github/workflows/ci-gates.yml` má pouze `validate` a `api-runtime-image`; plán je v [CI gates](ci-gates.md).
 - Produkční deploy workflow je `.github/workflows/deploy-production.yml` a spouští se jen po úspěšném CI na `main`.
 - Deploy vytváří archiv `kajovo-deploy-<sha>.tar.gz`, nahrává jej na produkční server a ověřuje runtime artifact i živé smoke scénáře.
 - Produkční server pro `hotel.hcasc.cz` se ověřuje proti IPv4 `89.221.222.92`.
 
 ## Povinné validace
 
-- `pnpm ci:voice-core`
-- `pnpm typecheck`
-- `pnpm ci:portal-translations`
-- `python3.11 -m ruff check apps/kajovo-hotel-api/app apps/kajovo-hotel-api/tests`
-- `pnpm unit`
-- `pnpm contract:check`
-- `pnpm ci:gates`
-- `python3.11 scripts/release_gate.py`
-- live ověření přes `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`
+- `pnpm ci:gates` / `python3.11 scripts/release_gate.py`: úplný plán bez přeskakování; jednotlivé příkazy definuje `check_plan()`.
+- Produkční image a proxy ověřuje samostatný `api-runtime-image` job.
+- Rozsáhlé smoke a vizuální sady se spouštějí podle změny modulu, Android zůstává samostatný.
+- Live ověření deploye používá `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`.

@@ -58,8 +58,6 @@ Use these only if another integration already expects `KAJOVO_API_*` names:
 ## Enforced by repository
 
 - `.github/workflows/ci-gates.yml`
-- `.github/workflows/ci-full.yml`
-- `.github/workflows/release.yml`
 - `.github/workflows/deploy-production.yml`
 - `scripts/check_admin_credentials_env.py`
 - `scripts/verify_live_admin_login.mjs`
@@ -77,3 +75,11 @@ CI or deploy must fail when:
 - `HOTEL_ADMIN_PASSWORD` and `KAJOVO_API_ADMIN_PASSWORD` differ,
 - production compose starts without `KAJOVO_API_ADMIN_EMAIL` / `KAJOVO_API_ADMIN_PASSWORD`,
 - public runtime health endpoints or live admin login fail after deploy.
+
+## Main-only workflow
+
+- `has_pull_requests=false`: nová PR jsou zakázaná.
+- Aktivní ruleset zakazuje creation/update větví mimo main; main má deletion/non_fast_forward ochranu.
+- Změny se validují lokálně a pushují přímo na main. Žádný požadavek na PR ani status checks před pushem.
+- `CI Gates - Kajovo Hotel` má `validate` a `api-runtime-image`. Úspěšný push CI nad aktuálním main SHA je podmínka deploye.
+- CI podmínky a testovací rozsah: [ci-gates.md](ci-gates.md).

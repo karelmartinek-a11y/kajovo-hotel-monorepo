@@ -9,11 +9,10 @@
 
 ## Povinné kontroly
 
-- `pnpm ci:policy`
-- `pnpm ci:policy-test`
-- `pnpm typecheck`
+- Commit a push přímo na `main`, bez nových PR.
+- `pnpm ci:gates` (úplný základní plán, viz [CI gates](ci-gates.md))
 - relevantní buildy a testy podle dotčené oblasti
 
 ## Produktové pravidlo
 
-Repozitář aktivně provozuje pouze web, admin a API. Release, CI ani deploy nesmí záviset na Android build chainu ani historických parity pravidlech.
+Základní produkční CI chrání web, admin a API; nativní Android má vlastní CI a release. Release, CI ani deploy nesmí záviset na Android build chainu ani historických parity pravidlech.
