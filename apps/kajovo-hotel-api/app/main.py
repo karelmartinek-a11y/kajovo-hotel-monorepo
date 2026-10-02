@@ -32,6 +32,7 @@ from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
 from app.services.admin_credentials import ensure_admin_profile
 from app.services.breakfast.scheduler import breakfast_scheduler_loop
+from app.services.voice_smart import manager as voice_bridge_manager
 
 settings = get_settings()
 ANDROID_RELEASE_PATH = "/api/app/android-release"
@@ -145,9 +146,16 @@ def create_app() -> FastAPI:
         if settings.breakfast_scheduler_enabled:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
         app.state.chat_push_scheduler_task = asyncio.create_task(chat_push_scheduler_loop())
+        app.state.voice_bridge_housekeeping_task = asyncio.create_task(voice_bridge_manager.housekeeping())
 
     @app.on_event("shutdown")
     async def shutdown_scheduler() -> None:
+        voice_task = getattr(app.state, "voice_bridge_housekeeping_task", None)
+        if voice_task:
+            voice_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await voice_task
+        await voice_bridge_manager.shutdown()
         task = getattr(app.state, "breakfast_scheduler_task", None)
         if task is not None:
             task.cancel()

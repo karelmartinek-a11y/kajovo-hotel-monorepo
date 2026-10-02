@@ -32,6 +32,9 @@ export class VoiceRealtimeClient {
   private retries = 0;
   private seen = new Set<string>();
   private lifecycleCleanup: (() => void) | null = null;
+  private sessionId: string | null = null;
+  private managedFunctions = new Set<string>();
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private provider: RealtimeSessionProvider, private telemetry: VoiceTelemetrySink,
               private environment: VoiceRuntimeEnvironment = browserEnvironment) {}
@@ -87,7 +90,7 @@ export class VoiceRealtimeClient {
     audio.onerror = () => {if (peer === this.peer) this.fail('playback_failed');};
     this.abort = new AbortController();
     this.set({state: this.retries ? 'reconnecting' : 'connecting'});
-    this.timeout = setTimeout(() => {if (peer === this.peer) this.fail('connection_timeout');}, CONNECT_TIMEOUT);
+    this.timeout = setTimeout(() => {if (peer === this.peer) this.fail('connection_timeout');}, this.provider.connectionTimeoutMs ?? CONNECT_TIMEOUT);
     this.stream.getTracks().forEach(track => peer.addTrack(track, this.stream!));
     const channel = peer.createDataChannel('oai-events'); this.channel = channel;
     channel.onmessage = event => {if (epoch === this.epoch && peer === this.peer) this.handle(event.data);};
@@ -108,9 +111,35 @@ export class VoiceRealtimeClient {
     if (epoch !== this.epoch || peer !== this.peer) return;
     await peer.setLocalDescription(offer);
     const answer = await this.provider.create(offer.sdp!, this.abort.signal);
-    if (epoch !== this.epoch || peer !== this.peer) return;
-    this.set({model: answer.model});
+    if (epoch !== this.epoch || peer !== this.peer) {if (answer.session_id) void this.provider.close?.(answer.session_id).catch(() => {}); return;}
+    this.sessionId = answer.session_id ?? null;
+    this.managedFunctions = new Set(answer.managed_functions ?? []);
+    this.set({model: answer.model, capabilityStatus: answer.technologies});
+    if (answer.technologies === 'connecting' && this.provider.heartbeat) this.stream?.getAudioTracks().forEach(track => {track.enabled = false;});
     await peer.setRemoteDescription({type: 'answer', sdp: answer.sdp});
+    if (this.sessionId && this.provider.heartbeat) void this.heartbeat(epoch, peer);
+  }
+  private async heartbeat(epoch: number, peer: RTCPeerConnection) {
+    if (!this.sessionId || !this.provider.heartbeat || !this.abort || epoch !== this.epoch || peer !== this.peer) return;
+    try {
+      const status = await this.provider.heartbeat(this.sessionId, this.abort.signal);
+      if (epoch !== this.epoch || peer !== this.peer) return;
+      this.set({capabilityStatus: status.technologies});
+      if (status.renew) {this.reconnect(); return;}
+      if (status.closed) {this.fail('session_ended'); return;}
+      if (status.technologies === 'waiting') this.stream?.getAudioTracks().forEach(track => {track.enabled = false;});
+      if (!['connecting', 'waiting'].includes(status.technologies)) {
+        this.stream?.getAudioTracks().forEach(track => {track.enabled = !this.snapshot.muted;});
+        if (this.snapshot.state === 'connecting' || this.snapshot.state === 'reconnecting') this.set({state: 'listening'});
+        if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
+      }
+    } catch (error) {
+      if (epoch !== this.epoch || peer !== this.peer) return;
+      const category = this.category(error, 'request_failed');
+      if (category === 'unauthorized') {this.fail(category); return;}
+      this.reconnect(); return;
+    }
+    this.heartbeatTimer = setTimeout(() => {this.heartbeatTimer = null; void this.heartbeat(epoch, peer);}, ['connecting', 'waiting'].includes(this.snapshot.capabilityStatus ?? '') ? 1000 : 15000);
   }
   private handle(raw: string) {
     let event: RealtimeEvent;
@@ -120,9 +149,15 @@ export class VoiceRealtimeClient {
       if (this.seen.has(event.event_id)) return;
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
     }
+    const failure = event.error?.code ?? event.response?.status_details?.error?.code;
+    if (this.managedFunctions.size && ['context_length_exceeded', 'input_too_large'].includes(failure ?? '')) {this.reconnect(); return;}
+    if (event.type === 'response.done' && event.response?.status === 'failed' && this.managedFunctions.size && failure === 'rate_limit_exceeded') {
+      this.stream?.getAudioTracks().forEach(track => {track.enabled = false;}); this.set({capabilityStatus: 'waiting', state: 'assistant-processing'}); return;
+    }
     if (event.type === 'error' || (event.type === 'response.done' && event.response?.status === 'failed')) {this.fail('realtime_error'); return;}
-    if (event.item?.type === 'function_call' || event.item?.type === 'mcp_call') {this.fail('unsupported_capability'); return;}
+    if (event.item?.type === 'mcp_call' || (event.item?.type === 'function_call' && !this.managedFunctions.has(event.item.name ?? ''))) {this.fail('unsupported_capability'); return;}
     if (event.type === 'session.created') {
+      if (this.snapshot.capabilityStatus === 'connecting' && this.provider.heartbeat) return;
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
     }
@@ -166,7 +201,7 @@ export class VoiceRealtimeClient {
       });
     }, delay);
   }
-  setMuted(muted: boolean) {if (!this.stream) return; this.stream.getAudioTracks().forEach(track => {track.enabled = !muted;}); this.set({muted});}
+  setMuted(muted: boolean) {if (!this.stream) return; this.stream.getAudioTracks().forEach(track => {track.enabled = !muted && !['connecting', 'waiting'].includes(this.snapshot.capabilityStatus ?? '');}); this.set({muted});}
   async stop() {
     if (!callActive(this.snapshot.state) || this.snapshot.state === 'disconnecting') return;
     ++this.epoch; this.set({state: 'disconnecting'}); this.cleanup(); this.detachLifecycle();
@@ -174,6 +209,9 @@ export class VoiceRealtimeClient {
     this.telemetry.emit('session.ended', {});
   }
   private cleanupConnection() {
+    if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer); this.heartbeatTimer = null;
+    const sessionId = this.sessionId; this.sessionId = null; this.managedFunctions.clear();
+    if (sessionId) void this.provider.close?.(sessionId).catch(() => {});
     this.abort?.abort(); this.abort = null;
     if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
     if (this.frame !== null && typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(this.frame); this.frame = null;

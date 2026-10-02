@@ -39,7 +39,8 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
       {snapshot.model && <p className="vc-detail">Model hovoru: {snapshot.model}</p>}
       <button className="vc-primary" disabled={busy || (!active && (!saved?.configured || Boolean(dirty)))} onClick={() => {if (active) void client.stop(); else {setError(null); void client.start();}}}>{active ? 'Ukončit hovor' : 'Zahájit hovor'}</button>
       <button className="vc-button" disabled={!active || !['listening', 'user-speaking', 'assistant-processing', 'assistant-speaking', 'reconnecting'].includes(snapshot.state)} aria-pressed={snapshot.muted} onClick={() => client.setMuted(!snapshot.muted)}>{snapshot.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>
-      <p className="vc-detail">Hovoříte s AI. Tato verze nemá přístup k živým datům ani externím nástrojům.</p>
+      <p className="vc-detail">{sessionProvider.disclosure ?? 'Hovoříte s AI. Tato verze nemá přístup k živým datům ani externím nástrojům.'}</p>
+      {sessionProvider.heartbeat && snapshot.capabilityStatus && <p className="vc-detail" role="status" data-testid="voice-capability-status">{sessionProvider.capabilityLabels?.[snapshot.capabilityStatus] ?? (snapshot.capabilityStatus === 'ready' ? 'Externí funkce jsou připravené.' : snapshot.capabilityStatus === 'connecting' ? 'Načítám externí funkce…' : 'Externí funkce jsou nedostupné. Běžný rozhovor může pokračovat.')}</p>}
       {(snapshot.error || error) && <p className="vc-error" role="alert">{snapshot.error ? errorMessage(snapshot.error.category) : error}</p>}
     </div>
     <div className="vc-controls">

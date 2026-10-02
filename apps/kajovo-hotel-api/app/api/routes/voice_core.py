@@ -6,6 +6,7 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 from voice_core_server import RealtimeSessionClient, VoiceCoreConfig, VoiceError, catalog
 
+from app.config import get_settings
 from app.db.models import VoiceCoreSettings
 from app.db.session import get_db
 from app.security.auth import require_session
@@ -15,6 +16,7 @@ from app.services.voice_core import (
     VoiceTelemetry,
     get_record,
 )
+from app.services.voice_smart import manager
 
 
 class VoiceAuthAdapter:
@@ -67,6 +69,18 @@ class VoiceSessionWrite(BaseModel):
 class VoiceSessionRead(BaseModel):
     sdp: str
     model: str
+    session_id: str | None = None
+    technologies: str = "unavailable"
+    managed_functions: list[str] = Field(default_factory=list)
+    renew: bool = False
+    closed: bool = False
+
+
+class VoiceSessionStatus(BaseModel):
+    session_id: str
+    technologies: str
+    renew: bool
+    closed: bool
 
 
 def read_config(db: Session) -> VoiceConfigRead:
@@ -119,7 +133,7 @@ def delete_key(db: Db):
 
 
 @router.post("/sessions", response_model=VoiceSessionRead)
-async def create_session(payload: VoiceSessionWrite, db: Db):
+async def create_session(payload: VoiceSessionWrite, db: Db, request: Request):
     record = get_record(db)
     if payload.revision != record.revision:
         raise HTTPException(409, detail={"code": "configuration_conflict"})
@@ -127,8 +141,43 @@ async def create_session(payload: VoiceSessionWrite, db: Db):
         raise HTTPException(422, detail={"code": "invalid_sdp"})
     try:
         key = VoiceSecretAdapter(db).read()
+        if get_settings().kajavoiceha_mcp_token:
+            try:
+                return await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
+                    str(require_session(request)["session_id"]), get_settings().kajavoiceha_mcp_token)
+            except VoiceError:
+                raise
+            except Exception:
+                raise VoiceError("provider_unavailable") from None
         sdp, model = await RealtimeSessionClient(VoiceTelemetry()).create(
             payload.sdp, VoiceConfigAdapter(db).read(), key)
     except VoiceError as exc:
         raise safe_error(exc) from None
     return VoiceSessionRead(sdp=sdp, model=model)
+
+
+def owned_bridge(session_id: str, request: Request):
+    bridge = manager.get(session_id, str(require_session(request)["session_id"]))
+    if bridge is None:
+        raise HTTPException(404, detail={"code": "voice_session_not_found"})
+    return bridge
+
+
+@router.get("/sessions/{session_id}", response_model=VoiceSessionStatus)
+def session_status(session_id: str, request: Request):
+    return owned_bridge(session_id, request).public_status()
+
+
+@router.post("/sessions/{session_id}/heartbeat", response_model=VoiceSessionStatus)
+def session_heartbeat(session_id: str, request: Request):
+    import time
+    bridge = owned_bridge(session_id, request)
+    bridge.last_heartbeat = time.monotonic()
+    return bridge.public_status()
+
+
+@router.delete("/sessions/{session_id}", response_model=VoiceSessionStatus)
+async def close_session(session_id: str, request: Request):
+    bridge = owned_bridge(session_id, request)
+    await bridge.close()
+    return bridge.public_status()

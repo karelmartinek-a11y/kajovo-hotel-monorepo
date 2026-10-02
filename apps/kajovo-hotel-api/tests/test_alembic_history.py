@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0039_voice_core_settings"]
+    assert script.get_heads() == ["0040_voice_smart_operations"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -37,6 +37,8 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     tables = set(inspector.get_table_names())
 
     assert "voice_core_settings" in tables
+    assert "voice_smart_operations" in tables
+    assert {"request_id", "owner_session_id", "call_id", "arguments_digest", "status", "created_at"} == {column["name"] for column in inspector.get_columns("voice_smart_operations")}
     assert {"config_json", "revision", "encrypted_api_key"} <= {column["name"] for column in inspector.get_columns("voice_core_settings")}
     assert "admin_profile" in tables
     assert "report_photos" in tables

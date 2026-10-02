@@ -40,6 +40,19 @@ class VoiceCoreSettings(Base):
     encrypted_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class VoiceSmartOperation(Base):
+    """Idempotency/recovery metadata only: no arguments, device values or transcripts."""
+    __tablename__ = "voice_smart_operations"
+    __table_args__ = (UniqueConstraint("owner_session_id", "call_id", name="uq_voice_smart_provider_call"),)
+
+    request_id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    call_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    arguments_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ReservationAmenity(Base):
     __tablename__ = "reservation_amenities"
     __table_args__ = (

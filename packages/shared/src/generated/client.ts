@@ -713,8 +713,19 @@ export type VoiceKeyWrite = {
   "api_key": string;
 };
 export type VoiceSessionRead = {
+  "closed"?: boolean;
+  "managed_functions"?: Array<string>;
   "model": string;
+  "renew"?: boolean;
   "sdp": string;
+  "session_id"?: string | null;
+  "technologies"?: string;
+};
+export type VoiceSessionStatus = {
+  "closed": boolean;
+  "renew": boolean;
+  "session_id": string;
+  "technologies": string;
 };
 export type VoiceSessionWrite = {
   "revision": number;
@@ -861,6 +872,15 @@ export const apiClient = {
   },
   async createSessionApiV1AdminVoiceCoreSessionsPost(body: VoiceSessionWrite): Promise<VoiceSessionRead> {
     return request<VoiceSessionRead>('POST', `/api/v1/admin/voice-core/sessions`, undefined, body);
+  },
+  async closeSessionApiV1AdminVoiceCoreSessionsSessionIdDelete(session_id: string): Promise<VoiceSessionStatus> {
+    return request<VoiceSessionStatus>('DELETE', `/api/v1/admin/voice-core/sessions/${session_id}`, undefined, undefined);
+  },
+  async sessionStatusApiV1AdminVoiceCoreSessionsSessionIdGet(session_id: string): Promise<VoiceSessionStatus> {
+    return request<VoiceSessionStatus>('GET', `/api/v1/admin/voice-core/sessions/${session_id}`, undefined, undefined);
+  },
+  async sessionHeartbeatApiV1AdminVoiceCoreSessionsSessionIdHeartbeatPost(session_id: string): Promise<VoiceSessionStatus> {
+    return request<VoiceSessionStatus>('POST', `/api/v1/admin/voice-core/sessions/${session_id}/heartbeat`, undefined, undefined);
   },
   async listBreakfastOrdersApiV1BreakfastGet(query: { "service_date"?: string | null; "status"?: BreakfastStatus | null; }): Promise<Array<BreakfastOrderRead>> {
     return request<Array<BreakfastOrderRead>>('GET', `/api/v1/breakfast`, query, undefined);
