@@ -18,7 +18,10 @@ The existing signed, persistent and revocable session is authoritative. Every `/
 - `PUT /config`: the six settings plus expected revision; conflict returns 409.
 - `PUT /api-key`: write-only `api_key` secret, returning configured status and settings.
 - `DELETE /api-key`: remove persistent ciphertext, even if its master key is unavailable.
-- `POST /sessions`: SDP offer and expected revision; returns SDP answer and selected model.
+- `POST /sessions`: SDP offer and expected revision; returns SDP answer, selected model, optional opaque session identity, backend-managed functions and technology readiness.
+- `GET /sessions/{session_id}`: owner-only public readiness and renewal state.
+- `POST /sessions/{session_id}/heartbeat`: owner-only 45-second lease renewal; does not refresh web activity.
+- `DELETE /sessions/{session_id}`: owner-only termination of the sideband and provider call.
 
 All response models omit secrets. Voice responses are `no-store`. Request bodies, including malformed key submissions and SDP, are excluded from audit capture. Voice validation errors return a safe category without input values. Provider exceptions never expose response bodies or headers.
 
@@ -40,7 +43,7 @@ Defaults: automatic model, automatic language, medium response and `marin`. The 
 
 Instructions require honest uncertainty, no invented sources or live/private facts, clarification of ambiguous requests, no claims of external actions and the selected language/length. No user-editable prompt is exposed or accepted by the host API. Model compliance is probabilistic, not a zero-hallucination guarantee; instructions are not secret credentials and OpenAI session events may expose their text. The browser application's supported transport sends no prompt/tool configuration updates; a hostile client is not an immutable-policy security boundary for OpenAI's own data-channel API.
 
-Capability registries are empty, tool configuration is omitted and `tool_choice` is `none`. There is no invocation/action executor. Future capability contracts describe provider-owned input/output schemas, without implementing any integration in v1.
+Standalone capability registries are empty, tool configuration is omitted and `tool_choice` is `none`. The portable browser has optional host lifecycle ports and may observe named backend-managed functions without executing them. The hotel-only integration is described in [Smart technologie](voice-smart-technologies.md): its API-owned sideband exposes one function, obtains the complete approved MCP catalog and executes controls with durable identity. Technology sessions use a 4096-token output ceiling while retaining the selected sentence policy.
 
 Official contracts verified on 2026-09-30:
 
@@ -90,4 +93,4 @@ Activate the Python environment for these commands. Portable tests and the isola
 
 The paid smoke is separate. Start a local host, enter the OpenAI key in its UI, provide a WAV speech fixture with pauses and an interruption utterance, and set `VOICE_CORE_LIVE_SMOKE=1`, `VOICE_CORE_AUDIO_FIXTURE` and optionally `VOICE_CORE_BASE_URL`. Run `python scripts/voice_core_live_smoke.py`. Without the opt-in the runner exits before any network/session request. Traces, screenshots, videos and conversation content capture are disabled. It observes event types only and checks speech, audio output, barge-in and microphone cleanup. Automated browser speech fixtures do not prove physical iPhone/Bluetooth behavior.
 
-This delivery does not merge or deploy production. Header/runtime changes are prepared and tested as artifacts; production enablement still requires a separately authorized deploy and supplying its master key.
+Production acceptance must identify the deployed SHA and actual scenario evidence separately from local tests. Synthetic audio does not prove physical microphone, speaker or device behavior.

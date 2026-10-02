@@ -4948,12 +4948,45 @@
       },
       "VoiceSessionRead": {
         "properties": {
+          "closed": {
+            "default": false,
+            "title": "Closed",
+            "type": "boolean"
+          },
+          "managed_functions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Managed Functions",
+            "type": "array"
+          },
           "model": {
             "title": "Model",
             "type": "string"
           },
+          "renew": {
+            "default": false,
+            "title": "Renew",
+            "type": "boolean"
+          },
           "sdp": {
             "title": "Sdp",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "technologies": {
+            "default": "unavailable",
+            "title": "Technologies",
             "type": "string"
           }
         },
@@ -4962,6 +4995,34 @@
           "model"
         ],
         "title": "VoiceSessionRead",
+        "type": "object"
+      },
+      "VoiceSessionStatus": {
+        "properties": {
+          "closed": {
+            "title": "Closed",
+            "type": "boolean"
+          },
+          "renew": {
+            "title": "Renew",
+            "type": "boolean"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "technologies": {
+            "title": "Technologies",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "technologies",
+          "renew",
+          "closed"
+        ],
+        "title": "VoiceSessionStatus",
         "type": "object"
       },
       "VoiceSessionWrite": {
@@ -6008,6 +6069,130 @@
           }
         },
         "summary": "Create Session",
+        "tags": [
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/sessions/{session_id}": {
+      "delete": {
+        "operationId": "close_session_api_v1_admin_voice_core_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Session",
+        "tags": [
+          "voice-core"
+        ]
+      },
+      "get": {
+        "operationId": "session_status_api_v1_admin_voice_core_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Session Status",
+        "tags": [
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/sessions/{session_id}/heartbeat": {
+      "post": {
+        "operationId": "session_heartbeat_api_v1_admin_voice_core_sessions__session_id__heartbeat_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Session Heartbeat",
         "tags": [
           "voice-core"
         ]

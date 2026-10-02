@@ -4,7 +4,7 @@ import {VoiceRealtimeClient} from '../dist/runtime.js';
 import {transition} from '../dist/state.js';
 import {capabilityRegistry} from '../dist/contracts.js';
 
-function host({permission, create} = {}) {
+function host({permission, create, heartbeat, close} = {}) {
   const peers = [], tracks = [], events = [], audios = [], contexts = [];
   const environment = {
     async getUserMedia() {if (permission) throw permission; const track = {readyState: 'live', enabled: true, stop() {this.readyState = 'ended'; this.stopped = true;}}; tracks.push(track); return {getTracks: () => [track], getAudioTracks: () => [track]};},
@@ -17,7 +17,7 @@ function host({permission, create} = {}) {
         close() {this.closed = true;}, connectionState: 'new'};
       peers.push(peer); return peer;},
   };
-  const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'}))};
+  const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'})), heartbeat, close};
   const client = new VoiceRealtimeClient(provider, {emit: (name, attrs) => events.push({name, attrs})}, environment);
   const send = event => peers.at(-1).channel.onmessage({data: JSON.stringify(event)});
   return {client, peers, tracks, audios, contexts, events, send};
@@ -85,6 +85,31 @@ test('unexpected tool event stops the session without an executor', async () => 
   assert.equal(h.client.getSnapshot().error.category, 'unsupported_capability'); assert.ok(h.tracks[0].stopped);
 });
 
+test('backend managed function stays connected and lease/close are owned by host', async () => {
+  const beats = [], closed = [];
+  const h = host({create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'opaque', managed_functions: ['host_function'], technologies: 'connecting'}),
+    heartbeat: async id => {beats.push(id); return {technologies: 'ready', renew: false, closed: false};}, close: async id => {closed.push(id);}});
+  await h.client.start(); await new Promise(done => setTimeout(done, 0));
+  h.send({type: 'response.output_item.added', item: {type: 'function_call', name: 'host_function'}});
+  assert.equal(h.client.getSnapshot().state, 'listening');
+  assert.equal(h.client.getSnapshot().capabilityStatus, 'ready'); assert.deepEqual(beats, ['opaque']);
+  await h.client.stop(); assert.deepEqual(closed, ['opaque']);
+  assert.ok(h.tracks[0].stopped);
+});
+
+test('late session answer closes host resources and revoked heartbeat releases microphone', async () => {
+  let resolve; const closed = [];
+  const h = host({create: () => new Promise(done => {resolve = done;}), close: async id => {closed.push(id);}});
+  const start = h.client.start(); await new Promise(done => setTimeout(done, 0)); await h.client.stop();
+  resolve({sdp: 'v=0 answer', model: 'test-model', session_id: 'late'}); await start;
+  assert.deepEqual(closed, ['late']);
+  const revoked = host({create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'revoked'}),
+    heartbeat: async () => {throw {category: 'unauthorized'};}, close: async id => {closed.push(id);}});
+  await revoked.client.start(); await new Promise(done => setTimeout(done, 0));
+  assert.equal(revoked.client.getSnapshot().error.category, 'unauthorized'); assert.ok(revoked.tracks[0].stopped);
+  assert.deepEqual(closed, ['late', 'revoked']);
+});
+
 
 test('network reconnect is bounded and replaces the old channel', async () => {
   const h = host(); await h.client.start();
@@ -125,4 +150,16 @@ test('microphone interruption and realtime failure both release audio', async ()
   assert.equal(h.client.getSnapshot().error.category, 'realtime_error');
   assert.ok(h.tracks.every(track => track.stopped));
   assert.ok(h.audios.every(audio => audio.paused));
+});
+
+test('managed rate limit pauses microphone without executing a tool or ending the call', async () => {
+  const h = host({create: async () => ({sdp: 'answer', model: 'test', managed_functions: ['host_function']})});
+  await h.client.start();
+  h.send({type: 'response.done', response: {status: 'failed', status_details: {error: {code: 'rate_limit_exceeded'}}}});
+  assert.equal(h.client.getSnapshot().capabilityStatus, 'waiting');
+  assert.equal(h.client.getSnapshot().error, null);
+  assert.equal(h.tracks[0].enabled, false);
+  assert.equal(h.tracks[0].readyState, 'live');
+  h.client.setMuted(false); assert.equal(h.tracks[0].enabled, false);
+  await h.client.stop();
 });

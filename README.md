@@ -36,3 +36,5 @@ Aktivní current-state dokumentace je centralizovaná v `docs/`.
 ## Voice Core
 
 Portable admin-only Realtime voice product, host adapters, security and local validation: [Voice Core](docs/voice-core.md).
+
+Hotel-only live device integration and production acceptance: [Smart technologie](docs/voice-smart-technologies.md).

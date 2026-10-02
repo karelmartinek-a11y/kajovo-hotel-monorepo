@@ -25,3 +25,5 @@
 Lokální běh kryje pouze `apps/kajovo-hotel-web`, `apps/kajovo-hotel-admin` a `apps/kajovo-hotel-api` nad stejným RBAC a OpenAPI kontraktem.
 
 Hlasový chat je na `/admin/hlasovy-chat`. Uložení OpenAI klíče a hovor vyžadují samostatný serverový `KAJOVO_API_VOICE_MASTER_KEY`; postup, přenositelné balíčky a bezpečnost jsou v [Voice Core](voice-core.md).
+
+Pro hotelové Smart technologie nastav v chráněném backendovém prostředí `KAJAVOICEHA_MCP_TOKEN`. Jediný povolený MCP cíl, řízení relací a placená přejímka jsou popsány v [runbooku](voice-smart-technologies.md).

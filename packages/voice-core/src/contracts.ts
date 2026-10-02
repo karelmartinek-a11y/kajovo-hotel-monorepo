@@ -7,7 +7,16 @@ export type VoiceCoreConfig = {
 };
 export type VoiceCatalog = {models: string[]; voices: string[]; languages: {id: string; label: string}[]};
 export type VoiceConfigSnapshot = VoiceCoreConfig & {revision: number; configured: boolean; catalog: VoiceCatalog};
-export interface RealtimeSessionProvider { create(sdp: string, signal: AbortSignal): Promise<{sdp: string; model: string}> }
+export type RealtimeSessionAnswer = {sdp: string; model: string; session_id?: string | null; managed_functions?: string[]; technologies?: string};
+export type RealtimeSessionStatus = {technologies: string; renew: boolean; closed: boolean};
+export interface RealtimeSessionProvider {
+  create(sdp: string, signal: AbortSignal): Promise<RealtimeSessionAnswer>;
+  heartbeat?(sessionId: string, signal: AbortSignal): Promise<RealtimeSessionStatus>;
+  close?(sessionId: string): Promise<void>;
+  connectionTimeoutMs?: number;
+  disclosure?: string;
+  capabilityLabels?: Record<string, string>;
+}
 export interface VoiceConfigStore {
   read(): Promise<VoiceConfigSnapshot>;
   save(config: VoiceCoreConfig, revision: number): Promise<VoiceConfigSnapshot>;
@@ -20,6 +29,6 @@ export interface VoiceTelemetrySink { emit(event: string, attributes: Record<str
 export interface CapabilityContract {name: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>}
 export interface CapabilityProvider {contracts(): readonly CapabilityContract[]}
 export const capabilityRegistry: readonly CapabilityContract[] = Object.freeze([]);
-export type VoiceSnapshot = {state: VoiceSessionState; muted: boolean; inputLevel: number; outputLevel: number; model: string | null; error: VoiceError | null};
+export type VoiceSnapshot = {state: VoiceSessionState; muted: boolean; inputLevel: number; outputLevel: number; model: string | null; error: VoiceError | null; capabilityStatus?: string};
 export const initialSnapshot: VoiceSnapshot = {state: 'idle', muted: false, inputLevel: 0, outputLevel: 0, model: null, error: null};
 export const callActive = (state: VoiceSessionState) => !['idle', 'disconnected', 'error'].includes(state);
