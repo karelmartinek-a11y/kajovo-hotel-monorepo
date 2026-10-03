@@ -313,6 +313,7 @@ export type HousekeepingStayRead = {
   "company_name"?: string | null;
   "cot_required"?: boolean | null;
   "country_code"?: string | null;
+  "country_code_alpha3"?: string | null;
   "country_name"?: string | null;
   "departure": string;
   "departure_time"?: string | null;
@@ -856,6 +857,10 @@ export type ReservationAmenityUpdate = {
   "state": ReservationAmenityState;
   "version": number;
 };
+export type ReservationRequirementConfirm = {
+  "quantity": number;
+  "version": number;
+};
 export type Search = {
   "date_from": string | null;
   "date_to": string | null;
@@ -1285,6 +1290,9 @@ export const apiClient = {
   },
   async addReservationAmenityApiV1HousekeepingReservationsReservationIdAmenitiesKindPost(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; "version"?: number; }): Promise<ReservationAmenityRead> {
     return request<ReservationAmenityRead>('POST', `/api/v1/housekeeping/reservations/${reservation_id}/amenities/${kind}`, query, undefined);
+  },
+  async confirmReservationRequirementApiV1HousekeepingReservationsReservationIdRequirementsKindConfirmPost(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; }, body: ReservationRequirementConfirm): Promise<ReservationAmenityRead> {
+    return request<ReservationAmenityRead>('POST', `/api/v1/housekeeping/reservations/${reservation_id}/requirements/${kind}/confirm`, query, body);
   },
   async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; "include_options"?: boolean; }): Promise<HousekeepingRoomsOverview> {
     return request<HousekeepingRoomsOverview>('GET', `/api/v1/housekeeping/rooms`, query, undefined);

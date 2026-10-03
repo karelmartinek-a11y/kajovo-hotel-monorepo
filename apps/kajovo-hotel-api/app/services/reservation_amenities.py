@@ -27,13 +27,15 @@ def enrich_overview(db: Session, overview: dict) -> dict:
 
 def change_amenity(db: Session, request: Request, reservation_id: str, kind: str, *, operation: str, version: int, state: str = "red") -> dict:
     role = request.state.actor_role
-    if operation != "color" and role not in {"admin", "recepce"}:
+    if operation not in {"color", "confirm"} and role not in {"admin", "recepce"}:
         raise HTTPException(403, "Ikony může přidávat a odebírat jen recepce nebo administrátor.")
+    if operation == "confirm" and role not in {"admin", "recepce", "pokojská"}:
+        raise HTTPException(403, "Aktivní role nemůže potvrdit připravený požadavek.")
     row = db.scalar(select(ReservationAmenity).where(ReservationAmenity.reservation_id == reservation_id, ReservationAmenity.kind == kind))
     before = amenity_read(row) if row else None
-    if (row.version if row else 0) != version or (operation == "add" and row and row.active) or (operation != "add" and (row is None or not row.active)):
+    if (row.version if row else 0) != version or (operation == "add" and row and row.active) or (operation not in {"add", "confirm"} and (row is None or not row.active)):
         raise HTTPException(409, "Ikonu mezitím změnil jiný uživatel. Načtěte aktuální přehled.")
-    values = {"state": "red" if operation == "add" else state if operation == "color" else row.state,
+    values = {"state": "green" if operation == "confirm" else "red" if operation == "add" else state if operation == "color" else row.state,
               "active": operation != "remove", "version": version + 1,
               "updated_by": request.state.actor_id, "updated_at": datetime.now(timezone.utc)}
     try:

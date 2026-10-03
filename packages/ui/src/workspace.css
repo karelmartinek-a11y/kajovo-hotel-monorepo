@@ -88,10 +88,6 @@ body:has(.k-task-dialog[open]) { overflow: hidden; }
 .k-hk-datebar .k-hk-datebar__today { display: block; padding-inline: var(--k-spacing-3); }
 .k-hk-datebar strong { font-size: 14px; white-space: normal; }
 .k-hk-board__source-note { text-align: left; }
-.k-hk-help summary { cursor: pointer; font-size: 13px; min-height: 32px; padding-block: var(--k-spacing-2); }
-.k-hk-help[open] .k-hk-legend { padding-block: var(--k-spacing-3); }
-.k-hk-legend { display: flex; flex-wrap: wrap; overflow: visible; padding: 0; gap: var(--k-spacing-3); border: 0; background: var(--k-color-surface); }
-.k-hk-legend__item { flex: 0 1 auto; border: 0; padding: 0; font-size: 12px; }
 .k-hk-room-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--k-spacing-3); align-items: stretch; }
 .k-hk-room { min-width: 0; width: 100%; min-height: 0; padding: var(--k-spacing-3); border: 1px solid var(--k-color-border); border-radius: var(--k-radius-1); background: var(--k-color-surface-muted); box-shadow: none; text-align: left; }
 .k-hk-room:hover { transform: none; box-shadow: none; outline: 2px solid var(--k-color-brand-red); }
@@ -323,7 +319,6 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-datebar label span { color: var(--k-color-brand-red); }
 .k-hk-datebar .k-hk-datebar__today { border-color: var(--k-color-brand-red); background: var(--k-color-brand-red); color: var(--k-color-ink); font-weight: 750; }
 .k-hk-board__source-note { color: var(--k-color-ink-muted); font-size: 12px; letter-spacing: .04em; }
-.k-hk-help summary { color: var(--k-eclipse-soft-copy); }
 .k-hk-room-grid { gap: var(--k-eclipse-space-10px); }
 .k-hk-room {
   border-color: var(--k-eclipse-room-line);
@@ -510,7 +505,6 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
   .k-hk-board__controls { padding: var(--k-hk-space-6); margin: -6px -6px 0; }
   .k-hk-board__controls .k-hk-board__header h2 { font-size: 20px; }
   .k-hk-board__controls .k-hk-board__source-note { font-size: 10px; letter-spacing: 0; }
-  .k-hk-help summary { min-height: 26px; padding-block: 3px; }
   .k-hk-room-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 106px; gap: var(--k-spacing-1); }
   .k-hk-room { padding: var(--k-hk-space-5); }
   .k-hk-room__topline strong { font-size: 20px; }
@@ -667,25 +661,28 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-room--stamp .k-hk-room__topline { display: grid; grid-template-columns: 1fr; place-items: center; justify-content: center; text-align: center; width: 100%; min-height: 0; padding: 0; color: var(--k-color-room-number); }
 .k-hk-room--stamp .k-hk-room__topline strong { font-size: 15px; line-height: 1; font-weight: 900; }
 .k-hk-room__body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; min-height: 0; width: 100%; overflow: hidden; }
-.k-hk-room__slot { display: block; min-width: 0; min-height: 0; height: 100%; overflow: hidden; background: var(--k-color-room-empty); }
+.k-hk-room__slot { container-type: inline-size; display: block; min-width: 0; min-height: 0; height: 100%; overflow: hidden; background: var(--k-color-room-empty); }
 .k-hk-room__slot + .k-hk-room__slot { border-left: 1px solid var(--k-color-border); }
 .k-hk-room__slot--full { grid-column: 1 / -1; }
-.k-hk-reservation { display: grid; grid-template-rows: 18% 28% 17% 17% 20%; align-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: var(--k-spacing-hairline) var(--k-spacing-compact); font-size: 9px; line-height: 1; color: var(--k-color-room-number); }
-.k-hk-person-counts { display: flex; align-items: center; justify-content: center; gap: var(--k-spacing-compact); min-width: 0; overflow: hidden; }
-.k-hk-person-counts > span { display: inline-flex; align-items: center; gap: var(--k-spacing-hairline); white-space: nowrap; min-width: 0; }
-.k-hk-person-icon { flex-shrink: 0; width: 8px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.7; }
-.k-hk-person-icon--children { width: 7px; height: 10px; }
-.k-hk-person-icon--infants { width: 7px; height: 9px; }
+/* Scale content to each reservation half, including the narrower four-column phone grid. */
+.k-hk-reservation { --k-hk-request-size: clamp(6px, 20cqi, 12px); --k-hk-note-size: clamp(7px, 20cqi, 10px); display: grid; grid-template-rows: 25% 30% 25% 20%; align-items: center; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; padding: var(--k-spacing-hairline); font-family: Arial, var(--k-font-family); font-size: clamp(10px, 28cqi, 16px); line-height: 1; color: var(--k-color-room-number); }
+.k-hk-person-counts { display: flex; align-items: center; justify-content: center; gap: var(--k-spacing-hairline); min-width: 0; overflow: hidden; }
+.k-hk-person-counts > span { display: inline-flex; align-items: center; white-space: nowrap; min-width: 0; }
+.k-hk-person-icon { flex-shrink: 0; width: 12px; height: 18px; fill: currentColor; }
+.k-hk-reservation .k-hk-person-counts { font-size: clamp(7.5px, 23cqi, 16px); }
+.k-hk-reservation .k-hk-person-icon { width: clamp(5.5px, 17cqi, 14px); height: clamp(8.25px, 25.5cqi, 21px); }
 .k-hk-reservation__event { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr 1fr; justify-content: center; align-items: center; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
-.k-hk-event-icon { width: 10px; height: 12px; grid-row: 1 / -1; fill: none; stroke: currentColor; stroke-width: 2; }
-.k-hk-reservation__event-label { font-size: 7px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.k-hk-reservation__time { font-size: 9px; font-variant-numeric: tabular-nums; }
+.k-hk-event-icon { width: clamp(7px, 22cqi, 14px); height: 16px; grid-row: 1 / -1; fill: none; stroke: currentColor; stroke-width: 2; }
+.k-hk-reservation__event-label { font-size: clamp(6px, 12.5cqi, 9px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.k-hk-reservation__time { font-size: clamp(9px, 26cqi, 13px); font-variant-numeric: tabular-nums; }
 .k-hk-reservation[data-stay-kind='stay'] .k-hk-reservation__event { display: flex; justify-content: center; gap: var(--k-spacing-compact); }
-.k-hk-reservation__country, .k-hk-reservation__name { display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+.k-hk-reservation[data-stay-kind='stay'] .k-hk-reservation__event-label { font-size: 12px; }
+.k-hk-reservation__country { display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+.k-hk-reservation__country { font-size: clamp(12px, 38cqi, 20px); }
 .k-hk-requests { display: flex; align-items: center; justify-content: center; gap: var(--k-spacing-hairline); min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
 .k-hk-requests__items { display: flex; flex: 0 1 auto; align-items: center; gap: var(--k-spacing-hairline); min-width: 0; overflow: hidden; }
-.k-hk-request-icon { display: block; flex: 0 0 12px; width: 12px; height: 14px; }
-.k-hk-requests .k-hk-room__note-alert { flex: 0 0 10px; width: 10px; height: 12px; font-size: 9px; }
+.k-hk-request-icon { display: block; flex: 0 0 var(--k-hk-request-size, 12px); width: var(--k-hk-request-size, 12px); height: 13px; }
+.k-hk-requests .k-hk-room__note-alert { flex: 0 0 var(--k-hk-note-size, 10px); width: var(--k-hk-note-size, 10px); height: 13px; font-size: 11px; }
 .k-hk-request-unknown { font-weight: 800; }
 .k-hk-room__conflict { display: grid; height: 100%; place-items: center; font-size: 20px; color: var(--k-color-error); }
 .k-hk-room-status--clean { --k-hk-status-swatch: var(--k-color-room-clean); background: var(--k-hk-status-swatch); }
@@ -697,12 +694,11 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-room-status--windows_cleaned { --k-hk-status-swatch: var(--k-color-room-windows); background: var(--k-hk-status-swatch); }
 .k-hk-room-status--painted { --k-hk-status-swatch: var(--k-color-room-painted); background: var(--k-hk-status-swatch); }
 .k-hk-room-status--unknown { background: var(--k-color-surface-muted); }
-.k-hk-reservation--confirmed { background: var(--k-color-reservation-confirmed); color: var(--k-color-room-number); }
-.k-hk-reservation--checked_in { background: var(--k-color-reservation-checked-in); color: var(--k-color-room-number); }
-.k-hk-reservation--checked_out { background: var(--k-color-reservation-checked-out); color: var(--k-color-room-empty); }
-.k-hk-reservation--option { background: var(--k-color-reservation-option); color: var(--k-color-room-number); }
-.k-hk-reservation--unknown { background: var(--k-color-room-empty); color: var(--k-color-room-number); }
-.k-hk-legend__item i { display: inline-block; width: 14px; height: 14px; margin-right: var(--k-spacing-1); border: 1px solid var(--k-color-border); }
+.k-hk-reservation--confirmed { --k-hk-person-cutout: var(--k-color-reservation-confirmed); background: var(--k-color-reservation-confirmed); color: var(--k-color-room-number); }
+.k-hk-reservation--checked_in { --k-hk-person-cutout: var(--k-color-reservation-checked-in); background: var(--k-color-reservation-checked-in); color: var(--k-color-room-number); }
+.k-hk-reservation--checked_out { --k-hk-person-cutout: var(--k-color-reservation-checked-out); background: var(--k-color-reservation-checked-out); color: var(--k-color-room-empty); }
+.k-hk-reservation--option { --k-hk-person-cutout: var(--k-color-reservation-option); background: var(--k-color-reservation-option); color: var(--k-color-room-number); }
+.k-hk-reservation--unknown { --k-hk-person-cutout: var(--k-color-room-empty); background: var(--k-color-room-empty); color: var(--k-color-room-number); }
 .k-hk-task--sheet .k-hk-status-actions button { color: var(--k-color-room-number); }
 .k-hk-task--sheet .k-hk-status-actions .k-hk-room-status--clean { background: var(--k-color-room-clean); }
 .k-hk-task--sheet .k-hk-status-actions .k-hk-room-status--dirty { background: var(--k-color-room-dirty); }
@@ -724,17 +720,14 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-reservation-detail .k-hk-request-icon { width: 20px; height: 24px; flex-basis: 20px; }
 .k-hk-reservation-detail .k-hk-housekeeping-note { background: var(--k-color-surface); color: var(--k-color-ink); }
 @media (max-width: 599px) {
-  .k-hk-reservation { font-size: 8px; padding-inline: 1px; }
-  .k-hk-reservation .k-hk-person-counts { gap: var(--k-spacing-hairline); font-size: 7px; }
-  .k-hk-reservation .k-hk-person-icon { width: 6px; height: 10px; }
-  .k-hk-reservation .k-hk-person-icon--children { width: 5px; height: 8px; }
-  .k-hk-reservation .k-hk-person-icon--infants { width: 5px; height: 7px; }
-  .k-hk-reservation__event { grid-template-columns: 11px minmax(0, 1fr); grid-template-rows: 1fr; }
+  .k-hk-reservation__event { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr; }
   .k-hk-reservation__event-label { display: none; }
-  .k-hk-reservation__time { font-size: 8px; }
   .k-hk-event-icon { grid-row: auto; }
-  .k-hk-request-icon { width: 10px; height: 12px; flex-basis: 10px; }
 }
 
 .k-hk-task--sheet .k-hk-status-actions button:hover:not(:disabled) { background: var(--k-hk-status-swatch); filter: brightness(.97); }
 .k-hk-requests .k-hk-room__note-alert { background: var(--k-color-error); color: var(--k-color-brand-white); }
+
+.k-hk-confirm-actions { display: flex; flex-wrap: wrap; gap: var(--k-spacing-2); margin-top: var(--k-spacing-2); }
+.k-hk-confirm-actions button { min-height: 44px; padding: var(--k-spacing-2); font-size: 13px; font-weight: 700; color: var(--k-color-ink); background: var(--k-color-surface); border: 1px solid currentColor; border-radius: var(--k-radius-2); }
+.k-hk-confirm-actions button:disabled { opacity: .7; cursor: default; }

@@ -11,6 +11,7 @@ from app.api.schemas import (
     ReservationAmenityKind,
     ReservationAmenityRead,
     ReservationAmenityUpdate,
+    ReservationRequirementConfirm,
 )
 from app.config import get_settings
 from app.db.session import get_db
@@ -21,6 +22,7 @@ from app.services.housekeeping import (
     HousekeepingRoomStatusConflict,
 )
 from app.services.reservation_amenities import change_amenity, enrich_overview
+from app.services.housekeeping_reservations import reservation_details
 
 router = APIRouter(
     prefix="/api/v1/housekeeping",
@@ -81,6 +83,28 @@ def _verify_reservation(reservation_id: str, room_id: str, service_date: date) -
     if not any(str(item.get("id")) == reservation_id and isinstance(item.get("room"), dict)
                and str(item["room"].get("id")) == room_id for item in reservations):
         raise HTTPException(409, "Pobyt již není přiřazen k tomuto pokoji a dni. Obnovte přehled.")
+
+
+@router.post("/reservations/{reservation_id}/requirements/{kind}/confirm", response_model=ReservationAmenityRead)
+def confirm_reservation_requirement(reservation_id: str, kind: ReservationAmenityKind,
+                                    payload: ReservationRequirementConfirm, request: Request,
+                                    room_id: str, service_date: date = Query(alias="date"),
+                                    db: Session = Depends(get_db)) -> dict:
+    try:
+        reservations = _client().reservations_for_day(service_date, include_options=True)
+    except BetterHotelHousekeepingError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    reservation = next((item for item in reservations if str(item.get("id")) == reservation_id
+                        and isinstance(item.get("room"), dict) and str(item["room"].get("id")) == room_id), None)
+    if reservation is None:
+        raise HTTPException(409, "Pobyt již není přiřazen k tomuto pokoji a dni. Obnovte přehled.")
+    details = reservation_details(reservation, service_date)
+    quantity = details["dog_count"] if kind == ReservationAmenityKind.DOG else None if details["cot_required"] is None else int(details["cot_required"])
+    if quantity is None:
+        raise HTTPException(502, "Požadavek z účtu rezervace se nepodařilo ověřit.")
+    if quantity < 1 or quantity != payload.quantity:
+        raise HTTPException(409, "Požadavek v účtu rezervace se změnil. Obnovte přehled.")
+    return change_amenity(db, request, reservation_id, kind.value, operation="confirm", version=payload.version)
 
 
 @router.post("/reservations/{reservation_id}/amenities/{kind}", response_model=ReservationAmenityRead)

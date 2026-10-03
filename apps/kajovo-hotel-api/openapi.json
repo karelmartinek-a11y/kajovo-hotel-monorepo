@@ -1969,6 +1969,18 @@
             ],
             "title": "Country Code"
           },
+          "country_code_alpha3": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code Alpha3"
+          },
           "country_name": {
             "anyOf": [
               {
@@ -6047,6 +6059,26 @@
         "title": "ReservationAmenityUpdate",
         "type": "object"
       },
+      "ReservationRequirementConfirm": {
+        "properties": {
+          "quantity": {
+            "minimum": 1.0,
+            "title": "Quantity",
+            "type": "integer"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "quantity"
+        ],
+        "title": "ReservationRequirementConfirm",
+        "type": "object"
+      },
       "Search": {
         "additionalProperties": false,
         "properties": {
@@ -10078,6 +10110,85 @@
           }
         },
         "summary": "Add Reservation Amenity",
+        "tags": [
+          "housekeeping"
+        ]
+      }
+    },
+    "/api/v1/housekeeping/reservations/{reservation_id}/requirements/{kind}/confirm": {
+      "post": {
+        "operationId": "confirm_reservation_requirement_api_v1_housekeeping_reservations__reservation_id__requirements__kind__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reservation_id",
+            "required": true,
+            "schema": {
+              "title": "Reservation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReservationAmenityKind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "room_id",
+            "required": true,
+            "schema": {
+              "title": "Room Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Date",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationRequirementConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReservationAmenityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Reservation Requirement",
         "tags": [
           "housekeeping"
         ]

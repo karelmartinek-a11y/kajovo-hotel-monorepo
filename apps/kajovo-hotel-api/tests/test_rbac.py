@@ -151,6 +151,23 @@ def test_housekeeping_amenities_enforce_role_and_csrf_before_upstream(api_base_u
             assert code == (502 if allowed else 403)
 
 
+def test_housekeeping_confirmation_enforces_session_role_and_csrf_before_upstream(api_base_url: str) -> None:
+    path = '/api/v1/housekeeping/reservations/r/requirements/dog/confirm?room_id=101&date=2026-10-03'
+    payload = {'version': 0, 'quantity': 1}
+    anonymous = urllib.request.build_opener()
+    code, _ = api_request(anonymous, api_base_url, path, method='POST', payload=payload)
+    assert code in {401, 403}
+    for role in ('pokojska', 'recepce', 'sklad'):
+        jar = CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        code, _ = api_request(opener, api_base_url, '/api/auth/login', method='POST', payload={'email': f'{role}@example.com', 'password': f'{role}-pass'})
+        assert code == 200
+        code, _ = api_request(opener, api_base_url, path, method='POST', payload=payload)
+        assert code == 403
+        code, _ = api_request(opener, api_base_url, path, method='POST', payload=payload, headers=csrf_header(jar))
+        assert code == (502 if role in {'pokojska', 'recepce'} else 403)
+
+
 def test_breakfast_reservation_diets_enforce_role_and_csrf(api_base_url: str) -> None:
     path = "/api/v1/breakfast/999999/reservations/r/diet"
     payload = {"kind": "diet_no_milk", "enabled": True, "version": 1}

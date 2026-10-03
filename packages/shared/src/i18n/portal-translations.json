@@ -603,13 +603,15 @@
     "Skutečný CHECK-IN": "Actual check-in",
     "Skutečný CHECK-OUT": "Actual check-out",
     "Stát": "Country",
-    "Hlavní osoba rezervace": "Main reservation guest",
     "Celkem osob": "Total guests",
     "Neurčená věková skupina": "Unknown age group",
     "Ubytované osoby": "Guests",
     "Nejednoznačné přiřazení rezervací": "Ambiguous reservation assignment",
-    "Horní proužek: aktuální stav pokoje": "Top strip: current room status",
-    "Spodní část: rezervace vybraného dne": "Lower section: reservations for the selected day"
+    "Potvrdit": "Confirm",
+    "Nepotvrzeno": "Unconfirmed",
+    "Požadavek byl potvrzen.": "The requirement was confirmed.",
+    "Potvrzení se nepodařilo ověřit. Před dalším pokusem obnovte aktuální přehled.": "The confirmation could not be verified. Refresh the overview before trying again.",
+    "Potvrzuji připravený požadavek…": "Confirming the prepared requirement…"
   },
   "uk": {
     ". Po zápisu se vrátíte na přehled.": ". Після збереження змін ви повернетеся до огляду.",
@@ -1215,12 +1217,14 @@
     "Skutečný CHECK-IN": "Фактичний заїзд",
     "Skutečný CHECK-OUT": "Фактичний виїзд",
     "Stát": "Країна",
-    "Hlavní osoba rezervace": "Основний гість бронювання",
     "Celkem osob": "Усього гостей",
     "Neurčená věková skupina": "Невідома вікова група",
     "Ubytované osoby": "Гості",
     "Nejednoznačné přiřazení rezervací": "Неоднозначне призначення бронювань",
-    "Horní proužek: aktuální stav pokoje": "Верхня смуга: поточний стан кімнати",
-    "Spodní část: rezervace vybraného dne": "Нижня частина: бронювання вибраного дня"
+    "Potvrdit": "Підтвердити",
+    "Nepotvrzeno": "Не підтверджено",
+    "Požadavek byl potvrzen.": "Вимогу підтверджено.",
+    "Potvrzení se nepodařilo ověřit. Před dalším pokusem obnovte aktuální přehled.": "Не вдалося перевірити підтвердження. Оновіть огляд перед наступною спробою.",
+    "Potvrzuji připravený požadavek…": "Підтверджую підготовлену вимогу…"
   }
 }

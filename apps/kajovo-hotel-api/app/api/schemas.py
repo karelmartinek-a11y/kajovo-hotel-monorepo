@@ -279,6 +279,11 @@ class ReservationAmenityUpdate(BaseModel):
     version: int = Field(ge=1)
 
 
+class ReservationRequirementConfirm(BaseModel):
+    version: int = Field(ge=0)
+    quantity: int = Field(ge=1)
+
+
 class HousekeepingGuestRead(BaseModel):
     name: str | None = None
     country_code: str | None = None
@@ -299,6 +304,7 @@ class HousekeepingStayRead(BaseModel):
     persons: int = Field(ge=0)
     country_name: str | None = None
     country_code: str | None = None
+    country_code_alpha3: str | None = Field(default=None, pattern=r'^[A-Z]{3}$')
     housekeeping_note: str | None = None
     arrival: date
     departure: date

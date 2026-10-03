@@ -58,6 +58,7 @@ const invalid = overview.rooms.find((room) =>
   !['free', 'arrived', 'departing', 'staying'].includes(room.occupancy_state) ||
   ['departures', 'arrivals', 'stays'].some((group) => !Array.isArray(room[group]) || room[group].some((stay) =>
     typeof stay.reservation_id !== 'string' || !Array.isArray(stay.amenities) ||
+    (stay.country_code_alpha3 !== null && !/^[A-Z]{3}$/.test(stay.country_code_alpha3)) ||
     (stay.reservation_state !== null && !['confirmed', 'checked_in', 'checked_out', 'option'].includes(stay.reservation_state)) ||
     ['adults', 'children', 'infants', 'dog_count'].some((key) => stay[key] !== null && (!Number.isInteger(stay[key]) || stay[key] < 0)) ||
     ['arrival_time', 'departure_time'].some((key) => stay[key] !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(stay[key])) ||

@@ -112,13 +112,15 @@ def reservation_details(reservation: dict[str, Any], day: date) -> dict[str, Any
     status = reservation.get("reservation_status") or reservation.get("status")
     status_name = str(status.get("name") or "").strip() if isinstance(status, dict) else ""
     states = {"potvrzeno": "confirmed", "check-in": "checked_in", "check-out": "checked_out", "opce": "option"}
+    selected_country = next((code for entity in [*(item.get("guest") for item in slots), main, company] if (code := country_code(entity))), None)
     return {
         "reservation_code": str(reservation.get("code") or "").strip() or None,
         "reservation_state": states.get(status_name.casefold()),
         "reservation_status_name": status_name or None,
         "display_name": next((guest["name"] for guest in guests if guest["name"]), None) or person_name(main) or company_name,
         "main_guest_name": person_name(main), "company_name": company_name,
-        "country_code": next((code for entity in [main, *(item.get("guest") for item in slots), company] if (code := country_code(entity))), None),
+        "country_code": selected_country,
+        "country_code_alpha3": pycountry.countries.get(alpha_2=selected_country).alpha_3 if selected_country else None,
         "adults": counts["adults"] if complete else None,
         "children": counts["children"] if complete else None,
         "infants": counts["infants"] if complete else None,

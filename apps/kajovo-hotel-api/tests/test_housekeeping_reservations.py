@@ -37,22 +37,54 @@ def test_counts_include_all_room_guests_regardless_of_meals_and_hide_unknown_tot
     assert 'birth_date' not in result['guests'][0]
 
 
-def test_name_and_country_follow_different_priorities_and_guest_position():
+def test_name_and_country_follow_guest_position_then_booker_then_company():
     reservation = booking()
     reservation.update(main_guest='main', guest={'id': 'main', 'first_name': 'Booker', 'last_name': 'Main', 'address': {'country': 'CZE'}}, company={'name': 'Company', 'address': {'country': 'AUT'}}, guest_list=[{'position': 2, 'guest': {'first_name': 'Second', 'last_name': 'Guest', 'address': {'country': 'POL'}}}, {'position': 1, 'guest': {'first_name': 'First', 'last_name': 'Guest', 'address': {'country': 'DEU'}}}])
     result = reservation_details(reservation, DAY)
     assert result['display_name'] == 'Guest First'
-    assert result['country_code'] == 'CZ'
-    reservation['guest']['address'] = {}
-    assert reservation_details(reservation, DAY)['country_code'] == 'DE'
+    assert result['country_code'] == 'DE'
+    assert result['country_code_alpha3'] == 'DEU'
+    first_guest = reservation['guest_list'][1]['guest']
+    first_guest.clear()
+    result = reservation_details(reservation, DAY)
+    assert result['display_name'] == 'Guest Second'
+    assert result['country_code_alpha3'] == 'POL'
+    reservation['guest_list'].append({'position': 3, 'guest': {'first_name': 'Third', 'address': {'country': 'FRA'}}})
+    reservation['guest_list'][0]['guest'].clear()
+    assert reservation_details(reservation, DAY)['display_name'] == 'Third'
+    assert reservation_details(reservation, DAY)['country_code_alpha3'] == 'FRA'
     reservation['guest_list'] = []
     assert reservation_details(reservation, DAY)['display_name'] == 'Main Booker'
+    assert reservation_details(reservation, DAY)['country_code'] == 'CZ'
+    reservation['guest']['address'] = {}
     assert reservation_details(reservation, DAY)['country_code'] == 'AT'
     reservation['main_guest'] = None
     assert reservation_details(reservation, DAY)['display_name'] == 'Company'
     reservation['company'] = None
     assert reservation_details(reservation, DAY)['display_name'] is None
     assert reservation_details(reservation, DAY)['country_code'] is None
+    assert reservation_details(reservation, DAY)['country_code_alpha3'] is None
+
+
+def test_name_and_country_skip_empty_values_independently():
+    reservation = booking()
+    reservation.update(main_guest={'first_name': 'Booker', 'address': {'country': 'CZE'}}, company={'name': 'Company', 'address': {'country': 'AUT'}}, guest_list=[{'position': 2, 'guest': {'address': {'country': 'DEU'}}}, {'position': 1, 'guest': {'last_name': 'Lodged', 'address': {'country': 'invalid'}}}])
+    result = reservation_details(reservation, DAY)
+    assert result['display_name'] == 'Lodged'
+    assert result['country_code_alpha3'] == 'DEU'
+    reservation['guest_list'][0]['guest']['address'] = {}
+    assert reservation_details(reservation, DAY)['country_code_alpha3'] == 'CZE'
+    reservation['main_guest']['address'] = {}
+    assert reservation_details(reservation, DAY)['country_code_alpha3'] == 'AUT'
+
+
+@pytest.mark.parametrize('source,alpha2,alpha3', [('CZ', 'CZ', 'CZE'), ('CZE', 'CZ', 'CZE'), ('deu', 'DE', 'DEU'), ('GB', 'GB', 'GBR'), ('USA', 'US', 'USA'), ('ZZZ', None, None), ('', None, None)])
+def test_country_alpha3_is_official_and_preserves_native_alpha2(source, alpha2, alpha3):
+    reservation = booking()
+    reservation['guest_list'] = [{'guest': {'address': {'country': source}}}]
+    result = HousekeepingStayRead.model_validate(_stay_read(reservation, DAY)).model_dump()
+    assert result['country_code'] == alpha2
+    assert result['country_code_alpha3'] == alpha3
 
 
 def test_charges_sum_nights_include_settled_items_deduplicate_and_ignore_cancelled():

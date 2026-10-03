@@ -77,7 +77,7 @@ const HOUSEKEEPING_ROOM_FIXTURE = {
   housekeeping_color: '#F57621',
   operational_state: 'checkout_departed_dirty',
   occupancy_state: 'free',
-  departures: [{ reservation_id: 'reservation-old', guest_label: 'Novákovi', display_name: 'Novákovi', adults: 2, children: 0, infants: 0, dog_count: 0, cot_required: false, reservation_state: 'checked_out', persons: 2, country_name: 'Česko', arrival: '2026-09-15', departure: '2026-09-17', checked_in: '2026-09-15T14:00:00Z', checked_out: '2026-09-17T10:00:00Z', amenities: [] }],
+  departures: [{ reservation_id: 'reservation-old', guest_label: 'Novákovi', display_name: 'Novákovi', adults: 2, children: 0, infants: 0, dog_count: 0, cot_required: false, reservation_state: 'checked_out', persons: 2, country_name: 'Česko', country_code: 'CZ', country_code_alpha3: 'CZE', arrival: '2026-09-15', departure: '2026-09-17', checked_in: '2026-09-15T14:00:00Z', checked_out: '2026-09-17T10:00:00Z', amenities: [] }],
   arrivals: [],
   stays: [],
   arrival_today: false,
@@ -493,7 +493,7 @@ test('pokoj s poznámkou pokojské upozorní ikonou a ukáže text v detailu', a
 test('pokoje nepřepíše opožděná odpověď předchozího dne', async ({ page, request }, testInfo) => {
   let held: import('@playwright/test').Route | undefined;
   let count = 0;
-  const response = (date: string, label: string) => ({ date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE, departures: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], guest_label: label, display_name: label }] }] });
+  const response = (date: string, label: string) => ({ date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE, departures: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], guest_label: label, display_name: label, country_code_alpha3: label === 'První den' ? 'CZE' : label === 'Nový den' ? 'DEU' : 'AUT' }] }] });
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     count += 1;
     if (count === 2) { held = route; return; }
@@ -501,13 +501,13 @@ test('pokoje nepřepíše opožděná odpověď předchozího dne', async ({ pag
   });
   const user = await createPortalUserForRole(request, testInfo, 'pokojska');
   await loginPortalUser(page, user.portalEmail, user.portalPassword);
-  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('První den');
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('CZE');
   await page.getByRole('button', { name: 'Předchozí den' }).click();
   await expect.poll(() => Boolean(held)).toBe(true);
   await page.getByRole('button', { name: 'Předchozí den' }).click();
-  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('Nový den');
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('DEU');
   await held!.fulfill({ json: response(new URL(held!.request().url()).searchParams.get('date')!, 'Starý den') });
-  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('Nový den');
+  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('DEU');
 });
 
 for (const role of ['recepce', 'pokojska']) {
@@ -891,7 +891,7 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     const keys = ['clean', 'dirty', 'technical_issue', 'do_not_disturb', 'stay_no_linen', 'stay_with_linen', 'windows_cleaned', 'painted'];
     const colors = ['rgb(34, 197, 94)', 'rgb(249, 115, 22)', 'rgb(240, 68, 82)', 'rgb(194, 83, 223)', 'rgb(167, 232, 184)', 'rgb(250, 204, 21)', 'rgb(59, 155, 234)', 'rgb(217, 184, 241)'];
     const states = ['confirmed', 'checked_in', 'checked_out', 'option'];
-    const stay = { ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], display_name: 'VelmiDlouhéPříjmeníVelmiDlouhéJméno', adults: 2, children: 1, infants: 1, persons: 4, country_code: 'GB', dog_count: 2, cot_required: true, departure_time: '09:45', arrival_time: '14:05', housekeeping_note: 'Úplná poznámka\nDruhý řádek', guests: [{ name: 'Host Jedna', country_code: 'CZ', age: 35, age_group: 'adults' }] };
+    const stay = { ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], display_name: 'VelmiDlouhéPříjmeníVelmiDlouhéJméno', adults: 2, children: 1, infants: 1, persons: 4, main_guest_name: 'RezervujícíNezobrazit', company_name: 'Firma v detailu', country_name: 'Spojené království', country_code: 'GB', country_code_alpha3: 'GBR', dog_count: 2, cot_required: true, departure_time: '09:45', arrival_time: '14:05', housekeeping_note: 'Úplná poznámka\nDruhý řádek', guests: [{ name: 'Host Jedna', country_code: 'GB', age: 35, age_group: 'adults' }, { name: 'Host Dva', country_code: 'CZ', age: 30, age_group: 'adults' }, { name: 'Host Tři', country_code: 'CZ', age: 10, age_group: 'children' }, { name: 'Host Čtyři', country_code: 'CZ', age: 1, age_group: 'infants' }] };
     await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
       const date = new URL(route.request().url()).searchParams.get('date');
       await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [
@@ -906,9 +906,36 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
     const cards = page.locator('.k-hk-room');
     await expect(cards).toHaveCount(10);
+    await expect(page.locator('.k-hk-help, .k-hk-legend')).toHaveCount(0);
+    await expect(cards.first()).not.toContainText(stay.display_name);
+    await expect(cards.first()).not.toHaveAttribute('aria-label', new RegExp(stay.display_name));
+    await expect(cards.first()).not.toContainText(stay.company_name);
     for (let i=0; i<8; i++) await expect(cards.nth(i).locator('.k-hk-room__topline')).toHaveCSS('background-color', colors[i]);
     await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-icon')).toHaveCount(3);
     await expect(cards.first().locator('.k-hk-room__note-alert')).toHaveCount(2);
+    await expect(cards.first().locator('.k-hk-reservation__country').first()).toHaveText('GBR');
+    const countryLabel = new Intl.DisplayNames([locale], { type: 'region' }).of('GB')!;
+    await expect(cards.first().locator('.k-hk-reservation__country').first()).toHaveAttribute('title', countryLabel);
+    const content = await cards.evaluateAll((nodes) => nodes.flatMap((node) => Array.from(node.querySelectorAll('.k-hk-reservation')).map((block) => {
+      const bounds = block.getBoundingClientRect();
+      const rows = Array.from(block.children).map((row) => row.getBoundingClientRect());
+      const counts = Array.from(block.querySelectorAll('.k-hk-person-counts > span')).map((count) => count.getBoundingClientRect());
+      return {
+        rowsInside: rows.every((row) => row.left >= bounds.left && row.right <= bounds.right + .5 && row.top >= bounds.top && row.bottom <= bounds.bottom + .5),
+        countsInside: counts.every((count) => count.left >= bounds.left && count.right <= bounds.right + .5),
+        countsAligned: Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
+        countrySize: parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__country')!).fontSize),
+        rowCount: block.children.length,
+        requestsInside: Array.from(block.querySelectorAll('.k-hk-request-icon')).every((icon) => { const r = icon.getBoundingClientRect(), bounds = icon.parentElement!.getBoundingClientRect(); return r.left >= bounds.left && r.right <= bounds.right + .5; }),
+        iconHeight: block.querySelector('.k-hk-person-icon')!.getBoundingClientRect().height,
+        kind: block.getAttribute('data-stay-kind'),
+      };
+    })));
+    for (const block of content) {
+      expect(block.rowsInside).toBeTruthy(); expect(block.countsInside).toBeTruthy(); expect(block.countsAligned).toBeTruthy();
+      expect(block.countrySize).toBeGreaterThanOrEqual(12); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
+      if (block.kind === 'stay') { expect(block.countrySize).toBeGreaterThanOrEqual(19); expect(block.iconHeight).toBeGreaterThanOrEqual(17); }
+    }
     const geometry = await cards.evaluateAll((nodes) => nodes.map((node) => {
       const rect = node.getBoundingClientRect(); const header = node.querySelector('.k-hk-room__topline')!.getBoundingClientRect();
       const number = node.querySelector('.k-hk-room__topline strong')!.getBoundingClientRect();
@@ -942,7 +969,88 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     await expect(detail).toContainText('Úplná poznámka');
     await expect(detail).toContainText('Poznámka příjezdu');
     await expect(detail).toContainText('Host Jedna');
+    for (const guest of stay.guests) await expect(detail).toContainText(guest.name);
+    await expect(detail).toContainText(stay.company_name);
+    await expect(detail).not.toContainText(stay.main_guest_name);
+    await expect(detail).not.toContainText(stay.display_name);
+    await expect(detail.locator('dd').filter({ hasText: countryLabel })).toHaveCount(2);
     await expect(detail.locator('.k-hk-reservation-detail')).toHaveCount(2);
     await page.screenshot({ path: testInfo.outputPath(`room-detail-${locale}.png`), fullPage: true });
   });
 }
+
+
+for (const locale of ['cs', 'en', 'uk'] as const) {
+  test(`pokoje potvrzují automatické požadavky konkrétní rezervace a obnovují persistenci: ${locale}`, async ({ page, request }, testInfo) => {
+    const confirmations: Record<string, { kind: string; state: string; version: number; active: boolean }> = {};
+    let blockNext = false;
+    let release: (() => void) | undefined;
+    const changes: { id: string; kind: string }[] = [];
+    await page.route('**/api/v1/housekeeping/reservations/**/requirements/**/confirm**', async (route) => {
+      const match = new URL(route.request().url()).pathname.match(/reservations\/([^/]+)\/requirements\/(dog|cot)\/confirm$/)!;
+      expect(route.request().method()).toBe('POST');
+      expect(new URL(route.request().url()).searchParams.get('room_id')).toBe('room-101');
+      const [, id, kind] = match;
+      const payload = route.request().postDataJSON();
+      expect(payload).toEqual({version: 0, quantity: kind === 'dog' ? 2 : 1});
+      changes.push({id, kind});
+      if (blockNext) { blockNext = false; await new Promise<void>(resolve => { release = resolve; }); }
+      const confirmation = {kind, state: 'green', version: 1, active: true};
+      confirmations[id+kind] = confirmation;
+      await route.fulfill({json: confirmation});
+    });
+    await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+      const date = new URL(route.request().url()).searchParams.get('date');
+      const stay = (id: string) => ({...HOUSEKEEPING_ROOM_FIXTURE.departures[0], reservation_id: id, dog_count: 2, cot_required: true, amenities: Object.entries(confirmations).filter(([key])=>key.startsWith(id)).map(([,value])=>value)});
+      await route.fulfill({json: {date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{...HOUSEKEEPING_ROOM_FIXTURE, departures: [stay('old')], arrivals: [stay('new')]}]}});
+    });
+    const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+    await loginPortalUser(page, user.portalEmail, user.portalPassword);
+    await page.getByRole('button', { name: {cs:'Čeština',en:'English',uk:'Українська'}[locale], exact:true }).click();
+    const card = page.locator('.k-hk-room').first();
+    await expect(card.locator('[data-request-state="red"]')).toHaveCount(6);
+    await card.click();
+    const dialog = page.getByRole('dialog');
+    const arrival = dialog.locator('[data-reservation-id="new"]');
+    const confirmLabel = {cs:'Potvrdit',en:'Confirm',uk:'Підтвердити'}[locale];
+    const dog = {cs:'Pes',en:'Dog',uk:'Собака'}[locale];
+    const cot = {cs:'Dětská postýlka',en:'Baby cot',uk:'Дитяче ліжечко'}[locale];
+    blockNext = true;
+    await arrival.getByRole('button',{name:`${confirmLabel}: ${dog} ×2`,exact:true}).click();
+    await expect(dialog).toContainText({cs:'Potvrzuji připravený požadavek…',en:'Confirming the prepared requirement…',uk:'Підтверджую підготовлену вимогу…'}[locale]);
+    await expect(dialog.getByRole('button')).toHaveCount(0);
+    await expect.poll(()=>Boolean(release)).toBeTruthy(); release!();
+    await expect(arrival.locator('[data-request-kind="dog"][data-request-state="green"]')).toHaveCount(2);
+    await expect(arrival.locator('[data-request-kind="cot"][data-request-state="red"]')).toHaveCount(1);
+    await arrival.getByRole('button',{name:`${confirmLabel}: ${cot}`,exact:true}).click();
+    await expect(arrival.locator('[data-request-state="green"]')).toHaveCount(3);
+    await expect(dialog.locator('[data-reservation-id="reservation-old"]')).toHaveCount(0);
+    await expect(dialog.locator('[data-reservation-id="old"] [data-request-state="red"]')).toHaveCount(3);
+    await dialog.getByRole('button',{name:{cs:'Zavřít dialog',en:'Close dialog',uk:'Закрити діалог'}[locale]}).click();
+    await expect(card.locator('[data-stay-kind="arrival"] [data-request-state="green"]')).toHaveCount(3);
+    await page.screenshot({path:testInfo.outputPath(`confirmed-${locale}.png`),fullPage:true});
+    await page.reload();
+    await expect(card.locator('[data-stay-kind="arrival"] [data-request-state="green"]')).toHaveCount(3);
+    await expect(card.locator('[data-stay-kind="departure"] [data-request-state="red"]')).toHaveCount(3);
+    expect(changes).toEqual([{id:'new',kind:'dog'},{id:'new',kind:'cot'}]);
+  });
+}
+
+test('pokoje po nejistém potvrzení požadavku blokují opakování do obnovy', async ({ page, request }, testInfo) => {
+  let posts = 0;
+  await page.route('**/api/v1/housekeeping/reservations/**/requirements/**/confirm**', async route => { posts++; await route.fulfill({status: 409, json:{detail:'changed'}}); });
+  await page.route('**/api/v1/housekeeping/rooms**', async route => {
+    const date = new URL(route.request().url()).searchParams.get('date');
+    await route.fulfill({json:{date, occupancy_date:date, housekeeping_status_is_current:true, loaded_at:new Date().toISOString(), rooms:[{...HOUSEKEEPING_ROOM_FIXTURE, arrivals:[{...HOUSEKEEPING_ROOM_FIXTURE.departures[0], reservation_id:'new', dog_count:1}]}]}});
+  });
+  const user = await createPortalUserForRole(request,testInfo,'pokojska'); await loginPortalUser(page,user.portalEmail,user.portalPassword);
+  await page.locator('.k-hk-room').first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button',{name:'Potvrdit: Pes ×1',exact:true}).click();
+  await expect(dialog.getByRole('alert')).toContainText('Potvrzení se nepodařilo ověřit');
+  await expect(dialog.getByRole('button',{name:'Potvrdit: Pes ×1',exact:true})).toBeDisabled();
+  expect(posts).toBe(1);
+  await dialog.getByRole('button',{name:'Obnovit stav',exact:true}).click();
+  await expect(dialog.getByRole('button',{name:'Potvrdit: Pes ×1',exact:true})).toBeEnabled();
+  expect(posts).toBe(1);
+});

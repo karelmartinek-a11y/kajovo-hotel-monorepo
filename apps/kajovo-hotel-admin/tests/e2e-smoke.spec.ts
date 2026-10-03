@@ -176,7 +176,7 @@ test('zaměstnanec a administrátor si vymění zprávu a stav přečtení se ob
 test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní detail a chyba nehlásí úspěch', async ({ page, request }) => {
   expect((await request.post('/api/auth/admin/login', { data: getAdminCredentials() })).ok()).toBeTruthy();
   await page.context().addCookies((await request.storageState()).cookies);
-  const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', display_name: 'Velmi Dlouhé Příjmení Alexandra', reservation_state: 'confirmed', adults: 2, children: 1, infants: 0, dog_count: 1, cot_required: false, country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
+  const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', display_name: 'Velmi Dlouhé Příjmení Alexandra', guests: [{name: 'Velmi Dlouhé Příjmení Alexandra', country_code:'GB', age:35, age_group:'adults'}, {name: 'Host Druhý', country_code:'GB', age:30, age_group:'adults'}, {name: 'Host Dítě', country_code:'GB', age:8, age_group:'children'}], country_code:'GB', country_code_alpha3:'GBR', reservation_state: 'confirmed', adults: 2, children: 1, infants: 0, dog_count: 1, cot_required: false, country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
   const expectedOrder = [101, 102, 103, 104, 105, 106, 107, 108, 109, 203, 204, 205, 206, 207, 208, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 221, 222, 223, 224, 321, 322, 323, 324, 201, 202, 209, 210, 410];
   const rooms = expectedOrder.slice().reverse().map((number, i) => ({ room_id: String(number), room_number: String(number), room_name: String(number), floor: String(number)[0], housekeeping_status: 'Neuklizeno', housekeeping_status_key: 'dirty', operational_state: 'checkout_pending', occupancy_state: 'departing', occupied: number === 101 || i % 2 === 0, persons: number === 101 || i % 2 === 0 ? 3 : 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host', display_name: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
@@ -428,7 +428,7 @@ test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', asy
   expect(login.ok()).toBeTruthy();
   await page.context().addCookies((await request.storageState()).cookies);
   const keys = ['clean', 'dirty', 'technical_issue', 'do_not_disturb', 'stay_no_linen', 'stay_with_linen', 'windows_cleaned', 'painted'];
-  const stay = { reservation_id: 'depart', guest_label: 'Host', display_name: 'Novák Jan', persons: 3, adults: 2, children: 1, infants: 0, country_code: 'CZ', arrival: '2026-10-01', departure: '2026-10-03', reservation_state: 'checked_out', departure_time: '10:30', dog_count: 2, cot_required: true, housekeeping_note: 'Poznámka odjezdu', amenities: [] };
+  const stay = { reservation_id: 'depart', guest_label: 'Host', display_name: 'Novák Jan', main_guest_name: 'RezervujícíNezobrazit', company_name: 'Firma v detailu', guests: [{name: 'Ubytovaný Jeden'}, {name: 'Ubytovaný Dva'}, {name: 'Ubytovaný Tři'}], persons: 3, adults: 2, children: 1, infants: 0, country_code: 'CZ', country_code_alpha3: 'CZE', arrival: '2026-10-01', departure: '2026-10-03', reservation_state: 'checked_out', departure_time: '10:30', dog_count: 2, cot_required: true, housekeeping_note: 'Poznámka odjezdu', amenities: [] };
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     expect(new URL(route.request().url()).searchParams.get('include_options')).toBe('true');
     const date = new URL(route.request().url()).searchParams.get('date');
@@ -439,6 +439,11 @@ test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', asy
     await page.setViewportSize({ width, height });
     const card = page.locator('.k-hk-room').first();
     await expect(card).toBeVisible();
+    await expect(page.locator('.k-hk-help, .k-hk-legend')).toHaveCount(0);
+    await expect(card).not.toContainText(stay.display_name);
+    await expect(card).not.toHaveAttribute('aria-label', new RegExp(stay.display_name));
+    await expect(card).not.toContainText(stay.company_name);
+    await expect(card.locator('.k-hk-reservation__country').first()).toHaveText('CZE');
     await expect(card.locator('[data-stay-kind="departure"]')).toHaveCSS('background-color','rgb(104, 107, 115)');
     await expect(card.locator('[data-stay-kind="arrival"]')).toHaveCSS('background-color','rgb(84, 173, 241)');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
@@ -448,9 +453,40 @@ test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', asy
     const detail = page.getByRole('dialog');
     await expect(detail.locator('.k-hk-status-actions button')).toHaveCount(8);
     await expect(detail).toContainText('Poznámka odjezdu');
+    for (const guest of stay.guests) await expect(detail).toContainText(guest.name);
+    await expect(detail).toContainText(stay.company_name);
+    await expect(detail).not.toContainText(stay.main_guest_name);
+    await expect(detail).not.toContainText(stay.display_name);
     await expect(detail).toContainText('Poznámka příjezdu');
     await expect(detail.getByRole('button', { name: /Pobyty a ikony|Přidat:|Odebrat:/ })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`admin-detail-${name}.png`), fullPage: true });
     await detail.getByRole('button', { name: 'Zavřít dialog' }).click();
   }
+});
+
+
+test('admin potvrzení automatické postýlky zůstane zelené po obnovení', async ({page,request},testInfo) => {
+  expect((await request.post('/api/auth/admin/login',{data:getAdminCredentials()})).ok()).toBeTruthy();
+  await page.context().addCookies((await request.storageState()).cookies);
+  let confirmed = false;
+  await page.route('**/api/v1/housekeeping/reservations/r/requirements/cot/confirm**', async route => {
+    expect(route.request().postDataJSON()).toEqual({version:0,quantity:1});
+    expect(new URL(route.request().url()).searchParams.get('room_id')).toBe('101');
+    expect(route.request().headers()['x-csrf-token']).toBeTruthy();
+    confirmed = true; await route.fulfill({json:{kind:'cot',state:'green',version:1,active:true}});
+  });
+  await page.route('**/api/v1/housekeeping/rooms**', async route => {
+    const date = new URL(route.request().url()).searchParams.get('date');
+    const stay = {reservation_id:'r', persons:2, adults:2, children:0, infants:0, country_code:'CZ',country_code_alpha3:'CZE', reservation_state:'confirmed',arrival:date,departure:'2026-10-10',dog_count:1,cot_required:true,amenities:confirmed?[{kind:'cot',state:'green',version:1,active:true}]:[]};
+    await route.fulfill({json:{date,occupancy_date:date,housekeeping_status_is_current:true,loaded_at:new Date().toISOString(),rooms:[{room_id:'101',room_number:'101',housekeeping_status:'Neuklizeno',housekeeping_status_key:'dirty',operational_state:'free',occupied:false,persons:0,departures:[],arrivals:[stay],stays:[]}]}});
+  });
+  await page.setViewportSize({width:390,height:844}); await page.goto('/admin/pokojska');
+  const card = page.locator('.k-hk-room').first(); await card.click();
+  const dialog = page.getByRole('dialog'); await dialog.getByRole('button',{name:'Potvrdit: Dětská postýlka',exact:true}).click();
+  await expect(dialog.locator('[data-request-kind="cot"][data-request-state="green"]')).toHaveCount(1);
+  await expect(dialog.getByRole('button',{name:'Potvrzeno: Dětská postýlka',exact:true})).toBeDisabled();
+  await dialog.getByRole('button',{name:'Zavřít dialog'}).click();
+  await expect(card.locator('[data-request-kind="dog"][data-request-state="red"]')).toHaveCount(1);
+  await page.screenshot({path:testInfo.outputPath('admin-confirmed-phone.png'),fullPage:true});
+  await page.reload(); await expect(card.locator('[data-request-kind="cot"][data-request-state="green"]')).toHaveCount(1);
 });

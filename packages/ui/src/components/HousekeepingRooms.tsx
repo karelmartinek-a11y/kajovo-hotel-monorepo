@@ -9,9 +9,10 @@ import {
   type HousekeepingRoomStatus,
   type HousekeepingRoomsOverview,
   type HousekeepingStayRead,
+  type ReservationAmenityKind,
 } from '@kajovo/shared';
 import { DateNavigation, hotelToday } from './DateNavigation';
-import { ReservationDetails, ReservationStamp, RESERVATION_LABELS, type StayKind } from './HousekeepingReservation';
+import { ReservationDetails, ReservationStamp, RESERVATION_LABELS, requirementConfirmed, type StayKind } from './HousekeepingReservation';
 
 const ROOM_ORDER = [
   '101', '102', '103', '104', '105', '106', '107', '108',
@@ -48,7 +49,9 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: Housek
   const split = room.departures.length > 0 || room.arrivals.length > 0;
   const stays = reservations.flatMap(([, items]) => items);
   const statusLabel = room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen');
-  const describe = stays.map((stay) => `${stay.display_name ?? '?'}, ${stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?'}, ${stay.persons} ${t('Celkem osob')}`).join('; ');
+  const describe = stays.map((stay) => [stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
+    ...(['dog', 'cot'] as const).filter((kind) => kind === 'dog' ? (stay.dog_count ?? 0) > 0 : stay.cot_required).map((kind) => `${t(kind === 'dog' ? 'Pes' : 'Dětská postýlka')}: ${t(requirementConfirmed(stay, kind) ? 'Potvrzeno' : 'Nepotvrzeno')}`),
+  ].join(', ')).join('; ');
   return <button className={`k-hk-room k-hk-room--stamp${split ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
     aria-label={`${t('Pokoj')} ${room.room_number}, ${statusLabel}, ${t(OPERATIONAL_LABELS[room.operational_state])}. ${describe}. ${stays.some((stay) => stay.housekeeping_note?.trim()) ? `${t('Poznámka pro pokojskou')}. ` : ''}${t('Změnit stav pokoje.')}`}>
     <span className={`k-hk-room__topline k-hk-room-status--${room.housekeeping_status_key ?? 'unknown'}`} title={statusLabel}><strong>{room.room_number}</strong></span>
@@ -74,6 +77,7 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [savingStatus, setSavingStatus] = React.useState<HousekeepingRoomStatus | null>(null);
+  const [savingRequirement, setSavingRequirement] = React.useState<ReservationAmenityKind | null>(null);
   const requestSequence = React.useRef(0);
   const savingRef = React.useRef(false);
   const loadRooms = React.useCallback(async (dateValue: string, background = false): Promise<void> => {
@@ -139,7 +143,31 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
     }
   };
 
-  const busy = savingStatus !== null;
+  const confirmRequirement = async (stay: HousekeepingStayRead, kind: ReservationAmenityKind): Promise<void> => {
+    if (!selectedRoom || !canWrite || error || savingRef.current) return;
+    savingRef.current = true;
+    ++requestSequence.current;
+    setSavingRequirement(kind);
+    try {
+      const updated = await apiClient.confirmReservationRequirementApiV1HousekeepingReservationsReservationIdRequirementsKindConfirmPost(
+        stay.reservation_id, kind, { room_id: selectedRoom.room_id, date: selectedDate },
+        { version: stay.amenities?.find((item) => item.kind === kind)?.version ?? 0, quantity: kind === 'dog' ? stay.dog_count! : 1 },
+      );
+      if (!updated.active || updated.state !== 'green' || updated.kind !== kind) throw new Error('Unverified requirement confirmation');
+      const updateStay = (item: HousekeepingStayRead): HousekeepingStayRead => item.reservation_id === stay.reservation_id ? { ...item, amenities: [...(item.amenities ?? []).filter((amenity) => amenity.kind !== kind), updated] } : item;
+      setOverview((current) => current ? { ...current, rooms: current.rooms.map((room) => room.room_id === selectedRoom.room_id ? { ...room,
+        departures: room.departures.map(updateStay), arrivals: room.arrivals.map(updateStay), stays: room.stays.map(updateStay),
+      } : room) } : current);
+      setAnnouncement(t('Požadavek byl potvrzen.'));
+    } catch {
+      setError(t('Potvrzení se nepodařilo ověřit. Před dalším pokusem obnovte aktuální přehled.'));
+    } finally {
+      setSavingRequirement(null);
+      savingRef.current = false;
+    }
+  };
+
+  const busy = savingStatus !== null || savingRequirement !== null;
 
   return (
     <section className="k-hk-board" data-testid="housekeeping-rooms-view">
@@ -152,12 +180,6 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
       {announcement ? <p className="k-hk-saved" role="status">{announcement}</p> : null}
       <p className="k-hk-board__source-note">{t("Pobyty podle data · Obsazenost a úklid nyní.")}</p>
       </div>
-      <details className="k-hk-help"><summary>{t('Vysvětlivky barev')}</summary>
-        <p>{t('Horní proužek: aktuální stav pokoje')}</p>
-        <div className="k-hk-legend">{STATUS_ACTIONS.map((action) => <span key={action.value} className="k-hk-legend__item"><i className={`k-hk-room-status--${action.value}`} />{t(action.label)}</span>)}</div>
-        <p>{t('Spodní část: rezervace vybraného dne')}</p>
-        <div className="k-hk-legend">{Object.entries(RESERVATION_LABELS).map(([key, label]) => <span key={key} className="k-hk-legend__item"><i className={`k-hk-reservation--${key}`} />{t(label)}</span>)}</div>
-      </details>
       {error && !selectedRoom ? <div className="k-hk-alert" role="alert">{error}<button type="button" onClick={() => void loadRooms(selectedDate)}>{t("Zkusit znovu")}</button></div> : null}
       {loading ? <div className="k-hk-loading" aria-live="polite">{t("Načítám aktuální přehled pokojů…")}</div> : null}
       {!loading && overview?.rooms.length === 0 ? <div className="k-hk-loading">{t("Better Hotel nevrátil žádné provozní pokoje.")}</div> : null}
@@ -165,14 +187,14 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
         {orderedRooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} locale={getPortalLocale()} />)}
       </div> : null}
 
-      {selectedRoom ? <TaskDialog title={savingStatus ? t('Zapisuji změnu…') : `${t('Pokoj')} ${selectedRoom.room_number}`} busy={busy} onClose={() => setSelectedRoomId(null)} className="k-hk-task k-hk-task--sheet">
-        {savingStatus ? <div className="k-hk-saving" role="status"><span className="k-modal-spinner" aria-hidden="true" /><p>{t("Ukládám stav pokoje")}{' '}{selectedRoom.room_number}{t(". Po zápisu se vrátíte na přehled.")}</p></div> : <>
+      {selectedRoom ? <TaskDialog title={busy ? t('Zapisuji změnu…') : `${t('Pokoj')} ${selectedRoom.room_number}`} busy={busy} onClose={() => setSelectedRoomId(null)} className="k-hk-task k-hk-task--sheet">
+        {busy ? <div className="k-hk-saving" role="status"><span className="k-modal-spinner" aria-hidden="true" /><p>{savingRequirement ? t('Potvrzuji připravený požadavek…') : <>{t("Ukládám stav pokoje")}{' '}{selectedRoom.room_number}{t(". Po zápisu se vrátíte na přehled.")}</>}</p></div> : <>
           {error ? <div className="k-hk-alert" role="alert"><p>{error}</p><button disabled={loading} onClick={() => void loadRooms(selectedDate, true)}>{t('Obnovit stav')}</button></div> : null}
           {!error ? <div className="k-hk-status-actions">{STATUS_ACTIONS.map((action) => <button key={action.value} className={`k-hk-room-status--${action.value}`} type="button" title={t(action.detail)} aria-label={`${t(action.label)} ${t(action.detail)}`} onClick={() => void updateStatus(action.value)} disabled={!canWrite || busy}><strong>{t(action.label)}</strong></button>)}</div> : null}
           <p className="k-hk-modal__current">{t('Aktuální stav úklidu:')}{' '}<strong>{selectedRoom.housekeeping_status ? t(selectedRoom.housekeeping_status) : t('Neurčen')}</strong></p>
           <div className="k-hk-detail-summary"><strong className={selectedRoom.occupied ? 'k-hk-detail-summary__occupied' : ''}>{selectedRoom.occupied ? `${selectedRoom.current_persons ?? selectedRoom.persons} ${t('Uvnitř teď')}` : t('Prázdný teď')}</strong><span>{t(OPERATIONAL_LABELS[selectedRoom.operational_state])}</span></div>
           <div className="k-hk-detail-stays">
-            {([['departure', selectedRoom.departures], ['arrival', selectedRoom.arrivals], ['stay', selectedRoom.stays]] as Array<[StayKind, HousekeepingStayRead[]]>).map(([kind, stays]) => stays.map((stay) => <ReservationDetails key={`${kind}-${stay.reservation_id}`} stay={stay} kind={kind} date={selectedDate} />))}
+            {([['departure', selectedRoom.departures], ['arrival', selectedRoom.arrivals], ['stay', selectedRoom.stays]] as Array<[StayKind, HousekeepingStayRead[]]>).map(([kind, stays]) => stays.map((stay) => <ReservationDetails key={`${kind}-${stay.reservation_id}`} stay={stay} kind={kind} date={selectedDate} onConfirm={canWrite && !error ? (item, requirement) => void confirmRequirement(item, requirement) : undefined} />))}
             {!selectedRoom.departures.length && !selectedRoom.arrivals.length && !selectedRoom.stays.length ? <p>{t('Bez pobytu ve vybraný den')}</p> : null}
           </div>
           {!canWrite ? <p>{t("Aktivní role může přehled pouze číst.")}</p> : null}

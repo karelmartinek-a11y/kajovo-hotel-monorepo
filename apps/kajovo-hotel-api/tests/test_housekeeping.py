@@ -178,11 +178,11 @@ def test_other_date_keeps_live_occupancy_and_separate_guests():
     assert overview["occupancy_date"] == date(2026, 9, 17)
 
 
-def test_country_uses_main_guest_address_not_another_guest():
+def test_country_uses_first_lodged_guest_before_main_guest():
     from app.services.housekeeping import _stay_read
     reservation = _reservation("r", "room-101", "101", arrival="2026-09-17", departure="2026-09-20")
     reservation.update(main_guest="main", guest_list=[{"guest": {"id": "other", "address": {"country": "DEU"}}}, {"guest": {"id": "main", "address": {"country": "CZE"}}}])
-    assert _stay_read(reservation)["country_name"] in {"Česko", "Česká republika"}
+    assert _stay_read(reservation)["country_name"] == "Německo"
     reservation["main_guest"] = "missing"
     assert _stay_read(reservation)["country_name"] == "Německo"
 
