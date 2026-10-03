@@ -182,6 +182,9 @@ class MailHost:
                     draft = await voice_mail.invoke(self.mail_mcp, "mail_draft_get", {"draft_ref": args["draft_ref"]})
                     if draft["draft_version"] != proof[1] or draft_hash(draft) != proof[2]:
                         raise MailError("VERSION_CONFLICT")
+                    # Audio can arrive while the network reload is in flight. Reserve only current consent.
+                    if self.mail_bypass != proof or time.monotonic() - proof[4] > 30:
+                        raise MailError("EXPLICIT_HUMAN_BYPASS_REQUIRED")
                     with self.mail_factory() as db:
                         row = db.get(VoiceMailOperation, rid)
                         if row.state != "pending":

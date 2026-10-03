@@ -358,3 +358,26 @@ def test_delivery_diagnostic_contains_metadata_only_after_provider_ack(host, cap
     assert len(events) == 1
     assert events[0].context == {"voice_session_id": h.id, "tool": "mail_send_prepare", "ok": True}
     assert candidate()["confirmation_token"] not in caplog.text and draft()["text_body"] not in caplog.text
+
+
+@pytest.mark.parametrize("mode", ["interrupted", "expired"])
+def test_bypass_rechecks_human_consent_after_network_reload(host, monkeypatch, mode):
+    from app.services import voice_mail_host
+    h, _, calls, outputs = host
+    clock = [0.0]
+    monkeypatch.setattr(voice_mail_host, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    run(h, "mail_draft_get", {"draft_ref": draft()["draft_ref"]}, "get")
+    h.mail_event({"type": "input_audio_buffer.speech_started", "item_id": "human"})
+    h.mail_event({"type": "conversation.item.input_audio_transcription.completed", "event_id": "real-event", "item_id": "human", "transcript": "Odešli bez potvrzení"})
+    original = voice_mail.invoke
+    async def reload(session, name, args):
+        if name == "mail_draft_get":
+            if mode == "interrupted":
+                h.mail_event({"type": "input_audio_buffer.speech_started", "item_id": "new-human-audio"})
+            else:
+                clock[0] = 31.0
+        return await original(session, name, args)
+    monkeypatch.setattr(voice_mail, "invoke", reload)
+    run(h, "mail_send_without_confirmation", {"draft_ref": draft()["draft_ref"], "expected_version": 1}, "send")
+    assert not any(n == "mail_send_without_confirmation" for n, a in calls)
+    assert "EXPLICIT_HUMAN_BYPASS_REQUIRED" in str(outputs)
