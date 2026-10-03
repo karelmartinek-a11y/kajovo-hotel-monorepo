@@ -44,6 +44,25 @@ Never store mail content or send dialogs in assistant_memory.
 """
 
 
+def result_diagnostic(name, value):
+    """Allowlisted readiness/page metadata only; never content, refs, cursors or inputs."""
+    if name not in {"mail_account_status", "mail_folders_list", "mail_messages_unread", "mail_messages_search", "mail_thread_get", "mail_drafts_list"}:
+        return None
+    aliases = set(TOOLS["mail_account_status"]["inputSchema"]["properties"]["account"]["enum"]) - {"all"}
+    result = {}
+    if type(value.get("complete")) is bool:
+        result["complete"] = value["complete"]
+    if isinstance(value.get("items"), list):
+        result["returned_messages"] = len(value["items"])
+        result["has_next_page"] = bool(value.get("next_cursor"))
+        result["page_counts_by_account"] = {alias: sum(item.get("account") == alias for item in value["items"] if isinstance(item, dict)) for alias in sorted(aliases)}
+    result["accounts"] = [{
+        "account": account["account"],
+        **{key: account[key] for key in ("index_complete", "available", "index_ready", "imap_connected") if type(account.get(key)) is bool},
+    } for account in value.get("accounts", []) if isinstance(account, dict) and account.get("account") in aliases]
+    return result
+
+
 def validate_input(name, args, *, model=False):
     if name not in TOOLS or not isinstance(args, dict):
         raise MailError("INVALID_INPUT")

@@ -241,9 +241,11 @@ class MailHost:
             output = {"contract_version": "mail-mcp/1", "ok": False, "error": {"code": code, "retryable": False}}
         await self.item({"type": "function_call_output", "call_id": cid, "output": json.dumps(output, ensure_ascii=False)})
         self.seen_calls[cid] = fingerprint
-        logger.info("voice.host.mail_delivery", extra={"context": {
-            "voice_session_id": self.id, "tool": name, "ok": output["ok"],
-        }})
+        context = {"voice_session_id": self.id, "tool": name, "ok": output["ok"]}
+        diagnostic = voice_mail.result_diagnostic(name, output["data"]) if output["ok"] else None
+        if diagnostic is not None:
+            context["mail_diagnostic"] = {"call_digest": digest([self.id, cid]), **diagnostic}
+        logger.info("voice.host.mail_delivery", extra={"context": context})
 
     async def initialize_mail(self):
         async with AsyncExitStack() as stack:

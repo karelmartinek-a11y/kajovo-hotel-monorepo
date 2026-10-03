@@ -36,3 +36,5 @@
 - Správa místností a názvů KajaVoiceHA 2.1: [aktuální kontrakt](voice-registry.md), potvrzení pouze hlasem a read-only přehled v administraci.
 
 - Hlasový chat hotelu má ve výchozím stavu zapnutou volbu „Používám reproduktory“: při přehrávání a dozvuku pozastaví mikrofon proti vlastní ozvěně, s tlačítkem „Přerušit odpověď“. Se sluchátky lze ochranu vypnout. Přenositelný Voice Core ji nabízí jako volitelný obecný media port, bez hotelových závislostí. Viz docs/voice-core.md a docs/voice-speaker-impact-matrix.md.
+
+Mail read diagnostics: provider-acknowledged `voice.host.mail_delivery` includes `mail_diagnostic` with call digest, separate index/connection booleans, complete, page size/counts and next-page boolean. No content, refs, cursor, arguments, addresses or transcript. Page counts are not unread totals; diagnostics do not change model behavior. See docs/voice-mail-diagnostic-impact-matrix.md.
