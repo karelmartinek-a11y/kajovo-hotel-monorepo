@@ -1517,6 +1517,92 @@
         "title": "HintRequest",
         "type": "object"
       },
+      "HousekeepingChargeRead": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReservationAmenityKind"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "label",
+          "quantity"
+        ],
+        "title": "HousekeepingChargeRead",
+        "type": "object"
+      },
+      "HousekeepingGuestRead": {
+        "properties": {
+          "age": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "age_group": {
+            "enum": [
+              "adults",
+              "children",
+              "infants",
+              "unknown"
+            ],
+            "title": "Age Group",
+            "type": "string"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "age_group"
+        ],
+        "title": "HousekeepingGuestRead",
+        "type": "object"
+      },
       "HousekeepingOperationalState": {
         "enum": [
           "checkout_departed_dirty",
@@ -1546,6 +1632,12 @@
           "checked_out": {
             "title": "Checked Out",
             "type": "boolean"
+          },
+          "current_persons": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Current Persons",
+            "type": "integer"
           },
           "departure_today": {
             "title": "Departure Today",
@@ -1689,7 +1781,9 @@
           "stay_no_linen",
           "stay_with_linen",
           "do_not_disturb",
-          "technical_issue"
+          "technical_issue",
+          "windows_cleaned",
+          "painted"
         ],
         "title": "HousekeepingRoomStatus",
         "type": "string"
@@ -1763,6 +1857,18 @@
       },
       "HousekeepingStayRead": {
         "properties": {
+          "adults": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adults"
+          },
           "amenities": {
             "items": {
               "$ref": "#/components/schemas/ReservationAmenityRead"
@@ -1774,6 +1880,25 @@
             "format": "date",
             "title": "Arrival",
             "type": "string"
+          },
+          "arrival_time": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrival Time"
+          },
+          "charges": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingChargeRead"
+            },
+            "title": "Charges",
+            "type": "array"
           },
           "checked_in": {
             "anyOf": [
@@ -1798,6 +1923,40 @@
               }
             ],
             "title": "Checked Out"
+          },
+          "children": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Children"
+          },
+          "company_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Name"
+          },
+          "cot_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cot Required"
           },
           "country_code": {
             "anyOf": [
@@ -1826,6 +1985,41 @@
             "title": "Departure",
             "type": "string"
           },
+          "departure_time": {
+            "anyOf": [
+              {
+                "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Departure Time"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "dog_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dog Count"
+          },
           "guest_label": {
             "anyOf": [
               {
@@ -1836,6 +2030,13 @@
               }
             ],
             "title": "Guest Label"
+          },
+          "guests": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingGuestRead"
+            },
+            "title": "Guests",
+            "type": "array"
           },
           "housekeeping_note": {
             "anyOf": [
@@ -1848,14 +2049,82 @@
             ],
             "title": "Housekeeping Note"
           },
+          "infants": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Infants"
+          },
+          "main_guest_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Guest Name"
+          },
           "persons": {
             "minimum": 0.0,
             "title": "Persons",
             "type": "integer"
           },
+          "reservation_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reservation Code"
+          },
           "reservation_id": {
             "title": "Reservation Id",
             "type": "string"
+          },
+          "reservation_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "confirmed",
+                  "checked_in",
+                  "checked_out",
+                  "option"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reservation State"
+          },
+          "reservation_status_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reservation Status Name"
+          },
+          "unknown_persons": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Unknown Persons",
+            "type": "integer"
           }
         },
         "required": [
@@ -9827,6 +10096,16 @@
               "title": "Date",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "include_options",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Options",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -9878,6 +10157,16 @@
               "format": "date",
               "title": "Date",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_options",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Options",
+              "type": "boolean"
             }
           }
         ],

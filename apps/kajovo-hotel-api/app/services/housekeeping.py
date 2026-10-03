@@ -14,6 +14,7 @@ import pycountry
 
 from app.config import Settings
 from app.services.better_hotel_notes import housekeep_note
+from app.services.housekeeping_reservations import reservation_details
 
 ROOM_NUMBERS = frozenset(
     {
@@ -32,6 +33,8 @@ STATUS_NAMES = {
     "stay_with_linen": "Uklizeno - s ložním prádlem",
     "do_not_disturb": "Nerušenka",
     "technical_issue": "Technický problém",
+    "windows_cleaned": "Okna umytá",
+    "painted": "Vymalováno",
 }
 
 COUNTRY_TRANSLATION = gettext.translation("iso3166-1", pycountry.LOCALES_DIR, languages=["cs"], fallback=True)
@@ -41,16 +44,16 @@ def current_hotel_date() -> date:
     return datetime.now(ZoneInfo("Europe/Prague")).date()
 
 
-def _stay_read(reservation: dict[str, Any]) -> dict[str, Any]:
+def _stay_read(reservation: dict[str, Any], service_date: date | None = None) -> dict[str, Any]:
     main = reservation.get("main_guest")
     guest = main if isinstance(main, dict) else next(
         (item["guest"] for item in (reservation.get("guest_list") or [])
          if isinstance(item, dict) and isinstance(item.get("guest"), dict) and item["guest"].get("id") == main),
         {},
     )
-    address = guest.get("address")
-    code = str(address.get("country") or "").upper() if isinstance(address, dict) else ""
-    country = pycountry.countries.get(**({"alpha_3": code} if len(code) == 3 else {"alpha_2": code})) if code else None
+    details = reservation_details(reservation, service_date or current_hotel_date())
+    code = details['country_code']
+    country = pycountry.countries.get(alpha_2=code) if code else None
     action = _reservation_action(reservation)
     return {
         "reservation_id": str(reservation["id"]),
@@ -62,6 +65,7 @@ def _stay_read(reservation: dict[str, Any]) -> dict[str, Any]:
         "arrival": reservation["arrival"], "departure": reservation["departure"],
         "checked_in": action.get("checkedin"), "checked_out": action.get("checkedout"),
         "amenities": [],
+        **details,
     }
 
 
@@ -224,7 +228,7 @@ class BetterHotelHousekeepingClient:
                 "filter[range_type]": range_type,
                 "filter[mode]": "hotel",
                 "filter[state]": state,
-                "expand[]": ["room", "reservation_status", "reservation_action", "guest_list", "guest_list.guest", "guest_list.guest.address", "reservation_note"],
+                "expand[]": ["room", "reservation_status", "reservation_action", "guest", "guest.address", "company", "company.address", "guest_list", "guest_list.guest", "guest_list.guest.address", "guest_list.guest_type", "reservation_note", "bill.bill_item"],
             },
         )
         deduplicated: dict[str, dict[str, Any]] = {}
@@ -293,21 +297,22 @@ class BetterHotelHousekeepingClient:
             raise BetterHotelHousekeepingError("Ověření změny stavu pokoje v Better Hotel selhalo.")
         return room_matches[0]
 
-    def reservations_for_day(self, day: date) -> list[dict[str, Any]]:
+    def reservations_for_day(self, day: date, *, include_options: bool = False) -> list[dict[str, Any]]:
         records: dict[str, dict[str, Any]] = {}
-        for range_type, state in [("intersect", "confirmed"), ("intersect", "checked_out"), ("departure", "confirmed"), ("departure", "checked_out"), ("arrival", "confirmed"), ("arrival", "checked_out")]:
+        states = ["confirmed", "checked_out", "waiting"] if include_options else ["confirmed", "checked_out"]
+        for range_type, state in [(kind, state) for kind in ("intersect", "departure", "arrival") for state in states]:
             for item in self.list_reservations(day, range_type=range_type, state=state):
-                if _is_option(item) or not item.get("id"):
+                if (not include_options and _is_option(item)) or (state == "waiting" and not _is_option(item)) or not item.get("id"):
                     continue
                 if str(item.get("arrival", "")) <= day.isoformat() <= str(item.get("departure", "")):
                     records[str(item["id"])] = item
         return sorted(records.values(), key=lambda item: (str(item.get("arrival")), str(item["id"])))
 
-    def build_overview(self, service_date: date) -> dict[str, Any]:
+    def build_overview(self, service_date: date, *, include_options: bool = False) -> dict[str, Any]:
         today = current_hotel_date()
         current_rooms = self.list_current_rooms()
-        selected = self.reservations_for_day(service_date)
-        current = selected if service_date == today else self.reservations_for_day(today)
+        selected = self.reservations_for_day(service_date, include_options=True) if include_options else self.reservations_for_day(service_date)
+        current = [item for item in selected if not _is_option(item)] if service_date == today else self.reservations_for_day(today)
         output_rooms: list[dict[str, Any]] = []
         for raw_room in current_rooms:
             room_id = str(raw_room.get("room_id") or "").strip()
@@ -360,13 +365,14 @@ class BetterHotelHousekeepingClient:
                     "housekeeping_color": status_color,
                     "operational_state": operational_state,
                     "occupancy_state": occupancy_state,
-                    "departures": [_stay_read(item) for item in departures],
-                    "arrivals": [_stay_read(item) for item in arrivals],
-                    "stays": [_stay_read(item) for item in stays],
+                    "departures": [_stay_read(item, service_date) for item in departures],
+                    "arrivals": [_stay_read(item, service_date) for item in arrivals],
+                    "stays": [_stay_read(item, service_date) for item in stays],
                     "arrival_today": bool(arrivals),
                     "departure_today": bool(departures),
                     "checked_out": is_checked_out,
                     "occupied": occupancy_state != "free",
+                    "current_persons": sum(max(0, int(item.get("persons") or 0)) for item in (active or [item for item in live_departures if not _reservation_action(item).get("checkedout")])) if occupancy_state != "free" else 0,
                     "guest_label": str(reservation.get("label") or "").strip() or None if reservation else None,
                     "persons": int(reservation.get("persons") or 0) if reservation else 0,
                 }

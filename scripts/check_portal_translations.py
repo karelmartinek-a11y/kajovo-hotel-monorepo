@@ -26,7 +26,7 @@ def main() -> None:
     # These labels are passed through t() via status maps or API responses.
     keys.update((
         "Uklizeno", "Neuklizeno", "Průběžný úklid", "Průběžný úklid + prádlo",
-        "Nerušenka", "Technická závada", "Přízemí", "Čeká", "Připravuje se",
+        "Nerušenka", "Technická závada", "Umytá okna", "Okna umytá", "Vymalováno", "Potvrzeno", "Opce", "Pokoj je vymalovaný.", "Okna jsou umytá.", "Přízemí", "Čeká", "Připravuje se",
         "Vydáno", "Zrušeno", "Pes", "Dětská postýlka",
     ))
     errors: list[str] = []

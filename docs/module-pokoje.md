@@ -19,18 +19,23 @@ Pokoje tvoří jednu mřížku v pevném pořadí. Na mobilu po čtyřech dlažd
 210
 ```
 
-Další pokoje z inventáře následují číselně za tímto pořadím. Ostatní šířky mění počet sloupců, ne pořadí. Horní ovládání dne zůstává při svislém posuvu přehledu nahoře. Dlaždice ukazuje číslo, současnou obsazenost s počtem osob, stručný náhled pobytů a stav úklidu. Neprázdná poznámka `reservation_note[].housekeep` u kteréhokoli zobrazeného pobytu zapne blikající červenou ikonu; při omezení animací zůstane statická. Výběr dlaždice otevírá spodní detail s textem poznámky a úplnými údaji:
+Další pokoje z inventáře následují číselně za tímto pořadím. Ostatní šířky mění počet sloupců, ne pořadí. Mřížka drží výšku dlaždic 112 px, na telefonu 106 px; datum zůstává při posuvu nahoře.
 
-- odjíždějící pobyty vlevo a přijíždějící vpravo, s prázdnou opačnou částí při jediné události;
-- pokračující pobyt přes celou šířku;
-- provozní označení rezervace, počet osob a název země bydliště hlavního hosta v jazyce portálu;
-- samostatné ikony psa a postýlky u každé rezervace;
-- aktuální Better Hotel stav úklidu.
-- pod zemí údaj `Noc pobytu: X/Y`: rozdíl vybraného dne a příjezdu / rozdíl odjezdu a příjezdu v kalendářních dnech; příjezd je 0, odjezd Y. Výpočet v UTC nad daty nemění přechod letního času.
+## Dlaždice a rezervace
 
-Pobyty odpovídají vybranému dni; obsazenost a úklid aktuálnímu okamžiku. API uvádí `occupancy_date`, `housekeeping_status_is_current=true`, `housekeeping_status_key` a `ready_for_arrival`. Země se čte z adresy hlavního hosta v expandovaném `guest_list.guest.address` podle `main_guest`; API předá kód země pro jazykově správné zobrazení. Pokud chybí, zobrazuje se lokalizované „Stát neuveden“.
+Horní proužek zabírá 15 % vnitřní výšky. Obsahuje vycentrované černé tučné číslo. Jeho barva patří aktuálnímu stavu pokoje bez ohledu na vybraný den: clean zelená, dirty oranžová, technical_issue červená, do_not_disturb fialová, stay_no_linen světle zelená, stay_with_linen žlutá, windows_cleaned modrá, painted světle fialová. Neznámý stav má neutrální proužek a nelze jej slepě přepsat.
 
-Pouze pokoj s příjezdem nebo odjezdem má dvě poloviny. Levá odjezdová polovina je před CHECK-OUT červená, po něm šedá. Pravá polovina je zelená při stavu `clean`, světle zelená při `stay_no_linen` nebo `stay_with_linen`; jinak při plánovaném příjezdu červená a bez příjezdu prázdná. Pokoj bez příjezdu a odjezdu má celou kartu šedou, není-li uklizen; bez pobytu je při `clean` celá zelená. Při pokračujícím pobytu je po `clean`, `stay_no_linen` či `stay_with_linen` celá světle zelená, při `do_not_disturb` celá fialová. Současná obsazenost je na každé dlaždici i v detailu výslovně označená textem a kontrastní barvou.
+Spodní část patří vybranému dni. Odjezd je vlevo, příjezd vpravo; pokračující pobyt zabírá celou šířku. Neobsazená část je bílá a bez textu. Každá rezervace má vlastní barvu: confirmed zelená, checked_in modrá, checked_out tmavě šedá, option oranžová. Časy skutečných akcí ani úklid barvu rezervace nenahrazují. Více rezervací v jedné části je nejednoznačné přiřazení: dlaždice upozorní a detail ukáže všechny.
+
+Rezervační blok má pět pevných řádků: dospělý/dítě/mimino s počty, událost s očekávaným časem nebo POBYT, země, zobrazované jméno, požadavky a upozornění. Mobil události označuje odlišnými piktogramy. Dlouhé texty zůstávají v prostoru řádku a při potřebě mají výpustku; detail je nezkracuje. Vykřičník bliká pouze u rezervace s neprázdným reservation_note[].housekeep; reduced-motion jej ponechá statický.
+
+Věk se počítá k vybranému dni z data narození všech osob pokoje, nezávisle na food. Mimino je před druhými narozeninami, dítě od 2 do 17 let, dospělý od 18. Bez data narození se použije guest_list.guest_type.age_limit; všechny dospělé kategorie se sloučí, dětské do 2–17 a příznak mimina do první skupiny. Neurčené nebo rozporné počty jsou ?, ne nula. API neposílá data narození ani surové objekty hostů.
+
+Země používá první vyplněnou adresu v pořadí hlavní osoba → ubytovaní podle position → firma. API vrací ISO kód a český název; web lokalizuje krátký název či běžnou zkratku, detail plný název. Zobrazované jméno používá první pojmenovanou ubytovanou osobu → hlavní osobu → firmu. Osoba se formátuje příjmení a jméno. Bez hodnoty je ?. Čas pochází z arrival_time/departure_time v místním čase hotelu, nikoli ze skutečných action timestampů; chybějící čas je ?.
+
+Web čte položky z bill.bill_item konkrétní rezervace přiřazené pokoji. Aktivní položky s názvem obsahujícím Domácí mazlíček se sčítají podle quantity včetně různých nocí. Položky Dětská postýlka znamenají jedinou ikonu. Archivované položky se ignorují, záporné opravy snižují součet, duplicitní ID se nezapočítávají dvakrát. Platba, billed a is_open nejsou filtrem. Neplatný nebo zlomkový počet psů je neurčený. SVG ikony jsou barevné a nezávislé na systémových emoji. Dlouhá série se ořízne v pevném řádku; detail uvádí celý počet a položky.
+
+Pobyty patří vybranému dni; obsazenost a úklid současnému okamžiku. API zachovává occupancy_date, housekeeping_status_is_current, operational_state a původní nativní pole. Aditivní current_persons udává nynější počet osob, zatímco persons zůstává údajem vybraného dne.
 
 Priorita aktuální obsazenosti:
 
@@ -39,26 +44,28 @@ Priorita aktuální obsazenosti:
 3. Pokračující pobyt s CHECK-IN bez CHECK-OUT: **OBSAZENO-POBYT**.
 4. Jinak **VOLNO**. Samotný plánovaný příjezd pokoj neobsazuje.
 
-Přehled se obnovuje po zápisu, každých 60 sekund ve viditelném okně a ihned při návratu do okna, probuzení telefonu či návratu z jiné aplikace (`focus`, `visibilitychange`, `pageshow`). Obnova zachovává vybraný den; na pozadí se periodické dotazy neposílají. Starší odpověď nesmí přepsat novější datum. Ikony mají kontrastní podklad a kromě barvy rozlišují čekání a dokončení také symbolem.
+Přehled se obnovuje po zápisu, každých 60 sekund ve viditelném okně a ihned při návratu do okna, probuzení telefonu či návratu z jiné aplikace (`focus`, `visibilitychange`, `pageshow`). Obnova zachovává vybraný den; na pozadí se periodické dotazy neposílají. Starší odpověď nesmí přepsat novější datum.
 
-## Příznaky rezervací
+## Detail a nativní příznaky
 
-Stav pokoje se volí ve spodním detailu. Během zápisu se zobrazuje blokující „Zapisuji změnu…“ bez tlačítek; ověřená odpověď automaticky vrací přehled a obnoví data. Neověřená změna ponechá detail s chybou a vyžaduje obnovu stavu před dalším zápisem. Volba „Pobyty a ikony“ otevírá samostatnou pracovní obrazovku pro správu ikon. Responzivní uspořádání a úplný inventář prvků popisuje [UI pracovních obrazovek](ui-workspaces.md).
+Výběr dlaždice otevře spodní detail. První obsah tvoří všech osm stavových tlačítek. Následuje aktuální stav/obsazenost a provozní detail každé rezervace: kód, stav, termíny, očekávané a skutečné časy, noc pobytu X/Y, věkové počty, ubytované osoby, země, hlavní osoba, firma, požadavky, jejich položky a úplná poznámka pro pokojskou. Kalendářní rozdíly pro noci se počítají v UTC, bez vlivu DST.
 
-Tabulka `reservation_amenities` (migrace `0031_reservation_amenities`) ukládá unikátní dvojici Better Hotel ID rezervace a typu `dog`/`cot`, stav `red`/`green`, aktivitu, monotónní verzi, autora a čas změny. Odstranění je logické: zachovaná verze brání přepsání nově vytvořené ikony starým požadavkem. Ikony následují tutéž rezervaci při přesunu pokoje, nepřenášejí se na další rezervaci a zachovávají barvu až do odjezdu.
+Zápis používá blokující průběh bez tlačítek. Ověřená odpověď automaticky zavře detail a obnoví přehled. Neověřený zápis ponechá chybu a vyžaduje úspěšné obnovení před opakováním. Změny date a starší odpovědi nesmějí přepsat novější data; čtení se obnovuje každou minutu jen ve viditelném okně a při návratu.
 
-Recepce a admin přidávají (vždy červeně), odebírají a mění barvy. Pokojská pouze mění barvy již existujících ikon. Pracovní obrazovka rozlišuje jednotlivé pobyty; bez rezervace nelze ikonu přidat. Plánovaný příjezd na volný pokoj je platná rezervace. Před zápisem API ověřuje aktuální vazbu rezervace na pokoj a vybraný den. Konflikt verze nebo přesun vrací `409` a UI obnoví přehled. Změna příznaku a audit před/po se ukládají v jedné databázové transakci.
+Web nemá ruční správu ikon. Tabulka reservation_amenities, monotónní verze, audit a rezervační endpointy zůstávají pro nativní Android: admin/recepce přidávají či odebírají, pokojská přepíná barvu. Nativní API kompatibilita zahrnuje původní pole amenities a výchozí přehled bez opcí.
 
 ## API portálu
 
-- `GET /api/v1/housekeeping/rooms?date=YYYY-MM-DD` sestaví přehled z aktuálního inventáře, příjezdů, odjezdů, skutečných check-outů a pobytů Better Hotel.
-- `PATCH /api/v1/housekeeping/rooms/{room_id}?date=YYYY-MM-DD` přijímá `{status, expected_status}`; očekávaný stav musí odpovídat aktuálnímu stavu poskytovatele, jinak API vrací `409`. PostgreSQL advisory lock serializuje souběžné zápisy téhož pokoje přes API workery.
+- `GET /api/v1/housekeeping/rooms?date=YYYY-MM-DD&include_options=true` sestaví přehled z aktuálního inventáře, příjezdů, odjezdů, skutečných check-outů a pobytů Better Hotel.
+- `PATCH /api/v1/housekeeping/rooms/{room_id}?date=YYYY-MM-DD&include_options=true` přijímá `{status, expected_status}`; očekávaný stav musí odpovídat aktuálnímu stavu poskytovatele, jinak API vrací `409`. PostgreSQL advisory lock serializuje souběžné zápisy téhož pokoje přes API workery.
 - `POST /api/v1/housekeeping/reservations/{reservation_id}/amenities/{kind}?room_id=…&date=…&version=…` přidá ikonu, výchozí verze nové dvojice je 0.
 - `PATCH` na stejné cestě s `room_id`, `date` a tělem `{state, version}` mění barvu.
 - `DELETE` na stejné cestě s `room_id`, `date`, `version` ikonu odebere. Přehled vrací i neaktivní položky kvůli verzi, UI je nezobrazuje jako požadavky.
 
 Povolené hodnoty zápisu jsou:
 
+- `windows_cleaned` → `Okna umytá`;
+- `painted` → `Vymalováno`;
 - `clean` → `Uklizeno pro nájezd`;
 - `dirty` → `Neuklizeno`;
 - `stay_no_linen` → `Pobyt-bez ložního prádla`;
@@ -87,13 +94,4 @@ Role `admin`, `recepce` a `pokojská` mají `housekeeping:read` i `housekeeping:
 
 ## Dopadová matice
 
-| Kategorie | Rozhodnutí a rozsah |
-|---|---|
-| Produkční kód | Aktualizovat sdílené dlaždice, spodní detail a jejich CSS; API a oprávnění ikon ověřit beze změny. |
-| Testy | Aktualizovat čtyřsloupcový portrét, stejné rozměry dlaždic, půlení barev, počítání nocí v detailu, obsazenost a ikony. |
-| GitHub a gates | Ověřit beze změny: existující CI, produkční API image a automatický deploy. |
-| Dokumentace | Aktualizovat tento kontrakt a RBAC. |
-| Komentáře a poznámky | Ověřit aktuální popisy karty a detailu; neaktuální popis odstranit. |
-| Instrukce | Aktualizovat kořenový AGENTS o čtyřech dlaždicích a spodním detailu. |
-| Fixtures a texty | Aktualizovat překlady aktuální obsazenosti a zkratek, testová data a selektory. |
-| Build a kontrakty | Ověřit OpenAPI, klienta, oba buildy a produkční validátor beze změny. |
+Úplný rozsah atomické synchronizace obsahuje [dopadová matice](change-impact-room-stamps.md). Parametr include_options je volitelný, výchozí false; web jej posílá také při PATCH, aby odpověď zachovala opce. Nové údaje HousekeepingStayRead jsou aditivní. Databázová migrace není potřeba.

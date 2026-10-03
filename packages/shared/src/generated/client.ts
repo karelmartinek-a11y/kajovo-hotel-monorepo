@@ -252,11 +252,24 @@ export type HTTPValidationError = {
 export type HintRequest = {
   "email": string;
 };
+export type HousekeepingChargeRead = {
+  "date"?: string | null;
+  "kind": ReservationAmenityKind;
+  "label": string;
+  "quantity": number;
+};
+export type HousekeepingGuestRead = {
+  "age"?: number | null;
+  "age_group": "adults" | "children" | "infants" | "unknown";
+  "country_code"?: string | null;
+  "name"?: string | null;
+};
 export type HousekeepingOperationalState = "checkout_departed_dirty" | "checkout_departed_clean" | "checkout_pending" | "checkout_pending_clean" | "arrived" | "occupied" | "free";
 export type HousekeepingRoomRead = {
   "arrival_today": boolean;
   "arrivals": Array<HousekeepingStayRead>;
   "checked_out": boolean;
+  "current_persons"?: number;
   "departure_today": boolean;
   "departures": Array<HousekeepingStayRead>;
   "floor": string;
@@ -275,7 +288,7 @@ export type HousekeepingRoomRead = {
   "room_number": string;
   "stays": Array<HousekeepingStayRead>;
 };
-export type HousekeepingRoomStatus = "clean" | "dirty" | "stay_no_linen" | "stay_with_linen" | "do_not_disturb" | "technical_issue";
+export type HousekeepingRoomStatus = "clean" | "dirty" | "stay_no_linen" | "stay_with_linen" | "do_not_disturb" | "technical_issue" | "windows_cleaned" | "painted";
 export type HousekeepingRoomStatusUpdate = {
   "expected_status": HousekeepingRoomStatus;
   "note"?: string | null;
@@ -289,17 +302,33 @@ export type HousekeepingRoomsOverview = {
   "rooms": Array<HousekeepingRoomRead>;
 };
 export type HousekeepingStayRead = {
+  "adults"?: number | null;
   "amenities"?: Array<ReservationAmenityRead>;
   "arrival": string;
+  "arrival_time"?: string | null;
+  "charges"?: Array<HousekeepingChargeRead>;
   "checked_in"?: string | null;
   "checked_out"?: string | null;
+  "children"?: number | null;
+  "company_name"?: string | null;
+  "cot_required"?: boolean | null;
   "country_code"?: string | null;
   "country_name"?: string | null;
   "departure": string;
+  "departure_time"?: string | null;
+  "display_name"?: string | null;
+  "dog_count"?: number | null;
   "guest_label"?: string | null;
+  "guests"?: Array<HousekeepingGuestRead>;
   "housekeeping_note"?: string | null;
+  "infants"?: number | null;
+  "main_guest_name"?: string | null;
   "persons": number;
+  "reservation_code"?: string | null;
   "reservation_id": string;
+  "reservation_state"?: "confirmed" | "checked_in" | "checked_out" | "option" | null;
+  "reservation_status_name"?: string | null;
+  "unknown_persons"?: number;
 };
 export type InventoryAuditLogRead = {
   "action": string;
@@ -1257,10 +1286,10 @@ export const apiClient = {
   async addReservationAmenityApiV1HousekeepingReservationsReservationIdAmenitiesKindPost(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; "version"?: number; }): Promise<ReservationAmenityRead> {
     return request<ReservationAmenityRead>('POST', `/api/v1/housekeeping/reservations/${reservation_id}/amenities/${kind}`, query, undefined);
   },
-  async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; }): Promise<HousekeepingRoomsOverview> {
+  async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; "include_options"?: boolean; }): Promise<HousekeepingRoomsOverview> {
     return request<HousekeepingRoomsOverview>('GET', `/api/v1/housekeeping/rooms`, query, undefined);
   },
-  async updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(room_id: string, query: { "date": string; }, body: HousekeepingRoomStatusUpdate): Promise<HousekeepingRoomRead> {
+  async updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(room_id: string, query: { "date": string; "include_options"?: boolean; }, body: HousekeepingRoomStatusUpdate): Promise<HousekeepingRoomRead> {
     return request<HousekeepingRoomRead>('PATCH', `/api/v1/housekeeping/rooms/${room_id}`, query, body);
   },
   async listItemsApiV1InventoryGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {

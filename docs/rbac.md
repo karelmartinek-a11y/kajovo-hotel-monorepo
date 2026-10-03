@@ -116,8 +116,8 @@ Chybové odpovědi:
 Samotná module-level permission nestačí na všechny endpointy. Backend má ještě jemnější omezení:
 
 - `housekeeping`
-  - `admin`, `recepce` a `pokojská` smějí číst denní pokojský přehled a měnit šest podporovaných Better Hotel stavů pokoje
-  - `admin` a `recepce` přidávají/odebírají ikony psa a postýlky konkrétní rezervace; všechny tři role mění barvu existující ikony s kontrolou verze
+  - `admin`, `recepce` a `pokojská` smějí číst denní pokojský přehled a měnit osm podporovaných Better Hotel stavů pokoje
+  - web zobrazuje pouze automatické ikony z natížení; v nativním kontraktu `admin` a `recepce` přidávají/odebírají ikony psa a postýlky konkrétní rezervace; všechny tři role mění barvu existující ikony s kontrolou verze
   - zápis se po každé změně znovu ověří proti živému aktuálnímu stavu; stav rezervací se tím nemění
 - `breakfast`
   - diety celého pobytu mění pouze aktivní role `recepce`/`admin` přes rezervační endpoint s ověřením vazby Better Hotel a verze; denní PUT diety nemění

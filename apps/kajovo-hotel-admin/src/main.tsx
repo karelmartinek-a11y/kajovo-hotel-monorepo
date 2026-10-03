@@ -1819,7 +1819,7 @@ function HousekeepingAdmin(): JSX.Element {
         <button className={`k-housekeeping-toggle__button${activeView === 'lost_found' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => { setMode('lost_found'); setActiveView('lost_found'); }} aria-selected={activeView === 'lost_found'}>Nález</button>
         <button className={`k-housekeeping-toggle__button${activeView === 'issue' ? ' k-housekeeping-toggle__button--active' : ''}`} type="button" role="tab" onClick={() => { setMode('issue'); setActiveView('issue'); }} aria-selected={activeView === 'issue'}>Závada</button>
       </div>
-      {activeView === 'rooms' ? <HousekeepingRooms canManageAmenities={['admin', 'recepce'].includes(auth?.activeRole ?? auth?.role ?? '')} /> : (
+      {activeView === 'rooms' ? <HousekeepingRooms /> : (
         <div className="k-card k-card--compact">
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">

@@ -166,13 +166,15 @@ def test_occupancy_precedence(departure_out, arrival_in, arrival_out, clean, exp
 
 def test_other_date_keeps_live_occupancy_and_separate_guests():
     client = FakeHousekeepingClient()
-    future = _reservation("future", "room-101", "101", arrival="2026-09-20", departure="2026-09-22", label="Budoucí host")
+    future = _reservation("future", "room-101", "101", arrival="2026-09-20", departure="2026-09-22", label="Budoucí host", persons=4)
     live = _reservation("live", "room-101", "101", arrival="2026-09-17", departure="2026-09-19", checkedin="2026-09-17T12:00:00Z")
     client.reservations_for_day = lambda day: [live] if day == date(2026, 9, 17) else [future]
     overview = client.build_overview(date(2026, 9, 20))
     room = overview["rooms"][0]
     assert room["occupancy_state"] == "arrived"
     assert room["arrivals"][0]["guest_label"] == "Budoucí host"
+    assert room["persons"] == 4
+    assert room["current_persons"] == 1
     assert overview["occupancy_date"] == date(2026, 9, 17)
 
 
@@ -182,7 +184,7 @@ def test_country_uses_main_guest_address_not_another_guest():
     reservation.update(main_guest="main", guest_list=[{"guest": {"id": "other", "address": {"country": "DEU"}}}, {"guest": {"id": "main", "address": {"country": "CZE"}}}])
     assert _stay_read(reservation)["country_name"] in {"Česko", "Česká republika"}
     reservation["main_guest"] = "missing"
-    assert _stay_read(reservation)["country_name"] is None
+    assert _stay_read(reservation)["country_name"] == "Německo"
 
 
 def test_planned_arrival_without_checkin_and_empty_room_are_free():

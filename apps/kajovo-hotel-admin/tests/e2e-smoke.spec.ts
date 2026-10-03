@@ -176,9 +176,9 @@ test('zaměstnanec a administrátor si vymění zprávu a stav přečtení se ob
 test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní detail a chyba nehlásí úspěch', async ({ page, request }) => {
   expect((await request.post('/api/auth/admin/login', { data: getAdminCredentials() })).ok()).toBeTruthy();
   await page.context().addCookies((await request.storageState()).cookies);
-  const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
+  const stay = { reservation_id: 'r1', guest_label: 'Alexandra Velmi Dlouhé Příjmení', display_name: 'Velmi Dlouhé Příjmení Alexandra', reservation_state: 'confirmed', adults: 2, children: 1, infants: 0, dog_count: 1, cot_required: false, country_name: 'Spojené království Velké Británie a Severního Irska', persons: 3, arrival: '2026-09-17', departure: '2026-09-19', amenities: [{ kind: 'dog', state: 'red', version: 1, active: true }] };
   const expectedOrder = [101, 102, 103, 104, 105, 106, 107, 108, 109, 203, 204, 205, 206, 207, 208, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 221, 222, 223, 224, 321, 322, 323, 324, 201, 202, 209, 210, 410];
-  const rooms = expectedOrder.slice().reverse().map((number, i) => ({ room_id: String(number), room_number: String(number), room_name: String(number), floor: String(number)[0], housekeeping_status: 'Neuklizeno', operational_state: 'checkout_pending', occupancy_state: 'departing', occupied: number === 101 || i % 2 === 0, persons: number === 101 || i % 2 === 0 ? 3 : 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
+  const rooms = expectedOrder.slice().reverse().map((number, i) => ({ room_id: String(number), room_number: String(number), room_name: String(number), floor: String(number)[0], housekeeping_status: 'Neuklizeno', housekeeping_status_key: 'dirty', operational_state: 'checkout_pending', occupancy_state: 'departing', occupied: number === 101 || i % 2 === 0, persons: number === 101 || i % 2 === 0 ? 3 : 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'r2', guest_label: 'Přijíždějící host', display_name: 'Přijíždějící host' }], stays: [], ready_for_arrival: false }));
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     if (route.request().method() === 'PATCH') { await route.fulfill({ status: 502, json: { detail: 'Ověření změny selhalo.' } }); return; }
     await route.fulfill({ json: { date: '2026-09-18', occupancy_date: '2026-09-18', loaded_at: new Date().toISOString(), housekeeping_status_is_current: true, rooms } });
@@ -225,7 +225,7 @@ test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní deta
     const modal = page.getByRole('dialog');
     await expect(modal).toBeVisible();
     expect(await modal.evaluate((node) => { const r = node.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1 && Math.abs(r.bottom - innerHeight) <= 2; })).toBeTruthy();
-    await expect(modal).toContainText('Alexandra Velmi Dlouhé Příjmení');
+    await expect(modal).toContainText('Velmi Dlouhé Příjmení Alexandra');
     await expect(modal).toContainText('Uvnitř teď');
     await page.screenshot({ path: `/tmp/kajovo-status-${size.width}.png` });
     await modal.getByRole('button', { name: 'Zavřít dialog' }).click();
@@ -361,7 +361,7 @@ test.describe('CI smoke auth flows', () => {
           occupancy_date: new URL(route.request().url()).searchParams.get('date'),
           housekeeping_status_is_current: true,
           loaded_at: '2026-09-17T12:00:00Z',
-          rooms: [{ ...room, housekeeping_status: patchBody ? 'Technický problém' : room.housekeeping_status }],
+          rooms: [{ ...room, housekeeping_status_key: patchBody ? 'technical_issue' : 'dirty', housekeeping_status: patchBody ? 'Technický problém' : room.housekeeping_status }],
         }),
       });
     });
@@ -374,7 +374,7 @@ test.describe('CI smoke auth flows', () => {
     await expect(dialog.getByRole('button')).toHaveCount(0);
     finishWrite!();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /pokoj 301/i })).toContainText('Technický problém');
+    await expect(page.getByRole('button', { name: /pokoj 301/i }).locator('.k-hk-room__topline')).toHaveClass(/--technical_issue/);
     expect(patchBody).toEqual({ status: 'technical_issue', expected_status: 'dirty' });
   });
 
@@ -421,4 +421,36 @@ test.describe('CI smoke auth flows', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(/připomenutí bylo odesláno|odeslání připomenutí selhalo/i);
   });
+});
+
+test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', async ({ page, request }, testInfo) => {
+  const login = await request.post('/api/auth/admin/login', { data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
+  expect(login.ok()).toBeTruthy();
+  await page.context().addCookies((await request.storageState()).cookies);
+  const keys = ['clean', 'dirty', 'technical_issue', 'do_not_disturb', 'stay_no_linen', 'stay_with_linen', 'windows_cleaned', 'painted'];
+  const stay = { reservation_id: 'depart', guest_label: 'Host', display_name: 'Novák Jan', persons: 3, adults: 2, children: 1, infants: 0, country_code: 'CZ', arrival: '2026-10-01', departure: '2026-10-03', reservation_state: 'checked_out', departure_time: '10:30', dog_count: 2, cot_required: true, housekeeping_note: 'Poznámka odjezdu', amenities: [] };
+  await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
+    expect(new URL(route.request().url()).searchParams.get('include_options')).toBe('true');
+    const date = new URL(route.request().url()).searchParams.get('date');
+    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: keys.map((key, i) => ({ room_id: String(101+i), room_number: String(101+i), housekeeping_status_key: key, housekeeping_status: key, operational_state: 'free', occupied: false, persons: 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'arrive', reservation_state: 'checked_in', display_name: 'Dvořák Petr', housekeeping_note: 'Poznámka příjezdu' }], stays: [] })) } });
+  });
+  await page.goto('/admin/pokojska');
+  for (const [name,width,height] of [['desktop',1440,900],['tablet',834,1112],['phone',390,844]] as const) {
+    await page.setViewportSize({ width, height });
+    const card = page.locator('.k-hk-room').first();
+    await expect(card).toBeVisible();
+    await expect(card.locator('[data-stay-kind="departure"]')).toHaveCSS('background-color','rgb(104, 107, 115)');
+    await expect(card.locator('[data-stay-kind="arrival"]')).toHaveCSS('background-color','rgb(84, 173, 241)');
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+    expect(overflow).toBe(false);
+    await page.screenshot({ path: testInfo.outputPath(`admin-stamps-${name}.png`), fullPage: true });
+    await card.click();
+    const detail = page.getByRole('dialog');
+    await expect(detail.locator('.k-hk-status-actions button')).toHaveCount(8);
+    await expect(detail).toContainText('Poznámka odjezdu');
+    await expect(detail).toContainText('Poznámka příjezdu');
+    await expect(detail.getByRole('button', { name: /Pobyty a ikony|Přidat:|Odebrat:/ })).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(`admin-detail-${name}.png`), fullPage: true });
+    await detail.getByRole('button', { name: 'Zavřít dialog' }).click();
+  }
 });

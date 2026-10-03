@@ -1805,7 +1805,7 @@ function HousekeepingForm(): JSX.Element {
   return (
     <main className="k-page" data-testid="housekeeping-form-page">
       <h1>{t("Pokojská")}</h1>
-      {activeView === 'rooms' ? <HousekeepingRooms canWrite={canWriteRooms} canManageAmenities={['admin', 'recepce'].includes(auth?.activeRole ?? auth?.role ?? '')} /> : (
+      {activeView === 'rooms' ? <HousekeepingRooms canWrite={canWriteRooms} /> : (
         <div className="k-card k-card--compact">
           {error ? <p className="k-text-error">{error}</p> : null}
           <div className="k-form-grid">

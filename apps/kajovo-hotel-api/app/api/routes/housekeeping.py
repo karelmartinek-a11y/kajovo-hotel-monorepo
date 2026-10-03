@@ -34,9 +34,9 @@ def _client() -> BetterHotelHousekeepingClient:
 
 
 @router.get("/rooms", response_model=HousekeepingRoomsOverview)
-def get_housekeeping_rooms(service_date: date = Query(alias="date"), db: Session = Depends(get_db)) -> dict:
+def get_housekeeping_rooms(service_date: date = Query(alias="date"), include_options: bool = False, db: Session = Depends(get_db)) -> dict:
     try:
-        return enrich_overview(db, _client().build_overview(service_date))
+        return enrich_overview(db, _client().build_overview(service_date, include_options=True) if include_options else _client().build_overview(service_date))
     except BetterHotelHousekeepingError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
@@ -46,6 +46,7 @@ def update_housekeeping_room_status(
     room_id: str,
     payload: HousekeepingRoomStatusUpdate,
     service_date: date = Query(alias="date"),
+    include_options: bool = False,
     db: Session = Depends(get_db),
 ) -> dict:
     client = _client()
@@ -61,7 +62,7 @@ def update_housekeeping_room_status(
             note=payload.note,
             expected_status_key=payload.expected_status.value if payload.expected_status else None,
         )
-        overview = enrich_overview(db, client.build_overview(service_date))
+        overview = enrich_overview(db, client.build_overview(service_date, include_options=True) if include_options else client.build_overview(service_date))
     except HousekeepingRoomStatusConflict as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except BetterHotelHousekeepingError as exc:

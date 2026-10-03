@@ -243,6 +243,8 @@ class HousekeepingRoomStatus(StrEnum):
     STAY_WITH_LINEN = "stay_with_linen"
     DO_NOT_DISTURB = "do_not_disturb"
     TECHNICAL_ISSUE = "technical_issue"
+    WINDOWS_CLEANED = "windows_cleaned"
+    PAINTED = "painted"
 
 
 class HousekeepingOperationalState(StrEnum):
@@ -277,6 +279,20 @@ class ReservationAmenityUpdate(BaseModel):
     version: int = Field(ge=1)
 
 
+class HousekeepingGuestRead(BaseModel):
+    name: str | None = None
+    country_code: str | None = None
+    age: int | None = Field(default=None, ge=0)
+    age_group: Literal['adults', 'children', 'infants', 'unknown']
+
+
+class HousekeepingChargeRead(BaseModel):
+    kind: ReservationAmenityKind
+    label: str
+    quantity: float
+    date: str | None = None
+
+
 class HousekeepingStayRead(BaseModel):
     reservation_id: str
     guest_label: str | None = None
@@ -289,6 +305,22 @@ class HousekeepingStayRead(BaseModel):
     checked_in: datetime | None = None
     checked_out: datetime | None = None
     amenities: list[ReservationAmenityRead] = Field(default_factory=list)
+    reservation_code: str | None = None
+    reservation_state: Literal['confirmed', 'checked_in', 'checked_out', 'option'] | None = None
+    reservation_status_name: str | None = None
+    display_name: str | None = None
+    main_guest_name: str | None = None
+    company_name: str | None = None
+    adults: int | None = Field(default=None, ge=0)
+    children: int | None = Field(default=None, ge=0)
+    infants: int | None = Field(default=None, ge=0)
+    unknown_persons: int = Field(default=0, ge=0)
+    guests: list[HousekeepingGuestRead] = Field(default_factory=list)
+    arrival_time: str | None = Field(default=None, pattern=r'^(?:[01]\d|2[0-3]):[0-5]\d$')
+    departure_time: str | None = Field(default=None, pattern=r'^(?:[01]\d|2[0-3]):[0-5]\d$')
+    dog_count: int | None = Field(default=None, ge=0)
+    cot_required: bool | None = None
+    charges: list[HousekeepingChargeRead] = Field(default_factory=list)
 
 
 class HousekeepingRoomRead(BaseModel):
@@ -310,6 +342,7 @@ class HousekeepingRoomRead(BaseModel):
     departure_today: bool
     checked_out: bool
     occupied: bool
+    current_persons: int = Field(default=0, ge=0)
     guest_label: str | None = None
     persons: int = Field(ge=0)
 

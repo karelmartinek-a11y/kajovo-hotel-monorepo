@@ -41,7 +41,7 @@ if (login.actor_type !== 'admin') throw new Error(`Unexpected login payload: ${J
 const cookie = parseCookieHeader(loginResponse.headers);
 if (!cookie.includes('kajovo_session=')) throw new Error('Admin login did not issue a session cookie.');
 
-const response = await fetch(`${origin}/api/v1/housekeeping/rooms?date=${encodeURIComponent(serviceDate)}`, {
+const response = await fetch(`${origin}/api/v1/housekeeping/rooms?date=${encodeURIComponent(serviceDate)}&include_options=true`, {
   headers: { cookie, 'user-agent': 'kajovo-housekeeping-verify/1.0' },
 });
 const overview = await jsonOrThrow(response, 'Housekeeping rooms overview');
@@ -54,10 +54,14 @@ const invalid = overview.rooms.find((room) =>
   typeof room.operational_state !== 'string' ||
   typeof room.ready_for_arrival !== 'boolean' ||
   !('housekeeping_status_key' in room) ||
-  (room.housekeeping_status_key !== null && !['clean', 'dirty', 'stay_no_linen', 'stay_with_linen', 'do_not_disturb', 'technical_issue'].includes(room.housekeeping_status_key)) ||
+  (room.housekeeping_status_key !== null && !['clean', 'dirty', 'stay_no_linen', 'stay_with_linen', 'do_not_disturb', 'technical_issue', 'windows_cleaned', 'painted'].includes(room.housekeeping_status_key)) ||
   !['free', 'arrived', 'departing', 'staying'].includes(room.occupancy_state) ||
   ['departures', 'arrivals', 'stays'].some((group) => !Array.isArray(room[group]) || room[group].some((stay) =>
     typeof stay.reservation_id !== 'string' || !Array.isArray(stay.amenities) ||
+    (stay.reservation_state !== null && !['confirmed', 'checked_in', 'checked_out', 'option'].includes(stay.reservation_state)) ||
+    ['adults', 'children', 'infants', 'dog_count'].some((key) => stay[key] !== null && (!Number.isInteger(stay[key]) || stay[key] < 0)) ||
+    ['arrival_time', 'departure_time'].some((key) => stay[key] !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(stay[key])) ||
+    (stay.cot_required !== null && typeof stay.cot_required !== 'boolean') || !Array.isArray(stay.guests) || !Array.isArray(stay.charges) ||
     stay.amenities.some((item) => !['dog', 'cot'].includes(item.kind) || !['red', 'green'].includes(item.state) || !Number.isInteger(item.version)))) ||
   typeof room.arrival_today !== 'boolean' ||
   typeof room.departure_today !== 'boolean'
