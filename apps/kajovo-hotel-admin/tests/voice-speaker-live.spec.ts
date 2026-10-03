@@ -25,7 +25,7 @@ test('silent startup and residual speaker echo do not create or interrupt assist
           if (e.type === 'input_audio_buffer.speech_started') {evidence.speech++; if (playing.size) evidence.echoSpeech++;}
           if (e.type === 'response.created') evidence.responses++;
           if (e.type === 'output_audio_buffer.started') {evidence.audio++; if (e.response_id) evidence.startedWithId++; playing.add(e.response_id);}
-          if (e.type === 'output_audio_buffer.stopped') {evidence.drained++; if (e.response_id) evidence.stoppedWithId++; if (playing.has(e.response_id)) evidence.matchingStops++; playing.delete(e.response_id);}
+          if (e.type === 'output_audio_buffer.stopped') {evidence.drained++; if (e.response_id) evidence.stoppedWithId++; if (playing.has(e.response_id)) evidence.matchingStops++; playing.clear();}
           if (e.type === 'output_audio_buffer.cleared') {evidence.cleared++; playing.clear();}
           if (e.type === 'response.done' && e.response?.status === 'cancelled') evidence.cancelled++;
           if (e.type === 'response.done' && e.response?.status === 'failed') evidence.failures++;
