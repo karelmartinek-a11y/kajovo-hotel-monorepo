@@ -289,8 +289,13 @@ class VoiceBridge(MailHost):
     async def update_transcription(self):
         automatic = bool(self.memory_buffer and self.memory_buffer.enabled and not self.memory_privacy_paused)
         confirming = bool(self.registry.plan and self.registry.plan.requires_confirmation and self.registry.valid())
+        transcription = {"model": "gpt-4o-mini-transcribe"} if automatic or confirming or self.mail_ready else None
+        if transcription is not None:
+            language = self.config.manual_language if self.config.language_mode == "manual" else self.registry.language if confirming else None
+            if language:
+                transcription["language"] = language
         await self.send({"type": "session.update", "session": {"type": "realtime", "audio": {"input": {
-            "transcription": {"model": "gpt-4o-mini-transcribe"} if automatic or confirming or self.mail_ready else None,
+            "transcription": transcription,
         }}}}, lambda e: e.get("type") == "session.updated")
 
     async def registry_readback(self):
@@ -697,6 +702,8 @@ class VoiceBridge(MailHost):
                 self.registry.prepare(public["plan"], self.config.manual_language if self.config.language_mode == "manual" else self.input_language)
                 public["plan"] = self.registry.plan.model_dump(exclude_none=True)
             if args.operation == "registry_apply" and rid:
+                from app.services.voice_registry import PublicRegistryResult
+                self.registry.results = [PublicRegistryResult.model_validate(r) for r in public.get("results", [])]
                 self.registry.state = registry_outcome(public)
                 self.registry.persist()
                 await self.refresh_registry_metadata(public)
@@ -753,6 +760,15 @@ class VoiceBridge(MailHost):
                 if rid
                 else "Požadavek nebyl potvrzen. Oprav výběr podle katalogu nebo oznam nedostupnost; netvrď úspěch.",
             }
+            if isinstance(exc, ValidationError) and rid is None:
+                known_rules = {"registry_changes_and_revision_required", "unexpected_operation_fields", "unexpected_registry_fields", "catalog_revision_required", "exactly_one_registry_target_required", "exactly_one_name_required", "destination_required", "invalid_name_template", "template_required", "empty_name", "invalid_registry_targets", "invalid_rows", "plan_id_required", "exactly_one_target_required", "exactly_one_control_mode_required", "parameters_required", "parameters_belong_to_controls", "request_id_required", "one_camera_required", "detail_page_limit"}
+                issues = []
+                for error in exc.errors(include_input=False, include_url=False):
+                    rule = str(error.get("ctx", {}).get("error", ""))
+                    field = str(error.get("loc", ("operation",))[0]) if error.get("loc") else "operation"
+                    issues.append({"field": field if field in SmartArguments.model_fields else "unknown_field", "rule": rule if rule in known_rules else error["type"]})
+                output.update(not_sent=True, validation_issues=issues, catalog_revision=self.revision)
+                output["message"] = "Požadavek nebyl odeslán. Oprav pouze uvedené chyby podle schématu. Registry prepare vyžaduje catalog_revision a changes; create_room má pouze action a new_name, bez cílových polí."
             if isinstance(exc, ValidationError) and any(
                 str(error.get("ctx", {}).get("error", "")) == "exactly_one_target_required"
                 for error in exc.errors(include_input=False, include_url=False)

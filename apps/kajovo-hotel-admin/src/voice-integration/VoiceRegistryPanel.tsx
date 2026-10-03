@@ -16,6 +16,7 @@ const phases: Record<string, string> = {
   failed: 'Přečtení celého návrhu nebylo ověřeno. Změna se neprovede.',
   uncertain: 'Výsledek zápisu je nejistý. Chat dohledá původní operaci; změnu neopakujte.',
 };
+const results: Record<string, string> = {created: 'vytvořeno', updated: 'aktualizováno', deleted: 'odstraněno', unchanged: 'beze změny', not_sent: 'neodesláno', uncertain: 'nejistý výsledek'};
 const actions: Record<string, string> = {create_room: 'Vytvořit místnost', rename_room: 'Přejmenovat místnost', delete_room: 'Smazat místnost', assign_devices: 'Přesunout zařízení', remove_devices: 'Odřadit zařízení', rename_devices: 'Přejmenovat zařízení'};
 
 export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
@@ -37,8 +38,9 @@ export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
   return <section className="voice-registry" aria-label="Návrh správy místností" data-testid="voice-registry">
     <h2>Místnosti a názvy zařízení</h2>
     <p role="status">{!sessionId ? 'Správa je dostupná během hlasového hovoru.' : failed ? 'Přehled návrhu není dostupný. Vyčkejte na ověřený stav hlasového chatu.' : phases[view?.state ?? 'idle'] ?? 'Čekám na ověřený stav návrhu.'}</p>
-    {view?.results?.length ? <ul>{view.results.map((result, i) => <li key={i}>{result.action ? actions[result.action] : 'Výsledek'}: {result.old_name ?? result.name ?? result.new_name ?? 'Cíl bez názvu'} — {result.status}</li>)}</ul> : null}
+    {view?.results?.length ? <ul>{view.results.map((result, i) => <li key={i}>{result.action ? actions[result.action] : 'Výsledek'}: {result.old_name ?? result.name ?? result.new_name ?? 'Cíl bez názvu'}{result.row ? ` (řádek ${result.row})` : ''} — {results[result.status] ?? `odmítnuto: ${result.status}`}</li>)}</ul> : null}
     {view?.plan && <>
+      {!!view.results?.length && <h3>Původní návrh</h3>}
       <p>Platnost návrhu do {new Date(view.plan.expires_at).toLocaleTimeString('cs-CZ', {timeZone: 'Europe/Prague'})}. {view.plan.requires_confirmation ? 'Vyžaduje hlasové potvrzení.' : 'Další potvrzení není potřebné.'}</p>
       <ol>{view.plan.changes.map((change, index) => <li key={index}>
         <strong>{actions[change.action] ?? change.action}: </strong>{change.old_name ?? change.name ?? change.new_name}

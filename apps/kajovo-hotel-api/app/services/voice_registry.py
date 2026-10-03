@@ -312,8 +312,8 @@ def input_language(text, previous):
     # Whole command words take precedence over an incidental English room name.
     words = set(normalize(text).split())
     for language, terms in (
-        ("cs", {"prestehuj", "umisteni", "typy", "mistnost", "mistnosti", "prejmenuj", "vytvor", "smaz", "presun", "zarizeni"}),
-        ("sk", {"miestnost", "miestnosti", "umiestnenie", "premenuj", "zmaz", "zariadenie"}),
+        ("cs", {"prestehuj", "umisteni", "mistnostem", "mistnost", "mistnosti", "prejmenuj", "vytvor", "smaz", "zarizeni"}),
+        ("sk", {"miestnost", "miestnosti", "umiestnenie", "umiestnenia", "umiestneni", "zariadenia", "premiestni", "premenuj", "zmaz", "zariadenie"}),
         ("de", {"raum", "raume", "umbenennen", "loschen"}),
         ("en", {"rename", "create", "delete", "move", "room"}),
     ):

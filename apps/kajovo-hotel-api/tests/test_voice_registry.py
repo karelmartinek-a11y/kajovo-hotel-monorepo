@@ -255,6 +255,7 @@ def test_confirmation_transcription_does_not_resume_memory_automation(voice_host
         b.registry.prepare(proposal(), "cs")
         await b.update_transcription()
         assert sent[-1]["session"]["audio"]["input"]["transcription"]["model"] == "gpt-4o-mini-transcribe"
+        assert sent[-1]["session"]["audio"]["input"]["transcription"]["language"] == "cs"
         assert b.memory_buffer.enabled is False
         b.registry.invalidate()
         await b.update_transcription()

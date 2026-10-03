@@ -14,7 +14,7 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
     const clock = ctx.createOscillator(), silence = ctx.createGain();
     silence.gain.value = 0; clock.connect(silence); silence.connect(output); clock.start();
     navigator.mediaDevices.getUserMedia = async () => {await ctx.resume(); return output.stream;};
-    (window as any).registryAudio = {ctx, output, speech: 0, speechStops: 0, responses: 0, audio: 0, bufferStops: 0, operations: {}, errors: 0, frames: [], usage: [], latency: [], started: {}, lastInputStop: 0};
+    (window as any).registryAudio = {ctx, output, speech: 0, speechStops: 0, responses: 0, audio: 0, bufferStops: 0, operations: {}, errors: 0, frames: [], usage: [], latency: [], started: {}, lastInputStop: 0, shapes: []};
     const create = RTCPeerConnection.prototype.createDataChannel;
     RTCPeerConnection.prototype.createDataChannel = function(...args) {
       const channel = create.apply(this, args);
@@ -37,7 +37,11 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
           }
           const item = value.item;
           if (value.type === 'response.output_item.done' && item?.type === 'function_call' && item.name === 'smart_technologie' && item.arguments) {
-            const operation = JSON.parse(item.arguments).operation;
+            const args = JSON.parse(item.arguments);
+            const operation = ['overview', 'search', 'describe', 'read', 'control', 'camera_snapshot', 'camera_record', 'operation_status', 'rooms_list', 'registry_prepare', 'registry_apply'].includes(args.operation) ? args.operation : '<unknown>';
+            const safeKeys = new Set(['operation', 'catalog_revision', 'changes', 'plan_id', 'room_refs', 'room_selection_id', 'rows', 'selection_id', 'new_name', 'name_template', 'start_index', 'index_width', 'action', 'query', 'filters', 'limit', 'offset', 'destination_room_ref', 'request_id', 'controls', 'parameters']);
+            const keys = (v: any) => Object.keys(v ?? {}).map(k => safeKeys.has(k) ? k : '<unknown>');
+            metrics.shapes.push({operation, keys: keys(args), changes: Array.isArray(args.changes) ? args.changes.map((c: any) => ({action: ['create_room', 'rename_room', 'delete_room', 'assign_devices', 'remove_devices', 'rename_devices'].includes(c.action) ? c.action : '<unknown>', keys: keys(c), empty: keys(c).filter(k => c[k] === '' || (Array.isArray(c[k]) && c[k].length === 0))})) : null});
             metrics.operations[operation] = (metrics.operations[operation] ?? 0) + 1;
           }
           if (item?.id?.startsWith('kvha_') && item.content?.[0]?.type === 'input_text') {
@@ -73,6 +77,7 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
   });
   const speak = async (name: string) => {
     await expect(page.getByTestId('voice-state')).toHaveText('Poslouchám', {timeout: 120000});
+    await expect.poll(() => page.evaluate(() => (window as any).registryAudio.output.stream.getAudioTracks().every((track: MediaStreamTrack) => track.enabled && track.readyState === 'live')), {timeout: 30000}).toBe(true);
     const data = readFileSync(join(directory, name + '.wav')).toString('base64');
     await page.evaluate(async data => {
       const {ctx, output} = (window as any).registryAudio;
@@ -172,9 +177,10 @@ test('real audio registry dialogue changes only unique temporary rooms', async (
     expect(await page.evaluate(() => (window as any).registryAudio.operations.read ?? 0)).toBe(0);
   } finally {
     console.log('Registry live aggregate evidence:', await page.evaluate(() => {
-      const {speech, speechStops, responses, audio, bufferStops, operations, errors, usage, latency} = (window as any).registryAudio;
-      return {speech, speechStops, responses, audio, bufferStops, operations, errors, usage, latency};
+      const {speech, speechStops, responses, audio, bufferStops, operations, errors, usage, latency, shapes} = (window as any).registryAudio;
+      return {speech, speechStops, responses, audio, bufferStops, operations, errors, usage, latency, shapes};
     }));
+    console.log('Registry live argument shapes:', JSON.stringify(await page.evaluate(() => (window as any).registryAudio.shapes)));
     const end = page.getByRole('button', {name: 'Ukončit hovor'});
     if (await end.isVisible()) await end.click();
     if (temporaryMemoryRevision !== null) {

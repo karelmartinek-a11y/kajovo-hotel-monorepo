@@ -15,6 +15,35 @@ from .test_smart_technologies import mcp_result
 voice_host = _voice_host
 
 
+@pytest.mark.parametrize("language", ["cs", "sk", "en", "de"])
+@pytest.mark.parametrize("manual", [False, True])
+def test_transcription_language_hint_follows_manual_config_or_pending_readback(voice_host, monkeypatch, language, manual):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    async def run():
+        from types import SimpleNamespace
+        config = VoiceCoreConfig(language_mode="manual", manual_language=language) if manual else VoiceCoreConfig()
+        bridge = voice_smart.VoiceBridge("owner", f"rtc-hint-{language}-{manual}", "key", "token", config, "gpt-realtime-2.1")
+        bridge.memory_buffer = SimpleNamespace(enabled=True)
+        sent = []
+        async def send(event, match):
+            sent.append(event)
+        bridge.send = send
+        await bridge.update_transcription()
+        value = sent[-1]["session"]["audio"]["input"]["transcription"]
+        assert value.get("language") == (language if manual else None)
+        bridge.memory_buffer.enabled = False
+        bridge.memory_privacy_paused = True
+        bridge.registry.prepare(plan(), language)
+        await bridge.update_transcription()
+        assert sent[-1]["session"]["audio"]["input"]["transcription"] == {"model": "gpt-4o-mini-transcribe", "language": language}
+        assert bridge.memory_buffer.enabled is False
+        bridge.registry.invalidate()
+        await bridge.update_transcription()
+        assert sent[-1]["session"]["audio"]["input"]["transcription"] is None
+    asyncio.run(run())
+
+
 def plan():
     return {"id": "p", "expires_at": (utc_now() + timedelta(minutes=5)).isoformat(), "requires_confirmation": True,
         "changes": [{"action": "delete_room", "status": "planned", "room_ref": "r", "old_name": "3. patro", "detached_devices": 2},
@@ -158,3 +187,58 @@ def test_housekeeping_retains_even_old_completed_and_unresolved_smart_identities
 def test_activation_proof_contract_is_executable_without_provider_or_backend():
     from scripts.verify_voice_mcp_compatibility import verify
     assert len(verify()["checks"]) == 6 and all(verify()["checks"].values())
+
+
+def test_invalid_registry_shape_reports_safe_correction_without_reserving_a_write(voice_host, monkeypatch):
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_smart, "authorized", lambda _: True)
+    async def run():
+        b = voice_smart.VoiceBridge("owner", "invalid-shape", "key", "token", VoiceCoreConfig(), "gpt-realtime-2.1")
+        b.catalog_ready, b.revision = True, "r1"
+        events = []
+        async def item(value):
+            events.append(value)
+            return value["id"]
+        b.item = item
+        class MCP:
+            async def call_tool(self, name, args):
+                raise AssertionError("invalid arguments reached MCP")
+        b.mcp = MCP()
+        await b.result({"name": "smart_technologie", "call_id": "missing-revision", "arguments": json.dumps({"operation": "registry_prepare", "changes": [{"action": "create_room", "new_name": "private-name-canary"}]})})
+        output = json.loads(events[-1]["output"])
+        assert output["not_sent"] and output["catalog_revision"] == "r1"
+        assert output["validation_issues"] == [{"field": "operation", "rule": "registry_changes_and_revision_required"}]
+        assert "private-name-canary" not in events[-1]["output"] and not b.unresolved_requests
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("text", ["Zmeň typ umiestnenia zariadenia room", "Zoznam typov umiestnenia", "Aké mám typy umiestnenia", "Presuň zariadenia do typu umiestnenia"])
+def test_slovak_inflected_location_commands(text):
+    assert input_language(text, "cs") == "sk"
+
+
+@pytest.mark.parametrize("status,expected", [("not_sent", "rejected"), ("unchanged", "unchanged"), ("updated", "applied")])
+def test_actual_dispatcher_publishes_per_item_results_and_terminal_state(voice_host, monkeypatch, status, expected):
+    from .test_voice_registry import proposal
+    from app.db.models import VoiceRegistryPlan, VoiceSmartOperation
+    _, factory, _ = voice_host
+    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_smart, "authorized", lambda _: True)
+    async def run():
+        b = voice_smart.VoiceBridge("owner", "apply-outcome-"+status, "key", "token", VoiceCoreConfig(), "gpt-realtime-2.1")
+        b.registry.prepare(proposal(required=False), "cs")
+        b.catalog_ready, b.revision = True, "r1"
+        async def item(value):
+            return value["id"]
+        b.item = item
+        class MCP:
+            async def call_tool(self, name, args):
+                return mcp_result({"catalog_revision": "r1", "results": [{"status": status}], "summary": {status: 1}})
+        b.mcp = MCP()
+        await b.result({"name": "smart_technologie", "call_id": "apply", "arguments": json.dumps({"operation": "registry_apply", "plan_id": b.registry.plan.id})})
+        assert b.registry.view().state == expected and b.registry.view().results[0].status == status
+        with factory() as db:
+            assert db.get(VoiceRegistryPlan, b.registry.identity).state == expected
+            assert db.get(VoiceSmartOperation, voice_smart.request_id(b.id, "apply")).status == "completed"
+    asyncio.run(run())
