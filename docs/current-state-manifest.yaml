@@ -96,3 +96,14 @@ voice_registry:
   migration: 0043_voice_registry_plans
   confirmation: audio_only
   documentation: docs/voice-registry.md
+
+voice_mail:
+  contract: mail-mcp/1
+  public_endpoint: https://apimail.hcasc.cz/mcp
+  tool_count: 20
+  migration: 0044_voice_mail_operations
+  confirmation: audio_only
+  readback_max_characters: 4500
+  documentation: docs/voice-mail.md
+  ui_validation: pnpm --filter @kajovo/kajovo-hotel-admin test:voice-mail
+  persistent_mail_content: false

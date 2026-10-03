@@ -1,0 +1,35 @@
+import {expect, test} from '@playwright/test';
+import {getAdminCredentials} from '../test-admin-credentials';
+
+test('read-only mail envelope/body and degraded account status use real owner-scoped API', async ({page}, info) => {
+  await page.addInitScript(() => {RTCPeerConnection.prototype.setRemoteDescription = async () => {};});
+  let reads = 0;
+  page.on('request', req => {if (req.url().endsWith('/mail-plan')) reads++;});
+  const credentials = getAdminCredentials();
+  await page.goto('/admin/login');
+  await page.getByLabel(/e-mail administrátora/i).fill(credentials.email);
+  await page.getByLabel(/heslo administrátora/i).fill(credentials.password);
+  await page.getByRole('button', {name: /přihlásit/i}).click();
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await page.goto('/admin/hlasovy-chat');
+  const panel = page.getByRole('region', {name: 'E-mail v hlasovém chatu'});
+  await expect(panel).toContainText('během hlasového hovoru');
+  await page.getByLabel('Nový API klíč', {exact: true}).fill('sk-test-mail-ui');
+  await page.getByRole('button', {name: 'Uložit', exact: true}).click();
+  await expect(page.getByText('Klíč je uložen.')).toBeVisible();
+  await page.getByRole('button', {name: 'Zahájit hovor'}).click();
+  await expect(panel).toContainText('Potvrďte odeslání hlasem');
+  await expect(panel).toContainText('chybí přihlašovací údaje');
+  await expect(panel).toContainText('index není připravený');
+  for (const text of ['cc@example.invalid', 'bcc@example.invalid', 'test@example.invalid', 'První odstavec', 'Druhý odstavec']) await expect(panel).toContainText(text);
+  await expect(panel.getByRole('button')).toHaveCount(0);
+  await expect.poll(() => reads).toBeGreaterThan(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await panel.scrollIntoViewIfNeeded();
+  await page.screenshot({path: info.outputPath('mail-read-only.png'), fullPage: true});
+  await page.getByRole('button', {name: 'Ukončit hovor'}).click();
+  await expect(panel).toContainText('během hlasového hovoru');
+  const stopped = reads;
+  await page.waitForTimeout(1500);
+  expect(reads).toBe(stopped);
+});

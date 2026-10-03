@@ -1,0 +1,5 @@
+.voice-mail { margin-block: var(--k-spacing-4); padding: var(--k-spacing-4); border: 1px solid var(--k-color-border); border-radius: var(--k-radius-2); min-width: 0; overflow-wrap: anywhere; }
+.voice-mail dl { display: grid; grid-template-columns: minmax(5rem, auto) minmax(0, 1fr); gap: var(--k-spacing-2) var(--k-spacing-4); }
+.voice-mail dd { margin: 0; }
+.voice-mail-body { white-space: pre-wrap; }
+@media (max-width: 420px) { .voice-mail dl { display: block; } .voice-mail dt { margin-top: var(--k-spacing-3); font-weight: 600; } }

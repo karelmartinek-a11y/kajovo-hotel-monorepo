@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     voice_memory_max_calls_per_hour: int = Field(default=40, ge=1, le=120)
     voice_master_key: str = Field(default="", repr=False)
     kajavoiceha_mcp_token: str = Field(default="", repr=False, validation_alias="KAJAVOICEHA_MCP_TOKEN")
+    kajovo_mail_mcp_url: str = Field(default="https://apimail.hcasc.cz/mcp", validation_alias="KAJOVO_MAIL_MCP_URL")
+    kajovo_mail_mcp_token: str = Field(default="", repr=False, validation_alias="KAJOVO_MAIL_MCP_TOKEN")
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"

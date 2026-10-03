@@ -48,7 +48,7 @@ def test_sqlite_real_upgrade_from_previous_head_and_downgrade(tmp_path):
     ]:
         assert table in tables
     with engine.connect() as db:
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0043_voice_registry_plans"
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0044_voice_mail_operations"
         assert (
             db.scalar(text("SELECT email FROM admin_profile WHERE id=1"))
             == "migration@example.invalid"

@@ -40,6 +40,9 @@ from app.services.voice_memory_curator import TurnBuffer
 from app.db.models import VoiceMemoryOperation, VoiceMemorySettings
 from app.security.auth import _serialize_session
 from app.services.voice_registry import RegistryConfirmation
+from app.services.voice_mail_host import MailHost
+from app.services.voice_mail import MODEL_TOOLS, INSTRUCTIONS as MAIL_INSTRUCTIONS, TOOLS as MAIL_TOOLS
+from app.db.models import VoiceMailOperation
 
 logger = logging.getLogger("kajovo.voice")
 
@@ -132,7 +135,7 @@ def operation_finished(rid: str, status: str, registry=None):
             db.commit()
 
 
-class VoiceBridge:
+class VoiceBridge(MailHost):
     def __init__(self, owner: str, call_id: str, key: str, token: str, config, model: str):
         self.id = hashlib.sha256(f"{owner}:{call_id}".encode()).hexdigest()[:32]
         self.owner, self.call_id, self.key, self.token = owner, call_id, key, token
@@ -145,6 +148,7 @@ class VoiceBridge:
         self.last_room_selection = None
         self.last_rooms = None
         self.registry = RegistryConfirmation(owner, self.id, SessionLocal)
+        self.init_mail(SessionLocal, lambda: authorized(self.owner))
         self.input_language = "cs"
         self.auto_response_enabled = False
         self.registry_generation_queued = False
@@ -157,6 +161,7 @@ class VoiceBridge:
         self.ws = None
         self.waiters: list[tuple[object, asyncio.Future]] = []
         self.write_lock = asyncio.Lock()
+        self.configuration_lock = asyncio.Lock()
         self.queue = asyncio.Queue()
         self.ready = asyncio.Event()
         self.last_heartbeat = time.monotonic()
@@ -184,6 +189,7 @@ class VoiceBridge:
             "session_id": self.id,
             "technologies": self.technologies,
             "memory": self.memory_status,
+            "mail": self.mail_status(),
             "connection_state": "waiting" if self.technologies == "waiting" else "ready" if self.ready.is_set() else "connecting",
             "renew": self.renew,
             "closed": self.closed,
@@ -233,6 +239,11 @@ class VoiceBridge:
         )
 
     async def configure(self, enabled: bool, *, create_response: bool = True):
+        # Independent MCP setup tasks cannot overwrite each other's accepted capability list.
+        async with self.configuration_lock:
+            await self._configure(enabled or self.catalog_ready, create_response=create_response)
+
+    async def _configure(self, enabled: bool, *, create_response: bool = True):
         language = (
             "Reply in the speaker's language."
             if self.config.language_mode == "automatic"
@@ -240,12 +251,12 @@ class VoiceBridge:
         )
         value = {
             "type": "realtime",
-            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL],
+            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL] + (MODEL_TOOLS if self.mail_ready else []),
             "tool_choice": "auto",
             "truncation": "disabled",
             "max_output_tokens": 4096,
             "instructions": (SMART_INSTRUCTIONS if enabled else "You are a natural voice interface. Be honest about uncertainty.\n")
-            + MEMORY_INSTRUCTIONS + "\nToday in Europe/Prague: " + utc_now().astimezone(__import__("zoneinfo").ZoneInfo("Europe/Prague")).date().isoformat() + "\n"
+            + MEMORY_INSTRUCTIONS + MAIL_INSTRUCTIONS + "\nToday in Europe/Prague: " + utc_now().astimezone(__import__("zoneinfo").ZoneInfo("Europe/Prague")).date().isoformat() + "\n"
             + language
             + "\n"
             + LENGTH_POLICIES[self.config.response_length][1],
@@ -254,7 +265,7 @@ class VoiceBridge:
                     "turn_detection": {
                         "type": "semantic_vad",
                         "eagerness": "auto",
-                        "create_response": create_response and not (self.registry.plan and self.registry.plan.requires_confirmation and self.registry.state in {"prepared", "reading", "awaiting_confirmation"}),
+                        "create_response": create_response and not (self.mail_confirmation.valid() and self.mail_confirmation.state in {"prepared", "reading", "awaiting_confirmation"}) and not (self.registry.plan and self.registry.plan.requires_confirmation and self.registry.state in {"prepared", "reading", "awaiting_confirmation"}),
                         "interrupt_response": True,
                     }
                 }
@@ -279,7 +290,7 @@ class VoiceBridge:
         automatic = bool(self.memory_buffer and self.memory_buffer.enabled and not self.memory_privacy_paused)
         confirming = bool(self.registry.plan and self.registry.plan.requires_confirmation and self.registry.valid())
         await self.send({"type": "session.update", "session": {"type": "realtime", "audio": {"input": {
-            "transcription": {"model": "gpt-4o-mini-transcribe"} if automatic or confirming else None,
+            "transcription": {"model": "gpt-4o-mini-transcribe"} if automatic or confirming or self.mail_ready else None,
         }}}}, lambda e: e.get("type") == "session.updated")
 
     async def registry_readback(self):
@@ -359,8 +370,8 @@ class VoiceBridge:
                     raise voice_memory.MemoryError("unauthorized")
                 self.memory_principal = voice_memory.principal(db, _serialize_session(session))
                 automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic and not self.memory_privacy_paused
-            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner))
-            self.memory_buffer.enabled = automatic
+            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner) and not self.mail_private)
+            self.memory_buffer.enabled = automatic and not self.mail_private
             await self.update_transcription()
             self.memory_status = "ready"
             await self.refresh_memory_context()
@@ -441,6 +452,8 @@ class VoiceBridge:
                         raise SmartError("delivery_identity_conflict")
                     self.seen_calls[cid] = fingerprint
                     return
+                if self.mail_private and request.request.operation not in {"memory_search", "memory_read", "memory_list", "note_list", "note_read", "summary_read", "memory_forget", "note_delete", "note_clear"}:
+                    raise voice_memory.MemoryError("mail_privacy_paused")
                 sensitive_text = " ".join(str(getattr(request.request, field, "")) for field in ("subject", "title", "content", "items", "tags"))
                 if voice_memory.sensitive_content(sensitive_text):
                     user_turns = self.memory_buffer.turns if self.memory_buffer else []
@@ -490,7 +503,15 @@ class VoiceBridge:
             registry_action = self.registry.event(event) if registry_event and authorized(self.owner) else None
             if registry_action:
                 await self.queue_registry_action(registry_action)
-            if self.memory_buffer and not registry_dialog:
+            mail_action = self.mail_event(event)
+            if mail_action:
+                await self.queue.put({"mail": mail_action})
+            if any(item.get("name", "").startswith("mail_") for item in event.get("response", {}).get("output", [])):
+                self.mail_private = True
+                if self.memory_buffer:
+                    self.memory_buffer.enabled = False
+                    self.memory_buffer.reset(invalidate=True)
+            if self.memory_buffer and not registry_dialog and not self.mail_private:
                 self.memory_buffer.event(event)
             if typ == "conversation.item.input_audio_transcription.completed" and not registry_dialog:
                 text = event.get("transcript", "").casefold()
@@ -582,6 +603,15 @@ class VoiceBridge:
         raise SmartError("sideband_disconnected")
 
     async def result(self, call: dict):
+        if call.get("name") in MAIL_TOOLS:
+            await self.mail_result(call)
+            return
+        if call.get("name") == "smart_technologie" and self.mail_confirmation.valid():
+            try:
+                if json.loads(call.get("arguments", "{}")).get("operation") == "registry_prepare":
+                    self.mail_confirmation.invalidate()
+            except ValueError:
+                pass
         if call.get("name") == "assistant_memory":
             await self.memory_result(call)
             return
@@ -827,6 +857,14 @@ class VoiceBridge:
     async def work(self):
         while not self.closed:
             calls = await self.queue.get()
+            if isinstance(calls, dict) and "mail" in calls:
+                if calls["mail"] == "readback":
+                    await self.mail_readback()
+                else:
+                    await self.update_transcription()
+                    await self.configure(self.catalog_ready)
+                    await self.send({"type": "response.create"}, lambda e: e.get("type") == "response.created")
+                continue
             if isinstance(calls, dict) and "registry" in calls:
                 if calls["registry"] == "readback":
                     await self.registry_readback()
@@ -862,7 +900,9 @@ class VoiceBridge:
             }
             await self.prune()
             if had_calls and not self.renew:
-                if self.registry.readback_pending:
+                if self.mail_confirmation.readback_pending:
+                    await self.mail_readback()
+                elif self.registry.readback_pending:
                     await self.registry_readback()
                 else:
                     await self.update_transcription()
@@ -876,6 +916,10 @@ class VoiceBridge:
                 return
             if self.registry.state in {"prepared", "reading", "awaiting_confirmation", "confirmed"}:
                 self.registry.valid()
+            self.mail_confirmation.valid()
+            if self.mail_confirmation.expiry_pending:
+                self.mail_confirmation.expiry_pending = False
+                await self.queue.put({"mail": "generate"})
             if self.registry.expiry_pending:
                 await self.queue_registry_action("generate")
 
@@ -934,6 +978,7 @@ class VoiceBridge:
                     asyncio.create_task(self.lease()),
                     asyncio.create_task(self.memory_work()),
                     asyncio.create_task(self.initialize_technologies()),
+                    asyncio.create_task(self.initialize_mail()),
                 ]
                 done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                 if reader in done:
@@ -948,6 +993,8 @@ class VoiceBridge:
             self.technologies = "unavailable"
             self.renew = True
         finally:
+            self.mail_confirmation.invalidate()
+            self.mail_confirmation.text = self.mail_confirmation.preview = self.mail_draft = self.mail_bypass = None
             self.registry.invalidate()
             self.registry.text = None
             self.registry.plan = None
@@ -1041,7 +1088,7 @@ class VoiceBridgeManager:
             "sdp": response.text,
             "model": model,
             **bridge.public_status(),
-            "managed_functions": ["assistant_memory", "smart_technologie"],
+            "managed_functions": ["assistant_memory", "smart_technologie", *MAIL_TOOLS],
         }
 
     def get(self, sid: str, owner: str):
@@ -1066,6 +1113,7 @@ class VoiceBridgeManager:
                     )
                 )
                 db.execute(delete(VoiceSmartDelivery).where(VoiceSmartDelivery.created_at < utc_now() - timedelta(days=30)))
+                db.execute(delete(VoiceMailOperation).where(VoiceMailOperation.created_at < utc_now() - timedelta(days=30), VoiceMailOperation.state.not_in(["sending", "uncertain"])))
                 db.execute(delete(VoiceRegistryPlan).where(VoiceRegistryPlan.created_at < utc_now() - timedelta(days=30)))
                 db.commit()
 

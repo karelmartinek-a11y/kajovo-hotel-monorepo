@@ -66,12 +66,58 @@ class VoiceSessionWrite(BaseModel):
     revision: int = Field(ge=0)
 
 
+class MailAccountStatus(BaseModel):
+    account: str
+    email: str
+    display_name: str
+    status: str
+    configured: bool
+    imap_connected: bool
+    smtp_authenticated: bool
+    index_ready: bool
+    indexed_messages: int
+    indexed_folders: int
+    last_sync_at: str | None
+    error: str | None
+
+
+class MailStatus(BaseModel):
+    state: str = "unavailable"
+    accounts: list[MailAccountStatus] = Field(default_factory=list)
+
+
+class MailPreview(BaseModel):
+    send_candidate_id: str
+    draft_ref: str
+    draft_version: int
+    sender: str
+    to: list[str]
+    cc: list[str]
+    bcc: list[str]
+    subject: str
+    text_body: str
+    body_hash: str
+    expires_at: str
+    requires_confirmation: bool
+
+
+class MailConfirmationView(BaseModel):
+    state: str
+    attempts: int
+    preview: MailPreview | None = None
+
+
+class MailView(MailStatus):
+    confirmation: MailConfirmationView
+
+
 class VoiceSessionRead(BaseModel):
     sdp: str
     model: str
     session_id: str | None = None
     connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
     memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
+    mail: MailStatus = Field(default_factory=MailStatus)
     technologies: str = "unavailable"
     managed_functions: list[str] = Field(default_factory=list)
     renew: bool = False
@@ -82,6 +128,7 @@ class VoiceSessionStatus(BaseModel):
     session_id: str
     connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
     memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
+    mail: MailStatus = Field(default_factory=MailStatus)
     technologies: str
     renew: bool
     closed: bool
@@ -186,3 +233,8 @@ async def close_session(session_id: str, request: Request):
     bridge = owned_bridge(session_id, request)
     await bridge.close()
     return bridge.public_status()
+
+
+@router.get("/sessions/{session_id}/mail-plan", response_model=MailView)
+def get_mail_plan(session_id: str, request: Request):
+    return owned_bridge(session_id, request).mail_view()

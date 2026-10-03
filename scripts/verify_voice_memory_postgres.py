@@ -79,7 +79,7 @@ from app.services.voice_memory import principal,execute
 from app.services.voice_memory_contract import MemoryRequest
 from sqlalchemy import select,func,text
 with SessionLocal() as db:
-    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0043_voice_registry_plans'
+    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0044_voice_mail_operations'
     p=principal(db,{'actor_type':'admin','role':'admin','email':'test@example.invalid'})
     request=MemoryRequest.model_validate({'request':{'operation':'note_create','title':'PG','kind':'list','items':['a','b'],'content':None}})
     first=execute(db,p,request,session_id='pg',call_id='call')
@@ -131,6 +131,38 @@ with SessionLocal() as db:
     assert row.request_id==rid and row.confirmation_id.startswith('confirmed-')
     assert 'Transient PG room' not in str(row.__dict__)
 print('PostgreSQL registry confirmation and atomic write reservation PASS')
+from app.services.voice_mail_confirmation import MailConfirmation,draft_hash
+from app.services.voice_mail import MailError
+from app.db.models import VoiceMailOperation
+from app.config import get_settings
+import base64,os
+get_settings().voice_master_key=base64.b64encode(os.urandom(32)).decode()
+draft={'draft_ref':'pg-draft-ref','draft_version':1,'account':'reception','from':'test@example.invalid','to':['recipient@example.invalid'],'cc':[],'bcc':[],'subject':'PG','text_body':'Transient mail body','html_body':None,'reply_to':[],'in_reply_to':None,'references':[]}
+candidate={'send_candidate_id':'pg-candidate','draft_ref':'pg-draft-ref','draft_version':1,'sender':draft['from'],'to':draft['to'],'cc':[],'bcc':[],'subject':'PG','body_hash':draft_hash(draft),'expires_at':(utc_now()+timedelta(minutes=5)).isoformat(),'requires_confirmation':True,'confirmation_token':'private-test-canary'}
+with SessionLocal() as db:
+    db.add(VoiceMailOperation(id='pg-mail',owner_session_id='pg-owner',voice_session_id='pg-voice',call_id='prepare',tool='mail_send_prepare',digest='a'*64,state='pending'))
+    db.commit()
+c=MailConfirmation('pg-owner','pg-voice',SessionLocal)
+c.prepare(candidate,draft,'en','pg-mail')
+c.begin_readback('pg-mail-read')
+c.event({'type':'response.done','response':{'id':'pg-mail-read','status':'completed','output':[{'content':[{'type':'audio','transcript':c.text}]}]}})
+c.event({'type':'output_audio_buffer.stopped','response_id':'pg-mail-read'})
+c.event({'type':'input_audio_buffer.speech_started','item_id':'pg-mail-audio'})
+c.event({'type':'conversation.item.input_audio_transcription.completed','event_id':'pg-mail-event','item_id':'pg-mail-audio','transcript':'yes'})
+with SessionLocal() as db:
+    assert c.reserve(db,'pg-candidate','pg-send')=='private-test-canary'
+    db.commit()
+with SessionLocal() as db:
+    row=db.get(VoiceMailOperation,'pg-mail')
+    assert 'Transient mail body' not in str(row.__dict__) and 'private-test-canary' not in row.encrypted_token
+    try:
+        c.reserve(db,'pg-candidate','pg-send-again')
+    except MailError:
+        pass
+    else:
+        raise AssertionError('mail receipt reused')
+print('PostgreSQL mail encryption and single-use reservation PASS')
+
 """
         print(api("python", "-c", code))
         api("alembic", "downgrade", "0041_voice_smart_deliveries")
