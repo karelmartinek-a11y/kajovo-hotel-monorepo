@@ -36,9 +36,17 @@ export class VoiceRealtimeClient {
   private managedFunctions = new Set<string>();
   private connectionState = '';
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
+  private playback = new Set<string>();
+  private playbackTail: ReturnType<typeof setTimeout> | null = null;
+  private activeResponse: string | null = null;
+  private cancelEvents = new Set<string>();
+  private cancelledResponse: string | null = null;
+  private interruptSequence = 0;
 
   constructor(private provider: RealtimeSessionProvider, private telemetry: VoiceTelemetrySink,
-              private environment: VoiceRuntimeEnvironment = browserEnvironment) {}
+              private environment: VoiceRuntimeEnvironment = browserEnvironment) {
+    this.snapshot = {...this.snapshot, speakerEchoProtection: Boolean(provider.speakerEchoProtection), playbackBlocked: false};
+  }
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => {this.subscribers.add(listener); return () => {this.subscribers.delete(listener);};};
   private set(patch: Partial<VoiceSnapshot>) {this.snapshot = {...this.snapshot, ...patch}; this.subscribers.forEach(listener => listener());}
@@ -61,7 +69,7 @@ export class VoiceRealtimeClient {
   async start() {
     if (callActive(this.snapshot.state)) return;
     const epoch = ++this.epoch; this.retries = 0;
-    this.set({...initialSnapshot, state: 'requesting-permission'});
+    this.set({...initialSnapshot, speakerEchoProtection: this.snapshot.speakerEchoProtection, playbackBlocked: false, state: 'requesting-permission'});
     this.attachLifecycle();
     try {
       // Resume from the click gesture before awaiting permissions or networking.
@@ -134,8 +142,9 @@ export class VoiceRealtimeClient {
       if (status.closed) {this.fail('session_ended'); return;}
       if ((status.connection_state ?? status.technologies) === 'waiting') this.stream?.getAudioTracks().forEach(track => {track.enabled = false;});
       if (!['connecting', 'waiting'].includes(status.connection_state ?? status.technologies)) {
-        this.stream?.getAudioTracks().forEach(track => {track.enabled = !this.snapshot.muted;});
+        this.syncMicrophone();
         if (this.snapshot.state === 'connecting' || this.snapshot.state === 'reconnecting') this.set({state: 'listening'});
+        this.syncMicrophone();
         if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       }
     } catch (error) {
@@ -155,6 +164,10 @@ export class VoiceRealtimeClient {
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
     }
     const failure = event.error?.code ?? event.response?.status_details?.error?.code;
+    // Generation can finish between the click and provider cancellation; clearing playback still succeeds.
+    if (event.type === 'error' && failure === 'response_cancel_not_active' && this.cancelEvents.has(event.error?.event_id ?? '')) {
+      this.cancelEvents.delete(event.error!.event_id!); return;
+    }
     if (this.managedFunctions.size && ['context_length_exceeded', 'input_too_large'].includes(failure ?? '')) {this.reconnect(); return;}
     if (event.type === 'response.done' && event.response?.status === 'failed' && this.managedFunctions.size && failure === 'rate_limit_exceeded') {
       this.connectionState = 'waiting';
@@ -162,12 +175,28 @@ export class VoiceRealtimeClient {
     }
     if (event.type === 'error' || (event.type === 'response.done' && event.response?.status === 'failed')) {this.fail('realtime_error'); return;}
     if (event.item?.type === 'mcp_call' || (event.item?.type === 'function_call' && !this.managedFunctions.has(event.item.name ?? ''))) {this.fail('unsupported_capability'); return;}
+    if (event.type === 'response.created') this.activeResponse = event.response?.id ?? null;
+    if (event.type === 'response.done' && event.response?.id === this.activeResponse) this.activeResponse = null;
+    if (event.type === 'output_audio_buffer.started') {
+      this.playback.add(event.response_id ?? '*');
+      if (this.playbackTail) clearTimeout(this.playbackTail); this.playbackTail = null;
+      if (this.snapshot.speakerEchoProtection) {this.set({playbackBlocked: true}); this.syncMicrophone();}
+    }
+    if (event.type === 'output_audio_buffer.stopped' || event.type === 'output_audio_buffer.cleared') {
+      if (event.type === 'output_audio_buffer.cleared') this.playback.clear(); else this.playback.delete(event.response_id ?? '*');
+      if (!this.playback.size && this.snapshot.playbackBlocked) {
+        if (this.playbackTail) clearTimeout(this.playbackTail);
+        // Let the acoustic tail decay before accepting the next genuine user turn.
+        this.playbackTail = setTimeout(() => {this.playbackTail = null; this.set({playbackBlocked: false}); this.syncMicrophone();}, 400);
+      }
+    }
     if (event.type === 'session.created') {
       if (this.connectionState === 'connecting' && this.provider.heartbeat) return;
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
       this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
     }
     this.set({state: transition(this.snapshot.state, event)});
+    this.syncMicrophone();
   }
   private meters(remote: MediaStream) {
     if (!this.context || !this.stream) return;
@@ -183,7 +212,7 @@ export class VoiceRealtimeClient {
         return Math.min(1, Math.sqrt(data.reduce((sum, value) => sum + ((value - 128) / 128) ** 2, 0) / data.length) * 4);
       };
       const tick = () => {if (!this.context || !callActive(this.snapshot.state)) return;
-        this.set({inputLevel: this.snapshot.muted ? 0 : level(this.input), outputLevel: level(this.output)});
+        this.set({inputLevel: this.snapshot.muted || this.snapshot.playbackBlocked ? 0 : level(this.input), outputLevel: level(this.output)});
         this.frame = requestAnimationFrame(tick);
       };
       if (this.frame !== null) cancelAnimationFrame(this.frame); this.frame = requestAnimationFrame(tick);
@@ -207,7 +236,25 @@ export class VoiceRealtimeClient {
       });
     }, delay);
   }
-  setMuted(muted: boolean) {if (!this.stream) return; this.stream.getAudioTracks().forEach(track => {track.enabled = !muted && !['connecting', 'waiting'].includes(this.connectionState);}); this.set({muted});}
+  private syncMicrophone() {
+    this.stream?.getAudioTracks().forEach(track => {track.enabled = !this.snapshot.muted && !this.snapshot.playbackBlocked && !['connecting', 'waiting'].includes(this.connectionState) && !['reconnecting', 'disconnecting', 'error'].includes(this.snapshot.state);});
+  }
+  setMuted(muted: boolean) {if (!this.stream) return; this.set({muted}); this.syncMicrophone();}
+  setSpeakerEchoProtection(enabled: boolean) {
+    if (this.playbackTail) clearTimeout(this.playbackTail); this.playbackTail = null;
+    this.set({speakerEchoProtection: enabled, playbackBlocked: enabled && this.playback.size > 0}); this.syncMicrophone();
+  }
+  interruptPlayback() {
+    if (!this.playback.size || this.channel?.readyState !== 'open') return;
+    if (this.activeResponse && this.cancelledResponse !== this.activeResponse) {
+      const eventId = `vc_interrupt_${this.epoch}_${++this.interruptSequence}`;
+      this.cancelEvents.add(eventId); if (this.cancelEvents.size > 16) this.cancelEvents.delete(this.cancelEvents.values().next().value!);
+      this.cancelledResponse = this.activeResponse;
+      this.channel.send(JSON.stringify({type: 'response.cancel', response_id: this.activeResponse, event_id: eventId}));
+    }
+    this.channel.send(JSON.stringify({type: 'output_audio_buffer.clear'}));
+    // Microphone resumes on provider-cleared playback, never on the button click itself.
+  }
   async stop() {
     if (!callActive(this.snapshot.state) || this.snapshot.state === 'disconnecting') return;
     ++this.epoch; this.set({state: 'disconnecting'}); this.cleanup(); this.detachLifecycle();
@@ -215,6 +262,9 @@ export class VoiceRealtimeClient {
     this.telemetry.emit('session.ended', {});
   }
   private cleanupConnection() {
+    if (this.playbackTail) clearTimeout(this.playbackTail); this.playbackTail = null;
+    this.playback.clear(); this.activeResponse = null; this.set({playbackBlocked: false});
+    this.cancelEvents.clear(); this.cancelledResponse = null;
     if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer); this.heartbeatTimer = null;
     const sessionId = this.sessionId; this.sessionId = null; this.managedFunctions.clear();
     if (sessionId) void this.provider.close?.(sessionId).catch(() => {});

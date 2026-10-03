@@ -47,4 +47,5 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 - `docs/pdf-export.md`
 
 - `docs/voice-core.md`: přenosný hlasový produkt a host adapters.
+- `docs/voice-speaker-impact-matrix.md`: ochrana ozvěny reproduktorů a hlasová regrese.
 - `docs/voice-memory.md`: hotelová soukromá paměť, lístky a stručné souhrny hlasového chatu.

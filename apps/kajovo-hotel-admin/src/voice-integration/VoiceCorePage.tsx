@@ -21,6 +21,7 @@ const sessionProvider: RealtimeSessionProvider = {
   heartbeat: (id, signal) => request(`/sessions/${encodeURIComponent(id)}/heartbeat`, 'POST', undefined, signal),
   close: async id => {await request(`/sessions/${encodeURIComponent(id)}`, 'DELETE');},
   connectionTimeoutMs: 60000,
+  speakerEchoProtection: true,
   disclosure: 'Hovoříte s AI. Paměť uchovává stručné informace a lístky vašeho účtu. Smart technologie spravují schválená zařízení, místnosti a názvy. Mazání místností a hromadné názvy vyžadují potvrzení hlasem po přečtení návrhu. E-mail před odesláním přečtu celý a vyžádám potvrzení hlasem. Mailový obsah pozastaví automatickou paměť do konce hovoru. Potvrzení povelu znamená jeho odeslání.',
   capabilityLabels: {ready: 'Smart technologie jsou připravené.', connecting: 'Načítám Smart technologie…', waiting: 'Čekám na obnovení limitu hlasové služby. Odeslaný povel se nebude opakovat.', unavailable: 'Smart technologie jsou nedostupné. Běžný rozhovor může pokračovat.'},
 };

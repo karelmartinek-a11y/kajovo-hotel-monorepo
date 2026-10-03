@@ -4,24 +4,73 @@ import {VoiceRealtimeClient} from '../dist/runtime.js';
 import {transition} from '../dist/state.js';
 import {capabilityRegistry} from '../dist/contracts.js';
 
-function host({permission, create, heartbeat, close} = {}) {
+function host({permission, create, heartbeat, close, speakerEchoProtection} = {}) {
   const peers = [], tracks = [], events = [], audios = [], contexts = [];
   const environment = {
     async getUserMedia() {if (permission) throw permission; const track = {readyState: 'live', enabled: true, stop() {this.readyState = 'ended'; this.stopped = true;}}; tracks.push(track); return {getTracks: () => [track], getAudioTracks: () => [track]};},
     createContext() {const context = {resume: async () => {}, close: async () => {context.closed = true;}}; contexts.push(context); return context;},
     createAudio() {const audio = {setAttribute() {}, play: async () => {}, pause() {audio.paused = true;}, removeAttribute() {}, load() {}}; audios.push(audio); return audio;},
-    createPeer() {const channel = {close() {this.closed = true;}};
+    createPeer() {const channel = {readyState: 'open', sent: [], send(value) {this.sent.push(JSON.parse(value));}, close() {this.closed = true;}};
       const peer = {channel, addTrack() {}, createDataChannel: () => channel,
         createOffer: async () => ({sdp: 'v=0 offer'}), setLocalDescription: async () => {},
         setRemoteDescription: async () => {channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'connected'})});},
         close() {this.closed = true;}, connectionState: 'new'};
       peers.push(peer); return peer;},
   };
-  const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'})), heartbeat, close};
+  const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'})), heartbeat, close, speakerEchoProtection};
   const client = new VoiceRealtimeClient(provider, {emit: (name, attrs) => events.push({name, attrs})}, environment);
   const send = event => peers.at(-1).channel.onmessage({data: JSON.stringify(event)});
   return {client, peers, tracks, audios, contexts, events, send};
 }
+
+test('speaker echo cannot reenable input through heartbeat or unmute before playback and tail finish', async () => {
+  const h = host({speakerEchoProtection: true, heartbeat: async () => ({technologies: 'ready', renew: false, closed: false}),
+    create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'speaker'})});
+  await h.client.start(); await new Promise(done => setTimeout(done, 0));
+  h.send({type: 'output_audio_buffer.started', response_id: 'first'});
+  assert.equal(h.tracks[0].enabled, false);
+  await h.client.heartbeat(h.client.epoch, h.peers[0]);
+  h.client.setMuted(false); assert.equal(h.tracks[0].enabled, false);
+  h.send({type: 'response.done', response: {id: 'first', status: 'completed'}});
+  h.send({type: 'output_audio_buffer.stopped', response_id: 'stale'});
+  assert.equal(h.tracks[0].enabled, false);
+  h.send({type: 'output_audio_buffer.stopped', response_id: 'first'});
+  assert.equal(h.tracks[0].enabled, false);
+  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, true);
+  h.send({type: 'output_audio_buffer.started', response_id: 'second'}); h.client.setMuted(true);
+  h.send({type: 'output_audio_buffer.stopped', response_id: 'second'});
+  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, false);
+  await h.client.stop();
+});
+
+test('speaker interruption clears provider playback and preserves the microphone gate until acknowledged', async () => {
+  const h = host({speakerEchoProtection: true}); await h.client.start();
+  h.send({type: 'response.created', response: {id: 'answer'}});
+  h.send({type: 'output_audio_buffer.started', response_id: 'answer'});
+  h.client.interruptPlayback();
+  const cancel = h.peers[0].channel.sent[0];
+  assert.equal(cancel.type, 'response.cancel'); assert.equal(cancel.response_id, 'answer');
+  assert.deepEqual(h.peers[0].channel.sent[1], {type: 'output_audio_buffer.clear'});
+  h.send({type: 'error', error: {code: 'response_cancel_not_active', event_id: cancel.event_id}});
+  assert.notEqual(h.client.getSnapshot().state, 'error');
+  assert.equal(h.tracks[0].enabled, false);
+  h.send({type: 'output_audio_buffer.cleared', response_id: 'answer'});
+  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, true);
+  h.send({type: 'output_audio_buffer.started', response_id: 'next'});
+  h.send({type: 'output_audio_buffer.stopped', response_id: 'next'});
+  await h.client.stop(); await new Promise(done => setTimeout(done, 450)); assert.ok(h.tracks[0].stopped);
+});
+
+test('headphone mode and portable default retain voice barge-in', async () => {
+  for (const option of [undefined, true]) {
+    const h = host({speakerEchoProtection: option}); await h.client.start();
+    h.send({type: 'output_audio_buffer.started', response_id: 'answer'});
+    h.client.setSpeakerEchoProtection(false);
+    assert.equal(h.tracks[0].enabled, true);
+    h.send({type: 'input_audio_buffer.speech_started'}); assert.equal(h.client.getSnapshot().state, 'user-speaking');
+    await h.client.stop();
+  }
+});
 
 test('interruption has deterministic transitions and generation done is not playback done', () => {
   assert.deepEqual(capabilityRegistry, []);

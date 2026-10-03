@@ -16,6 +16,7 @@ export interface RealtimeSessionProvider {
   connectionTimeoutMs?: number;
   disclosure?: string;
   capabilityLabels?: Record<string, string>;
+  speakerEchoProtection?: boolean;
 }
 export interface VoiceConfigStore {
   read(): Promise<VoiceConfigSnapshot>;
@@ -29,6 +30,6 @@ export interface VoiceTelemetrySink { emit(event: string, attributes: Record<str
 export interface CapabilityContract {name: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>}
 export interface CapabilityProvider {contracts(): readonly CapabilityContract[]}
 export const capabilityRegistry: readonly CapabilityContract[] = Object.freeze([]);
-export type VoiceSnapshot = {state: VoiceSessionState; muted: boolean; inputLevel: number; outputLevel: number; model: string | null; error: VoiceError | null; capabilityStatus?: string};
+export type VoiceSnapshot = {state: VoiceSessionState; muted: boolean; inputLevel: number; outputLevel: number; model: string | null; error: VoiceError | null; capabilityStatus?: string; speakerEchoProtection?: boolean; playbackBlocked?: boolean};
 export const initialSnapshot: VoiceSnapshot = {state: 'idle', muted: false, inputLevel: 0, outputLevel: 0, model: null, error: null};
 export const callActive = (state: VoiceSessionState) => !['idle', 'disconnected', 'error'].includes(state);

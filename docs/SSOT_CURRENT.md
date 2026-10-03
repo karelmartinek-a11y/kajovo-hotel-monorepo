@@ -34,3 +34,5 @@
 - Live ověření deploye používá `scripts/verify_live_breakfast_overview.mjs`, `scripts/verify_live_housekeeping_rooms.mjs`, `scripts/verify_live_admin_login.mjs` a `scripts/verify_live_admin_users_smoke.mjs`.
 
 - Správa místností a názvů KajaVoiceHA 2.1: [aktuální kontrakt](voice-registry.md), potvrzení pouze hlasem a read-only přehled v administraci.
+
+- Hlasový chat hotelu má ve výchozím stavu zapnutou volbu „Používám reproduktory“: při přehrávání a dozvuku pozastaví mikrofon proti vlastní ozvěně, s tlačítkem „Přerušit odpověď“. Se sluchátky lze ochranu vypnout. Přenositelný Voice Core ji nabízí jako volitelný obecný media port, bez hotelových závislostí. Viz docs/voice-core.md a docs/voice-speaker-impact-matrix.md.

@@ -15,6 +15,7 @@
 - `docs/how-to-run.md`
 - `docs/testing.md`
 - `docs/voice-core.md`
+- `docs/voice-speaker-impact-matrix.md`
 - `docs/how-to-deploy.md`
 - `docs/ci-gates.md`
 - `docs/release-checklist.md`
