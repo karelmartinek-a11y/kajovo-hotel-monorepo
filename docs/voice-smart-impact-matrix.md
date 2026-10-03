@@ -27,3 +27,18 @@ Portál, přenosný Voice Core a Android: ověřit beze změny; nemají spotřeb
 | Build a deploy | ověřit beze změny | Žádná migrace ani závislost; úplný release gate, produkční API image a runtime ověření přes falešný ovládací backend. |
 
 HA MCP server, jeho katalog a reálná světla se nemění. Přenosný Voice Core, portál a Android nemají spotřebitele interního schématu nastavení světel; jejich hranice a build se ověřují beze změny.
+
+## Kompatibilita s veřejným describe světel HOTEL
+
+| Kategorie | Rozhodnutí | Artefakty a ověření |
+| --- | --- | --- |
+| Produkční kód | ověřit beze změny | Adaptér přebírá parametry z describe; neobsahuje vlastní názvy barevných parametrů ani katalog. |
+| Testy | aktualizovat | `test_voice_light_mcp_contract.py`: rgb, jas, teplota bílé, power akce, odmítnutí rgb_color, celá skupina, identity, deduplikace a původní status. |
+| Workflow a gates | ověřit beze změny | Nový test objeví stávající úplný API suite; `pnpm ci:gates` a oba jobs CI před deployem. Placená syntetická přejímka zůstává mimo CI. |
+| Dokumentace a schémata | aktualizovat | `voice-smart-technologies.md`: původ testovacího schématu a oddělené výsledky deterministických testů, syntetického hlasu, panelu a mikrofonu. HTTP/OpenAPI kontrakt beze změny. |
+| Komentáře a poznámky | aktualizovat | Docstring nového fake označuje síťově izolovaný testovací snapshot; existující popisy identit a accepted ověřit beze změny. |
+| Instrukce | ověřit beze změny | `AGENTS.md` již vyžaduje aktuální describe a falešné ovládání při modelové přejímce; modelové instrukce se nemění. |
+| Fixtures a texty | aktualizovat | Sanitizovaný veřejný describe v `tests/fixtures/hotel_lights_describe.json`; žádné tokeny, session/request/selection identity ani hodnoty čteného stavu. UI texty a překlady beze změny. |
+| Build a deploy | ověřit beze změny | Testovací fixture není v produkčním API image ani runtime katalogu. Beze změny závislostí a migrací; ověřit správné SHA, runtime, panel a čtecí toky Better Hotel po rotaci tokenů. |
+
+HA MCP server a skutečná světla se nemění. Nasazení ani průchod Better Hotel kontrol nejsou důkazem skutečného rozhovoru člověka přes mikrofon.
