@@ -761,7 +761,7 @@ class VoiceBridge(MailHost):
                 else "Požadavek nebyl potvrzen. Oprav výběr podle katalogu nebo oznam nedostupnost; netvrď úspěch.",
             }
             if isinstance(exc, ValidationError) and rid is None:
-                known_rules = {"registry_changes_and_revision_required", "unexpected_operation_fields", "unexpected_registry_fields", "catalog_revision_required", "exactly_one_registry_target_required", "exactly_one_name_required", "destination_required", "invalid_name_template", "template_required", "empty_name", "invalid_registry_targets", "invalid_rows", "plan_id_required", "exactly_one_target_required", "exactly_one_control_mode_required", "parameters_required", "parameters_belong_to_controls", "request_id_required", "one_camera_required", "detail_page_limit"}
+                known_rules = {"registry_changes_and_revision_required", "unexpected_operation_fields", "unexpected_registry_fields", "catalog_revision_required", "exactly_one_registry_target_required", "exactly_one_name_required", "destination_required", "invalid_name_template", "template_required", "empty_name", "invalid_registry_targets", "invalid_rows", "plan_id_required", "exactly_one_target_required", "exactly_one_control_mode_required", "parameters_required", "settings_require_nastavit", "parameters_belong_to_controls", "request_id_required", "one_camera_required", "detail_page_limit"}
                 issues = []
                 for error in exc.errors(include_input=False, include_url=False):
                     rule = str(error.get("ctx", {}).get("error", ""))
@@ -769,6 +769,8 @@ class VoiceBridge(MailHost):
                     issues.append({"field": field if field in SmartArguments.model_fields else "unknown_field", "rule": rule if rule in known_rules else error["type"]})
                 output.update(not_sent=True, validation_issues=issues, catalog_revision=self.revision)
                 output["message"] = "Požadavek nebyl odeslán. Oprav pouze uvedené chyby podle schématu. Registry prepare vyžaduje catalog_revision a changes; create_room má pouze action a new_name, bez cílových polí."
+                if any(issue["rule"] == "settings_require_nastavit" for issue in issues):
+                    output["message"] = "Požadavek nebyl odeslán. Barva, jas a teplota bílé vyžadují action:nastavit a parametry z aktuálního describe; prepnout pouze přepíná zapnuto/vypnuto. Oprav jen tento neodeslaný požadavek podle uživatelova pokynu."
             if isinstance(exc, ValidationError) and any(
                 str(error.get("ctx", {}).get("error", "")) == "exactly_one_target_required"
                 for error in exc.errors(include_input=False, include_url=False)

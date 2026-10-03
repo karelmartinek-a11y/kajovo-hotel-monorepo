@@ -21,8 +21,8 @@ class SmartError(Exception):
 class Control(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     row: int = Field(ge=1)
-    function: str = Field(min_length=1, max_length=256)
-    parameters: dict = Field(default_factory=dict)
+    function: str = Field(min_length=1, max_length=256, description="Exact function from current describe for this global row. Function codes such as cNN have no universal meaning; select by the described action and capabilities.")
+    parameters: dict = Field(default_factory=dict, description="Only parameters supported by this function in current describe, with its exact names, types, ranges and units. Color/brightness/white temperature are settings, never power toggle.")
 
 
 class Filters(BaseModel):
@@ -97,8 +97,8 @@ class SmartArguments(BaseModel):
     limit: int | None = Field(default=None, ge=1, le=200, description="Search: up to 200 names; describe/read: up to 8 device details.")
     rows: list[int] | None = Field(default=None, min_length=1, max_length=1000, description="Explicit global row identities with catalog_revision. Omit selection_id and controls. Camera_view requires exactly one row.")
     controls: list[Control] | None = Field(default=None, min_length=1, max_length=1000)
-    action: Literal["zapnout", "vypnout", "prepnout", "nastavit"] | None = None
-    parameters: dict | None = None
+    action: Literal["zapnout", "vypnout", "prepnout", "nastavit"] | None = Field(default=None, description='Main-component intent: zapnout = turn on; vypnout = turn off; prepnout = ONLY toggle on/off; nastavit = change color, brightness or white temperature using current describe parameters. "přepni světla na červenou", "změň barvu", "nastav červenou" and "dej jas na 50 %" mean nastavit, even when the verb is přepni. For explicit groups retain the entire selection_id.')
+    parameters: dict | None = Field(default=None, description="Settings for action nastavit only. Use exact parameter names, types, ranges and units from current describe; never invent a color/brightness/white-temperature parameter or put settings on zapnout, vypnout or prepnout.")
     request_id: str | None = Field(default=None, min_length=1, max_length=128)
 
     @model_validator(mode="after")
@@ -130,6 +130,8 @@ class SmartArguments(BaseModel):
                 raise ValueError("exactly_one_control_mode_required")
             if self.action == "nastavit" and not self.parameters:
                 raise ValueError("parameters_required")
+            if self.action in {"zapnout", "vypnout", "prepnout"} and self.parameters:
+                raise ValueError("settings_require_nastavit")
             if self.controls and self.parameters is not None:
                 raise ValueError("parameters_belong_to_controls")
         if self.operation == "operation_status" and not self.request_id:
@@ -161,7 +163,7 @@ def _inline_schema(schema):
 SMART_TOOL = {
     "type": "function",
     "name": "smart_technologie",
-    "description": "Vyhledej schválené technologie, stav na dotaz, odešli povel, získej fotografii nebo spravuj místnosti a názvy. Celý katalog zůstává na serveru.",
+    "description": "Vyhledej schválené technologie, stav na dotaz, odešli povel, získej fotografii nebo spravuj místnosti a názvy. Zapnout/vypnout mění napájení, prepnout výhradně přepíná zapnuto/vypnuto; barva, jas a teplota bílé patří nastavit s parametry z aktuálního describe. Celý katalog zůstává na serveru.",
     "parameters": _inline_schema(SmartArguments.model_json_schema()),
 }
 
@@ -174,9 +176,13 @@ Keep last_search, last_selection and last_target distinct. The last explicitly c
 Pass only the arguments relevant to the operation; the host omits catalog_revision from rooms_list and registry_apply for compatibility; registry_prepare and explicit device rows require it. Omit unrelated optional fields and empty rows/controls. Describe/read pages contain at most 8 devices. Describe provides approved capabilities. devices[i] belongs to the GLOBAL rows[i], NEVER i+1. All eight fields retain their order. read projects current readings and may leave controls/possible_states empty; approved capabilities remain in describe. Use describe for subsequent settings.
 Rows require catalog_revision. Selections belong only to this voice session and expire after 30 minutes. On selection_expired or catalog_changed search again; never reuse stale references.
 For ordinary main-component commands use action; for other functions use describe and the exact cNN and parameters. Do not combine selection_id with rows or controls.
+Light intent: zapnout means turn on; vypnout means turn off; prepnout means ONLY toggle between on and off, with no setting parameters. nastavit means change color, brightness or white temperature.
+Interpret the requested outcome before the verb: "přepni světla na červenou", "změň barvu", "nastav červenou" and "dej jas na 50 %" require action:nastavit and the corresponding supported parameters. The word "přepni" never overrides a requested color, brightness or white-temperature change. Use prepnout only for an explicit on/off toggle, such as "přepni světla mezi zapnuto a vypnuto".
+Before settings, obtain current describe for the selected targets (all detail pages needed). Use its exact parameter names, types, ranges, units and capabilities. Never invent a catalog or assign universal meaning to c01/c03 or any cNN; function codes are device-specific. A toggle function remains on/off even if describe advertises color parameters for it. Color/brightness/white-temperature requests use nastavit, never a toggle function with setting parameters. If the requested setting is unsupported or ambiguous, explain or ask; do not substitute a power command. For groups describe pages do not narrow the whole selection_id used by control.
 Read live state ONLY on an explicit user question using read or filters.state. NEVER automatically read state after control.
 For accepted say “Pokyn byl odeslán.” This proves sending, NOT physical execution. For groups report accepted and all skipped/rejected/unavailable/uncertain counts from summary and results.
 Preserve unresolved_request_ids in working context; recover those original operations with operation_status. For uncertain delivery use operation_status with the ORIGINAL request_id. Never repeat the control under a new identity. Interruption of speech does not cancel sent commands.
+After a sent control is rejected or uncertain, report the outcome; do not correct the action or parameters with another control unless the user gives a corresponding new instruction. Only a host validation result explicitly marked not_sent permits schema repair before sending; it is not recovery of an already sent command.
 Camera_view must target exactly one approved camera. After choosing one camera from search/describe, call camera_view with catalog_revision and rows:[the_global_row] ONLY; OMIT selection_id, controls, action, limit and offset. Never attach the earlier search selection alongside the chosen row.
 Camera_view fetches an image only on request. Describe it only after image input was accepted; retrieval time is not verified capture time.
 queued, recording and record_accepted are progress, not proof of a finished video file.
