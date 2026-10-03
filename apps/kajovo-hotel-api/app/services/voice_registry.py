@@ -17,6 +17,7 @@ class PublicChange(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     action: Literal["create_room", "rename_room", "delete_room", "assign_devices", "remove_devices", "rename_devices"]
     status: str = Field(max_length=64)
+    detached_devices: int | None = Field(default=None, ge=0)
     row: int | None = Field(default=None, ge=1)
     room_ref: str | None = Field(default=None, max_length=256)
     name: str | None = Field(default=None, max_length=160)
@@ -34,10 +35,28 @@ class PublicPlan(BaseModel):
     changes: list[PublicChange] = Field(min_length=1, max_length=1000)
 
 
+class PublicRegistryResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    action: str | None = Field(default=None, max_length=64)
+    status: str = Field(max_length=64)
+    room_ref: str | None = Field(default=None, max_length=256)
+    row: int | None = Field(default=None, ge=1)
+    name: str | None = Field(default=None, max_length=160)
+    location: str | None = Field(default=None, max_length=160)
+    function: str | None = Field(default=None, max_length=256)
+    message: str | None = Field(default=None, max_length=1000)
+    old_name: str | None = Field(default=None, max_length=160)
+    new_name: str | None = Field(default=None, max_length=160)
+    old_location: str | None = Field(default=None, max_length=160)
+    new_location: str | None = Field(default=None, max_length=160)
+    detached_devices: int | None = Field(default=None, ge=0)
+
+
 class RegistryView(BaseModel):
     plan: PublicPlan | None = None
     state: str = "idle"
     attempts: int = 0
+    results: list[PublicRegistryResult] = Field(default_factory=list)
 
 
 def normalize(text):
@@ -60,7 +79,15 @@ NO = {normalize(v) for v in ("ne", "nepotvrzuji", "nie", "no", "nein", "ні")}
 def script(plan, language):
     t = TEMPLATES[language]
     sentences = [t[0]]
-    for change in plan.changes:
+    for index, change in enumerate(plan.changes, 1):
+        if change.status != "planned":
+            # A rejected target can have no presentation; never invent its name.
+            labels = {"cs": "Položka {index}: {status}. Tento požadavek se neprovede.",
+                      "sk": "Položka {index}: {status}. Táto požiadavka sa nevykoná.",
+                      "en": "Item {index}: {status}. This request will not be performed.",
+                      "de": "Eintrag {index}: {status}. Dieser Auftrag wird nicht ausgeführt."}
+            sentences.append(labels[language].format(index=index, status=t[7] if change.status == "unchanged" else t[8]))
+            continue
         if change.action not in ACTIONS:
             raise SmartError("invalid_registry_plan")
         old, new, location = change.old_name or change.name, change.new_name, change.new_location
@@ -75,10 +102,14 @@ def script(plan, language):
                 raise SmartError("invalid_registry_plan")
             old = t[10].format(old=old, row=change.row, location=change.old_location or t[11])
         sentence = t[ACTIONS[change.action]].format(old=old or "", new=new or "", location=location or "")
-        if change.status == "unchanged":
-            sentence = t[7] + ": " + sentence
-        elif change.status != "planned":
-            sentence = t[8] + ": " + sentence
+        if change.action == "delete_room":
+            consequence = {
+                "cs": "Zruší se přiřazení všech členů. Počet dotčených schválených zařízení: {count}.",
+                "sk": "Zruší sa priradenie všetkých členov. Počet dotknutých schválených zariadení: {count}.",
+                "en": "All members will be unassigned. Affected approved devices: {count}.",
+                "de": "Alle Mitglieder werden vom Raum getrennt. Betroffene genehmigte Geräte: {count}.",
+            }
+            sentence += " " + consequence[language].format(count=change.detached_devices or 0)
         sentences.append(sentence)
     sentences.append(t[9])
     result = " ".join(sentences)
@@ -105,6 +136,7 @@ class RegistryConfirmation:
         self.readback_pending = False
         self.next_audio_id = None
         self.expiry_pending = False
+        self.results = []
 
     @property
     def identity(self):
@@ -124,12 +156,12 @@ class RegistryConfirmation:
                 db.commit()
 
     def valid(self):
-        if self.state in {"expired", "invalidated", "refused", "ambiguous", "failed", "applied", "applying", "uncertain"}:
+        if self.state in {"expired", "invalidated", "refused", "ambiguous", "failed", "applied", "applying", "uncertain", "partially_applied", "rejected", "unchanged"}:
             return False
         if self.plan and datetime.fromisoformat(self.plan.expires_at.replace("Z", "+00:00")) <= utc_now():
             self.invalidate("expired")
             return False
-        return bool(self.plan) and self.state not in {"expired", "invalidated", "refused", "ambiguous", "failed", "applied", "applying", "uncertain"}
+        return bool(self.plan) and self.state not in {"expired", "invalidated", "refused", "ambiguous", "failed", "applied", "applying", "uncertain", "partially_applied", "rejected", "unchanged"}
 
     def invalidate(self, state="invalidated"):
         self.state = state
@@ -140,18 +172,19 @@ class RegistryConfirmation:
 
     def view(self):
         self.valid()
-        return RegistryView(plan=self.plan, state=self.state, attempts=self.attempts)
+        return RegistryView(plan=self.plan, state=self.state, attempts=self.attempts, results=self.results)
 
     def prepare(self, value, language):
         self.invalidate()
         plan = PublicPlan.model_validate(value)
         # The host owns confirmation policy; a tool result cannot relax destructive/bulk consent.
-        if any(c.action == "delete_room" for c in plan.changes) or sum(c.action in {"rename_room", "rename_devices"} for c in plan.changes) > 1:
+        if any(c.action == "delete_room" and c.status == "planned" for c in plan.changes) or sum(c.action in {"rename_room", "rename_devices"} and c.status == "planned" for c in plan.changes) > 1:
             plan.requires_confirmation = True
         expires = datetime.fromisoformat(plan.expires_at.replace("Z", "+00:00"))
         if not expires.tzinfo or expires <= utc_now() or (expires - utc_now()).total_seconds() > 310:
             raise SmartError("invalid_registry_plan")
         text = script(plan, language) if plan.requires_confirmation else None
+        self.results = []
         self.plan, self.language = plan, language
         self.state = "prepared"
         self.expiry_pending = False
@@ -258,3 +291,32 @@ class RegistryConfirmation:
         if changed != 1:
             raise SmartError("plan_already_applied")
         return {"confirmed": True, "confirmation_id": row.confirmation_id} if row.requires_confirmation else {}
+
+
+def registry_outcome(value):
+    """Transport certainty and actual per-item changes are independent."""
+    statuses = {r.get("status") for r in value.get("results", [])}
+    statuses.update(k for k, n in value.get("summary", {}).items() if n)
+    if statuses & {"uncertain", "not_found"} or not statuses:
+        return "uncertain"
+    if statuses & {"queued", "recording", "pending"}:
+        return "applying"
+    changed = bool(statuses & {"created", "updated", "deleted"})
+    rejected = bool(statuses - {"created", "updated", "deleted", "unchanged"})
+    if changed:
+        return "partially_applied" if rejected else "applied"
+    return "rejected" if rejected else "unchanged"
+
+
+def input_language(text, previous):
+    # Whole command words take precedence over an incidental English room name.
+    words = set(normalize(text).split())
+    for language, terms in (
+        ("cs", {"prestehuj", "umisteni", "typy", "mistnost", "mistnosti", "prejmenuj", "vytvor", "smaz", "presun", "zarizeni"}),
+        ("sk", {"miestnost", "miestnosti", "umiestnenie", "premenuj", "zmaz", "zariadenie"}),
+        ("de", {"raum", "raume", "umbenennen", "loschen"}),
+        ("en", {"rename", "create", "delete", "move", "room"}),
+    ):
+        if words & terms:
+            return language
+    return previous

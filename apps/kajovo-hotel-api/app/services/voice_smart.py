@@ -39,7 +39,7 @@ from app.services.voice_memory_contract import MEMORY_TOOL, MEMORY_INSTRUCTIONS,
 from app.services.voice_memory_curator import TurnBuffer
 from app.db.models import VoiceMemoryOperation, VoiceMemorySettings
 from app.security.auth import _serialize_session
-from app.services.voice_registry import RegistryConfirmation
+from app.services.voice_registry import registry_outcome, input_language, RegistryConfirmation
 from app.services.voice_mail_host import MailHost
 from app.services.voice_mail import MODEL_TOOLS, INSTRUCTIONS as MAIL_INSTRUCTIONS, TOOLS as MAIL_TOOLS
 from app.db.models import VoiceMailOperation
@@ -121,7 +121,7 @@ def own_operation(owner: str, rid: str) -> bool:
         return bool(record and record.owner_session_id == owner)
 
 
-def operation_finished(rid: str, status: str, registry=None):
+def operation_finished(rid: str, status: str, registry=None, outcome=None):
     with SessionLocal() as db:
         record = db.get(VoiceSmartOperation, rid)
         if record:
@@ -129,7 +129,7 @@ def operation_finished(rid: str, status: str, registry=None):
             plan = db.scalar(select(VoiceRegistryPlan).where(VoiceRegistryPlan.request_id == rid,
                 VoiceRegistryPlan.owner_session_id == record.owner_session_id))
             if plan:
-                plan.state = "applied" if status == "completed" else "applying" if status == "pending" else "uncertain"
+                plan.state = (outcome or "applied") if status == "completed" else "applying" if status == "pending" else "uncertain"
                 if registry and registry.plan and registry.identity == plan.id:
                     registry.state = plan.state
             db.commit()
@@ -307,6 +307,10 @@ class VoiceBridge(MailHost):
             self.registry.begin_readback(event["response"]["id"])
 
     def mcp_payload(self, args: dict) -> dict:
+        args = dict(args)
+        # Stable operation-specific payloads preserve old apply fingerprints after upgrade.
+        if args.get("operation") in {"rooms_list", "registry_apply"}:
+            args.pop("catalog_revision", None)
         return {**args, "api_version": 2, "session_id": "session-" + self.id}
 
     async def replace_context(self, value: dict):
@@ -320,7 +324,7 @@ class VoiceBridge(MailHost):
         self.revision = revision
         if value.get("selection"):
             self.last_selection = value["selection"]
-            self.last_target = {"selection_id": self.last_selection["id"], "catalog_revision": revision}
+            self.last_target = {"selection_id": self.last_selection["id"], "catalog_revision": revision} if self.last_selection.get("count") else None
         expired = any(result.get("status") in {"selection_expired", "catalog_changed"} for result in value.get("results", []))
         if self.last_selection and self.last_selection.get("expires_at"):
             from datetime import datetime
@@ -346,7 +350,7 @@ class VoiceBridge(MailHost):
         if "rooms" not in data and self.last_rooms:
             data["last_rooms"] = self.last_rooms
         text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-        if len(text) > 100000:
+        if len(text) > get_settings().voice_smart_frame_max_chars:
             raise SmartError("result_too_large_narrow_selection")
         self.catalog_ready = False
         if self.catalog_item:
@@ -515,10 +519,8 @@ class VoiceBridge(MailHost):
                 self.memory_buffer.event(event)
             if typ == "conversation.item.input_audio_transcription.completed" and not registry_dialog:
                 text = event.get("transcript", "").casefold()
-                for language, words in (("en", ("room", "rename", "create", "delete", "move")), ("de", ("raum", "räume", "umbenennen", "löschen")), ("sk", ("miestnosť", "miestnosti", "premenuj", "zmaž")), ("cs", ("místnost", "místnosti", "přejmenuj", "vytvoř", "smaž"))):
-                    if any(word in text for word in words):
-                        self.input_language = language
-                        break
+                if self.config.language_mode == "automatic":
+                    self.input_language = input_language(text, self.input_language)
                 del text
             if typ == "rate_limits.updated":
                 resets = [
@@ -543,7 +545,7 @@ class VoiceBridge(MailHost):
             if typ == "response.done":
                 response = event.get("response", {})
                 self.input_tokens = response.get("usage", {}).get("input_tokens", self.input_tokens)
-                if self.input_tokens > 110000:
+                if self.input_tokens > get_settings().voice_context_prune_tokens:
                     self.pressure = True
                 else:
                     self.pruned = False
@@ -652,6 +654,10 @@ class VoiceBridge(MailHost):
                 raise SmartError("technologies_unavailable")
             args = SmartArguments.model_validate_json(call["arguments"])
             payload = args.model_dump(exclude_none=True)
+            if args.filters and args.filters.room_ref and not getattr(self.mcp, "room_ref_supported", False):
+                raise SmartError("exact_room_ref_not_supported")
+            if args.operation in {"rooms_list", "registry_apply"}:
+                payload.pop("catalog_revision", None)
             if args.operation in {"search", "rooms_list", "registry_prepare"} and self.registry.plan and self.registry.state in {"prepared", "reading", "awaiting_confirmation", "confirmed"}:
                 self.registry.invalidate()
             if args.operation == "search":
@@ -676,19 +682,24 @@ class VoiceBridge(MailHost):
             if rid:
                 self.unresolved_requests.add(rid)
             result = await asyncio.wait_for(
-                self.mcp.call_tool("smart_technologie", self.mcp_payload(payload)), timeout=40
+                self.mcp.call_tool("smart_technologie", self.mcp_payload(payload)), timeout=35
             )
             public, images = decode_result(result)
             validate_public(public)
             if args.operation == "rooms_list" and "rooms" in public:
                 public["has_more"] = (args.offset or 0) + len(public["rooms"]) < public["total"]
+            if args.operation == "registry_prepare" and not public.get("plan"):
+                from app.services.voice_registry import PublicRegistryResult
+                self.registry.plan = None
+                self.registry.results = [PublicRegistryResult.model_validate(r) for r in public.get("results", [])]
+                self.registry.state = registry_outcome(public)
             if not public.get("error") and args.operation == "registry_prepare" and public.get("plan"):
                 self.registry.prepare(public["plan"], self.config.manual_language if self.config.language_mode == "manual" else self.input_language)
                 public["plan"] = self.registry.plan.model_dump(exclude_none=True)
             if args.operation == "registry_apply" and rid:
-                self.registry.state = "uncertain" if public.get("error") or public.get("summary", {}).get("uncertain") or any(r.get("status") == "uncertain" for r in public.get("results", [])) else "applied"
+                self.registry.state = registry_outcome(public)
                 self.registry.persist()
-                self.last_rooms = None
+                await self.refresh_registry_metadata(public)
             if images and (args.operation != "camera_view" or len(images) != 1):
                 raise SmartError("unexpected_image")
             if not public.get("error") and args.operation not in {"search", "catalog", "operation_status", "rooms_list", "registry_prepare", "registry_apply"}:
@@ -708,12 +719,12 @@ class VoiceBridge(MailHost):
                 statuses.update(key for key, count in public.get("summary", {}).items() if count)
                 status = (
                     "uncertain"
-                    if statuses & {"uncertain", "not_found", "unknown_operation"} or public.get("error") or not any(statuses)
+                    if statuses & {"uncertain", "not_found", "unknown_operation"} or not any(statuses)
                     else "pending"
                     if statuses & {"queued", "recording"}
                     else "completed"
                 )
-                operation_finished(tracked, status, self.registry)
+                operation_finished(tracked, status, self.registry, registry_outcome(public))
                 if status == "completed":
                     self.unresolved_requests.discard(tracked)
                     self.unresolved_items.pop(tracked, None)
@@ -924,36 +935,75 @@ class VoiceBridge(MailHost):
                 await self.queue_registry_action("generate")
 
     async def initialize_technologies(self):
-        async with AsyncExitStack() as stack:
+        delay = 1
+        while not self.closed:
+            if not self.token or self.model != "gpt-realtime-2.1":
+                self.technologies = "unavailable"
+                await asyncio.Future()
             try:
-                async with asyncio.timeout(20):
-                    if not self.token or self.model != "gpt-realtime-2.1":
-                        raise SmartError("model_unsupported")
-                    self.mcp = await stack.enter_async_context(mcp_connection(self.token))
-                    public, _ = decode_result(
-                        await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "catalog"}))
-                    )
-                    if public.get("error"):
-                        raise SmartError("catalog_unavailable")
-                    with SessionLocal() as db:
-                        pending = list(
-                            db.scalars(
-                                select(VoiceSmartOperation.request_id).where(
-                                    VoiceSmartOperation.owner_session_id == self.owner,
-                                    VoiceSmartOperation.status.in_(["pending", "uncertain"]),
-                                )
-                            )
-                        )
-                    self.unresolved_requests.update(pending)
-                    await self.replace_context(public)
-                    await self.configure(True)
-                    self.technologies = "ready"
+                async with AsyncExitStack() as stack:
+                    async with asyncio.timeout(20):
+                        if not authorized(self.owner):
+                            raise SmartError("unauthorized")
+                        self.mcp = await stack.enter_async_context(mcp_connection(self.token))
+                        public, _ = decode_result(await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "catalog"})))
+                        if public.get("error"):
+                            raise SmartError("catalog_unavailable")
+                        with SessionLocal() as db:
+                            pending = list(db.scalars(select(VoiceSmartOperation.request_id).where(
+                                VoiceSmartOperation.owner_session_id == self.owner,
+                                VoiceSmartOperation.status.in_(["pending", "uncertain"]))))
+                        self.unresolved_requests.update(pending)
+                        public["exact_room_ref_supported"] = getattr(self.mcp, "room_ref_supported", False)
+                        await self.replace_context(public)
+                        await self.configure(True)
+                        self.technologies = "ready"
+                        delay = 1
+                    while not self.closed and self.technologies == "ready":
+                        await asyncio.sleep(1)
             except Exception:
                 self.technologies = "unavailable"
                 self.catalog_ready = False
+            finally:
+                self.mcp = None
             logger.info("voice.host.technologies", extra={"context": {"technologies": self.technologies}})
-            # A completed optional capability setup must not terminate the voice lifecycle.
-            await asyncio.Future()
+            # Read-only connection recovery never repeats control/apply; unresolved identities survive.
+            if not self.closed:
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, 30)
+
+    async def refresh_registry_metadata(self, public):
+        if registry_outcome(public) not in {"applied", "partially_applied"}:
+            return
+        try:
+            async with asyncio.timeout(15):
+                rooms, offset = [], 0
+                while True:
+                    value, _ = decode_result(await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "rooms_list", "offset": offset, "limit": 200})))
+                    validate_public(value)
+                    if value.get("error"):
+                        raise SmartError("metadata_refresh_unavailable")
+                    rooms.extend(value.get("rooms", []))
+                    offset += len(value.get("rooms", []))
+                    if not value.get("has_more"):
+                        break
+                    if not value.get("rooms") or offset > 10000:
+                        raise SmartError("metadata_refresh_unavailable")
+                old_refs = {r["room_ref"] for r in self.last_rooms or []}
+                self.last_rooms = [r for r in rooms if r["room_ref"] in old_refs]
+                # Cached selection membership is invalid after room deletion; names are never identities.
+                if len(self.last_rooms) != len(old_refs):
+                    self.last_room_selection = None
+                public["registry_rooms"] = rooms
+                rows = (self.last_target or {}).get("rows", [])
+                if rows:
+                    details, _ = decode_result(await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "describe", "catalog_revision": self.revision, "rows": rows, "limit": 8})))
+                    validate_public(details)
+                    public["registry_devices"] = {k: details[k] for k in ("rows", "fields", "devices") if k in details}
+        except Exception:
+            public["metadata_refresh"] = "unavailable"
+            self.last_rooms = None
+            self.last_room_selection = None
 
     async def run(self):
         tasks = []
@@ -1107,14 +1157,7 @@ class VoiceBridgeManager:
             await asyncio.sleep(60)
             self.sessions = {sid: value for sid, value in self.sessions.items() if not value.closed}
             with SessionLocal() as db:
-                db.execute(
-                    delete(VoiceSmartOperation).where(
-                        VoiceSmartOperation.created_at < utc_now() - timedelta(days=30)
-                    )
-                )
-                db.execute(delete(VoiceSmartDelivery).where(VoiceSmartDelivery.created_at < utc_now() - timedelta(days=30)))
                 db.execute(delete(VoiceMailOperation).where(VoiceMailOperation.created_at < utc_now() - timedelta(days=30), VoiceMailOperation.state.not_in(["sending", "uncertain"])))
-                db.execute(delete(VoiceRegistryPlan).where(VoiceRegistryPlan.created_at < utc_now() - timedelta(days=30)))
                 db.commit()
 
 

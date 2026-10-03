@@ -795,6 +795,7 @@ export type PortalUserUpdate = {
 };
 export type PublicChange = {
   "action": "create_room" | "rename_room" | "delete_room" | "assign_devices" | "remove_devices" | "rename_devices";
+  "detached_devices"?: number | null;
   "name"?: string | null;
   "new_location"?: string | null;
   "new_name"?: string | null;
@@ -810,6 +811,21 @@ export type PublicPlan = {
   "id": string;
   "requires_confirmation": boolean;
 };
+export type PublicRegistryResult = {
+  "action"?: string | null;
+  "detached_devices"?: number | null;
+  "function"?: string | null;
+  "location"?: string | null;
+  "message"?: string | null;
+  "name"?: string | null;
+  "new_location"?: string | null;
+  "new_name"?: string | null;
+  "old_location"?: string | null;
+  "old_name"?: string | null;
+  "room_ref"?: string | null;
+  "row"?: number | null;
+  "status": string;
+};
 export type ReadMemory = {
   "id": string;
   "operation": string;
@@ -817,6 +833,7 @@ export type ReadMemory = {
 export type RegistryView = {
   "attempts"?: number;
   "plan"?: PublicPlan | null;
+  "results"?: Array<PublicRegistryResult>;
   "state"?: string;
 };
 export type Remember = {

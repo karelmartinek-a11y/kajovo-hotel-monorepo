@@ -23,8 +23,9 @@ test('read-only exact proposal uses real owner-scoped API and stops polling with
   await expect(panel.locator('li')).toHaveCount(5);
   await expect(panel).toContainText('řádek 89, původní místnost Testovna A');
   await expect(panel).toContainText('řádek 90, původní místnost Testovna B');
-  await expect(panel).toContainText('protected_members');
-  await expect(panel).toContainText('Zařízení zůstanou zachována');
+  await expect(panel).toContainText('invalid_target');
+  await expect(panel).toContainText('zařízení zůstanou zachována');
+  await expect(panel).toContainText('Dotčených schválených zařízení: 2');
   await expect(panel.getByRole('button')).toHaveCount(0);
   await expect.poll(() => reads).toBeGreaterThan(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

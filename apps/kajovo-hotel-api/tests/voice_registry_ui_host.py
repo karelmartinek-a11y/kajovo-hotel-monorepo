@@ -20,8 +20,8 @@ async def create_fixture(sdp, config, key, owner, token):
     bridge.registry.prepare({"id": "plan-browser", "expires_at": (utc_now() + timedelta(minutes=5)).isoformat(),
         "requires_confirmation": True, "changes": [
             {"action": "rename_room", "room_ref": "room-public-a", "old_name": "Zkušební místnost s dlouhým názvem " + "A" * 100, "new_name": "Nová testovací místnost", "status": "planned"},
-            {"action": "delete_room", "room_ref": "room-public-b", "old_name": "Druhá testovací místnost", "status": "planned"},
-            {"action": "delete_room", "room_ref": "room-public-c", "old_name": "Chráněná testovací místnost", "status": "protected_members"},
+            {"action": "delete_room", "room_ref": "room-public-b", "old_name": "Druhá testovací místnost", "status": "planned", "detached_devices": 2},
+            {"action": "delete_room", "room_ref": "room-public-c", "status": "invalid_target"},
             {"action": "rename_devices", "row": 89, "old_name": "Stejné světlo", "old_location": "Testovna A", "new_name": "Nové světlo 1", "status": "planned"},
             {"action": "rename_devices", "row": 90, "old_name": "Stejné světlo", "old_location": "Testovna B", "new_name": "Nové světlo 2", "status": "planned"},
         ]}, "cs")

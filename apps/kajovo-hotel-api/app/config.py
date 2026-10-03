@@ -17,6 +17,8 @@ class Settings(BaseSettings):
         default="admin123",
         validation_alias=AliasChoices("KAJOVO_API_ADMIN_PASSWORD", "HOTEL_ADMIN_PASSWORD"),
     )
+    voice_context_prune_tokens: int = Field(default=24000, ge=8000, le=80000)
+    voice_smart_frame_max_chars: int = Field(default=60000, ge=8000, le=100000)
     voice_memory_context_max_tokens: int = Field(default=2000, ge=128, le=12000, validation_alias="VOICE_MEMORY_CONTEXT_MAX_TOKENS")
     voice_memory_curator_model: str = "gpt-4.1-mini-2025-04-14"
     voice_memory_batch_seconds: int = Field(default=90, ge=15, le=300)

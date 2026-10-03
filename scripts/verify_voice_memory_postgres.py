@@ -3,6 +3,7 @@
 import subprocess
 import time
 import uuid
+from pathlib import Path
 
 
 def run(*args):
@@ -57,6 +58,9 @@ def main():
                 "kajovo-api-ci",
                 *args,
             )
+
+        # Exercise old/new MCP shapes with this exact production image, without backend IO.
+        run("docker", "run", "--rm", "-v", str(Path("scripts/verify_voice_mcp_compatibility.py").resolve())+":/tmp/compatibility.py:ro", "--entrypoint", "python", "kajovo-api-ci", "-c", "exec(open('/tmp/compatibility.py').read())")
 
         # Match the existing production deploy's VARCHAR(128) version storage reconciliation.
         # Historical revision 0002 is longer than Alembic's default VARCHAR(32).

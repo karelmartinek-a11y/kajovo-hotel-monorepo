@@ -324,9 +324,9 @@ def test_dispatcher_confirmed_apply_is_backend_owned_and_not_replayed(voice_host
         apply = call("apply", {"operation": "registry_apply", "plan_id": "plan-test"})
         await b.result(apply)
         await b.result(apply)
-        assert len(calls) == 2 and calls[-1]["confirmed"] is True
-        assert calls[-1]["confirmation_id"].startswith("confirmed-")
-        assert calls[-1]["session_id"] == "session-" + b.id and calls[-1]["api_version"] == 2
+        assert [c["operation"] for c in calls] == ["registry_prepare", "registry_apply", "rooms_list"] and calls[1]["confirmed"] is True
+        assert calls[1]["confirmation_id"].startswith("confirmed-")
+        assert calls[1]["session_id"] == "session-" + b.id and calls[1]["api_version"] == 2
         assert b.registry.state == "applied"
     asyncio.run(run())
 
@@ -438,7 +438,7 @@ def test_real_sideband_event_reader_worker_dispatcher_and_acknowledged_output(vo
             await inbox.put({"type": "input_audio_buffer.speech_started", "item_id": "audio"})
             await inbox.put({"type": "conversation.item.input_audio_transcription.completed", "item_id": "audio", "event_id": "actual-provider-event", "transcript": "ano"})
             await wait("applied")
-            assert calls[-1]["confirmed"] is True and len(calls) == 2
+            assert calls[1]["confirmed"] is True and [c["operation"] for c in calls] == ["registry_prepare", "registry_apply", "rooms_list"]
             for _ in range(100):
                 if any(e.get("item", {}).get("call_id") == "apply" for e in sent):
                     break

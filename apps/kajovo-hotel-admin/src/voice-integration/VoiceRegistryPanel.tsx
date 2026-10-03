@@ -9,6 +9,7 @@ const phases: Record<string, string> = {
   reading: 'Čtu přesný návrh. Potvrďte hlasem až po jeho dokončení.',
   awaiting_confirmation: 'Potvrďte tento návrh hlasem: ano nebo ne.', confirmed: 'Hlasové potvrzení bylo ověřeno.',
   applying: 'Provádím návrh…', applied: 'Výsledek změny oznámí hlasový chat.',
+  partially_applied: 'Část změn byla provedena; chat oznámí odmítnuté položky.', rejected: 'Změna byla odmítnuta a nebyla provedena.', unchanged: 'Požadavek nevyžaduje žádnou změnu.',
   refused: 'Návrh byl odmítnut. Změna se neprovede.', ambiguous: 'Odpověď nebyla jednoznačná. Je nutný nový návrh.',
   invalidated: 'Návrh byl zneplatněn. Je nutné nové připravení a případné potvrzení.',
   expired: 'Návrh vypršel. Je nutné nové připravení a případné potvrzení.',
@@ -36,6 +37,7 @@ export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
   return <section className="voice-registry" aria-label="Návrh správy místností" data-testid="voice-registry">
     <h2>Místnosti a názvy zařízení</h2>
     <p role="status">{!sessionId ? 'Správa je dostupná během hlasového hovoru.' : failed ? 'Přehled návrhu není dostupný. Vyčkejte na ověřený stav hlasového chatu.' : phases[view?.state ?? 'idle'] ?? 'Čekám na ověřený stav návrhu.'}</p>
+    {view?.results?.length ? <ul>{view.results.map((result, i) => <li key={i}>{result.action ? actions[result.action] : 'Výsledek'}: {result.old_name ?? result.name ?? result.new_name ?? 'Cíl bez názvu'} — {result.status}</li>)}</ul> : null}
     {view?.plan && <>
       <p>Platnost návrhu do {new Date(view.plan.expires_at).toLocaleTimeString('cs-CZ', {timeZone: 'Europe/Prague'})}. {view.plan.requires_confirmation ? 'Vyžaduje hlasové potvrzení.' : 'Další potvrzení není potřebné.'}</p>
       <ol>{view.plan.changes.map((change, index) => <li key={index}>
@@ -44,7 +46,7 @@ export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
         {change.new_name && change.action !== 'create_room' && <> → {change.new_name}</>}
         {change.new_location && <> → {change.new_location}</>}
         {' — '}{change.status === 'planned' ? 'navrženo' : change.status === 'unchanged' ? 'beze změny' : `odmítnuto: ${change.status}`}
-        {change.action === 'delete_room' && <p>Zařízení zůstanou zachována bez přiřazené místnosti.</p>}
+        {change.action === 'delete_room' && change.status === 'planned' && <p>Zruší se přiřazení všech členů; zařízení zůstanou zachována. Dotčených schválených zařízení: {change.detached_devices ?? 0}.</p>}
       </li>)}</ol>
     </>}
   </section>;
