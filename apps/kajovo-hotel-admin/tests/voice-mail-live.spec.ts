@@ -1,11 +1,17 @@
 import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {test, expect} from '@playwright/test';
 import {getAdminCredentials} from '../test-admin-credentials';
 
 test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', async ({page}, info) => {
   test.skip(process.env.VOICE_CORE_LIVE_SMOKE !== '1' || process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true', 'Paid calls require explicit opt-in');
   await page.addInitScript(() => {
-    const evidence = {speech: 0, audio: 0, drained: 0, repliedAfterTool: 0, accountCalls: 0, accountOutputs: 0, writes: 0, errors: 0};
+    const ctx = new AudioContext(), output = ctx.createMediaStreamDestination();
+    const clock = ctx.createOscillator(), silence = ctx.createGain();
+    silence.gain.value = 0; clock.connect(silence); silence.connect(output); clock.start();
+    navigator.mediaDevices.getUserMedia = async () => {await ctx.resume(); return output.stream;};
+    Object.assign(window, {mailAudio: {ctx, output}});
+    const evidence = {speech: 0, speechStops: 0, audio: 0, drained: 0, repliedAfterTool: 0, accountCalls: 0, accountOutputs: 0, writes: 0, errors: 0, transcribed: 0, responses: 0, failedResponses: 0, failureCode: '', automaticResponse: false, toolCount: 0, functionNames: [] as string[], doneStatuses: [] as string[]};
     Object.assign(window, {mailEvidence: evidence});
     const seen = new Set<string>();
     const afterTool = new Set<string>(), completed = new Set<string>(), drained = new Set<string>();
@@ -16,6 +22,19 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
         try {
           const e = JSON.parse(message.data);
           if (e.type === 'input_audio_buffer.speech_started') evidence.speech++;
+          if (e.type === 'input_audio_buffer.speech_stopped') evidence.speechStops++;
+          if (e.type === 'error') evidence.errors++;
+          if (e.type === 'conversation.item.input_audio_transcription.completed') evidence.transcribed++;
+          if (e.type === 'session.updated') {
+            evidence.automaticResponse = e.session?.audio?.input?.turn_detection?.create_response === true;
+            evidence.toolCount = e.session?.tools?.length ?? 0;
+          }
+          if (e.type === 'response.created') evidence.responses++;
+          if (e.type === 'response.done') evidence.doneStatuses.push(e.response?.status ?? 'unknown');
+          if (e.type === 'response.done' && e.response?.status === 'failed') {
+            evidence.failedResponses++;
+            evidence.failureCode = e.response.status_details?.error?.code ?? 'unknown';
+          }
           if (e.type === 'output_audio_buffer.started') evidence.audio++;
           if (e.type === 'response.created' && evidence.accountCalls > 0 && e.response?.id) afterTool.add(e.response.id);
           if (e.type === 'response.done' && e.response?.status === 'completed' && afterTool.has(e.response.id)) completed.add(e.response.id);
@@ -24,6 +43,7 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
           if (!['conversation.item.created', 'conversation.item.added', 'conversation.item.done', 'response.output_item.done'].includes(e.type) || !e.item?.id || seen.has(e.item.id)) return;
           if (e.item.type === 'function_call' && e.type !== 'response.output_item.done') return;
           seen.add(e.item.id);
+          if (e.item.type === 'function_call' && /^(mail_[a-z_]+|assistant_memory|smart_technologie)$/.test(e.item.name)) evidence.functionNames.push(e.item.name);
           if (e.item.type === 'function_call' && ['mail_accounts_list', 'mail_account_status'].includes(e.item.name)) evidence.accountCalls++;
           if (e.item.type === 'function_call' && /^(mail_send_|mail_draft_(create|update|move)|mail_message_(mark|move|trash))/.test(e.item.name)) evidence.writes++;
           if (e.item.type === 'function_call_output') {
@@ -55,7 +75,18 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
   try {
     await expect(panel).toContainText('omezení', {timeout: 45000});
     await expect(panel).toContainText('chybí přihlašovací údaje');
+    await expect(page.getByTestId('voice-state')).toHaveText('Poslouchám', {timeout: 60000});
+    // Deliver real audio only after the sideband is ready; keep silence flowing for VAD.
+    const data = readFileSync(process.env.VOICE_CORE_AUDIO_FIXTURE!).toString('base64');
+    await page.evaluate(async data => {
+      const {ctx, output} = (window as any).mailAudio;
+      const raw = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+      const source = ctx.createBufferSource(); source.buffer = await ctx.decodeAudioData(raw.buffer); source.connect(output);
+      await ctx.resume();
+      await new Promise<void>(resolve => {source.onended = () => {source.disconnect(); resolve();}; source.start();});
+    }, data);
     await expect.poll(() => metric('speech'), {timeout: 60000}).toBeGreaterThan(0);
+    await expect.poll(() => metric('speechStops'), {timeout: 30000}).toBeGreaterThan(0);
     await expect.poll(() => metric('accountCalls'), {timeout: 90000}).toBeGreaterThan(0);
     // Sideband outputs are not guaranteed to be mirrored to the WebRTC client.
     // Prove the accepted result at its owner backend without retaining any tool body.
@@ -82,7 +113,7 @@ print(json.dumps({'accepted_results':count}))
       await page.setViewportSize({width, height});
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await panel.scrollIntoViewIfNeeded();
-      await page.screenshot({path: info.outputPath(`production-mail-${name}.png`), fullPage: true});
+      await panel.screenshot({path: info.outputPath(`production-mail-${name}.png`)});
     }
   } finally {
     console.log('MAIL live event counts:', await page.evaluate(() => (window as any).mailEvidence));

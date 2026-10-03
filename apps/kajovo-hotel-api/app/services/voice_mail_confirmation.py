@@ -106,7 +106,7 @@ class MailConfirmation(RegistryConfirmation):
     def event(self, event):
         if event.get("type") == "response.created":
             event = {**event, "response": {**event.get("response", {}), "metadata": {
-                "kvha_readback": event.get("response", {}).get("metadata", {}).get("mail_readback")}}}
+                "kvha_readback": (event.get("response", {}).get("metadata") or {}).get("mail_readback")}}}
         return super().event(event)
 
     def reserve(self, db, candidate_id, request_id):

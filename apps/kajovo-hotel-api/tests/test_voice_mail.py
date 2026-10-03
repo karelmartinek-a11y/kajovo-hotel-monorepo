@@ -50,6 +50,16 @@ def reserve_candidate(factory):
     return c
 
 
+@pytest.mark.parametrize("prepared", [False, True])
+def test_regular_provider_response_with_null_metadata_does_not_end_or_arm_mail(voice_host, prepared):
+    _, factory, _ = voice_host
+    c = reserve_candidate(factory) if prepared else MailConfirmation("owner", "voice", factory)
+    before = c.state
+    assert c.event({"type": "response.created", "response": {"id": "ordinary-response", "metadata": None}}) is None
+    assert c.state == before
+    assert c.response_id is None
+
+
 @pytest.mark.parametrize("name", list(voice_mail.TOOLS))
 def test_every_installation_schema_is_valid_and_private_fields_never_reach_model(name):
     from jsonschema import Draft202012Validator
