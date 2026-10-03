@@ -1,6 +1,7 @@
 """Hotel sideband MAIL capability; never execute tools in the browser."""
 import asyncio
 import json
+import logging
 import time
 from contextlib import AsyncExitStack
 
@@ -12,6 +13,8 @@ from app.services import voice_mail
 from app.services.voice_mail import MailError
 from app.services.voice_mail_confirmation import MailConfirmation, crypt_token, digest, draft_hash, script
 from app.services.voice_registry import normalize
+
+logger = logging.getLogger("kajovo.voice")
 
 BYPASS = {normalize(s) for s in ("Odešli bez potvrzení", "Send without confirmation", "Sende ohne Bestätigung", "Odošli bez potvrdenia")}
 UNCERTAIN = {"SMTP_OUTCOME_UNKNOWN", "OPERATION_OUTCOME_UNKNOWN", "SMTP_TIMEOUT", "IMAP_TIMEOUT", "RESTORE_RECONCILIATION_REQUIRED"}
@@ -235,6 +238,9 @@ class MailHost:
             output = {"contract_version": "mail-mcp/1", "ok": False, "error": {"code": code, "retryable": False}}
         await self.item({"type": "function_call_output", "call_id": cid, "output": json.dumps(output, ensure_ascii=False)})
         self.seen_calls[cid] = fingerprint
+        logger.info("voice.host.mail_delivery", extra={"context": {
+            "voice_session_id": self.id, "tool": name, "ok": output["ok"],
+        }})
 
     async def initialize_mail(self):
         async with AsyncExitStack() as stack:

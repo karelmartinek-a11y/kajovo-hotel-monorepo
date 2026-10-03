@@ -342,3 +342,19 @@ def test_unknown_send_blocks_new_candidate_for_same_draft_after_relogin(host):
     new_session = voice_smart.VoiceBridge("new-auth-session", "rtc_new", "key", "ha", VoiceCoreConfig(), "gpt-realtime-2.1")
     with pytest.raises(MailError, match="SMTP_OUTCOME_UNKNOWN"):
         new_session.mail_claim("mail_send_prepare", {"draft_ref": draft()["draft_ref"], "expected_version": 1}, "new-prepare")
+
+
+def test_delivery_diagnostic_contains_metadata_only_after_provider_ack(host, caplog, monkeypatch):
+    import logging
+    h, _, _, _ = host
+    log = logging.getLogger("kajovo.voice")
+    # Application logging setup may replace root handlers; isolate this assertion from test order.
+    monkeypatch.setattr(log, "handlers", [caplog.handler])
+    monkeypatch.setattr(log, "propagate", False)
+    monkeypatch.setattr(log, "disabled", False)
+    caplog.set_level("INFO", logger="kajovo.voice")
+    run(h, "mail_send_prepare", {"draft_ref": draft()["draft_ref"], "expected_version": 1}, "prepare")
+    events = [r for r in caplog.records if r.message == "voice.host.mail_delivery"]
+    assert len(events) == 1
+    assert events[0].context == {"voice_session_id": h.id, "tool": "mail_send_prepare", "ok": True}
+    assert candidate()["confirmation_token"] not in caplog.text and draft()["text_body"] not in caplog.text
