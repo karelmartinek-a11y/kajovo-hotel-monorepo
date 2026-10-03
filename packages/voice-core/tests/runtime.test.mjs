@@ -32,10 +32,12 @@ test('speaker echo cannot reenable input through heartbeat or unmute before play
   await h.client.heartbeat(h.client.epoch, h.peers[0]);
   h.client.setMuted(false); assert.equal(h.tracks[0].enabled, false);
   h.send({type: 'response.done', response: {id: 'first', status: 'completed'}});
-  h.send({type: 'output_audio_buffer.stopped', response_id: 'stale'});
-  assert.equal(h.tracks[0].enabled, false);
   h.send({type: 'output_audio_buffer.stopped', response_id: 'first'});
   assert.equal(h.tracks[0].enabled, false);
+  h.send({type: 'output_audio_buffer.started', response_id: 'overlapping-tail'});
+  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, false);
+  // A completely drained global WebRTC buffer can carry a different response ID.
+  h.send({type: 'output_audio_buffer.stopped', response_id: 'different-drain-id'});
   await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, true);
   h.send({type: 'output_audio_buffer.started', response_id: 'second'}); h.client.setMuted(true);
   h.send({type: 'output_audio_buffer.stopped', response_id: 'second'});

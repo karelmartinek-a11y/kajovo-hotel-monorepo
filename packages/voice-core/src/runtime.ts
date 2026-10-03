@@ -183,7 +183,9 @@ export class VoiceRealtimeClient {
       if (this.snapshot.speakerEchoProtection) {this.set({playbackBlocked: true}); this.syncMicrophone();}
     }
     if (event.type === 'output_audio_buffer.stopped' || event.type === 'output_audio_buffer.cleared') {
-      if (event.type === 'output_audio_buffer.cleared') this.playback.clear(); else this.playback.delete(event.response_id ?? '*');
+      // These acknowledge the entire WebRTC buffer, even when its drain ID differs from its start ID.
+      // Exact response matching for action consent remains the authenticated host's responsibility.
+      this.playback.clear();
       if (!this.playback.size && this.snapshot.playbackBlocked) {
         if (this.playbackTail) clearTimeout(this.playbackTail);
         // Let the acoustic tail decay before accepting the next genuine user turn.

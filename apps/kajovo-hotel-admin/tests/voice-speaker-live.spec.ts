@@ -9,7 +9,7 @@ test('silent startup and residual speaker echo do not create or interrupt assist
     const clock = ctx.createOscillator(), silence = ctx.createGain();
     silence.gain.value = 0; clock.connect(silence); silence.connect(output); clock.start();
     navigator.mediaDevices.getUserMedia = async () => {await ctx.resume(); return output.stream;};
-    const evidence = {speech: 0, echoSpeech: 0, responses: 0, audio: 0, drained: 0, cleared: 0, cancelled: 0, failures: 0, errors: 0, writes: 0};
+    const evidence = {speech: 0, echoSpeech: 0, responses: 0, audio: 0, drained: 0, cleared: 0, cancelled: 0, failures: 0, errors: 0, writes: 0, startedWithId: 0, stoppedWithId: 0, matchingStops: 0};
     const echo = ctx.createGain(), delay = ctx.createDelay(); echo.gain.value = 0; delay.delayTime.value = 0.15;
     echo.connect(delay); delay.connect(output);
     Object.assign(window, {speakerAudio: {ctx, output, echo}, speakerEvidence: evidence});
@@ -24,8 +24,8 @@ test('silent startup and residual speaker echo do not create or interrupt assist
           const e = JSON.parse(message.data);
           if (e.type === 'input_audio_buffer.speech_started') {evidence.speech++; if (playing.size) evidence.echoSpeech++;}
           if (e.type === 'response.created') evidence.responses++;
-          if (e.type === 'output_audio_buffer.started') {evidence.audio++; playing.add(e.response_id);}
-          if (e.type === 'output_audio_buffer.stopped') {evidence.drained++; playing.delete(e.response_id);}
+          if (e.type === 'output_audio_buffer.started') {evidence.audio++; if (e.response_id) evidence.startedWithId++; playing.add(e.response_id);}
+          if (e.type === 'output_audio_buffer.stopped') {evidence.drained++; if (e.response_id) evidence.stoppedWithId++; if (playing.has(e.response_id)) evidence.matchingStops++; playing.delete(e.response_id);}
           if (e.type === 'output_audio_buffer.cleared') {evidence.cleared++; playing.clear();}
           if (e.type === 'response.done' && e.response?.status === 'cancelled') evidence.cancelled++;
           if (e.type === 'response.done' && e.response?.status === 'failed') evidence.failures++;
@@ -69,6 +69,12 @@ test('silent startup and residual speaker echo do not create or interrupt assist
     console.log('Protected echo counters:', await page.evaluate(() => (window as any).speakerEvidence));
     await page.evaluate(() => {(window as any).speakerAudio.echo.gain.value = 0;});
     await page.waitForTimeout(2000);
+    const microphone = await page.evaluate(() => {
+      const {ctx, output} = (window as any).speakerAudio;
+      return {enabled: output.stream.getAudioTracks()[0].enabled, readyState: output.stream.getAudioTracks()[0].readyState, contextState: ctx.state};
+    });
+    console.log('Microphone before next turn:', microphone);
+    expect(microphone).toEqual({enabled: true, readyState: 'live', contextState: 'running'});
     const before = await metric('audio');
     await speak();
     await expect.poll(() => metric('audio'), {timeout: 45000}).toBeGreaterThan(before);

@@ -35,7 +35,7 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
   return <section className="vc-console" aria-label="Hlasový chat" data-testid="voice-console">
     <div className="vc-conversation">
       <VoiceOrb snapshot={snapshot} />
-      <p className="vc-state" role="status" aria-live="polite" data-testid="voice-state">{stateLabels[snapshot.state]}</p>
+      <p className="vc-state" role="status" aria-live="polite" data-testid="voice-state">{snapshot.playbackBlocked && snapshot.state === 'listening' ? 'Dokončuji odpověď' : stateLabels[snapshot.state]}</p>
       {snapshot.model && <p className="vc-detail">Model hovoru: {snapshot.model}</p>}
       <button className="vc-primary" disabled={busy || (!active && (!saved?.configured || Boolean(dirty)))} onClick={() => {if (active) void client.stop(); else {setError(null); void client.start();}}}>{active ? 'Ukončit hovor' : 'Zahájit hovor'}</button>
       <button className="vc-button" disabled={!active || !['listening', 'user-speaking', 'assistant-processing', 'assistant-speaking', 'reconnecting'].includes(snapshot.state)} aria-pressed={snapshot.muted} onClick={() => client.setMuted(!snapshot.muted)}>{snapshot.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>
