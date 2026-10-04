@@ -43,7 +43,7 @@ The original Documents/GitHub checkout is protected and is not used for edits.
 
 Paid ledger: USD **9.914630 committed/held**, USD **0.085370 available** from the
 shared USD 10 cap. These are reservations plus reconciled charges, **not a bill**.
-The completely measured Realtime subset is USD 0.0546296; missing response and
+The fully reconciled Realtime call subset is USD 0.0546296; all known response estimates total USD 0.0900376 including a response from the incomplete fourth call; missing response and
 transcription usage keep their reservations locked. A first harness attempt failed
 before response usage because its socket wrapper used an unsupported iterator;
 that mistake was corrected but its unknown reservation was not released.
@@ -206,6 +206,37 @@ remain unverified under the exhausted conservative test allowance. The cancelled
 physical iPhone test is not an acceptance dependency. October 3 cause remains
 unproven. No MCP server was changed and no real SMTP/device mutation was tested.
 
-The release checkpoint is recorded separately from a later documentation-only
-commit. That commit must use the same normal CI/deploy gate; its runtime SHA is
-reported in the handoff. No application code changes follow ff67163d here.
+The release checkpoint above precedes a documentation-only commit and the final
+metadata/context correction below. Each later commit also requires its own exact-SHA
+CI and server-authoritative deployment; final runtime evidence is recorded in the
+handoff so this checkpoint remains historical.
+
+## Final metadata/context correction
+
+The legacy content-free response log now emits null and usage_known=false for a
+response without provider usage, instead of zero or a previous response's input.
+The authoritative response-ID ledger already treated this as unknown. A regression
+covers a known response followed by an unknown response; its log capture is isolated
+from global host logger reconfiguration.
+
+Memory and catalog text snapshots now use assistant/output_text with an explicit
+untrusted-data label, not a manufactured user message. Actual function-call/output
+pairs remain intact; injected snapshots cannot create human intent or authorize a
+memory write. Realtime's public schema permits input_image only in user-role items;
+these tool images carry no human text/audio and are excluded from human provenance
+and confirmation. See the [official item schema](https://developers.openai.com/api/reference/resources/realtime/client-events).
+This correction is tested with an isolated provider; the earlier paid native evidence
+predates it. No additional paid test fits the remaining conservative reservation.
+No new cost saving or full native control acceptance is claimed.
+
+Public production read-only MCP handshake/catalog checks passed through Dagmar's own
+HTTPS clients: HA one tool, Mail 20 mail-mcp/1 tools, exact room_ref capability, and
+12 per-request transport events with remote request correlation. No tool execution,
+SMTP/device mutation or MCP-server change occurred. [Evidence](evidence/stage-b-public-catalogs.json).
+
+Final precommit gate: **28/28 PASS**, including **589 API/core/Dagmar tests**,
+53 targeted protocol/compatibility tests, whole-package copy-out/install/build/run,
+contracts, responsive memory/registry/mail/diagnostic UI and Docker checks in the
+required CI pipeline. Source hashes and exact local commands are in the
+[local proof](evidence/stage-b-final-local.json); the actual runtime image check must
+pass in this final commit's CI before deployment. No paid call ran in these gates.

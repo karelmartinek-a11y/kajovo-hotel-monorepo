@@ -108,3 +108,5 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 - Stage A evidence labels the historical microphone gate as baseline. Final Dagmar removes that gate and preserves native barge-in plus genuine audio consent.
 - Stage A evidence labels the historical sticky mail lock as baseline. Final Dagmar uses bounded provenance-aware curation and explicit human writes after mail.
 - Paid implementation tests share a durable USD 10 reservation ledger across both stages, including Realtime/transcription/curator/fixtures. Missing usage holds the reservation. Normal CI performs no paid provider request or actual MCP/SMTP mutation.
+
+- Backend memory/catalog text snapshots are untrusted assistant output_text context, never user messages or human instructions. Preserve real function_call/output pairs. Realtime input_image requires a user-role image item by its public schema; it carries no human text/audio and cannot create human provenance, memory intent or consent. Only native VAD/committed audio and its matched transcript can do so.

@@ -1,0 +1,23 @@
+{
+  "public_mcp_read_only": [
+    {
+      "endpoint": "https://apimcpkajavoiceha.hcasc.cz/mcp",
+      "initialized_and_catalog_validated": true,
+      "tool_count": 1,
+      "exact_room_ref_advertised": true,
+      "duration_ms": 244
+    },
+    {
+      "endpoint": "https://apimail.hcasc.cz/mcp",
+      "initialized_and_catalog_validated": true,
+      "tool_count": 20,
+      "contract": "mail-mcp/1",
+      "duration_ms": 785
+    }
+  ],
+  "per_request_http_events": 12,
+  "remote_request_id_available": true,
+  "tool_execution": false,
+  "provider_called": false,
+  "mcp_server_modified": false
+}

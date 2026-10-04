@@ -1,0 +1,385 @@
+{
+  "precommit_parent_sha": "28967d89bec3f30ead364934ad559ff3b95b025e",
+  "generated_at": "2026-10-04T17:24:44.779461+00:00",
+  "overall_status": "PASS",
+  "checks": [
+    {
+      "name": "ci-runner-tests",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "test_release_gate.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:20:07.715483+00:00",
+      "finished_at": "2026-10-04T17:20:07.829467+00:00"
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "typecheck"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:20:07.829537+00:00",
+      "finished_at": "2026-10-04T17:20:13.385157+00:00"
+    },
+    {
+      "name": "python-lint",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "-m",
+        "ruff",
+        "check",
+        "--config",
+        "apps/kajovo-hotel-api/pyproject.toml",
+        "--select",
+        "E,F",
+        "--ignore",
+        "E501",
+        "apps/kajovo-hotel-api/app",
+        "apps/kajovo-hotel-api/tests",
+        "packages/voice-core-server",
+        "packages/dagmar-server",
+        "scripts/release_gate.py",
+        "scripts/tests/test_release_gate.py",
+        "scripts/check_voice_core_boundaries.py",
+        "scripts/verify_voice_core_copy_out.py",
+        "scripts/verify_dagmar_diagnostics_copy_out.py",
+        "scripts/verify_dagmar_recovery.py",
+        "scripts/verify_voice_core_proxy.py",
+        "scripts/voice_core_live_smoke.py",
+        "scripts/voice_smart_live_smoke.py",
+        "scripts/voice_registry_live_smoke.py",
+        "scripts/verify_voice_memory_postgres.py",
+        "scripts/verify_voice_mcp_compatibility.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:20:13.385206+00:00",
+      "finished_at": "2026-10-04T17:20:13.451309+00:00"
+    },
+    {
+      "name": "api-and-voice-tests",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "-m",
+        "pytest",
+        "apps/kajovo-hotel-api/tests",
+        "packages/voice-core-server/tests",
+        "packages/dagmar-server/tests",
+        "-q"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:20:13.451356+00:00",
+      "finished_at": "2026-10-04T17:21:12.670002+00:00"
+    },
+    {
+      "name": "dagmar-browser-tests",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@dagmar/browser",
+        "test"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:21:12.670050+00:00",
+      "finished_at": "2026-10-04T17:21:22.233259+00:00"
+    },
+    {
+      "name": "dagmar-contract",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "-m",
+        "dagmar_server.browser_contract",
+        "--typescript",
+        "packages/dagmar-browser/src/contracts.ts",
+        "--openapi",
+        "packages/dagmar-server/contracts/openapi.json",
+        "--check"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:21:22.233341+00:00",
+      "finished_at": "2026-10-04T17:21:23.056017+00:00"
+    },
+    {
+      "name": "dagmar-typecheck",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@dagmar/browser",
+        "lint"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:21:23.056076+00:00",
+      "finished_at": "2026-10-04T17:21:24.071172+00:00"
+    },
+    {
+      "name": "voice-browser-tests",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@voice-core/browser",
+        "test"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:21:24.071222+00:00",
+      "finished_at": "2026-10-04T17:21:40.398171+00:00"
+    },
+    {
+      "name": "voice-boundaries",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "scripts/check_voice_core_boundaries.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:21:40.398236+00:00",
+      "finished_at": "2026-10-04T17:21:40.553863+00:00"
+    },
+    {
+      "name": "dagmar-diagnostics-copy-out",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "scripts/verify_dagmar_diagnostics_copy_out.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:21:40.553927+00:00",
+      "finished_at": "2026-10-04T17:22:15.921307+00:00"
+    },
+    {
+      "name": "voice-copy-out",
+      "command": [
+        "/opt/homebrew/opt/python@3.11/bin/python3.11",
+        "scripts/verify_voice_core_copy_out.py"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:15.921360+00:00",
+      "finished_at": "2026-10-04T17:22:35.761154+00:00"
+    },
+    {
+      "name": "api-contract",
+      "command": [
+        "pnpm",
+        "contract:check"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:35.761213+00:00",
+      "finished_at": "2026-10-04T17:22:38.537407+00:00"
+    },
+    {
+      "name": "web-build",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-web",
+        "build"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:38.537459+00:00",
+      "finished_at": "2026-10-04T17:22:39.946144+00:00"
+    },
+    {
+      "name": "admin-build",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-admin",
+        "build"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:39.946199+00:00",
+      "finished_at": "2026-10-04T17:22:41.139394+00:00"
+    },
+    {
+      "name": "design-tokens",
+      "command": [
+        "pnpm",
+        "ci:tokens"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:41.139443+00:00",
+      "finished_at": "2026-10-04T17:22:41.476922+00:00"
+    },
+    {
+      "name": "brand-assets",
+      "command": [
+        "pnpm",
+        "ci:brand-assets"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:41.476970+00:00",
+      "finished_at": "2026-10-04T17:22:41.810363+00:00"
+    },
+    {
+      "name": "brand-signage",
+      "command": [
+        "pnpm",
+        "ci:signage"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:41.810413+00:00",
+      "finished_at": "2026-10-04T17:22:42.136550+00:00"
+    },
+    {
+      "name": "text-integrity",
+      "command": [
+        "pnpm",
+        "ci:text-integrity"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:42.136600+00:00",
+      "finished_at": "2026-10-04T17:22:42.571578+00:00"
+    },
+    {
+      "name": "portal-translations",
+      "command": [
+        "pnpm",
+        "ci:portal-translations"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:42.571635+00:00",
+      "finished_at": "2026-10-04T17:22:42.863289+00:00"
+    },
+    {
+      "name": "frontend-manifest",
+      "command": [
+        "pnpm",
+        "ci:frontend-manifest"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:42.863334+00:00",
+      "finished_at": "2026-10-04T17:22:43.162470+00:00"
+    },
+    {
+      "name": "runtime-integrity",
+      "command": [
+        "pnpm",
+        "ci:runtime-integrity"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:43.162517+00:00",
+      "finished_at": "2026-10-04T17:22:43.840500+00:00"
+    },
+    {
+      "name": "android-acceptance-policy",
+      "command": [
+        "node",
+        "--test",
+        "scripts/android_production_acceptance_policy.test.mjs"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:43.840543+00:00",
+      "finished_at": "2026-10-04T17:22:44.005918+00:00"
+    },
+    {
+      "name": "browser-baseline",
+      "command": [
+        "pnpm",
+        "ci:baseline"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:22:44.005961+00:00",
+      "finished_at": "2026-10-04T17:23:01.457532+00:00"
+    },
+    {
+      "name": "voice-memory-ui",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-admin",
+        "test:voice-memory"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:23:01.457604+00:00",
+      "finished_at": "2026-10-04T17:23:25.075332+00:00"
+    },
+    {
+      "name": "voice-registry-ui",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-admin",
+        "test:voice-registry"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:23:25.075377+00:00",
+      "finished_at": "2026-10-04T17:23:48.034747+00:00"
+    },
+    {
+      "name": "voice-mail-ui",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-admin",
+        "test:voice-mail"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:23:48.034823+00:00",
+      "finished_at": "2026-10-04T17:24:10.427974+00:00"
+    },
+    {
+      "name": "voice-diagnostics-ui",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@kajovo/kajovo-hotel-admin",
+        "test:voice-diagnostics"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:24:10.428034+00:00",
+      "finished_at": "2026-10-04T17:24:34.191674+00:00"
+    },
+    {
+      "name": "voice-ui",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@voice-core/browser",
+        "test:ui"
+      ],
+      "status": "PASS",
+      "return_code": 0,
+      "started_at": "2026-10-04T17:24:34.191721+00:00",
+      "finished_at": "2026-10-04T17:24:44.758908+00:00"
+    }
+  ],
+  "source_sha256": {
+    "packages/dagmar-server/src/dagmar_server/orchestration.py": "21448af8b0a72beecffb6d022e32a5b2eaf212d97469a2f2f6d42f3aa0c8e6e1",
+    "apps/kajovo-hotel-api/tests/test_voice_memory_protocol.py": "f9b711d89813ef9f4c62bb00f414922b743afe2e75b945285b911e71405a5d54"
+  },
+  "api_core_dagmar_tests": 589,
+  "targeted_protocol_compatibility_tests": 53,
+  "paid_provider_called": false,
+  "production_mcp_mutation": false
+}
