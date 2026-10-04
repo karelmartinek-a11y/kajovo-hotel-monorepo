@@ -149,6 +149,7 @@ with SessionLocal() as db:
 c=MailConfirmation('pg-owner','pg-voice',SessionLocal)
 c.prepare(candidate,draft,'en','pg-mail')
 c.begin_readback('pg-mail-read')
+c.event({'type':'output_audio_buffer.started','response_id':'pg-mail-read'})
 c.event({'type':'response.done','response':{'id':'pg-mail-read','status':'completed','output':[{'content':[{'type':'audio','transcript':c.text}]}]}})
 c.event({'type':'output_audio_buffer.stopped','response_id':'pg-mail-read'})
 c.event({'type':'input_audio_buffer.speech_started','item_id':'pg-mail-audio'})

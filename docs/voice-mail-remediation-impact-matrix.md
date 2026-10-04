@@ -6,7 +6,7 @@ Baseline: main c9b4409260558e5541446639eb1e1ab818a4fab0; clean detached worktree
 |---|---|---|
 | Production source | Update | Authoritative text/HTML, candidate-bound audio playback, bounded mail reconnect; independent Mail MCP voice-client enforcement |
 | Tests | Update | MIME roundtrip, consent/bypass negatives, connection lifecycle, real-provider isolated SMTP-stub acceptance and production read-only acceptance |
-| CI/checks/gates | Verify unchanged | Full ci:gates and real API runtime image; paid tests remain opt-in outside CI |
+| CI/checks/gates | Update/verify | PostgreSQL image acceptance includes matching playback start; full ci:gates and real API runtime image; paid tests remain opt-in outside CI |
 | README/current-state/SSOT | Update | Voice mail, installation package, limits, readiness, rollback, evidence |
 | Comments/docstrings/notes | Update | Current content, playback and retry guarantees; remove missing-password assumptions |
 | AGENTS/instructions | Update | Single mail content, candidate-bound playback, finite connection recovery |
