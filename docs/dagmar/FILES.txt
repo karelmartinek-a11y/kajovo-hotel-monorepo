@@ -66,6 +66,7 @@ A	docs/dagmar/evidence/native-3.json
 A	docs/dagmar/evidence/native-4.json
 A	docs/dagmar/evidence/paid-ledger.json
 A	docs/dagmar/evidence/stage-a-4398c656.json
+A	docs/dagmar/evidence/stage-b-ff67163d.json
 A	docs/dagmar/evidence/stage-b-predeploy-backup.json
 A	docs/dagmar/evidence/stage-b-predeploy-recovery.json
 A	docs/dagmar/evidence/stage-b-recovery.json

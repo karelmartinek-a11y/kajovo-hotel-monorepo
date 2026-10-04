@@ -1,6 +1,6 @@
 # Dagmar implementation protocol
 
-Status: Stage A deployed (4398c656), production API synthetic fixture passed; production UI manifest/list/capacity/native export passed; physical iPhone test cancelled by user. Stage B implementation in progress; whole assignment incomplete.
+Status at the verified release checkpoint: Stage A (4398c656) and Stage B (ff67163d) deployed. Stage B production migration/API/responsive UI/export passed. Native acceptance and cost comparison have the limits recorded below; no physical acoustic claim. Physical iPhone test cancelled by user.
 Baseline: d590599121023d877a011d85d0c025726e67569f, verified 2026-10-04.
 The original Documents/GitHub checkout is protected and is not used for edits.
 
@@ -22,13 +22,13 @@ The original Documents/GitHub checkout is protected and is not used for edits.
 
 | Finding | Implemented / evidence | Remaining acceptance |
 |---|---|---|
-| V01 | Whole own UI/server packages; static and clean install/build/run copy-out | exact B production release |
-| V02 | Encrypted bounded diagnostics; actual A production UI/API/export, synthetic recorder UI | B production recheck; Safari formats not physically verified |
+| V01 | Whole own UI/server packages; static and clean install/build/run copy-out | PASS production ff67163d |
+| V02 | Encrypted bounded diagnostics; actual A production UI/API/export, synthetic recorder UI | B production UI/API passed; Safari formats not physically verified |
 | V03 | Available archived logs examined; phase-safe errors added | October 3 cause remains unproven |
 | V04 | Bounded genuine-human provenance; explicit writes after mail; injection regression | native paid mail scenario unavailable within remaining budget |
 | V05 | Compatible tokenizer, explicit units, separate byte cap, pinned profile/inventory | no provider-exact tokenizer claim |
-| V06 | Unified facts/notes/summaries search and responsive list/read | B production read |
-| V07 | Coalesced shared invalidation; strong forget barrier and provider-item deletion | B production release |
+| V06 | Unified facts/notes/summaries search and responsive list/read | PASS production read |
+| V07 | Coalesced shared invalidation; strong forget barrier and provider-item deletion | PASS production release |
 | V08 | Safe error phase/code/class/status/stack, curator skip metadata | historical root causes not reconstructed without evidence |
 | V09 | Protected profile; playback-ready one greeting, logical-call CAS and drain/interruption | paid native greeting not measured |
 | V10 | Concise accepted acknowledgements, honest partial/uncertain/rejected, exact readback preserved | native isolated control timed out before mutation; no success claim |
@@ -38,7 +38,7 @@ The original Documents/GitHub checkout is protected and is not used for edits.
 | V14 | Deduplicated session updates, bounded inventory/curation, native policy token measurement | no comparable provider before/after saving established |
 | V15 | Public HTTPS-only HA boundary/redirect protection | MCP server changes remain separate and out of scope |
 | V16 | Mail envelope request_id and per-request HTTP/X-Request-ID correlation | absent optional remote headers do not block calls |
-| V17 | Own shared-space migration; IDs/revisions/origins/receipts preserved in real PG restore | B production migration/verification |
+| V17 | Own shared-space migration; IDs/revisions/origins/receipts preserved in real PG restore | PASS production migration/verification |
 | V18 | Existing model guard/contract matrix and fallback validation preserved | native capability coverage incomplete |
 
 Paid ledger: USD **9.914630 committed/held**, USD **0.085370 available** from the
@@ -82,16 +82,16 @@ Rollback for Stage A: use the prior exact release/image through the authorized d
 
 Stage A exact-SHA CI/deploy/runtime/API checkpoint: [sanitized evidence](evidence/stage-a-4398c656.json). Synthetic fixture 5b77fe714de346fab2d7b3c1076d257e was inspected through the real production UI, downloaded, then explicitly deleted as disposable acceptance data. No real call content is published.
 
-## Stage B working checkpoint
+## Stage B historical implementation checkpoints
 
-Uncommitted implementation owns full browser panels/console and server orchestration,
+Before the ff67163d commit, the implementation extracted full browser panels/console and server orchestration,
 MCP clients/catalog validation, confirmation logic, configuration/key storage, memory,
 curation, logical call journal and own schema migrations. Hotel modules are compatibility
 imports and a technical/auth adapter; no portable module imports hotel models/routes.
 The clean copy-out installs generic Voice Core and Dagmar packages plus the standalone
 host into an empty directory with its own venv/node_modules. Independent install, tests,
 UI build and running test-auth API/own DB/mock provider passed. This does not prove a
-paid native provider scenario or real acoustics. Production still runs Stage A 4398c656.
+paid native provider scenario or real acoustics. At that historical checkpoint, production still ran Stage A 4398c656.
 
 Earlier Stage B checkpoint checks: portable server 14 passed, core browser 16 passed, diagnostic
 browser four passed, host memory/diagnostic API 31 passed, targeted lifecycle last run
@@ -167,3 +167,45 @@ No paid scenario ran in the release gate.
 Stage B push/CI/deployment evidence will be collected after this source checkpoint;
 production still runs Stage A at the time of this commit. The deployment pipeline
 requires successful exact-SHA push CI and current main; there is no deploy bypass.
+
+## Verified Stage B release checkpoint
+
+Commit/main push: `ff67163d3f27935d248e4bc09f83dfe7315e5016`.
+[Exact CI](https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/37217614892)
+and [exact deploy](https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/37218084330)
+succeeded. Runtime artifact confirms that SHA and healthy PostgreSQL/API/web/admin.
+[Complete sanitized runtime/API/UI/cleanup proof](evidence/stage-b-ff67163d.json).
+
+All original projected rows match the fresh protected backup hashes/counts in live
+PostgreSQL: memory IDs/revisions/origins, notes/items/tombstones/summaries and
+confirmation/idempotency journals. Public API inventory is 12 facts (11 preserved
+plus the approved pinned profile) and two notes; four existing summaries preserved.
+No content is in this report. The configured native model is gpt-realtime-2.1;
+no provider call was made during this production acceptance.
+
+Actual authenticated production Chromium UI passed at desktop 1440×900, tablet
+834×1112 and phone 390×844: own panels/list retrieval, old speaker/manual-interrupt
+controls absent, next-call debug off, exact protected manifest/partial disclosure,
+no page errors or horizontal overflow. This automated browser is distinct from the
+user's manually logged-in Chrome, whose Mac was locked at the final checkpoint.
+No screenshot containing private memory was published.
+
+Production HTTPS/API passed anonymous 401, CSRF 403, no-store and all four exact
+capacity maxima. A disposable, explicitly synthetic debug fixture uploaded two
+WAV sources, exported playable audio with checked object hashes/redaction and a
+partial manifest, then pinned successfully. Export 28672 bytes, SHA256
+`e7669c6e15705303bce0ba186ba14db7a5f8c9f9efab2ba887e21d74f83be63d`.
+It was explicitly deleted afterwards; detail/export return 404 and listing omits
+it. Real records were untouched. This is fixture ingestion/export evidence, not
+actual microphone capture, native provider output or physical acoustic success.
+
+Debug on/off/orange orb and actual MediaRecorder segment reconstruction passed in
+isolated responsive UI. Production capture during a paid call, native isolated
+control completion, native mail/readback and comparable before/after cost savings
+remain unverified under the exhausted conservative test allowance. The cancelled
+physical iPhone test is not an acceptance dependency. October 3 cause remains
+unproven. No MCP server was changed and no real SMTP/device mutation was tested.
+
+The release checkpoint is recorded separately from a later documentation-only
+commit. That commit must use the same normal CI/deploy gate; its runtime SHA is
+reported in the handoff. No application code changes follow ff67163d here.
