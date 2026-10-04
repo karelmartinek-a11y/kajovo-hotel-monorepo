@@ -73,8 +73,24 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
   const panel = page.getByRole('region', {name: 'E-mail v hlasovém chatu'});
   const metric = (name: string) => page.evaluate(key => (window as any).mailEvidence[key] as number, name);
   try {
-    await expect(panel).toContainText('omezení', {timeout: 45000});
-    await expect(panel).toContainText('chybí přihlašovací údaje');
+    await expect.poll(async () => {
+      if (!sessionId) return false;
+      const response = await page.request.get(`/api/v1/admin/voice-core/sessions/${sessionId}/mail-plan`);
+      if (!response.ok()) return false;
+      const view = await response.json();
+      return ['ready', 'degraded', 'unavailable'].includes(view.state);
+    }, {timeout: 45000}).toBe(true);
+    const status = await page.request.get(`/api/v1/admin/voice-core/sessions/${sessionId}/mail-plan`);
+    const view = await status.json();
+    expect(view.accounts.length).toBeGreaterThan(0);
+    for (const account of view.accounts) {
+      const row = panel.locator('p').filter({hasText: account.display_name});
+      await expect(row).toContainText(account.status === 'healthy' ? 'připraveno' : 'omezená dostupnost');
+      if (account.configured) await expect(row).not.toContainText('chybí přihlašovací údaje');
+      else await expect(row).toContainText('chybí přihlašovací údaje');
+      if (account.index_ready) await expect(row).not.toContainText('index není připravený');
+      else await expect(row).toContainText('index není připravený');
+    }
     await expect(page.getByTestId('voice-state')).toHaveText('Poslouchám', {timeout: 60000});
     // Deliver real audio only after the sideband is ready; keep silence flowing for VAD.
     const data = readFileSync(process.env.VOICE_CORE_AUDIO_FIXTURE!).toString('base64');
@@ -100,7 +116,7 @@ for line in (r.stdout+r.stderr).splitlines():
  except ValueError:
   continue
  c=e
- if e.get('message')=='voice.host.mail_delivery' and c.get('voice_session_id')==${JSON.stringify(sessionId)} and c.get('tool') in ['mail_accounts_list','mail_account_status'] and c.get('ok') is True:
+ if e.get('message')=='voice.host.mail_delivery' and c.get('voice_session_id')==${JSON.stringify(sessionId)} and c.get('tool')=='mail_account_status' and c.get('ok') is True and isinstance(c.get('mail_diagnostic'),dict) and len(c['mail_diagnostic'].get('accounts',[]))==2 and all(isinstance(a.get('index_ready'),bool) and isinstance(a.get('imap_connected'),bool) for a in c['mail_diagnostic']['accounts']):
   count+=1
 print(json.dumps({'accepted_results':count}))
 `;
@@ -113,7 +129,7 @@ print(json.dumps({'accepted_results':count}))
       await page.setViewportSize({width, height});
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await panel.scrollIntoViewIfNeeded();
-      await panel.screenshot({path: info.outputPath(`production-mail-${name}.png`)});
+      await panel.screenshot({path: info.outputPath(`production-mail-${name}.png`), mask: [panel.locator('p').filter({hasText: /@/})]});
     }
   } finally {
     console.log('MAIL live event counts:', await page.evaluate(() => (window as any).mailEvidence));

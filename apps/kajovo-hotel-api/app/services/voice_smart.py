@@ -513,7 +513,7 @@ class VoiceBridge(MailHost):
             if registry_action:
                 await self.queue_registry_action(registry_action)
             mail_action = self.mail_event(event)
-            if mail_action:
+            if mail_action and not (mail_action == "generate" and self.auto_response_enabled):
                 await self.queue.put({"mail": mail_action})
             if any(item.get("name", "").startswith("mail_") for item in event.get("response", {}).get("output", [])):
                 self.mail_private = True

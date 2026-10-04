@@ -13,4 +13,4 @@ Baseline: origin/main 0f031db033fac4d3ace28cb402489f581b3d0284. Work is isolated
 | Fixtures/user text | Update | Isolated provider fixture and Czech status text; four readback languages |
 | Build/generation/deploy | Update/verify | OpenAPI/client, Compose env; existing secret preservation, Docker dependencies and Android consumers verified unchanged |
 
-HA MCP and isolated MAIL MCP server: verify unchanged. Portable Voice Core: verify unchanged. No mailbox credentials or real SMTP send authorized here. Live mailbox acceptance remains partial until credentials and explicit send consent are supplied.
+HA MCP: verify unchanged. MAIL MCP has a separate voice-client content enforcement release; see voice-mail-remediation-impact-matrix.md. Portable Voice Core: verify unchanged. No mailbox credentials or real SMTP send authorized here. Live readiness and read-only acceptance are checked against current account results. Real sending/Sent/delivery require explicit consent and remain unverified.

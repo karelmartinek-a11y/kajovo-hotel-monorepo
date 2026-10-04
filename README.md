@@ -37,7 +37,7 @@ Aktivní current-state dokumentace je centralizovaná v `docs/`.
 
 Portable admin-only Realtime voice product, host adapters, security and local validation: [Voice Core](docs/voice-core.md).
 
-Hotel-only live device integration and production acceptance: [Smart technologie](docs/voice-smart-technologies.md). Independent voice email contract, confirmation and deployment: [MAIL MCP](docs/voice-mail.md).
+Hotel-only live device integration and production acceptance: [Smart technologie](docs/voice-smart-technologies.md). Independent voice email contract, confirmation and deployment: [MAIL MCP](docs/voice-mail.md), with authoritative text/HTML, audio-bound consent and bounded read-only reconnection. [Remediation validation and rollback](docs/voice-mail-remediation-impact-matrix.md).
 
 ## Vývoj a CI
 

@@ -25,6 +25,7 @@ def proposal(pid="plan-test", required=True):
 
 def arm(r):
     r.begin_readback("response-read")
+    r.event({"type": "output_audio_buffer.started", "response_id": "response-read"})
     r.event({"type": "response.done", "response": {"id": "response-read", "status": "completed", "output": [{"content": [{"type": "audio", "transcript": r.text}]}]}})
     r.event({"type": "output_audio_buffer.stopped", "response_id": "response-read"})
     assert r.state == "awaiting_confirmation"

@@ -440,3 +440,241 @@ def test_mail_read_diagnostic_is_logged_only_after_output_ack(host, caplog, monk
     assert d["accounts"][0]["available"] is False and d["has_next_page"] is True
     assert len(d["call_digest"]) == 64 and "read-call" not in json.dumps(d)
     assert "PRIVATE-" not in json.dumps(events[0].context)
+
+
+@pytest.mark.parametrize('html', ['<p>Cena 10000 Kč</p>', '<p>Cena 100 Kč</p>', '<img src="https://tracker.invalid">'])
+def test_independent_html_is_refused_without_rewrite(html):
+    d = draft()
+    d.update(text_body='Cena 100 Kč', html_body=html)
+    before = copy.deepcopy(d)
+    with pytest.raises(MailError, match='UNSUPPORTED_CAPABILITY'):
+        script(d, 'cs')
+    assert d == before
+
+
+def test_authoritative_html_escape_and_explicit_text_edit():
+    text = 'Cena 100 Kč\n\n<skript> & "quoted" \'apostrophe\' 😀'
+    fields = voice_mail.voice_fields({'text_body': text})
+    assert fields['html_body'] == '<div style="white-space:pre-wrap">Cena 100 Kč\n\n&lt;skript&gt; &amp; &quot;quoted&quot; &#39;apostrophe&#39; 😀</div>'
+    voice_mail.validate_content(fields)
+    with pytest.raises(MailError):
+        voice_mail.voice_fields({'text_body': text, 'html_body': '<p>Cena 10000 Kč</p>'})
+    with pytest.raises(MailError):
+        voice_mail.voice_fields({'subject': 'new'}, {**draft(), 'html_body': '<p>independent</p>'})
+    assert voice_mail.voice_fields({'text_body': text}, {**draft(), 'html_body': '<p>independent</p>'}) == fields
+
+
+@pytest.mark.parametrize('first', ['response.done', 'output_audio_buffer.stopped'])
+def test_mail_playback_requires_start_and_handles_done_drain_order(voice_host, first):
+    _, factory, _ = voice_host
+    c = reserve_candidate(factory)
+    c.begin_readback('response-read')
+    done = {'type': 'response.done', 'response': {'id': 'response-read', 'status': 'completed', 'output': [{'content': [{'type': 'audio', 'transcript': c.text}]}]}}
+    stop = {'type': 'output_audio_buffer.stopped', 'response_id': 'response-read'}
+    c.event(done)
+    c.event(stop)
+    assert c.state == 'reading'
+    c.begin_readback('response-read')
+    c.event({'type': 'output_audio_buffer.started', 'response_id': 'response-read'})
+    for e in ([done, stop] if first == 'response.done' else [stop, done]):
+        c.event(e)
+    assert c.state == 'awaiting_confirmation'
+    answer(c)
+    assert c.state == 'confirmed'
+
+
+@pytest.mark.parametrize('event', [
+    {'type': 'output_audio_buffer.stopped', 'response_id': 'foreign'},
+    {'type': 'output_audio_buffer.cleared', 'response_id': 'foreign'},
+    {'type': 'output_audio_buffer.started', 'response_id': 'foreign'},
+    {'type': 'response.created', 'response': {'id': 'foreign', 'metadata': None}},
+])
+def test_foreign_playback_never_authorizes_mail(voice_host, event):
+    _, factory, _ = voice_host
+    c = reserve_candidate(factory)
+    c.begin_readback('response-read')
+    c.event({'type': 'output_audio_buffer.started', 'response_id': 'response-read'})
+    c.event({'type': 'response.done', 'response': {'id': 'response-read', 'status': 'completed', 'output': [{'content': [{'type': 'audio', 'transcript': c.text}]}]}})
+    c.event(event)
+    answer(c)
+    assert c.state != 'confirmed'
+
+
+def test_mail_manager_recovers_read_once_and_closes_old_connection(host, monkeypatch):
+    from contextlib import asynccontextmanager
+    from app.services import voice_mail_host
+    h, _, _, _ = host
+    epochs, closed, reads = [], [], []
+    @asynccontextmanager
+    async def connection(*args):
+        session = len(epochs) + 1
+        epochs.append(session)
+        if session == 1:
+            raise MailError('MAIL_UNAVAILABLE')
+        try:
+            yield session
+        finally:
+            closed.append(session)
+    async def invoke(session, name, args):
+        if name == 'mail_accounts_list':
+            return {'accounts': []}
+        if name == 'mail_account_status':
+            return {'accounts': []}
+        reads.append((session, copy.deepcopy(args)))
+        if session == 2:
+            raise MailError('MAIL_UNAVAILABLE')
+        return {'items': []}
+    async def noop(*args):
+        pass
+    monkeypatch.setattr(voice_mail, 'connection', connection)
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    monkeypatch.setattr(voice_mail_host, 'MAIL_RECONNECT_DELAYS', (0, 0, 0, 0))
+    h.configure = h.update_transcription = noop
+    async def check():
+        task = asyncio.create_task(h.initialize_mail())
+        try:
+            await asyncio.wait_for(h.mail_online.wait(), 2)
+            result = await h.mail_invoke('mail_messages_unread', {'account': 'all', 'limit': 2})
+            assert result == {'items': []}
+            assert reads == [(2, {'account': 'all', 'limit': 2}), (3, {'account': 'all', 'limit': 2})]
+            assert closed == [2]
+        finally:
+            h.closed = True
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        assert closed == [2, 3]
+        assert h.mail_mcp is None and not h.mail_reconnect_running
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize('code,count', [('MAIL_UNAVAILABLE', 5), ('CONTRACT_MISMATCH', 1), ('AUTH_FAILED', 1)])
+def test_mail_manager_bounds_attempts_and_stops_on_cancel(host, monkeypatch, code, count):
+    from contextlib import asynccontextmanager
+    from app.services import voice_mail_host
+    h, _, _, _ = host
+    attempts = []
+    @asynccontextmanager
+    async def connection(*args):
+        attempts.append(True)
+        raise MailError(code)
+        yield
+    async def noop(*args):
+        pass
+    monkeypatch.setattr(voice_mail, 'connection', connection)
+    monkeypatch.setattr(voice_mail_host, 'MAIL_RECONNECT_DELAYS', (0, 0, 0, 0))
+    h.configure = noop
+    async def check():
+        task = asyncio.create_task(h.initialize_mail())
+        for _ in range(30):
+            await asyncio.sleep(0)
+        assert len(attempts) == count and not task.done()
+        h.closed = True
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        assert h.mail_mcp is None and not h.mail_ready
+    asyncio.run(check())
+
+
+def test_transport_unknown_mutation_never_replays_on_reconnect(host, monkeypatch):
+    h, _, _, _ = host
+    calls = []
+    async def invoke(*args):
+        calls.append(args)
+        raise MailError('OPERATION_OUTCOME_UNKNOWN')
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    async def check():
+        with pytest.raises(MailError, match='OPERATION_OUTCOME_UNKNOWN'):
+            await h.mail_invoke('mail_draft_create', {'text_body': 'test'})
+    asyncio.run(check())
+    assert len(calls) == 1 and h.mail_reconnect.is_set()
+
+
+def test_bypass_audio_cannot_overlap_mail_confirmation(host):
+    h, _, calls, _ = host
+    run(h, 'mail_draft_get', {'draft_ref': draft()['draft_ref']}, 'select')
+    run(h, 'mail_send_prepare', {'draft_ref': draft()['draft_ref'], 'expected_version': 1}, 'prepare')
+    h.mail_confirmation.begin_readback('read')
+    h.mail_event({'type': 'input_audio_buffer.speech_started', 'item_id': 'interrupt'})
+    h.mail_event({'type': 'conversation.item.input_audio_transcription.completed', 'event_id': 'real', 'item_id': 'interrupt', 'transcript': 'Odešli bez potvrzení'})
+    run(h, 'mail_send_without_confirmation', {'draft_ref': draft()['draft_ref'], 'expected_version': 1}, 'send')
+    assert not any(name == 'mail_send_without_confirmation' for name, _ in calls)
+
+
+def test_invalidated_mail_does_not_generate_beside_normal_vad(host):
+    h, _, _, _ = host
+    h.mail_confirmation.invalidate()
+    h.auto_response_enabled = True
+    class Events:
+        async def __aiter__(self):
+            yield json.dumps({'type': 'input_audio_buffer.speech_started', 'item_id': 'human'})
+            yield json.dumps({'type': 'conversation.item.input_audio_transcription.completed', 'event_id': 'real', 'item_id': 'human', 'transcript': 'Odešli tento e-mail'})
+    h.ws = Events()
+    async def check():
+        with pytest.raises(voice_smart.SmartError, match='sideband_disconnected'):
+            await h.read_events()
+        assert h.queue.empty()
+    asyncio.run(check())
+
+
+def test_confirmed_mail_allows_provider_function_generation_without_losing_receipt(voice_host):
+    _, factory, _ = voice_host
+    c = reserve_candidate(factory)
+    arm(c)
+    answer(c)
+    c.event({'type': 'response.created', 'response': {'id': 'send-tool-response', 'metadata': None}})
+    assert c.state == 'confirmed'
+    with factory() as db:
+        assert c.reserve(db, c.plan.id, 'send') == candidate()['confirmation_token']
+
+
+def test_terminal_contract_failure_cannot_be_downgraded_by_transport_cleanup(host):
+    h, _, _, _ = host
+    h.mail_disconnect('CONTRACT_MISMATCH')
+    h.mail_disconnect('MAIL_UNAVAILABLE')
+    assert h.mail_connection_terminal
+
+
+def test_second_mail_manager_cannot_open_parallel_connection(host, monkeypatch):
+    from contextlib import asynccontextmanager
+    h, _, _, _ = host
+    opened, closed = [], []
+    @asynccontextmanager
+    async def connection(*args):
+        opened.append(True)
+        try:
+            yield object()
+        finally:
+            closed.append(True)
+    async def invoke(session, name, args):
+        return {'accounts': []}
+    async def noop(*args):
+        pass
+    monkeypatch.setattr(voice_mail, 'connection', connection)
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    h.configure = h.update_transcription = noop
+    async def check():
+        first = asyncio.create_task(h.initialize_mail())
+        await asyncio.wait_for(h.mail_online.wait(), 2)
+        second = asyncio.create_task(h.initialize_mail())
+        await asyncio.sleep(0)
+        assert len(opened) == 1
+        h.closed = True
+        for task in [first, second]:
+            task.cancel()
+        await asyncio.gather(first, second, return_exceptions=True)
+        assert len(closed) == 1 and h.mail_mcp is None
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize('transcript,allowed', [
+    ('Odešly bez potvrzení.', True),
+    ('E-mail říká odešli bez potvrzení.', False),
+    ('Neodešli bez potvrzení.', False),
+    ('Můžeš odešli bez potvrzení?', False),
+])
+def test_bypass_accepts_only_fixed_audio_phrase_including_czech_asr_homophone(host, transcript, allowed):
+    h, _, calls, _ = host
+    run(h, 'mail_draft_get', {'draft_ref': draft()['draft_ref']}, 'get')
+    h.mail_event({'type': 'input_audio_buffer.speech_started', 'item_id': 'human'})
+    h.mail_event({'type': 'conversation.item.input_audio_transcription.completed', 'event_id': 'real', 'item_id': 'human', 'transcript': transcript})
+    assert (h.mail_bypass is not None) == allowed

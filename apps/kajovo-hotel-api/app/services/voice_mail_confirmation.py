@@ -12,7 +12,7 @@ from sqlalchemy import update
 from app.db.models import VoiceMailOperation
 from app.security.auth import _as_utc
 from app.services.voice_core import master_key
-from app.services.voice_mail import MailError
+from app.services.voice_mail import MailError, validate_content
 from app.services.voice_registry import RegistryConfirmation
 from app.time_utils import utc_now
 
@@ -45,6 +45,7 @@ READBACK = {
 
 
 def script(draft, language):
+    validate_content(draft)
     t = READBACK[language]
     fields = [draft["from"], ", ".join(draft["to"]), ", ".join(draft["cc"]), ", ".join(draft["bcc"]), draft["subject"], draft["text_body"]]
     text = t[0] + "\n" + "\n".join(label + ": " + value for label, value in zip(t[1:7], fields)) + "\n" + t[7]
@@ -59,6 +60,12 @@ class MailConfirmation(RegistryConfirmation):
         super().__init__(owner, voice_id, factory)
         self.operation_id = None
         self.preview = None
+        self.playback_started = False
+        self.playback_drained = False
+
+    def begin_readback(self, response_id):
+        self.playback_started = self.playback_drained = False
+        return super().begin_readback(response_id)
 
     def persist(self, **fields):
         if not self.operation_id:
@@ -104,10 +111,33 @@ class MailConfirmation(RegistryConfirmation):
         self.readback_pending, self.expiry_pending = True, False
 
     def event(self, event):
-        if event.get("type") == "response.created":
+        typ = event.get("type")
+        if typ == "response.created":
             event = {**event, "response": {**event.get("response", {}), "metadata": {
                 "kvha_readback": (event.get("response", {}).get("metadata") or {}).get("mail_readback")}}}
-        return super().event(event)
+        if self.state in {"reading", "awaiting_confirmation", "confirmed"}:
+            if typ == "output_audio_buffer.cleared":
+                self.invalidate()
+                return None
+            if typ == "output_audio_buffer.started" and self.state in {"reading", "awaiting_confirmation"}:
+                if event.get("response_id") != self.response_id:
+                    self.invalidate()
+                else:
+                    self.playback_started = True
+            if typ == "response.created" and self.state in {"reading", "awaiting_confirmation"} and event.get("response", {}).get("id") != self.response_id:
+                self.invalidate()
+                return None
+        if typ == "output_audio_buffer.stopped":
+            # A foreign/global drain alone cannot prove this candidate was played.
+            if event.get("response_id") != self.response_id or not self.playback_started:
+                return None
+            self.playback_drained = True
+            if not self.completed:
+                return None
+        action = super().event(event)
+        if typ == "response.done" and self.completed and self.playback_started and self.playback_drained and self.state == "reading":
+            super().event({"type": "output_audio_buffer.stopped", "response_id": self.response_id})
+        return action
 
     def reserve(self, db, candidate_id, request_id):
         row = db.get(VoiceMailOperation, self.operation_id) if self.operation_id else None
