@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select
 from voice_core_server import VoiceCoreConfig
 
-from app.db.models import VoiceRegistryPlan, VoiceSmartOperation
+from dagmar_server.models import VoiceRegistryPlan, VoiceSmartOperation
 from app.services import voice_smart
 from app.services.smart_technologies import SmartArguments, SmartError, validate_public
 from app.services.voice_registry import RegistryConfirmation, normalize, script, PublicPlan
@@ -414,6 +414,7 @@ def test_real_sideband_event_reader_worker_dispatcher_and_acknowledged_output(vo
                         await inbox.put({"type": "response.done", "response": {"id": "read", "status": "completed", "output": [{"content": [{"type": "audio", "transcript": b.registry.text}]}]}})
                         await inbox.put({"type": "output_audio_buffer.stopped", "response_id": "read"})
                     elif b.registry.state == "confirmed":
+                        await inbox.put({"type":"response.created","response":{"id":"apply"}})
                         await inbox.put({"type": "response.done", "response": {"id": "apply", "status": "completed", "output": [{"type": "function_call", "id": "apply-item", "name": "smart_technologie", "call_id": "apply", "arguments": json.dumps({"operation": "registry_apply", "plan_id": "plan-test"})}]}})
         class MCP:
             async def call_tool(self, name, args):
@@ -432,6 +433,7 @@ def test_real_sideband_event_reader_worker_dispatcher_and_acknowledged_output(vo
                 await asyncio.sleep(.002)
             raise AssertionError("registry protocol state missing: " + state)
         try:
+            await inbox.put({"type": "response.created", "response": {"id": "prepare-response"}})
             await inbox.put({"type": "response.done", "response": {"id": "prepare-response", "status": "completed", "output": [{"type": "function_call", "id": "prepare-item", "call_id": "prepare", "name": "smart_technologie", "arguments": json.dumps({"operation": "registry_prepare", "catalog_revision": "r1", "changes": [{"action": "rename_room", "room_refs": ["public-room"], "new_name": "Nová místnost"}]})}]}})
             await wait("awaiting_confirmation")
             await inbox.put({"type": "conversation.item.created", "item": {"role": "user", "content": [{"type": "input_text", "text": "ano"}]}})
@@ -487,7 +489,10 @@ def test_confirmation_resume_coalesces_and_never_duplicates_enabled_vad():
         await b.queue_registry_action("generate")
         await b.queue_registry_action("generate")
         assert b.queue.qsize() == 1 and not b.registry.expiry_pending
-        assert await b.queue.get() == {"registry": "generate"}
+        queued = await b.queue.get()
+        assert queued["registry"] == "generate"
+        b.turns.event({"type":"input_audio_buffer.speech_started"})
+        assert not b.turns.current(queued["_turn_generation"])
         b.registry_generation_queued = False
         b.auto_response_enabled = True
         await b.queue_registry_action("generate")

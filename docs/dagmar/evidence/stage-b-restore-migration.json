@@ -1,0 +1,103 @@
+{
+  "postgres_image": "16.4-alpine",
+  "source_public_tables": 51,
+  "migration": {
+    "version": 1,
+    "already_applied": false,
+    "tables": {
+      "voice_core_settings": {
+        "count_before": 1,
+        "count_after": 1,
+        "before_sha256": "8fdd0dafc4c646ae5fd0744adb4e5b1e187acb7db35f2c74ea4b27e4588fd599",
+        "mapped_sha256": "8fdd0dafc4c646ae5fd0744adb4e5b1e187acb7db35f2c74ea4b27e4588fd599"
+      },
+      "voice_mail_operations": {
+        "count_before": 2,
+        "count_after": 2,
+        "before_sha256": "da1f1353ab483096bf790197b81afdf8c5ba9bdc8b0b559107110297271e903c",
+        "mapped_sha256": "da1f1353ab483096bf790197b81afdf8c5ba9bdc8b0b559107110297271e903c"
+      },
+      "voice_memory_principals": {
+        "count_before": 1,
+        "count_after": 1,
+        "before_sha256": "b0bcdcda34d68828297f5c1954c670f61c2f339443ea284cf9e48fd05769d69d",
+        "mapped_sha256": "e89e29bf13bedf949849b739c076fc67829fa1c244985bdacf2224315b93252a"
+      },
+      "voice_registry_plans": {
+        "count_before": 35,
+        "count_after": 35,
+        "before_sha256": "401308d70244b4fb6d730ff6856dfe9f025cc034c316676e73f348ad0a5e5e04",
+        "mapped_sha256": "401308d70244b4fb6d730ff6856dfe9f025cc034c316676e73f348ad0a5e5e04"
+      },
+      "voice_smart_deliveries": {
+        "count_before": 257,
+        "count_after": 257,
+        "before_sha256": "250c7573845c389c592ad49b90776da68c4a4618c048792f90b9aadf20c1a03b",
+        "mapped_sha256": "250c7573845c389c592ad49b90776da68c4a4618c048792f90b9aadf20c1a03b"
+      },
+      "voice_smart_operations": {
+        "count_before": 69,
+        "count_after": 69,
+        "before_sha256": "333d0b5aacc2e72e5388fd23892bb61760c7ce7bea454da2e3b7590ef4f8a953",
+        "mapped_sha256": "333d0b5aacc2e72e5388fd23892bb61760c7ce7bea454da2e3b7590ef4f8a953"
+      },
+      "voice_conversation_summaries": {
+        "count_before": 4,
+        "count_after": 4,
+        "before_sha256": "fd2a0b85473cd1145d9f3238e8a75b85ff397a204d2ec79d2ec724c40a691dbe",
+        "mapped_sha256": "174aefe53c07978be86462b8b52787d709cb6aa736e6b46b2da2ff6ea1ab36e2"
+      },
+      "voice_memories": {
+        "count_before": 11,
+        "count_after": 11,
+        "before_sha256": "920a9940c04ddc949bca4094247a0b1dd36bc2692256226e62da4bc24978df23",
+        "mapped_sha256": "ddd6e345ab06c79b3d3080ff61e658ef0fbba93d7b2d5850931df675bf77d604"
+      },
+      "voice_memory_operations": {
+        "count_before": 65,
+        "count_after": 65,
+        "before_sha256": "ae81263ab9a8c5edcf096c93192e59ef38c62db1c85654acdb987e0169421ebf",
+        "mapped_sha256": "277ca0254a45a1b2caaf161c9535c669c9af7d4035f5b5a336100113964f5a2d"
+      },
+      "voice_memory_settings": {
+        "count_before": 1,
+        "count_after": 1,
+        "before_sha256": "b5502c4a76a8b26792b8eb204e5e99155fa20e22f9241a4dd512ad7289c0c55d",
+        "mapped_sha256": "b5502c4a76a8b26792b8eb204e5e99155fa20e22f9241a4dd512ad7289c0c55d"
+      },
+      "voice_notes": {
+        "count_before": 2,
+        "count_after": 2,
+        "before_sha256": "015ab19d39fbfbb3b2998bbe96aaebe7a06dd64a7a9c08b95ffa54e5beafe67a",
+        "mapped_sha256": "aacf1bbb89a0c01c0d713a30888c77b56abe2945bec9749acc67fa65abf56ad9"
+      },
+      "voice_memory_dependencies": {
+        "count_before": 0,
+        "count_after": 0,
+        "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "mapped_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "voice_memory_revisions": {
+        "count_before": 1,
+        "count_after": 1,
+        "before_sha256": "e400bfb92bd48d0b8d4d820a3d2c6eae734010562bd82c5c577aa770469e9cb2",
+        "mapped_sha256": "e400bfb92bd48d0b8d4d820a3d2c6eae734010562bd82c5c577aa770469e9cb2"
+      },
+      "voice_note_items": {
+        "count_before": 2,
+        "count_after": 2,
+        "before_sha256": "650dba70e10a9ae3cab9f52655ba496d1b03be45a7b080ac6a78a0b9c4d14b34",
+        "mapped_sha256": "650dba70e10a9ae3cab9f52655ba496d1b03be45a7b080ac6a78a0b9c4d14b34"
+      }
+    }
+  },
+  "source_tables_untouched": true,
+  "idempotent_rerun": true,
+  "environment": "isolated copy of protected production backup; PostgreSQL 16.4-alpine; local uncommitted Stage B",
+  "backup": {
+    "bytes": 4309485,
+    "sha256": "db55421a927b13ef7ca744e519c23431120dc8c0b377680aa7bb448e9b0babfd",
+    "server_directory": "/home/deploy-hotel/kajovo-protected-backups/dagmar-20261004-stage-b",
+    "keys": "separate protected diagnostic key and release environment backup; values omitted"
+  }
+}

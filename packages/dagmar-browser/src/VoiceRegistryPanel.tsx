@@ -1,6 +1,6 @@
+import type {DagmarRequest} from './ports.js';
 import React, {useEffect, useState} from 'react';
-import {request} from './voice-request';
-import type {RegistryView} from '@kajovo/shared';
+import type {RegistryView} from './contracts.js';
 import './voice-registry.css';
 
 type View = RegistryView;
@@ -19,7 +19,7 @@ const phases: Record<string, string> = {
 const results: Record<string, string> = {created: 'vytvořeno', updated: 'aktualizováno', deleted: 'odstraněno', unchanged: 'beze změny', not_sent: 'neodesláno', uncertain: 'nejistý výsledek'};
 const actions: Record<string, string> = {create_room: 'Vytvořit místnost', rename_room: 'Přejmenovat místnost', delete_room: 'Smazat místnost', assign_devices: 'Přesunout zařízení', remove_devices: 'Odřadit zařízení', rename_devices: 'Přejmenovat zařízení'};
 
-export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
+export function VoiceRegistryPanel({sessionId,request}: {sessionId: string | null; request:DagmarRequest}) {
   const [view, setView] = useState<View | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -34,7 +34,7 @@ export function VoiceRegistryPanel({sessionId}: {sessionId: string | null}) {
     };
     void read();
     return () => {abort.abort(); clearTimeout(timer);};
-  }, [sessionId]);
+  }, [sessionId,request]);
   return <section className="voice-registry" aria-label="Návrh správy místností" data-testid="voice-registry">
     <h2>Místnosti a názvy zařízení</h2>
     <p role="status">{!sessionId ? 'Správa je dostupná během hlasového hovoru.' : failed ? 'Přehled návrhu není dostupný. Vyčkejte na ověřený stav hlasového chatu.' : phases[view?.state ?? 'idle'] ?? 'Čekám na ověřený stav návrhu.'}</p>

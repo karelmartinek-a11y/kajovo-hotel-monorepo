@@ -30,11 +30,9 @@ RUN pip install --no-cache-dir \
     firebase-admin==7.7.0 \
     pillow==11.3.0
 
-COPY packages/dagmar-server /opt/dagmar-server
-RUN pip install --no-cache-dir /opt/dagmar-server
-
 COPY packages/voice-core-server /opt/voice-core-server
-RUN pip install --no-cache-dir /opt/voice-core-server
+COPY packages/dagmar-server /opt/dagmar-server
+RUN pip install --no-cache-dir /opt/voice-core-server /opt/dagmar-server
 
 COPY apps/kajovo-hotel-api/app /app/app
 COPY apps/kajovo-hotel-api/alembic /app/alembic

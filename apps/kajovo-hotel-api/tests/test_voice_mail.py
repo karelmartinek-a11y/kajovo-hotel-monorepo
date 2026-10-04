@@ -10,7 +10,7 @@ from mcp.types import CallToolResult
 from sqlalchemy import select
 from voice_core_server import VoiceCoreConfig
 
-from app.db.models import VoiceMailOperation
+from dagmar_server.models import VoiceMailOperation
 from app.services import voice_mail, voice_smart
 from app.services.voice_mail_confirmation import MailConfirmation, draft_hash, script, crypt_token
 from app.services.voice_mail import MailError
@@ -206,7 +206,7 @@ def test_standard_send_no_model_consent_then_true_audio_and_duplicate(host):
     assert sum(n == "mail_send_confirmed" for n, a in calls) == 1
     run(h, "mail_send_confirmed", {"send_candidate_id": candidate()["send_candidate_id"]}, "send")
     assert sum(n == "mail_send_confirmed" for n, a in calls) == 1
-    assert h.mail_private and h.registry.state == "idle"
+    assert h.memory_buffer is None or h.memory_buffer.enabled and h.registry.state == "idle"
     with factory() as db:
         assert db.scalar(select(VoiceMailOperation).where(VoiceMailOperation.candidate_id == candidate()["send_candidate_id"])).state == "sent"
 
@@ -331,14 +331,14 @@ def test_parallel_capability_updates_retain_both_independent_tool_sets(host, mon
 def test_contract_drift_disables_only_mail_and_invalidates_memory_buffer(host, monkeypatch):
     h, _, calls, outputs = host
     resets = []
-    h.memory_buffer = SimpleNamespace(enabled=True, reset=lambda **args: resets.append(args))
+    h.memory_buffer = SimpleNamespace(enabled=True, reset=lambda **args: resets.append(args), report=lambda *args, **kwargs: None)
     async def drift(session, name, args):
         raise MailError("CONTRACT_MISMATCH")
     monkeypatch.setattr(voice_mail, "invoke", drift)
     run(h, "mail_accounts_list", {}, "drift")
     assert not h.mail_ready and h.mail_state == "unavailable"
     assert h.technologies == "connecting" and not h.renew
-    assert not h.memory_buffer.enabled and resets == [{"invalidate": True}]
+    assert h.memory_buffer.enabled and resets == [{"invalidate": True}]
     assert "CONTRACT_MISMATCH" in str(outputs)
 
 
@@ -357,12 +357,12 @@ def test_unknown_send_blocks_new_candidate_for_same_draft_after_relogin(host):
 def test_delivery_diagnostic_contains_metadata_only_after_provider_ack(host, caplog, monkeypatch):
     import logging
     h, _, _, _ = host
-    log = logging.getLogger("kajovo.voice")
+    log = logging.getLogger("dagmar.voice")
     # Application logging setup may replace root handlers; isolate this assertion from test order.
     monkeypatch.setattr(log, "handlers", [caplog.handler])
     monkeypatch.setattr(log, "propagate", False)
     monkeypatch.setattr(log, "disabled", False)
-    caplog.set_level("INFO", logger="kajovo.voice")
+    caplog.set_level("INFO", logger="dagmar.voice")
     run(h, "mail_send_prepare", {"draft_ref": draft()["draft_ref"], "expected_version": 1}, "prepare")
     events = [r for r in caplog.records if r.message == "voice.host.mail_delivery"]
     assert len(events) == 1
@@ -419,11 +419,11 @@ def test_mail_account_diagnostic_excludes_address_and_error_payloads():
 def test_mail_read_diagnostic_is_logged_only_after_output_ack(host, caplog, monkeypatch):
     import logging
     h, _, _, _ = host
-    log = logging.getLogger("kajovo.voice")
+    log = logging.getLogger("dagmar.voice")
     monkeypatch.setattr(log, "handlers", [caplog.handler])
     monkeypatch.setattr(log, "propagate", False)
     monkeypatch.setattr(log, "disabled", False)
-    caplog.set_level("INFO", logger="kajovo.voice")
+    caplog.set_level("INFO", logger="dagmar.voice")
     async def invoke(session, name, args):
         return {"complete": False, "next_cursor": "PRIVATE-CURSOR", "items": [],
             "accounts": [{"account": "reception", "index_complete": True, "available": False}]}

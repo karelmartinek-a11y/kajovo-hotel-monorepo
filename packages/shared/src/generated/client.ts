@@ -707,7 +707,7 @@ export type MemoryRequest = {
 };
 export type MemoryResult = {
   "api_version"?: number;
-  "code": "ok" | "ambiguous" | "not_found" | "revision_conflict" | "invalid_arguments" | "unavailable" | "identity_conflict" | "sensitive_content_rejected";
+  "code": "ok" | "ambiguous" | "not_found" | "revision_conflict" | "invalid_arguments" | "unavailable" | "identity_conflict" | "sensitive_content_rejected" | "profile_protected" | "human_intent_required" | "unauthorized";
   "has_more"?: boolean;
   "memories"?: Array<MemoryRead>;
   "memory"?: MemoryRead | null;
@@ -916,7 +916,7 @@ export type Search = {
   "limit": number;
   "operation": string;
   "query": string;
-  "scope": "memories" | "summaries" | "all";
+  "scope": "memories" | "summaries" | "notes" | "all";
   "tags": Array<string>;
 };
 export type SelectRoleRequest = {
@@ -1197,6 +1197,12 @@ export const apiClient = {
   async putKeyApiV1AdminVoiceCoreApiKeyPut(body: VoiceKeyWrite): Promise<VoiceConfigRead> {
     return request<VoiceConfigRead>('PUT', `/api/v1/admin/voice-core/api-key`, undefined, body);
   },
+  async createCallApiV1AdminVoiceCoreCallsPost(): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/calls`, undefined, undefined);
+  },
+  async closeCallApiV1AdminVoiceCoreCallsIdentityClosePost(identity: string): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/calls/${identity}/close`, undefined, undefined);
+  },
   async getConfigApiV1AdminVoiceCoreConfigGet(): Promise<VoiceConfigRead> {
     return request<VoiceConfigRead>('GET', `/api/v1/admin/voice-core/config`, undefined, undefined);
   },
@@ -1244,6 +1250,9 @@ export const apiClient = {
   },
   async createSessionApiV1AdminVoiceCoreSessionsPost(body: VoiceSessionWrite): Promise<VoiceSessionRead> {
     return request<VoiceSessionRead>('POST', `/api/v1/admin/voice-core/sessions`, undefined, body);
+  },
+  async playbackReadyApiV1AdminVoiceCoreSessionsIdentityPlaybackReadyPost(identity: string): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/sessions/${identity}/playback-ready`, undefined, undefined);
   },
   async closeSessionApiV1AdminVoiceCoreSessionsSessionIdDelete(session_id: string): Promise<VoiceSessionStatus> {
     return request<VoiceSessionStatus>('DELETE', `/api/v1/admin/voice-core/sessions/${session_id}`, undefined, undefined);

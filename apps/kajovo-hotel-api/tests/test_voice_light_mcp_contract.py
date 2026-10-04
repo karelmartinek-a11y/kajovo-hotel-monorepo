@@ -10,7 +10,7 @@ import pytest
 from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validator_for
 
-from app.db.models import VoiceSmartOperation
+from dagmar_server.models import VoiceSmartOperation
 from app.services import voice_smart
 from app.services.smart_technologies import decode_result, validate_public
 from .test_smart_technologies import bridge, mcp_result

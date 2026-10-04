@@ -32,17 +32,33 @@ def estimate(usage: dict | None, rates: dict):
     if not usage:
         return {"usd": None, "complete": False, "reason": "missing_usage"}
     total = Decimal(0)
+    if rates.get("kind") == "text":
+        try:
+            count, output = usage["input_tokens"], usage["output_tokens"]
+            cached = usage["input_tokens_details"]["cached_tokens"]
+            if not 0 <= cached <= count or output < 0:
+                raise ValueError("cache_count")
+            rate = rates["text"]
+            total = (Decimal(count-cached)*Decimal(str(rate["input"])) + Decimal(cached)*Decimal(str(rate["cached"])) + Decimal(output)*Decimal(str(rate["output"]))) / 1_000_000
+            return {"usd":str(total), "complete":True}
+        except (KeyError, ValueError, TypeError):
+            return {"usd":None, "complete":False, "reason":"missing_text_or_cache_usage"}
     try:
         inputs, outputs = usage["input_token_details"], usage["output_token_details"]
-        cached = inputs["cached_tokens_details"]
+        cached = inputs.get("cached_tokens_details") or ({} if inputs.get("cached_tokens") == 0 else None)
+        if cached is None:
+            raise KeyError("cached_tokens_details")
         for modality in ("text", "audio", "image"):
             field = modality + "_tokens"
-            count, hit = inputs.get(field), cached.get(field)
+            count = inputs.get(field)
+            if modality == "image" and count is None and sum(inputs.get(m + "_tokens", 0) for m in ("text", "audio")) == usage["input_tokens"]:
+                count = 0
+            hit = cached.get(field, 0 if inputs.get("cached_tokens") == 0 or count == 0 else None)
             if count is None or hit is None:
                 raise KeyError(field)
             if not 0 <= hit <= count:
                 raise ValueError("cache_count")
-            output = outputs.get(field, 0 if modality == "image" else None)
+            output = outputs.get(field, 0 if modality == "image" and sum(outputs.get(m + "_tokens", 0) for m in ("text", "audio")) == usage["output_tokens"] else None)
             if output is None:
                 raise KeyError(field)
             if count or hit or output:

@@ -25,18 +25,16 @@ from app.api.routes.profile import router as profile_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
-from app.api.routes.voice_core import router as voice_core_router
-from app.api.routes.voice_memory import router as voice_memory_router
-from dagmar_server.diagnostic_api import router_for
 from dagmar_server.diagnostics import DiagnosticError
-from app.services.voice_diagnostics import store as diagnostic_store, authorize as diagnostic_authorize
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
 from app.services.admin_credentials import ensure_admin_profile
 from app.services.breakfast.scheduler import breakfast_scheduler_loop
-from app.services.voice_smart import manager as voice_bridge_manager
+from app.services.dagmar_adapter import create_dagmar, migrate
+from dagmar_server.application import BoundContext
+from dagmar_server.ports import bind
 
 settings = get_settings()
 ANDROID_RELEASE_PATH = "/api/app/android-release"
@@ -66,6 +64,9 @@ def has_explicit_admin_env() -> bool:
 def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(title=settings.app_name, version=settings.app_version)
+    dagmar = create_dagmar()
+    app.state.dagmar = dagmar
+    app.add_middleware(BoundContext, ports=dagmar.ports)
     app.add_middleware(RequestContextMiddleware)
 
     @app.exception_handler(DiagnosticError)
@@ -144,19 +145,20 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(settings_router)
     app.include_router(profile_router)
-    app.include_router(voice_core_router)
-    app.include_router(router_for(diagnostic_store, diagnostic_authorize), prefix="/api/v1/admin/voice-core", tags=["voice-diagnostics"])
-    app.include_router(voice_memory_router)
+    app.include_router(dagmar.core, prefix="/api/v1/admin/voice-core", tags=["voice-core"])
+    app.include_router(dagmar.memory, prefix="/api/v1/admin/voice-memory", tags=["voice-memory"])
 
     @app.on_event("startup")
     async def startup_scheduler() -> None:
         initialize_database()
+        app.state.dagmar_migration = migrate()
         with SessionLocal() as db:
             ensure_admin_profile(db, settings, sync_from_env=has_explicit_admin_env())
         if settings.breakfast_scheduler_enabled:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
         app.state.chat_push_scheduler_task = asyncio.create_task(chat_push_scheduler_loop())
-        app.state.voice_bridge_housekeeping_task = asyncio.create_task(voice_bridge_manager.housekeeping())
+        with bind(dagmar.ports):
+            app.state.voice_bridge_housekeeping_task = asyncio.create_task(dagmar.manager.housekeeping())
 
     @app.on_event("shutdown")
     async def shutdown_scheduler() -> None:
@@ -165,7 +167,7 @@ def create_app() -> FastAPI:
             voice_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await voice_task
-        await voice_bridge_manager.shutdown()
+        await dagmar.shutdown()
         task = getattr(app.state, "breakfast_scheduler_task", None)
         if task is not None:
             task.cancel()

@@ -4,7 +4,7 @@ import os
 import uuid
 
 from app.config import get_settings
-from app.db.models import VoiceMailOperation
+from dagmar_server.models import VoiceMailOperation
 from app.db.session import SessionLocal
 from app.main import create_app
 from app.services.voice_smart import VoiceBridge, manager
@@ -15,7 +15,7 @@ get_settings().voice_master_key = base64.b64encode(os.urandom(32)).decode()
 app = create_app()
 
 
-async def create_fixture(sdp, config, key, owner, token):
+async def create_fixture(sdp, config, key, owner, token, **kwargs):
     bridge = VoiceBridge(owner, "rtc_mail_browser", key, token, config, "gpt-realtime-2.1")
     bridge.ready.set()
     bridge.technologies = "unavailable"
@@ -39,4 +39,4 @@ async def create_fixture(sdp, config, key, owner, token):
     return {"sdp": "v=0\r\nfixture", "model": bridge.model, **bridge.public_status(), "managed_functions": ["mail_send_prepare"]}
 
 
-manager.create = create_fixture
+app.state.dagmar.manager.create = create_fixture

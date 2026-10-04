@@ -493,7 +493,7 @@ def test_group_results_preserve_skipped_rows_and_queued_record_is_pending(voice_
         )
         output = json.loads(next(item["output"] for item in sent if item["type"] == "function_call_output"))
         assert output["results"] == results
-        from app.db.models import VoiceSmartOperation
+        from dagmar_server.models import VoiceSmartOperation
 
         with factory() as db:
             assert db.get(VoiceSmartOperation, output["request_id"]).status == "pending"
@@ -600,7 +600,7 @@ def test_unacknowledged_output_requires_renewal_without_replay(voice_host, monke
         b.mcp, b.item = MCP(), item
         with pytest.raises(SmartError):
             await b.result(call)
-        from app.db.models import VoiceSmartOperation
+        from dagmar_server.models import VoiceSmartOperation
         with factory() as db:
             assert db.get(VoiceSmartOperation, calls[0]["request_id"]).status == "uncertain"
         recovered = bridge()

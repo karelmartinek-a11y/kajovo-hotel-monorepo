@@ -244,3 +244,14 @@ def api_request(api_base_url: str) -> ApiRequest:
     return _request
 
 
+
+
+@pytest.fixture(autouse=True)
+def portable_dagmar_context():
+    # Stateless voice tests also need an explicit host infrastructure context.
+    # HTTP fixture contexts override this with their isolated database/auth adapters.
+    from app.services.dagmar_adapter import create_dagmar
+    from dagmar_server.ports import bind
+    application = create_dagmar()
+    with bind(application.ports):
+        yield

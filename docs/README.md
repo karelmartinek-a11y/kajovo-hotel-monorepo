@@ -48,4 +48,7 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 
 - `docs/voice-core.md`: přenosný hlasový produkt a host adapters.
 - `docs/voice-speaker-impact-matrix.md`: ochrana ozvěny reproduktorů a hlasová regrese.
-- `docs/voice-memory.md`: hotelová soukromá paměť, lístky a stručné souhrny hlasového chatu.
+- `docs/voice-memory.md`: vlastní společná paměť Dagmar pro oprávněné administrátory, lístky a stručné souhrny.
+
+- `docs/dagmar/IMPLEMENTATION.md`: dvouetapový protokol, V01–V18, důkazy a limity přejímky.
+- `docs/dagmar/ROLLBACK.md`: kompatibilní obnova vlastního schématu a oddělených klíčů.

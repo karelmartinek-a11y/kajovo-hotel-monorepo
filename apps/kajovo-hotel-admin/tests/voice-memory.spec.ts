@@ -194,17 +194,21 @@ test("curated history is visible and searchable without a full transcript", asyn
 import asyncio
 from sqlalchemy import select
 from app.db.session import SessionLocal
-from app.db.models import VoiceMemoryPrincipal
+from dagmar_server.models import VoiceMemoryPrincipal
 from app.services.voice_memory_curator import TurnBuffer,Curated
 with SessionLocal() as db:
-    pid=db.scalar(select(VoiceMemoryPrincipal.id))
+    from dagmar_server.migrations import SHARED_ID
+    pid=SHARED_ID
 async def fake(*args):
     return Curated(candidates=[],topics=['Projekt X','parkování'],summary='Projekt X: dohodnut test parkování.',decisions=['Ověřit parkování'],open_points=['Dokončit test'],continuation='Pokračovat testem projektu X.')
 async def seed():
     b=TurnBuffer(pid,${JSON.stringify("browser-project-" + info.project.name)},'test-only',factory=SessionLocal,extractor=fake)
     b.add('fixture-turn',0,'user','Synthetic conversation for project X.')
     await b.close()
-asyncio.run(seed())
+from app.services.dagmar_adapter import create_dagmar
+from dagmar_server.ports import bind
+with bind(create_dagmar().ports):
+    asyncio.run(seed())
 `,
     ],
     {

@@ -1,0 +1,39 @@
+{
+  "stage": "A",
+  "sha": "4398c6560fa0cd67590704519dcea44ddd8eec1a",
+  "CI": {
+    "url": "https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/37208231417",
+    "result": "success"
+  },
+  "deploy": {
+    "url": "https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/37208590405",
+    "result": "success"
+  },
+  "runtime": {
+    "artifact": "/home/deploy-hotel/kajovo-deploy-releases/4398c6560fa0cd67590704519dcea44ddd8eec1a/artifacts/deploy-runtime/latest.json",
+    "sha": "4398c6560fa0cd67590704519dcea44ddd8eec1a",
+    "api_image": "sha256:f1300cf940f90a3a71975f5fd50f691de7225c9be1aebd325a5fdbc081cea9e1",
+    "health": "healthy"
+  },
+  "production_https_API": {
+    "fixture_call_id": "5b77fe714de346fab2d7b3c1076d257e",
+    "synthetic_text_and_two_audio_sources_upload": "PASS",
+    "redaction_and_export_object_hashes": "PASS",
+    "pin": "PASS",
+    "incomplete_manifest": "expected",
+    "real_voice_provider": "not_tested",
+    "MCP_and_SMTP_mutations": 0,
+    "fixture_cleanup": "PASS; deleted only the disposable fixture after UI inspection"
+  },
+  "production_UI": {
+    "current_admin_login": "PASS",
+    "load_capacity_call_list_timeline_manifest": "PASS",
+    "native_protected_download": "PASS; Chrome reports completed 23.0 kB",
+    "debug_toggle_actual_provider": "not_tested; isolated responsive tests passed",
+    "download_file_sha256": "b4b0585937f1e0e6c7163c315d99f642a437c72b879914b860ad2f7494f6f889"
+  },
+  "physical_iPhone_15_Pro_Safari": "cancelled by user 2026-10-04; no physical acoustic claim",
+  "whole_Dagmar_portability": "Stage B in progress; diagnostic-only copy-out passed",
+  "paid_USD": 0,
+  "unknown_incident": "October 3 cause not proven"
+}

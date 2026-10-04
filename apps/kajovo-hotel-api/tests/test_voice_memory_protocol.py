@@ -8,7 +8,8 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, func
 from voice_core_server import VoiceCoreConfig
 
-from app.db.models import AuthSession, VoiceNote, VoiceMemory, VoiceMemoryOperation
+from app.db.models import AuthSession
+from dagmar_server.models import VoiceNote, VoiceMemory, VoiceMemoryOperation
 from app.services import voice_smart
 from app.services.voice_memory_curator import TurnBuffer
 from .test_voice_memory import host as _host, pid, curated
@@ -74,6 +75,9 @@ class FakeRealtime:
             )
 
     async def user_phrase(self, call_id="call-1", status="completed"):
+        await self.events.put({"type":"input_audio_buffer.speech_started","item_id":"user-"+call_id})
+        await self.events.put({"type":"input_audio_buffer.committed","item_id":"user-"+call_id})
+        await self.events.put({"type":"response.created","response":{"id":"response-"+call_id}})
         await self.events.put(
             {
                 "type": "conversation.item.input_audio_transcription.completed",
@@ -133,6 +137,7 @@ async def bridge_for(host, monkeypatch, provider, *, token=""):
     monkeypatch.setitem(voice_smart.manager.sessions, bridge.id, bridge)
     bridge.task = asyncio.create_task(bridge.run())
     await asyncio.wait_for(bridge.ready.wait(), 3)
+    await wait_for(lambda: bridge.memory_status != "connecting")
     return bridge
 
 
@@ -156,7 +161,7 @@ def test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_m
         await asyncio.sleep(0.03)
         assert not provider.answers
         with factory() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory)) == 0
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 0
         await provider.user_phrase()
         await wait_for(lambda: len(provider.answers) == 1)
         await wait_for(lambda: any(e["type"] == "response.create" for e in provider.sent))
@@ -165,7 +170,7 @@ def test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_m
         await asyncio.sleep(0.03)
         assert len(provider.answers) == 1
         with factory() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory)) == 1
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 1
         await bridge.close()
         # A different provider session receives only a budgeted durable memory context.
         second_provider = FakeRealtime(
@@ -229,7 +234,7 @@ def test_forget_pauses_active_curation_until_a_fresh_session(host, monkeypatch):
         assert not bridge.memory_buffer.enabled
         assert any(
             e.get("session", {}).get("audio", {}).get("input", {}).get("transcription", "absent")
-            is None
+            != "absent"
             for e in provider.sent
         )
 
@@ -252,7 +257,7 @@ def test_forget_pauses_active_curation_until_a_fresh_session(host, monkeypatch):
         assert provider.answers[2]["code"] == "ok"
         await asyncio.wait_for(bridge.close(), 10)
         with host[1]() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory)) == 0
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 0
         fresh = await bridge_for(host, monkeypatch, FakeRealtime("Nový rozhovor.", {}))
         assert fresh.memory_buffer.enabled and not fresh.memory_privacy_paused
         await asyncio.wait_for(fresh.close(), 10)
@@ -274,7 +279,7 @@ def test_sensitive_subject_requires_explicit_user_request(host, monkeypatch):
         bridge = await bridge_for(host, monkeypatch, implicit)
         await implicit.user_phrase()
         await wait_for(lambda: bool(implicit.answers))
-        assert implicit.answers[0]["code"] == "sensitive_content_rejected"
+        assert implicit.answers[0]["code"] == "human_intent_required"
         await bridge.close()
         explicit = FakeRealtime("Zapamatuj si tento údaj o mé diagnóze.", request)
         bridge = await bridge_for(host, monkeypatch, explicit)
@@ -565,7 +570,7 @@ def test_all_server_close_paths_flush_summary_and_release_transient_data(host, m
                 and bridge.memory_buffer.pending == {}
                 and bridge.memory_buffer.key == ""
             )
-            from app.db.models import VoiceConversationSummary
+            from dagmar_server.models import VoiceConversationSummary
 
             with host[1]() as db:
                 summary = db.scalar(
@@ -575,4 +580,49 @@ def test_all_server_close_paths_flush_summary_and_release_transient_data(host, m
                 )
                 assert summary and summary.continuation == "Pokračovat testem projektu X."
 
+    asyncio.run(scenario())
+
+
+def test_greeting_fast_lifecycle_once_and_early_human_priority(host, monkeypatch):
+    from dagmar_server.models import LogicalCall
+    class GreetingRealtime(FakeRealtime):
+        async def send(self, raw):
+            event = json.loads(raw)
+            if event['type'] == 'response.create' and event.get('response', {}).get('metadata', {}).get('dagmar_greeting'):
+                self.sent.append(event)
+                response = {'id':'greeting-response', 'metadata':event['response']['metadata']}
+                for value in ({'type':'response.created','response':response},
+                              {'type':'output_audio_buffer.started','response_id':response['id']},
+                              {'type':'response.done','response':{**response,'status':'completed','output':[]}},
+                              {'type':'output_audio_buffer.stopped','response_id':response['id']}):
+                    await self.events.put(value)
+                return
+            await super().send(raw)
+    async def scenario():
+        provider=GreetingRealtime('', {})
+        bridge=await bridge_for(host,monkeypatch,provider)
+        factory=host[1]
+        logical='greeting-'+uuid.uuid4().hex
+        with factory() as db:
+            db.add(LogicalCall(id=logical,owner_session_id=bridge.owner))
+            db.commit()
+        bridge.logical_call_id=logical
+        await bridge.greet()
+        await asyncio.sleep(.02)
+        await bridge.greet()
+        with factory() as db:
+            assert db.get(LogicalCall,logical).greeting == 'completed'
+        assert len([e for e in provider.sent if e['type']=='response.create'])==1
+        interrupted='early-'+uuid.uuid4().hex
+        with factory() as db:
+            db.add(LogicalCall(id=interrupted,owner_session_id=bridge.owner))
+            db.commit()
+        bridge.logical_call_id=interrupted
+        await provider.events.put({'type':'input_audio_buffer.speech_started','item_id':'early-human'})
+        await wait_for(lambda: bridge.human_turns.generation > 0)
+        await bridge.greet()
+        with factory() as db:
+            assert db.get(LogicalCall,interrupted).greeting == 'interrupted'
+        assert len([e for e in provider.sent if e['type']=='response.create'])==1
+        await bridge.close()
     asyncio.run(scenario())

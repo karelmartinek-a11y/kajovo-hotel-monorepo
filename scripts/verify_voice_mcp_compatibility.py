@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from voice_core_server import VoiceCoreConfig
 
-from app.db.models import Base, VoiceRegistryPlan
+from dagmar_server.models import DagmarBase as Base, VoiceRegistryPlan
 from app.services import voice_smart
 from app.services.smart_technologies import SmartArguments, validate_public, SmartError
 from app.services.voice_registry import PublicPlan, RegistryConfirmation, script, registry_outcome

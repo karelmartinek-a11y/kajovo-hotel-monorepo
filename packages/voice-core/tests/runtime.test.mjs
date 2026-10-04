@@ -4,7 +4,7 @@ import {VoiceRealtimeClient} from '../dist/runtime.js';
 import {transition} from '../dist/state.js';
 import {capabilityRegistry} from '../dist/contracts.js';
 
-function host({permission, create, heartbeat, close, speakerEchoProtection} = {}) {
+function host({permission, create, heartbeat, close} = {}) {
   const peers = [], tracks = [], events = [], audios = [], contexts = [];
   const environment = {
     async getUserMedia() {if (permission) throw permission; const track = {readyState: 'live', enabled: true, stop() {this.readyState = 'ended'; this.stopped = true;}}; tracks.push(track); return {getTracks: () => [track], getAudioTracks: () => [track]};},
@@ -17,61 +17,40 @@ function host({permission, create, heartbeat, close, speakerEchoProtection} = {}
         close() {this.closed = true;}, connectionState: 'new'};
       peers.push(peer); return peer;},
   };
-  const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'})), heartbeat, close, speakerEchoProtection};
+  const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'})), heartbeat, close};
   const client = new VoiceRealtimeClient(provider, {emit: (name, attrs) => events.push({name, attrs})}, environment);
   const send = event => peers.at(-1).channel.onmessage({data: JSON.stringify(event)});
   return {client, peers, tracks, audios, contexts, events, send};
 }
 
-test('speaker echo cannot reenable input through heartbeat or unmute before playback and tail finish', async () => {
-  const h = host({speakerEchoProtection: true, heartbeat: async () => ({technologies: 'ready', renew: false, closed: false}),
+test('playback, heartbeat and overlapping drains preserve natural input and explicit mute', async () => {
+  const h = host({heartbeat: async () => ({technologies: 'ready', renew: false, closed: false}),
     create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'speaker'})});
   await h.client.start(); await new Promise(done => setTimeout(done, 0));
-  h.send({type: 'output_audio_buffer.started', response_id: 'first'});
-  assert.equal(h.tracks[0].enabled, false);
-  await h.client.heartbeat(h.client.epoch, h.peers[0]);
-  h.client.setMuted(false); assert.equal(h.tracks[0].enabled, false);
-  h.send({type: 'response.done', response: {id: 'first', status: 'completed'}});
-  h.send({type: 'output_audio_buffer.stopped', response_id: 'first'});
-  assert.equal(h.tracks[0].enabled, false);
-  h.send({type: 'output_audio_buffer.started', response_id: 'overlapping-tail'});
-  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, false);
-  // A completely drained global WebRTC buffer can carry a different response ID.
-  h.send({type: 'output_audio_buffer.stopped', response_id: 'different-drain-id'});
-  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, true);
-  h.send({type: 'output_audio_buffer.started', response_id: 'second'}); h.client.setMuted(true);
-  h.send({type: 'output_audio_buffer.stopped', response_id: 'second'});
-  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, false);
-  await h.client.stop();
+  try {
+    for (const event of [{type:'output_audio_buffer.started',response_id:'first'},
+      {type:'response.done',response:{id:'first',status:'completed'}},
+      {type:'output_audio_buffer.started',response_id:'second'},
+      {type:'output_audio_buffer.stopped',response_id:'different-drain'}]) {
+      h.send(event); assert.equal(h.tracks[0].enabled,true);
+    }
+    await h.client.heartbeat(h.client.epoch,h.peers[0]);
+    assert.equal(h.tracks[0].enabled,true);
+    h.client.setMuted(true); h.send({type:'output_audio_buffer.cleared'});
+    assert.equal(h.tracks[0].enabled,false);
+    h.client.setMuted(false);assert.equal(h.tracks[0].enabled,true);
+  } finally {await h.client.stop();}
 });
 
-test('speaker interruption clears provider playback and preserves the microphone gate until acknowledged', async () => {
-  const h = host({speakerEchoProtection: true}); await h.client.start();
-  h.send({type: 'response.created', response: {id: 'answer'}});
-  h.send({type: 'output_audio_buffer.started', response_id: 'answer'});
-  h.client.interruptPlayback();
-  const cancel = h.peers[0].channel.sent[0];
-  assert.equal(cancel.type, 'response.cancel'); assert.equal(cancel.response_id, 'answer');
-  assert.deepEqual(h.peers[0].channel.sent[1], {type: 'output_audio_buffer.clear'});
-  h.send({type: 'error', error: {code: 'response_cancel_not_active', event_id: cancel.event_id}});
-  assert.notEqual(h.client.getSnapshot().state, 'error');
-  assert.equal(h.tracks[0].enabled, false);
-  h.send({type: 'output_audio_buffer.cleared', response_id: 'answer'});
-  await new Promise(done => setTimeout(done, 450)); assert.equal(h.tracks[0].enabled, true);
-  h.send({type: 'output_audio_buffer.started', response_id: 'next'});
-  h.send({type: 'output_audio_buffer.stopped', response_id: 'next'});
-  await h.client.stop(); await new Promise(done => setTimeout(done, 450)); assert.ok(h.tracks[0].stopped);
-});
-
-test('headphone mode and portable default retain voice barge-in', async () => {
-  for (const option of [undefined, true]) {
-    const h = host({speakerEchoProtection: option}); await h.client.start();
-    h.send({type: 'output_audio_buffer.started', response_id: 'answer'});
-    h.client.setSpeakerEchoProtection(false);
-    assert.equal(h.tracks[0].enabled, true);
-    h.send({type: 'input_audio_buffer.speech_started'}); assert.equal(h.client.getSnapshot().state, 'user-speaking');
-    await h.client.stop();
-  }
+test('genuine speech interrupts state while input remains enabled; no manual interrupt control', async () => {
+  const h=host();await h.client.start();
+  try {
+    h.send({type:'output_audio_buffer.started',response_id:'answer'});
+    h.send({type:'input_audio_buffer.speech_started'});
+    assert.equal(h.client.getSnapshot().state,'user-speaking');
+    assert.equal(h.tracks[0].enabled,true);
+    assert.equal(h.client.interruptPlayback,undefined);
+  } finally {await h.client.stop();}
 });
 
 test('interruption has deterministic transitions and generation done is not playback done', () => {

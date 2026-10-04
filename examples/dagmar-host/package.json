@@ -1,0 +1,1 @@
+{"name":"dagmar-minimal-host","private":true,"type":"module","scripts":{"build":"vite build","dev":"vite --host 127.0.0.1"},"dependencies":{"@dagmar/browser":"workspace:*","react":"^18.3.1","react-dom":"^18.3.1"},"devDependencies":{"vite":"^6.0.5","typescript":"^5.6.3"}}

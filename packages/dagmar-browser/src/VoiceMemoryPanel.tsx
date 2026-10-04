@@ -1,3 +1,4 @@
+import type {DagmarRequest} from './ports.js';
 import React, { useEffect, useState } from "react";
 import type {
   MemoryRead,
@@ -6,42 +7,9 @@ import type {
   NoteRecord,
   SettingsRead,
   SummaryRecord,
-} from "@kajovo/shared";
+} from "./contracts.js";
 import "./voice-memory.css";
 
-const BASE = "/api/v1/admin/voice-memory";
-async function api<T>(
-  path: string,
-  method = "GET",
-  body?: unknown,
-): Promise<T> {
-  const csrf =
-    document.cookie
-      .split("; ")
-      .find((v) => v.startsWith("kajovo_csrf="))
-      ?.split("=")
-      .slice(1)
-      .join("=") ?? "";
-  const response = await fetch(BASE + path, {
-    method,
-    credentials: "include",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...(method === "GET" ? {} : { "x-csrf-token": decodeURIComponent(csrf) }),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  if (!response.ok)
-    throw new Error(
-      response.status === 409
-        ? "Obsah se mezitím změnil. Obnovte data a zkuste úpravu znovu."
-        : response.status === 401 || response.status === 403
-          ? "Pro správu paměti je nutné přihlášení administrátora."
-          : "Paměť není dostupná nebo požadavek nelze uložit.",
-    );
-  return response.json() as Promise<T>;
-}
 const date = (value: string) =>
   new Date(value).toLocaleString("cs-CZ", { timeZone: "Europe/Prague" });
 type Tab = "memories" | "notes" | "summaries";
@@ -52,7 +20,7 @@ function listPath(area: Tab, offset: number, archived: boolean) {
   });
   return `/${area}` + "?" + params.toString();
 }
-export function VoiceMemoryPanel() {
+export function VoiceMemoryPanel({request: api}: {request: DagmarRequest}) {
   const [tab, setTab] = useState<Tab>("memories");
   const [result, setResult] = useState<MemoryResult | null>(null);
   const [settings, setSettings] = useState<SettingsRead | null>(null);
@@ -97,7 +65,9 @@ export function VoiceMemoryPanel() {
       await action();
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Požadavek se nepodařil.",
+        typeof error === "object" && error !== null && "category" in error && error.category === "revision_conflict"
+          ? "Záznam se mezitím změnil. Obnovte jej a zkontrolujte úpravu."
+          : error instanceof Error ? error.message : "Požadavek se nepodařil.",
       );
     } finally {
       setBusy(false);
@@ -136,7 +106,7 @@ export function VoiceMemoryPanel() {
     <section className="voice-memory" aria-label="Správa hlasové paměti">
       <h2>Trvalá paměť</h2>
       <p>
-        Soukromá paměť vašeho účtu, lístky a stručné souhrny. Zvuk ani úplné
+        Společná paměť oprávněných administrátorů, lístky a stručné souhrny. Zvuk ani úplné
         přepisy se neukládají.
       </p>
       {settings && (

@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
-from app.db.models import VoiceSmartOperation
+from dagmar_server.models import VoiceSmartOperation
 from app.services import voice_smart
 from app.services.smart_technologies import SMART_INSTRUCTIONS, SMART_TOOL
 

@@ -1,12 +1,12 @@
+import type {DagmarRequest} from './ports.js';
 import React, {useEffect, useState} from 'react';
-import type {MailView} from '@kajovo/shared';
-import {request} from './voice-request';
+import type {MailView} from './contracts.js';
 import './voice-mail.css';
 
 const states: Record<string, string> = {connecting: 'Připojuji e-mail…', ready: 'E-mail je připravený.', degraded: 'E-mail je dostupný s omezením. Výsledky mohou být neúplné.', unavailable: 'E-mail je nedostupný. Běžný rozhovor může pokračovat.'};
 const phases: Record<string, string> = {idle: 'Koncept připravíte hlasem.', prepared: 'E-mail je připravený ke čtení.', reading: 'Čtu celý e-mail. Potvrďte hlasem až po dokončení.', awaiting_confirmation: 'Potvrďte odeslání hlasem: ano nebo ne.', confirmed: 'Hlasové potvrzení bylo ověřeno.', sending: 'Odesílání probíhá…', applied: 'Výsledek odeslání oznámí hlasový chat.', refused: 'Odeslání bylo odmítnuto.', ambiguous: 'Odpověď nebyla jednoznačná. Připravte nový návrh.', invalidated: 'Návrh byl zneplatněn. Připravte jej znovu.', expired: 'Návrh vypršel. Připravte jej znovu.', failed: 'Odeslání není potvrzené. Vyčkejte na ověřený stav.', uncertain: 'Výsledek odeslání je nejistý. Chat dohledá původní operaci; neopakujte ji.'};
 
-export function VoiceMailPanel({sessionId}: {sessionId: string | null}) {
+export function VoiceMailPanel({sessionId,request}: {sessionId: string | null; request:DagmarRequest}) {
   const [view, setView] = useState<MailView | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -21,7 +21,7 @@ export function VoiceMailPanel({sessionId}: {sessionId: string | null}) {
     };
     void read();
     return () => {abort.abort(); clearTimeout(timer);};
-  }, [sessionId]);
+  }, [sessionId,request]);
   const preview = view?.confirmation.preview;
   return <section className="voice-mail" aria-label="E-mail v hlasovém chatu">
     <h2>E-mail</h2>

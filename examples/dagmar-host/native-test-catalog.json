@@ -1,0 +1,149 @@
+{
+  "catalog_revision": "r1",
+  "observed_at": "2026-10-02T12:00:00Z",
+  "fields": [
+    {
+      "key": "name",
+      "label": "name"
+    },
+    {
+      "key": "location",
+      "label": "location"
+    },
+    {
+      "key": "kind",
+      "label": "kind"
+    },
+    {
+      "key": "controls",
+      "label": "controls",
+      "parameter_definitions": {
+        "p": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "brightness_percent": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      },
+      "component_names": {
+        "l": "Light"
+      },
+      "action_names": {
+        "off": "Vypnout",
+        "on": "Zapnout",
+        "set": "Nastavit"
+      },
+      "label_separator": ": ",
+      "item_fields": [
+        "function",
+        "component_ref",
+        "action_ref",
+        "parameters_ref",
+        "supported",
+        "unavailable_reason"
+      ]
+    },
+    {
+      "key": "readings",
+      "label": "readings",
+      "reading_names": {
+        "r": "State"
+      },
+      "item_fields": [
+        "function",
+        "component_ref",
+        "reading_ref",
+        "unit"
+      ]
+    },
+    {
+      "key": "current_state",
+      "label": "current_state",
+      "item_fields": [
+        "function",
+        "value"
+      ]
+    },
+    {
+      "key": "possible_states",
+      "label": "possible_states",
+      "state_definitions": {
+        "s": [
+          "on",
+          "off"
+        ]
+      },
+      "item_fields": [
+        "component_ref",
+        "states_ref"
+      ]
+    },
+    {
+      "key": "availability",
+      "label": "availability"
+    }
+  ],
+  "devices": [
+    [
+      "Zkušební lampa",
+      "Testovna",
+      "light",
+      [
+        [
+          "c1",
+          "l",
+          "off",
+          "p",
+          true,
+          ""
+        ],
+        [
+          "c2",
+          "l",
+          "on",
+          "p",
+          true,
+          ""
+        ],
+        [
+          "c3",
+          "l",
+          "set",
+          "p",
+          true,
+          ""
+        ]
+      ],
+      [
+        [
+          "r1",
+          "l",
+          "r",
+          ""
+        ]
+      ],
+      [
+        [
+          "r1",
+          "off"
+        ]
+      ],
+      [
+        [
+          "l",
+          "s"
+        ]
+      ],
+      true
+    ]
+  ],
+  "results": [],
+  "rows": [
+    8
+  ]
+}

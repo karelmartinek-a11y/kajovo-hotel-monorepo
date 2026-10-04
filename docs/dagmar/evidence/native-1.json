@@ -1,0 +1,32 @@
+{
+  "model": "gpt-realtime-2.1",
+  "provider_usage": [],
+  "events": [],
+  "fake_mcp_calls": [],
+  "ledger": {
+    "limit_micro_usd": 10000000,
+    "committed_micro_usd": 9500000,
+    "available_micro_usd": 500000,
+    "entries": [
+      {
+        "id": "native-1bcbfca504f4414d8cf9e0fef48e63a9",
+        "reserved_micro_usd": 9400000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-1bcbfca504f4414d8cf9e0fef48e63a9-transcription",
+        "reserved_micro_usd": 100000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      }
+    ]
+  },
+  "physical_acoustics": false,
+  "key_transport": "backend decryption delivered only through SSH pipe to stdin; key omitted",
+  "scope": "isolated test auth/DB/public MCP contract fake; Chromium synthetic native WebRTC; no physical proof"
+}

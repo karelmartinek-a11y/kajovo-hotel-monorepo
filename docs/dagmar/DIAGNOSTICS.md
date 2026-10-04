@@ -1,8 +1,9 @@
-# Dagmar diagnostics — Stage A
+# Dagmar diagnostics
 
 Stage A preserves the historical voice behavior, including the speaker microphone
 gate and mail-private memory lock. These are baseline mechanisms, not the final behavior.
-The full Dagmar extraction and Stage B acceptance remain pending.
+Stage B owns the complete portable product and removes these baseline mechanisms.
+See IMPLEMENTATION.md for the current exact release and acceptance status.
 
 ## Recording
 
@@ -67,7 +68,7 @@ playable files. To reconstruct audio, use the exported `audio_manifest` metadata
 by debug segment/source/track and concatenate chunks in sequence, retaining init data.
 Missing chunks make the stream incomplete; do not label it playable without decoding it.
 
-## iPhone reproduction (waiting: device unavailable)
+## Optional iPhone reproduction (mandatory acceptance cancelled by user)
 
 1. Record iPhone 15 Pro iOS/Safari version, built-in microphone/speaker route, volume,
    visible model/config and release. Disable Bluetooth routing for this test.

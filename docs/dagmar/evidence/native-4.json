@@ -1,0 +1,169 @@
+{
+  "model": "gpt-realtime-2.1",
+  "provider_usage": [
+    {
+      "price_snapshot": {
+        "revision": "openai-2026-10-04-v1",
+        "date": "2026-10-04",
+        "source": "https://developers.openai.com/api/docs/pricing",
+        "unit": "USD_per_1000000_tokens"
+      },
+      "cost_estimate": {
+        "usd": "0.035408",
+        "complete": true
+      },
+      "response_id": "resp_EVJ1wwzvs0eO62CmqRsQC",
+      "model": "gpt-realtime-2.1",
+      "status": "completed",
+      "complete": true,
+      "usage": {
+        "total_tokens": 6140,
+        "input_tokens": 5814,
+        "output_tokens": 326,
+        "input_token_details": {
+          "text_tokens": 5788,
+          "audio_tokens": 26,
+          "image_tokens": 0,
+          "cached_tokens": 0,
+          "cached_tokens_details": {
+            "text_tokens": 0,
+            "audio_tokens": 0,
+            "image_tokens": 0
+          }
+        },
+        "output_token_details": {
+          "text_tokens": 236,
+          "audio_tokens": 90,
+          "reasoning_tokens": 181
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "type": "input_audio_buffer.speech_started",
+      "status": null,
+      "concise_success": false,
+      "response_id": null,
+      "code": null
+    },
+    {
+      "type": "response.created",
+      "status": "in_progress",
+      "concise_success": false,
+      "response_id": "resp_EVJ1wwzvs0eO62CmqRsQC",
+      "code": null
+    },
+    {
+      "type": "output_audio_buffer.started",
+      "status": null,
+      "concise_success": false,
+      "response_id": "resp_EVJ1wwzvs0eO62CmqRsQC",
+      "code": null
+    },
+    {
+      "type": "response.done",
+      "status": "completed",
+      "concise_success": false,
+      "response_id": "resp_EVJ1wwzvs0eO62CmqRsQC",
+      "code": null
+    },
+    {
+      "type": "response.created",
+      "status": "in_progress",
+      "concise_success": false,
+      "response_id": "resp_EVJ21RZMPMdvBAk06EsrJ",
+      "code": null
+    },
+    {
+      "type": "output_audio_buffer.stopped",
+      "status": null,
+      "concise_success": false,
+      "response_id": "resp_EVJ1wwzvs0eO62CmqRsQC",
+      "code": null
+    }
+  ],
+  "fake_mcp_calls": [
+    {
+      "operation": "catalog",
+      "request_id": null
+    },
+    {
+      "operation": "catalog",
+      "request_id": null
+    }
+  ],
+  "ledger": {
+    "limit_micro_usd": 10000000,
+    "committed_micro_usd": 9914630,
+    "available_micro_usd": 85370,
+    "entries": [
+      {
+        "id": "native-1bcbfca504f4414d8cf9e0fef48e63a9",
+        "reserved_micro_usd": 9400000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-1bcbfca504f4414d8cf9e0fef48e63a9-transcription",
+        "reserved_micro_usd": 100000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-ba868ee50c8c4573a4ffa921d6934d92",
+        "reserved_micro_usd": 470000,
+        "charged_micro_usd": 26832,
+        "state": "reconciled",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-ba868ee50c8c4573a4ffa921d6934d92-transcription",
+        "reserved_micro_usd": 20000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-c4b2eb24816c4c59b7411a00313cb0f1",
+        "reserved_micro_usd": 430000,
+        "charged_micro_usd": 27798,
+        "state": "reconciled",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-c4b2eb24816c4c59b7411a00313cb0f1-transcription",
+        "reserved_micro_usd": 20000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-1b222c27609c4e7a9567ba5e491b8dc9",
+        "reserved_micro_usd": 300000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-1b222c27609c4e7a9567ba5e491b8dc9-transcription",
+        "reserved_micro_usd": 20000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      }
+    ]
+  },
+  "physical_acoustics": false,
+  "result": "time-bound native test did not reach control; second response has no final usage, reservation retained"
+}

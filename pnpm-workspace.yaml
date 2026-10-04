@@ -1,6 +1,7 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'examples/dagmar-host'
 allowBuilds:
   esbuild: true
 overrides:

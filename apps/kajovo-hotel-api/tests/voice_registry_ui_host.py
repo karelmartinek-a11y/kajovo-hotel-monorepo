@@ -12,7 +12,7 @@ get_settings().voice_master_key = base64.b64encode(os.urandom(32)).decode()
 app = create_app()
 
 
-async def create_fixture(sdp, config, key, owner, token):
+async def create_fixture(sdp, config, key, owner, token, **kwargs):
     bridge = VoiceBridge(owner, "rtc_browser_fixture", key, token, config, "gpt-realtime-2.1")
     bridge.catalog_ready = True
     bridge.technologies = "ready"
@@ -33,4 +33,4 @@ async def create_fixture(sdp, config, key, owner, token):
     return {"sdp": "v=0\r\nfixture", "model": bridge.model, **bridge.public_status(), "managed_functions": ["smart_technologie", "assistant_memory"]}
 
 
-manager.create = create_fixture
+app.state.dagmar.manager.create = create_fixture

@@ -161,7 +161,7 @@ def test_readonly_reconnect_after_initial_outage_keeps_original_unresolved_ids(v
 
 
 def test_housekeeping_retains_even_old_completed_and_unresolved_smart_identities(voice_host, monkeypatch):
-    from app.db.models import VoiceSmartOperation, VoiceSmartDelivery
+    from dagmar_server.models import VoiceSmartOperation, VoiceSmartDelivery
     _, factory, _ = voice_host
     monkeypatch.setattr(voice_smart, "SessionLocal", factory)
     with factory() as db:
@@ -221,7 +221,7 @@ def test_slovak_inflected_location_commands(text):
 @pytest.mark.parametrize("status,expected", [("not_sent", "rejected"), ("unchanged", "unchanged"), ("updated", "applied")])
 def test_actual_dispatcher_publishes_per_item_results_and_terminal_state(voice_host, monkeypatch, status, expected):
     from .test_voice_registry import proposal
-    from app.db.models import VoiceRegistryPlan, VoiceSmartOperation
+    from dagmar_server.models import VoiceRegistryPlan, VoiceSmartOperation
     _, factory, _ = voice_host
     monkeypatch.setattr(voice_smart, "SessionLocal", factory)
     monkeypatch.setattr(voice_smart, "authorized", lambda _: True)

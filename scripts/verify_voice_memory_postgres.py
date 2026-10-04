@@ -59,6 +59,8 @@ def main():
                 *args,
             )
 
+        # Dagmar schema in a genuinely empty PostgreSQL database, without hotel migrations.
+        api("python", "-c", "from sqlalchemy import create_engine,inspect; from dagmar_server.migrations import upgrade; e=create_engine('postgresql+psycopg://postgres:memory_test_only@postgres:5432/memory'); upgrade(e); names=inspect(e).get_table_names(); assert all(n.startswith('dagmar_') for n in names); print('Own empty PostgreSQL schema PASS'); from sqlalchemy import text; c=e.connect(); [c.execute(text('DROP TABLE '+n+' CASCADE')) for n in names]; c.commit(); c.close()")
         # Exercise old/new MCP shapes with this exact production image, without backend IO.
         run("docker", "run", "--rm", "-v", str(Path("scripts/verify_voice_mcp_compatibility.py").resolve())+":/tmp/compatibility.py:ro", "--entrypoint", "python", "kajovo-api-ci", "-c", "exec(open('/tmp/compatibility.py').read())")
 
@@ -78,13 +80,31 @@ def main():
         api("alembic", "upgrade", "head")
         code = """
 from app.db.session import SessionLocal,engine
-from app.db.models import VoiceMemoryPrincipal,VoiceNoteItem,VoiceMemoryOperation,VoiceMemory,VoiceMemoryDependency
+from dagmar_server.models import VoiceMemoryPrincipal,VoiceNoteItem,VoiceMemoryOperation,VoiceMemory,VoiceMemoryDependency
+from dagmar_server.migrations import upgrade
+from app.db.models import VoiceMemoryPrincipal as OldPrincipal, VoiceMemory as OldMemory
+from datetime import datetime,timezone
+from dagmar_server.migrations import SHARED_ID
+with SessionLocal() as legacy:
+    legacy.add(OldPrincipal(id='legacy-pg',admin_profile_id=1));legacy.commit()
+    legacy.add(OldMemory(id='legacy-fact',principal_id='legacy-pg',kind='fact',subject='Fixture',content='Preserved fixture',search_text='fixture',origin='explicit',revision=7,created_at=datetime.now(timezone.utc),updated_at=datetime.now(timezone.utc)));legacy.commit()
+proof=upgrade(engine,import_legacy=True)
+assert proof['tables']['voice_memories']['count_before']==proof['tables']['voice_memories']['count_after']==1
+with SessionLocal() as migrated:
+    row=migrated.get(VoiceMemory,'legacy-fact')
+    assert row.revision==7 and row.origin=='explicit' and row.principal_id==SHARED_ID and row.origin_principal_id=='legacy-pg'
+    assert migrated.get(OldMemory,'legacy-fact').content==row.content
+    migrated.delete(row);migrated.commit()
 from app.services.voice_memory import principal,execute
 from app.services.voice_memory_contract import MemoryRequest
 from sqlalchemy import select,func,text
+from app.services.dagmar_adapter import create_dagmar
+from dagmar_server.ports import bind
+context=bind(create_dagmar().ports)
+context.__enter__()
 with SessionLocal() as db:
     assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0044_voice_mail_operations'
-    p=principal(db,{'actor_type':'admin','role':'admin','email':'test@example.invalid'})
+    p=principal(db,{'voice_authorized':True,'namespace':'pg-test'})
     request=MemoryRequest.model_validate({'request':{'operation':'note_create','title':'PG','kind':'list','items':['a','b'],'content':None}})
     first=execute(db,p,request,session_id='pg',call_id='call')
     assert first.code=='ok'
@@ -116,12 +136,13 @@ with SessionLocal() as db:
 print('PostgreSQL migration, retries, revisions, ordering and cascades PASS')
 from app.services.voice_registry import RegistryConfirmation
 from app.services.voice_smart import claim_operation
-from app.db.models import VoiceRegistryPlan
+from dagmar_server.models import VoiceRegistryPlan
 from app.time_utils import utc_now
 from datetime import timedelta
 r=RegistryConfirmation('pg-registry','pg-voice',SessionLocal)
 r.prepare({'id':'pg-plan','expires_at':(utc_now()+timedelta(minutes=5)).isoformat(),'requires_confirmation':True,'changes':[{'action':'delete_room','old_name':'Transient PG room','room_ref':'public','status':'planned'}]},'en')
 r.begin_readback('pg-response')
+r.event({'type':'output_audio_buffer.started','response_id':'pg-response'})
 r.event({'type':'response.done','response':{'id':'pg-response','status':'completed','output':[{'content':[{'type':'audio','transcript':r.text}]}]}})
 r.event({'type':'output_audio_buffer.stopped','response_id':'pg-response'})
 r.event({'type':'input_audio_buffer.speech_started','item_id':'pg-audio'})
@@ -137,8 +158,8 @@ with SessionLocal() as db:
 print('PostgreSQL registry confirmation and atomic write reservation PASS')
 from app.services.voice_mail_confirmation import MailConfirmation,draft_hash
 from app.services.voice_mail import MailError
-from app.db.models import VoiceMailOperation
-from app.config import get_settings
+from dagmar_server.models import VoiceMailOperation
+from dagmar_server.ports import get_settings
 import base64,os
 get_settings().voice_master_key=base64.b64encode(os.urandom(32)).decode()
 draft={'draft_ref':'pg-draft-ref','draft_version':1,'account':'reception','from':'test@example.invalid','to':['recipient@example.invalid'],'cc':[],'bcc':[],'subject':'PG','text_body':'Transient mail body','html_body':None,'reply_to':[],'in_reply_to':None,'references':[]}

@@ -1,53 +1,157 @@
-.github/workflows/ci-gates.yml
-AGENTS.md
-apps/kajovo-hotel-admin/Dockerfile
-apps/kajovo-hotel-admin/package.json
-apps/kajovo-hotel-admin/playwright.voice-diagnostics.config.ts
-apps/kajovo-hotel-admin/src/voice-integration/VoiceCorePage.tsx
-apps/kajovo-hotel-admin/src/voice-integration/voice-request.ts
-apps/kajovo-hotel-admin/tests/voice-diagnostics.spec.ts
-apps/kajovo-hotel-api/Dockerfile
-apps/kajovo-hotel-api/app/api/routes/voice_core.py
-apps/kajovo-hotel-api/app/config.py
-apps/kajovo-hotel-api/app/main.py
-apps/kajovo-hotel-api/app/observability.py
-apps/kajovo-hotel-api/app/services/voice_diagnostics.py
-apps/kajovo-hotel-api/app/services/voice_mail.py
-apps/kajovo-hotel-api/app/services/voice_mail_host.py
-apps/kajovo-hotel-api/app/services/voice_memory_curator.py
-apps/kajovo-hotel-api/app/services/voice_smart.py
-apps/kajovo-hotel-api/openapi.json
-apps/kajovo-hotel-api/pyproject.toml
-apps/kajovo-hotel-api/tests/test_voice_diagnostics.py
-apps/kajovo-hotel-api/tests/voice_diagnostics_ui_host.py
-docs/dagmar/DIAGNOSTICS.md
-docs/dagmar/FILES.txt
-docs/dagmar/IMPLEMENTATION.md
-infra/compose.prod.yml
-packages/dagmar-browser/package.json
-packages/dagmar-browser/src/DiagnosticPanel.tsx
-packages/dagmar-browser/src/diagnostics.ts
-packages/dagmar-browser/src/index.ts
-packages/dagmar-browser/src/styles.css
-packages/dagmar-browser/tests/diagnostics.test.mjs
-packages/dagmar-browser/tsconfig.build.json
-packages/dagmar-browser/tsconfig.json
-packages/dagmar-server/harness/verify_diagnostics_host.py
-packages/dagmar-server/pyproject.toml
-packages/dagmar-server/src/dagmar_server/__init__.py
-packages/dagmar-server/src/dagmar_server/diagnostic_api.py
-packages/dagmar-server/src/dagmar_server/diagnostic_contract.py
-packages/dagmar-server/src/dagmar_server/diagnostics.py
-packages/dagmar-server/src/dagmar_server/paid_budget.py
-packages/dagmar-server/src/dagmar_server/pricing.py
-packages/dagmar-server/src/dagmar_server/transport_trace.py
-packages/dagmar-server/src/dagmar_server/usage.py
-packages/dagmar-server/tests/test_diagnostics.py
-packages/dagmar-server/tests/test_paid_budget.py
-packages/shared/src/generated/client.ts
-packages/voice-core/src/contracts.ts
-packages/voice-core/src/runtime.ts
-packages/voice-core/src/ui.tsx
-pnpm-lock.yaml
-scripts/release_gate.py
-scripts/verify_dagmar_diagnostics_copy_out.py
+Combined Stage A + B inventory against d590599121023d877a011d85d0c025726e67569f
+A=create M=change D=delete; no original dirty checkout was edited.
+
+M	.github/workflows/ci-gates.yml
+M	AGENTS.md
+M	apps/kajovo-hotel-admin/Dockerfile
+M	apps/kajovo-hotel-admin/package.json
+A	apps/kajovo-hotel-admin/playwright.dagmar-native-live.config.ts
+A	apps/kajovo-hotel-admin/playwright.voice-diagnostics.config.ts
+M	apps/kajovo-hotel-admin/src/voice-integration/VoiceCorePage.tsx
+D	apps/kajovo-hotel-admin/src/voice-integration/VoiceMailPanel.tsx
+D	apps/kajovo-hotel-admin/src/voice-integration/VoiceMemoryPanel.tsx
+D	apps/kajovo-hotel-admin/src/voice-integration/VoiceRegistryPanel.tsx
+D	apps/kajovo-hotel-admin/src/voice-integration/voice-mail.css
+D	apps/kajovo-hotel-admin/src/voice-integration/voice-memory.css
+D	apps/kajovo-hotel-admin/src/voice-integration/voice-registry.css
+M	apps/kajovo-hotel-admin/src/voice-integration/voice-request.ts
+A	apps/kajovo-hotel-admin/tests/dagmar-native-live.spec.ts
+A	apps/kajovo-hotel-admin/tests/voice-diagnostics.spec.ts
+M	apps/kajovo-hotel-admin/tests/voice-memory.spec.ts
+M	apps/kajovo-hotel-api/Dockerfile
+M	apps/kajovo-hotel-api/app/api/routes/voice_core.py
+M	apps/kajovo-hotel-api/app/api/routes/voice_memory.py
+M	apps/kajovo-hotel-api/app/config.py
+M	apps/kajovo-hotel-api/app/main.py
+M	apps/kajovo-hotel-api/app/observability.py
+A	apps/kajovo-hotel-api/app/services/dagmar_adapter.py
+M	apps/kajovo-hotel-api/app/services/smart_technologies.py
+M	apps/kajovo-hotel-api/app/services/voice_core.py
+A	apps/kajovo-hotel-api/app/services/voice_diagnostics.py
+M	apps/kajovo-hotel-api/app/services/voice_mail.py
+M	apps/kajovo-hotel-api/app/services/voice_mail_confirmation.py
+M	apps/kajovo-hotel-api/app/services/voice_mail_host.py
+M	apps/kajovo-hotel-api/app/services/voice_memory.py
+M	apps/kajovo-hotel-api/app/services/voice_memory_contract.py
+M	apps/kajovo-hotel-api/app/services/voice_memory_curator.py
+M	apps/kajovo-hotel-api/app/services/voice_registry.py
+M	apps/kajovo-hotel-api/app/services/voice_smart.py
+M	apps/kajovo-hotel-api/openapi.json
+M	apps/kajovo-hotel-api/pyproject.toml
+M	apps/kajovo-hotel-api/tests/conftest.py
+M	apps/kajovo-hotel-api/tests/test_smart_technologies.py
+M	apps/kajovo-hotel-api/tests/test_voice_compatibility.py
+M	apps/kajovo-hotel-api/tests/test_voice_core.py
+A	apps/kajovo-hotel-api/tests/test_voice_diagnostics.py
+M	apps/kajovo-hotel-api/tests/test_voice_light_controls.py
+M	apps/kajovo-hotel-api/tests/test_voice_light_mcp_contract.py
+M	apps/kajovo-hotel-api/tests/test_voice_mail.py
+M	apps/kajovo-hotel-api/tests/test_voice_memory.py
+M	apps/kajovo-hotel-api/tests/test_voice_memory_protocol.py
+M	apps/kajovo-hotel-api/tests/test_voice_registry.py
+A	apps/kajovo-hotel-api/tests/voice_diagnostics_ui_host.py
+M	apps/kajovo-hotel-api/tests/voice_mail_live_host.py
+M	apps/kajovo-hotel-api/tests/voice_mail_ui_host.py
+M	apps/kajovo-hotel-api/tests/voice_registry_ui_host.py
+M	docs/README.md
+M	docs/SSOT_CURRENT.md
+M	docs/assistant-memory.schema.json
+A	docs/dagmar/DIAGNOSTICS.md
+A	docs/dagmar/FILES.txt
+A	docs/dagmar/IMPLEMENTATION.md
+A	docs/dagmar/ROLLBACK.md
+A	docs/dagmar/evidence/native-1.json
+A	docs/dagmar/evidence/native-2.json
+A	docs/dagmar/evidence/native-3.json
+A	docs/dagmar/evidence/native-4.json
+A	docs/dagmar/evidence/paid-ledger.json
+A	docs/dagmar/evidence/stage-a-4398c656.json
+A	docs/dagmar/evidence/stage-b-predeploy-backup.json
+A	docs/dagmar/evidence/stage-b-predeploy-recovery.json
+A	docs/dagmar/evidence/stage-b-recovery.json
+A	docs/dagmar/evidence/stage-b-restore-migration.json
+M	docs/voice-core.md
+M	docs/voice-mail.md
+M	docs/voice-memory.md
+M	docs/voice-registry.md
+M	docs/voice-speaker-impact-matrix.md
+A	examples/dagmar-host/README.md
+A	examples/dagmar-host/index.html
+A	examples/dagmar-host/native-test-catalog.json
+A	examples/dagmar-host/native_acceptance.py
+A	examples/dagmar-host/package.json
+A	examples/dagmar-host/server.py
+A	examples/dagmar-host/src.tsx
+A	examples/dagmar-host/verify.py
+A	examples/dagmar-host/vite.config.js
+M	infra/compose.prod.yml
+A	packages/dagmar-browser/package.json
+A	packages/dagmar-browser/src/DagmarConsole.tsx
+A	packages/dagmar-browser/src/DiagnosticPanel.tsx
+A	packages/dagmar-browser/src/VoiceMailPanel.tsx
+A	packages/dagmar-browser/src/VoiceMemoryPanel.tsx
+A	packages/dagmar-browser/src/VoiceRegistryPanel.tsx
+A	packages/dagmar-browser/src/contracts.ts
+A	packages/dagmar-browser/src/diagnostics.ts
+A	packages/dagmar-browser/src/index.ts
+A	packages/dagmar-browser/src/ports.ts
+A	packages/dagmar-browser/src/styles.css
+A	packages/dagmar-browser/src/voice-mail.css
+A	packages/dagmar-browser/src/voice-memory.css
+A	packages/dagmar-browser/src/voice-registry.css
+A	packages/dagmar-browser/tests/diagnostics.test.mjs
+A	packages/dagmar-browser/tsconfig.build.json
+A	packages/dagmar-browser/tsconfig.json
+A	packages/dagmar-server/contracts/openapi.json
+A	packages/dagmar-server/harness/verify_diagnostics_host.py
+A	packages/dagmar-server/pyproject.toml
+A	packages/dagmar-server/src/dagmar_server/__init__.py
+A	packages/dagmar-server/src/dagmar_server/api_core.py
+A	packages/dagmar-server/src/dagmar_server/api_memory.py
+A	packages/dagmar-server/src/dagmar_server/application.py
+A	packages/dagmar-server/src/dagmar_server/browser_contract.py
+A	packages/dagmar-server/src/dagmar_server/collector.py
+A	packages/dagmar-server/src/dagmar_server/config.py
+A	packages/dagmar-server/src/dagmar_server/curator.py
+A	packages/dagmar-server/src/dagmar_server/diagnostic_api.py
+A	packages/dagmar-server/src/dagmar_server/diagnostic_contract.py
+A	packages/dagmar-server/src/dagmar_server/diagnostics.py
+A	packages/dagmar-server/src/dagmar_server/invalidation.py
+A	packages/dagmar-server/src/dagmar_server/mail.py
+A	packages/dagmar-server/src/dagmar_server/mail_confirmation.py
+A	packages/dagmar-server/src/dagmar_server/mail_host.py
+A	packages/dagmar-server/src/dagmar_server/mail_mcp_catalog.json
+A	packages/dagmar-server/src/dagmar_server/memory.py
+A	packages/dagmar-server/src/dagmar_server/memory_contract.py
+A	packages/dagmar-server/src/dagmar_server/migrations.py
+A	packages/dagmar-server/src/dagmar_server/models.py
+A	packages/dagmar-server/src/dagmar_server/orchestration.py
+A	packages/dagmar-server/src/dagmar_server/paid_budget.py
+A	packages/dagmar-server/src/dagmar_server/ports.py
+A	packages/dagmar-server/src/dagmar_server/pricing.py
+A	packages/dagmar-server/src/dagmar_server/provenance.py
+A	packages/dagmar-server/src/dagmar_server/registry.py
+A	packages/dagmar-server/src/dagmar_server/registry_contract.py
+A	packages/dagmar-server/src/dagmar_server/settings.py
+A	packages/dagmar-server/src/dagmar_server/smart.py
+A	packages/dagmar-server/src/dagmar_server/token_budget.py
+A	packages/dagmar-server/src/dagmar_server/transport_trace.py
+A	packages/dagmar-server/src/dagmar_server/turns.py
+A	packages/dagmar-server/src/dagmar_server/usage.py
+A	packages/dagmar-server/tests/test_diagnostics.py
+A	packages/dagmar-server/tests/test_memory_portable.py
+A	packages/dagmar-server/tests/test_migrations.py
+A	packages/dagmar-server/tests/test_paid_budget.py
+M	packages/shared/src/generated/client.ts
+M	packages/voice-core/src/contracts.ts
+M	packages/voice-core/src/runtime.ts
+M	packages/voice-core/src/ui.tsx
+M	packages/voice-core/tests/runtime.test.mjs
+M	pnpm-lock.yaml
+M	pnpm-workspace.yaml
+M	scripts/release_gate.py
+M	scripts/tests/test_release_gate.py
+A	scripts/verify_dagmar_diagnostics_copy_out.py
+A	scripts/verify_dagmar_recovery.py
+M	scripts/verify_voice_mcp_compatibility.py
+M	scripts/verify_voice_memory_postgres.py

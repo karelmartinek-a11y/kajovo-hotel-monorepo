@@ -48,6 +48,7 @@ export class DiagnosticClient implements VoiceTelemetrySink {
   }
   async startCall() {if(this.ending) await this.ending; await this.begin();}
   finishCall(): Promise<void> {
+    if(this.snapshot.callId) void this.request(`/calls/${this.snapshot.callId}/close`,'POST').catch(()=>{});
     if(!this.ending) this.ending=this.end().finally(()=>{this.ending=null;});
     return this.ending;
   }
@@ -57,10 +58,10 @@ export class DiagnosticClient implements VoiceTelemetrySink {
     this.controller = new AbortController();
     this.sequence=0; this.wanted=false; this.segment=null; this.events=[]; this.connectionId=null;
     this.set({state:'off',error:null,droppedBytes:0,callId:null});
-    this.callPromise=this.request('/diagnostics/calls','POST',undefined,AbortSignal.timeout(1500)).then(value=>{
+    this.callPromise=this.request('/calls','POST',undefined,AbortSignal.timeout(1500)).then(value=>{
       if(token!==this.token) return null;
       this.set({callId:value.logical_call_id}); return value.logical_call_id as string;
-    }).catch(()=>null);
+    }).catch(()=>{this.failure({category:'collection_unavailable'}); return null;});
     return this.callPromise;
   }
   async bind(connectionId:string) {

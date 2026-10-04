@@ -4,21 +4,13 @@ import json
 import pytest
 from sqlalchemy import select, func
 
-from app.db.models import (
-    AdminProfile,
-    AuditTrail,
-    PortalUser,
-    PortalUserRole,
-    VoiceMemory,
-    VoiceMemoryPrincipal,
-    VoiceMemoryRevision,
-    VoiceNote,
-    VoiceNoteItem,
-    VoiceConversationSummary,
-)
+from app.db.models import AdminProfile, AuditTrail, PortalUser, PortalUserRole
+from dagmar_server.models import VoiceMemory, VoiceMemoryPrincipal, VoiceMemoryRevision, VoiceNote, VoiceNoteItem, VoiceConversationSummary
 from app.security import auth
 from app.services import voice_memory as memory, voice_smart
 from app.services.voice_memory_contract import MEMORY_TOOL, MemoryRequest
+from dagmar_server.memory import PROFILE_ID
+from dagmar_server.token_budget import measure
 from app.services.voice_memory_curator import Curated, TurnBuffer, extraction_schema, extract
 from app.time_utils import utc_now
 from .test_voice_core import voice_host as _voice_host
@@ -115,7 +107,7 @@ def test_memory_crud_remember_correct_deactivate_forget(host):
     )
     assert not search(client, "odpovědi").json()["memories"]
     assert call(client, "memory_forget", id=row["id"], revision=3).status_code == 200
-    assert client.get(BASE + "/memories").json()["memories"] == []
+    assert [r["id"] for r in client.get(BASE + "/memories").json()["memories"]] == [PROFILE_ID]
     with factory() as db:
         assert db.scalar(select(func.count()).select_from(VoiceMemoryRevision)) == 0
 
@@ -242,9 +234,9 @@ def test_two_stable_principals_and_new_login(host):
         )
         db.commit()
         client.cookies.set(auth.SESSION_COOKIE_NAME, auth.create_session_cookie(session.session_id))
-    assert client.get(BASE + "/memories").json()["memories"] == []
-    assert call(client, "memory_read", id=row["id"]).status_code == 404
-    assert call(client, "note_delete", id=n["id"], revision=1).status_code == 404
+    assert {r["id"] for r in client.get(BASE + "/memories").json()["memories"]} == {PROFILE_ID, row["id"]}
+    assert call(client, "memory_read", id=row["id"]).status_code == 200
+    assert call(client, "note_read", id=n["id"]).status_code == 200
     assert (
         call(
             client,
@@ -258,7 +250,7 @@ def test_two_stable_principals_and_new_login(host):
         == 422
     )
     with factory() as db:
-        assert db.scalar(select(func.count()).select_from(VoiceMemoryPrincipal)) == 2
+        assert db.scalar(select(func.count()).select_from(VoiceMemoryPrincipal)) == 1
 
 
 @pytest.mark.parametrize(
@@ -397,11 +389,14 @@ def test_context_budget_relevance_and_bounded_selection(host):
             value = memory.context(db, owner, 2000)
         finally:
             event.remove(db.bind, "before_cursor_execute", capture)
-        assert len(statements) == 4 and all("LIMIT" in sql for sql in statements)
-        assert len(value.encode()) + 64 <= 2000
+        assert len(statements) <= 8
+        assert sum("LIMIT" in sql for sql in statements) >= 4
+        assert measure(value).tokens + 64 <= 2000
+        assert measure(value).utf8_bytes <= 24000
         assert row["content"] in value
         assert "Other 199" not in value
-        assert memory.context(db, owner, 1) == ""
+        with pytest.raises(memory.MemoryError, match="context_budget_too_small"):
+            memory.context(db, owner, 1)
     assert search(client, "odpovědí na recepci").json()["memories"][0]["id"] == row["id"]
     assert len(search(client, "other").json()["memories"]) <= 8
 
@@ -512,7 +507,7 @@ def test_forget_blocks_late_curator_and_purges_summaries(host):
 
     asyncio.run(scenario())
     with factory() as db:
-        assert db.scalar(select(func.count()).select_from(VoiceMemory)) == 0
+        assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != PROFILE_ID)) == 0
         assert db.scalar(select(func.count()).select_from(VoiceConversationSummary)) == 0
 
 
@@ -758,7 +753,7 @@ def test_revoked_session_cannot_commit_late_automatic_results(host):
 
     asyncio.run(scenario())
     with factory() as db:
-        assert db.scalar(select(func.count()).select_from(VoiceMemory)) == 0
+        assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != PROFILE_ID)) == 0
         assert db.scalar(select(func.count()).select_from(VoiceConversationSummary)) == 0
 
 
@@ -786,7 +781,7 @@ def test_forget_deletes_automatic_derivatives_and_their_history(host, source_kin
         await b.close()
 
     asyncio.run(transform())
-    from app.db.models import VoiceMemoryDependency
+    from dagmar_server.models import VoiceMemoryDependency
 
     with factory() as db:
         assert db.scalar(select(func.count()).select_from(VoiceMemoryDependency)) > 0

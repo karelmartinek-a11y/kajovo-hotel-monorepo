@@ -10,11 +10,14 @@ from sqlalchemy.pool import StaticPool
 from voice_core_server import VoiceCoreConfig
 
 from app.config import get_settings
-from app.db.models import AuditTrail, Base, VoiceCoreSettings
+from app.db.models import AuditTrail, Base
+from dagmar_server.models import VoiceCoreSettings
+from dagmar_server.migrations import upgrade
+from dagmar_server.ports import bind
 from app.db.session import get_db
 from app.main import create_app
 from app.security import auth
-from app.services.voice_core import VoiceSecretAdapter
+from dagmar_server.config import VoiceSecretAdapter
 
 BASE = "/api/v1/admin/voice-core"
 KEY = "sk-test-voice-sensitive-canary"
@@ -24,8 +27,10 @@ KEY = "sk-test-voice-sensitive-canary"
 def voice_host(monkeypatch):
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
+    upgrade(engine, import_legacy=True)
     factory = sessionmaker(bind=engine)
     monkeypatch.setattr(auth, "SessionLocal", factory)
+    monkeypatch.setattr("app.services.dagmar_adapter.SessionLocal", factory)
     monkeypatch.setattr("app.observability.SessionLocal", factory)
     monkeypatch.setattr(get_settings(), "voice_master_key", base64.b64encode(os.urandom(32)).decode())
     app = create_app()
@@ -42,7 +47,8 @@ def voice_host(monkeypatch):
                 actor_type=actor, roles=[role], active_role=role)
             db.commit()
             client.cookies.set(auth.SESSION_COOKIE_NAME, auth.create_session_cookie(record.session_id))
-    yield client, factory, login
+    with bind(app.state.dagmar.ports):
+        yield client, factory, login
     client.close()
     engine.dispose()
 
@@ -96,6 +102,7 @@ def test_missing_or_wrong_master_and_tampered_ciphertext_fail_closed(voice_host,
     response = client.post(BASE + "/sessions", json={"sdp": "v=0\r\noffer", "revision": 1})
     assert response.status_code == 503
     monkeypatch.setattr(get_settings(), "voice_master_key", "")
+    monkeypatch.setattr(client.app.state.dagmar.ports.settings, "voice_master_key", "")
     assert client.put(BASE + "/api-key", json={"api_key": KEY}).status_code == 503
     # Deletion still works when a key is damaged or the master has been lost.
     assert client.delete(BASE + "/api-key").status_code == 200
@@ -139,10 +146,10 @@ def test_session_uses_server_snapshot_only(voice_host, monkeypatch):
     login()
     client.put(BASE + "/api-key", json={"api_key": KEY})
     calls = []
-    async def create(sdp, config, key, owner, token):
+    async def create(sdp, config, key, owner, token, **kwargs):
         calls.append((sdp, config, key))
         return {"sdp": "v=0\r\nanswer", "model": "gpt-realtime-2.1", "session_id": "test-host", "technologies": "unavailable", "managed_functions": ["assistant_memory"]}
-    monkeypatch.setattr("app.api.routes.voice_core.manager.create", create)
+    monkeypatch.setattr("dagmar_server.api_core.manager.create", create)
     result = client.post(BASE + "/sessions", json={"sdp": "v=0\r\noffer", "revision": 1})
     assert result.status_code == 200 and KEY not in result.text
     assert len(calls) == 1 and calls[0][2] == KEY
@@ -167,7 +174,7 @@ def test_key_revision_prevents_stale_config_and_wrong_master(voice_host, monkeyp
     stale = {**VoiceCoreConfig().model_dump(), "revision": 0}
     assert client.put(BASE + "/api-key", json={"api_key": KEY}).json()["revision"] == 1
     assert client.put(BASE + "/config", json=stale).status_code == 409
-    monkeypatch.setattr(get_settings(), "voice_master_key", base64.b64encode(os.urandom(32)).decode())
+    monkeypatch.setattr(client.app.state.dagmar.ports.settings, "voice_master_key", base64.b64encode(os.urandom(32)).decode())
     response = client.post(BASE + "/sessions", json={"sdp": "v=0\r\noffer", "revision": 1})
     assert response.status_code == 503 and KEY not in response.text
     assert client.delete(BASE + "/api-key").json()["revision"] == 2

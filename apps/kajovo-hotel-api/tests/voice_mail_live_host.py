@@ -21,7 +21,8 @@ from sqlalchemy.pool import StaticPool
 from voice_core_server import VoiceCoreConfig
 
 from app.config import get_settings
-from app.db.models import Base, VoiceMailOperation
+from app.db.models import Base
+from dagmar_server.models import VoiceMailOperation
 from app.services import voice_mail, voice_smart
 from app.services.voice_mail_host import BYPASS
 from app.services.voice_registry import normalize

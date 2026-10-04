@@ -1,0 +1,187 @@
+{
+  "model": "gpt-realtime-2.1",
+  "provider_usage": [
+    {
+      "price_snapshot": {
+        "revision": "openai-2026-10-04-v1",
+        "date": "2026-10-04",
+        "source": "https://developers.openai.com/api/docs/pricing",
+        "unit": "USD_per_1000000_tokens"
+      },
+      "cost_estimate": {
+        "usd": "0.0161008",
+        "complete": true
+      },
+      "response_id": "resp_EVIyNvjemPveukFhxA9EH",
+      "model": "gpt-realtime-2.1",
+      "status": "completed",
+      "complete": true,
+      "usage": {
+        "total_tokens": 6076,
+        "input_tokens": 5814,
+        "output_tokens": 262,
+        "input_token_details": {
+          "text_tokens": 5788,
+          "audio_tokens": 26,
+          "image_tokens": 0,
+          "cached_tokens": 4992,
+          "cached_tokens_details": {
+            "text_tokens": 4992,
+            "audio_tokens": 0,
+            "image_tokens": 0
+          }
+        },
+        "output_token_details": {
+          "text_tokens": 167,
+          "audio_tokens": 95,
+          "reasoning_tokens": 98
+        }
+      }
+    },
+    {
+      "price_snapshot": {
+        "revision": "openai-2026-10-04-v1",
+        "date": "2026-10-04",
+        "source": "https://developers.openai.com/api/docs/pricing",
+        "unit": "USD_per_1000000_tokens"
+      },
+      "cost_estimate": {
+        "usd": "0.0116968",
+        "complete": true
+      },
+      "response_id": "resp_EVIyQXbYXw0NaUg8qSo8t",
+      "model": "gpt-realtime-2.1",
+      "status": "completed",
+      "complete": true,
+      "usage": {
+        "total_tokens": 5750,
+        "input_tokens": 5605,
+        "output_tokens": 145,
+        "input_token_details": {
+          "text_tokens": 5579,
+          "audio_tokens": 26,
+          "image_tokens": 0,
+          "cached_tokens": 4992,
+          "cached_tokens_details": {
+            "text_tokens": 4992,
+            "audio_tokens": 0,
+            "image_tokens": 0
+          }
+        },
+        "output_token_details": {
+          "text_tokens": 69,
+          "audio_tokens": 76
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "type": "input_audio_buffer.speech_started",
+      "status": null,
+      "response_id": null,
+      "code": null
+    },
+    {
+      "type": "response.created",
+      "status": "in_progress",
+      "response_id": "resp_EVIyNvjemPveukFhxA9EH",
+      "code": null
+    },
+    {
+      "type": "output_audio_buffer.started",
+      "status": null,
+      "response_id": "resp_EVIyNvjemPveukFhxA9EH",
+      "code": null
+    },
+    {
+      "type": "response.done",
+      "status": "completed",
+      "response_id": "resp_EVIyNvjemPveukFhxA9EH",
+      "code": null
+    },
+    {
+      "type": "response.created",
+      "status": "in_progress",
+      "response_id": "resp_EVIyQXbYXw0NaUg8qSo8t",
+      "code": null
+    },
+    {
+      "type": "response.done",
+      "status": "completed",
+      "response_id": "resp_EVIyQXbYXw0NaUg8qSo8t",
+      "code": null
+    }
+  ],
+  "fake_mcp_calls": [
+    {
+      "operation": "catalog",
+      "request_id": null
+    },
+    {
+      "operation": "search",
+      "request_id": null
+    },
+    {
+      "operation": "describe",
+      "request_id": null
+    }
+  ],
+  "ledger": {
+    "limit_micro_usd": 10000000,
+    "committed_micro_usd": 9594630,
+    "available_micro_usd": 405370,
+    "entries": [
+      {
+        "id": "native-1bcbfca504f4414d8cf9e0fef48e63a9",
+        "reserved_micro_usd": 9400000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-1bcbfca504f4414d8cf9e0fef48e63a9-transcription",
+        "reserved_micro_usd": 100000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-ba868ee50c8c4573a4ffa921d6934d92",
+        "reserved_micro_usd": 470000,
+        "charged_micro_usd": 26832,
+        "state": "reconciled",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-ba868ee50c8c4573a4ffa921d6934d92-transcription",
+        "reserved_micro_usd": 20000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-c4b2eb24816c4c59b7411a00313cb0f1",
+        "reserved_micro_usd": 430000,
+        "charged_micro_usd": 27798,
+        "state": "reconciled",
+        "model": "gpt-realtime-2.1",
+        "pricing_revision": "openai-2026-10-04-v1"
+      },
+      {
+        "id": "native-c4b2eb24816c4c59b7411a00313cb0f1-transcription",
+        "reserved_micro_usd": 20000,
+        "charged_micro_usd": null,
+        "state": "usage_unknown",
+        "model": "gpt-4o-mini-transcribe",
+        "pricing_revision": "openai-2026-10-04-v1"
+      }
+    ]
+  },
+  "physical_acoustics": false,
+  "result": "time-bound native test reached search/describe; no control or completion before ten-second bound"
+}

@@ -20,7 +20,7 @@ get_settings().voice_master_key = base64.b64encode(os.urandom(32)).decode()
 app = create_app()
 
 
-async def isolated_provider(sdp, config, key, owner, token):
+async def isolated_provider(sdp, config, key, owner, token, **kwargs):
     bridge=VoiceBridge(owner,"rtc_"+uuid.uuid4().hex,key,token,config,"isolated-provider")
     bridge.ready.set()
     bridge.technologies="unavailable"
@@ -28,7 +28,7 @@ async def isolated_provider(sdp, config, key, owner, token):
     return {"sdp":"v=0\r\nisolated-provider", "model":bridge.model, **bridge.public_status(),"managed_functions":[]}
 
 
-manager.create=isolated_provider
+app.state.dagmar.manager.create=isolated_provider
 
 
 @app.on_event("shutdown")

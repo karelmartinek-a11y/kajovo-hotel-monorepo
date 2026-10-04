@@ -17,7 +17,7 @@ function host(){
   const requests=[];let calls=0,generation=0;
   const request=async(path,method,body,signal,headers)=>{
     requests.push({path,method,body,headers});
-    if(path==='/diagnostics/calls')return {logical_call_id:'call_'+ ++calls};
+    if(path==='/calls')return {logical_call_id:'call_'+ ++calls};
     if(path.endsWith('/segments'))return {segment_id:'segment_'+ ++generation,generation};
     return {};
   };

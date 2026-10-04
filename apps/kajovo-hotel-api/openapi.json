@@ -5074,7 +5074,10 @@
               "invalid_arguments",
               "unavailable",
               "identity_conflict",
-              "sensitive_content_rejected"
+              "sensitive_content_rejected",
+              "profile_protected",
+              "human_intent_required",
+              "unauthorized"
             ],
             "title": "Code",
             "type": "string"
@@ -6581,6 +6584,7 @@
             "enum": [
               "memories",
               "summaries",
+              "notes",
               "all"
             ],
             "title": "Scope",
@@ -8403,6 +8407,7 @@
         },
         "summary": "Delete Key",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       },
@@ -8442,6 +8447,66 @@
         },
         "summary": "Put Key",
         "tags": [
+          "voice-core",
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/calls": {
+      "post": {
+        "operationId": "create_call_api_v1_admin_voice_core_calls_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Create Call",
+        "tags": [
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/calls/{identity}/close": {
+      "post": {
+        "operationId": "close_call_api_v1_admin_voice_core_calls__identity__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Call",
+        "tags": [
           "voice-core"
         ]
       }
@@ -8463,6 +8528,7 @@
         },
         "summary": "Get Config",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       },
@@ -8502,6 +8568,7 @@
         },
         "summary": "Put Config",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       }
@@ -8521,7 +8588,7 @@
         },
         "summary": "Calls",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       },
       "post": {
@@ -8538,7 +8605,7 @@
         },
         "summary": "Begin",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8578,7 +8645,7 @@
         },
         "summary": "Delete",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       },
       "get": {
@@ -8616,7 +8683,7 @@
         },
         "summary": "Detail",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8665,7 +8732,7 @@
         },
         "summary": "Upload",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8705,7 +8772,7 @@
         },
         "summary": "Close",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8755,7 +8822,7 @@
         },
         "summary": "Events",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8795,7 +8862,7 @@
         },
         "summary": "Export",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       },
       "post": {
@@ -8833,7 +8900,7 @@
         },
         "summary": "Export",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8873,7 +8940,7 @@
         },
         "summary": "Pin",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8923,7 +8990,7 @@
         },
         "summary": "Start",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -8982,7 +9049,7 @@
         },
         "summary": "Stop",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -9001,7 +9068,7 @@
         },
         "summary": "Capacity",
         "tags": [
-          "voice-diagnostics"
+          "voice-core"
         ]
       }
     },
@@ -9041,6 +9108,47 @@
           }
         },
         "summary": "Create Session",
+        "tags": [
+          "voice-core",
+          "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/sessions/{identity}/playback-ready": {
+      "post": {
+        "operationId": "playback_ready_api_v1_admin_voice_core_sessions__identity__playback_ready_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Playback Ready",
         "tags": [
           "voice-core"
         ]
@@ -9084,6 +9192,7 @@
         },
         "summary": "Close Session",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       },
@@ -9124,6 +9233,7 @@
         },
         "summary": "Session Status",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       }
@@ -9166,6 +9276,7 @@
         },
         "summary": "Session Heartbeat",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       }
@@ -9208,6 +9319,7 @@
         },
         "summary": "Get Mail Plan",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       }
@@ -9250,6 +9362,7 @@
         },
         "summary": "Registry Plan",
         "tags": [
+          "voice-core",
           "voice-core"
         ]
       }
@@ -9307,6 +9420,7 @@
         },
         "summary": "Memories",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9350,6 +9464,7 @@
         },
         "summary": "Read Memory",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9417,6 +9532,7 @@
         },
         "summary": "Notes",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9460,6 +9576,7 @@
         },
         "summary": "Read Note",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9501,6 +9618,7 @@
         },
         "summary": "Operation",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9542,6 +9660,7 @@
         },
         "summary": "Search",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9563,6 +9682,7 @@
         },
         "summary": "Settings",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       },
@@ -9602,6 +9722,7 @@
         },
         "summary": "Write Settings",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9659,6 +9780,7 @@
         },
         "summary": "Summaries",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }
@@ -9702,6 +9824,7 @@
         },
         "summary": "Read Summary",
         "tags": [
+          "voice-memory",
           "voice-memory"
         ]
       }

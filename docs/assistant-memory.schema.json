@@ -2,7 +2,7 @@
   "tool": {
     "type": "function",
     "name": "assistant_memory",
-    "description": "Trvalá soukromá paměť, strukturované lístky a stručné souhrny minulých rozhovorů. Nejprve vyhledej přesný cíl, pak použij jeho ID a revision.",
+    "description": "Společná dlouhodobá paměť oprávněných administrátorů, strukturované lístky a stručné souhrny minulých rozhovorů. Nejprve vyhledej přesný cíl, pak použij jeho ID a revision.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -77,6 +77,7 @@
                   "enum": [
                     "memories",
                     "summaries",
+                    "notes",
                     "all"
                   ],
                   "title": "Scope",
@@ -1041,7 +1042,10 @@
           "invalid_arguments",
           "unavailable",
           "identity_conflict",
-          "sensitive_content_rejected"
+          "sensitive_content_rejected",
+          "profile_protected",
+          "human_intent_required",
+          "unauthorized"
         ],
         "title": "Code",
         "type": "string"

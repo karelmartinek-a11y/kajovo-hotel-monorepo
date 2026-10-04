@@ -171,10 +171,10 @@ class Diagnostics:
                     db.execute("UPDATE calls SET incomplete=1 WHERE id=?", (row["call_id"],))
             db.execute("PRAGMA incremental_vacuum(128)")
 
-    def create_call(self, owner):
+    def create_call(self, owner, *, call_id=None):
         with self.lock(), self.db() as db:
             rid = self.reserve(db, {})
-            call_id = uid()
+            call_id = call_id or uid()
             db.execute("INSERT INTO calls(id,owner,created,release) VALUES(?,?,?,?)", (call_id, owner, utc(), self.release))
             self.release_reservation(db, rid)
             return {"logical_call_id": call_id, "schema_version": 1}
