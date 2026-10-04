@@ -825,6 +825,16 @@ export type PortalUserUpdate = {
   "phone"?: string | null;
   "roles": Array<string>;
 };
+export type ProducerFinal = {
+  "code"?: string | null;
+  "complete": boolean;
+  "count": number;
+  "dropped_bytes": number;
+  "missing_events": number;
+  "pending"?: number;
+  "sequence": number;
+  "source": string;
+};
 export type PublicChange = {
   "action": "create_room" | "rename_room" | "delete_room" | "assign_devices" | "remove_devices" | "rename_devices";
   "detached_devices"?: number | null;
@@ -1052,6 +1062,7 @@ export type VoiceSessionRead = {
 export type VoiceSessionStatus = {
   "closed": boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
+  "diagnostics"?: Record<string, unknown> | null;
   "logical_call_id"?: string | null;
   "mail"?: MailStatus;
   "memory"?: "connecting" | "ready" | "unavailable";
@@ -1235,6 +1246,9 @@ export const apiClient = {
   },
   async exportApiV1AdminVoiceCoreDiagnosticsCallsCallIdExportPost(call_id: string): Promise<unknown> {
     return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/export`, undefined, undefined);
+  },
+  async finalApiV1AdminVoiceCoreDiagnosticsCallsCallIdFinalPost(call_id: string, body: ProducerFinal): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/final`, undefined, body);
   },
   async pinApiV1AdminVoiceCoreDiagnosticsCallsCallIdPinPost(call_id: string): Promise<unknown> {
     return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/pin`, undefined, undefined);

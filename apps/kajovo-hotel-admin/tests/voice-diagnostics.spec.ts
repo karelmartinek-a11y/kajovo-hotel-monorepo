@@ -6,12 +6,13 @@ test('debug toggle, orange animated orb, flush and actual authenticated storage/
   await page.addInitScript(()=>{
     class Peer {
       connectionState='connected';iceConnectionState='connected';localDescription:any;ontrack:any;onconnectionstatechange:any;
-      addTrack(){}
+      capture:any;remote:any;
+      addTrack(_:any,stream:any){this.capture=stream;}
       createDataChannel(){return {readyState:'open',close(){},send(){},onmessage:null,onopen:null};}
       async createOffer(){return {sdp:'v=0\r\nisolated-offer'};}
       async setLocalDescription(value:any){this.localDescription=value;}
-      async setRemoteDescription(){const stream=await navigator.mediaDevices.getUserMedia({audio:true});this.ontrack?.({streams:[stream],track:stream.getAudioTracks()[0]});}
-      close(){this.connectionState='closed';}
+      async setRemoteDescription(){const stream=new MediaStream(this.capture.getAudioTracks().map((track:any)=>track.clone()));this.remote=stream;this.ontrack?.({streams:[stream],track:stream.getAudioTracks()[0]});}
+      close(){this.connectionState='closed';this.remote?.getTracks().forEach((track:any)=>track.stop());}
     }
     (window as any).RTCPeerConnection=Peer;
   });
@@ -21,7 +22,9 @@ test('debug toggle, orange animated orb, flush and actual authenticated storage/
   await page.goto('/admin/hlasovy-chat');
   await page.getByLabel('Nový API klíč').fill('sk-isolated-test-only');await page.getByRole('button',{name:'Uložit',exact:true}).click();
   await expect(page.getByText('Klíč je uložen.',{exact:true})).toBeVisible();
+  const started=page.waitForResponse(response=>response.url().endsWith('/voice-core/calls')&&response.request().method()==='POST');
   await page.getByRole('button',{name:'Zahájit hovor',exact:true}).click();
+  const logicalCallId=(await (await started).json()).logical_call_id;
   const toggle=page.getByRole('button',{name:'Zapnout debug',exact:true});await expect(toggle).toBeEnabled();
   await toggle.focus();await page.keyboard.press('Enter');
   await expect(page.getByRole('button',{name:'Vypnout debug',exact:true})).toBeVisible();
@@ -37,12 +40,13 @@ test('debug toggle, orange animated orb, flush and actual authenticated storage/
   await expect(page.locator('.dg-debug-label')).toContainText('vypnutý');
   await page.getByRole('button',{name:'Ukončit hovor',exact:true}).click();
   await expect(page.getByRole('button',{name:'Zahájit hovor',exact:true})).toBeVisible();
+  // Voice Stop is immediate; diagnostic close is a separate bounded drain.
+  await expect.poll(async()=>{const value=await (await page.request.get('/api/v1/admin/voice-core/diagnostics/calls')).json();return !!value.calls.find((call:any)=>call.id===logicalCallId)?.closed;},{timeout:15000}).toBeTruthy();
   const panel=page.getByRole('region',{name:'Diagnostika hlasových hovorů'});
   await panel.getByRole('button',{name:'Načíst hovory a kapacitu'}).click();
   await panel.getByRole('button',{name:/uzavřený/}).first().click();
   await expect(panel.getByRole('heading',{name:/Hovor/})).toBeVisible();
-  const calls=await (await page.request.get('/api/v1/admin/voice-core/diagnostics/calls')).json();
-  const manifest=await (await page.request.get(`/api/v1/admin/voice-core/diagnostics/calls/${calls.calls[0].id}`)).json();
+  const manifest=await (await page.request.get(`/api/v1/admin/voice-core/diagnostics/calls/${logicalCallId}`)).json();
   expect(manifest.objects.some((value:any)=>value.kind==='audio')).toBeTruthy();
   expect(manifest.events.length).toBeGreaterThan(0);
   await panel.getByRole('button',{name:'Připnout uzavřený incident'}).click();await expect(panel.getByRole('status')).toContainText('chráněný');
@@ -65,7 +69,7 @@ test('debug toggle, orange animated orb, flush and actual authenticated storage/
       const value=JSON.parse(decoder.decode(data));if(!value.track_id) continue;
       const id=name.replace(/_manifest\.json$/,'.bin'),audio=files.get(id);
       if(!audio) throw new Error('missing_audio');
-      const group=value.segment_id+':'+value.source_id+':'+value.track_id;
+      const group=value.segment_id+':'+value.source_id+':'+(value.recording_id??value.track_id);
       groups.set(group,[...(groups.get(group) ?? []),{sequence:value.sequence,data:audio}]);
     }
     const context=new AudioContext(),results=[];
@@ -77,7 +81,7 @@ test('debug toggle, orange animated orb, flush and actual authenticated storage/
       }
     } finally {await context.close();}
     return results;
-  },calls.calls[0].id);
+  },logicalCallId);
   expect(exported.length).toBe(4);expect(exported.every(value=>value.duration>0 && value.channels>0)).toBeTruthy();
   const download=page.waitForEvent('download');await panel.getByRole('button',{name:'Stáhnout chráněný export'}).click();expect((await download).suggestedFilename()).toMatch(/\.tar$/);
   await panel.getByRole('button',{name:'Smazat celý hovor'}).click();await panel.getByRole('button',{name:'Potvrdit smazání hovoru'}).click();await expect(panel.getByRole('status')).toContainText('smazán');

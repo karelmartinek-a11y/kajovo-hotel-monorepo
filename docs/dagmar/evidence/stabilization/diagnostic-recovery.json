@@ -1,0 +1,9 @@
+{
+  "old_snapshot_records": 6966,
+  "integrity_verified": 6966,
+  "same_record_identities_and_checksums": true,
+  "v1_read_v2_additive_upgrade": true,
+  "new_v2_write_and_delete": true,
+  "production_mutated": false,
+  "key_values_exported": false
+}

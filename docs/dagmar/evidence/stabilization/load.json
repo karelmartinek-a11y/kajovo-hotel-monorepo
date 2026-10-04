@@ -1,0 +1,80 @@
+{
+  "duration_seconds": 602.6310375419998,
+  "concurrent_calls": 4,
+  "delta_rate_per_call_second": 116,
+  "short_burst_multiplier": 8,
+  "slow_fsync_ms": 5,
+  "slow_upload_ms": 150,
+  "historical_records": 150000,
+  "seeded_index_bytes": 48906240,
+  "storage_lag_seconds": {
+    "p95": 0.19973108400404455,
+    "p99": 0.3095676660016179,
+    "max": 2.163935916997492
+  },
+  "critical_lag_seconds": {
+    "p95": 0.1797295409962535,
+    "p99": 0.38615633400529625
+  },
+  "critical_expected": 6000,
+  "critical_stored": 6000,
+  "critical_missing": 0,
+  "statuses": [
+    {
+      "complete": true,
+      "code": null,
+      "sequence": 87346,
+      "count": 87346,
+      "dropped_bytes": 0,
+      "missing_events": 0,
+      "pending": 0,
+      "lag_ms": 1174.5671250000596,
+      "stored_count": 87346
+    },
+    {
+      "complete": true,
+      "code": null,
+      "sequence": 87346,
+      "count": 87346,
+      "dropped_bytes": 0,
+      "missing_events": 0,
+      "pending": 0,
+      "lag_ms": 1171.0952089950442,
+      "stored_count": 87346
+    },
+    {
+      "complete": true,
+      "code": null,
+      "sequence": 87346,
+      "count": 87346,
+      "dropped_bytes": 0,
+      "missing_events": 0,
+      "pending": 0,
+      "lag_ms": 1173.5509999990463,
+      "stored_count": 87346
+    },
+    {
+      "complete": true,
+      "code": null,
+      "sequence": 87346,
+      "count": 87346,
+      "dropped_bytes": 0,
+      "missing_events": 0,
+      "pending": 0,
+      "lag_ms": 1178.6625000014901,
+      "stored_count": 87346
+    }
+  ],
+  "event_loop_lag_seconds": {
+    "p99": 0.0027605410016258245,
+    "max": 0.20203383399551966
+  },
+  "atomic_audio_pairs": 4152,
+  "paid_provider_called": false,
+  "production_data_accessed": false,
+  "source_sha256": {
+    "packages/dagmar-server/src/dagmar_server/diagnostics.py": "761b8a8588c9648e76983961c8fcbb7d917a289a4aa8593bf65eb7f12fd4fdb2",
+    "packages/dagmar-server/src/dagmar_server/collector.py": "7621bc38aae02e21eeab872fee774865c65acc7541ed589ca8a07d526537d869"
+  },
+  "targets_met": true
+}

@@ -47,9 +47,9 @@ export class VoiceRealtimeClient {
   subscribe = (listener: () => void) => {this.subscribers.add(listener); return () => {this.subscribers.delete(listener);};};
   private set(patch: Partial<VoiceSnapshot>) {this.snapshot = {...this.snapshot, ...patch}; this.subscribers.forEach(listener => listener());}
   private fail(category: string) {
+    this.telemetry.emit('session.error', {category});this.telemetry.prepareStop?.();
     this.epoch++; this.cleanup(); this.detachLifecycle();
     this.set({state: 'error', error: {category}, inputLevel: 0, outputLevel: 0, muted: false});
-    this.telemetry.emit('session.error', {category});
     void this.telemetry.finishCall?.();
   }
   private attachLifecycle() {
@@ -75,7 +75,7 @@ export class VoiceRealtimeClient {
       await this.context.resume();
       await this.telemetry.startCall?.();
       if (epoch !== this.epoch) return;
-      this.telemetry.emit('permissions.request', {audio_context_state:this.context.state});
+      this.telemetry.emit('permissions.request', {audio_context_state:this.context.state,user_agent:typeof navigator==='undefined'?'unavailable':navigator.userAgent,settings:{supported_constraints:typeof navigator==='undefined'?{}:navigator.mediaDevices?.getSupportedConstraints?.() ?? {},sample_rate:this.context.sampleRate,base_latency:this.context.baseLatency,output_latency:this.context.outputLatency}});
       const stream = await this.environment.getUserMedia();
       this.telemetry.emit('permissions.granted', {audio_context_state:this.context?.state});
       if (epoch !== this.epoch) {stream.getTracks().forEach(track => track.stop()); return;}
@@ -107,9 +107,9 @@ export class VoiceRealtimeClient {
     this.collectStats(peer);
     const audio = this.environment.createAudio(); this.audio = audio; audio.autoplay = true;
     audio.setAttribute('playsinline', '');
-    audio.onplay = () => {this.telemetry.emit('playback.play', {playback_state:'playing'}); void this.notifyPlaybackReady(peer);};
-    audio.onpause = () => this.telemetry.emit('playback.pause', {playback_state:'paused'});
-    audio.onended = () => this.telemetry.emit('playback.ended', {playback_state:'ended'});
+    audio.onplay = () => {if(peer!==this.peer)return;this.telemetry.emit('playback.play', {playback_state:'playing'}); void this.notifyPlaybackReady(peer);};
+    audio.onpause = () => {if(peer===this.peer)this.telemetry.emit('playback.pause', {playback_state:'paused'});};
+    audio.onended = () => {if(peer===this.peer)this.telemetry.emit('playback.ended', {playback_state:'ended'});};
     audio.onerror = () => {if (peer === this.peer) this.fail('playback_failed');};
     this.abort = new AbortController();
     this.set({state: this.retries ? 'reconnecting' : 'connecting'});
@@ -207,7 +207,13 @@ export class VoiceRealtimeClient {
       this.connectionState = 'waiting';
       this.stream?.getAudioTracks().forEach(track => {track.enabled = false;}); this.set({capabilityStatus: 'waiting', state: 'assistant-processing'}); return;
     }
-    if (event.type === 'error' || (event.type === 'response.done' && event.response?.status === 'failed')) {this.fail('realtime_error'); return;}
+    const responseFailure=event.type==='response.done' && event.response?.status==='failed';
+    if(event.type==='error' || responseFailure) {
+      const recoverable=['conversation_already_has_active_response','response_cancel_not_active','input_audio_buffer_commit_empty'].includes(failure ?? '');
+      this.telemetry.emit('provider.failure.classified',{code:failure ?? 'unknown',phase:responseFailure?'response':'request',reason:recoverable?'recoverable_rejection':'terminal_error'});
+      if(recoverable) return; // No retry, replay or blanket cancel of the native turn.
+      this.fail('realtime_error'); return;
+    }
     if (event.item?.type === 'mcp_call' || (event.item?.type === 'function_call' && !this.managedFunctions.has(event.item.name ?? ''))) {this.fail('unsupported_capability'); return;}
     if (event.type === 'session.created') {
       if (this.connectionState === 'connecting' && this.provider.heartbeat) return;
@@ -261,10 +267,11 @@ export class VoiceRealtimeClient {
   setMuted(muted: boolean) {if (!this.stream) return; this.set({muted}); this.syncMicrophone();}
   async stop() {
     if (!callActive(this.snapshot.state) || this.snapshot.state === 'disconnecting') return;
-    ++this.epoch; this.set({state: 'disconnecting'}); this.cleanup(); this.detachLifecycle();
-    await this.telemetry.finishCall?.();
+    ++this.epoch; this.set({state: 'disconnecting'});this.telemetry.prepareStop?.();this.cleanup();this.detachLifecycle();
+    this.telemetry.emit('session.ended', {reason:'user_stop'});
+    void this.telemetry.finishCall?.();
     this.set({state: 'disconnected', muted: false, error: null, inputLevel: 0, outputLevel: 0});
-    this.telemetry.emit('session.ended', {});
+
 
   }
   private cleanupConnection() {
@@ -281,7 +288,7 @@ export class VoiceRealtimeClient {
     if (channel) {channel.onmessage = null; channel.onerror = null; channel.onclose = null; channel.close();}
     const peer = this.peer; this.peer = null;
     if (peer) {peer.ontrack = null; peer.onconnectionstatechange = null; peer.close();}
-    if (this.audio) {this.audio.onerror = null; this.audio.pause(); this.audio.srcObject = null; this.audio.removeAttribute('src'); this.audio.load(); this.audio = null;}
+    if (this.audio) {this.audio.onplay=null;this.audio.onpause=null;this.audio.onended=null;this.audio.onerror = null; this.audio.pause(); this.audio.srcObject = null; this.audio.removeAttribute('src'); this.audio.load(); this.audio = null;}
     this.sources.forEach(source => source.disconnect()); this.sources = []; this.input?.disconnect(); this.output?.disconnect(); this.input = this.output = null;
   }
   private cleanup() {

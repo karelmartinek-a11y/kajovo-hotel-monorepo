@@ -14,6 +14,7 @@ from uuid import uuid4
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backup-dir', required=True)
+    parser.add_argument('--expect-schema', choices=['legacy','dagmar'], default='legacy')
     parser.add_argument('--api-image', default='kajovo-api-ci')
     parser.add_argument('--evidence', required=True)
     args = parser.parse_args()
@@ -62,8 +63,7 @@ evidence=upgrade(engine,import_legacy=True)
 factory=sessionmaker(engine)
 request=MemoryRequest.model_validate({'request':{'operation':'memory_remember','kind':'fact','subject':'Isolated recovery fixture','content':'Durable recovery fixture','tags':[]}})
 '''
-        create = setup + '''
-assert not evidence['already_applied']
+        create = setup + "assert evidence['already_applied'] == " + repr(args.expect_schema=='dagmar') + '''
 with factory() as db:
  result=memory.execute(db,SHARED_ID,request,session_id='recovery-fixture',call_id='original-key',receipt_namespace='test-auth:recovery')
  assert result.code=='ok'
@@ -94,7 +94,7 @@ assert AESGCM(key).decrypt(nonce,cipher,b'diagnostic recovery')==b'recovery fixt
 print(json.dumps({'post_migration_restore':True,'new_write_durable':True,'original_receipt_replayed':True,'provider_key_decrypt':True,'separate_diagnostic_key_restore':True,'schema_version':1}))
 '''
         recovery = json.loads(api(verify, 'recovered'))
-        proof = {'postgres_image':'16.4-alpine','api_image':args.api_image,'migration':migration,'recovery':recovery,'legacy_source_untouched':True,'old_stage_a_code_compatible':False,'rollback_requires_dagmar_schema_and_receipts':True}
+        proof = {'postgres_image':'16.4-alpine','api_image':args.api_image,'backup_schema':args.expect_schema,'migration':migration,'recovery':recovery,'legacy_source_untouched':True,'old_stage_a_code_compatible':False,'rollback_requires_dagmar_schema_and_receipts':True}
         Path(args.evidence).write_text(json.dumps(proof, indent=2)+'\n')
         print('Dagmar PostgreSQL backup/migration/new-write/restore/key recovery PASS')
     finally:

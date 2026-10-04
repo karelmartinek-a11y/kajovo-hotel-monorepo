@@ -67,6 +67,10 @@ jobs:
         run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
       - name: Validate the complete SSOT test plan once
         run: python scripts/release_gate.py
+      - name: Verify synthetic AAC fMP4 pair exports
+        run: |
+          python -m pip install av==18.1.0 numpy==2.4.6
+          python scripts/verify_dagmar_audio_fragments.py --evidence artifacts/dagmar-audio-fragments.json
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -74,6 +78,7 @@ jobs:
           name: validation-evidence
           path: |
             artifacts/release-gate/*.json
+            artifacts/dagmar-audio-fragments.json
             apps/kajovo-hotel-web/test-results/
             apps/kajovo-hotel-admin/test-results/
             packages/voice-core/test-results/

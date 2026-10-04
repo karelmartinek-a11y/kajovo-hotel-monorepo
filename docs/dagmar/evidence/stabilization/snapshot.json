@@ -1,0 +1,1 @@
+{"protected_directory": "/home/deploy-hotel/kajovo-protected-backups/dagmar-stabilization-20261004T203203Z", "encrypted_diagnostic_snapshot_bytes": 22415360, "sha256": "54fdcec35d7d704e6eefb0cf98e453fe6576fb91e7147e302247c85f36aff653", "key_separate": true, "live_store_modified": false, "purpose": "explicit offline disaster recovery backup; no automatic server export copy"}

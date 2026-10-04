@@ -47,3 +47,17 @@ Failures remain in the protected directory. The output contains no private conte
 [Actual restore and key proof](evidence/stage-b-recovery.json) establishes data/key
 recovery with schema v1. It does not claim that every hypothetical old application
 commit is compatible, or authorize replacing the production database.
+
+## Stabilization v2
+
+The index upgrade is additive (allocation/totals, producer_final, user_version 2).
+B/J batched objects coexist with old E/M records and retain each record checksum.
+A compatible rollback retains the v2 reader/accounting and current memory schema.
+The pre-stabilization 33f15b binary alone cannot read B objects: it is **not** an
+automatic rollback target once new records are written. Roll back an application
+regression with a forward main commit preserving storage compatibility and keys.
+Never replace the live DB or diagnostic store with the pre-release backup.
+For disaster recovery, restore the latest protected snapshot/key into an isolated
+directory/DB, validate hashes and inventory, then separately assess later writes.
+Historical audio/manifest gaps remain evidence; repair is explicit and preserves
+unknown capture/init rather than rewriting the incident as a complete recording.

@@ -409,8 +409,8 @@ def test_real_sideband_event_reader_worker_dispatcher_and_acknowledged_output(vo
                     await inbox.put({"type": "conversation.item.deleted", "item_id": event["item_id"]})
                 elif event["type"] == "response.create":
                     metadata = event.get("response", {}).get("metadata", {})
-                    await inbox.put({"type": "response.created", "response": {"id": "read" if metadata else "followup", "metadata": metadata}})
-                    if metadata:
+                    await inbox.put({"type": "response.created", "response": {"id": "read" if metadata.get("kvha_readback") else "followup", "metadata": metadata}})
+                    if metadata.get("kvha_readback"):
                         await inbox.put({"type": "response.done", "response": {"id": "read", "status": "completed", "output": [{"content": [{"type": "audio", "transcript": b.registry.text}]}]}})
                         await inbox.put({"type": "output_audio_buffer.stopped", "response_id": "read"})
                     elif b.registry.state == "confirmed":

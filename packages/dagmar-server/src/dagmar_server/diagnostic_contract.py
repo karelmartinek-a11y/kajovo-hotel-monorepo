@@ -1,4 +1,5 @@
 """Versioned, bounded wire contract. Content never enters ordinary logging."""
+
 from datetime import datetime, timezone
 from typing import Literal
 from uuid import uuid4
@@ -7,8 +8,12 @@ import re
 from pydantic import BaseModel, ConfigDict, Field
 
 SCHEMA = 1
-LIMITS = {"technical": 2_000_000_000, "text": 3_000_000_000,
-          "audio": 9_000_000_000, "incident": 1_000_000_000}
+LIMITS = {
+    "technical": 2_000_000_000,
+    "text": 3_000_000_000,
+    "audio": 9_000_000_000,
+    "incident": 1_000_000_000,
+}
 MAX_CHUNK = 1_048_576
 ID_PATTERN = r"^[a-zA-Z0-9_-]{1,128}$"
 
@@ -52,32 +57,83 @@ class Event(Closed):
 
 
 # Metadata from unknown producers is discarded, not implicitly trusted as safe.
-META_KEYS = frozenset("model status code phase locations exception_class http_status duration_ms attempt ready enabled muted ended track_id mime codecs bytes dropped_bytes complete reason received_at input_tokens output_tokens total_tokens cached_tokens modality release revision constraints settings peer_state ice_state channel_state playback_state pending count sequence gap duplicates missing_usage input_token_details output_token_details usage bitrate sample_rate channels connection_state audio_context_state packets_lost jitter round_trip_time audio_level echo_return_loss echo_return_loss_enhancement speaker_gate capture_start_ms capture_end_ms boundary_partial checksum source_id final user_agent category failures".split())
-SECRET_KEYS = frozenset("authorization proxy_authorization cookie set_cookie api_key apikey password passwd secret access_token refresh_token bearer confirmation_token smtp_token signed_url download_url attachment_url".split())
-SECRET_KEY = re.compile(r"(?:token|secret|password|passwd|api.?key|authorization|cookie)", re.I)
-SECRET_TEXT = re.compile(r"(?i)(?:Bearer\s+[a-z0-9._~+/=-]+|sk-(?:proj-)?[a-z0-9_-]{8,}|(?:password|heslo|api[_ -]?key|refresh[_ -]?token|confirmation[_ -]?token)\s*[:=]\s*[^\s,;]+)")
+META_KEYS = frozenset(
+    "model status code phase locations exception_class http_status duration_ms attempt ready enabled muted ended track_id mime codecs bytes dropped_bytes complete reason received_at input_tokens output_tokens total_tokens cached_tokens modality release revision constraints settings peer_state ice_state channel_state playback_state pending count sequence gap duplicates missing_usage input_token_details output_token_details usage bitrate sample_rate channels connection_state audio_context_state packets_lost jitter round_trip_time audio_level echo_return_loss echo_return_loss_enhancement speaker_gate capture_start_ms capture_end_ms boundary_partial checksum source_id final user_agent category failures missing_events sequence_end first_monotonic_ms last_monotonic_ms provider_event_ids last_sequence stored_count backlog lag_ms recording_id intent_id".split()
+)
+SECRET_KEYS = frozenset(
+    "authorization proxy_authorization cookie set_cookie api_key apikey password passwd secret access_token refresh_token bearer confirmation_token smtp_token signed_url download_url attachment_url".split()
+)
+SECRET_KEY = re.compile(
+    r"(?:token|secret|password|passwd|api.?key|authorization|cookie)", re.I
+)
+SECRET_TEXT = re.compile(
+    r"(?i)(?:Bearer\s+[a-z0-9._~+/=-]+|sk-(?:proj-)?[a-z0-9_-]{8,}|(?:password|heslo|api[_ -]?key|refresh[_ -]?token|confirmation[_ -]?token)\s*[:=]\s*[^\s,;]+)"
+)
 URL_SECRET = re.compile(r"https?://[^\s<>\"']+", re.I)
 
 
 def redact_text(value: str) -> str:
     value = SECRET_TEXT.sub("[REDACTED]", value)
+
     def url(match):
         from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+
         parts = urlsplit(match.group())
         if parts.username or parts.password:
             return "[REDACTED_URL]"
         query = parse_qsl(parts.query, keep_blank_values=True)
-        if any(SECRET_KEY.search(k) or k.lower() in {"signature", "sig", "credential", "key"} for k, _ in query):
-            return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode([(k, "[REDACTED]") for k, _ in query]), ""))
+        if any(
+            SECRET_KEY.search(k)
+            or k.lower() in {"signature", "sig", "credential", "key"}
+            for k, _ in query
+        ):
+            return urlunsplit(
+                (
+                    parts.scheme,
+                    parts.netloc,
+                    parts.path,
+                    urlencode([(k, "[REDACTED]") for k, _ in query]),
+                    "",
+                )
+            )
         return match.group()
+
     return URL_SECRET.sub(url, value)
+
+
+TOKEN_COUNTS = frozenset(
+    "input_tokens output_tokens total_tokens cached_tokens text_tokens audio_tokens image_tokens reasoning_tokens".split()
+)
+TOKEN_DETAILS = frozenset(
+    "input_token_details output_token_details input_tokens_details output_tokens_details cached_tokens_details".split()
+)
+
+
+def sensitive_key(key, value):
+    if (
+        key in TOKEN_COUNTS
+        and isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= 10**12
+    ):
+        return False
+    if key in TOKEN_DETAILS and isinstance(value, dict):
+        return False
+    return bool(
+        SECRET_KEY.search(key) or key.casefold().replace("-", "_") in SECRET_KEYS
+    )
 
 
 def redact(value, depth=0):
     if depth > 16:
         return "[DEPTH_LIMIT]"
     if isinstance(value, dict):
-        return {str(k)[:128]: "[REDACTED]" if SECRET_KEY.search(str(k)) or str(k).casefold().replace("-", "_") in SECRET_KEYS else redact(v, depth + 1) for k, v in list(value.items())[:256]}
+        return {
+            str(k)[:128]: "[REDACTED]"
+            if sensitive_key(str(k), v)
+            else redact(v, depth + 1)
+            for k, v in list(value.items())[:256]
+        }
     if isinstance(value, list):
         return [redact(v, depth + 1) for v in value[:256]]
     if isinstance(value, str):
@@ -93,7 +149,19 @@ def metadata(value):
 
 def safe_exception(exc: BaseException, phase: str, code="collection_failed"):
     import traceback
+
     # Locations only: no exception repr, source lines, locals, provider body or binds.
     frames = traceback.extract_tb(exc.__traceback__)[-8:]
-    return {"phase": phase, "code": code, "exception_class": type(exc).__name__,
-            "locations": [{"file": frame.filename.rsplit("/", 1)[-1], "line": frame.lineno, "function": frame.name} for frame in frames]}
+    return {
+        "phase": phase,
+        "code": code,
+        "exception_class": type(exc).__name__,
+        "locations": [
+            {
+                "file": frame.filename.rsplit("/", 1)[-1],
+                "line": frame.lineno,
+                "function": frame.name,
+            }
+            for frame in frames
+        ],
+    }

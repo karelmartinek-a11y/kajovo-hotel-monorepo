@@ -1,0 +1,11 @@
+{
+  "actual_api_image": "sha256:0f8968b17e52a53c61a9f2499c77e1c26979e86dc8681df7b7fe41d9743a897a",
+  "postgres_image": "postgres:16.4-alpine",
+  "real_postgres_constraints": "PASS",
+  "backup_restore_and_receipt": "PASS",
+  "no_production_write": true,
+  "private_logs": [
+    "/tmp/dagmar-stability-postgres-frozen.log",
+    "/tmp/dagmar-stability-recovery.log"
+  ]
+}

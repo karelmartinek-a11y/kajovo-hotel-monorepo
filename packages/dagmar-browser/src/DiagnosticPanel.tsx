@@ -17,6 +17,8 @@ export function DiagnosticPanel({request,download}:{request:Transport;download:(
       <button disabled={busy} onClick={()=>{download(`/diagnostics/calls/${selected.call.id}/export`);setStatus('Export se stahuje. Externí staženou kopii nelze smazáním serveru odvolat.');}}>Stáhnout chráněný export</button>
       <button disabled={busy} onClick={()=>setConfirm(selected.call.id)}>Smazat celý hovor</button>
       {confirm===selected.call.id&&<div role="alert"><p>Smazat text, zvuk i dočasné části tohoto hovoru? Paměť Dagmar se tím nemaže.</p><button disabled={busy} onClick={()=>void action(async()=>{await request(`/diagnostics/calls/${selected.call.id}`,'DELETE');setSelected(null);setConfirm(null);setStatus('Hovor byl smazán.');await refresh();})}>Potvrdit smazání hovoru</button><button onClick={()=>setConfirm(null)}>Zrušit</button></div>}
+      <h4>Finále producentů</h4><pre>{JSON.stringify(selected.call.producer_final ?? {},null,2)}</pre>
+      <h4>Úplnost zvuku</h4>{selected.audio?.partial&&<p>Přehled zvuku je omezený; úplné části jsou v exportu.</p>}<pre>{JSON.stringify(selected.audio ?? {status:'Starý manifest neobsahuje úplnost obou stop.'},null,2)}</pre>
       <h4>Usage</h4><pre>{JSON.stringify(selected.usage,null,2)}</pre>
       <h4>Timeline a mezery</h4>{selected.timeline_partial&&<p>Zobrazeno prvních 1000 objektů. Úplný seznam a obsah jsou v exportu.</p>}<pre>{JSON.stringify(selected.gaps,null,2)}</pre><ol>{selected.events.map((event:any)=><li key={event.event_id}>{event.timestamp} · {event.source}/{event.sequence} · {event.event_type} · {event.severity}</li>)}</ol>
     </article>}

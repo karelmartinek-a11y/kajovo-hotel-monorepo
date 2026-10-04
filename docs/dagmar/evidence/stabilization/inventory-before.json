@@ -1,0 +1,58 @@
+{
+  "dagmar_voice_conversation_summaries": {
+    "count": 7,
+    "sha256": "f38d988b1c4955e4558dadfd8de2b6b1440e9abefce1720c7399f7fcb9bd344d"
+  },
+  "dagmar_voice_core_settings": {
+    "count": 1,
+    "sha256": "8fdd0dafc4c646ae5fd0744adb4e5b1e187acb7db35f2c74ea4b27e4588fd599"
+  },
+  "dagmar_voice_mail_operations": {
+    "count": 3,
+    "sha256": "5c2378745ebb2886cfa93d2f16c8fb79b38696a17b222e1b048ebfdf0fe79f81"
+  },
+  "dagmar_voice_memories": {
+    "count": 12,
+    "sha256": "99b940848f497681710f330a2b42907da903f2dc67b4af51f84b803e01a5abf3"
+  },
+  "dagmar_voice_memory_dependencies": {
+    "count": 0,
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "dagmar_voice_memory_operations": {
+    "count": 72,
+    "sha256": "54526a07104051e3cde9b37e460725444058a7aa0e0f33efcefff26579ada84c"
+  },
+  "dagmar_voice_memory_principals": {
+    "count": 2,
+    "sha256": "a56f6a1deaf76d077cdba8060263b0ce3ddaa4ef7c9b4ca67cc14a1ab71909d2"
+  },
+  "dagmar_voice_memory_revisions": {
+    "count": 1,
+    "sha256": "e400bfb92bd48d0b8d4d820a3d2c6eae734010562bd82c5c577aa770469e9cb2"
+  },
+  "dagmar_voice_memory_settings": {
+    "count": 2,
+    "sha256": "2c6b7039b6dcb5b42f32a991f7e196bbe5ab5b555010a5b29b9033259070f7f9"
+  },
+  "dagmar_voice_note_items": {
+    "count": 2,
+    "sha256": "eaf1d35f9e927187bd69a8f3f5e0d185b94c056d3a8c661ed516223f0781fd2c"
+  },
+  "dagmar_voice_notes": {
+    "count": 2,
+    "sha256": "7ea08a6f59f0c7e3ea4ee2ff55ef632486a7e76fcbbfa9ab9eb5461484496f7d"
+  },
+  "dagmar_voice_registry_plans": {
+    "count": 35,
+    "sha256": "6eb6a06821835e306e8ac69532664ea8622587d7d31c984c88c2513753ff0196"
+  },
+  "dagmar_voice_smart_deliveries": {
+    "count": 303,
+    "sha256": "8687fe929aeedbb16d80308d1aaeadeceaf53f83261c4591ffddee4e107552aa"
+  },
+  "dagmar_voice_smart_operations": {
+    "count": 76,
+    "sha256": "e8aac21ce110d8540aa62967e76df6fe29db88019f59b3cff725b52c83cdb6cf"
+  }
+}

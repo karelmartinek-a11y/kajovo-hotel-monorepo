@@ -1,0 +1,8 @@
+{
+  "packages/dagmar-server/src/dagmar_server/orchestration.py": "1016bd8730e136d09020807b5b8736f13a5737d3fa66249053cd22ca45a13513",
+  "packages/dagmar-server/src/dagmar_server/turns.py": "822f829fd7018a29eda17bb3988d893c82418d19499530397a8529f8cd36472b",
+  "packages/dagmar-server/src/dagmar_server/diagnostics.py": "761b8a8588c9648e76983961c8fcbb7d917a289a4aa8593bf65eb7f12fd4fdb2",
+  "packages/dagmar-server/src/dagmar_server/collector.py": "7621bc38aae02e21eeab872fee774865c65acc7541ed589ca8a07d526537d869",
+  "packages/dagmar-server/src/dagmar_server/diagnostic_api.py": "a7526a74acba735a19e7eb583b35a1769e428e6d048aecb0939e58291335560d",
+  "packages/dagmar-server/src/dagmar_server/mail_host.py": "3f71b6096cf6124c1380d7c29dbe6f7fe02f67218694b9220f0876bb589a2c04"
+}

@@ -532,6 +532,7 @@ def test_rate_limit_resumes_generation_without_replaying_tools(monkeypatch):
 
         async def send(value, match):
             assert match({"type": "response.created"})
+            assert value.pop("_turn_generation") == b.turns.generation
             sent.append(value)
 
         async def forbidden(call):

@@ -207,3 +207,13 @@ test('generic connection readiness is independent of unavailable host capabiliti
   assert.equal(h.client.getSnapshot().state, 'listening');
   await h.client.stop();
 });
+
+test('recoverable provider request rejection preserves connection and the new native turn',async()=>{
+  const h=host();await h.client.start();
+  h.send({type:'response.created',response:{id:'native'}});
+  h.send({type:'error',event_id:'reject',error:{code:'conversation_already_has_active_response',event_id:'old_request'}});
+  assert.notEqual(h.client.getSnapshot().state,'error');assert.ok(!h.peers[0].closed);
+  assert.equal(h.peers[0].channel.sent.length,0);
+  h.send({type:'error',event_id:'unknown',error:{code:'unrecognized_fatal'}});
+  assert.equal(h.client.getSnapshot().state,'error');assert.ok(h.peers[0].closed);
+});

@@ -1399,6 +1399,68 @@
         "title": "NoteText",
         "type": "object"
       },
+      "ProducerFinal": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "dropped_bytes": {
+            "minimum": 0.0,
+            "title": "Dropped Bytes",
+            "type": "integer"
+          },
+          "missing_events": {
+            "minimum": 0.0,
+            "title": "Missing Events",
+            "type": "integer"
+          },
+          "pending": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Pending",
+            "type": "integer"
+          },
+          "sequence": {
+            "minimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "source": {
+            "pattern": "^(browser|server_[a-zA-Z0-9_-]{1,128})$",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "sequence",
+          "count",
+          "dropped_bytes",
+          "missing_events",
+          "complete"
+        ],
+        "title": "ProducerFinal",
+        "type": "object"
+      },
       "PublicChange": {
         "additionalProperties": false,
         "properties": {
@@ -2452,6 +2514,18 @@
             "title": "Connection State",
             "type": "string"
           },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics"
+          },
           "logical_call_id": {
             "anyOf": [
               {
@@ -3467,6 +3541,53 @@
           }
         },
         "summary": "Export"
+      }
+    },
+    "/voice/diagnostics/calls/{call_id}/final": {
+      "post": {
+        "operationId": "final_voice_diagnostics_calls__call_id__final_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProducerFinal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Final"
       }
     },
     "/voice/diagnostics/calls/{call_id}/pin": {

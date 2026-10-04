@@ -17,6 +17,17 @@ class Capture(Closed):
     complete: bool = False
 
 
+class ProducerFinal(Closed):
+    source: str = Field(pattern=r"^(browser|server_[a-zA-Z0-9_-]{1,128})$")
+    sequence: int = Field(ge=0)
+    count: int = Field(ge=0)
+    dropped_bytes: int = Field(ge=0)
+    missing_events: int = Field(ge=0)
+    complete: bool
+    code: str | None = Field(default=None,max_length=100)
+    pending: int = Field(default=0,ge=0)
+
+
 class EventBatch(Closed):
     events: list[Event] = Field(max_length=32)
 
@@ -32,6 +43,7 @@ class ChunkInfo(Closed):
     capture_end_ms: float = Field(ge=0)
     final: bool = False
     boundary_partial: bool = False
+    recording_id: str | None = Field(default=None, pattern=ID_PATTERN)
 
 
 def router_for(get_store: Callable, authorize: Callable[[Request], str]):
@@ -67,13 +79,9 @@ def router_for(get_store: Callable, authorize: Callable[[Request], str]):
     async def events(call_id: str, payload: EventBatch, request: Request):
         owner = auth(request)
         store = get_store()
-        results = []
-        for event in payload.events:
-            if event.source != "browser":
-                raise HTTPException(422, detail={"code":"invalid_event_source"})
-            auth(request)
-            results.append(await invoke(store.event, call_id, owner, event))
-        return {"results": results}
+        if any(event.source != "browser" for event in payload.events):
+            raise HTTPException(422,detail={"code":"invalid_event_source"})
+        return {"results":await invoke(store.event_batch,call_id,owner,payload.events)}
 
     @router.post("/diagnostics/calls/{call_id}/segments")
     async def start(call_id: str, payload: Capture, request: Request):
@@ -101,11 +109,21 @@ def router_for(get_store: Callable, authorize: Callable[[Request], str]):
             data.extend(part)
         auth(request)
         store = get_store()
-        result = await invoke(store.write, call_id, owner, chunk_id, "audio", "audio", bytes(data), segment_id=info.segment_id, generation=info.generation, capture_start=info.capture_start_ms, capture_end=info.capture_end_ms, sequence=info.sequence, source=info.source_id)
-        # Same chunk identity also protects its decoder metadata.
-        manifest = json.dumps(info.model_dump(), separators=(",", ":")).encode()
-        await invoke(store.write, call_id, owner, chunk_id + "_manifest", "text", "audio_manifest", manifest, segment_id=info.segment_id, generation=info.generation, capture_start=info.capture_start_ms, capture_end=info.capture_end_ms)
-        return result
+        details=dict(segment_id=info.segment_id,generation=info.generation,capture_start=info.capture_start_ms,capture_end=info.capture_end_ms)
+        # Both identities become visible in one index transaction, or neither does.
+        manifest=json.dumps(info.model_dump(),separators=(",",":")).encode()
+        results=await invoke(store.write_many,call_id,owner,[
+            dict(id=chunk_id,category="audio",kind="audio",payload=bytes(data),sequence=info.sequence,source=info.source_id,**details),
+            dict(id=chunk_id+"_manifest",category="text",kind="audio_manifest",payload=manifest,**details)])
+        return results[0]
+
+    @router.post("/diagnostics/calls/{call_id}/final")
+    async def final(call_id: str,payload: ProducerFinal,request: Request):
+        owner=auth(request)
+        if payload.source!="browser":
+            raise HTTPException(422,detail={"code":"invalid_event_source"})
+        await invoke(get_store().producer_final,call_id,owner,payload.source,payload.model_dump(exclude={"source"}))
+        return {"stored":True}
 
     @router.post("/diagnostics/calls/{call_id}/close")
     async def close(call_id: str, request: Request):

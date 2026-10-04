@@ -129,6 +129,7 @@ class VoiceSessionRead(BaseModel):
 
 
 class VoiceSessionStatus(BaseModel):
+    diagnostics: dict | None = None
     logical_call_id: str | None = None
     session_id: str
     connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
@@ -215,12 +216,13 @@ async def create_session(payload: VoiceSessionWrite, db: Db, request: Request):
                 from .collector import Collector
                 try:
                     diagnostics = runtime().application.diagnostics
-                    diagnostics.connection(payload.logical_call_id, bridge.owner, bridge.id, bridge.model, record.revision)
+                    await __import__("asyncio").wait_for(__import__("asyncio").to_thread(diagnostics.connection,payload.logical_call_id, bridge.owner, bridge.id, bridge.model, record.revision),1)
                     bridge.diagnostics = Collector(payload.logical_call_id, bridge.owner, bridge.id, bridge.model, getattr(bridge,"call_id",None))
                     bridge.diagnostics.start()
                     answer["logical_call_id"] = payload.logical_call_id
                 except Exception:
                     # Storage failure must never terminate a successfully established voice session.
+                    bridge.diagnostic_registration_error="diagnostic_registration_unavailable"
                     answer["diagnostics"] = "degraded"
             return answer
         except (VoiceError, HTTPException, DiagnosticError):

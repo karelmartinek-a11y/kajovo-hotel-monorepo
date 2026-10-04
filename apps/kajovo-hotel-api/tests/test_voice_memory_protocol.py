@@ -58,7 +58,7 @@ class FakeRealtime:
             )
         elif typ == "response.create":
             assert self.answers, "continuation before backend function result"
-            await self.events.put({"type": "response.created"})
+            await self.events.put({"type": "response.created","response":{"id":"spoken","metadata":event.get("response",{}).get("metadata")}})
             await self.events.put(
                 {
                     "type": "response.output_audio_transcript.done",
