@@ -1056,6 +1056,26 @@
         "title": "BreakfastSyncSettingsRead",
         "type": "object"
       },
+      "Capture": {
+        "additionalProperties": false,
+        "properties": {
+          "capture_ms": {
+            "minimum": 0.0,
+            "title": "Capture Ms",
+            "type": "number"
+          },
+          "complete": {
+            "default": false,
+            "title": "Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "capture_ms"
+        ],
+        "title": "Capture",
+        "type": "object"
+      },
       "ChatConversationCreate": {
         "properties": {
           "recipient_id": {
@@ -1462,6 +1482,263 @@
           "expires_at"
         ],
         "title": "DeviceVerifyResponse",
+        "type": "object"
+      },
+      "Event": {
+        "additionalProperties": false,
+        "properties": {
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-zA-Z0-9_-]{1,128}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "delivery_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delivery Id"
+          },
+          "event_id": {
+            "pattern": "^[a-zA-Z0-9_-]{1,128}$",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "pattern": "^[a-zA-Z0-9_.-]{1,100}$",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "function_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Function Id"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "monotonic_ms": {
+            "minimum": 0.0,
+            "title": "Monotonic Ms",
+            "type": "number"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation Id"
+          },
+          "provider_call_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Call Id"
+          },
+          "provider_event_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Event Id"
+          },
+          "remote_request_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remote Request Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-zA-Z0-9_-]{1,128}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segment Id"
+          },
+          "sequence": {
+            "minimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "severity": {
+            "default": "info",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "browser",
+              "server",
+              "provider",
+              "mcp",
+              "memory"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turn Id"
+          }
+        },
+        "required": [
+          "source",
+          "sequence",
+          "timestamp",
+          "monotonic_ms",
+          "event_type"
+        ],
+        "title": "Event",
+        "type": "object"
+      },
+      "EventBatch": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            },
+            "maxItems": 32,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "EventBatch",
         "type": "object"
       },
       "Forget": {
@@ -7068,6 +7345,28 @@
             "title": "Connection State",
             "type": "string"
           },
+          "diagnostics": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostics"
+          },
+          "logical_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logical Call Id"
+          },
           "mail": {
             "$ref": "#/components/schemas/MailStatus"
           },
@@ -7141,6 +7440,17 @@
             "title": "Connection State",
             "type": "string"
           },
+          "logical_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logical Call Id"
+          },
           "mail": {
             "$ref": "#/components/schemas/MailStatus"
           },
@@ -7179,6 +7489,18 @@
       "VoiceSessionWrite": {
         "additionalProperties": false,
         "properties": {
+          "logical_call_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-zA-Z0-9_-]{1,128}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logical Call Id"
+          },
           "revision": {
             "minimum": 0.0,
             "title": "Revision",
@@ -8181,6 +8503,505 @@
         "summary": "Put Config",
         "tags": [
           "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls": {
+      "get": {
+        "operationId": "calls_api_v1_admin_voice_core_diagnostics_calls_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Calls",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      },
+      "post": {
+        "operationId": "begin_api_v1_admin_voice_core_diagnostics_calls_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Begin",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}": {
+      "delete": {
+        "operationId": "delete_api_v1_admin_voice_core_diagnostics_calls__call_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      },
+      "get": {
+        "operationId": "detail_api_v1_admin_voice_core_diagnostics_calls__call_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detail",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/chunks/{chunk_id}": {
+      "put": {
+        "operationId": "upload_api_v1_admin_voice_core_diagnostics_calls__call_id__chunks__chunk_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chunk_id",
+            "required": true,
+            "schema": {
+              "title": "Chunk Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/close": {
+      "post": {
+        "operationId": "close_api_v1_admin_voice_core_diagnostics_calls__call_id__close_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/events": {
+      "post": {
+        "operationId": "events_api_v1_admin_voice_core_diagnostics_calls__call_id__events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Events",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/export": {
+      "get": {
+        "operationId": "export_api_v1_admin_voice_core_diagnostics_calls__call_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      },
+      "post": {
+        "operationId": "export_api_v1_admin_voice_core_diagnostics_calls__call_id__export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/pin": {
+      "post": {
+        "operationId": "pin_api_v1_admin_voice_core_diagnostics_calls__call_id__pin_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pin",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/segments": {
+      "post": {
+        "operationId": "start_api_v1_admin_voice_core_diagnostics_calls__call_id__segments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Capture"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/calls/{call_id}/segments/{segment_id}/stop": {
+      "post": {
+        "operationId": "stop_api_v1_admin_voice_core_diagnostics_calls__call_id__segments__segment_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "call_id",
+            "required": true,
+            "schema": {
+              "title": "Call Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "segment_id",
+            "required": true,
+            "schema": {
+              "title": "Segment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Capture"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop",
+        "tags": [
+          "voice-diagnostics"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/diagnostics/capacity": {
+      "get": {
+        "operationId": "capacity_api_v1_admin_voice_core_diagnostics_capacity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Capacity",
+        "tags": [
+          "voice-diagnostics"
         ]
       }
     },

@@ -173,6 +173,7 @@ class VoiceBridge(MailHost):
         self.dialog_items: list[str] = []
         self.call_items: dict[str, set[str]] = {}
         self.protected_items: set[str] = set()
+        self.diagnostics = None
         self.input_tokens = 0
         self.pressure = False
         self.pruned = False
@@ -212,6 +213,8 @@ class VoiceBridge(MailHost):
             waiter = (accepts, future)
             self.waiters.append(waiter)
             try:
+                if self.diagnostics:
+                    self.diagnostics.emit(event, direction="sent")
                 await self.ws.send(json.dumps(event, ensure_ascii=False, separators=(",", ":")))
                 accepted = await asyncio.wait_for(future, timeout=12)
                 if self.closed:
@@ -311,6 +314,30 @@ class VoiceBridge(MailHost):
         if self.registry.response_id != event["response"]["id"]:
             self.registry.begin_readback(event["response"]["id"])
 
+    async def diagnostic_mcp_call(self, payload, function_id=None):
+        request = self.mcp_payload(payload)
+        local_id = request.get("request_id") or uuid.uuid4().hex
+        started = time.monotonic()
+        if self.diagnostics:
+            self.diagnostics.emit({"type":"mcp.request.start", "request_id":local_id, "call_id":function_id, "request":request})
+        try:
+            result = await self.mcp.call_tool("smart_technologie", request)
+            if self.diagnostics:
+                envelope = getattr(result,"structuredContent",None)
+                if envelope is None:
+                    try:
+                        texts=[value.text for value in result.content if getattr(value,"type",None)=="text"]
+                        envelope=json.loads(texts[0]) if len(texts)==1 else None
+                    except (ValueError,TypeError):
+                        envelope=None
+                self.diagnostics.emit({"type":"mcp.request.result", "request_id":local_id, "call_id":function_id, "duration_ms":(time.monotonic()-started)*1000, "result":envelope})
+            return result
+        except Exception as exc:
+            if self.diagnostics:
+                from dagmar_server.diagnostic_contract import safe_exception
+                self.diagnostics.emit({"type":"mcp.request.failed", "request_id":local_id, "call_id":function_id, "duration_ms":(time.monotonic()-started)*1000, **safe_exception(exc,"mcp.transport","mcp_outcome_unknown")})
+            raise
+
     def mcp_payload(self, args: dict) -> dict:
         args = dict(args)
         # Stable operation-specific payloads preserve old apply fingerprints after upgrade.
@@ -379,7 +406,7 @@ class VoiceBridge(MailHost):
                     raise voice_memory.MemoryError("unauthorized")
                 self.memory_principal = voice_memory.principal(db, _serialize_session(session))
                 automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic and not self.memory_privacy_paused
-            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner) and not self.mail_private)
+            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner) and not self.mail_private, diagnostic=self.diagnostics.emit if self.diagnostics else None)
             self.memory_buffer.enabled = automatic and not self.mail_private
             await self.update_transcription()
             self.memory_status = "ready"
@@ -439,6 +466,9 @@ class VoiceBridge(MailHost):
                 raise SmartError("delivery_identity_conflict")
             return
         output = MemoryResult(operation="unknown", code="unavailable")
+        memory_started = time.monotonic()
+        if self.diagnostics:
+            self.diagnostics.emit({"type":"memory.validation", "call_id":cid})
         receipt_id = None
         try:
             if not authorized(self.owner):
@@ -485,6 +515,8 @@ class VoiceBridge(MailHost):
             output = MemoryResult(operation="unknown", code="invalid_arguments")
         except Exception:
             output = MemoryResult(operation="unknown", code="unavailable")
+        if self.diagnostics:
+            self.diagnostics.emit({"type":"memory.result", "call_id":cid, "code":output.code, "duration_ms":(time.monotonic()-memory_started)*1000})
         iid = await self.item({"id": "kvmout_" + hashlib.sha256(f"{self.id}:{cid}".encode()).hexdigest()[:24], "type": "function_call_output", "call_id": cid, "output": output.model_dump_json()})
         if receipt_id:
             with contextlib.suppress(Exception):
@@ -498,6 +530,8 @@ class VoiceBridge(MailHost):
     async def read_events(self):
         async for raw in self.ws:
             event = json.loads(raw)
+            if self.diagnostics:
+                self.diagnostics.emit(event)
             for match, future in list(self.waiters):
                 if future.done():
                     continue
@@ -549,7 +583,8 @@ class VoiceBridge(MailHost):
                     self.call_items.setdefault(item["call_id"], set()).add(iid)
             if typ == "response.done":
                 response = event.get("response", {})
-                self.input_tokens = response.get("usage", {}).get("input_tokens", self.input_tokens)
+                current_input_tokens = (response.get("usage") or {}).get("input_tokens")
+                self.input_tokens = current_input_tokens if isinstance(current_input_tokens, int) else 0
                 if self.input_tokens > get_settings().voice_context_prune_tokens:
                     self.pressure = True
                 else:
@@ -687,7 +722,7 @@ class VoiceBridge(MailHost):
             if rid:
                 self.unresolved_requests.add(rid)
             result = await asyncio.wait_for(
-                self.mcp.call_tool("smart_technologie", self.mcp_payload(payload)), timeout=35
+                self.diagnostic_mcp_call(payload, cid), timeout=35
             )
             public, images = decode_result(result)
             validate_public(public)
@@ -964,7 +999,7 @@ class VoiceBridge(MailHost):
                         if not authorized(self.owner):
                             raise SmartError("unauthorized")
                         self.mcp = await stack.enter_async_context(mcp_connection(self.token))
-                        public, _ = decode_result(await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "catalog"})))
+                        public, _ = decode_result(await self.diagnostic_mcp_call({"operation": "catalog"}))
                         if public.get("error"):
                             raise SmartError("catalog_unavailable")
                         with SessionLocal() as db:
@@ -997,7 +1032,7 @@ class VoiceBridge(MailHost):
             async with asyncio.timeout(15):
                 rooms, offset = [], 0
                 while True:
-                    value, _ = decode_result(await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "rooms_list", "offset": offset, "limit": 200})))
+                    value, _ = decode_result(await self.diagnostic_mcp_call({"operation": "rooms_list", "offset": offset, "limit": 200}))
                     validate_public(value)
                     if value.get("error"):
                         raise SmartError("metadata_refresh_unavailable")
@@ -1015,7 +1050,7 @@ class VoiceBridge(MailHost):
                 public["registry_rooms"] = rooms
                 rows = (self.last_target or {}).get("rows", [])
                 if rows:
-                    details, _ = decode_result(await self.mcp.call_tool("smart_technologie", self.mcp_payload({"operation": "describe", "catalog_revision": self.revision, "rows": rows, "limit": 8})))
+                    details, _ = decode_result(await self.diagnostic_mcp_call({"operation": "describe", "catalog_revision": self.revision, "rows": rows, "limit": 8}))
                     validate_public(details)
                     public["registry_devices"] = {k: details[k] for k in ("rows", "fields", "devices") if k in details}
         except Exception:
@@ -1071,6 +1106,8 @@ class VoiceBridge(MailHost):
             await asyncio.gather(*tasks, return_exceptions=True)
             if self.memory_buffer:
                 await self.memory_buffer.close()
+            if self.diagnostics:
+                await self.diagnostics.close()
             self.closed = True
             self.ready.set()
             for _, future in self.waiters:
@@ -1093,6 +1130,8 @@ class VoiceBridge(MailHost):
         if self.task:
             self.task.cancel()
             await asyncio.gather(self.task, return_exceptions=True)
+        if self.diagnostics:
+            await self.diagnostics.close()
         self.closed = True
 
 

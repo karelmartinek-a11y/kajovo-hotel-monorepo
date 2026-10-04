@@ -30,7 +30,7 @@ jobs:
       - name: Build production API image and verify imports
         run: |
           docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
-          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin, mcp, websockets, jsonschema; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/sessions/{session_id}/heartbeat' in app.openapi()['paths']; assert '/api/v1/admin/voice-memory/operations' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/registry-plan' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/mail-plan' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
+          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin, mcp, websockets, jsonschema; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/diagnostics/calls' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/heartbeat' in app.openapi()['paths']; assert '/api/v1/admin/voice-memory/operations' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/registry-plan' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/mail-plan' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
 
       - name: Verify voice memory, registry and mail against production PostgreSQL runtime
         run: python3 scripts/verify_voice_memory_postgres.py
@@ -60,7 +60,7 @@ jobs:
           corepack prepare pnpm@10.34.4 --activate
           pnpm install --frozen-lockfile
       - name: Install API and test dependencies
-        run: python -m pip install ./packages/voice-core-server -e './apps/kajovo-hotel-api[dev]'
+        run: python -m pip install ./packages/voice-core-server ./packages/dagmar-server -e './apps/kajovo-hotel-api[dev]'
       - name: Validate test credential configuration
         run: python scripts/check_admin_credentials_env.py
       - name: Install browser engines

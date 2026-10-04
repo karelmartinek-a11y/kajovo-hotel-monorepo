@@ -30,6 +30,9 @@ RUN pip install --no-cache-dir \
     firebase-admin==7.7.0 \
     pillow==11.3.0
 
+COPY packages/dagmar-server /opt/dagmar-server
+RUN pip install --no-cache-dir /opt/dagmar-server
+
 COPY packages/voice-core-server /opt/voice-core-server
 RUN pip install --no-cache-dir /opt/voice-core-server
 
@@ -39,6 +42,7 @@ COPY apps/kajovo-hotel-api/alembic.ini /app/alembic.ini
 COPY android/release /app/android/release
 
 RUN useradd --create-home --shell /bin/bash appuser \
+    && mkdir -p /app/diagnostics \
     && chown -R appuser:appuser /app
 
 USER appuser

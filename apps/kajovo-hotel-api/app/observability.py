@@ -108,6 +108,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
         response.headers["x-request-id"] = request_id
 
+        if "/voice-core/diagnostics/" in request.url.path:
+            # Diagnostic access is audited inside its capped store; no duplicate stdout/DB sink.
+            return response
+
         log_context = {
             "request_id": request_id,
             "user": actor_name,

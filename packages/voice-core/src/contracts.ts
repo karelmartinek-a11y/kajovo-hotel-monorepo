@@ -26,7 +26,7 @@ export interface VoiceSecretStore {
   save(key: string): Promise<VoiceConfigSnapshot>; delete(): Promise<VoiceConfigSnapshot>;
 }
 export interface VoiceAuthProvider { authorized(): Promise<boolean> }
-export interface VoiceTelemetrySink { emit(event: string, attributes: Record<string, string | number>): void }
+export interface VoiceTelemetrySink { emit(event: string, attributes: Record<string, unknown>): void; media?(source: 'microphone' | 'remote', stream: MediaStream): void; provider?(event: Record<string, unknown>): void; startCall?(): Promise<void>; finishCall?(): Promise<void> }
 export interface CapabilityContract {name: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>}
 export interface CapabilityProvider {contracts(): readonly CapabilityContract[]}
 export const capabilityRegistry: readonly CapabilityContract[] = Object.freeze([]);

@@ -27,6 +27,7 @@ export class VoiceRealtimeClient {
   private abort: AbortController | null = null;
   private epoch = 0;
   private frame: number | null = null;
+  private statsTimer: ReturnType<typeof setTimeout> | null = null;
   private timeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private retries = 0;
@@ -54,6 +55,7 @@ export class VoiceRealtimeClient {
     this.epoch++; this.cleanup(); this.detachLifecycle();
     this.set({state: 'error', error: {category}, inputLevel: 0, outputLevel: 0, muted: false});
     this.telemetry.emit('session.error', {category});
+    void this.telemetry.finishCall?.();
   }
   private attachLifecycle() {
     if (typeof window === 'undefined') return;
@@ -71,14 +73,19 @@ export class VoiceRealtimeClient {
     const epoch = ++this.epoch; this.retries = 0;
     this.set({...initialSnapshot, speakerEchoProtection: this.snapshot.speakerEchoProtection, playbackBlocked: false, state: 'requesting-permission'});
     this.attachLifecycle();
+
     try {
       // Resume from the click gesture before awaiting permissions or networking.
       this.context = this.environment.createContext();
       await this.context.resume();
+      await this.telemetry.startCall?.();
       if (epoch !== this.epoch) return;
+      this.telemetry.emit('permissions.request', {audio_context_state:this.context.state});
       const stream = await this.environment.getUserMedia();
+      this.telemetry.emit('permissions.granted', {audio_context_state:this.context?.state});
       if (epoch !== this.epoch) {stream.getTracks().forEach(track => track.stop()); return;}
       this.stream = stream;
+      this.telemetry.media?.('microphone', stream);
       stream.getAudioTracks().forEach(track => {track.onended = () => this.fail('microphone_interrupted');});
       await this.connect(epoch);
     } catch (error) {
@@ -94,25 +101,32 @@ export class VoiceRealtimeClient {
     if (!this.stream || epoch !== this.epoch) return;
     this.cleanupConnection(); this.seen.clear();
     const peer = this.environment.createPeer(); this.peer = peer;
+    this.collectStats(peer);
     const audio = this.environment.createAudio(); this.audio = audio; audio.autoplay = true;
     audio.setAttribute('playsinline', '');
+    audio.onplay = () => this.telemetry.emit('playback.play', {playback_state:'playing'});
+    audio.onpause = () => this.telemetry.emit('playback.pause', {playback_state:'paused'});
+    audio.onended = () => this.telemetry.emit('playback.ended', {playback_state:'ended'});
     audio.onerror = () => {if (peer === this.peer) this.fail('playback_failed');};
     this.abort = new AbortController();
     this.set({state: this.retries ? 'reconnecting' : 'connecting'});
     this.timeout = setTimeout(() => {if (peer === this.peer) this.fail('connection_timeout');}, this.provider.connectionTimeoutMs ?? CONNECT_TIMEOUT);
     this.stream.getTracks().forEach(track => peer.addTrack(track, this.stream!));
     const channel = peer.createDataChannel('oai-events'); this.channel = channel;
+    channel.onopen = () => this.telemetry.emit('datachannel.open', {channel_state:channel.readyState});
     channel.onmessage = event => {if (epoch === this.epoch && peer === this.peer) this.handle(event.data);};
     channel.onerror = () => {if (peer === this.peer) this.reconnect();};
     channel.onclose = () => {if (peer === this.peer) this.reconnect();};
     peer.onconnectionstatechange = () => {
       if (peer !== this.peer) return;
+      this.telemetry.emit('peer.state', {peer_state: peer.connectionState, ice_state: peer.iceConnectionState});
       if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') this.reconnect();
       if (peer.connectionState === 'closed') this.fail('session_ended');
     };
     peer.ontrack = event => {
       if (peer !== this.peer) return;
       const output = event.streams[0] ?? new MediaStream([event.track]); audio.srcObject = output;
+      this.telemetry.media?.('remote', output);
       this.meters(output);
       void audio.play().catch(() => {if (peer === this.peer) this.fail('playback_failed');});
     };
@@ -128,6 +142,25 @@ export class VoiceRealtimeClient {
     if ((answer.connection_state ?? answer.technologies) === 'connecting' && this.provider.heartbeat) this.stream?.getAudioTracks().forEach(track => {track.enabled = false;});
     await peer.setRemoteDescription({type: 'answer', sdp: answer.sdp});
     if (this.sessionId && this.provider.heartbeat) void this.heartbeat(epoch, peer);
+  }
+  private collectStats(peer: RTCPeerConnection) {
+    const sample=async()=>{
+      if(peer!==this.peer) return;
+      try {
+        if(typeof peer.getStats==='function') {
+          const stats=await peer.getStats();
+          if(peer!==this.peer) return;
+          stats.forEach(value=>{
+            if(value.kind==='audio' && ['inbound-rtp','outbound-rtp','media-source'].includes(value.type))
+              this.telemetry.emit('webrtc.stats',{source_id:value.type,packets_lost:value.packetsLost,jitter:value.jitter,audio_level:value.audioLevel,echo_return_loss:value.echoReturnLoss,echo_return_loss_enhancement:value.echoReturnLossEnhancement});
+            if(value.type==='candidate-pair' && value.state==='succeeded')
+              this.telemetry.emit('webrtc.transport',{round_trip_time:value.currentRoundTripTime});
+          });
+        }
+      } catch {this.telemetry.emit('webrtc.stats.failed',{code:'stats_unavailable'});}
+      if(peer===this.peer) this.statsTimer=setTimeout(()=>void sample(),5000);
+    };
+    this.statsTimer=setTimeout(()=>void sample(),5000);
   }
   private async heartbeat(epoch: number, peer: RTCPeerConnection) {
     if (!this.sessionId || !this.provider.heartbeat || !this.abort || epoch !== this.epoch || peer !== this.peer) return;
@@ -159,6 +192,7 @@ export class VoiceRealtimeClient {
     let event: RealtimeEvent;
     try {event = JSON.parse(raw);} catch {return;}
     if (!event || typeof event.type !== 'string') return;
+    this.telemetry.provider?.(event as unknown as Record<string, unknown>);
     if (event.event_id) {
       if (this.seen.has(event.event_id)) return;
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
@@ -239,7 +273,7 @@ export class VoiceRealtimeClient {
     }, delay);
   }
   private syncMicrophone() {
-    this.stream?.getAudioTracks().forEach(track => {track.enabled = !this.snapshot.muted && !this.snapshot.playbackBlocked && !['connecting', 'waiting'].includes(this.connectionState) && !['reconnecting', 'disconnecting', 'error'].includes(this.snapshot.state);});
+    this.stream?.getAudioTracks().forEach(track => {const enabled = !this.snapshot.muted && !this.snapshot.playbackBlocked && !['connecting', 'waiting'].includes(this.connectionState) && !['reconnecting', 'disconnecting', 'error'].includes(this.snapshot.state); if(track.enabled !== enabled) this.telemetry.emit('audio.track.enabled', {track_id:track.id, enabled, speaker_gate:Boolean(this.snapshot.playbackBlocked)}); track.enabled=enabled;});
   }
   setMuted(muted: boolean) {if (!this.stream) return; this.set({muted}); this.syncMicrophone();}
   setSpeakerEchoProtection(enabled: boolean) {
@@ -260,10 +294,14 @@ export class VoiceRealtimeClient {
   async stop() {
     if (!callActive(this.snapshot.state) || this.snapshot.state === 'disconnecting') return;
     ++this.epoch; this.set({state: 'disconnecting'}); this.cleanup(); this.detachLifecycle();
+    await this.telemetry.finishCall?.();
     this.set({state: 'disconnected', muted: false, error: null, inputLevel: 0, outputLevel: 0});
     this.telemetry.emit('session.ended', {});
+
   }
   private cleanupConnection() {
+    if(this.statsTimer) clearTimeout(this.statsTimer); this.statsTimer=null;
+    if (this.peer) this.telemetry.emit('connection.close', {});
     if (this.playbackTail) clearTimeout(this.playbackTail); this.playbackTail = null;
     this.playback.clear(); this.activeResponse = null; this.set({playbackBlocked: false});
     this.cancelEvents.clear(); this.cancelledResponse = null;

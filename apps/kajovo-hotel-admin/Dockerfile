@@ -9,6 +9,7 @@ COPY apps/kajovo-hotel-admin/package.json /workspace/apps/kajovo-hotel-admin/pac
 COPY packages/shared/package.json /workspace/packages/shared/package.json
 COPY packages/ui/package.json /workspace/packages/ui/package.json
 COPY packages/voice-core/package.json /workspace/packages/voice-core/package.json
+COPY packages/dagmar-browser/package.json /workspace/packages/dagmar-browser/package.json
 
 COPY pnpm-lock.yaml /workspace/pnpm-lock.yaml
 
@@ -18,6 +19,7 @@ COPY apps/kajovo-hotel-admin /workspace/apps/kajovo-hotel-admin
 COPY packages/shared /workspace/packages/shared
 COPY packages/ui /workspace/packages/ui
 COPY packages/voice-core /workspace/packages/voice-core
+COPY packages/dagmar-browser /workspace/packages/dagmar-browser
 COPY apps/kajovo-hotel /workspace/apps/kajovo-hotel
 
 RUN pnpm --filter @kajovo/kajovo-hotel-admin build

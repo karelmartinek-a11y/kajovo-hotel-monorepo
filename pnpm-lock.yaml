@@ -14,6 +14,9 @@ importers:
 
   apps/kajovo-hotel-admin:
     dependencies:
+      '@dagmar/browser':
+        specifier: workspace:*
+        version: link:../../packages/dagmar-browser
       '@kajovo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -106,6 +109,22 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@20.19.43)
+
+  packages/dagmar-browser:
+    dependencies:
+      '@voice-core/browser':
+        specifier: workspace:*
+        version: link:../voice-core
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.28
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
 
   packages/shared: {}
 

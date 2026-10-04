@@ -27,7 +27,13 @@ services:
     restart: unless-stopped
     volumes:
       - api_data:/app/data
+      - diagnostics_data:/app/diagnostics
+    secrets:
+      - dagmar_diagnostic_key
     environment:
+      KAJOVO_API_VOICE_DIAGNOSTIC_ROOT: /app/diagnostics
+      KAJOVO_API_VOICE_DIAGNOSTIC_KEY_FILE: /run/secrets/dagmar_diagnostic_key
+      KAJOVO_API_VOICE_RELEASE_SHA: ${DEPLOY_SOURCE_SHA:-unknown}
       VOICE_MEMORY_CONTEXT_MAX_TOKENS: ${VOICE_MEMORY_CONTEXT_MAX_TOKENS:-2000}
       KAJOVO_API_VOICE_MEMORY_CURATOR_MODEL: ${KAJOVO_API_VOICE_MEMORY_CURATOR_MODEL:-gpt-4.1-mini-2025-04-14}
       KAJOVO_API_VOICE_MEMORY_BATCH_SECONDS: ${KAJOVO_API_VOICE_MEMORY_BATCH_SECONDS:-90}
@@ -111,3 +117,8 @@ networks:
 volumes:
   api_data:
   postgres_data:
+  diagnostics_data:
+
+secrets:
+  dagmar_diagnostic_key:
+    file: ${DAGMAR_DIAGNOSTIC_KEY_FILE:-/home/deploy-hotel/dagmar-secrets/diagnostic.key}

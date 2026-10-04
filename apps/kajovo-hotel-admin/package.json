@@ -8,7 +8,8 @@
     "@voice-core/browser": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "@dagmar/browser": "workspace:*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
@@ -33,6 +34,7 @@
     "test:baseline": "playwright test -c playwright.baseline.config.ts",
     "test:voice-memory": "playwright test -c playwright.voice-memory.config.ts",
     "test:voice-registry": "playwright test -c playwright.voice-registry.config.ts",
-    "test:voice-mail": "playwright test -c playwright.voice-mail.config.ts"
+    "test:voice-mail": "playwright test -c playwright.voice-mail.config.ts",
+    "test:voice-diagnostics": "playwright test -c playwright.voice-diagnostics.config.ts"
   }
 }

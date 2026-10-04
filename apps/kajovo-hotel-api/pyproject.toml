@@ -5,6 +5,7 @@ description = "Kajovo Hotel backend API"
 requires-python = ">=3.11"
 dependencies = [
   "voice-core-server==0.1.0",
+  "dagmar-server==0.1.0",
   "mcp==1.30.0",
   "sse-starlette==2.3.6",
   "jsonschema==4.26.0",

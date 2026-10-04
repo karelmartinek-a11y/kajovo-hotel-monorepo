@@ -52,6 +52,12 @@ class MailHost:
         self.mail_reconnect.set()
 
     async def mail_invoke(self, name, args):
+        from dagmar_server.transport_trace import observe
+        diagnostic = getattr(self, "diagnostics", None)
+        with observe(diagnostic.emit if diagnostic else None):
+            return await self._mail_invoke(name, args)
+
+    async def _mail_invoke(self, name, args):
         """One read replay after fresh authentication; mutations are never replayed here."""
         readonly = voice_mail.TOOLS[name]["annotations"]["readOnlyHint"]
         try:

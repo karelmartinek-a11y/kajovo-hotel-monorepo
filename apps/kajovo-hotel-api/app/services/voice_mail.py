@@ -1,6 +1,9 @@
 """Isolated public MAIL MCP client. Catalog schemas are the installation contract."""
 import copy
 import json
+import time
+from dagmar_server.transport_trace import observer
+from dagmar_server.diagnostic_contract import uid
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
@@ -155,9 +158,29 @@ async def connection(url, token):
 async def invoke(session, name, args):
     validate_input(name, args)
     try:
-        return decode(name, await session.call_tool(name, args))
+        started = time.monotonic()
+        local_request_id = uid()
+        callback = observer.get()
+        if callback:
+            callback({"type":"mcp.request.start", "request_id":local_request_id, "item":{"name":name}, "request":args})
+        result = await session.call_tool(name, args)
+        envelope = getattr(result, "structuredContent", None)
+        if envelope is None:
+            try:
+                texts = [c.text for c in result.content if getattr(c,"type",None)=="text"]
+                envelope = json.loads(texts[0]) if len(texts)==1 else None
+            except (ValueError, IndexError):
+                envelope = None
+        if callback:
+            callback({"type":"mcp.request.result", "request_id":local_request_id,
+                      "remote_request_id":envelope.get("request_id") if isinstance(envelope,dict) else None,
+                      "duration_ms":(time.monotonic()-started)*1000, "item":{"name":name}, "result":envelope})
+        return decode(name, result)
     except MailError:
         raise
-    except Exception:
+    except Exception as exc:
+        if callback:
+            from dagmar_server.diagnostic_contract import safe_exception
+            callback({"type":"mcp.request.failed", "request_id":local_request_id, "duration_ms":(time.monotonic()-started)*1000, **safe_exception(exc,"mail.transport","mail_outcome_unknown")})
         # SDK/protocol exceptions may embed payloads or credentials. Never expose/log them.
         raise MailError("OPERATION_OUTCOME_UNKNOWN" if not TOOLS[name]["annotations"]["readOnlyHint"] else "MAIL_UNAVAILABLE") from None

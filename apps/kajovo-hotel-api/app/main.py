@@ -27,6 +27,9 @@ from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
 from app.api.routes.voice_core import router as voice_core_router
 from app.api.routes.voice_memory import router as voice_memory_router
+from dagmar_server.diagnostic_api import router_for
+from dagmar_server.diagnostics import DiagnosticError
+from app.services.voice_diagnostics import store as diagnostic_store, authorize as diagnostic_authorize
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
@@ -64,6 +67,10 @@ def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(RequestContextMiddleware)
+
+    @app.exception_handler(DiagnosticError)
+    async def diagnostic_error(request: Request, exc: DiagnosticError):
+        return JSONResponse(status_code=exc.status, content={"detail": {"code": exc.code}}, headers={"Cache-Control":"no-store"})
 
     @app.exception_handler(RequestValidationError)
     async def safe_validation_error(request: Request, exc: RequestValidationError):
@@ -138,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_router)
     app.include_router(profile_router)
     app.include_router(voice_core_router)
+    app.include_router(router_for(diagnostic_store, diagnostic_authorize), prefix="/api/v1/admin/voice-core", tags=["voice-diagnostics"])
     app.include_router(voice_memory_router)
 
     @app.on_event("startup")

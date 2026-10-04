@@ -3,16 +3,16 @@ import {callActive, type VoiceConfigSnapshot, type VoiceCoreConfig, type VoiceCo
 import {VoiceRealtimeClient} from './runtime.js';
 import {errorMessage, stateLabels} from './messages.js';
 
-export function VoiceOrb({snapshot}: {snapshot: VoiceSnapshot}) {
+export function VoiceOrb({snapshot, highlighted = false}: {snapshot: VoiceSnapshot; highlighted?: boolean}) {
   const level = Math.max(snapshot.inputLevel, snapshot.outputLevel);
-  return <div className="vc-orb" data-state={snapshot.state} aria-hidden="true" style={{'--vc-level': level} as React.CSSProperties}><span /><span /><span /></div>;
+  return <div className="vc-orb" data-state={snapshot.state} data-debug={highlighted} aria-hidden="true" style={{'--vc-level': level} as React.CSSProperties}><span /><span /><span /></div>;
 }
 function configuration(snapshot: VoiceConfigSnapshot): VoiceCoreConfig {
   const {model_mode, manual_model, response_length, language_mode, manual_language, voice} = snapshot;
   return {model_mode, manual_model, response_length, language_mode, manual_language, voice};
 }
-export function VoiceConsole({configStore, secretStore, sessionProvider, telemetry}: {
-  configStore: VoiceConfigStore; secretStore: VoiceSecretStore; sessionProvider: RealtimeSessionProvider; telemetry: VoiceTelemetrySink;
+export function VoiceConsole({configStore, secretStore, sessionProvider, telemetry, adornment, highlighted}: {
+  configStore: VoiceConfigStore; secretStore: VoiceSecretStore; sessionProvider: RealtimeSessionProvider; telemetry: VoiceTelemetrySink; adornment?: React.ReactNode; highlighted?: boolean;
 }) {
   const client = useMemo(() => new VoiceRealtimeClient(sessionProvider, telemetry), [sessionProvider, telemetry]);
   const snapshot = useSyncExternalStore(client.subscribe, client.getSnapshot);
@@ -34,7 +34,8 @@ export function VoiceConsole({configStore, secretStore, sessionProvider, telemet
   const dirty = saved && draft && JSON.stringify(configuration(saved)) !== JSON.stringify(draft);
   return <section className="vc-console" aria-label="Hlasový chat" data-testid="voice-console">
     <div className="vc-conversation">
-      <VoiceOrb snapshot={snapshot} />
+      <VoiceOrb snapshot={snapshot} highlighted={highlighted} />
+      {adornment}
       <p className="vc-state" role="status" aria-live="polite" data-testid="voice-state">{snapshot.playbackBlocked && snapshot.state === 'listening' ? 'Dokončuji odpověď' : stateLabels[snapshot.state]}</p>
       {snapshot.model && <p className="vc-detail">Model hovoru: {snapshot.model}</p>}
       <button className="vc-primary" disabled={busy || (!active && (!saved?.configured || Boolean(dirty)))} onClick={() => {if (active) void client.stop(); else {setError(null); void client.start();}}}>{active ? 'Ukončit hovor' : 'Zahájit hovor'}</button>

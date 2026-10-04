@@ -166,6 +166,10 @@ export type BreakfastSyncSettingsRead = {
   "scheduler_max_retries": number;
   "scheduler_retry_seconds": number;
 };
+export type Capture = {
+  "capture_ms": number;
+  "complete"?: boolean;
+};
 export type ChatConversationCreate = {
   "recipient_id": number;
 };
@@ -240,6 +244,34 @@ export type DeviceVerifyResponse = {
   "expires_at": string;
   "token": string;
   "token_type"?: string;
+};
+export type Event = {
+  "attributes"?: Record<string, unknown>;
+  "connection_id"?: string | null;
+  "content"?: Record<string, unknown> | null;
+  "delivery_id"?: string | null;
+  "event_id"?: string;
+  "event_type": string;
+  "function_id"?: string | null;
+  "generation"?: number | null;
+  "item_id"?: string | null;
+  "monotonic_ms": number;
+  "operation_id"?: string | null;
+  "provider_call_id"?: string | null;
+  "provider_event_id"?: string | null;
+  "remote_request_id"?: string | null;
+  "request_id"?: string | null;
+  "response_id"?: string | null;
+  "schema_version"?: number;
+  "segment_id"?: string | null;
+  "sequence": number;
+  "severity"?: "info" | "warning" | "error";
+  "source": "browser" | "server" | "provider" | "mcp" | "memory";
+  "timestamp": string;
+  "turn_id"?: string | null;
+};
+export type EventBatch = {
+  "events": Array<Event>;
 };
 export type Forget = {
   "id": string;
@@ -1006,6 +1038,8 @@ export type VoiceKeyWrite = {
 export type VoiceSessionRead = {
   "closed"?: boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
+  "diagnostics"?: string | null;
+  "logical_call_id"?: string | null;
   "mail"?: MailStatus;
   "managed_functions"?: Array<string>;
   "memory"?: "connecting" | "ready" | "unavailable";
@@ -1018,6 +1052,7 @@ export type VoiceSessionRead = {
 export type VoiceSessionStatus = {
   "closed": boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
+  "logical_call_id"?: string | null;
   "mail"?: MailStatus;
   "memory"?: "connecting" | "ready" | "unavailable";
   "renew": boolean;
@@ -1025,6 +1060,7 @@ export type VoiceSessionStatus = {
   "technologies": string;
 };
 export type VoiceSessionWrite = {
+  "logical_call_id"?: string | null;
   "revision": number;
   "sdp": string;
 };
@@ -1166,6 +1202,45 @@ export const apiClient = {
   },
   async putConfigApiV1AdminVoiceCoreConfigPut(body: VoiceConfigWrite): Promise<VoiceConfigRead> {
     return request<VoiceConfigRead>('PUT', `/api/v1/admin/voice-core/config`, undefined, body);
+  },
+  async callsApiV1AdminVoiceCoreDiagnosticsCallsGet(): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/admin/voice-core/diagnostics/calls`, undefined, undefined);
+  },
+  async beginApiV1AdminVoiceCoreDiagnosticsCallsPost(): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls`, undefined, undefined);
+  },
+  async deleteApiV1AdminVoiceCoreDiagnosticsCallsCallIdDelete(call_id: string): Promise<unknown> {
+    return request<unknown>('DELETE', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}`, undefined, undefined);
+  },
+  async detailApiV1AdminVoiceCoreDiagnosticsCallsCallIdGet(call_id: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}`, undefined, undefined);
+  },
+  async uploadApiV1AdminVoiceCoreDiagnosticsCallsCallIdChunksChunkIdPut(call_id: string, chunk_id: string): Promise<unknown> {
+    return request<unknown>('PUT', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/chunks/${chunk_id}`, undefined, undefined);
+  },
+  async closeApiV1AdminVoiceCoreDiagnosticsCallsCallIdClosePost(call_id: string): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/close`, undefined, undefined);
+  },
+  async eventsApiV1AdminVoiceCoreDiagnosticsCallsCallIdEventsPost(call_id: string, body: EventBatch): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/events`, undefined, body);
+  },
+  async exportApiV1AdminVoiceCoreDiagnosticsCallsCallIdExportGet(call_id: string): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/export`, undefined, undefined);
+  },
+  async exportApiV1AdminVoiceCoreDiagnosticsCallsCallIdExportPost(call_id: string): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/export`, undefined, undefined);
+  },
+  async pinApiV1AdminVoiceCoreDiagnosticsCallsCallIdPinPost(call_id: string): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/pin`, undefined, undefined);
+  },
+  async startApiV1AdminVoiceCoreDiagnosticsCallsCallIdSegmentsPost(call_id: string, body: Capture): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/segments`, undefined, body);
+  },
+  async stopApiV1AdminVoiceCoreDiagnosticsCallsCallIdSegmentsSegmentIdStopPost(call_id: string, segment_id: string, body: Capture): Promise<unknown> {
+    return request<unknown>('POST', `/api/v1/admin/voice-core/diagnostics/calls/${call_id}/segments/${segment_id}/stop`, undefined, body);
+  },
+  async capacityApiV1AdminVoiceCoreDiagnosticsCapacityGet(): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/admin/voice-core/diagnostics/capacity`, undefined, undefined);
   },
   async createSessionApiV1AdminVoiceCoreSessionsPost(body: VoiceSessionWrite): Promise<VoiceSessionRead> {
     return request<VoiceSessionRead>('POST', `/api/v1/admin/voice-core/sessions`, undefined, body);

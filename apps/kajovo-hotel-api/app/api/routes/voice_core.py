@@ -1,5 +1,6 @@
 from typing import Annotated, Literal
 
+from dagmar_server.diagnostics import DiagnosticError
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy import update
@@ -15,8 +16,8 @@ from app.services.voice_core import (
     VoiceSecretAdapter,
     get_record,
 )
-from app.services.voice_smart import manager
 from app.services.voice_registry import RegistryView
+from app.services.voice_smart import manager
 
 
 class VoiceAuthAdapter:
@@ -62,6 +63,7 @@ class VoiceKeyWrite(BaseModel):
 
 class VoiceSessionWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    logical_call_id: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9_-]{1,128}$")
     sdp: str = Field(min_length=8, max_length=65536)
     revision: int = Field(ge=0)
 
@@ -112,6 +114,8 @@ class MailView(MailStatus):
 
 
 class VoiceSessionRead(BaseModel):
+    logical_call_id: str | None = None
+    diagnostics: str | None = None
     sdp: str
     model: str
     session_id: str | None = None
@@ -125,6 +129,7 @@ class VoiceSessionRead(BaseModel):
 
 
 class VoiceSessionStatus(BaseModel):
+    logical_call_id: str | None = None
     session_id: str
     connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
     memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
@@ -193,9 +198,26 @@ async def create_session(payload: VoiceSessionWrite, db: Db, request: Request):
     try:
         key = VoiceSecretAdapter(db).read()
         try:
-            return await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
+            if payload.logical_call_id:
+                from app.services.voice_diagnostics import store as diagnostic_store
+                diagnostics = diagnostic_store()
+                with diagnostics.lock(), diagnostics.db() as diagnostic_db:
+                    diagnostics.owned(diagnostic_db, payload.logical_call_id, str(require_session(request)["session_id"]), open_required=True)
+            answer = await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
                 str(require_session(request)["session_id"]), get_settings().kajavoiceha_mcp_token)
-        except VoiceError:
+            if payload.logical_call_id:
+                bridge = owned_bridge(answer["session_id"], request)
+                from app.services.voice_diagnostics import Collector
+                try:
+                    diagnostics.connection(payload.logical_call_id, bridge.owner, bridge.id, bridge.model, record.revision)
+                    bridge.diagnostics = Collector(payload.logical_call_id, bridge.owner, bridge.id, bridge.model, getattr(bridge,"call_id",None))
+                    bridge.diagnostics.start()
+                    answer["logical_call_id"] = payload.logical_call_id
+                except Exception:
+                    # Storage failure must never terminate a successfully established voice session.
+                    answer["diagnostics"] = "degraded"
+            return answer
+        except (VoiceError, HTTPException, DiagnosticError):
             raise
         except Exception:
             raise VoiceError("provider_unavailable") from None
