@@ -44,6 +44,8 @@ Raw výsledky jsou v `docs/dagmar/evidence/removal-20261006/`.
 input/output schéma a anonymní HTTP 401 obou MCP. Mail: 20 nástrojů; HA: jeden.
 DNS obou služeb je IPv4 bez IPv6. Nebyl vyvolán žádný tools/call ani mutace.
 Error/result/idempotence scénáře používají skutečný adapter s fixtures.
+Výpadkový scénář MCP a paměti ověřuje dokončenou hlasovou odpověď každého
+navazujícího tahu se samostatnou provider response identitou před dalším vstupem.
 
 ## Kontrola referencí a funkčních hranic
 

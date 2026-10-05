@@ -28,6 +28,7 @@ class FakeRealtime:
         self.arguments = arguments
         self.name = name
         self.answers = []
+        self.continuation_ids = []
 
     async def __aenter__(self):
         return self
@@ -58,19 +59,21 @@ class FakeRealtime:
             )
         elif typ == "response.create":
             assert self.answers, "continuation before backend function result"
-            await self.events.put({"type": "response.created","response":{"id":"spoken","metadata":event.get("response",{}).get("metadata")}})
+            response_id = "spoken-" + uuid.uuid4().hex
+            self.continuation_ids.append(response_id)
+            await self.events.put({"type": "response.created","response":{"id":response_id,"metadata":event.get("response",{}).get("metadata")}})
             await self.events.put(
                 {
                     "type": "response.output_audio_transcript.done",
-                    "item_id": "assistant-complete",
-                    "response_id": "spoken",
+                    "item_id": "assistant-" + response_id,
+                    "response_id": response_id,
                     "transcript": "Potvrzený výsledek paměťové operace.",
                 }
             )
             await self.events.put(
                 {
                     "type": "response.done",
-                    "response": {"id": "spoken", "status": "completed", "output": []},
+                    "response": {"id": response_id, "status": "completed", "output": []},
                 }
             )
 
@@ -479,6 +482,11 @@ def test_mcp_outage_and_memory_outage_keep_ordinary_voice_enabled(host, monkeypa
         await wait_for(lambda: len(provider.answers) == 1)
         assert provider.answers[0]["code"] == "ok"
 
+        await wait_for(lambda: len(provider.continuation_ids) == 1
+                       and provider.events.empty() and bridge.turns.active is None
+                       and bridge.turns.pending is None)
+        assert bridge.turns.responses[provider.continuation_ids[0]] == bridge.turns.generation
+
         def unavailable(*args, **kwargs):
             raise RuntimeError("DB unavailable")
 
@@ -495,6 +503,9 @@ def test_mcp_outage_and_memory_outage_keep_ordinary_voice_enabled(host, monkeypa
         await wait_for(
             lambda: len([e for e in provider.sent if e["type"] == "response.create"]) == 2
         )
+        await wait_for(lambda: provider.events.empty() and bridge.turns.active is None
+                       and bridge.turns.pending is None)
+        assert bridge.turns.responses[provider.continuation_ids[-1]] == bridge.turns.generation
         assert not bridge.closed and bridge.public_status()["connection_state"] == "ready"
         assert any(
             e.get("session", {})
