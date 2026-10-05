@@ -21,15 +21,23 @@ async def invalidate(pid, *, deleted=False, keep_call_id=None, keep_bridge_id=No
     await _apply(app, pid, True, keep_call_id, keep_bridge_id)
 
 async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
+    if deleted:
+        # Closed provider connections can still own a reconnectable logical task.
+        for task in app.manager.calls.values():
+            if task.memory_principal in {None, pid}:
+                task.clear()
+                task.memory_privacy_paused = True
     for bridge in list(app.manager.sessions.values()):
         if bridge.memory_principal != pid or bridge.closed or not authorized(bridge.owner):
             continue
         if deleted:
             bridge.memory_privacy_paused = True
             bridge.task_context.clear()
+            bridge.task_context.memory_privacy_paused = True
             bridge.curated_inputs.clear()
             if bridge.id != keep_bridge_id:
                 bridge.turns.generation += 1
+                bridge.human_turns.generation = bridge.turns.generation
             if bridge.turns.active and bridge.ws:
                 import json
                 await bridge.ws.send(json.dumps({"type":"response.cancel", "response_id":bridge.turns.active}))

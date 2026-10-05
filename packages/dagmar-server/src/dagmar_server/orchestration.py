@@ -479,11 +479,13 @@ class VoiceBridge(MailHost):
 
     async def initialize_memory(self):
         try:
+            self.memory_privacy_paused |= self.task_context.memory_privacy_paused
             with SessionLocal() as db:
                 session = current_identity(self.owner)
                 if not session or not authorized(self.owner):
                     raise voice_memory.MemoryError("unauthorized")
                 self.memory_principal = voice_memory.principal(db, session)
+                self.task_context.memory_principal = self.memory_principal
                 voice_memory.ensure_profile(db, self.memory_principal)
                 automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic and not self.memory_privacy_paused
             self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner), diagnostic=self.diagnostics.emit if self.diagnostics else None, namespace=current_identity(self.owner)["namespace"])
@@ -660,7 +662,7 @@ class VoiceBridge(MailHost):
             if mail_action and not (mail_action == "generate" and self.auto_response_enabled):
                 await self.enqueue({"mail": mail_action})
             self.human_turns.event(event)
-            self.task_context.event(event)
+            self.task_context.event(event, generation=self.turns.responses.get(event.get('response', {}).get('id') or event.get('response_id'), self.turns.generation))
             if self.logical_call_id and typ in {"input_audio_buffer.speech_started", "output_audio_buffer.started", "output_audio_buffer.stopped", "output_audio_buffer.cleared", "response.created", "response.done"}:
                 with SessionLocal() as db:
                     call = db.get(LogicalCall, self.logical_call_id)
@@ -1434,6 +1436,7 @@ class VoiceBridgeManager:
             self.calls[key] = previous
         bridge.task_context = previous
         bridge.human_turns = previous.human
+        bridge.memory_privacy_paused = previous.memory_privacy_paused
         # Native turn generations and original audio provenance share one call epoch.
         bridge.turns.generation = previous.human.generation
 

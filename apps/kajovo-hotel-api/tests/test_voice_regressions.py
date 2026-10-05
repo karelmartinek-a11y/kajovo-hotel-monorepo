@@ -198,7 +198,8 @@ def test_reconnect_restores_original_read_pairs_without_repeating_reads_or_clari
         requests = []
         for index, account in enumerate(['reception', 'operations'][:results]):
             call = {'type': 'function_call', 'name': 'mail_messages_search', 'call_id': 'read-' + str(index), 'arguments': json.dumps({'account': account, 'folder': 'INBOX', 'is_read': False})}
-            bridge.task_context.event({'type': 'response.done', 'response': {'status': 'completed', 'output': [call]}})
+            bridge.task_context.event({'type': 'response.created', 'response': {'id': 'saved-' + str(index)}})
+            bridge.task_context.event({'type': 'response.done', 'response': {'id': 'saved-' + str(index), 'status': 'completed', 'output': [call]}})
             await bridge.result(call)
             requests.append(call)
         await bridge.close()
@@ -290,7 +291,8 @@ def test_reconnect_after_actual_fake_mail_mutation_uses_original_journal(host, m
         bridge.mail_ready, bridge.mail_mcp = True, FakeMCP()
         call = {'type': 'function_call', 'name': 'mail_draft_create', 'call_id': 'original-write',
             'arguments': json.dumps({'account': 'reception', 'text_body': 'Isolated fixture'})}
-        bridge.task_context.event({'type': 'response.done', 'response': {'status': 'completed', 'output': [call]}})
+        bridge.task_context.event({'type': 'response.created', 'response': {'id': 'original-write'}})
+        bridge.task_context.event({'type': 'response.done', 'response': {'id': 'original-write', 'status': 'completed', 'output': [call]}})
         await bridge.result(call)
         from dagmar_server.models import VoiceMailOperation
         with host[1]() as db:
@@ -308,5 +310,38 @@ def test_reconnect_after_actual_fake_mail_mutation_uses_original_journal(host, m
         with host[1]() as db:
             assert db.scalar(select(func.count()).select_from(VoiceMailOperation)) == 1
             assert db.get(VoiceMailOperation, original_id).state == ('uncertain' if unknown else 'completed')
+        await fresh.close()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('disconnect', [False, True])
+def test_forget_clears_task_and_does_not_resume_curation_on_reconnect(host, monkeypatch, disconnect):
+    async def run():
+        first = FakeRealtime('Napiš poznámku: zapomenutelný test.',
+            {'operation': 'note_create', 'title': 'Izolovaný test', 'kind': 'text', 'items': [], 'content': 'Zapomenutelný test'})
+        original = await bridge_for(host, monkeypatch, first, logical_call_id='forgotten-disconnected')
+        await first.user_phrase('create')
+        await wait_for(lambda: len(first.answers) == 1)
+        note_id = first.answers[-1]['note']['id']
+        state = original.task_context
+        if disconnect:
+            await original.close()
+        assert state.groups and not state.memory_privacy_paused
+        deleting = FakeRealtime('Smaž tuto poznámku.', {'operation': 'note_delete', 'id': note_id, 'revision': 1})
+        active = await bridge_for(host, monkeypatch, deleting, logical_call_id='forgetting-other-call')
+        await deleting.user_phrase('delete')
+        await wait_for(lambda: len(deleting.answers) == 1)
+        assert deleting.answers[-1]['code'] == 'ok'
+        assert not state.groups and not state.human.turns and state.memory_privacy_paused
+        if not disconnect:
+            assert original.turns.generation == original.human_turns.generation
+            assert not original.memory_buffer.enabled
+            await original.close()
+        await active.close()
+        replacement = FakeRealtime('', {})
+        fresh = await bridge_for(host, monkeypatch, replacement, logical_call_id='forgotten-disconnected')
+        assert fresh.memory_privacy_paused and not fresh.memory_buffer.enabled
+        assert not fresh.task_context.snapshot() and not fresh.human_turns.intent()
+        assert not any('Zapomenutelný test' in json.dumps(e, ensure_ascii=False) for e in replacement.sent)
         await fresh.close()
     asyncio.run(run())

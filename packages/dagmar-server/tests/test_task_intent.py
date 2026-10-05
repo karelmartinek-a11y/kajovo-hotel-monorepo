@@ -65,7 +65,8 @@ def test_task_context_budget_pairs_and_forget_barrier():
     task = CallTask()
     for i in range(30):
         call = {'type': 'function_call', 'call_id': str(i), 'name': 'test_read', 'arguments': '{}'}
-        task.event({'type': 'response.done', 'response': {'status': 'completed', 'output': [call]}})
+        task.event({'type': 'response.created', 'response': {'id': str(i)}})
+        task.event({'type': 'response.done', 'response': {'id': str(i), 'status': 'completed', 'output': [call]}})
         task.output({'type': 'function_call_output', 'call_id': str(i), 'output': 'fixture ' * 800})
     value = task.snapshot()
     size = measure(json.dumps(value, ensure_ascii=False))
@@ -89,7 +90,8 @@ def test_wait_preserves_task_without_authorizing_a_write():
 
 def test_pending_provider_functions_are_bounded_and_malformed_items_are_ignored():
     task = CallTask()
-    task.event({'type': 'response.done', 'response': {'status': 'completed', 'output': [
+    task.event({'type': 'response.created', 'response': {'id': 'huge-response'}})
+    task.event({'type': 'response.done', 'response': {'id': 'huge-response', 'status': 'completed', 'output': [
         {'type': 'function_call', 'call_id': 'huge', 'name': 'test', 'arguments': 'x' * 25000},
         {'type': 'function_call', 'call_id': 'malformed'}]}})
     assert not task.pending_calls and task.partial
@@ -106,3 +108,30 @@ def test_completed_old_response_cannot_erase_an_interrupted_new_task():
     task.event({'type': 'response.created', 'response': {'id': 'current-answer'}})
     task.event({'type': 'response.done', 'response': {'id': 'current-answer', 'status': 'completed', 'output': []}})
     assert task.answered
+
+
+def test_forget_barrier_ignores_late_or_stale_function_content():
+    task = CallTask()
+    audio(task.human, 'original', 'Napiš poznámku.')
+    old_generation = task.human.generation
+    task.event({'type': 'response.created', 'response': {'id': 'old'}})
+    task.clear()
+    task.human.generation += 1
+    for rid in ('old', 'late-ack'):
+        if rid == 'late-ack':
+            task.event({'type': 'response.created', 'response': {'id': rid}}, generation=old_generation)
+        task.event({'type': 'response.done', 'response': {'id': rid, 'status': 'completed', 'output': [
+            {'type': 'function_call', 'call_id': rid, 'name': 'assistant_memory', 'arguments': 'forgotten content'}]}})
+        task.output({'type': 'function_call_output', 'call_id': rid, 'output': '{"code":"not_sent"}'})
+    assert not task.pending_calls and not task.snapshot()
+
+
+def test_late_transcription_keeps_original_generation_and_does_not_reopen_answered_question():
+    task = CallTask()
+    audio(task.human, 'original', '', transcribe=False)
+    task.event({'type': 'response.created', 'response': {'id': 'answered'}})
+    task.event({'type': 'response.done', 'response': {'id': 'answered', 'status': 'completed', 'output': []}})
+    task.human.event({'type': 'conversation.item.input_audio_transcription.completed', 'item_id': 'original', 'transcript': 'Kolik zpráv?'})
+    task.event({'type': 'conversation.item.input_audio_transcription.completed', 'item_id': 'original'})
+    assert task.answered and task.answered_generation == 1
+    assert 'generation 1' in json.dumps(task.snapshot())

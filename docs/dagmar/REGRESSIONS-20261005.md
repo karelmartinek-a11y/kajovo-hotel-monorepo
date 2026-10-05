@@ -30,6 +30,10 @@ and owned by the authenticated logical call. It restores data, never human conse
 Mutation identities survive provider replacement; sent/uncertain work never gets
 a new write identity. Stop/revocation removes transient content. Backend restart
 cannot recover private RAM content; durable operation journals remain authoritative.
+Forget clears affected disconnected logical tasks and carries the automatic-memory
+privacy pause through reconnect. Late provider functions cannot repopulate forgotten
+content; late transcription keeps its original generation and cannot reopen an
+already answered question. A new logical call starts a fresh lifetime.
 
 ## Acceptance boundaries
 

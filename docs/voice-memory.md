@@ -108,4 +108,6 @@ and complete function/output pairs remain distinct. Restored data cannot create
 voice consent; original mutation identities/journals control recovery. New native
 input can change the task, while interruption alone does not cancel it. Stop, auth
 revocation and forget clear transient content; backend restart cannot restore RAM.
+Forget also clears disconnected logical tasks. Its automatic-memory privacy pause
+survives provider reconnect; a new explicit logical call starts a fresh lifetime.
 See [R1–R3 acceptance boundaries](dagmar/REGRESSIONS-20261005.md).

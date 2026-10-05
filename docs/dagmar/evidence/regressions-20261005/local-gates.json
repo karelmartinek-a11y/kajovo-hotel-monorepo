@@ -1,5 +1,7 @@
 {
-  "baseline_sha": "7ba0aceb260b32511694108c79f6571249bb0c5d",
+  "baseline_sha": "0add2a07deeb7dbfe24b6e7c27f07ea51a636f94",
+  "production_baseline_sha": "7ba0aceb260b32511694108c79f6571249bb0c5d",
+  "generated_at": "2026-10-05T15:56:17.463512+00:00",
   "working_tree_source_hashes": "source-hashes.json",
   "status": "PASS",
   "checks": [
@@ -144,7 +146,7 @@
       "return_code": 0
     }
   ],
-  "api_server_tests": 636,
+  "api_server_tests": 640,
   "provider_calls": 0,
   "physical_audio": false
 }
