@@ -36,9 +36,9 @@ Realtime má jedinou funkci **assistant_memory v1**. Její přesné uzavřené s
 
 Operace: memory_remember/search/read/list/update/forget; note_create/list/read/rename/archive/delete/clear/text_update; note_item_add/update/remove/move; summary_read. Změny mají přesné UUID a očekávanou revision. Hledání více lístků vrací ambiguous a kandidátní hlavičky, bez mutace. Model musí vyžádat upřesnění a při práci s položkami načíst jejich ID. Update paměti posílá úplnou novou subject/content/tags/status/pinned/importance.
 
-MemoryResult obsahuje api_version=1, operation, code, nullable typované memory/note/summary, seznamy memories/notes/summaries, has_more a replayed. Kódy: ok, ambiguous, not_found, revision_conflict, invalid_arguments, unavailable, identity_conflict, sensitive_content_rejected. Model smí potvrdit zápis až po ok.
+MemoryResult obsahuje api_version=1, operation, code, nullable typované memory/note/summary, seznamy memories/notes/summaries, has_more, replayed a volitelný intent_reason. Kódy: ok, ambiguous, not_found, revision_conflict, invalid_arguments, unavailable, identity_conflict, sensitive_content_rejected, profile_protected, human_intent_required, unauthorized. Model smí potvrdit zápis až po ok.
 
-Durable receipt i změna jsou jedna transakce. Unikátní principal/author namespace/host session/provider function call brání dvojímu zápisu. Host session je deterministický hash autentizované session a provider RTC call identity. Jiné argumenty pod stejným call ID jsou identity_conflict. Potvrzené doručení se neposílá znovu; nepotvrzená mutace se nedělá podruhé a výsledek se obnoví z aktuálního owner-scoped záznamu. Obsah smazaného záznamu recovery neobnoví. Function output musí provider potvrdit před response.create. Retry read operace může zopakovat bezpečný lookup.
+Durable receipt i změna jsou jedna transakce. Unikátní principal/author namespace/session/call brání dvojímu zápisu. Explicitní mutace v logickém hovoru používá jeho ID a backendové ID původního audio záměru; výměna provideru ani nové function-call ID nevytvoří druhý zápis. Legacy spojení bez logického hovoru a čtení zachovávají původní RTC/function identitu. Jiné argumenty pod stejnou identitou jsou konflikt. V nové provider session lze doručit původní výsledek bez opakování mutace; výsledek se obnoví z aktuálního owner-scoped záznamu. Obsah smazaného záznamu recovery neobnoví. Function output musí provider potvrdit před response.create. Retry read operace může zopakovat bezpečný lookup.
 
 ## Dokončené tahy a automatická transformace
 
@@ -92,3 +92,20 @@ Fake Realtime provider prokazuje phrase → completed function call → skutečn
 Oficiální kontrakty: [Realtime server events](https://developers.openai.com/api/reference/resources/realtime/server-events), [server controls](https://developers.openai.com/api/docs/guides/realtime-server-controls), [Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs).
 
 Čistý PostgreSQL upgrade vyžaduje stejný VARCHAR(128) pro alembic_version jako současný deploy reconciliation. Ověření odhalilo také tři historické Boolean DEFAULT 0 v migraci 0017; používají nyní portable sa.false(). Již aplikovaná produkční migrace se znovu nespouští.
+
+## Explicit audio intent and provider reconnect
+
+Explicit memory operations use a bounded native-audio intent for their operation and
+target. Polite introductions, related dictated points and an explicit retry preserve
+the original task identity for at most five minutes/eight turns/8000 characters.
+Revocation, a changed task and success close intent. `human_intent_required` is an
+unsent rejection; additive `intent_reason` explains missing/pending audio, untrusted
+context, scope mismatch, revocation or expiry. No generic unavailable claim applies.
+
+Private RAM task context survives provider replacement in the authenticated logical
+call, bounded to 4000 compatible tokens/24000 UTF-8 bytes. Original audio provenance
+and complete function/output pairs remain distinct. Restored data cannot create
+voice consent; original mutation identities/journals control recovery. New native
+input can change the task, while interruption alone does not cancel it. Stop, auth
+revocation and forget clear transient content; backend restart cannot restore RAM.
+See [R1–R3 acceptance boundaries](dagmar/REGRESSIONS-20261005.md).

@@ -1,0 +1,14 @@
+{
+  "snapshot_schema": 2,
+  "calls_read": 8,
+  "records_checksum_verified": 13775,
+  "object_formats": [
+    "B",
+    "E"
+  ],
+  "ciphertext_unchanged": true,
+  "key_restored": true,
+  "live_store_touched": false,
+  "provider_called": false,
+  "mcp_called": false
+}

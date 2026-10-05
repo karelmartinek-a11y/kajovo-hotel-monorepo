@@ -26,7 +26,7 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
             continue
         if deleted:
             bridge.memory_privacy_paused = True
-            bridge.human_turns.turns.clear()
+            bridge.task_context.clear()
             bridge.curated_inputs.clear()
             if bridge.id != keep_bridge_id:
                 bridge.turns.generation += 1

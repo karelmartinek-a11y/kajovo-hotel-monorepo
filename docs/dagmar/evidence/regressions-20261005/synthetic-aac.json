@@ -1,0 +1,58 @@
+{
+  "environment": "isolated synthetic AAC/fMP4, PyAV",
+  "physical_audio": false,
+  "safari_mediarecorder": false,
+  "provider_called": false,
+  "mcp_called": false,
+  "recordings": [
+    {
+      "epoch": 0,
+      "source": "microphone",
+      "chunks": 5,
+      "decoded_samples": 145408,
+      "final_present": true,
+      "missing_init_decode_rejected": true
+    },
+    {
+      "epoch": 0,
+      "source": "remote",
+      "chunks": 5,
+      "decoded_samples": 145408,
+      "final_present": true,
+      "missing_init_decode_rejected": true
+    },
+    {
+      "epoch": 1,
+      "source": "microphone",
+      "chunks": 5,
+      "decoded_samples": 145408,
+      "final_present": true,
+      "missing_init_decode_rejected": true
+    },
+    {
+      "epoch": 1,
+      "source": "remote",
+      "chunks": 5,
+      "decoded_samples": 145408,
+      "final_present": true,
+      "missing_init_decode_rejected": true
+    },
+    {
+      "epoch": 2,
+      "source": "microphone",
+      "chunks": 5,
+      "decoded_samples": 145408,
+      "final_present": true,
+      "missing_init_decode_rejected": true
+    },
+    {
+      "epoch": 2,
+      "source": "remote",
+      "chunks": 5,
+      "decoded_samples": 145408,
+      "final_present": true,
+      "missing_init_decode_rejected": true
+    }
+  ],
+  "all_pairs_atomic": true
+}

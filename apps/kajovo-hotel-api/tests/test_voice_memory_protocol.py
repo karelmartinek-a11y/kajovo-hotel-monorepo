@@ -112,7 +112,7 @@ async def wait_for(predicate):
             await asyncio.sleep(0.01)
 
 
-async def bridge_for(host, monkeypatch, provider, *, token=""):
+async def bridge_for(host, monkeypatch, provider, *, token="", logical_call_id=None):
     client, factory, _ = host
 
     async def no_curation(*args):
@@ -128,6 +128,14 @@ async def bridge_for(host, monkeypatch, provider, *, token=""):
     bridge = voice_smart.VoiceBridge(
         owner, provider.identity, "test-key", token, VoiceCoreConfig(), "gpt-realtime-2.1"
     )
+    if logical_call_id:
+        from dagmar_server.models import LogicalCall
+        with factory() as db:
+            if not db.get(LogicalCall, logical_call_id):
+                db.add(LogicalCall(id=logical_call_id, owner_session_id=owner))
+                db.commit()
+        bridge.logical_call_id = logical_call_id
+        voice_smart.manager.attach_task(bridge, logical_call_id)
     monkeypatch.setattr(voice_smart, "connect", lambda *args, **kwargs: provider)
 
     async def hangup():
@@ -255,6 +263,7 @@ def test_forget_pauses_active_curation_until_a_fresh_session(host, monkeypatch):
             "items": [],
             "content": None,
         }
+        provider.phrase = "Vytvoř poznámku po zapomenutí."
         await provider.user_phrase("explicit-still-works")
         await wait_for(lambda: len(provider.answers) == 3)
         assert provider.answers[2]["code"] == "ok"

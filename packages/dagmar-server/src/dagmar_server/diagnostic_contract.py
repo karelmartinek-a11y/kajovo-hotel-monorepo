@@ -78,7 +78,12 @@ def redact_text(value: str) -> str:
     def url(match):
         from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
-        parts = urlsplit(match.group())
+        try:
+            parts = urlsplit(match.group())
+            # Accessing port also validates malformed authorities.
+            parts.port
+        except (ValueError, UnicodeError):
+            return "[REDACTED_URL]"
         if parts.username or parts.password:
             return "[REDACTED_URL]"
         query = parse_qsl(parts.query, keep_blank_values=True)

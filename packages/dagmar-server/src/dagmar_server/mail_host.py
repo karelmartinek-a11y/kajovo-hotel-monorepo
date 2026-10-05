@@ -216,6 +216,8 @@ class MailHost:
             if not voice_mail.TOOLS[name]["annotations"]["readOnlyHint"]:
                 self.assert_current_operation()
                 rid = self.mail_claim(name, args, cid)
+                if hasattr(self, 'remember_operation_identity'):
+                    self.remember_operation_identity(rid)
                 if "idempotency_key" in voice_mail.TOOLS[name]["inputSchema"]["properties"]:
                     args["idempotency_key"] = rid
             if name == "mail_send_confirmed":

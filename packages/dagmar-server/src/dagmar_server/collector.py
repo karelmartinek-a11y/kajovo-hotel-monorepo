@@ -75,6 +75,20 @@ class Collector:
             self.put((value, None, None), delta=True)
 
     def emit(self, event, *, direction="received"):
+        """Diagnostics cannot own transport, tool delivery or operation lifetime."""
+        if self.ending:
+            return
+        before = self.sequence
+        try:
+            self._emit(event, direction=direction)
+        except Exception:
+            # No repr, raw event fallback or recursive diagnostic emission.
+            if self.sequence == before:
+                self.sequence += 1
+            self.missing += self.sequence - before
+            self.failure = "diagnostic_ingress_failed"
+
+    def _emit(self, event, *, direction="received"):
         if self.ending:
             return
         self.sequence += 1
@@ -150,7 +164,12 @@ class Collector:
             return
         self.flush_delta()
         # Epoch/capture authorization is frozen NOW, never looked up by a delayed worker.
-        content = self.capture(value, event)
+        try:
+            content = self.capture(value, event)
+        except Exception:
+            content = None
+            self.failure = "diagnostic_capture_failed"
+            value["attributes"]["code"] = self.failure
         usage = None
         if typ in {"response.done", "curator.done"}:
             usage = {**response, "_model": event.get("model", self.model)}
@@ -201,7 +220,8 @@ class Collector:
                 for i in event.get("response", {}).get("output", [])
                 if i.get("call_id")
             )
-        body = json.dumps(redact(event), ensure_ascii=False).encode()
+        redacted = redact(event)
+        body = json.dumps(redacted, ensure_ascii=False).encode()
         if len(body) > 100_000:
             self.failure = "content_size_limit"
             return None
@@ -218,7 +238,7 @@ class Collector:
             **value,
             "segment_id": view["id"],
             "generation": view["generation"],
-            "content": {"boundary_partial": True, "provider": redact(event)},
+            "content": {"boundary_partial": True, "provider": redacted},
         }
         return dict(
             id=value["event_id"] + "_content",
@@ -352,6 +372,7 @@ class Collector:
                 self.missing += max(0, self.sequence - self.stored - self.missing)
             self.task.cancel()
             await asyncio.gather(self.task, return_exceptions=True)
+        self.missing += max(0, self.sequence - self.stored - self.missing)
         # Independent durable metadata final can update a closed call, never content.
         self.final_task = asyncio.create_task(
             asyncio.to_thread(

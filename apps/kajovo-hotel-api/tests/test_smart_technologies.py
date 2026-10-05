@@ -395,8 +395,9 @@ def test_mcp_outage_keeps_ordinary_conversation_enabled(monkeypatch):
         async def lease():
             return
 
-        async def configure(enabled):
+        async def configure(enabled, *, create_response=True):
             configured.append(enabled)
+            assert create_response
 
         async def hangup():
             return

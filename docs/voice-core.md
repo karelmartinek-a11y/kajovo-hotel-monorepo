@@ -100,3 +100,17 @@ Hotel memory, transient transcription/curation and bounded retrieval are defined
 Dagmar uses native Realtime/WebRTC barge-in with one microphone stream, peer and playback path. Playback does not disable input. The former speaker checkbox, microphone tail gate and manual interruption button are removed; mute and Stop remain. Native WebRTC VAD cancels interrupted output and adjusts unheard conversation audio. The backend fences queued tools and continuations by connection/turn/response identity; already sent mutations recover their original request instead of replaying. Exact mail/registry started/completed/drained audio consent remains mandatory. Actual AEC/noise suppression/AGC settings and playback lifecycle are diagnostic evidence, not a claim of measured acoustic success. Physical iPhone acceptance was cancelled by the user on 2026-10-04.
 
 Whole Dagmar orchestration, UI/panels, memory/configuration, journals and public MCP clients are in `packages/dagmar-server` and `packages/dagmar-browser`. Hotel auth, revocation, infrastructure and navigation are host adapters. The standalone `examples/dagmar-host` uses loopback test auth and an injected mock provider; it is not a second production login. Its clean copy-out installs/builds/runs without hotel sources or host node_modules.
+
+## R1–R3 functional repair
+
+Diagnostic redaction/capture errors discard unsafe content and report incomplete
+collection without disrupting provider/tool delivery or repeating operations. The
+browser ignores duplicate ontrack notifications for the same remote track and keeps
+one native WebRTC capture/render path. Native barge-in remains active during output.
+
+Dagmar greets only on the dedicated new-call instruction. Reconnect restores bounded
+task data and accepted results without a greeting or renewed action consent. Normal
+commands use at most Moment/Hotovo for true success; questions are answered directly.
+Wait requests preserve the task and require no wake word to resume. Exact risky/mail
+readback remains mandatory. Synthetic lifecycle tests do not prove acoustic AEC.
+The 2026-10-05 physical R3 acceptance is unavailable; no unmeasured DSP/filter is enabled.

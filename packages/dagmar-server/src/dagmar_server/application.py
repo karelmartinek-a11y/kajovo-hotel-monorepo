@@ -50,6 +50,7 @@ class DagmarApplication:
                 if changed.rowcount != 1:
                     raise HTTPException(404, detail={'code':'call_not_found'})
                 db.commit()
+            self.manager.forget_task(owner, identity)
             return {'closed': True}
         @self.core.post('/sessions/{identity}/playback-ready')
         async def playback_ready(identity: str, request: Request):

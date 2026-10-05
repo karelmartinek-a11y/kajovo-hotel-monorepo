@@ -53,6 +53,31 @@ test('genuine speech interrupts state while input remains enabled; no manual int
   } finally {await h.client.stop();}
 });
 
+test('repeated ontrack renders once and late old-peer tracks cannot revive playback', async () => {
+  const h = host(); await h.client.start();
+  const peer = h.peers[0], remote = {}, track = {};
+  let played = 0;
+  h.audios[0].play = async () => {played++;};
+  const oldCallback = peer.ontrack;
+  oldCallback({streams:[remote],track}); oldCallback({streams:[remote],track});
+  assert.equal(played,1); assert.equal(h.audios.length,1); assert.equal(h.tracks.length,1);
+  assert.equal(h.tracks[0].enabled,true);
+  await h.client.stop();
+  oldCallback({streams:[remote],track:{}});
+  assert.equal(played,1); assert.equal(h.audios[0].srcObject,null);
+});
+
+test('human speech may repeat the assistant word without lexical suppression or input gating', async () => {
+  const h=host(); await h.client.start();
+  h.send({type:'output_audio_buffer.started',response_id:'answer'});
+  h.send({type:'response.output_audio_transcript.done',transcript:'Moment'});
+  h.send({type:'input_audio_buffer.speech_started',item_id:'human'});
+  h.send({type:'conversation.item.input_audio_transcription.completed',item_id:'human',transcript:'Moment'});
+  assert.equal(h.tracks[0].enabled,true); assert.equal(h.client.getSnapshot().state,'user-speaking');
+  assert.equal(h.peers[0].channel.sent.length,0);
+  await h.client.stop();
+});
+
 test('interruption has deterministic transitions and generation done is not playback done', () => {
   assert.deepEqual(capabilityRegistry, []);
   assert.equal(transition('assistant-speaking', {type: 'response.done', response: {status: 'completed'}}), 'assistant-speaking');

@@ -5087,6 +5087,25 @@
             "title": "Has More",
             "type": "boolean"
           },
+          "intent_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "missing_audio",
+                  "transcript_pending",
+                  "untrusted_context",
+                  "scope_mismatch",
+                  "revoked",
+                  "expired"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent Reason"
+          },
           "memories": {
             "items": {
               "$ref": "#/components/schemas/MemoryRead"

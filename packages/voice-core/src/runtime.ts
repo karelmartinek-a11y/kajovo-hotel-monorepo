@@ -20,6 +20,7 @@ export class VoiceRealtimeClient {
   private channel: RTCDataChannel | null = null;
   private stream: MediaStream | null = null;
   private audio: HTMLAudioElement | null = null;
+  private remoteTrack: MediaStreamTrack | null = null;
   private context: AudioContext | null = null;
   private sources: MediaStreamAudioSourceNode[] = [];
   private input: AnalyserNode | null = null;
@@ -128,6 +129,9 @@ export class VoiceRealtimeClient {
     };
     peer.ontrack = event => {
       if (peer !== this.peer) return;
+      // Duplicate notifications must not restart rendering or attach another recorder.
+      if (event.track === this.remoteTrack) return;
+      this.remoteTrack = event.track;
       const output = event.streams[0] ?? new MediaStream([event.track]); audio.srcObject = output;
       this.telemetry.media?.('remote', output);
       this.meters(output);
@@ -287,6 +291,7 @@ export class VoiceRealtimeClient {
     const channel = this.channel; this.channel = null;
     if (channel) {channel.onmessage = null; channel.onerror = null; channel.onclose = null; channel.close();}
     const peer = this.peer; this.peer = null;
+    this.remoteTrack = null;
     if (peer) {peer.ontrack = null; peer.onconnectionstatechange = null; peer.close();}
     if (this.audio) {this.audio.onplay=null;this.audio.onpause=null;this.audio.onended=null;this.audio.onerror = null; this.audio.pause(); this.audio.srcObject = null; this.audio.removeAttribute('src'); this.audio.load(); this.audio = null;}
     this.sources.forEach(source => source.disconnect()); this.sources = []; this.input?.disconnect(); this.output?.disconnect(); this.input = this.output = null;

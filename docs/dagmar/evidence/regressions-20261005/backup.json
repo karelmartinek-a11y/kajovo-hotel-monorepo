@@ -1,0 +1,8 @@
+{
+  "protected_path": "/home/deploy-hotel/kajovo-protected-backups/dagmar-r123-20261005T151217Z",
+  "baseline_sha": "7ba0aceb260b32511694108c79f6571249bb0c5d",
+  "database_bytes": 4647393,
+  "diagnostic_snapshot_bytes": 48762880,
+  "keys_and_environment_separate": true,
+  "live_store_replaced": false
+}

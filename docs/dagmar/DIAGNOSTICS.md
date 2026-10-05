@@ -29,7 +29,8 @@ The host exposes `/api/v1/admin/voice-core/diagnostics/` with current admin auth
 CSRF on writes and no-store. Active ingest is owner-session scoped; authorized admin
 read/export/pin/delete does not grant ownership of someone else's active call.
 
-The separate volume contains SQLite schema version 1 and AES-GCM object files. Its
+The separate volume contains SQLite schema version 2 and AES-GCM object files; v1
+records remain readable. Its
 separate 32-byte base64 content key is read from `/run/secrets/dagmar_diagnostic_key`.
 The key is provisioned outside Git and never included in evidence or exports.
 No diagnostic request is duplicated into the general hotel audit or stdout logger.
@@ -52,6 +53,10 @@ category reassignment of existing objects. Protected incidents are never automat
 evicted. Active calls are not victims. Capacity/logger failures stop affected collection,
 not conversation. Explicit deletion fences generation before removing all objects;
 long-term memory and operation/confirmation journals are separate.
+
+Ingress/redaction failures discard unsafe content, retain safe metadata when possible
+and expose an incomplete producer final. They never interrupt functional tool delivery
+or authorize operation retries. Invalid URLs are replaced before storage/export.
 
 ## Export
 

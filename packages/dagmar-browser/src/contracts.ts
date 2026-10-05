@@ -98,6 +98,7 @@ export type MemoryResult = {
   "api_version"?: 1;
   "code": "ok" | "ambiguous" | "not_found" | "revision_conflict" | "invalid_arguments" | "unavailable" | "identity_conflict" | "sensitive_content_rejected" | "profile_protected" | "human_intent_required" | "unauthorized";
   "has_more"?: boolean;
+  "intent_reason"?: "missing_audio" | "transcript_pending" | "untrusted_context" | "scope_mismatch" | "revoked" | "expired" | null;
   "memories"?: Array<MemoryRead>;
   "memory"?: MemoryRead | null;
   "note"?: NoteRecord | null;
