@@ -50,3 +50,10 @@ Historické `CI Core`, `CI Full` a `CI Release` nemají samostatný aktuální k
 The validate plan includes voice-memory-ui (real API, desktop/tablet/phone, no transcript traces). api-runtime-image additionally verifies voice memory migrations and transactions against PostgreSQL 16.4 with scripts/verify_voice_memory_postgres.py. Existing jobs and deploy dependencies are unchanged.
 
 Voice-registry-ui ověřuje read-only návrh přes skutečné HTTP/auth/DB na desktopu/tabletu/telefonu s izolovaným provider portem. API testy zahrnují hlasové potvrzení a obnovu; PostgreSQL runtime kontrola ověřuje také migraci 0043 a transakční rezervaci registry zápisu. Placená registry přejímka běží samostatně mimo CI.
+
+Voice lifecycle replaces diagnostics UI validation. Historical archive E/M/B/J
+reader runs offline in the release plan; AAC recorder/load gates are removed with
+the runtime recorder. Whole Dagmar copy-out cleans inherited Python module paths
+before installation and uses the same FastAPI 0.115.14 as the production image for
+canonical OpenAPI. API and Dagmar manifests pin this existing runtime version;
+this is not a runtime dependency upgrade.

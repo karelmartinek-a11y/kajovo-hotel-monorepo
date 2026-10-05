@@ -1,6 +1,5 @@
 import base64
 import binascii
-import logging
 import os
 
 from cryptography.exceptions import InvalidTag
@@ -13,13 +12,7 @@ from voice_core_server import VoiceCoreConfig, VoiceError
 from .ports import get_settings
 from .models import VoiceCoreSettings
 
-logger = logging.getLogger("dagmar.voice")
 AAD = b"voice-core:openai-api-key:v1"
-
-
-class VoiceTelemetry:
-    def emit(self, event: str, attributes: dict[str, str | int | float]) -> None:
-        logger.info(event, extra={"context": attributes})
 
 
 def master_key() -> bytes:

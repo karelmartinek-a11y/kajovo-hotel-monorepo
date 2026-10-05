@@ -16,7 +16,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from dagmar_server.application import DagmarApplication, BoundContext
-from dagmar_server.diagnostics import Diagnostics, DiagnosticError
 from dagmar_server.migrations import upgrade
 from dagmar_server.ports import RuntimePorts
 from dagmar_server.settings import DagmarSettings
@@ -77,14 +76,11 @@ def request_identity(request):return identity(request.headers.get('x-test-admin'
 mock=MockProvider() if os.environ.get('DAGMAR_MOCK_PROVIDER','1')=='1' else None
 ports=RuntimePorts(factory,settings,identity,request_identity=request_identity,
     provider_http=mock.http if mock else None,provider_socket=mock.socket if mock else None)
-product=DagmarApplication(ports,Diagnostics(root/'diagnostics',base64.b64encode(bytes.fromhex('cd'*32)).decode(),release='standalone-test'))
+product=DagmarApplication(ports)
 app=FastAPI(title='Dagmar test host')
 app.add_middleware(BoundContext,ports=product.ports)
 app.include_router(product.core,prefix='/dagmar')
 app.include_router(product.memory,prefix='/dagmar-memory')
-@app.exception_handler(DiagnosticError)
-async def diagnostic_error(request,exc):
-    return JSONResponse(status_code=exc.status,content={'detail':{'code':exc.code}},headers={'Cache-Control':'no-store'})
 @app.middleware('http')
 async def test_security(request:Request,call_next):
     if request.method not in {'GET','HEAD','OPTIONS'} and request.headers.get('x-test-csrf')!='dagmar-test-only':

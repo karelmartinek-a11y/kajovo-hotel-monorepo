@@ -1,10 +1,9 @@
 import json
-import time
 from typing import Protocol
 
 import httpx
 
-from .contracts import MODELS, VoiceCoreConfig, VoiceError, VoiceTelemetrySink
+from .contracts import MODELS, VoiceCoreConfig, VoiceError
 from .policy import session_config
 
 MODEL_UNAVAILABLE_CODES = {"model_not_found", "model_not_available", "unsupported_model"}
@@ -15,13 +14,11 @@ class RealtimeSessionProvider(Protocol):
 
 
 class RealtimeSessionClient:
-    def __init__(self, telemetry: VoiceTelemetrySink, transport: httpx.AsyncBaseTransport | None = None):
-        self.telemetry = telemetry
+    def __init__(self, transport: httpx.AsyncBaseTransport | None = None):
         self.transport = transport
 
     async def create(self, sdp: str, config: VoiceCoreConfig, api_key: str) -> tuple[str, str]:
         models = (config.manual_model,) if config.model_mode == "manual" else MODELS
-        started = time.monotonic()
         async with httpx.AsyncClient(timeout=25, transport=self.transport) as client:
             for model in models:
                 try:
@@ -36,9 +33,6 @@ class RealtimeSessionClient:
                 if response.is_success:
                     if not response.text.startswith("v=0"):
                         raise VoiceError("session_creation_failed")
-                    self.telemetry.emit("session.created", {"model": model, "voice": config.voice,
-                        "language_mode": config.language_mode, "response_length": config.response_length,
-                        "latency_ms": round((time.monotonic() - started) * 1000)})
                     return response.text, model
                 try:
                     error = response.json().get("error", {})
@@ -47,7 +41,6 @@ class RealtimeSessionClient:
                     code = None
                 if isinstance(code, str) and code in MODEL_UNAVAILABLE_CODES:
                     if config.model_mode == "automatic":
-                        self.telemetry.emit("model.fallback", {"model": model})
                         continue
                     raise VoiceError("model_unavailable")
                 if response.status_code == 401:

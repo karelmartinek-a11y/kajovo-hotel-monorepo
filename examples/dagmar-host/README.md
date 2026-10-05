@@ -2,7 +2,7 @@
 
 Copy `packages/{voice-core,voice-core-server,dagmar-browser,dagmar-server}` and this
 host into a clean directory. The complete executable proof is
-`python3.11 scripts/verify_dagmar_diagnostics_copy_out.py`; it creates a separate
+`python3.11 scripts/verify_dagmar_copy_out.py`; it creates a separate
 venv/node_modules and never copies hotel sources. Keep a workspace manifest listing
 `packages/*` and `examples/dagmar-host`.
 

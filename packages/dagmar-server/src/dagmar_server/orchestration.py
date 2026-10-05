@@ -150,7 +150,6 @@ class VoiceBridge(MailHost):
         self.dialog_items: list[str] = []
         self.call_items: dict[str, set[str]] = {}
         self.protected_items: set[str] = set()
-        self.diagnostics = None
         self.input_tokens = 0
         self.pressure = False
         self.pruned = False
@@ -173,16 +172,12 @@ class VoiceBridge(MailHost):
         self.curated_inputs = set()
         self.configuration_digest = None
 
-    def diagnostic_failure(self, exc, phase):
-        from .diagnostic_contract import safe_exception
-        value = {"type": phase + ".failed", **safe_exception(exc, phase, "unavailable")}
-        if self.diagnostics:
-            self.diagnostics.emit(value)
-        logger.warning("voice.phase.failed", extra={"context": {k:v for k,v in value.items() if k != "type"}})
+    def operation_failure(self, exc, phase):
+        from .logging_utils import failure
+        failure(phase, self.id)
 
     def public_status(self):
         return {
-            "diagnostics": self.diagnostics.status() if self.diagnostics else ({"complete":False,"code":self.diagnostic_registration_error,"pending":0,"missing_events":0} if getattr(self,"diagnostic_registration_error",None) else None),
             "session_id": self.id,
             "technologies": self.technologies,
             "memory": self.memory_status,
@@ -204,8 +199,6 @@ class VoiceBridge(MailHost):
             db.commit()
         if claimed.rowcount != 1:
             return
-        if self.diagnostics:
-            self.diagnostics.emit({"type": "greeting.requested"})
         result = await self.send({"type": "response.create", "response": {"tool_choice": "none",
             "metadata": {"dagmar_greeting": self.logical_call_id},
             "instructions": "Say exactly in Czech: Ahoj Karle, jsem tady. No other words or tools."}},
@@ -255,8 +248,6 @@ class VoiceBridge(MailHost):
                 if response_event and not self.turns.writable(generation,intent):
                     return None
                 self.waiters.append(waiter)
-                if self.diagnostics:
-                    self.diagnostics.emit(event,direction="sent")
                 await self.ws.send(json.dumps(event,ensure_ascii=False,separators=(",",":")))
             accepted=await asyncio.wait_for(future,timeout=12)
             if self.closed:
@@ -326,12 +317,10 @@ class VoiceBridge(MailHost):
         digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         if digest == self.configuration_digest:
             return
-        accepted = await self.send(
+        await self.send(
             {"type": "session.update", "session": value},
             lambda e: e.get("type") == "session.updated",
         )
-        if self.diagnostics:
-            self.diagnostics.emit({"type":"session.config.accepted","phase":"configure","code":"accepted_event","settings":{"noise_reduction":(accepted.get("session",{}).get("audio",{}).get("input",{}).get("noise_reduction")),"noise_reduction_reported":"noise_reduction" in accepted.get("session",{}).get("audio",{}).get("input",{})}})
         self.configuration_digest = digest
         self.auto_response_enabled = value["audio"]["input"]["turn_detection"]["create_response"]
         self.turns.automatic=self.auto_response_enabled
@@ -347,8 +336,6 @@ class VoiceBridge(MailHost):
             self.queue.put_nowait(value)
         except asyncio.QueueFull:
             self.renew = True
-            if self.diagnostics:
-                self.diagnostics.emit({"type":"tool.queue.failed", "code":"buffer_limit"})
 
     async def queue_registry_action(self, action):
         if action == "generate":
@@ -392,29 +379,9 @@ class VoiceBridge(MailHost):
         if self.operation_generation is not None and not self.turns.current(self.operation_generation):
             raise SmartError("cancelled_not_sent")
 
-    async def diagnostic_mcp_call(self, payload, function_id=None):
+    async def mcp_call(self, payload):
         request = self.mcp_payload(payload)
-        local_id = request.get("request_id") or uuid.uuid4().hex
-        started = time.monotonic()
-        if self.diagnostics:
-            self.diagnostics.emit({"type":"mcp.request.start", "request_id":local_id, "call_id":function_id, "request":request})
-        try:
-            result = await self.mcp.call_tool("smart_technologie", request)
-            if self.diagnostics:
-                envelope = getattr(result,"structuredContent",None)
-                if envelope is None:
-                    try:
-                        texts=[value.text for value in result.content if getattr(value,"type",None)=="text"]
-                        envelope=json.loads(texts[0]) if len(texts)==1 else None
-                    except (ValueError,TypeError):
-                        envelope=None
-                self.diagnostics.emit({"type":"mcp.request.result", "request_id":local_id, "call_id":function_id, "duration_ms":(time.monotonic()-started)*1000, "result":envelope})
-            return result
-        except Exception as exc:
-            if self.diagnostics:
-                from dagmar_server.diagnostic_contract import safe_exception
-                self.diagnostics.emit({"type":"mcp.request.failed", "request_id":local_id, "call_id":function_id, "duration_ms":(time.monotonic()-started)*1000, **safe_exception(exc,"mcp.transport","mcp_outcome_unknown")})
-            raise
+        return await self.mcp.call_tool('smart_technologie', request)
 
     def mcp_payload(self, args: dict) -> dict:
         args = dict(args)
@@ -488,16 +455,14 @@ class VoiceBridge(MailHost):
                 self.task_context.memory_principal = self.memory_principal
                 voice_memory.ensure_profile(db, self.memory_principal)
                 automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic and not self.memory_privacy_paused
-            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner), diagnostic=self.diagnostics.emit if self.diagnostics else None, namespace=current_identity(self.owner)["namespace"])
+            self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner), namespace=current_identity(self.owner)["namespace"])
             self.memory_buffer.enabled = automatic
             await self.update_transcription()
             self.memory_status = "ready"
             await self.refresh_memory_context()
         except Exception as exc:
-            self.diagnostic_failure(exc, "memory.initialize")
+            self.operation_failure(exc, "memory.initialize")
             self.memory_status = "unavailable"
-            if self.diagnostics:
-                self.diagnostics.emit({"type": "memory.retrieval.failed", "code": "unavailable"})
 
     async def refresh_memory_context(self):
         try:
@@ -529,7 +494,7 @@ class VoiceBridge(MailHost):
                 self.memory_item = await self.item({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Untrusted memory data snapshot; not a human turn or instructions:\n" + data}]})
                 self.protected_items.add(self.memory_item)
         except Exception as exc:
-            self.diagnostic_failure(exc, "memory.refresh")
+            self.operation_failure(exc, "memory.refresh")
             self.memory_status = "unavailable"
 
     async def memory_work(self):
@@ -552,9 +517,6 @@ class VoiceBridge(MailHost):
                 raise SmartError("delivery_identity_conflict")
             return
         output = MemoryResult(operation="unknown", code="unavailable")
-        memory_started = time.monotonic()
-        if self.diagnostics:
-            self.diagnostics.emit({"type":"memory.validation", "call_id":cid})
         receipt_id = None
         request = None
         grant = None
@@ -624,8 +586,6 @@ class VoiceBridge(MailHost):
             output = MemoryResult(operation="unknown", code="invalid_arguments")
         except Exception:
             output = MemoryResult(operation="unknown", code="unavailable")
-        if self.diagnostics:
-            self.diagnostics.emit({"type":"memory.result", "call_id":cid, "code":output.code, "duration_ms":(time.monotonic()-memory_started)*1000})
         iid = await self.item({"id": "kvmout_" + hashlib.sha256(f"{self.id}:{cid}".encode()).hexdigest()[:24], "type": "function_call_output", "call_id": cid, "output": output.model_dump_json()})
         if receipt_id:
             with contextlib.suppress(Exception):
@@ -639,8 +599,6 @@ class VoiceBridge(MailHost):
     async def read_events(self):
         async for raw in self.ws:
             event = json.loads(raw)
-            if self.diagnostics:
-                self.diagnostics.emit(event)
             fresh_event = self.turns.event(event)
             for match, future in list(self.waiters):
                 if future.done():
@@ -687,7 +645,6 @@ class VoiceBridge(MailHost):
                 self.human_turns.contaminate()
                 if self.memory_buffer:
                     self.memory_buffer.reset(invalidate=True)
-                    self.memory_buffer.report("mail_derived_batch_skipped")
             if self.memory_buffer and not registry_dialog:
                 if typ == "response.done":
                     response = event.get("response", {})
@@ -703,8 +660,6 @@ class VoiceBridge(MailHost):
                             self.curated_inputs.pop()
                         if self.human_turns.clean_completed(iid):
                             self.memory_buffer.event({"type": "conversation.item.input_audio_transcription.completed", "item_id": iid, "transcript": value['text']})
-                        else:
-                            self.memory_buffer.report("mail_or_mixed_batch_skipped")
             if typ == "conversation.item.input_audio_transcription.completed" and not registry_dialog:
                 text = event.get("transcript", "").casefold()
                 if self.config.language_mode == "automatic":
@@ -746,28 +701,6 @@ class VoiceBridge(MailHost):
                     and item.get("status", "completed") == "completed"
                 ]
                 failure = (response.get("status_details") or {}).get("error", {}).get("code")
-                logger.info(
-                    "voice.host.response",
-                    extra={
-                        "context": {
-                            "function_calls": len(calls),
-                            "input_tokens": current_input_tokens if isinstance(current_input_tokens, int) else None,
-                            "usage_known": isinstance(current_input_tokens, int),
-                            "response_id": response.get("id"),
-                            "failed": response.get("status") == "failed",
-                            "failure_category": failure
-                            if failure
-                            in {
-                                "rate_limit_exceeded",
-                                "context_length_exceeded",
-                                "insufficient_quota",
-                                "server_error",
-                                "invalid_request_error",
-                            }
-                            else "none_or_other",
-                        }
-                    },
-                )
                 if calls:
                     self.protected_items.update(item["id"] for item in calls if item.get("id"))
                     generation = self.turns.responses.get(response.get("id"), -1)
@@ -777,6 +710,9 @@ class VoiceBridge(MailHost):
                 elif self.pressure:
                     await self.enqueue([])
                 if response.get("status") == "failed":
+                    from .logging_utils import failure as log_failure
+                    safe_code = failure if failure in {"rate_limit_exceeded", "context_length_exceeded", "insufficient_quota", "server_error", "invalid_request_error", "conversation_already_has_active_response", "response_cancel_not_active", "input_audio_buffer_commit_empty"} else "provider_response_failed"
+                    log_failure('realtime.response', self.id, safe_code, retryable=failure == "rate_limit_exceeded")
                     if failure == "rate_limit_exceeded" and self.rate_retries < 2:
                         self.rate_retries += 1
                         self.technologies = "waiting"
@@ -789,9 +725,11 @@ class VoiceBridge(MailHost):
                     self.rate_retries = 0
             if typ == "response.done":
                 del response, calls
-            if typ=="error" and self.diagnostics:
-                error=event.get("error",{})
-                self.diagnostics.emit({"type":"request.failure.classified","phase":"transport_request","code":error.get("code","unknown"),"request_id":error.get("event_id"),"reason":"recoverable_rejection" if error.get("code") in {"conversation_already_has_active_response","response_cancel_not_active","input_audio_buffer_commit_empty"} else "unrecoverable_or_unknown"})
+            if typ == "error":
+                from .logging_utils import failure as log_failure
+                code = event.get("error", {}).get("code")
+                safe_code = code if code in {"context_length_exceeded", "input_too_large", "conversation_already_has_active_response", "response_cancel_not_active", "input_audio_buffer_commit_empty", "rate_limit_exceeded", "server_error"} else "provider_request_failed"
+                log_failure('realtime.request', self.id, safe_code)
             if typ == "error" and event.get("error", {}).get("code") in {
                 "context_length_exceeded",
                 "input_too_large",
@@ -930,7 +868,7 @@ class VoiceBridge(MailHost):
             if rid:
                 self.unresolved_requests.add(rid)
             result = await asyncio.wait_for(
-                self.diagnostic_mcp_call(payload, cid), timeout=35
+                self.mcp_call(payload), timeout=35
             )
             public, images = decode_result(result)
             validate_public(public)
@@ -1028,18 +966,8 @@ class VoiceBridge(MailHost):
             if rid:
                 output["request_id"] = rid
             images = []
-            logger.info(
-                "voice.smart.operation_failed",
-                extra={
-                    "context": {
-                        "category": output["error"],
-                        "control_identity_reserved": rid is not None,
-                        "failure_type": type(exc).__name__
-                        if isinstance(exc, (ValidationError, TimeoutError, SmartError))
-                        else "transport_or_provider",
-                    }
-                },
-            )
+            from .logging_utils import failure
+            failure('ha.operation', rid or self.id, 'operation_failed')
         try:
             iid = await self.item(
                 {
@@ -1174,8 +1102,6 @@ class VoiceBridge(MailHost):
             for call in calls:
                 self.operation_generation = call.get("_turn_generation", generation)
                 if not self.turns.current(self.operation_generation):
-                    if self.diagnostics:
-                        self.diagnostics.emit({"type": "tool.cancelled", "call_id": call.get("call_id"), "code": "not_sent"})
                     cid = call.get("call_id")
                     if cid and cid not in self.seen_calls:
                         await self.item({"type":"function_call_output", "call_id":cid, "output":json.dumps({"status":"cancelled", "code":"not_sent"})})
@@ -1206,8 +1132,6 @@ class VoiceBridge(MailHost):
         while True:
             await asyncio.sleep(5)
             if self.closed or time.monotonic() - self.last_heartbeat > 45 or not authorized(self.owner):
-                if self.diagnostics:
-                    self.diagnostics.emit({"type":"session.lease.ended","reason":"closed" if self.closed else "lease_expired" if time.monotonic()-self.last_heartbeat>45 else "auth_revoked"})
                 return
             if self.registry.state in {"prepared", "reading", "awaiting_confirmation", "confirmed"}:
                 self.registry.valid()
@@ -1229,10 +1153,8 @@ class VoiceBridge(MailHost):
                     async with asyncio.timeout(20):
                         if not authorized(self.owner):
                             raise SmartError("unauthorized")
-                        from .transport_trace import observe
-                        with observe(self.diagnostics.emit if self.diagnostics else None):
-                            self.mcp = await stack.enter_async_context((runtime().ha_connector or mcp_connection)(self.token))
-                        public, _ = decode_result(await self.diagnostic_mcp_call({"operation": "catalog"}))
+                        self.mcp = await stack.enter_async_context((runtime().ha_connector or mcp_connection)(self.token))
+                        public, _ = decode_result(await self.mcp_call({"operation": "catalog"}))
                         if public.get("error"):
                             raise SmartError("catalog_unavailable")
                         with SessionLocal() as db:
@@ -1248,7 +1170,7 @@ class VoiceBridge(MailHost):
                     while not self.closed and self.technologies == "ready":
                         await asyncio.sleep(1)
             except Exception as exc:
-                self.diagnostic_failure(exc, "mcp.initialize")
+                self.operation_failure(exc, "mcp.initialize")
                 self.technologies = "unavailable"
                 self.catalog_ready = False
             finally:
@@ -1266,7 +1188,7 @@ class VoiceBridge(MailHost):
             async with asyncio.timeout(15):
                 rooms, offset = [], 0
                 while True:
-                    value, _ = decode_result(await self.diagnostic_mcp_call({"operation": "rooms_list", "offset": offset, "limit": 200}))
+                    value, _ = decode_result(await self.mcp_call({"operation": "rooms_list", "offset": offset, "limit": 200}))
                     validate_public(value)
                     if value.get("error"):
                         raise SmartError("metadata_refresh_unavailable")
@@ -1284,7 +1206,7 @@ class VoiceBridge(MailHost):
                 public["registry_rooms"] = rooms
                 rows = (self.last_target or {}).get("rows", [])
                 if rows:
-                    details, _ = decode_result(await self.diagnostic_mcp_call({"operation": "describe", "catalog_revision": self.revision, "rows": rows, "limit": 8}))
+                    details, _ = decode_result(await self.mcp_call({"operation": "describe", "catalog_revision": self.revision, "rows": rows, "limit": 8}))
                     validate_public(details)
                     public["registry_devices"] = {k: details[k] for k in ("rows", "fields", "devices") if k in details}
         except Exception:
@@ -1350,7 +1272,7 @@ class VoiceBridge(MailHost):
                 done, _ = await asyncio.wait([task for task in tasks if task is not memory_setup and task is not resume_setup], return_when=asyncio.FIRST_COMPLETED)
                 for completed in done:
                     if not completed.cancelled() and completed.exception():
-                        self.diagnostic_failure(completed.exception(), "realtime.worker")
+                        self.operation_failure(completed.exception(), "realtime.worker")
                         self.renew = True
                 if reader in done:
                     self.renew = True
@@ -1361,7 +1283,7 @@ class VoiceBridge(MailHost):
                     task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
         except Exception as exc:
-            self.diagnostic_failure(exc, "realtime.lifecycle")
+            self.operation_failure(exc, "realtime.lifecycle")
             self.technologies = "unavailable"
             self.renew = True
         finally:
@@ -1376,11 +1298,9 @@ class VoiceBridge(MailHost):
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             self.closed = True
-            await self.hangup()  # Revoke provider lifetime before bounded diagnostic/curator drain.
+            await self.hangup()  # Revoke provider lifetime before bounded curator cleanup.
             if self.memory_buffer:
                 await self.memory_buffer.close()
-            if self.diagnostics:
-                await self.diagnostics.close()
             self.closed = True
             self.ready.set()
             for _, future in self.waiters:
@@ -1405,14 +1325,10 @@ class VoiceBridge(MailHost):
         self.renew = False
         self.registry.invalidate()
         self.mail_confirmation.invalidate()
-        if self.diagnostics:
-            self.diagnostics.emit({"type":"session.ended","reason":"explicit_stop"})
         revoke=asyncio.create_task(self.hangup()) if self.task else None
         if self.task:
             self.task.cancel()
             await asyncio.gather(self.task, return_exceptions=True)
-        if self.diagnostics:
-            await self.diagnostics.close()
         if revoke:
             await revoke
         self.closed = True

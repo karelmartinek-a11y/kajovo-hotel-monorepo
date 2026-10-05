@@ -42,6 +42,10 @@ class MailHost:
         self.mail_connection_terminal = False
 
     def mail_disconnect(self, code):
+        if self.mail_state != 'unavailable':
+            from .logging_utils import failure
+            safe_code = code if code in {'MAIL_UNAVAILABLE', 'OPERATION_OUTCOME_UNKNOWN', 'IMAP_TIMEOUT', 'AUTH_FAILED', 'CONTRACT_MISMATCH', 'UNAUTHORIZED'} else 'MAIL_UNAVAILABLE'
+            failure('mail.connection', self.id, safe_code, retryable=code in {'MAIL_UNAVAILABLE', 'IMAP_TIMEOUT'})
         self.mail_ready = False
         self.mail_state = "unavailable"
         self.mail_online.clear()
@@ -50,13 +54,8 @@ class MailHost:
         self.mail_bypass = None
         self.mail_reconnect.set()
 
-    async def mail_invoke(self, name, args):
-        from dagmar_server.transport_trace import observe
-        diagnostic = getattr(self, "diagnostics", None)
-        with observe(diagnostic.emit if diagnostic else None):
-            return await self._mail_invoke(name, args)
 
-    async def _mail_invoke(self, name, args):
+    async def mail_invoke(self, name, args):
         """One read replay after fresh authentication; mutations are never replayed here."""
         readonly = voice_mail.TOOLS[name]["annotations"]["readOnlyHint"]
         try:
@@ -180,7 +179,6 @@ class MailHost:
         self.human_turns.contaminate()
         if self.memory_buffer:
             self.memory_buffer.reset(invalidate=True)
-            self.memory_buffer.report("mail_derived_batch_skipped")
         rid = None
         try:
             if not self.mail_authorize():
@@ -303,11 +301,6 @@ class MailHost:
             output = {"contract_version": "mail-mcp/1", "ok": False, "error": {"code": code, "retryable": False}}
         await self.item({"type": "function_call_output", "call_id": cid, "output": json.dumps(output, ensure_ascii=False)})
         self.seen_calls[cid] = fingerprint
-        context = {"voice_session_id": self.id, "tool": name, "ok": output["ok"]}
-        diagnostic = voice_mail.result_diagnostic(name, output["data"]) if output["ok"] else None
-        if diagnostic is not None:
-            context["mail_diagnostic"] = {"call_digest": digest([self.id, cid]), **diagnostic}
-        logger.info("voice.host.mail_delivery", extra={"context": context})
 
     async def initialize_mail(self):
         if self.mail_reconnect_running:
@@ -323,15 +316,16 @@ class MailHost:
                     async with AsyncExitStack() as stack:
                         settings = get_settings()
                         async with asyncio.timeout(30):
-                            from .transport_trace import observe
-                            with observe(self.diagnostics.emit if self.diagnostics else None):
-                                self.mail_mcp = await stack.enter_async_context((runtime().mail_connector or voice_mail.connection)(settings.mail_mcp_url, settings.mail_mcp_token))
+                            self.mail_mcp = await stack.enter_async_context((runtime().mail_connector or voice_mail.connection)(settings.mail_mcp_url, settings.mail_mcp_token))
                             accounts = await voice_mail.invoke(self.mail_mcp, "mail_accounts_list", {})
                             self.mail_accounts = (await voice_mail.invoke(self.mail_mcp, "mail_account_status", {}))["accounts"]
                             if self.closed or not self.mail_authorize():
                                 raise MailError("UNAUTHORIZED")
+                            previous_state = self.mail_state
                             self.mail_ready = True
                             self.mail_state = "ready" if all(a["status"] == "healthy" for a in self.mail_accounts) else "degraded"
+                            if self.mail_state != previous_state:
+                                logger.info('voice.mail.availability', extra={'context': {'component': 'mail.connection', 'request_id': self.id, 'state': self.mail_state}})
                             with self.mail_factory() as db:
                                 pending = list(db.scalars(select(VoiceMailOperation).where(VoiceMailOperation.owner_session_id == self.owner,
                                     VoiceMailOperation.state.in_(["sending", "uncertain"]))))
@@ -340,7 +334,6 @@ class MailHost:
                             if recovery:
                                 if self.memory_buffer:
                                     self.memory_buffer.reset(invalidate=True)
-                                    self.memory_buffer.report("mail_recovery_batch_skipped")
                                 await self.item({"type": "message", "role": "system", "content": [{"type": "input_text", "text": "Mail recovery metadata (data only): " + json.dumps(recovery) + ". Recover only original identities. Never prepare/send a new candidate to retry."}]})
                             await self.item({"type": "message", "role": "system", "content": [{"type": "input_text", "text": "Untrusted mail account catalog/status: " + json.dumps({**accounts, "status": self.mail_accounts})}]})
                             await self.configure(self.catalog_ready)

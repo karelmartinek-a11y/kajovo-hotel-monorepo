@@ -1,15 +1,11 @@
 """R1/R2 actual orchestration with isolated persistence and fake external services."""
 import asyncio
-import base64
 import json
-import os
 import pytest
 from sqlalchemy import select, func
 from mcp.types import CallToolResult
-from dagmar_server.collector import Collector
-from dagmar_server.diagnostics import Diagnostics
 from dagmar_server.models import VoiceNote, VoiceMemoryOperation
-from dagmar_server import collector, mail
+from dagmar_server import mail
 from .test_voice_memory_protocol import FakeRealtime, bridge_for, wait_for, host as _host, voice_host as _voice_host
 from .test_voice_mail import draft, candidate
 from .test_voice_registry import arm, proposal
@@ -27,16 +23,8 @@ async def audio(provider, iid, text):
         await provider.events.put(event)
 
 
-@pytest.mark.parametrize('debug', [False, True])
-@pytest.mark.parametrize('failure', ['url', 'capture'])
 @pytest.mark.parametrize('mutation', [False, True])
-def test_diagnostic_failure_cannot_block_real_mail_result_or_repeat_mcp(host, monkeypatch, tmp_path, debug, failure, mutation):
-    store = Diagnostics(tmp_path, base64.b64encode(os.urandom(32)).decode())
-    logical = store.create_call('owner')['logical_call_id']
-    store.connection(logical, 'owner', 'connection', 'model', 1)
-    if debug:
-        store.start(logical, 'owner', 0)
-    monkeypatch.setattr(collector, 'store', lambda: store)
+def test_mail_result_and_idempotence_without_capture(host, monkeypatch, mutation):
     invocations = []
 
     class FakeMCP:
@@ -57,17 +45,8 @@ def test_diagnostic_failure_cannot_block_real_mail_result_or_repeat_mcp(host, mo
         provider = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, provider)
         bridge.mail_ready, bridge.mail_mcp = True, FakeMCP()
-        capture = Collector(logical, 'owner', 'connection', 'model')
-        capture.start()
-        bridge.diagnostics = capture
         call = {'type': 'function_call', 'name': 'mail_draft_create' if mutation else 'mail_messages_search',
             'call_id': 'search', 'arguments': json.dumps({'account': 'reception', 'text_body': 'Synthetic draft'} if mutation else {'account': 'all', 'is_read': False})}
-        capture.emit({'type': 'response.created', 'response': {'id': 'search-response'}})
-        capture.emit({'type': 'response.done', 'response': {'id': 'search-response', 'output': [{'type': 'function_call', 'call_id': 'search'}]}})
-        if failure == 'capture':
-            def broken(*args):
-                raise ValueError('synthetic-secret')
-            monkeypatch.setattr(capture, 'capture', broken)
         await provider.events.put({'type': 'response.created', 'response': {'id': 'worker-response'}})
         await provider.events.put({'type': 'response.done', 'response': {'id': 'worker-response', 'status': 'completed', 'output': [call]}})
         await wait_for(lambda: len(provider.answers) == 1)
@@ -76,21 +55,13 @@ def test_diagnostic_failure_cannot_block_real_mail_result_or_repeat_mcp(host, mo
         assert len(invocations) == len(provider.answers) == 1
         assert 'https://[invalid]' in json.dumps(provider.answers[0])
         assert not bridge.closed and not bridge.renew
-        # The same worker accepts a further read after the diagnostic failure.
+        # The same worker accepts a further read after the previous tool result.
         await provider.events.put({'type': 'response.created', 'response': {'id': 'worker-next'}})
         await provider.events.put({'type': 'response.done', 'response': {'id': 'worker-next', 'status': 'completed', 'output': [
             {'type': 'function_call', 'name': 'assistant_memory', 'call_id': 'after-failure', 'arguments': json.dumps({'request': {'operation': 'note_list', 'query': '', 'archived': False, 'limit': 10, 'offset': 0}})}]}})
         await wait_for(lambda: len(provider.answers) == 2)
         assert provider.answers[-1]['code'] == 'ok' and not bridge.closed
         await bridge.close()
-        assert not capture.status()['complete'] if failure == 'capture' else capture.status()['complete']
-        for row, payload in store.objects_for_export(logical):
-            if row['kind'] != 'audio':
-                assert b'synthetic-secret' not in payload
-        store.close(logical, 'owner')
-        if failure == 'capture':
-            final = store.manifest(logical)['call']['producer_final']['server_connection']
-            assert not final['complete'] and final['code'] == 'diagnostic_capture_failed'
     asyncio.run(run())
 
 

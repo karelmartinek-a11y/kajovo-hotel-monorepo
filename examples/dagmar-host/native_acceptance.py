@@ -30,7 +30,6 @@ from dagmar_server.models import LogicalCall, VoiceMemorySettings
 from dagmar_server.migrations import upgrade, SHARED_ID
 from dagmar_server.ports import RuntimePorts
 from dagmar_server.settings import DagmarSettings
-from dagmar_server.diagnostics import Diagnostics
 from dagmar_server.paid_budget import PaidBudget
 from dagmar_server.pricing import SNAPSHOT
 from dagmar_server.token_budget import measure
@@ -147,7 +146,7 @@ async def socket(*args, **kwargs):
 settings=DagmarSettings(voice_master_key=base64.b64encode(os.urandom(32)).decode(),ha_mcp_token='isolated-public-contract')
 def identity(owner):
     return {'session_id':'native-test','namespace':'native-test','email':'native@example.invalid','voice_authorized':True} if owner=='native-test' else None
-product=DagmarApplication(RuntimePorts(factory,settings,identity,request_identity=lambda request:identity('native-test'),provider_socket=socket,ha_connector=ha),Diagnostics(root/'diagnostics',base64.b64encode(os.urandom(32)).decode(),release='native-local-test'))
+product=DagmarApplication(RuntimePorts(factory,settings,identity,request_identity=lambda request:identity('native-test'),provider_socket=socket,ha_connector=ha))
 app=FastAPI()
 app.add_middleware(BoundContext,ports=product.ports)
 

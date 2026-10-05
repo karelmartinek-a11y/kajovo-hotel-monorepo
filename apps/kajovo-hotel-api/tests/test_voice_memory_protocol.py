@@ -640,23 +640,18 @@ def test_greeting_fast_lifecycle_once_and_early_human_priority(host, monkeypatch
     asyncio.run(scenario())
 
 
-def test_missing_response_usage_after_known_response_is_not_zero_or_reused(host, monkeypatch):
-    # Other host tests reconfigure logging; capture the emitted metadata independently.
-    rows = {}
-    def capture(message, *, extra):
-        if message == "voice.host.response":
-            rows[extra["context"]["response_id"]] = extra["context"]
-    monkeypatch.setattr(voice_smart.logger, "info", capture)
+def test_missing_response_usage_does_not_reuse_previous_pressure_or_log_response(host, monkeypatch):
+    logs=[]
+    monkeypatch.setattr(voice_smart.logger, "info", lambda message, **kwargs: logs.append(message))
     async def scenario():
         provider=FakeRealtime('',{})
         bridge=await bridge_for(host,monkeypatch,provider)
         for rid,usage in [('known-response',{'input_tokens':123,'output_tokens':0,'total_tokens':123}),('unknown-response',None)]:
             await provider.events.put({'type':'response.created','response':{'id':rid}})
             await provider.events.put({'type':'response.done','response':{'id':rid,'status':'completed','output':[],**({'usage':usage} if usage is not None else {})}})
-        await wait_for(lambda: 'unknown-response' in rows)
-        assert rows['known-response']['input_tokens']==123
-        assert rows['unknown-response']['input_tokens'] is None
-        assert rows['unknown-response']['usage_known'] is False
+        await wait_for(lambda: 'unknown-response' in bridge.turns.responses and provider.events.empty())
+        assert bridge.input_tokens == 0 and not bridge.pressure
+        assert 'voice.host.response' not in logs
         await bridge.close()
     asyncio.run(scenario())
 

@@ -25,7 +25,6 @@ from app.api.routes.profile import router as profile_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
-from dagmar_server.diagnostics import DiagnosticError
 from app.config import get_settings
 from app.db.session import SessionLocal, initialize_database
 from app.observability import RequestContextMiddleware, configure_logging
@@ -68,10 +67,6 @@ def create_app() -> FastAPI:
     app.state.dagmar = dagmar
     app.add_middleware(BoundContext, ports=dagmar.ports)
     app.add_middleware(RequestContextMiddleware)
-
-    @app.exception_handler(DiagnosticError)
-    async def diagnostic_error(request: Request, exc: DiagnosticError):
-        return JSONResponse(status_code=exc.status, content={"detail": {"code": exc.code}}, headers={"Cache-Control":"no-store"})
 
     @app.exception_handler(RequestValidationError)
     async def safe_validation_error(request: Request, exc: RequestValidationError):

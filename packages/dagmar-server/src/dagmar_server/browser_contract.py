@@ -10,7 +10,7 @@ from .settings import DagmarSettings
 ROOT_TYPES = {'MemoryRead','MemoryRequest','MemoryResult','NoteRecord','SettingsRead','SummaryRecord','RegistryView','MailView'}
 
 def schema():
-    product = DagmarApplication(RuntimePorts(None,DagmarSettings(),lambda owner:None),None)
+    product = DagmarApplication(RuntimePorts(None,DagmarSettings(),lambda owner:None))
     app = FastAPI(title='Dagmar portable contract',version='1')
     app.include_router(product.core,prefix='/voice')
     app.include_router(product.memory,prefix='/memory')

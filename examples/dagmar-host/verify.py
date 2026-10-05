@@ -41,8 +41,6 @@ with tempfile.TemporaryDirectory() as directory:
             assert exc.code==401
         request('/dagmar/api-key','PUT',{'api_key':'test-only-mock-key'})
         call=request('/dagmar/calls','POST')['logical_call_id']
-        segment=request('/dagmar/diagnostics/calls/'+call+'/segments','POST',{'capture_ms':0})
-        assert segment['generation']==1
         session=request('/dagmar/sessions','POST',{'sdp':'v=0\r\ntest-offer','revision':1,'logical_call_id':call})
         sid=session['session_id']
         request('/dagmar/sessions/'+sid+'/playback-ready','POST')
@@ -54,10 +52,7 @@ with tempfile.TemporaryDirectory() as directory:
         assert request('/dagmar-memory/notes',owner='test-admin-b')['notes'][0]['id']==note['note']['id']
         request('/dagmar/sessions/'+sid,'DELETE')
         request('/dagmar/calls/'+call+'/close','POST')
-        request('/dagmar/diagnostics/calls/'+call+'/close','POST')
-        manifest=request('/dagmar/diagnostics/calls/'+call)
-        assert manifest['call']['release']=='standalone-test'
-        print('standalone own DB/auth/shared memory/mock native-provider protocol/diagnostics PASS')
+        print('standalone own DB/auth/shared memory/mock native-provider protocol/lifecycle PASS')
     finally:
         process.terminate()
         try:

@@ -1,0 +1,38 @@
+{
+  "kind": "synthetic_in_process_metadata_debug_off",
+  "runs": [
+    {
+      "functional_requests": 90,
+      "requests": 132,
+      "log_bytes": 31129,
+      "audit_rows": 90,
+      "sql_write_statements": 703,
+      "cpu_seconds": 0.297,
+      "elapsed_seconds": 0.388,
+      "median_http_ms": 1.72,
+      "p95_http_ms": 8.932
+    },
+    {
+      "functional_requests": 90,
+      "requests": 132,
+      "log_bytes": 31128,
+      "audit_rows": 90,
+      "sql_write_statements": 703,
+      "cpu_seconds": 0.225,
+      "elapsed_seconds": 0.3155,
+      "median_http_ms": 1.567,
+      "p95_http_ms": 7.967
+    },
+    {
+      "functional_requests": 90,
+      "requests": 132,
+      "log_bytes": 31124,
+      "audit_rows": 90,
+      "sql_write_statements": 703,
+      "cpu_seconds": 0.2593,
+      "elapsed_seconds": 0.4635,
+      "median_http_ms": 1.763,
+      "p95_http_ms": 4.618
+    }
+  ]
+}

@@ -1,14 +1,10 @@
 """Isolated public MAIL MCP client. Catalog schemas are the installation contract."""
 import copy
 import json
-import time
-from dagmar_server.transport_trace import observer
-from dagmar_server.diagnostic_contract import uid
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
 
-from .transport_trace import http_hooks
 import httpx
 from jsonschema import Draft202012Validator
 from mcp import ClientSession
@@ -94,23 +90,6 @@ Never store mail content or send dialogs in assistant_memory.
 """
 
 
-def result_diagnostic(name, value):
-    """Allowlisted readiness/page metadata only; never content, refs, cursors or inputs."""
-    if name not in {"mail_account_status", "mail_folders_list", "mail_messages_unread", "mail_messages_search", "mail_thread_get", "mail_drafts_list"}:
-        return None
-    aliases = set(TOOLS["mail_account_status"]["inputSchema"]["properties"]["account"]["enum"]) - {"all"}
-    result = {}
-    if type(value.get("complete")) is bool:
-        result["complete"] = value["complete"]
-    if isinstance(value.get("items"), list):
-        result["returned_messages"] = len(value["items"])
-        result["has_next_page"] = bool(value.get("next_cursor"))
-        result["page_counts_by_account"] = {alias: sum(item.get("account") == alias for item in value["items"] if isinstance(item, dict)) for alias in sorted(aliases)}
-    result["accounts"] = [{
-        "account": account["account"],
-        **{key: account[key] for key in ("index_complete", "available", "index_ready", "imap_connected") if type(account.get(key)) is bool},
-    } for account in value.get("accounts", []) if isinstance(account, dict) and account.get("account") in aliases]
-    return result
 
 
 def validate_input(name, args, *, model=False):
@@ -142,7 +121,7 @@ def decode(name, result):
 async def connection(url, token):
     if url != MCP_URL or not token or any(c.isspace() for c in token):
         raise MailError("MAIL_UNAVAILABLE")
-    async with httpx.AsyncClient(headers={"Authorization": "Bearer " + token}, timeout=75, follow_redirects=False, event_hooks=http_hooks()) as http:
+    async with httpx.AsyncClient(headers={"Authorization": "Bearer " + token}, timeout=75, follow_redirects=False) as http:
         async with streamable_http_client(MCP_URL, http_client=http) as (read, write, _):
             async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=75)) as session:
                 await session.initialize()
@@ -159,29 +138,10 @@ async def connection(url, token):
 async def invoke(session, name, args):
     validate_input(name, args)
     try:
-        started = time.monotonic()
-        local_request_id = uid()
-        callback = observer.get()
-        if callback:
-            callback({"type":"mcp.request.start", "request_id":local_request_id, "item":{"name":name}, "request":args})
         result = await session.call_tool(name, args)
-        envelope = getattr(result, "structuredContent", None)
-        if envelope is None:
-            try:
-                texts = [c.text for c in result.content if getattr(c,"type",None)=="text"]
-                envelope = json.loads(texts[0]) if len(texts)==1 else None
-            except (ValueError, IndexError):
-                envelope = None
-        if callback:
-            callback({"type":"mcp.request.result", "request_id":local_request_id,
-                      "remote_request_id":envelope.get("request_id") if isinstance(envelope,dict) else None,
-                      "duration_ms":(time.monotonic()-started)*1000, "item":{"name":name}, "result":envelope})
         return decode(name, result)
     except MailError:
         raise
-    except Exception as exc:
-        if callback:
-            from dagmar_server.diagnostic_contract import safe_exception
-            callback({"type":"mcp.request.failed", "request_id":local_request_id, "duration_ms":(time.monotonic()-started)*1000, **safe_exception(exc,"mail.transport","mail_outcome_unknown")})
+    except Exception:
         # SDK/protocol exceptions may embed payloads or credentials. Never expose/log them.
         raise MailError("OPERATION_OUTCOME_UNKNOWN" if not TOOLS[name]["annotations"]["readOnlyHint"] else "MAIL_UNAVAILABLE") from None

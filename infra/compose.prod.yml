@@ -1,7 +1,14 @@
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16.4-alpine
     restart: unless-stopped
+    logging: *bounded-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-kajovo_hotel}
       POSTGRES_USER: ${POSTGRES_USER:-kajovo}
@@ -25,14 +32,10 @@ services:
       context: ..
       dockerfile: apps/kajovo-hotel-api/Dockerfile
     restart: unless-stopped
+    logging: *bounded-logging
     volumes:
       - api_data:/app/data
-      - diagnostics_data:/app/diagnostics
-    secrets:
-      - dagmar_diagnostic_key
     environment:
-      KAJOVO_API_VOICE_DIAGNOSTIC_ROOT: /app/diagnostics
-      KAJOVO_API_VOICE_DIAGNOSTIC_KEY_FILE: /run/secrets/dagmar_diagnostic_key
       KAJOVO_API_VOICE_RELEASE_SHA: ${DEPLOY_SOURCE_SHA:-unknown}
       VOICE_MEMORY_CONTEXT_MAX_TOKENS: ${VOICE_MEMORY_CONTEXT_MAX_TOKENS:-2000}
       KAJOVO_API_VOICE_MEMORY_CURATOR_MODEL: ${KAJOVO_API_VOICE_MEMORY_CURATOR_MODEL:-gpt-4.1-mini-2025-04-14}
@@ -77,6 +80,7 @@ services:
       context: ..
       dockerfile: apps/kajovo-hotel-web/Dockerfile
     restart: unless-stopped
+    logging: *bounded-logging
     depends_on:
       api:
         condition: service_healthy
@@ -96,6 +100,7 @@ services:
       context: ..
       dockerfile: apps/kajovo-hotel-admin/Dockerfile
     restart: unless-stopped
+    logging: *bounded-logging
     depends_on:
       api:
         condition: service_healthy
@@ -117,8 +122,3 @@ networks:
 volumes:
   api_data:
   postgres_data:
-  diagnostics_data:
-
-secrets:
-  dagmar_diagnostic_key:
-    file: ${DAGMAR_DIAGNOSTIC_KEY_FILE:-/home/deploy-hotel/dagmar-secrets/diagnostic.key}

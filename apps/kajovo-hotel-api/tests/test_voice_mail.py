@@ -354,7 +354,7 @@ def test_unknown_send_blocks_new_candidate_for_same_draft_after_relogin(host):
         new_session.mail_claim("mail_send_prepare", {"draft_ref": draft()["draft_ref"], "expected_version": 1}, "new-prepare")
 
 
-def test_delivery_diagnostic_contains_metadata_only_after_provider_ack(host, caplog, monkeypatch):
+def test_successful_mail_delivery_has_no_routine_log(host, caplog, monkeypatch):
     import logging
     h, _, _, _ = host
     log = logging.getLogger("dagmar.voice")
@@ -365,8 +365,7 @@ def test_delivery_diagnostic_contains_metadata_only_after_provider_ack(host, cap
     caplog.set_level("INFO", logger="dagmar.voice")
     run(h, "mail_send_prepare", {"draft_ref": draft()["draft_ref"], "expected_version": 1}, "prepare")
     events = [r for r in caplog.records if r.message == "voice.host.mail_delivery"]
-    assert len(events) == 1
-    assert events[0].context == {"voice_session_id": h.id, "tool": "mail_send_prepare", "ok": True}
+    assert events == []
     assert candidate()["confirmation_token"] not in caplog.text and draft()["text_body"] not in caplog.text
 
 
@@ -393,30 +392,11 @@ def test_bypass_rechecks_human_consent_after_network_reload(host, monkeypatch, m
     assert "EXPLICIT_HUMAN_BYPASS_REQUIRED" in str(outputs)
 
 
-@pytest.mark.parametrize("complete,index_complete,available", [(True, True, True), (False, True, False), (False, False, True)])
-def test_mail_read_diagnostic_preserves_distinct_index_connection_and_page_flags(complete, index_complete, available):
-    value = {"complete": complete, "next_cursor": "PRIVATE-CURSOR-CANARY", "items": [
-        {"account": "reception", "message_ref": "PRIVATE-REF-CANARY", "subject": "PRIVATE-SUBJECT-CANARY", "preview": "PRIVATE-BODY-CANARY"}],
-        "accounts": [{"account": "reception", "index_complete": index_complete, "available": available,
-            "last_sync_at": "PRIVATE-SYNC-CANARY", "email": "PRIVATE-EMAIL-CANARY"}]}
-    result = voice_mail.result_diagnostic("mail_messages_unread", value)
-    assert result == {"complete": complete, "returned_messages": 1, "has_next_page": True,
-        "page_counts_by_account": {"operations": 0, "reception": 1},
-        "accounts": [{"account": "reception", "index_complete": index_complete, "available": available}]}
-    assert "PRIVATE-" not in json.dumps(result)
-    assert voice_mail.result_diagnostic("mail_message_get_body", value) is None
-    assert voice_mail.result_diagnostic("mail_send_prepare", value) is None
 
 
-def test_mail_account_diagnostic_excludes_address_and_error_payloads():
-    value = {"accounts": [{"account": "reception", "index_ready": True, "imap_connected": False,
-        "email": "PRIVATE-EMAIL", "error": "PRIVATE-ERROR", "indexed_messages": 99},
-        {"account": "PRIVATE-UNKNOWN", "index_ready": True}]}
-    assert voice_mail.result_diagnostic("mail_account_status", value) == {"accounts": [
-        {"account": "reception", "index_ready": True, "imap_connected": False}]}
 
 
-def test_mail_read_diagnostic_is_logged_only_after_output_ack(host, caplog, monkeypatch):
+def test_mail_read_output_keeps_private_cursor_without_logging(host, caplog, monkeypatch):
     import logging
     h, _, _, _ = host
     log = logging.getLogger("dagmar.voice")
@@ -434,12 +414,8 @@ def test_mail_read_diagnostic_is_logged_only_after_output_ack(host, caplog, monk
     monkeypatch.setattr(h, "item", item)
     run(h, "mail_messages_unread", {"account": "reception", "limit": 1}, "read-call")
     events = [r for r in caplog.records if r.message == "voice.host.mail_delivery"]
-    assert len(events) == 1
-    d = events[0].context["mail_diagnostic"]
-    assert d["complete"] is False and d["accounts"][0]["index_complete"] is True
-    assert d["accounts"][0]["available"] is False and d["has_next_page"] is True
-    assert len(d["call_digest"]) == 64 and "read-call" not in json.dumps(d)
-    assert "PRIVATE-" not in json.dumps(events[0].context)
+    assert events == []
+    assert "PRIVATE-" not in caplog.text
 
 
 @pytest.mark.parametrize('html', ['<p>Cena 10000 Kč</p>', '<p>Cena 100 Kč</p>', '<img src="https://tracker.invalid">'])

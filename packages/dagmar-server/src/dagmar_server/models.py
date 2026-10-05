@@ -298,7 +298,7 @@ class VoiceMemoryDependency(DagmarBase):
 
 
 class LogicalCall(DagmarBase):
-    """Owner-isolated lifecycle and one greeting, independent of diagnostic eviction."""
+    """Owner-isolated lifecycle and one greeting, independent of provider connections."""
     __tablename__ = "dagmar_logical_calls"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)

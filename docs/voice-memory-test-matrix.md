@@ -29,7 +29,7 @@ Běžné testy jsou deterministické a nevolají placené API. Názvy níže odk
 | 23 | injection | M test_prompt_injection_is_only_note_data; P datový user-role context; backend nemá SQL operaci |
 | 24 | no raw DB transcript | M test_curator_completed_turn_summary_privacy_cleanup sentinel; P project |
 | 25 | no transcript log | M stejné + test_sensitive_payloads_never_echo_to_logs_or_audit |
-| 26 | no audio persistence | M test_transient_bounds_duplicate_events_and_audio_ignored; portable telemetry exclusions |
+| 26 | no audio persistence | M test_transient_bounds_duplicate_events_and_audio_ignored; absence of operational capture and content logs |
 | 27 | session summary | M curator; P close paths a project next session |
 | 28 | brief summary | M 600/1200 bounds + sentinel; P dlouhý rozhovor vs stručné continuation |
 | 29 | transient cleanup | M close/reset/bounds; P Stop/timeout/disconnect/shutdown |

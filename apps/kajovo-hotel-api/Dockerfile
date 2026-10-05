@@ -40,7 +40,6 @@ COPY apps/kajovo-hotel-api/alembic.ini /app/alembic.ini
 COPY android/release /app/android/release
 
 RUN useradd --create-home --shell /bin/bash appuser \
-    && mkdir -p /app/diagnostics \
     && chown -R appuser:appuser /app
 
 USER appuser
@@ -50,4 +49,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=5 \
   CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
-CMD ["sh", "-c", "if [ \"${KAJOVO_API_SKIP_MIGRATIONS:-0}\" != \"1\" ]; then alembic upgrade head; fi; uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "if [ \"${KAJOVO_API_SKIP_MIGRATIONS:-0}\" != \"1\" ]; then alembic upgrade head; fi; uvicorn app.main:app --no-access-log --host 0.0.0.0 --port 8000"]

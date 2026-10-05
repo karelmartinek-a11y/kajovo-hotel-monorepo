@@ -98,25 +98,22 @@ def test_late_transcript_is_completed_only_after_matching_native_turn():
     assert turns.ready()==[]
 
 
-def test_http_transport_correlation_is_per_request_and_redirects_do_not_retarget():
+def test_http_redirects_do_not_retarget_concurrent_operation_ids():
     import asyncio
+    import json
     import httpx
-    from dagmar_server.transport_trace import observe, http_hooks
     async def scenario():
-        events=[]
+        operations=[]
         async def transport(request):
             assert request.url.host=='apimail.hcasc.cz'
-            return httpx.Response(307,headers={'location':'https://other.invalid/mcp','x-request-id':'remote-safe'})
-        with observe(events.append):
-            async with httpx.AsyncClient(transport=httpx.MockTransport(transport),event_hooks=http_hooks(),follow_redirects=False) as client:
-                responses=await asyncio.gather(*[client.post('https://apimail.hcasc.cz/mcp',json={'id':index,'params':{'arguments':{'request_id':'operation-'+str(index)}}}) for index in (1,2)])
+            assert request.headers['authorization']=='Bearer isolated-only'
+            operations.append(json.loads(request.content)['params']['arguments']['request_id'])
+            return httpx.Response(307,headers={'location':'https://other.invalid/mcp'})
+        async with httpx.AsyncClient(transport=httpx.MockTransport(transport),follow_redirects=False,
+                headers={'authorization':'Bearer isolated-only'}) as client:
+            responses=await asyncio.gather(*[client.post('https://apimail.hcasc.cz/mcp',json={'id':index,'params':{'arguments':{'request_id':'operation-'+str(index)}}}) for index in (1,2)])
         assert all(r.status_code==307 for r in responses)
-        started=[e for e in events if e['type']=='mcp.http.start']
-        finished=[e for e in events if e['type']=='mcp.http.done']
-        assert len({e['request_id'] for e in started})==2
-        assert {e['function_id'] for e in finished}=={'1','2'}
-        assert {e['operation_id'] for e in finished}=={'operation-1','operation-2'}
-        assert all(e['remote_request_id']=='remote-safe' for e in finished)
+        assert sorted(operations)==['operation-1','operation-2']
     asyncio.run(scenario())
 
 

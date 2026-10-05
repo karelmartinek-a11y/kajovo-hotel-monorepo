@@ -10,6 +10,8 @@ export type VoiceConfigSnapshot = VoiceCoreConfig & {revision: number; configure
 export type RealtimeSessionAnswer = {sdp: string; model: string; session_id?: string | null; managed_functions?: string[]; connection_state?: string; technologies?: string};
 export type RealtimeSessionStatus = {connection_state?: string; technologies: string; renew: boolean; closed: boolean};
 export interface RealtimeSessionProvider {
+  beginCall?(): void;
+  endCall?(): Promise<void>;
   create(sdp: string, signal: AbortSignal): Promise<RealtimeSessionAnswer>;
   heartbeat?(sessionId: string, signal: AbortSignal): Promise<RealtimeSessionStatus>;
   close?(sessionId: string): Promise<void>;
@@ -26,7 +28,6 @@ export interface VoiceSecretStore {
   save(key: string): Promise<VoiceConfigSnapshot>; delete(): Promise<VoiceConfigSnapshot>;
 }
 export interface VoiceAuthProvider { authorized(): Promise<boolean> }
-export interface VoiceTelemetrySink { emit(event: string, attributes: Record<string, unknown>): void; media?(source: 'microphone' | 'remote', stream: MediaStream): void; provider?(event: Record<string, unknown>): void; startCall?(): Promise<void>; prepareStop?(): void; finishCall?(): Promise<void> }
 export interface CapabilityContract {name: string; inputSchema: Record<string, unknown>; outputSchema: Record<string, unknown>}
 export interface CapabilityProvider {contracts(): readonly CapabilityContract[]}
 export const capabilityRegistry: readonly CapabilityContract[] = Object.freeze([]);

@@ -190,6 +190,18 @@ SQL
     psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "$sql"
 }
 
+verify_host_log_retention() {
+  local template="$ROOT_DIR/infra/ops/logrotate-hotelapp.conf"
+  local destination="/etc/logrotate.d/kajovo-hotelapp"
+  if [[ "$(id -u)" -eq 0 ]]; then
+    install -D -m 0644 "$template" "$destination"
+  fi
+  if ! cmp -s "$template" "$destination"; then
+    echo "Host log retention is missing or differs; provision the repository logrotate template with existing host administration access." >&2
+    exit 1
+  fi
+}
+
 sync_host_nginx_config() {
   if [[ ! -f "$HOST_NGINX_TEMPLATE" ]]; then
     echo "Chybi host-level Nginx sablona: $HOST_NGINX_TEMPLATE" >&2
@@ -450,6 +462,7 @@ fi
 
 compose_cmd up -d --force-recreate api web admin
 prepare_api_media_volume
+verify_host_log_retention
 sync_host_nginx_config
 
 wait_for_container_health postgres 180

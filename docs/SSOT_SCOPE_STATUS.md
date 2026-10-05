@@ -25,4 +25,4 @@
 - Historické audity, cutover plány, migrační poznámky a jednorázové reporty nejsou current-state autorita.
 - Android release chain, APK workflow a parity pravidla nejsou součástí aktivního webového provozu.
 
-Mail read diagnostics: provider-acknowledged `voice.host.mail_delivery` includes `mail_diagnostic` with call digest, separate index/connection booleans, complete, page size/counts and next-page boolean. No content, refs, cursor, arguments, addresses or transcript. Page counts are not unread totals; diagnostics do not change model behavior. See docs/voice-mail-diagnostic-impact-matrix.md.
+Mail reads and successful tool delivery have no routine log. Availability changes and unexpected errors retain safe component/code/correlation metadata only. Historical diagnostic storage is offline; see docs/dagmar/DIAGNOSTICS.md.

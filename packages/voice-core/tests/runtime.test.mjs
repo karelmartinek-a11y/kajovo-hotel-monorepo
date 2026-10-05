@@ -14,11 +14,13 @@ function host({permission, create, heartbeat, close} = {}) {
       const peer = {channel, addTrack() {}, createDataChannel: () => channel,
         createOffer: async () => ({sdp: 'v=0 offer'}), setLocalDescription: async () => {},
         setRemoteDescription: async () => {channel.onmessage({data: JSON.stringify({type: 'session.created', event_id: 'connected'})});},
-        close() {this.closed = true;}, connectionState: 'new'};
+        close() {this.closed = true; this.connectionState = 'closed';}, connectionState: 'new'};
       peers.push(peer); return peer;},
   };
   const provider = {create: create ?? (async () => ({sdp: 'v=0 answer', model: 'test-model'})), heartbeat, close};
-  const client = new VoiceRealtimeClient(provider, {emit: (name, attrs) => events.push({name, attrs})}, environment);
+  provider.beginCall = () => events.push({name: "call.started"});
+  provider.endCall = async () => {events.push({name: "call.ended"});};
+  const client = new VoiceRealtimeClient(provider, environment);
   const send = event => peers.at(-1).channel.onmessage({data: JSON.stringify(event)});
   return {client, peers, tracks, audios, contexts, events, send};
 }
@@ -105,7 +107,7 @@ test('repeated start/stop releases every resource and does not duplicate output'
     h.send({type: 'output_audio_buffer.started', event_id: 'a'});
     assert.equal(h.client.getSnapshot().state, 'user-speaking');
     await h.client.stop(); await h.client.stop();
-    assert.equal(h.events.filter(event => event.name === 'session.ended').length, i + 1);
+    assert.equal(h.events.filter(event => event.name === 'call.ended').length, i + 1);
     assert.ok(h.tracks.at(-1).stopped && h.peers.at(-1).closed && h.peers.at(-1).channel.closed);
     assert.equal(h.peers.at(-1).channel.onmessage, null);
     assert.ok(h.contexts.at(-1).closed && h.audios.at(-1).paused);

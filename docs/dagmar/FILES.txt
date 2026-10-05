@@ -1,3 +1,6 @@
+HISTORICAL CHANGE INVENTORY (2026-10-05); not an active file manifest.
+See docs/voice-diagnostics-removal.md for the current runtime and removal scope.
+
 A	apps/kajovo-hotel-admin/playwright.dagmar-native-live.config.ts
 A	apps/kajovo-hotel-admin/playwright.voice-diagnostics.config.ts
 A	apps/kajovo-hotel-admin/tests/dagmar-native-live.spec.ts

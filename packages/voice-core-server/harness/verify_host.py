@@ -33,21 +33,13 @@ class TestSecrets:
         self.key = None
 
 
-class TestTelemetry:
-    def __init__(self):
-        self.events = []
-
-    def emit(self, event, attributes):
-        self.events.append((event, attributes))
-
-
 async def verify():
-    auth, config, secrets, telemetry = TestAuth(), TestConfig(), TestSecrets(), TestTelemetry()
+    auth, config, secrets = TestAuth(), TestConfig(), TestSecrets()
     auth.authorize()
     secrets.save("test-only-provider-key")
     assert secrets.configured()
     transport = httpx.MockTransport(lambda request: httpx.Response(201, text="v=0\r\nisolated-answer"))
-    answer, model = await RealtimeSessionClient(telemetry, transport).create("v=0\r\nisolated-offer", config.read(), secrets.read())
+    answer, model = await RealtimeSessionClient(transport).create("v=0\r\nisolated-offer", config.read(), secrets.read())
     assert answer.startswith("v=0") and model == "gpt-realtime-2.1"
     secrets.delete()
     assert not secrets.configured()

@@ -6,7 +6,6 @@ import json
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from .transport_trace import http_hooks
 import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
@@ -277,7 +276,7 @@ async def mcp_connection(token: str):
         raise SmartError("mcp_not_configured")
     # No redirects: an Authorization header must never reach another origin.
     async with httpx.AsyncClient(
-        headers={"Authorization": f"Bearer {token}"}, timeout=40, follow_redirects=False, event_hooks=http_hooks()
+        headers={"Authorization": f"Bearer {token}"}, timeout=40, follow_redirects=False
     ) as http:
         async with streamable_http_client(MCP_URL, http_client=http) as (read, write, _):
             async with ClientSession(read, write) as client:

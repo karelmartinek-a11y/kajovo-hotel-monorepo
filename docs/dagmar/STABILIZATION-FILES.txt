@@ -1,3 +1,6 @@
+HISTORICAL CHANGE INVENTORY (2026-10-05); not an active file manifest.
+See docs/voice-diagnostics-removal.md for the current runtime and removal scope.
+
 M	.github/workflows/ci-gates.yml
 M	AGENTS.md
 M	apps/kajovo-hotel-admin/tests/voice-diagnostics.spec.ts

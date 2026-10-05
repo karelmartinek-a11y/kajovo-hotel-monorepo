@@ -53,10 +53,6 @@ class VoiceSecretStore(Protocol):
     def delete(self) -> None: ...
 
 
-class VoiceTelemetrySink(Protocol):
-    def emit(self, event: str, attributes: dict[str, str | int | float]) -> None: ...
-
-
 @dataclass(frozen=True)
 class CapabilityContract:
     name: str

@@ -1,13 +1,12 @@
 from typing import Annotated, Literal
 
-from dagmar_server.diagnostics import DiagnosticError
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 from voice_core_server import VoiceCoreConfig, VoiceError, catalog
 
-from .ports import get_settings, runtime
+from .ports import get_settings
 from .models import VoiceCoreSettings, LogicalCall
 from .ports import get_db
 from .ports import require_session
@@ -115,7 +114,6 @@ class MailView(MailStatus):
 
 class VoiceSessionRead(BaseModel):
     logical_call_id: str | None = None
-    diagnostics: str | None = None
     sdp: str
     model: str
     session_id: str | None = None
@@ -129,7 +127,6 @@ class VoiceSessionRead(BaseModel):
 
 
 class VoiceSessionStatus(BaseModel):
-    diagnostics: dict | None = None
     logical_call_id: str | None = None
     session_id: str
     connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
@@ -211,21 +208,9 @@ async def create_session(payload: VoiceSessionWrite, db: Db, request: Request):
                 raise HTTPException(404, detail={"code": "call_not_found"})
             answer = await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
                 str(require_session(request)["session_id"]), get_settings().ha_mcp_token, logical_call_id=identity)
-            if payload.logical_call_id:
-                bridge = owned_bridge(answer["session_id"], request)
-                from .collector import Collector
-                try:
-                    diagnostics = runtime().application.diagnostics
-                    await __import__("asyncio").wait_for(__import__("asyncio").to_thread(diagnostics.connection,payload.logical_call_id, bridge.owner, bridge.id, bridge.model, record.revision),1)
-                    bridge.diagnostics = Collector(payload.logical_call_id, bridge.owner, bridge.id, bridge.model, getattr(bridge,"call_id",None))
-                    bridge.diagnostics.start()
-                    answer["logical_call_id"] = payload.logical_call_id
-                except Exception:
-                    # Storage failure must never terminate a successfully established voice session.
-                    bridge.diagnostic_registration_error="diagnostic_registration_unavailable"
-                    answer["diagnostics"] = "degraded"
+            answer['logical_call_id'] = identity
             return answer
-        except (VoiceError, HTTPException, DiagnosticError):
+        except (VoiceError, HTTPException):
             raise
         except Exception:
             raise VoiceError("provider_unavailable") from None

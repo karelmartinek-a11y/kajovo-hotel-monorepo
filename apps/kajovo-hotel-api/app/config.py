@@ -18,8 +18,6 @@ class Settings(BaseSettings):
         default="admin123",
         validation_alias=AliasChoices("KAJOVO_API_ADMIN_PASSWORD", "HOTEL_ADMIN_PASSWORD"),
     )
-    voice_diagnostic_root: str = ""
-    voice_diagnostic_key_file: str = ""
     voice_release_sha: str = "unknown"
     voice_context_prune_tokens: int = Field(default=24000, ge=8000, le=80000)
     voice_smart_frame_max_chars: int = Field(default=60000, ge=8000, le=100000)

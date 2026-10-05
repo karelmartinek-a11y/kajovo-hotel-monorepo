@@ -1,5 +1,4 @@
 import asyncio
-import json
 
 import httpx
 import pytest
@@ -14,12 +13,7 @@ from voice_core_server import (
 from voice_core_server.contracts import CAPABILITY_REGISTRY
 
 
-class Sink:
-    def __init__(self):
-        self.events = []
 
-    def emit(self, event, attributes):
-        self.events.append((event, attributes))
 
 
 @pytest.mark.parametrize("length,tokens", [("short", 512), ("medium", 1024), ("long", 2048)])
@@ -55,7 +49,6 @@ def test_catalog_is_central_and_defaults_supported():
 
 def test_automatic_fallback_only_on_model_unavailable():
     calls = []
-    sink = Sink()
 
     def respond(request):
         body = request.content.decode()
@@ -63,10 +56,9 @@ def test_automatic_fallback_only_on_model_unavailable():
         assert request.headers["authorization"] == "Bearer test-key"
         return httpx.Response(404, json={"error": {"code": "model_not_found"}}) if len(calls) == 1 else httpx.Response(201, text="v=0\r\nanswer")
 
-    result = asyncio.run(RealtimeSessionClient(sink, httpx.MockTransport(respond)).create("v=0\r\noffer", VoiceCoreConfig(), "test-key"))
+    result = asyncio.run(RealtimeSessionClient(httpx.MockTransport(respond)).create("v=0\r\noffer", VoiceCoreConfig(), "test-key"))
     assert result[1] == "gpt-realtime-2"
     assert len(calls) == 2
-    assert all("test-key" not in json.dumps(event) for event in sink.events)
 
 
 @pytest.mark.parametrize("mode,status,code,category", [
@@ -83,7 +75,7 @@ def test_manual_never_falls_back_and_auth_errors_do_not_retry(mode, status, code
         return httpx.Response(status, json={"error": {"code": code, "message": "sensitive provider message"}})
     config = VoiceCoreConfig(model_mode=mode, manual_model="gpt-realtime-2" if mode == "manual" else None)
     with pytest.raises(VoiceError) as raised:
-        asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(respond)).create("v=0", config, "test-key"))
+        asyncio.run(RealtimeSessionClient(httpx.MockTransport(respond)).create("v=0", config, "test-key"))
     assert str(raised.value) == category
     assert len(calls) == 1
 
@@ -92,6 +84,6 @@ def test_timeout_and_bad_success_are_sanitized():
     def timeout(request):
         raise httpx.ReadTimeout("SECRET", request=request)
     with pytest.raises(VoiceError, match="provider_timeout"):
-        asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(timeout)).create("v=0", VoiceCoreConfig(), "test-key"))
+        asyncio.run(RealtimeSessionClient(httpx.MockTransport(timeout)).create("v=0", VoiceCoreConfig(), "test-key"))
     with pytest.raises(VoiceError, match="session_creation_failed"):
-        asyncio.run(RealtimeSessionClient(Sink(), httpx.MockTransport(lambda _: httpx.Response(200, text="SECRET"))).create("v=0", VoiceCoreConfig(), "test-key"))
+        asyncio.run(RealtimeSessionClient(httpx.MockTransport(lambda _: httpx.Response(200, text="SECRET"))).create("v=0", VoiceCoreConfig(), "test-key"))

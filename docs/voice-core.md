@@ -6,9 +6,9 @@ Voice Core is a portable speech-to-speech product. The administration hosts it a
 
 `packages/voice-core` contains browser contracts, WebRTC/audio lifecycle, an explicit state reducer, responsive Voice Console and audio-reactive ORB. It depends on React and browser APIs, without importing host UI, auth, URLs, entities or roles. It provides source exports and a standalone declaration/JavaScript build.
 
-`packages/voice-core-server` is an installable Python package containing validated configuration, model/voice/language catalogs, fixed instruction construction, provider errors, the Realtime session client and generic auth/config/secret/telemetry/capability ports. It does not import FastAPI, SQLAlchemy or application code.
+`packages/voice-core-server` is an installable Python package containing validated configuration, model/voice/language catalogs, fixed instruction construction, provider errors, the Realtime session client and generic auth/config/secret/capability ports. It does not import FastAPI, SQLAlchemy or application code.
 
-Host adapters reside in the admin `voice-integration` directory and the API voice router/service. Dependency direction is host -> portable product. Copy both portable packages to another application and supply its auth, stores, session adapter, telemetry and shell. `scripts/verify_voice_core_copy_out.py` builds and tests copied packages in a temporary directory with no host sources.
+Host adapters reside in the admin `voice-integration` directory and the API voice router/service. Dependency direction is host -> portable product. Copy both portable packages to another application and supply its auth, stores, session adapter and shell. `scripts/verify_voice_core_copy_out.py` builds and tests copied packages in a temporary directory with no host sources.
 
 ## Authentication and API
 
@@ -35,7 +35,7 @@ A key typed into the password field necessarily exists briefly in browser memory
 
 ## Realtime and fixed policy
 
-The browser obtains microphone access from the Start action, creates one peer connection and one data channel, and posts SDP to the host. The server loads the persistent configuration and decrypted key and sends a multipart request to OpenAI `/v1/realtime/calls`. Audio then travels directly between browser and OpenAI; the host does not proxy Realtime audio. Explicit Dagmar debug records the existing browser microphone and remote streams into a separate encrypted diagnostic store. No OpenAI credential is returned to the browser.
+The browser obtains microphone access from the Start action, creates one peer connection and one data channel, and posts SDP to the host. The server loads the persistent configuration and decrypted key and sends a multipart request to OpenAI `/v1/realtime/calls`. Audio then travels directly between browser and OpenAI; the host does not proxy Realtime audio. No diagnostic recording or upload runs in the application. No OpenAI credential is returned to the browser.
 
 Automatic mode selects `gpt-realtime-2.1`, then `gpt-realtime-2` only after a documented model-unavailable error. Authentication, permission, quota, rate-limit and transport errors do not cause fallback. Manual mode never substitutes another model.
 
@@ -97,15 +97,15 @@ Production acceptance must identify the deployed SHA and actual scenario evidenc
 
 Hotel memory, transient transcription/curation and bounded retrieval are defined in [Voice memory](voice-memory.md). The browser handles generic connection_state independently of individual backend capabilities; portable defaults remain tool-free.
 
-Dagmar uses native Realtime/WebRTC barge-in with one microphone stream, peer and playback path. Playback does not disable input. The former speaker checkbox, microphone tail gate and manual interruption button are removed; mute and Stop remain. Native WebRTC VAD cancels interrupted output and adjusts unheard conversation audio. The backend fences queued tools and continuations by connection/turn/response identity; already sent mutations recover their original request instead of replaying. Exact mail/registry started/completed/drained audio consent remains mandatory. Actual AEC/noise suppression/AGC settings and playback lifecycle are diagnostic evidence, not a claim of measured acoustic success. Physical iPhone acceptance was cancelled by the user on 2026-10-04.
+Dagmar uses native Realtime/WebRTC barge-in with one microphone stream, peer and playback path. Playback does not disable input. The former speaker checkbox, microphone tail gate and manual interruption button are removed; mute and Stop remain. Native WebRTC VAD cancels interrupted output and adjusts unheard conversation audio. The backend fences queued tools and continuations by connection/turn/response identity; already sent mutations recover their original request instead of replaying. Exact mail/registry started/completed/drained audio consent remains mandatory. Default capture constraints and native playback remain unchanged; no acoustic improvement is claimed without measurement. Physical iPhone acceptance was cancelled by the user on 2026-10-04.
 
 Whole Dagmar orchestration, UI/panels, memory/configuration, journals and public MCP clients are in `packages/dagmar-server` and `packages/dagmar-browser`. Hotel auth, revocation, infrastructure and navigation are host adapters. The standalone `examples/dagmar-host` uses loopback test auth and an injected mock provider; it is not a second production login. Its clean copy-out installs/builds/runs without hotel sources or host node_modules.
 
 ## R1–R3 functional repair
 
-Diagnostic redaction/capture errors discard unsafe content and report incomplete
-collection without disrupting provider/tool delivery or repeating operations. The
-browser ignores duplicate ontrack notifications for the same remote track and keeps
+The application has no diagnostic capture/redaction service. Tool delivery and
+operation identities remain functional state. The browser ignores duplicate ontrack
+notifications for the same remote track and keeps
 one native WebRTC capture/render path. Native barge-in remains active during output.
 
 Dagmar greets only on the dedicated new-call instruction. Reconnect restores bounded

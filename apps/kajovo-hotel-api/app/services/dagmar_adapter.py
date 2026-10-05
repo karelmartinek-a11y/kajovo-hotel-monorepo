@@ -9,7 +9,6 @@ from app.config import get_settings
 from app.db.models import AuthSession
 from app.db.session import SessionLocal, engine
 from app.security import auth
-from app.services.voice_diagnostics import store
 
 
 def verified_identity(session):
@@ -45,7 +44,7 @@ def create_dagmar():
     settings = DagmarSettings(**{name:getattr(config,name) for name in DagmarSettings.model_fields if name.startswith('voice_')},
         ha_mcp_token=config.kajavoiceha_mcp_token, mail_mcp_token=config.kajovo_mail_mcp_token,
         mail_mcp_url=config.kajovo_mail_mcp_url)
-    return DagmarApplication(RuntimePorts(session_factory=SessionLocal, settings=settings, identity=identity, request_identity=request_identity), store)
+    return DagmarApplication(RuntimePorts(session_factory=SessionLocal, settings=settings, identity=identity, request_identity=request_identity))
 
 
 def migrate():

@@ -1,4 +1,4 @@
-import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider, type VoiceTelemetrySink } from './contracts.js';
+import { initialSnapshot, callActive, type VoiceSnapshot, type RealtimeSessionProvider } from './contracts.js';
 import { transition, type RealtimeEvent } from './state.js';
 
 export interface VoiceRuntimeEnvironment {
@@ -28,7 +28,6 @@ export class VoiceRealtimeClient {
   private abort: AbortController | null = null;
   private epoch = 0;
   private frame: number | null = null;
-  private statsTimer: ReturnType<typeof setTimeout> | null = null;
   private timeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private retries = 0;
@@ -40,18 +39,17 @@ export class VoiceRealtimeClient {
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private playback = new Set<string>();
 
-  constructor(private provider: RealtimeSessionProvider, private telemetry: VoiceTelemetrySink,
-              private environment: VoiceRuntimeEnvironment = browserEnvironment) {
+  constructor(private provider: RealtimeSessionProvider, private environment: VoiceRuntimeEnvironment = browserEnvironment) {
 
   }
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => {this.subscribers.add(listener); return () => {this.subscribers.delete(listener);};};
   private set(patch: Partial<VoiceSnapshot>) {this.snapshot = {...this.snapshot, ...patch}; this.subscribers.forEach(listener => listener());}
   private fail(category: string) {
-    this.telemetry.emit('session.error', {category});this.telemetry.prepareStop?.();
+
     this.epoch++; this.cleanup(); this.detachLifecycle();
     this.set({state: 'error', error: {category}, inputLevel: 0, outputLevel: 0, muted: false});
-    void this.telemetry.finishCall?.();
+    void this.provider.endCall?.();
   }
   private attachLifecycle() {
     if (typeof window === 'undefined') return;
@@ -69,19 +67,16 @@ export class VoiceRealtimeClient {
     const epoch = ++this.epoch; this.retries = 0;
     this.set({...initialSnapshot, state: 'requesting-permission'});
     this.attachLifecycle();
+    this.provider.beginCall?.();
 
     try {
       // Resume from the click gesture before awaiting permissions or networking.
       this.context = this.environment.createContext();
       await this.context.resume();
-      await this.telemetry.startCall?.();
       if (epoch !== this.epoch) return;
-      this.telemetry.emit('permissions.request', {audio_context_state:this.context.state,user_agent:typeof navigator==='undefined'?'unavailable':navigator.userAgent,settings:{supported_constraints:typeof navigator==='undefined'?{}:navigator.mediaDevices?.getSupportedConstraints?.() ?? {},sample_rate:this.context.sampleRate,base_latency:this.context.baseLatency,output_latency:this.context.outputLatency}});
       const stream = await this.environment.getUserMedia();
-      this.telemetry.emit('permissions.granted', {audio_context_state:this.context?.state});
       if (epoch !== this.epoch) {stream.getTracks().forEach(track => track.stop()); return;}
       this.stream = stream;
-      this.telemetry.media?.('microphone', stream);
       stream.getAudioTracks().forEach(track => {track.onended = () => this.fail('microphone_interrupted');});
       await this.connect(epoch);
     } catch (error) {
@@ -96,7 +91,7 @@ export class VoiceRealtimeClient {
     if (peer !== this.peer || !id || this.channel?.readyState !== 'open' || !this.audio?.srcObject || this.audio.paused || this.context?.state !== 'running' || this.playbackNotified.has(id)) return;
     this.playbackNotified.add(id);
     if (this.playbackNotified.size > 16) this.playbackNotified.delete(this.playbackNotified.values().next().value!);
-    try {await this.provider.playbackReady?.(id);} catch {this.telemetry.emit('greeting.failed', {code:'request_failed'});}
+    try {await this.provider.playbackReady?.(id);} catch { /* The existing session remains usable; never replay an uncertain greeting. */ }
   }
   private category(error: unknown, fallback: string) {
     return typeof error === 'object' && error !== null && 'category' in error && typeof error.category === 'string' ? error.category : fallback;
@@ -105,35 +100,30 @@ export class VoiceRealtimeClient {
     if (!this.stream || epoch !== this.epoch) return;
     this.cleanupConnection(); this.seen.clear();
     const peer = this.environment.createPeer(); this.peer = peer;
-    this.collectStats(peer);
     const audio = this.environment.createAudio(); this.audio = audio; audio.autoplay = true;
     audio.setAttribute('playsinline', '');
-    audio.onplay = () => {if(peer!==this.peer)return;this.telemetry.emit('playback.play', {playback_state:'playing'}); void this.notifyPlaybackReady(peer);};
-    audio.onpause = () => {if(peer===this.peer)this.telemetry.emit('playback.pause', {playback_state:'paused'});};
-    audio.onended = () => {if(peer===this.peer)this.telemetry.emit('playback.ended', {playback_state:'ended'});};
+    audio.onplay = () => {if(peer!==this.peer)return;void this.notifyPlaybackReady(peer);};
     audio.onerror = () => {if (peer === this.peer) this.fail('playback_failed');};
     this.abort = new AbortController();
     this.set({state: this.retries ? 'reconnecting' : 'connecting'});
     this.timeout = setTimeout(() => {if (peer === this.peer) this.fail('connection_timeout');}, this.provider.connectionTimeoutMs ?? CONNECT_TIMEOUT);
     this.stream.getTracks().forEach(track => peer.addTrack(track, this.stream!));
     const channel = peer.createDataChannel('oai-events'); this.channel = channel;
-    channel.onopen = () => {this.telemetry.emit('datachannel.open', {channel_state:channel.readyState}); void this.notifyPlaybackReady(peer);};
+    channel.onopen = () => {void this.notifyPlaybackReady(peer);};
     channel.onmessage = event => {if (epoch === this.epoch && peer === this.peer) this.handle(event.data);};
     channel.onerror = () => {if (peer === this.peer) this.reconnect();};
     channel.onclose = () => {if (peer === this.peer) this.reconnect();};
     peer.onconnectionstatechange = () => {
       if (peer !== this.peer) return;
-      this.telemetry.emit('peer.state', {peer_state: peer.connectionState, ice_state: peer.iceConnectionState});
-      if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') this.reconnect();
+      if (peer.connectionState === 'failed' || peer.connectionState === 'disconnected') {this.reconnect(); return;}
       if (peer.connectionState === 'closed') this.fail('session_ended');
     };
     peer.ontrack = event => {
       if (peer !== this.peer) return;
-      // Duplicate notifications must not restart rendering or attach another recorder.
+      // Duplicate notifications must not restart rendering.
       if (event.track === this.remoteTrack) return;
       this.remoteTrack = event.track;
       const output = event.streams[0] ?? new MediaStream([event.track]); audio.srcObject = output;
-      this.telemetry.media?.('remote', output);
       this.meters(output);
       void audio.play().catch(() => {if (peer === this.peer) this.fail('playback_failed');});
     };
@@ -150,25 +140,6 @@ export class VoiceRealtimeClient {
     await peer.setRemoteDescription({type: 'answer', sdp: answer.sdp});
     if (this.sessionId && this.provider.heartbeat) void this.heartbeat(epoch, peer);
     void this.notifyPlaybackReady(peer);
-  }
-  private collectStats(peer: RTCPeerConnection) {
-    const sample=async()=>{
-      if(peer!==this.peer) return;
-      try {
-        if(typeof peer.getStats==='function') {
-          const stats=await peer.getStats();
-          if(peer!==this.peer) return;
-          stats.forEach(value=>{
-            if(value.kind==='audio' && ['inbound-rtp','outbound-rtp','media-source'].includes(value.type))
-              this.telemetry.emit('webrtc.stats',{source_id:value.type,packets_lost:value.packetsLost,jitter:value.jitter,audio_level:value.audioLevel,echo_return_loss:value.echoReturnLoss,echo_return_loss_enhancement:value.echoReturnLossEnhancement});
-            if(value.type==='candidate-pair' && value.state==='succeeded')
-              this.telemetry.emit('webrtc.transport',{round_trip_time:value.currentRoundTripTime});
-          });
-        }
-      } catch {this.telemetry.emit('webrtc.stats.failed',{code:'stats_unavailable'});}
-      if(peer===this.peer) this.statsTimer=setTimeout(()=>void sample(),5000);
-    };
-    this.statsTimer=setTimeout(()=>void sample(),5000);
   }
   private async heartbeat(epoch: number, peer: RTCPeerConnection) {
     if (!this.sessionId || !this.provider.heartbeat || !this.abort || epoch !== this.epoch || peer !== this.peer) return;
@@ -200,7 +171,6 @@ export class VoiceRealtimeClient {
     let event: RealtimeEvent;
     try {event = JSON.parse(raw);} catch {return;}
     if (!event || typeof event.type !== 'string') return;
-    this.telemetry.provider?.(event as unknown as Record<string, unknown>);
     if (event.event_id) {
       if (this.seen.has(event.event_id)) return;
       this.seen.add(event.event_id); if (this.seen.size > 512) this.seen.delete(this.seen.values().next().value!);
@@ -214,7 +184,6 @@ export class VoiceRealtimeClient {
     const responseFailure=event.type==='response.done' && event.response?.status==='failed';
     if(event.type==='error' || responseFailure) {
       const recoverable=['conversation_already_has_active_response','response_cancel_not_active','input_audio_buffer_commit_empty'].includes(failure ?? '');
-      this.telemetry.emit('provider.failure.classified',{code:failure ?? 'unknown',phase:responseFailure?'response':'request',reason:recoverable?'recoverable_rejection':'terminal_error'});
       if(recoverable) return; // No retry, replay or blanket cancel of the native turn.
       this.fail('realtime_error'); return;
     }
@@ -222,7 +191,6 @@ export class VoiceRealtimeClient {
     if (event.type === 'session.created') {
       if (this.connectionState === 'connecting' && this.provider.heartbeat) return;
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
-      this.telemetry.emit('session.connected', {model: this.snapshot.model ?? ''});
     }
     this.set({state: transition(this.snapshot.state, event)});
     this.syncMicrophone();
@@ -266,21 +234,18 @@ export class VoiceRealtimeClient {
     }, delay);
   }
   private syncMicrophone() {
-    this.stream?.getAudioTracks().forEach(track => {const enabled = !this.snapshot.muted && !['connecting', 'waiting'].includes(this.connectionState) && !['reconnecting', 'disconnecting', 'error'].includes(this.snapshot.state); if(track.enabled !== enabled) this.telemetry.emit('audio.track.enabled', {track_id:track.id, enabled, speaker_gate:false}); track.enabled=enabled;});
+    this.stream?.getAudioTracks().forEach(track => {const enabled = !this.snapshot.muted && !['connecting', 'waiting'].includes(this.connectionState) && !['reconnecting', 'disconnecting', 'error'].includes(this.snapshot.state); track.enabled=enabled;});
   }
   setMuted(muted: boolean) {if (!this.stream) return; this.set({muted}); this.syncMicrophone();}
   async stop() {
     if (!callActive(this.snapshot.state) || this.snapshot.state === 'disconnecting') return;
-    ++this.epoch; this.set({state: 'disconnecting'});this.telemetry.prepareStop?.();this.cleanup();this.detachLifecycle();
-    this.telemetry.emit('session.ended', {reason:'user_stop'});
-    void this.telemetry.finishCall?.();
+    ++this.epoch; this.set({state: 'disconnecting'});this.cleanup();this.detachLifecycle();
+    void this.provider.endCall?.();
     this.set({state: 'disconnected', muted: false, error: null, inputLevel: 0, outputLevel: 0});
 
 
   }
   private cleanupConnection() {
-    if(this.statsTimer) clearTimeout(this.statsTimer); this.statsTimer=null;
-    if (this.peer) this.telemetry.emit('connection.close', {});
     this.playback.clear();
     if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer); this.heartbeatTimer = null;
     const sessionId = this.sessionId; this.sessionId = null; this.managedFunctions.clear();

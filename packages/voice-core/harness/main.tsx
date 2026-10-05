@@ -11,5 +11,4 @@ const configStore = {read: async () => snapshot, save: async (config: unknown, r
 }};
 const secretStore = {save: async (_key: string) => {snapshot = {...snapshot, configured: true, revision: snapshot.revision + 1}; return snapshot;}, delete: async () => {snapshot = {...snapshot, configured: false, revision: snapshot.revision + 1}; return snapshot;}};
 const sessionProvider = {create: async () => ({sdp: 'v=0 test-answer', model: 'test-realtime'})};
-const telemetry = {emit() {}};
-createRoot(document.getElementById('root')!).render(<React.StrictMode><h1>Voice Core</h1><VoiceConsole configStore={configStore} secretStore={secretStore} sessionProvider={sessionProvider} telemetry={telemetry} /></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<React.StrictMode><h1>Voice Core</h1><VoiceConsole configStore={configStore} secretStore={secretStore} sessionProvider={sessionProvider} /></React.StrictMode>);

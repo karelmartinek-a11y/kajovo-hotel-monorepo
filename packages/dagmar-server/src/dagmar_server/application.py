@@ -8,7 +8,6 @@ from .orchestration import VoiceBridgeManager
 from .models import LogicalCall
 from .api_core import router as core_router
 from .api_memory import router as memory_router
-from .diagnostic_api import router_for
 
 class BoundContext:
     def __init__(self, app, ports):
@@ -18,17 +17,13 @@ class BoundContext:
             await self.app(scope, receive, send)
 
 class DagmarApplication:
-    def __init__(self, ports: RuntimePorts, diagnostics):
+    def __init__(self, ports: RuntimePorts):
         self.manager = VoiceBridgeManager()
         self.refreshes = {}
-        self._diagnostics = diagnostics
         self.ports = replace(ports, application=self)
         self.core = APIRouter()
         self.core.include_router(core_router)
         self.memory = memory_router
-        def diagnostic_auth(request):
-            return str(require_session(request)['session_id'])
-        self.core.include_router(router_for(lambda: self.diagnostics, diagnostic_auth))
         @self.core.post('/calls')
         def create_call(request: Request):
             owner = str(require_session(request)['session_id'])
@@ -36,12 +31,7 @@ class DagmarApplication:
             with SessionLocal() as db:
                 db.add(LogicalCall(id=identity, owner_session_id=owner))
                 db.commit()
-            diagnostic = 'ready'
-            try:
-                self.diagnostics.create_call(owner, call_id=identity)
-            except Exception:
-                diagnostic = 'unavailable'
-            return {'logical_call_id': identity, 'diagnostics': diagnostic}
+            return {'logical_call_id': identity}
         @self.core.post('/calls/{identity}/close')
         def close_call(identity: str, request: Request):
             owner = str(require_session(request)['session_id'])
@@ -60,10 +50,6 @@ class DagmarApplication:
                 raise HTTPException(404, detail={'code':'voice_session_not_found'})
             await bridge.greet()
             return {'ready': True}
-
-    @property
-    def diagnostics(self):
-        return self._diagnostics() if callable(self._diagnostics) else self._diagnostics
 
     async def shutdown(self):
         with bind(self.ports):

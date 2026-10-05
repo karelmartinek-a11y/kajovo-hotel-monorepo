@@ -30,7 +30,7 @@ jobs:
       - name: Build production API image and verify imports
         run: |
           docker build -f apps/kajovo-hotel-api/Dockerfile -t kajovo-api-ci .
-          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin, mcp, websockets, jsonschema; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert '/api/v1/admin/voice-core/diagnostics/calls' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/heartbeat' in app.openapi()['paths']; assert '/api/v1/admin/voice-memory/operations' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/registry-plan' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/mail-plan' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
+          docker run --rm --entrypoint python kajovo-api-ci -c "from app.main import app; import pywebpush, firebase_admin, mcp, websockets, jsonschema; from app.services.housekeeping import COUNTRY_TRANSLATION; assert COUNTRY_TRANSLATION.gettext('Germany') == 'Německo'; assert not any('/diagnostics' in path for path in app.openapi()['paths']); assert '/api/v1/admin/voice-core/calls' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/heartbeat' in app.openapi()['paths']; assert '/api/v1/admin/voice-memory/operations' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/registry-plan' in app.openapi()['paths']; assert '/api/v1/admin/voice-core/sessions/{session_id}/mail-plan' in app.openapi()['paths']; assert any(path.startswith('/api/v1/chat') for path in app.openapi()['paths'])"
 
       - name: Verify voice memory, registry and mail against production PostgreSQL runtime
         run: python3 scripts/verify_voice_memory_postgres.py
@@ -67,10 +67,6 @@ jobs:
         run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
       - name: Validate the complete SSOT test plan once
         run: python scripts/release_gate.py
-      - name: Verify synthetic AAC fMP4 pair exports
-        run: |
-          python -m pip install av==18.1.0 numpy==2.4.6
-          python scripts/verify_dagmar_audio_fragments.py --evidence artifacts/dagmar-audio-fragments.json
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v6
@@ -78,7 +74,6 @@ jobs:
           name: validation-evidence
           path: |
             artifacts/release-gate/*.json
-            artifacts/dagmar-audio-fragments.json
             apps/kajovo-hotel-web/test-results/
             apps/kajovo-hotel-admin/test-results/
             packages/voice-core/test-results/

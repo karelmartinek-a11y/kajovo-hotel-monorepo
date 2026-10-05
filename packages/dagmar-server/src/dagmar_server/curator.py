@@ -6,8 +6,6 @@ import json
 import time
 
 import httpx
-from dagmar_server.diagnostic_contract import safe_exception
-from dagmar_server.transport_trace import observe, observer
 from pydantic import Field
 from sqlalchemy import select, update
 
@@ -72,10 +70,6 @@ async def extract(key, turns, previous, existing, *, transport=None):
         "Do not copy the transcript. Return a very brief cumulative session summary incorporating previous. "
         "Empty summary and candidates are valid for conversation without useful content."
     )
-    callback = observer.get()
-    request_id, started = uid(), time.monotonic()
-    if callback:
-        callback({"type": "curator.request", "request_id": request_id})
     async with httpx.AsyncClient(timeout=15, transport=transport) as client:
         response = await client.post(
             "https://api.openai.com/v1/responses",
@@ -103,12 +97,8 @@ async def extract(key, turns, previous, existing, *, transport=None):
                 },
             },
         )
-        if callback:
-            callback({"type": "curator.http", "request_id": request_id, "http_status": response.status_code, "duration_ms": (time.monotonic()-started)*1000})
         response.raise_for_status()
         body = response.json()
-        if callback:
-            callback({"type": "curator.done", "request_id": request_id, "response": {"id": body.get("id"), "status": body.get("status"), "usage": body.get("usage")}, "model": get_settings().voice_memory_curator_model, "duration_ms": (time.monotonic()-started)*1000})
         if body.get("status") != "completed":
             raise ValueError("curation_incomplete")
         texts = [
@@ -122,9 +112,8 @@ async def extract(key, turns, previous, existing, *, transport=None):
 
 
 class TurnBuffer:
-    def __init__(self, pid, session_id, key, *, factory=None, extractor=None, authorize=None, diagnostic=None, namespace="test-curator"):
+    def __init__(self, pid, session_id, key, *, factory=None, extractor=None, authorize=None, namespace="test-curator"):
         self.namespace = namespace
-        self.diagnostic = diagnostic
         self.pid, self.session_id, self.key = pid, session_id, key
         self.factory = factory or SessionLocal
         self.extractor = extractor or extract
@@ -146,9 +135,6 @@ class TurnBuffer:
         self.blocked = set()
         self.references = set()
 
-    def report(self, reason, **attributes):
-        if self.diagnostic:
-            self.diagnostic({"type": "curator.buffer", "code": reason, "count": len(self.turns), **attributes})
 
     def reference(self, kind, identity):
         if len(self.references) >= 1000:
@@ -237,7 +223,6 @@ class TurnBuffer:
             > 8000
         ):
             self.dropped = True
-            self.report("buffer_limit")
             return
         self.turns.append({"id": iid, "role": role, "text": text})
 
@@ -265,19 +250,16 @@ class TurnBuffer:
         async with self.lock:
             try:
                 enabled, generation = self.settings()
-            except Exception as exc:
-                self.report("settings_unavailable", **safe_exception(exc, "curator.settings"))
+            except Exception:
                 self.reset()
                 return
             if not self.enabled or not enabled or not self.turns or not self.authorize():
-                self.report("disabled_or_empty_or_unauthorized")
                 self.reset()
                 return
             if time.monotonic() - self.window >= 3600:
                 self.window = time.monotonic()
                 self.calls = 0
             if self.calls >= get_settings().voice_memory_max_calls_per_hour:
-                self.report("rate_limit")
                 self.reset()
                 return
             references = set(self.references)
@@ -350,8 +332,7 @@ class TurnBuffer:
                         if not secret_content(r.subject + " " + r.content)
                         and not sensitive_content(r.subject + " " + r.content)
                     ]
-                with observe(self.diagnostic):
-                    value = await self.extractor(self.key, turns, previous, existing)
+                value = await self.extractor(self.key, turns, previous, existing)
                 value = Curated.model_validate(value)
                 text = " ".join(
                     [
@@ -404,7 +385,6 @@ class TurnBuffer:
                     touched = []
                     for candidate in value.candidates:
                         if candidate.target_id == PROFILE_ID:
-                            self.report("profile_protected")
                             continue
                         if (
                             secret_content(
@@ -531,15 +511,11 @@ class TurnBuffer:
                     db.commit()
                 from .invalidation import invalidate
                 await invalidate(self.pid)
-            except Exception as exc:
-                self.report("curation_unavailable", **safe_exception(exc, "curator.flush", "curation_unavailable"))
+            except Exception:
                 # Do not log exception representations: SQL/provider errors may contain source text.
-                import logging
 
-                logging.getLogger("dagmar.voice").info(
-                    "voice.memory.curation_failed",
-                    extra={"context": {"category": "curation_unavailable"}},
-                )
+                from .logging_utils import failure
+                failure('curator.flush', self.session_id, 'curation_unavailable')
             finally:
                 turns.clear()
                 self.generation = None

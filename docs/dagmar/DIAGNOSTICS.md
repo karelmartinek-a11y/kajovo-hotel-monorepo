@@ -1,91 +1,33 @@
-# Dagmar diagnostics
+# Historický archiv hlasové diagnostiky
 
-Stage A preserves the historical voice behavior, including the speaker microphone
-gate and mail-private memory lock. These are baseline mechanisms, not the final behavior.
-Stage B owns the complete portable product and removes these baseline mechanisms.
-See IMPLEMENTATION.md for the current exact release and acceptance status.
+Produkční Dagmar nemá diagnostické UI, API, collectory, nahrávání, event batching,
+WebRTC getStats sampling, diagnostické časovače ani startup/shutdown úlohy úložiště.
+API nemontuje historický volume ani jeho klíč. Běžný hovor neposílá diagnostické
+požadavky a neukládá obsah rozhovoru, audio, prompty ani obsah nástrojů do logů.
+Funkční identitu hovoru vlastní LogicalCall; reconnect, paměť a potvrzovací journaly
+jsou nezávislé na historickém archivu.
 
-## Recording
+Historický Docker volume `kajovo-prod_diagnostics_data` a samostatný klíč
+`/home/deploy-hotel/dagmar-secrets/diagnostic.key` se zachovávají bez automatického
+mazání, migrace, rekonciliace nebo evikce. Klíč není provider master key ani SMTP klíč.
+Datový formát obsahuje SQLite `index.sqlite3` a `objects/`: v1 E/M a v2 B/J objekty,
+AES-GCM s původním AAD, checksumy jednotlivých záznamů a audio decoder manifesty.
+Historické mezery, neúplné producer finals a neznámý původní capture zůstávají pravdivé.
 
-The in-call toggle starts content collection only after backend segment creation.
-Off stops both MediaRecorders immediately, preserves the first immutable capture
-boundary and flushes bounded queued data. Another call starts off. Reconnection
-creates new media recorders and a visible gap within the same logical call.
-Recorders consume the existing microphone/remote streams, never stop shared tracks,
-and feature-detect MIME. Missing support is a partial recording.
+`tools/voice_archive/reader.py` je samostatný read-only reader mimo API image.
+Nevytváří adresáře, tabulky ani zámkové soubory v archivu. SQLite otevírá přes
+`mode=ro`, `query_only=ON` a čtecí transakci; každý session/handle uzavírá.
+Reader čte původní metadata, manifest, audio a šifrované objekty včetně ověření
+AAD a checksumů. Neobsahuje writer ani servisní smyčku. CI ověřuje syntetické
+E/B/J/M objekty a byte-equal stav archivu před/po čtení.
 
-Microphone audio is browser-processed input. Remote audio proves received media,
-not acoustic speaker output. Provider/playback/track events supplement it. Neither
-transcripts nor matching assistant text alone prove an acoustic cause.
+Samostatný export z chráněné kopie/readonly mountu:
 
-Whole provider outputs are collected only when a response/input identity was seen
-starting inside the current debug segment. Mid-turn/late boundaries are partial.
-Text redaction is structural plus secret-value patterns; ordinary mail remains useful
-content. Audio cannot be automatically redacted and is sensitive.
+```
+python3.11 -m tools.voice_archive.export --root <readonly-archive> --key-file <protected-key-file> --call <call-id> --output <new-private-directory>
+```
 
-## Storage and API
-
-The host exposes `/api/v1/admin/voice-core/diagnostics/` with current admin authorization,
-CSRF on writes and no-store. Active ingest is owner-session scoped; authorized admin
-read/export/pin/delete does not grant ownership of someone else's active call.
-
-The separate volume contains SQLite schema version 2 and AES-GCM object files; v1
-records remain readable. Its
-separate 32-byte base64 content key is read from `/run/secrets/dagmar_diagnostic_key`.
-The key is provisioned outside Git and never included in evidence or exports.
-No diagnostic request is duplicated into the general hotel audit or stdout logger.
-
-| Category | Maximum bytes | Warning bytes | Cleanup target bytes |
-|---|---:|---:|---:|
-| Technical | 2000000000 | 1600000000 | 1800000000 |
-| Debug text | 3000000000 | 2400000000 | 2700000000 |
-| Debug audio | 9000000000 | 7200000000 | 8100000000 |
-| Protected incidents | 1000000000 | 800000000 | 900000000 |
-
-Accounting uses actual file allocation including directory/index/journal overhead.
-SQLite uses DELETE journal; no WAL exists. A serialized inter-process reservation
-covers incoming ciphertext and pessimistic peak journal/index growth before writing.
-Shared index/temporary/directory overhead belongs to technical capacity. Conservative
-peak reservations can stop collection before the final stored-byte maximum.
-
-No TTL applies. Eviction chooses oldest closed unpinned calls. Pin is an atomic
-category reassignment of existing objects. Protected incidents are never automatically
-evicted. Active calls are not victims. Capacity/logger failures stop affected collection,
-not conversation. Explicit deletion fences generation before removing all objects;
-long-term memory and operation/confirmation journals are separate.
-
-Ingress/redaction failures discard unsafe content, retain safe metadata when possible
-and expose an incomplete producer final. They never interrupt functional tool delivery
-or authorize operation retries. Invalid URLs are replaced before storage/export.
-
-## Export
-
-Export streams a tar archive without a managed persistent duplicate. `manifest.json`
-contains call/segment/connections and bounded UI timeline. Every exported object has
-its own `.manifest.json` with original and exported hashes/byte lengths. `integrity.json`
-contains count and hash of ordered object manifests. Large timelines are marked partial
-in UI; the exported object manifest set covers the captured snapshot. Open calls and
-missing recorder finals remain explicitly incomplete. A downloaded external copy
-cannot be recalled by server deletion.
-
-Transport fragments are ordered parts of a recorder stream, not necessarily standalone
-playable files. To reconstruct audio, use the exported `audio_manifest` metadata, group
-by debug segment/source/track and concatenate chunks in sequence, retaining init data.
-Missing chunks make the stream incomplete; do not label it playable without decoding it.
-
-## Optional iPhone reproduction (mandatory acceptance cancelled by user)
-
-1. Record iPhone 15 Pro iOS/Safari version, built-in microphone/speaker route, volume,
-   visible model/config and release. Disable Bluetooth routing for this test.
-2. Start a new call, enable debug and speak a harmless request for a short explanation.
-3. During its response interrupt with another harmless question; repeat one response
-   while remaining silent. Do not request device changes or actual mail sending.
-4. Toggle debug off during playback, wait for its flush state, then Stop.
-5. An authorized admin reads the timeline and downloads the protected export. Record
-   the real heard behavior separately; received remote audio is not physical proof.
-6. Repeat against the Stage B SHA for comparison. Until both captures exist, acoustic
-   echo/barge-in acceptance is unverified.
-
-Journal emergency reserve: capacity charges the allocated database plus one full future rollback journal and 262144 bytes of journal overhead. Each mutation additionally reserves 524288 bytes for bounded database/index growth and its next journal copy. The funded journal permits emergency eviction without first exceeding the technical category. No WAL is enabled.
-
-Native download is a protected GET content retrieval (also POST for clients), with current admin RBAC on each streamed part and rejection of cross-site browser requests. Uploads and pin/delete/start/stop/export POST remain under host CSRF. No JS whole-export Blob, server persistent tar copy or URL bearer token is used.
+Cesty k privátním zdrojům nejsou tajné hodnoty; samotný klíč nesmí být v argumentech,
+logu, repozitáři nebo CI artefaktu. Export vytvoří nový adresář s právy 0700 a soubory
+0600. Obsah může zahrnovat citlivé historické audio a přepisy. Do stdout vypíše pouze
+stav dokončení. Export není obnovou provozní databáze ani oprávněním k operaci MCP.
