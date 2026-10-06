@@ -4,7 +4,9 @@ No provider/audio request, production DB access, draft or mailbox mutation.
 Only safe scope/tool/count/completion metadata is printed; mail text stays local.
 """
 import asyncio
+import hashlib
 import json
+import logging
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -22,9 +24,34 @@ async def verify():
     ports = RuntimePorts(session_factory=factory,
         settings=DagmarSettings(mail_mcp_token=settings.kajovo_mail_mcp_token),
         identity=lambda owner: {'namespace': 'readonly-acceptance', 'voice_authorized': True})
-    calls = []
+    calls, headers, traces = [], [], []
+    original_http = mail.httpx.AsyncClient
+    async def observe(request):
+        headers.append(request.headers.get('X-Mail-Contract'))
+    class ObservedHTTP(original_http):
+        def __init__(self, **kwargs):
+            kwargs['event_hooks'] = {'request': [observe]}
+            super().__init__(**kwargs)
+    mail.httpx.AsyncClient = ObservedHTTP
+    class SafeTrace(logging.Handler):
+        def emit(self, record):
+            if record.getMessage() == 'voice.mail.scope':
+                traces.append(record.context)
+    logger = logging.getLogger('dagmar.voice')
+    logger.handlers = [SafeTrace()]
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
     with bind(ports):
         async with mail.connection(mail.MCP_URL, settings.kajovo_mail_mcp_token) as session:
+            catalog = await session.list_tools()
+            assert {t.name for t in catalog.tools} == set(mail.TOOLS)
+            keys = ('name', 'inputSchema', 'outputSchema', 'annotations')
+            actual = [{k: t.model_dump(by_alias=True, exclude_none=True)[k] for k in keys} for t in catalog.tools]
+            expected = [{k: t[k] for k in keys} for t in mail.CATALOG['tools']]
+            def canonical(tools):
+                return json.dumps(sorted(tools, key=lambda t: t['name']), sort_keys=True, separators=(',', ':')).encode()
+            assert canonical(actual) == canonical(expected)
+            catalog_hash = hashlib.sha256(canonical(actual)).hexdigest()
             class ReadOnly:
                 async def call_tool(self, name, args):
                     if not mail.TOOLS[name]['annotations']['readOnlyHint']:
@@ -48,6 +75,11 @@ async def verify():
                 assert result.isdecimal() and len(calls) == start + 1
                 assert calls[-1]['tool'] == 'mail_messages_count' and calls[-1]['complete'] is True
                 checks.append({'scenario': 'count', 'account': account, 'count': int(result), 'status': 'PASS'})
+                start = len(calls)
+                await host.mail_execute('MAIL_COUNT', {}, 'Kolik jich je?', 'count-followup-' + account)
+                if len(calls) != start + 1 or calls[-1]['tool'] != 'mail_messages_count':
+                    raise mail.MailError('FRESH_COUNT_REQUIRED')
+                checks.append({'scenario': 'fresh-followup-count', 'account': account, 'status': 'PASS'})
                 state.intent = 'MAIL_LATEST'
                 start = len(calls)
                 body = await host.mail_execute('MAIL_LATEST', {}, '', 'latest-' + account)
@@ -58,6 +90,12 @@ async def verify():
                 assert body_calls[-1]['complete'] is True
                 del body
                 checks.append({'scenario': 'latest/full-body', 'account': account, 'body_pages': len(body_calls), 'status': 'PASS'})
+                state.intent = 'MAIL_ATTACHMENTS'
+                start = len(calls)
+                attachments = await host.mail_execute('MAIL_ATTACHMENTS', {}, '', 'attachments-' + account)
+                del attachments
+                assert len(calls) > start and all(c['tool'] == 'mail_message_get_metadata' and c['account'] == account and c['folder'] == state.current_message_folder for c in calls[start:])
+                checks.append({'scenario': 'attachment-metadata-scope', 'account': account, 'status': 'PASS'})
                 wrong = 'operations' if account == 'reception' else 'reception'
                 start = len(calls)
                 try:
@@ -68,9 +106,14 @@ async def verify():
                     raise AssertionError('Cross-account body accepted')
                 assert len(calls) == start
                 checks.append({'scenario': 'cross-account-before-body', 'account': account, 'status': 'PASS'})
+    assert headers and set(headers) == {'mail-mcp/2'}
+    assert any(t['tool_name'] == 'mail_messages_count' and t['result_complete'] is True for t in traces)
+    assert any(t['operation_failure'] is True for t in traces)
     return {'status': 'PASS', 'contract': mail.CATALOG['contract_version'], 'header': 'X-Mail-Contract: mail-mcp/2',
             'executor': 'deployed dagmar_server.orchestration.VoiceBridge', 'production_mutations': 0,
-            'provider_audio_tested': False, 'checks': checks, 'safe_calls': calls}
+            'provider_audio_tested': False, 'observed_http_contract_headers': sorted(set(headers)),
+            'catalog_tools': sorted(t.name for t in catalog.tools), 'catalog_schema_annotations_sha256': catalog_hash,
+            'checks': checks, 'safe_calls': calls, 'voice_mail_scope': traces}
 
 
 if __name__ == '__main__':
@@ -78,5 +121,10 @@ if __name__ == '__main__':
         print(json.dumps(asyncio.run(verify()), ensure_ascii=False))
     except Exception as exc:
         # Exceptions from providers may contain payloads; fixed codes/categories only.
-        print(json.dumps({'status': 'FAIL', 'code': str(exc) if isinstance(exc, mail.MailError) else type(exc).__name__}))
+        pending, codes = [exc], []
+        while pending:
+            error = pending.pop()
+            pending.extend(getattr(error, 'exceptions', ()))
+            codes.append(str(error) if isinstance(error, mail.MailError) else type(error).__name__)
+        print(json.dumps({'status': 'FAIL', 'codes': sorted(set(codes))}))
         raise SystemExit(1) from None

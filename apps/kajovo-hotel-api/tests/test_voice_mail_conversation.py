@@ -745,3 +745,74 @@ def test_batch_unknown_outcome_retains_original_uncertain_journal(conversation, 
     with conversation[1]() as db:
         rows = db.scalars(select(VoiceMailOperation).where(VoiceMailOperation.tool == 'mail_messages_batch_update')).all()
         assert len(rows) == 1 and rows[0].state == 'uncertain'
+
+
+@pytest.mark.parametrize('previous', ['count', 'search'])
+@pytest.mark.parametrize('complete', [True, False])
+def test_anaphoric_count_is_fresh_v2_query_not_cached_count_or_result_length(conversation, monkeypatch, previous, complete):
+    from app.services import voice_mail
+    request(conversation, 'Kolik je mailů od X v inboxu recepce?' if previous == 'count' else 'Najdi maily od X v inboxu recepce.',
+            'MAIL_COUNT' if previous == 'count' else 'MAIL_SEARCH', filters={'from': 'X'})
+    conversation[2].clear()
+    async def fresh(session, name, args):
+        voice_mail.validate_input(name, args)
+        conversation[2].append((name, copy.deepcopy(args)))
+        return {**page([], account='reception', folder='Actual Inbox', role='inbox', complete=complete), 'count': 11 if complete else None}
+    monkeypatch.setattr(voice_mail, 'invoke', fresh)
+    result = request(conversation, 'Kolik jich je?', 'MAIL_COUNT', 2)
+    assert conversation[2] == [('mail_messages_count', {'account': 'reception', 'folder_role': 'inbox', 'from': 'X'})]
+    if complete:
+        assert result['response_text'] == '11'
+    else:
+        assert result['error']['code'] == 'INDEX_NOT_READY'
+        assert not result['response_text'].isdecimal()
+    assert conversation[0].mail_conversation.ordered_message_refs == []
+
+
+def test_attachment_pages_use_selected_identity_account_folder_and_exact_ref(conversation, monkeypatch):
+    from app.services import voice_mail
+    request(conversation, 'Přečti nejnovější mail v inboxu recepce.', 'MAIL_LATEST')
+    conversation[2].clear()
+    async def metadata(session, name, args):
+        voice_mail.validate_input(name, args)
+        conversation[2].append((name, copy.deepcopy(args)))
+        return {'message': conversation[4][0], 'attachments': [{'filename': 'Druhá.pdf' if args.get('attachment_cursor') else 'První.pdf', 'mime_type': 'application/pdf'}],
+                'next_attachment_cursor': None if args.get('attachment_cursor') else 'attachments-2'}
+    monkeypatch.setattr(voice_mail, 'invoke', metadata)
+    result = request(conversation, 'Vypiš přílohy.', 'MAIL_ATTACHMENTS', 2)
+    assert result['response_text'] == 'První.pdf (application/pdf)\nDruhá.pdf (application/pdf)'
+    assert len(conversation[2]) == 2
+    for name, args in conversation[2]:
+        assert name == 'mail_message_get_metadata'
+        assert args['account'] == 'reception' and args['folder'] == 'Actual Inbox'
+        assert args['message_ref'] == conversation[4][0]['message_ref']
+    assert conversation[2][1][1]['attachment_cursor'] == 'attachments-2'
+
+
+@pytest.mark.parametrize('action,text,extra', [('MARK_READ', 'Označ všechny jako přečtené.', {}), ('MOVE', 'Přesuň všechny do archivu.', {'destination_role': 'archive'})])
+def test_cross_account_batch_never_splits_or_reassigns_refs(conversation, action, text, extra):
+    conversation[4][1]['account'] = 'operations'
+    request(conversation, 'Najdi všechny maily v obou schránkách.', 'MAIL_SEARCH')
+    conversation[2].clear()
+    result = request(conversation, text, 'MAIL_BATCH_' + action, 2, **extra)
+    assert result['error']['code'] == 'ACCOUNT_REQUIRED'
+    assert not any(n == 'mail_messages_batch_update' or n.startswith('mail_message_') for n, args in conversation[2])
+
+
+def test_exactly_100_selected_refs_use_one_batch(conversation):
+    conversation[4][:] = [row(n) for n in range(1, 101)]
+    request(conversation, 'Najdi všechny maily v recepci.', 'MAIL_SEARCH')
+    conversation[2].clear()
+    result = request(conversation, 'Označ všechny jako přečtené.', 'MAIL_BATCH_MARK_READ', 2)
+    assert result['response_text'] == 'Provedeno 100 z 100.'
+    assert len(conversation[2]) == 1 and conversation[2][0][0] == 'mail_messages_batch_update'
+    assert conversation[2][0][1]['message_refs'] == [r['message_ref'] for r in conversation[4]]
+
+
+def test_four_command_account_sequence_uses_backend_selected_operations(conversation):
+    assert request(conversation, 'Kolik je mailů v doručené poště v recepci?', 'MAIL_COUNT')['response_text'] == '9'
+    assert request(conversation, 'Přečti nejnovější mail v inboxu recepce.', 'MAIL_LATEST', 2)['response_text'] == ''.join(conversation[6])
+    assert request(conversation, 'Přepni na operations.', 'MAIL_SELECT_ACCOUNT', 3)['response_text'] == 'operations'
+    conversation[2].clear()
+    assert request(conversation, 'Kolik je tam mailů?', 'MAIL_COUNT', 4)['response_text'] == '9'
+    assert conversation[2] == [('mail_messages_count', {'account': 'operations'})]

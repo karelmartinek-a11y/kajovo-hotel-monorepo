@@ -43,12 +43,13 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
           if (e.item.type === 'function_call' && e.type !== 'response.output_item.done') return;
           seen.add(e.item.id);
           if (e.item.type === 'function_call' && /^(mail_[a-z_]+|assistant_memory|smart_technologie)$/.test(e.item.name)) evidence.functionNames.push(e.item.name);
-          if (e.item.type === 'function_call' && ['mail_accounts_list', 'mail_account_status'].includes(e.item.name)) evidence.accountCalls++;
+          if (e.item.type === 'function_call' && e.item.name === 'mail_conversation' && JSON.parse(e.item.arguments).intent === 'MAIL_ACCOUNT_STATUS') evidence.accountCalls++;
+          if (e.item.type === 'function_call' && e.item.name === 'mail_conversation' && /^(MAIL_(BATCH_|MARK_|MOVE|TRASH|DRAFT_CREATE|DRAFT_EDIT|REPLY|SEND))/.test(JSON.parse(e.item.arguments).intent)) evidence.writes++;
           if (e.item.type === 'function_call' && /^(mail_send_|mail_draft_(create|update|move)|mail_message_(mark|move|trash))/.test(e.item.name)) evidence.writes++;
           if (e.item.type === 'function_call_output') {
             const value = JSON.parse(e.item.output);
-            if (value.contract_version === 'mail-mcp/2' && value.ok && value.data?.accounts) evidence.accountOutputs++;
-            if (value.contract_version === 'mail-mcp/2' && !value.ok) evidence.errors++;
+            if (value.ok && value.intent === 'MAIL_ACCOUNT_STATUS' && typeof value.response_text === 'string') evidence.accountOutputs++;
+            if (!value.ok && value.response_text !== undefined) evidence.errors++;
           }
         } catch { /* Never retain raw provider events or bodies. */ }
       });
@@ -107,6 +108,7 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
     const availability = await (await page.request.get(`/api/v1/admin/voice-core/sessions/${sessionId}/mail-plan`)).json();
     expect(availability.accounts.length).toBeGreaterThan(0);
     expect(availability.accounts.every((account: any) => typeof account.index_ready === 'boolean')).toBe(true);
+    await expect.poll(() => metric('accountOutputs'), {timeout: 60000}).toBeGreaterThan(0);
     await expect.poll(() => metric('audio'), {timeout: 60000}).toBeGreaterThan(0);
     await expect.poll(() => metric('repliedAfterTool'), {timeout: 60000}).toBeGreaterThan(0);
     expect(await metric('writes')).toBe(0);

@@ -34,7 +34,6 @@ class MailConversationState:
     last_search_account: str | None = None
     last_search_folder: str | None = None
     last_search_complete: bool = False
-    last_count: int | None = None
     current_draft_ref: str | None = None
     current_draft_version: int | None = None
     current_draft_account: str | None = None
@@ -53,7 +52,6 @@ class MailConversationState:
         self.ordered_message_refs.clear()
         self.current_result_index = None
         self.last_search_complete = False
-        self.last_count = None
         self.current_draft_ref = self.current_draft_version = self.current_draft_account = None
         self.messages.clear()
         self.draft_result_set.clear()
@@ -545,7 +543,8 @@ class MailConversationHost:
         if intent == 'MAIL_ATTACHMENTS':
             if not state.current_message_ref:
                 raise MailError('MESSAGE_SELECTION_REQUIRED')
-            query, rows, cursors = {'message_ref': state.current_message_ref, 'attachment_limit': 100}, [], set()
+            item = state.messages[state.current_message_ref]
+            query, rows, cursors = {'account': item['account'], 'message_ref': item['message_ref'], 'folder': item['folder'], 'attachment_limit': 100}, [], set()
             for _ in range(1000):
                 value = await self.mail_invoke('mail_message_get_metadata', query)
                 rows.extend(value['attachments'])
@@ -564,10 +563,6 @@ class MailConversationHost:
             state.selected_folder = await self.mail_folder(account, None, state.selected_folder) if state.selected_folder_role == 'other' else await self.mail_folder(account, state.selected_folder_role)
             state.clear_selection()
             return state.selected_folder
-        if intent == 'MAIL_COUNT' and re.search(r'\bjich\b', normalize(transcript)) and not args.get('filters'):
-            if not state.last_search_complete:
-                raise MailError('INDEX_INCOMPLETE')
-            return str(state.last_count if state.last_count is not None else len(state.ordered_message_refs))
         if intent == 'MAIL_LIST' and re.search(r'\b(?:tyhle|tyto)\b', normalize(transcript)):
             if not state.last_search_complete:
                 raise MailError('INDEX_INCOMPLETE')
@@ -602,6 +597,9 @@ class MailConversationHost:
             if re.search(r'\b(?:bez priloh\w*|nema\w* priloh\w*)\b', normalized):
                 filters['has_attachments'] = False
             role = state.selected_folder_role or ('inbox' if intent == 'MAIL_LATEST' else None)
+            # Anaphora may reuse backend-owned filters, never a stored count or page length.
+            if intent == 'MAIL_COUNT' and re.search(r'\bjich\b', normalized) and not filters and state.last_search_account == account:
+                filters = dict(state.last_search_filters)
             query = {**filters, 'account': account}
             if role == 'other':
                 query['folder'] = state.selected_folder
@@ -611,7 +609,6 @@ class MailConversationHost:
             state.last_search_filters = filters
             state.last_search_account, state.last_search_folder = account, state.selected_folder
             state.last_search_complete = False
-            state.last_count = None
             if intent == 'MAIL_COUNT':
                 # A count has no materialized targets; never reuse an older search set.
                 state.current_result_set.clear()
@@ -622,11 +619,10 @@ class MailConversationHost:
                 if value['complete'] is not True or type(value['count']) is not int:
                     raise MailError(value.get('reason') or 'INDEX_NOT_READY')
                 state.last_search_complete = True
-                state.last_count = value['count']
                 if account != 'all':
                     state.selected_folder = value['resolved_folder']
                 state.last_search_folder = value['resolved_folder']
-                return str(state.last_count)
+                return str(value['count'])
             state.current_result_set_ref = None
             state.current_result_set = []
             state.ordered_message_refs = []
