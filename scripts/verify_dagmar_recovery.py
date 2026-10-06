@@ -48,7 +48,7 @@ def main():
         run('docker', 'exec', '-i', name, 'psql', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres', '-d', 'memory', input=(root / 'hotel.sql').read_bytes())
 
         def api(code, database):
-            return run('docker', 'run', '--rm', '--network', name, '--env-file', str(root / 'release.env'), '-e', 'RECOVERY_DATABASE='+database, '--mount', 'type=bind,src='+str(root/'diagnostic.key')+',dst=/recovery/diagnostic.key,readonly', '--entrypoint', 'python', args.api_image, '-c', code)
+            return run('docker', 'run', '--rm', '--user', '0:0', '--network', name, '--env-file', str(root / 'release.env'), '-e', 'RECOVERY_DATABASE='+database, '--mount', 'type=bind,src='+str(root/'diagnostic.key')+',dst=/recovery/diagnostic.key,readonly', '--entrypoint', 'python', args.api_image, '-c', code)
 
         setup = '''
 import os, json

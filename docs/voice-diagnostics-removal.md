@@ -66,6 +66,12 @@ Offline read-only ověření před vydáním rozšifrovalo a ověřilo checksum 
 v indexu). Archiv ani klíč nebyl změněn. Před vydáním je uchován privátní aktuální
 SQL/roles dump, prostředí, oddělený archivní klíč a tři předchozí application images;
 předchozí aplikace s diagnostikou není automatický rollback kandidát.
+Izolovaný PostgreSQL recovery test této zálohy ověřil zachování Dagmar schématu,
+nový trvalý zápis, replay originální receipt a čitelnost provider i archivního klíče.
+Důkaz je v `docs/dagmar/evidence/removal-20261006/recovery.json`; živá databáze
+nebyla obnovena ani změněna tímto testem.
+Chráněná záloha obsahuje také tři ověřené application images bez diagnostiky ze
+SHA `d81e713738b6e7dcced2afe522d2ee542504e6ec` pro kompatibilní obnovu aplikace.
 
 Čistý copy-out odhalil drift OpenAPI při automatickém výběru novějšího FastAPI.
 Manifesty nyní fixují stávající produkční FastAPI 0.115.14; runtime závislost se

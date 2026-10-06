@@ -1,0 +1,23 @@
+{
+  "postgres_image": "16.4-alpine",
+  "api_image": "kajovo-prod-api",
+  "backup_schema": "dagmar",
+  "migration": {
+    "version": 1,
+    "already_applied": true
+  },
+  "recovery": {
+    "post_migration_restore": true,
+    "new_write_durable": true,
+    "original_receipt_replayed": true,
+    "provider_key_decrypt": true,
+    "separate_diagnostic_key_restore": true,
+    "schema_version": 1
+  },
+  "legacy_source_untouched": true,
+  "old_stage_a_code_compatible": false,
+  "rollback_requires_dagmar_schema_and_receipts": true,
+  "deployed_sha": "d81e713738b6e7dcced2afe522d2ee542504e6ec",
+  "image_sha256": "4e03f4c2b9cce3a460c04e8318bbf4690b9ded664d40e07c7de0a60aa693f457",
+  "live_database_modified": false
+}

@@ -20,10 +20,12 @@ Návrat starých collectoru/UI není nezbytný k obnově funkčního hovoru.
 Samostatný recovery drill používá izolovaný PostgreSQL a poslední chráněný dump:
 
 ```
-python3.11 scripts/verify_dagmar_recovery.py --backup-dir <protected-directory> --api-image <compatible-image> --evidence <sanitized-proof.json>
+python3.11 scripts/verify_dagmar_recovery.py --backup-dir <protected-directory> --expect-schema dagmar --api-image <compatible-image> --evidence <sanitized-proof.json>
 ```
 
 Ověřuje schema, nový izolovaný zápis, replay originální receipt a shodu klíčů.
 Neprovádí provider/MCP mutace ani nemění živou DB. Disaster recovery vyžaduje
 samostatné posouzení zápisů po backupu; neslouží jako automatický rollback.
+Izolovaný API testovací kontejner čte chráněný read-only klíč jako root v interní
+síti. Zdrojové soubory zůstávají 0600; produkční API běží pod svým běžným uživatelem.
 Historické recovery důkazy v `evidence/` platí pouze pro uvedené tehdejší SHA.
