@@ -87,3 +87,29 @@ def test_deploy_preserves_mcp_secret_and_restricts_existing_env_permissions(tmp_
     assert lines['KAJAVOICEHA_MCP_TOKEN'] == 'contract-fixture-token'
     assert lines['UNCHANGED'] == 'value'
     assert lines['KAJOVO_API_ADMIN_EMAIL'] == 'admin@example.test'
+
+
+def test_explicit_api_admin_scope_rejects_other_sources():
+    script_path = Path(__file__).resolve().parents[3] / 'scripts/select_deploy_scope.py'
+    spec = importlib.util.spec_from_file_location('select_deploy_scope', script_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    import pytest
+    assert module.select_scope('ordinary correction', ['apps/kajovo-hotel-web/src/main.tsx']) == 'full'
+    assert module.select_scope('Voice integration\n\nHotel-Deploy-Scope: api-admin', ['packages/dagmar-server/src/dagmar_server/mail.py']) == 'api-admin'
+    with pytest.raises(ValueError):
+        module.select_scope('Hotel-Deploy-Scope: api-admin', ['apps/kajovo-hotel-web/src/main.tsx'])
+    with pytest.raises(ValueError):
+        module.select_scope('Hotel-Deploy-Scope: unknown', ['docs/voice-core.md'])
+
+
+def test_api_admin_deploy_does_not_restart_protected_services():
+    script = (Path(__file__).resolve().parents[3] / 'infra/ops/deploy-production.sh').read_text()
+    limited = script.split('if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then',1)[1].split('\nfi\n',1)[0]
+    assert 'docker_build_with_snapshot_retry api admin' in limited
+    assert 'compose_cmd up -d --no-deps --force-recreate api admin' in limited
+    assert 'compose_cmd run --rm --no-deps api' in limited
+    assert 'cmp "$protected_before" "$protected_after"' in limited
+    assert 'sync_host_nginx_config' not in limited
+    assert 'compose_cmd down' not in limited
+    assert 'alembic upgrade' not in limited.lower()

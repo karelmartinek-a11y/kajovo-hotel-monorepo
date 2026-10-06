@@ -41,6 +41,7 @@ export function VoiceConsole({configStore, secretStore, sessionProvider}: {
       <button className="vc-button" disabled={!active || !['listening', 'user-speaking', 'assistant-processing', 'assistant-speaking', 'reconnecting'].includes(snapshot.state)} aria-pressed={snapshot.muted} onClick={() => client.setMuted(!snapshot.muted)}>{snapshot.muted ? 'Zapnout mikrofon' : 'Ztlumit mikrofon'}</button>
       <p className="vc-detail">{sessionProvider.disclosure ?? 'Hovoříte s AI. Tato verze nemá přístup k živým datům ani externím nástrojům.'}</p>
       {sessionProvider.heartbeat && snapshot.capabilityStatus && <p className="vc-detail" role="status" data-testid="voice-capability-status">{sessionProvider.capabilityLabels?.[snapshot.capabilityStatus] ?? (snapshot.capabilityStatus === 'ready' ? 'Externí funkce jsou připravené.' : snapshot.capabilityStatus === 'connecting' ? 'Načítám externí funkce…' : 'Externí funkce jsou nedostupné. Běžný rozhovor může pokračovat.')}</p>}
+      {Object.entries(snapshot.managedMcpStatus ?? {}).map(([label,status]) => sessionProvider.managedMcpLabels?.[label]?.[status] ? <p key={label} className="vc-detail" role="status" data-testid={`voice-mcp-${label}`}>{sessionProvider.managedMcpLabels[label][status]}</p> : null)}
       {(snapshot.error || error) && <p className="vc-error" role="alert">{snapshot.error ? errorMessage(snapshot.error.category) : error}</p>}
     </div>
     <div className="vc-controls">

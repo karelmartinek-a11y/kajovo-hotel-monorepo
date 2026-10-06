@@ -1,0 +1,94 @@
+{
+  "status": "PARTIAL",
+  "source_baseline": "d31e6ef437ae04417438dea38521823c64abf38f",
+  "working_tree_validation": true,
+  "generated_at": "2026-10-06T20:55:56.203867+00:00",
+  "release_gate": {
+    "status": "PASS",
+    "checks": {
+      "ci-runner-tests": "PASS",
+      "typecheck": "PASS",
+      "python-lint": "PASS",
+      "api-and-voice-tests": "PASS",
+      "dagmar-browser-tests": "PASS",
+      "dagmar-contract": "PASS",
+      "dagmar-typecheck": "PASS",
+      "voice-browser-tests": "PASS",
+      "voice-archive-reader": "PASS",
+      "voice-boundaries": "PASS",
+      "dagmar-copy-out": "PASS",
+      "voice-copy-out": "PASS",
+      "api-contract": "PASS",
+      "web-build": "PASS",
+      "admin-build": "PASS",
+      "design-tokens": "PASS",
+      "brand-assets": "PASS",
+      "brand-signage": "PASS",
+      "text-integrity": "PASS",
+      "portal-translations": "PASS",
+      "frontend-manifest": "PASS",
+      "runtime-integrity": "PASS",
+      "android-acceptance-policy": "PASS",
+      "browser-baseline": "PASS",
+      "voice-memory-ui": "PASS",
+      "voice-registry-ui": "PASS",
+      "voice-lifecycle-ui": "PASS",
+      "voice-ui": "PASS"
+    }
+  },
+  "python_regression": {
+    "status": "PASS",
+    "passed": 569,
+    "command": "python3.11 -m pytest apps/kajovo-hotel-api/tests packages/voice-core-server/tests packages/dagmar-server/tests -q"
+  },
+  "final_native_and_activation_guards": {
+    "status": "PASS",
+    "passed": 22
+  },
+  "admin_smoke": {
+    "status": "PASS",
+    "passed": 10
+  },
+  "admin_visual": {
+    "status": "PASS",
+    "passed": 40,
+    "workers": 1
+  },
+  "production_api_image": "PASS",
+  "postgres_additive_migration_and_consent": "PASS",
+  "isolated_production_proxy_chain": "PASS",
+  "live_mail_read_only": {
+    "scope": "recepce/provoz INBOX unread",
+    "observed_total_count": 64,
+    "returned_count": 0,
+    "count_kind": "exact",
+    "coverage_complete": true,
+    "bodies_requested": false,
+    "mutations": false
+  },
+  "actual_realtime_import": "NOT_RUN",
+  "WebRTC_token_isolation": "NOT_RUN",
+  "audio_e2e": "NOT_RUN",
+  "model_black_box": {
+    "A": "NOT_RUN",
+    "B": "NOT_RUN",
+    "C": "NOT_RUN",
+    "D": "NOT_RUN",
+    "E": "NOT_RUN",
+    "F": "NOT_RUN",
+    "G": "NOT_RUN",
+    "H": "NOT_RUN",
+    "I": "NOT_RUN",
+    "J": "NOT_RUN",
+    "K": "NOT_RUN",
+    "L": "NOT_RUN"
+  },
+  "paid_budget": {
+    "ledger": "MISSING_ORIGINAL_SQLITE",
+    "snapshot_remaining_USD": "0.08537",
+    "unknown_usage_holds": 6,
+    "new_paid_requests": 0
+  },
+  "production_activation": "DISABLED_PENDING_REAL_ACCEPTANCE",
+  "deployment": "PENDING_EXACT_SHA_CI"
+}

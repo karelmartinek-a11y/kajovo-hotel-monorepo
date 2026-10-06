@@ -33,6 +33,7 @@ test('real auth/call/reconnect/Stop without diagnostic requests, recorder or sta
   await expect(page.getByText('Klíč je uložen.',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Zahájit hovor',exact:true}).click();
   await expect(page.getByTestId('voice-state')).toContainText('Poslouchám');
+  await expect(page.getByTestId('voice-mcp-hotel_mail')).toHaveText('Pošta není aktivovaná.');
   await expect.poll(()=>connections.length).toBe(1);
   await expect(page.locator('.vc-orb')).not.toHaveAttribute('data-debug');
   // Wait beyond the old five-second diagnostic stats interval.

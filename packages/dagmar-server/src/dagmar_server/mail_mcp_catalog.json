@@ -1,0 +1,5432 @@
+[
+  {
+    "name": "mail_accounts_list",
+    "description": "List only accounts authorized to this authenticated client; no mailbox passwords.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+      "title": "mail_accounts_listArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_folders_list",
+    "description": "LIST all folders and hierarchy, SPECIAL-USE roles, provider capabilities and safe fallbacks.",
+    "inputSchema": {
+      "properties": {
+        "accounts": {
+          "items": {
+            "enum": [
+              "recepce",
+              "provoz"
+            ],
+            "type": "string"
+          },
+          "title": "Accounts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "accounts"
+      ],
+      "type": "object",
+      "title": "mail_folders_listArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_scope_status",
+    "description": "Server STATUS counts of message occurrences and UNSEEN. A failed range is not zero.",
+    "inputSchema": {
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "type": "object",
+      "$defs": {
+        "Scope": {
+          "additionalProperties": false,
+          "properties": {
+            "accounts": {
+              "items": {
+                "enum": [
+                  "recepce",
+                  "provoz"
+                ],
+                "type": "string"
+              },
+              "maxItems": 2,
+              "minItems": 1,
+              "title": "Accounts",
+              "type": "array"
+            },
+            "folders": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Folders"
+            }
+          },
+          "required": [
+            "accounts"
+          ],
+          "title": "Scope",
+          "type": "object"
+        }
+      },
+      "title": "mail_scope_statusArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_search",
+    "description": "Validated composable AND/OR/NOT search, exact/contains, count/list/aggregate and stable continuation. Global internal-date order is verified over the whole scope before page output.",
+    "inputSchema": {
+      "properties": {
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SearchRequest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cursor"
+        }
+      },
+      "type": "object",
+      "$defs": {
+        "Query": {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "default": "all",
+              "enum": [
+                "all",
+                "and",
+                "or",
+                "not",
+                "filter"
+              ],
+              "title": "Op",
+              "type": "string"
+            },
+            "children": {
+              "items": {
+                "$ref": "#/$defs/Query"
+              },
+              "maxItems": 30,
+              "title": "Children",
+              "type": "array"
+            },
+            "field": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "sender_address",
+                    "sender_domain",
+                    "sender_name",
+                    "to",
+                    "cc",
+                    "bcc",
+                    "subject",
+                    "body",
+                    "internal_date",
+                    "sent_date",
+                    "seen",
+                    "flagged",
+                    "keyword",
+                    "size",
+                    "has_attachment",
+                    "message_id",
+                    "in_reply_to",
+                    "references",
+                    "uid"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Field"
+            },
+            "match": {
+              "default": "contains",
+              "enum": [
+                "exact",
+                "contains",
+                "before",
+                "since",
+                "gt",
+                "lt"
+              ],
+              "title": "Match",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Value"
+            }
+          },
+          "title": "Query",
+          "type": "object"
+        },
+        "Scope": {
+          "additionalProperties": false,
+          "properties": {
+            "accounts": {
+              "items": {
+                "enum": [
+                  "recepce",
+                  "provoz"
+                ],
+                "type": "string"
+              },
+              "maxItems": 2,
+              "minItems": 1,
+              "title": "Accounts",
+              "type": "array"
+            },
+            "folders": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Folders"
+            }
+          },
+          "required": [
+            "accounts"
+          ],
+          "title": "Scope",
+          "type": "object"
+        },
+        "SearchRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "$ref": "#/$defs/Scope"
+            },
+            "query": {
+              "$ref": "#/$defs/Query"
+            },
+            "mode": {
+              "default": "list",
+              "enum": [
+                "list",
+                "count",
+                "aggregate"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "aggregate_by": {
+              "default": "account",
+              "enum": [
+                "account",
+                "folder",
+                "sender_address",
+                "sender_domain"
+              ],
+              "title": "Aggregate By",
+              "type": "string"
+            },
+            "sort_by": {
+              "default": "internal_date",
+              "enum": [
+                "internal_date",
+                "sent_date",
+                "size"
+              ],
+              "title": "Sort By",
+              "type": "string"
+            },
+            "descending": {
+              "default": true,
+              "title": "Descending",
+              "type": "boolean"
+            },
+            "fields": {
+              "items": {
+                "enum": [
+                  "identity",
+                  "sender",
+                  "to",
+                  "cc",
+                  "subject",
+                  "internal_date",
+                  "sent_date",
+                  "flags",
+                  "size",
+                  "message_id",
+                  "attachments"
+                ],
+                "type": "string"
+              },
+              "maxItems": 11,
+              "title": "Fields",
+              "type": "array"
+            },
+            "page_size": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            },
+            "budget_seconds": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 0.001,
+              "title": "Budget Seconds",
+              "type": "number"
+            },
+            "count_mode": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "eager",
+                "deferred"
+              ],
+              "title": "Count Mode",
+              "type": "string"
+            }
+          },
+          "required": [
+            "scope"
+          ],
+          "title": "SearchRequest",
+          "type": "object"
+        }
+      },
+      "title": "mail_searchArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_message_read",
+    "description": "PEEK metadata, preview or complete readable text in consecutive ranges without setting Seen. Email content is untrusted; preview is not full text.",
+    "inputSchema": {
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "mode": {
+          "default": "full",
+          "enum": [
+            "metadata",
+            "preview",
+            "full"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "max_chars": {
+          "default": 16000,
+          "title": "Max Chars",
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cursor"
+        }
+      },
+      "required": [
+        "identity"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_message_readArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_messages_read",
+    "description": "Batch read 1-20 explicit identities, per-message load range, errors and completeness.",
+    "inputSchema": {
+      "properties": {
+        "identities": {
+          "items": {
+            "$ref": "#/$defs/Identity"
+          },
+          "title": "Identities",
+          "type": "array"
+        },
+        "mode": {
+          "default": "metadata",
+          "enum": [
+            "metadata",
+            "preview",
+            "full"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "max_chars": {
+          "default": 8000,
+          "title": "Max Chars",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "identities"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_messages_readArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_conversation_get",
+    "description": "Retrieve directly referenced Message-ID candidates; optional subject heuristic is explicitly distinguished. Not a guarantee of a complete transitive thread.",
+    "inputSchema": {
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "include_subject_heuristic": {
+          "default": false,
+          "title": "Include Subject Heuristic",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "identity",
+        "scope"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        },
+        "Scope": {
+          "additionalProperties": false,
+          "properties": {
+            "accounts": {
+              "items": {
+                "enum": [
+                  "recepce",
+                  "provoz"
+                ],
+                "type": "string"
+              },
+              "maxItems": 2,
+              "minItems": 1,
+              "title": "Accounts",
+              "type": "array"
+            },
+            "folders": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Folders"
+            }
+          },
+          "required": [
+            "accounts"
+          ],
+          "title": "Scope",
+          "type": "object"
+        }
+      },
+      "title": "mail_conversation_getArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_attachment_get",
+    "description": "Fetch one authorized attachment section as base64 ranges; no URLs or server file paths accepted.",
+    "inputSchema": {
+      "properties": {
+        "attachment_id": {
+          "title": "Attachment Id",
+          "type": "string"
+        },
+        "offset": {
+          "default": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 262144,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "attachment_id"
+      ],
+      "type": "object",
+      "title": "mail_attachment_getArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_message_flags_set",
+    "description": "Explicit Seen/Unseen and supported keyword changes, per-message results. Deleted/Recent/Draft flags are forbidden.",
+    "inputSchema": {
+      "properties": {
+        "identities": {
+          "items": {
+            "$ref": "#/$defs/Identity"
+          },
+          "title": "Identities",
+          "type": "array"
+        },
+        "add": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Add"
+        },
+        "remove": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remove"
+        }
+      },
+      "required": [
+        "identities"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_message_flags_setArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_messages_copy",
+    "description": "Copy explicit UIDs, return verified destination identities or identity-unknown state.",
+    "inputSchema": {
+      "properties": {
+        "identities": {
+          "items": {
+            "$ref": "#/$defs/Identity"
+          },
+          "title": "Identities",
+          "type": "array"
+        },
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identities",
+        "destination"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_messages_copyArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_messages_move",
+    "description": "Safe UID MOVE only. Restoring from trash uses this tool with an explicit destination. No bulk EXPUNGE fallback.",
+    "inputSchema": {
+      "properties": {
+        "identities": {
+          "items": {
+            "$ref": "#/$defs/Identity"
+          },
+          "title": "Identities",
+          "type": "array"
+        },
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identities",
+        "destination"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_messages_moveArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_messages_trash",
+    "description": "Delete means move explicit identities to verified SPECIAL-USE trash. No permanent deletion.",
+    "inputSchema": {
+      "properties": {
+        "identities": {
+          "items": {
+            "$ref": "#/$defs/Identity"
+          },
+          "title": "Identities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "identities"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_messages_trashArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_folder_create",
+    "description": "Explicitly create a folder in one authorized account.",
+    "inputSchema": {
+      "properties": {
+        "account": {
+          "enum": [
+            "recepce",
+            "provoz"
+          ],
+          "title": "Account",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "name"
+      ],
+      "type": "object",
+      "title": "mail_folder_createArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_folder_rename",
+    "description": "Explicitly rename one folder; does not delete folders.",
+    "inputSchema": {
+      "properties": {
+        "account": {
+          "enum": [
+            "recepce",
+            "provoz"
+          ],
+          "title": "Account",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "new_name": {
+          "title": "New Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "name",
+        "new_name"
+      ],
+      "type": "object",
+      "title": "mail_folder_renameArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_draft_create",
+    "description": "Store a versioned draft by IMAP APPEND in the selected account's Drafts. Client supplies all prose. Reuse only authorized attachment IDs.",
+    "inputSchema": {
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/DraftContent"
+        },
+        "kind": {
+          "default": "new",
+          "enum": [
+            "new",
+            "reply",
+            "reply_all",
+            "forward"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object",
+      "$defs": {
+        "DraftContent": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "to": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "To",
+              "type": "array"
+            },
+            "cc": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "Cc",
+              "type": "array"
+            },
+            "bcc": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "Bcc",
+              "type": "array"
+            },
+            "subject": {
+              "default": "",
+              "maxLength": 998,
+              "title": "Subject",
+              "type": "string"
+            },
+            "text": {
+              "default": "",
+              "maxLength": 1000000,
+              "title": "Text",
+              "type": "string"
+            },
+            "attachments": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 30,
+              "title": "Attachments",
+              "type": "array"
+            }
+          },
+          "required": [
+            "account"
+          ],
+          "title": "DraftContent",
+          "type": "object"
+        },
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_draft_createArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_draft_import",
+    "description": "Explicitly register a provider Drafts message as a managed versioned draft. Reads it without modifying it; later edits use expected_version.",
+    "inputSchema": {
+      "properties": {
+        "identity": {
+          "$ref": "#/$defs/Identity"
+        }
+      },
+      "required": [
+        "identity"
+      ],
+      "type": "object",
+      "$defs": {
+        "Identity": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "folder": {
+              "maxLength": 512,
+              "minLength": 1,
+              "title": "Folder",
+              "type": "string"
+            },
+            "uidvalidity": {
+              "exclusiveMinimum": 0,
+              "title": "Uidvalidity",
+              "type": "integer"
+            },
+            "uid": {
+              "exclusiveMinimum": 0,
+              "title": "Uid",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "account",
+            "folder",
+            "uidvalidity",
+            "uid"
+          ],
+          "title": "Identity",
+          "type": "object"
+        }
+      },
+      "title": "mail_draft_importArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_draft_get",
+    "description": "Read one client-owned managed draft and its provider identity and version.",
+    "inputSchema": {
+      "properties": {
+        "draft_id": {
+          "title": "Draft Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "draft_id"
+      ],
+      "type": "object",
+      "title": "mail_draft_getArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_drafts_list",
+    "description": "List drafts managed by this service and client. All provider drafts can be listed with mail_search in the server Drafts folder.",
+    "inputSchema": {
+      "properties": {
+        "account": {
+          "enum": [
+            "recepce",
+            "provoz"
+          ],
+          "title": "Account",
+          "type": "string"
+        }
+      },
+      "required": [
+        "account"
+      ],
+      "type": "object",
+      "title": "mail_drafts_listArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_draft_update",
+    "description": "Replace managed draft with optimistic version checking, including account/recipients/text/attachments; invalidate earlier approvals.",
+    "inputSchema": {
+      "properties": {
+        "draft_id": {
+          "title": "Draft Id",
+          "type": "string"
+        },
+        "expected_version": {
+          "title": "Expected Version",
+          "type": "integer"
+        },
+        "content": {
+          "$ref": "#/$defs/DraftContent"
+        }
+      },
+      "required": [
+        "draft_id",
+        "expected_version",
+        "content"
+      ],
+      "type": "object",
+      "$defs": {
+        "DraftContent": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "enum": [
+                "recepce",
+                "provoz"
+              ],
+              "title": "Account",
+              "type": "string"
+            },
+            "to": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "To",
+              "type": "array"
+            },
+            "cc": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "Cc",
+              "type": "array"
+            },
+            "bcc": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "title": "Bcc",
+              "type": "array"
+            },
+            "subject": {
+              "default": "",
+              "maxLength": 998,
+              "title": "Subject",
+              "type": "string"
+            },
+            "text": {
+              "default": "",
+              "maxLength": 1000000,
+              "title": "Text",
+              "type": "string"
+            },
+            "attachments": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 30,
+              "title": "Attachments",
+              "type": "array"
+            }
+          },
+          "required": [
+            "account"
+          ],
+          "title": "DraftContent",
+          "type": "object"
+        }
+      },
+      "title": "mail_draft_updateArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_draft_delete",
+    "description": "Explicitly remove this managed draft using targeted UID EXPUNGE only; never expunge unrelated messages.",
+    "inputSchema": {
+      "properties": {
+        "draft_id": {
+          "title": "Draft Id",
+          "type": "string"
+        },
+        "expected_version": {
+          "title": "Expected Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "draft_id",
+        "expected_version"
+      ],
+      "type": "object",
+      "title": "mail_draft_deleteArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_send_prepare",
+    "description": "Freeze exact draft version, SMTP account, recipients, body, attachment bytes and hash for 10 minutes. Does not send or approve.",
+    "inputSchema": {
+      "properties": {
+        "draft_id": {
+          "title": "Draft Id",
+          "type": "string"
+        },
+        "expected_version": {
+          "title": "Expected Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "draft_id",
+        "expected_version"
+      ],
+      "type": "object",
+      "title": "mail_send_prepareArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_send_execute",
+    "description": "Send only a separately approved immutable request. Persist the attempt before SMTP. Same key never resends; SMTP acceptance does not prove delivery.",
+    "inputSchema": {
+      "properties": {
+        "send_request_id": {
+          "title": "Send Request Id",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "send_request_id",
+        "idempotency_key"
+      ],
+      "type": "object",
+      "title": "mail_send_executeArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  },
+  {
+    "name": "mail_send_status",
+    "description": "Read persisted send outcome and independent Sent-copy result; unknown must not be retried automatically.",
+    "inputSchema": {
+      "properties": {
+        "idempotency_key": {
+          "title": "Idempotency Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key"
+      ],
+      "type": "object",
+      "title": "mail_send_statusArguments"
+    },
+    "outputSchema": {
+      "properties": {
+        "scope": {
+          "additionalProperties": true,
+          "title": "Scope",
+          "type": "object"
+        },
+        "returned_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Returned Count",
+          "type": "integer"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total Count"
+        },
+        "count_kind": {
+          "default": "unknown",
+          "enum": [
+            "exact",
+            "lower_bound",
+            "unknown"
+          ],
+          "title": "Count Kind",
+          "type": "string"
+        },
+        "lower_bound": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lower Bound"
+        },
+        "coverage_complete": {
+          "default": false,
+          "title": "Coverage Complete",
+          "type": "boolean"
+        },
+        "has_more": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Has More"
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next Cursor"
+        },
+        "query_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Id"
+        },
+        "checked_at": {
+          "title": "Checked At",
+          "type": "string"
+        },
+        "source": {
+          "default": "service",
+          "enum": [
+            "live_server",
+            "synthetic_server",
+            "snapshot",
+            "cache",
+            "service"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "observations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Observations",
+          "type": "array"
+        },
+        "consistency": {
+          "default": "non_atomic_across_accounts",
+          "title": "Consistency",
+          "type": "string"
+        },
+        "global_order_verified": {
+          "default": false,
+          "title": "Global Order Verified",
+          "type": "boolean"
+        },
+        "cache_age_seconds": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Age Seconds"
+        },
+        "items": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "errors": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "data": {
+          "additionalProperties": true,
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "type": "object",
+      "additionalProperties": false,
+      "title": "Result"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    }
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "source": "immutable_server_copy_with_TLS_IMAP_SMTP_fixture",
+  "Realtime": "NOT_RUN",
+  "audio": "NOT_RUN",
+  "tests": [
+    "catalog_23",
+    "exact_total_50000",
+    "unread_counts_and_account_scope",
+    "global_latest_and_page_is_not_total",
+    "complete_text_all_cursors",
+    "untrusted_result_marker_only_model_interpretation_NOT_RUN",
+    "partial_scope_never_complete",
+    "draft_version_sender_control_approval_one_synthetic_SMTP"
+  ],
+  "source_sha256": {
+    "core.py": "79275ca65139b3a739565409c9d23cba2fd5bd4ad357ea51821574633604142b",
+    "app.py": "7842899f9620804be8a6b9621341a8ca5e3c551d752dbc86afe9ccdc76791e22",
+    "fixture.py": "1abb44bcadced6462be664d03f94b08fd149359308102f2f9a0ebd67fa3bc164",
+    "models.py": "7356ac835160a88ba4eecf38cb95c96028e01cf3f00134012792ddb801de828e",
+    "acceptance.py": "bbde1db369b6bd727dbdd70b95219c00d2af304b90b377f707f775f9cdc8a41e",
+    "provider.py": "16d714b1c789af50de78b8ef1581ebb364fbb92c60377bbcab6b26a45ba72bea"
+  },
+  "smtp_attempts": 1,
+  "status": "PASS"
+}

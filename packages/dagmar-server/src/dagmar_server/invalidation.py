@@ -34,6 +34,12 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
             bridge.memory_privacy_paused = True
             bridge.task_context.clear()
             bridge.task_context.memory_privacy_paused = True
+            if bridge.mail.pending:
+                try:
+                    await bridge.mail.approve(False)
+                except Exception:
+                    bridge.renew = True
+            bridge.mail.forget()
             bridge.curated_inputs.clear()
             if bridge.id != keep_bridge_id:
                 bridge.turns.generation += 1

@@ -76,6 +76,9 @@ class VoiceSessionRead(BaseModel):
     memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
     technologies: str = "unavailable"
     managed_functions: list[str] = Field(default_factory=list)
+    managed_mcp_servers: list[str] = Field(default_factory=list)
+    mail: Literal["disabled", "loading", "ready", "unavailable", "incompatible"] = "disabled"
+    managed_mcp_status: dict[str, str] = Field(default_factory=dict)
     renew: bool = False
     closed: bool = False
 
@@ -86,6 +89,9 @@ class VoiceSessionStatus(BaseModel):
     connection_state: Literal["connecting", "ready", "waiting"] = "connecting"
     memory: Literal["connecting", "ready", "unavailable"] = "unavailable"
     technologies: str
+    managed_mcp_servers: list[str] = Field(default_factory=list)
+    mail: Literal["disabled", "loading", "ready", "unavailable", "incompatible"] = "disabled"
+    managed_mcp_status: dict[str, str] = Field(default_factory=dict)
     renew: bool
     closed: bool
 

@@ -17,5 +17,5 @@ def test_supported_voice_routes_and_session_contract():
     assert {path.removeprefix(prefix) for path in app.openapi()["paths"] if path.startswith(prefix + "/")} == SUPPORTED_ROUTES
     assert set(VoiceSessionRead.model_fields) == {
         "logical_call_id", "sdp", "model", "session_id", "connection_state",
-        "memory", "technologies", "managed_functions", "renew", "closed",
+        "memory", "technologies", "managed_functions", "managed_mcp_servers", "managed_mcp_status", "mail", "renew", "closed",
     }

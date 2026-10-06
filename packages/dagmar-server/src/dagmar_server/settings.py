@@ -13,4 +13,11 @@ class DagmarSettings(BaseModel):
     # Candidate only: default off until a measured provider/audio comparison fits the shared paid budget.
     voice_input_noise_reduction: Literal['near_field','far_field'] | None = None
     voice_master_key: str = Field(default='', repr=False)
+    voice_release_sha: str = 'unknown'
+    voice_mail_enabled: bool = False
+    voice_mail_acceptance_sha: str = ''
+    voice_mail_max_continuations: int = Field(default=64, ge=1, le=256)
+    voice_mail_max_calls: int = Field(default=128, ge=1, le=512)
+    voice_mail_max_seconds: int = Field(default=600, ge=10, le=1800)
+    voice_mail_max_bytes: int = Field(default=524288, ge=1024, le=2097152)
     ha_mcp_token: str = Field(default='', repr=False)

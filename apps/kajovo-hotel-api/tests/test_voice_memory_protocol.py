@@ -353,6 +353,14 @@ def test_notes_protocol_sequence_and_retry_after_bridge_restart(host, monkeypatc
         await wait_for(lambda: len(provider.answers) == 5)
         row = provider.answers[-1]["note"]
         assert [i["content"] for i in row["items"]] == ["žárovky"]
+        # Receiving the frame is earlier than the host's acknowledged delivery.
+        # This scenario tests recovery of a confirmed result, not an uncertain send.
+        def output_acknowledged():
+            with factory() as db:
+                return db.scalar(select(VoiceMemoryOperation.delivered).where(
+                    VoiceMemoryOperation.session_id == bridge.id,
+                    VoiceMemoryOperation.call_id == "5")) is True
+        await wait_for(output_acknowledged)
         await bridge.close()
         replay = await bridge_for(host, monkeypatch, provider)
         await provider.user_phrase("5")

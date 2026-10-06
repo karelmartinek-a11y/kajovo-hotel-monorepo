@@ -35,6 +35,11 @@ export class VoiceRealtimeClient {
   private lifecycleCleanup: (() => void) | null = null;
   private sessionId: string | null = null;
   private managedFunctions = new Set<string>();
+  private managedMcpServers = new Set<string>();
+  private mcpItems = new Map<string,string>();
+  private mcpPending = new Set<string>();
+  private mcpCompleted = new Set<string>();
+  private mcpOutputs = new Set<string>();
   private connectionState = '';
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private playback = new Set<string>();
@@ -134,6 +139,8 @@ export class VoiceRealtimeClient {
     if (epoch !== this.epoch || peer !== this.peer) {if (answer.session_id) void this.provider.close?.(answer.session_id).catch(() => {}); return;}
     this.sessionId = answer.session_id ?? null;
     this.managedFunctions = new Set(answer.managed_functions ?? []);
+    this.managedMcpServers = new Set(answer.managed_mcp_servers ?? []);
+    this.set({managedMcpStatus: answer.managed_mcp_status});
     this.connectionState = answer.connection_state ?? answer.technologies ?? '';
     this.set({model: answer.model, capabilityStatus: answer.technologies});
     if ((answer.connection_state ?? answer.technologies) === 'connecting' && this.provider.heartbeat) this.stream?.getAudioTracks().forEach(track => {track.enabled = false;});
@@ -149,6 +156,7 @@ export class VoiceRealtimeClient {
       if (epoch !== this.epoch || peer !== this.peer) return;
       this.connectionState = status.connection_state ?? status.technologies;
       this.set({capabilityStatus: status.technologies});
+      if (status.managed_mcp_status) this.set({managedMcpStatus: status.managed_mcp_status});
       nextDelay = ['connecting', 'waiting'].includes(status.connection_state ?? status.technologies) ? 1000 : 15000;
       if (status.renew) {this.reconnect(); return;}
       if (status.closed) {this.fail('session_ended'); return;}
@@ -187,7 +195,29 @@ export class VoiceRealtimeClient {
       if(recoverable) return; // No retry, replay or blanket cancel of the native turn.
       this.fail('realtime_error'); return;
     }
-    if (event.item?.type === 'mcp_call' || (event.item?.type === 'function_call' && !this.managedFunctions.has(event.item.name ?? ''))) {this.fail('unsupported_capability'); return;}
+    if (event.item?.type?.startsWith('mcp_')) {
+      const label = event.item.server_label ?? (event.item.approval_request_id ? this.mcpItems.get(event.item.approval_request_id) : undefined);
+      if (!label || !this.managedMcpServers.has(label)) {this.fail('unsupported_capability'); return;}
+      if (event.item.id) this.mcpItems.set(event.item.id,label);
+      if (event.item.id && event.item.type === 'mcp_call' && event.type.endsWith('.added')) this.mcpPending.add(event.item.id);
+      if (event.item.id && event.item.type === 'mcp_call' && event.type.endsWith('.done')) {
+        this.mcpOutputs.add(event.item.id);
+        if (this.mcpCompleted.has(event.item.id)) this.mcpPending.delete(event.item.id);
+      }
+      this.set({managedMcpStatus: {...this.snapshot.managedMcpStatus,[label]:event.item.type === 'mcp_approval_request' ? 'awaiting_approval' : event.item.type === 'mcp_call' ? (this.mcpPending.size ? 'working' : 'ready') : event.item.type === 'mcp_approval_response' ? 'working' : event.type.endsWith('.done') ? 'ready' : 'loading'}});
+    }
+    if (event.type.startsWith('response.mcp_call.') && event.item_id) {
+      const label = this.mcpItems.get(event.item_id);
+      if (label && this.managedMcpServers.has(label)) {
+        if (event.type.endsWith('.in_progress')) this.mcpPending.add(event.item_id);
+        if (event.type.endsWith('.completed') || event.type.endsWith('.failed')) {
+          this.mcpCompleted.add(event.item_id);
+          if (this.mcpOutputs.has(event.item_id)) this.mcpPending.delete(event.item_id);
+        }
+        this.set({managedMcpStatus: {...this.snapshot.managedMcpStatus,[label]:this.mcpPending.size ? 'working' : 'ready'}});
+      }
+    }
+    if (event.item?.type === 'function_call' && !this.managedFunctions.has(event.item.name ?? '')) {this.fail('unsupported_capability'); return;}
     if (event.type === 'session.created') {
       if (this.connectionState === 'connecting' && this.provider.heartbeat) return;
       if (this.timeout) clearTimeout(this.timeout); this.timeout = null;
@@ -249,6 +279,8 @@ export class VoiceRealtimeClient {
     this.playback.clear();
     if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer); this.heartbeatTimer = null;
     const sessionId = this.sessionId; this.sessionId = null; this.managedFunctions.clear();
+    this.managedMcpServers.clear(); this.mcpItems.clear(); this.mcpPending.clear();
+    this.mcpCompleted.clear(); this.mcpOutputs.clear();
     if (sessionId) void this.provider.close?.(sessionId).catch(() => {});
     this.abort?.abort(); this.abort = null;
     if (this.timeout) clearTimeout(this.timeout); this.timeout = null;

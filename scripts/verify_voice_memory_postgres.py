@@ -156,6 +156,29 @@ with SessionLocal() as db:
     assert row.request_id==rid and row.confirmation_id.startswith('confirmed-')
     assert 'Transient PG room' not in str(row.__dict__)
 print('PostgreSQL registry confirmation and atomic write reservation PASS')
+from dagmar_server.mail_storage import MailReceipt,MailSecrets,MailSecretStore
+from sqlalchemy.exc import IntegrityError
+from dagmar_server.ports import get_settings
+import base64
+get_settings().voice_master_key=base64.b64encode(b'm'*32).decode()
+MailSecretStore().save('synthetic-mcp-fixture','synthetic-control-fixture')
+assert MailSecretStore().read()==('synthetic-mcp-fixture','synthetic-control-fixture')
+with SessionLocal() as db:
+    assert db.scalar(text('SELECT version FROM dagmar_schema_version'))==1
+    assert db.scalar(text('SELECT version FROM dagmar_mail_schema_version'))==1
+    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0046_current_voice_schema'
+    secret=db.get(MailSecrets,1)
+    assert 'synthetic' not in secret.mcp_ciphertext+secret.approval_ciphertext
+    fields=dict(owner='pg-owner',logical_call_id='pg-call',voice_session_id='pg-provider',audio_event_id='pg-native-audio',send_request_id='pg-request',content_hash='a'*64,draft_version=1,idempotency_key='pg-send-key',state='reserved',expires_at=utc_now()+timedelta(minutes=5))
+    db.add(MailReceipt(id='pg-mail-receipt',approval_request_id='pg-approval',**fields));db.commit()
+    db.add(MailReceipt(id='pg-mail-second',approval_request_id='pg-approval-second',**fields))
+    try:
+        db.commit()
+        raise AssertionError('native audio was reusable')
+    except IntegrityError:
+        db.rollback()
+    assert db.scalar(select(func.count()).select_from(MailReceipt))==1
+print('PostgreSQL additive Mail marker, encrypted credentials and single-use native audio receipt PASS')
 
 """
         print(api("python", "-c", code))

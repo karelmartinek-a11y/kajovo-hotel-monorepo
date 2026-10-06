@@ -21,6 +21,7 @@ HOST_NGINX_TEMPLATE="${HOST_NGINX_TEMPLATE:-$ROOT_DIR/infra/reverse-proxy/produc
 HOST_NGINX_SITE_PATH="${HOST_NGINX_SITE_PATH:-/etc/nginx/sites-available/hotel.hcasc.cz.conf}"
 HOST_NGINX_ENABLED_PATH="${HOST_NGINX_ENABLED_PATH:-/etc/nginx/sites-enabled/hotel.hcasc.cz.conf}"
 HOST_NGINX_SYNC_HELPER="${HOST_NGINX_SYNC_HELPER:-/usr/local/bin/kajovo-sync-hotel-nginx}"
+HOTEL_DEPLOY_SCOPE="${HOTEL_DEPLOY_SCOPE:-full}"
 
 require_cmd() {
   local name="$1"
@@ -49,7 +50,7 @@ docker_build_with_snapshot_retry() {
   build_log="$(mktemp)"
 
   set +e
-  compose_cmd build --pull 2>&1 | tee "$build_log"
+  compose_cmd build --pull "$@" 2>&1 | tee "$build_log"
   status=${PIPESTATUS[0]}
   set -e
 
@@ -62,7 +63,7 @@ docker_build_with_snapshot_retry() {
     echo "Detekovan poskozeny Docker build cache snapshot -> provadim builder/image prune a opakuji build."
     docker builder prune -af || true
     docker image prune -af || true
-    compose_cmd build --pull
+    compose_cmd build --pull "$@"
     rm -f "$build_log"
     return 0
   fi
@@ -302,6 +303,43 @@ fi
 if [[ "$RESET_DB_ON_DEPLOY" != "true" && "$RESET_DB_ON_DEPLOY" != "false" ]]; then
   echo "Neplatna hodnota RESET_DB_ON_DEPLOY='$RESET_DB_ON_DEPLOY' (povoleno: true/false)." >&2
   exit 1
+fi
+
+if [[ "$HOTEL_DEPLOY_SCOPE" != "full" && "$HOTEL_DEPLOY_SCOPE" != "api-admin" ]]; then
+  echo "Invalid deployment scope" >&2
+  exit 1
+fi
+
+if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
+  [[ "$RESET_DB_ON_DEPLOY" == "false" ]] || { echo "API/admin cannot reset the database" >&2; exit 1; }
+  protected_before="$(mktemp)"
+  protected_after="$(mktemp)"
+  protected_state() {
+    docker inspect "$(compose_cmd ps -q postgres)" "$(compose_cmd ps -q web)" \
+      --format '{{.Id}} {{.Image}} {{.State.StartedAt}}'
+    systemctl show mail-mcp-standalone.service kajavoiceha.service dagmar-backend.service kajovo-server-readonly-mcp.service kajovo-server-readonly-mcp-auth.service kajovo-server-readonly-mcp-broker.service nginx.service \
+      --property=Id --property=MainPID --property=ExecMainStartTimestampMonotonic
+    sha256sum /etc/nginx/sites-enabled/*
+  }
+  protected_state > "$protected_before"
+  wait_for_container_health postgres 30
+  docker_build_with_snapshot_retry api admin
+  # Independent, additive Dagmar/Mail migration; the hotel Alembic checkpoint is unchanged.
+  compose_cmd run --rm --no-deps api python -c 'from app.services.dagmar_adapter import migrate; migrate()'
+  compose_cmd up -d --no-deps --force-recreate api admin
+  wait_for_container_health api 180
+  wait_for_container_health admin 180
+  http_check "http://127.0.0.1:${API_PORT:-8202}/ready" "API readiness"
+  http_check "http://127.0.0.1:${API_PORT:-8202}/api/health" "API health"
+  http_check "http://127.0.0.1:${ADMIN_PORT:-8083}/healthz" "Admin health"
+  protected_state > "$protected_after"
+  cmp "$protected_before" "$protected_after" || { echo "Protected runtime changed during API/admin deployment" >&2; exit 1; }
+  mkdir -p "$ROOT_DIR/artifacts/deploy-runtime"
+  cat > "$ROOT_DIR/artifacts/deploy-runtime/latest.json" <<JSON
+{"deployed_at":"$(date -u +%FT%TZ)","branch":"$current_branch","sha":"$commit_sha","scope":"api-admin","artifact_mode":"$SKIP_GIT_SYNC","checks":{"protected_runtime":"unchanged","api_ready":"200","api_health":"200","admin_healthz":"200"}}
+JSON
+  rm -f "$protected_before" "$protected_after"
+  exit 0
 fi
 
 if [[ "$RESET_DB_ON_DEPLOY" == "true" ]]; then

@@ -966,7 +966,10 @@ export type VoiceSessionRead = {
   "closed"?: boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
   "logical_call_id"?: string | null;
+  "mail"?: "disabled" | "loading" | "ready" | "unavailable" | "incompatible";
   "managed_functions"?: Array<string>;
+  "managed_mcp_servers"?: Array<string>;
+  "managed_mcp_status"?: Record<string, unknown>;
   "memory"?: "connecting" | "ready" | "unavailable";
   "model": string;
   "renew"?: boolean;
@@ -978,6 +981,9 @@ export type VoiceSessionStatus = {
   "closed": boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
   "logical_call_id"?: string | null;
+  "mail"?: "disabled" | "loading" | "ready" | "unavailable" | "incompatible";
+  "managed_mcp_servers"?: Array<string>;
+  "managed_mcp_status"?: Record<string, unknown>;
   "memory"?: "connecting" | "ready" | "unavailable";
   "renew": boolean;
   "session_id": string;

@@ -25,6 +25,30 @@ function host({permission, create, heartbeat, close} = {}) {
   return {client, peers, tracks, audios, contexts, events, send};
 }
 
+test('managed native MCP is observed without browser execution or approval', async () => {
+  const h=host({create:async()=>({sdp:'v=0 answer',model:'test-model',managed_mcp_servers:['test-server']})});
+  await h.client.start();
+  try {
+    h.send({type:'conversation.item.done',item:{id:'approval',type:'mcp_approval_request',server_label:'test-server'}});
+    assert.equal(h.client.getSnapshot().managedMcpStatus['test-server'],'awaiting_approval');
+    h.send({type:'conversation.item.done',item:{id:'approved',type:'mcp_approval_response',approval_request_id:'approval'}});
+    h.send({type:'response.output_item.added',item:{id:'call',type:'mcp_call',server_label:'test-server'}});
+    h.send({type:'response.mcp_call.completed',item_id:'call'});
+    assert.equal(h.client.getSnapshot().managedMcpStatus['test-server'],'working');
+    h.send({type:'response.output_item.done',item:{id:'call',type:'mcp_call',server_label:'test-server'}});
+    assert.equal(h.client.getSnapshot().managedMcpStatus['test-server'],'ready');
+    assert.equal(h.peers[0].channel.sent.length,0);
+    assert.equal(h.tracks[0].enabled,true);
+  } finally {await h.client.stop();}
+});
+
+test('unadvertised native MCP fails closed', async () => {
+  const h=host(); await h.client.start();
+  h.send({type:'conversation.item.done',item:{id:'call',type:'mcp_call',server_label:'unadvertised'}});
+  assert.equal(h.client.getSnapshot().error.category,'unsupported_capability');
+  await h.client.stop();
+});
+
 test('playback, heartbeat and overlapping drains preserve natural input and explicit mute', async () => {
   const h = host({heartbeat: async () => ({technologies: 'ready', renew: false, closed: false}),
     create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'speaker'})});

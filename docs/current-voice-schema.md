@@ -5,7 +5,7 @@ Alembic má jediný head `0046_current_voice_schema`, který přímo navazuje na
 neprovádějí DDL ani změny aplikačních dat. Nasazené databáze již používají stejnou
 identitu checkpointu. Upgrade head je opakovatelný a zachovává paměť, registry a journály.
 
-Dagmar podporuje `assistant_memory` a `smart_technologie`. Hotelové SMTP,
+Dagmar podporuje `assistant_memory` a `smart_technologie` a volitelný native Realtime MCP `hotel_mail`, který vyžaduje samostatnou živou akceptaci před aktivací. Mail používá aditivní tabulky `dagmar_mail_*` a vlastní schema marker verze 1; oba původní checkpointy zůstávají zachované. Viz [Mail MCP integration](MAIL_MCP_INTEGRATION.md). Hotelové SMTP,
 reset/unlock/onboarding a snídaňový import mají samostatné kontrakty.
 Historické snapshoty odstraněných schopností a jejich indexy nejsou součástí
 aktuálního stromu; původní záznamy zůstávají v Git historii. Offline diagnostický

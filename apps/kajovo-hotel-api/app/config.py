@@ -19,6 +19,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("KAJOVO_API_ADMIN_PASSWORD", "HOTEL_ADMIN_PASSWORD"),
     )
     voice_release_sha: str = "unknown"
+    voice_mail_enabled: bool = False
+    voice_mail_acceptance_sha: str = ""
+    voice_mail_max_continuations: int = Field(default=64, ge=1, le=256)
+    voice_mail_max_calls: int = Field(default=128, ge=1, le=512)
+    voice_mail_max_seconds: int = Field(default=600, ge=10, le=1800)
+    voice_mail_max_bytes: int = Field(default=524288, ge=1024, le=2097152)
     voice_context_prune_tokens: int = Field(default=24000, ge=8000, le=80000)
     voice_smart_frame_max_chars: int = Field(default=60000, ge=8000, le=100000)
     voice_memory_context_max_tokens: int = Field(default=2000, ge=500, le=12000, validation_alias="VOICE_MEMORY_CONTEXT_MAX_TOKENS")

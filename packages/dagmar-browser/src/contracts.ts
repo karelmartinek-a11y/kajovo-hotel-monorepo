@@ -211,3 +211,30 @@ export type UpdateMemory = {
   "subject": string;
   "tags": Array<string>;
 };
+export type VoiceSessionRead = {
+  "closed"?: boolean;
+  "connection_state"?: "connecting" | "ready" | "waiting";
+  "logical_call_id"?: string | null;
+  "mail"?: "disabled" | "loading" | "ready" | "unavailable" | "incompatible";
+  "managed_functions"?: Array<string>;
+  "managed_mcp_servers"?: Array<string>;
+  "managed_mcp_status"?: Record<string, string>;
+  "memory"?: "connecting" | "ready" | "unavailable";
+  "model": string;
+  "renew"?: boolean;
+  "sdp": string;
+  "session_id"?: string | null;
+  "technologies"?: string;
+};
+export type VoiceSessionStatus = {
+  "closed": boolean;
+  "connection_state"?: "connecting" | "ready" | "waiting";
+  "logical_call_id"?: string | null;
+  "mail"?: "disabled" | "loading" | "ready" | "unavailable" | "incompatible";
+  "managed_mcp_servers"?: Array<string>;
+  "managed_mcp_status"?: Record<string, string>;
+  "memory"?: "connecting" | "ready" | "unavailable";
+  "renew": boolean;
+  "session_id": string;
+  "technologies": string;
+};

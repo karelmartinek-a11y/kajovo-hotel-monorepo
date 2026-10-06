@@ -7,7 +7,7 @@
 - `apps/kajovo-hotel-api` je FastAPI backend s OpenAPI exportem v `apps/kajovo-hotel-api/openapi.json`.
 - `packages/shared` drží RBAC, i18n a generovaný API klient v `packages/shared/src/generated/client.ts`.
 - `packages/ui` drží sdílený shell a UI komponenty.
-- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`. Hotelový backend obsluhuje nezávislé assistant_memory a smart_technologie přes společný serverový sideband; paměť není MCP ani agent a portable balíčky neobsahují hotelová data. Viz `docs/voice-memory.md`.
+- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`. Hotelový backend obsluhuje nezávislé assistant_memory a smart_technologie přes společný serverový sideband; paměť není MCP ani agent a portable balíčky neobsahují hotelová data. Viz `docs/voice-memory.md`. Volitelná nativní Mail capability a její oddělená aktivace jsou popsány v `docs/MAIL_MCP_INTEGRATION.md`.
 - Přihlášené aplikace používají `AppShell` s pevným záhlavím a spodní navigací v jedné vodorovně posuvné řadě na desktopu, tabletu i telefonu. Chat je první, následují moduly podle role a nakonec Profil. Podrobnosti jsou v `docs/ui-navigation.md`.
 
 ## Runtime a bezpečnost

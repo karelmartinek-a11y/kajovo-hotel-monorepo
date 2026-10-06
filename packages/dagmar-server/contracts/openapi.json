@@ -1874,12 +1874,38 @@
             ],
             "title": "Logical Call Id"
           },
+          "mail": {
+            "default": "disabled",
+            "enum": [
+              "disabled",
+              "loading",
+              "ready",
+              "unavailable",
+              "incompatible"
+            ],
+            "title": "Mail",
+            "type": "string"
+          },
           "managed_functions": {
             "items": {
               "type": "string"
             },
             "title": "Managed Functions",
             "type": "array"
+          },
+          "managed_mcp_servers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Managed Mcp Servers",
+            "type": "array"
+          },
+          "managed_mcp_status": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Managed Mcp Status",
+            "type": "object"
           },
           "memory": {
             "default": "unavailable",
@@ -1954,6 +1980,32 @@
               }
             ],
             "title": "Logical Call Id"
+          },
+          "mail": {
+            "default": "disabled",
+            "enum": [
+              "disabled",
+              "loading",
+              "ready",
+              "unavailable",
+              "incompatible"
+            ],
+            "title": "Mail",
+            "type": "string"
+          },
+          "managed_mcp_servers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Managed Mcp Servers",
+            "type": "array"
+          },
+          "managed_mcp_status": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Managed Mcp Status",
+            "type": "object"
           },
           "memory": {
             "default": "unavailable",

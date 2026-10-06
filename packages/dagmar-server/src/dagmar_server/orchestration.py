@@ -167,6 +167,9 @@ class VoiceBridge:
         self.operation_generation = None
         self.curated_inputs = set()
         self.configuration_digest = None
+        from .mail import MailHost
+        self.mail = MailHost(self)
+        self.continuations_queued = set()
 
     def operation_failure(self, exc, phase):
         from .logging_utils import failure
@@ -177,6 +180,9 @@ class VoiceBridge:
             "session_id": self.id,
             "technologies": self.technologies,
             "memory": self.memory_status,
+            "mail": self.mail.status,
+            "managed_mcp_status": {"hotel_mail": self.mail.status},
+            "managed_mcp_servers": ["hotel_mail"] if get_settings().voice_mail_enabled else [],
             "connection_state": "waiting" if self.technologies == "waiting" else "ready" if self.ready.is_set() else "connecting",
             "renew": self.renew,
             "closed": self.closed,
@@ -215,7 +221,7 @@ class VoiceBridge:
         """
         if self.closed:
             raise asyncio.CancelledError
-        response_event=event.get("type")=="response.create"
+        response_event=event.get("type")=="response.create" and not (event.get("response", {}).get("metadata") or {}).get("dagmar_mail_import")
         generation=event.pop("_turn_generation",self.turns.generation)
         intent=uuid.uuid4().hex if response_event else None
         if response_event and not self.turns.reserve(generation,intent):
@@ -287,7 +293,7 @@ class VoiceBridge:
         )
         value = {
             "type": "realtime",
-            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL],
+            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL] + self.mail.tools(),
             "tool_choice": "auto",
             "truncation": "disabled",
             "max_output_tokens": 4096,
@@ -307,6 +313,13 @@ class VoiceBridge:
                 }
             },
         }
+        if self.mail.status == "ready":
+            from .mail_contract import MAIL_INSTRUCTIONS
+            value["instructions"] += "\n" + MAIL_INSTRUCTIONS
+        else:
+            value["instructions"] += "\nMail is unavailable: never invent current mail facts."
+        if self.mail.blocking:
+            value["audio"]["input"]["turn_detection"]["create_response"] = False
         if get_settings().voice_input_noise_reduction:
             value["audio"]["input"]["noise_reduction"]={"type":get_settings().voice_input_noise_reduction}
         digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -326,7 +339,7 @@ class VoiceBridge:
         if value is None:
             value = {"retry": True}
         if isinstance(value, dict):
-            value = {**value, "_turn_generation": self.turns.generation}
+            value = {"_turn_generation": self.turns.generation, **value}
         try:
             self.queue.put_nowait(value)
         except asyncio.QueueFull:
@@ -343,7 +356,7 @@ class VoiceBridge:
 
     async def update_transcription(self):
         automatic = bool(self.memory_buffer and self.memory_buffer.enabled and not self.memory_privacy_paused)
-        confirming = bool(self.registry.plan and self.registry.plan.requires_confirmation and self.registry.valid())
+        confirming = bool(self.registry.plan and self.registry.plan.requires_confirmation and self.registry.valid()) or self.mail.blocking
         transcription = {"model": "gpt-4o-mini-transcribe"} if self.memory_principal or automatic or confirming else None
         if transcription is not None:
             language = self.config.manual_language if self.config.language_mode == "manual" else self.registry.language if confirming else None
@@ -606,6 +619,21 @@ class VoiceBridge:
             if not fresh_event:
                 continue
             typ = event.get("type")
+            try:
+                mail_action = self.mail.observe(event)
+                if mail_action:
+                    await self.enqueue({"mail": mail_action})
+                if typ == "response.done":
+                    for mail_item in event.get("response", {}).get("output", []):
+                        if mail_item.get("type") in {"mcp_call", "mcp_approval_request"}:
+                            action = self.mail.observe({"type": "response.output_item.done", "item": mail_item})
+                            if action:
+                                await self.enqueue({"mail": action})
+            except Exception:
+                self.mail.status = "incompatible"
+                await self.enqueue({"mail": "configure"})
+            if (event.get("response", {}).get("id") or event.get("response_id")) in self.turns.out_of_band:
+                continue
             registry_dialog = self.registry.state in {"reading", "awaiting_confirmation"}
             registry_event = self.registry.plan and typ in {"response.created", "response.done", "input_audio_buffer.speech_started", "output_audio_buffer.stopped", "output_audio_buffer.cleared", "conversation.item.input_audio_transcription.completed", "conversation.item.input_audio_transcription.failed"}
             registry_action = self.registry.event(event) if registry_event and authorized(self.owner) else None
@@ -637,7 +665,7 @@ class VoiceBridge:
                 if typ == "response.done":
                     response = event.get("response", {})
                     generation = self.turns.responses.get(response.get("id"))
-                    if response.get("status") == "completed" and not any(item.get("type") == "function_call" for item in response.get("output", [])) and generation == self.turns.generation:
+                    if response.get("status") == "completed" and not any(item.get("type") in {"function_call", "mcp_call", "mcp_approval_request"} for item in response.get("output", [])) and generation == self.turns.generation:
                         self.human_turns.complete(generation)
                 if typ in {"response.done", "conversation.item.input_audio_transcription.completed"}:
                     for iid, value in self.human_turns.ready():
@@ -724,6 +752,7 @@ class VoiceBridge:
             }:
                 self.renew = True
                 self.catalog_ready = False
+            await self.queue_continuations()
             del raw, event
         raise SmartError("sideband_disconnected")
 
@@ -1039,14 +1068,45 @@ class VoiceBridge:
         if self.turns.current(generation) and not self.turns.active and not self.closed:
             await self.send({"type": "response.create", "_turn_generation":generation}, lambda e: e.get("type") == "response.created")
 
+    async def queue_continuations(self):
+        for rid, generation in self.turns.ready_responses():
+            if rid not in self.continuations_queued:
+                self.continuations_queued.add(rid)
+                await self.enqueue({"continuation": rid, "_turn_generation": generation})
+
     async def work(self):
         while not self.closed:
             calls = await self.queue.get()
+            if isinstance(calls, dict) and "continuation" in calls:
+                self.continuations_queued.discard(calls["continuation"])
             generation = calls.get("_turn_generation", self.turns.generation) if isinstance(calls, dict) else self.turns.generation
             if isinstance(calls, dict) and not self.turns.current(generation):
                 self.registry_generation_queued = False
                 continue
             self.operation_generation = generation
+            if isinstance(calls, dict) and "mail" in calls:
+                try:
+                    await self.mail.work(calls["mail"])
+                except Exception:
+                    self.mail.status = "unavailable"
+                    if self.mail.pending:
+                        with contextlib.suppress(Exception):
+                            await self.mail.approve(False)
+                    self.mail.forget()
+                    await self.configure(self.catalog_ready)
+                await self.queue_continuations()
+                continue
+            if isinstance(calls, dict) and "continuation" in calls:
+                if not self.renew and self.turns.claim_response(calls["continuation"], generation):
+                    if not self.task_context.mail.account(generation, continuations=1):
+                        await self.item({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Mail work reached its turn safety limit. The result is incomplete. Tell the person truthfully; do not call more mail tools in this turn."}]})
+                    if self.registry.readback_pending:
+                        await self.registry_readback()
+                    else:
+                        await self.update_transcription()
+                        await self.configure(self.catalog_ready)
+                        await self.continue_generation(generation)
+                continue
             if isinstance(calls, dict) and "registry" in calls:
                 if calls["registry"] == "readback":
                     await self.registry_readback()
@@ -1078,6 +1138,7 @@ class VoiceBridge:
                         self.seen_calls[cid] = hashlib.sha256(json.dumps(call, sort_keys=True).encode()).hexdigest()
                     continue
                 await self.result(call)
+                self.turns.function_finished(call.get("call_id"))
             self.operation_generation = None
             had_calls = bool(calls)
             calls.clear()
@@ -1086,15 +1147,12 @@ class VoiceBridge:
                 await self.configure(False)
             self.protected_items = ({self.catalog_item} if self.catalog_item else set()) | ({self.memory_item} if self.memory_item else set()) | {
                 iid for items in self.unresolved_items.values() for iid in items
+            } | ({self.mail.import_item} if self.mail.import_item else set()) | {
+                iid for iid, value in self.turns.items.items() if value["approval"] or not value["transport"] or not value["output"]
             }
             await self.prune()
-            if had_calls and not self.renew and self.turns.continuation(generation, "tools:" + str(len(self.seen_calls))):
-                if self.registry.readback_pending:
-                    await self.registry_readback()
-                else:
-                    await self.update_transcription()
-                    await self.configure(self.catalog_ready)
-                    await self.continue_generation(generation)
+            if had_calls:
+                await self.queue_continuations()
 
     async def lease(self):
         while True:
@@ -1105,6 +1163,8 @@ class VoiceBridge:
                 self.registry.valid()
             if self.registry.expiry_pending:
                 await self.queue_registry_action("generate")
+            if self.mail.pending and self.mail.pending["expires"] <= utc_now():
+                await self.enqueue({"mail": "reject"})
 
     async def initialize_technologies(self):
         delay = 1
@@ -1218,6 +1278,7 @@ class VoiceBridge:
                     asyncio.create_task(self.lease()),
                     asyncio.create_task(self.memory_work()),
                     asyncio.create_task(self.initialize_technologies()),
+                    asyncio.create_task(self.mail.initialize()),
                 ]
                 done, _ = await asyncio.wait([task for task in tasks if task is not memory_setup and task is not resume_setup], return_when=asyncio.FIRST_COMPLETED)
                 for completed in done:
@@ -1240,6 +1301,7 @@ class VoiceBridge:
             if not authorized(self.owner):
                 self.task_context.clear()
             self.registry.invalidate()
+            self.mail.close()
             self.registry.text = None
             self.registry.plan = None
             for task in tasks:
@@ -1371,6 +1433,9 @@ class VoiceBridgeManager:
             "model": model,
             **bridge.public_status(),
             "managed_functions": ["assistant_memory", "smart_technologie"],
+            "managed_mcp_servers": ["hotel_mail"] if get_settings().voice_mail_enabled else [],
+            "mail": bridge.mail.status,
+            "managed_mcp_status": {"hotel_mail": bridge.mail.status},
         }
 
     def get(self, sid: str, owner: str):

@@ -283,7 +283,7 @@ def cmd_deploy() -> None:
     run_remote(
         "set -euo pipefail; "
         'upload_home="$HOME"; '
-        f"env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} RELEASE_ARCHIVE={shlex.quote(archive)} "
+        f"env DEPLOY_UPLOAD_HOME=\"$upload_home\" DEPLOY_SHA={quoted_sha} HOTEL_DEPLOY_SCOPE={shlex.quote(env('HOTEL_DEPLOY_SCOPE', 'full'))} RELEASE_ARCHIVE={shlex.quote(archive)} "
         'bash "$upload_home/kajovo-deploy-remote.sh"; '
         'rm -f "$upload_home/kajovo-deploy-remote.sh"'
     )
