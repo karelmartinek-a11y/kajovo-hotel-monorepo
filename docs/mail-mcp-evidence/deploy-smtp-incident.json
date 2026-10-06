@@ -1,0 +1,17 @@
+{
+  "workflow_run": 37531617755,
+  "conclusion": "cancelled",
+  "api_admin_upload": "success",
+  "protected_runtime": "unchanged",
+  "live_user_smoke_finished_before_cancellation": true,
+  "reset_link_http_status": 200,
+  "confirmed_hotel_SMTP_attempts_at_least": 1,
+  "implicit_onboarding_invocation": true,
+  "onboarding_delivery_evidence": "UNKNOWN",
+  "recipient_pattern": "deploy.users.*@kajovohotel.local",
+  "Mail_MCP_production_send_calls": 0,
+  "synthetic_fixture_SMTP_attempts": 1,
+  "new_paid_provider_requests": 0,
+  "correction": "API/admin user smoke is read-only, CRUD and reset-link NOT_RUN; full deploy remains unchanged",
+  "temporary_user_cleanup": "PASS"
+}

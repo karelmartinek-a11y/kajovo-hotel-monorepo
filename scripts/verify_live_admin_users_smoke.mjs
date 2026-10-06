@@ -5,6 +5,8 @@ const adminEmail = process.env.VERIFY_ADMIN_EMAIL;
 const adminPassword = process.env.VERIFY_ADMIN_PASSWORD;
 const deploySha = process.env.VERIFY_DEPLOY_SHA ?? 'unknown';
 const runId = process.env.GITHUB_RUN_ID ?? 'local';
+const deploymentScope = process.env.HOTEL_DEPLOY_SCOPE ?? 'full';
+if (!['full', 'api-admin'].includes(deploymentScope)) throw new Error('Invalid deployment scope.');
 
 if (!baseUrl) {
   throw new Error('VERIFY_BASE_URL is required.');
@@ -149,134 +151,143 @@ let session = null;
 try {
   session = await createSession();
 
-  const createPayload = {
-    first_name: 'Deploy',
-    last_name: 'Smoke',
-    email: testEmail,
-    roles: ['recepce'],
-    phone: '+420111222333',
-    note: `live-users-smoke create sha=${deploySha} run=${runId}`,
-    password: 'DeploySmokePass123',
-  };
-  const created = await requestJson(session, '/api/v1/users', {
-    method: 'POST',
-    payload: createPayload,
-  });
-  assertStatus(created, 201, 'POST /api/v1/users');
-  if (!created.payload || created.payload.email !== testEmail) {
-    throw new Error(`Unexpected create user payload: ${JSON.stringify(created.payload)}`);
-  }
-  createdUserId = created.payload.id;
-
-  const portalLogin = async () => {
-    const response = await fetch(`${origin}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'user-agent': 'kajovo-live-users-smoke/1.0' },
-      body: JSON.stringify({ email: testEmail, password: createPayload.password, web_activity_session: true }),
-    });
-    const payload = await assertJsonOk(response, 'Portal web login');
-    if (payload.actor_type !== 'portal') throw new Error('Unexpected portal actor type.');
-    const cookieHeader = parseCookieHeader(response.headers);
-    const csrfToken = readCookieValue(cookieHeader, 'kajovo_csrf');
-    const sessionCookie = sessionSetCookie(response.headers);
-    if (!csrfToken || !sessionCookie?.includes('Max-Age=172800')) {
-      throw new Error('Portal web session cookies are invalid.');
-    }
-    return { cookieHeader, csrfToken };
-  };
-
-  const portalSession = await portalLogin();
-  const selectedLocale = await requestJson(portalSession, '/api/auth/locale', {
-    method: 'PATCH', payload: { locale: 'uk' },
-  });
-  assertStatus(selectedLocale, 200, 'PATCH /api/auth/locale');
-  if (selectedLocale.payload?.preferred_locale !== 'uk') throw new Error('Portal locale was not saved.');
-  const secondPortalSession = await portalLogin();
-  const rememberedLocale = await requestJson(secondPortalSession, '/api/auth/me');
-  assertStatus(rememberedLocale, 200, 'GET /api/auth/me with second session');
-  if (rememberedLocale.payload?.preferred_locale !== 'uk') throw new Error('Portal locale was not remembered across sessions.');
-  const refreshed = await requestJson(secondPortalSession, '/api/auth/activity', { method: 'POST' });
-  assertStatus(refreshed, 200, 'POST /api/auth/activity');
-
-  const detail = await requestJson(session, `/api/v1/users/${createdUserId}`);
-  assertStatus(detail, 200, 'GET /api/v1/users/{id}');
-  if (!detail.payload || detail.payload.email !== testEmail) {
-    throw new Error(`Unexpected detail payload: ${JSON.stringify(detail.payload)}`);
-  }
-
-  const updated = await requestJson(session, `/api/v1/users/${createdUserId}`, {
-    method: 'PATCH',
-    payload: {
-      first_name: 'Deploy',
-      last_name: 'Smoke Updated',
-      email: testEmail,
-      roles: ['recepce', 'snidane'],
-      phone: '+420111222334',
-      note: `live-users-smoke update sha=${deploySha} run=${runId}`,
-    },
-  });
-  assertStatus(updated, 200, 'PATCH /api/v1/users/{id}');
-  if (!updated.payload?.roles?.includes('recepce') || !updated.payload?.roles?.includes('snídaně')) {
-    throw new Error(`Updated user does not contain expected roles: ${JSON.stringify(updated.payload)}`);
-  }
-
-  const resetLink = await requestJson(session, `/api/v1/users/${createdUserId}/password/reset-link`, {
-    method: 'POST',
-  });
-  if (resetLink.response.status === 200) {
-    if (!resetLink.payload?.ok || !resetLink.payload.connected || !resetLink.payload.send_attempted) {
-      throw new Error(`Reset-link success payload is not a real send success: ${JSON.stringify(resetLink.payload)}`);
-    }
-  } else if (resetLink.response.status === 503) {
-    const detailText = String(resetLink.payload?.detail ?? '');
-    if (!detailText.toLowerCase().includes('smtp')) {
-      throw new Error(`Reset-link failure is not a transparent SMTP error: ${JSON.stringify(resetLink.payload)}`);
-    }
+  if (deploymentScope === 'api-admin') {
+    // User creation implicitly sends onboarding mail: this scope must stay read-only.
+    const overview = await requestJson(session, '/api/v1/users');
+    assertStatus(overview, 200, 'GET /api/v1/users');
+    if (!Array.isArray(overview.payload)) throw new Error('Invalid users overview.');
+    console.log(JSON.stringify({ok:true,smoke:'admin-users-read-only',sha:deploySha,run_id:runId,
+      users_count:overview.payload.length,crud:'NOT_RUN',reset_link_status:'NOT_RUN',smtp_send_excluded:true}));
   } else {
-    throw new Error(`Unexpected reset-link status ${resetLink.response.status}: ${JSON.stringify(resetLink.payload)}`);
+    const createPayload = {
+      first_name: 'Deploy',
+      last_name: 'Smoke',
+      email: testEmail,
+      roles: ['recepce'],
+      phone: '+420111222333',
+      note: `live-users-smoke create sha=${deploySha} run=${runId}`,
+      password: 'DeploySmokePass123',
+    };
+    const created = await requestJson(session, '/api/v1/users', {
+      method: 'POST',
+      payload: createPayload,
+    });
+    assertStatus(created, 201, 'POST /api/v1/users');
+    if (!created.payload || created.payload.email !== testEmail) {
+      throw new Error(`Unexpected create user payload: ${JSON.stringify(created.payload)}`);
+    }
+    createdUserId = created.payload.id;
+
+    const portalLogin = async () => {
+      const response = await fetch(`${origin}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'user-agent': 'kajovo-live-users-smoke/1.0' },
+        body: JSON.stringify({ email: testEmail, password: createPayload.password, web_activity_session: true }),
+      });
+      const payload = await assertJsonOk(response, 'Portal web login');
+      if (payload.actor_type !== 'portal') throw new Error('Unexpected portal actor type.');
+      const cookieHeader = parseCookieHeader(response.headers);
+      const csrfToken = readCookieValue(cookieHeader, 'kajovo_csrf');
+      const sessionCookie = sessionSetCookie(response.headers);
+      if (!csrfToken || !sessionCookie?.includes('Max-Age=172800')) {
+        throw new Error('Portal web session cookies are invalid.');
+      }
+      return { cookieHeader, csrfToken };
+    };
+
+    const portalSession = await portalLogin();
+    const selectedLocale = await requestJson(portalSession, '/api/auth/locale', {
+      method: 'PATCH', payload: { locale: 'uk' },
+    });
+    assertStatus(selectedLocale, 200, 'PATCH /api/auth/locale');
+    if (selectedLocale.payload?.preferred_locale !== 'uk') throw new Error('Portal locale was not saved.');
+    const secondPortalSession = await portalLogin();
+    const rememberedLocale = await requestJson(secondPortalSession, '/api/auth/me');
+    assertStatus(rememberedLocale, 200, 'GET /api/auth/me with second session');
+    if (rememberedLocale.payload?.preferred_locale !== 'uk') throw new Error('Portal locale was not remembered across sessions.');
+    const refreshed = await requestJson(secondPortalSession, '/api/auth/activity', { method: 'POST' });
+    assertStatus(refreshed, 200, 'POST /api/auth/activity');
+
+    const detail = await requestJson(session, `/api/v1/users/${createdUserId}`);
+    assertStatus(detail, 200, 'GET /api/v1/users/{id}');
+    if (!detail.payload || detail.payload.email !== testEmail) {
+      throw new Error(`Unexpected detail payload: ${JSON.stringify(detail.payload)}`);
+    }
+
+    const updated = await requestJson(session, `/api/v1/users/${createdUserId}`, {
+      method: 'PATCH',
+      payload: {
+        first_name: 'Deploy',
+        last_name: 'Smoke Updated',
+        email: testEmail,
+        roles: ['recepce', 'snidane'],
+        phone: '+420111222334',
+        note: `live-users-smoke update sha=${deploySha} run=${runId}`,
+      },
+    });
+    assertStatus(updated, 200, 'PATCH /api/v1/users/{id}');
+    if (!updated.payload?.roles?.includes('recepce') || !updated.payload?.roles?.includes('snídaně')) {
+      throw new Error(`Updated user does not contain expected roles: ${JSON.stringify(updated.payload)}`);
+    }
+
+    const resetLink = await requestJson(session, `/api/v1/users/${createdUserId}/password/reset-link`, {
+      method: 'POST',
+    });
+    if (resetLink.response.status === 200) {
+      if (!resetLink.payload?.ok || !resetLink.payload.connected || !resetLink.payload.send_attempted) {
+        throw new Error(`Reset-link success payload is not a real send success: ${JSON.stringify(resetLink.payload)}`);
+      }
+    } else if (resetLink.response.status === 503) {
+      const detailText = String(resetLink.payload?.detail ?? '');
+      if (!detailText.toLowerCase().includes('smtp')) {
+        throw new Error(`Reset-link failure is not a transparent SMTP error: ${JSON.stringify(resetLink.payload)}`);
+      }
+    } else {
+      throw new Error(`Unexpected reset-link status ${resetLink.response.status}: ${JSON.stringify(resetLink.payload)}`);
+    }
+
+    const disabled = await requestJson(session, `/api/v1/users/${createdUserId}/active`, {
+      method: 'PATCH',
+      payload: { is_active: false },
+    });
+    assertStatus(disabled, 200, 'PATCH /api/v1/users/{id}/active false');
+    if (disabled.payload?.is_active !== false) {
+      throw new Error(`User was not deactivated: ${JSON.stringify(disabled.payload)}`);
+    }
+
+    const reactivated = await requestJson(session, `/api/v1/users/${createdUserId}/active`, {
+      method: 'PATCH',
+      payload: { is_active: true },
+    });
+    assertStatus(reactivated, 200, 'PATCH /api/v1/users/{id}/active true');
+    if (reactivated.payload?.is_active !== true) {
+      throw new Error(`User was not reactivated: ${JSON.stringify(reactivated.payload)}`);
+    }
+
+    const deleted = await fetch(`${origin}/api/v1/users/${createdUserId}`, {
+      method: 'DELETE',
+      headers: {
+        cookie: session.cookieHeader,
+        'x-csrf-token': session.csrfToken,
+        'user-agent': 'kajovo-live-users-smoke/1.0',
+      },
+    });
+    assertStatus({ response: deleted, payload: null, raw: '' }, 204, 'DELETE /api/v1/users/{id}');
+    createdUserId = null;
+
+    const afterDelete = await requestJson(session, `/api/v1/users/${detail.payload.id}`);
+    assertStatus(afterDelete, 404, 'GET /api/v1/users/{id} after delete');
+
+    console.log(JSON.stringify({
+      ok: true,
+      baseUrl: origin,
+      smoke: 'admin-users',
+      email: testEmail,
+      sha: deploySha,
+      run_id: runId,
+      reset_link_status: resetLink.response.status,
+    }, null, 2));
   }
-
-  const disabled = await requestJson(session, `/api/v1/users/${createdUserId}/active`, {
-    method: 'PATCH',
-    payload: { is_active: false },
-  });
-  assertStatus(disabled, 200, 'PATCH /api/v1/users/{id}/active false');
-  if (disabled.payload?.is_active !== false) {
-    throw new Error(`User was not deactivated: ${JSON.stringify(disabled.payload)}`);
-  }
-
-  const reactivated = await requestJson(session, `/api/v1/users/${createdUserId}/active`, {
-    method: 'PATCH',
-    payload: { is_active: true },
-  });
-  assertStatus(reactivated, 200, 'PATCH /api/v1/users/{id}/active true');
-  if (reactivated.payload?.is_active !== true) {
-    throw new Error(`User was not reactivated: ${JSON.stringify(reactivated.payload)}`);
-  }
-
-  const deleted = await fetch(`${origin}/api/v1/users/${createdUserId}`, {
-    method: 'DELETE',
-    headers: {
-      cookie: session.cookieHeader,
-      'x-csrf-token': session.csrfToken,
-      'user-agent': 'kajovo-live-users-smoke/1.0',
-    },
-  });
-  assertStatus({ response: deleted, payload: null, raw: '' }, 204, 'DELETE /api/v1/users/{id}');
-  createdUserId = null;
-
-  const afterDelete = await requestJson(session, `/api/v1/users/${detail.payload.id}`);
-  assertStatus(afterDelete, 404, 'GET /api/v1/users/{id} after delete');
-
-  console.log(JSON.stringify({
-    ok: true,
-    baseUrl: origin,
-    smoke: 'admin-users',
-    email: testEmail,
-    sha: deploySha,
-    run_id: runId,
-    reset_link_status: resetLink.response.status,
-  }, null, 2));
 } finally {
   if (session && createdUserId !== null) {
     try {

@@ -46,3 +46,25 @@ def test_native_result_continues_once_only_after_all_provider_evidence(host, mon
         finally:
             await bridge.close()
     asyncio.run(scenario())
+
+
+def test_mail_quota_cannot_mark_memory_only_turn_as_incomplete(host, monkeypatch):
+    provider = FakeRealtime('Jaké preference má recepce?', {})
+    async def scenario():
+        bridge = await bridge_for(host,monkeypatch,provider)
+        try:
+            await provider.events.put({'type':'input_audio_buffer.speech_started','item_id':'memory-human'})
+            await provider.events.put({'type':'input_audio_buffer.committed','item_id':'memory-human'})
+            await wait_for(lambda:bridge.turns.generation==1)
+            bridge.task_context.mail.continuations = 64
+            await provider.events.put({'type':'response.created','response':{'id':'memory-response'}})
+            await provider.events.put({'type':'response.done','response':{'id':'memory-response','status':'completed','output':[
+                {'id':'memory-call','call_id':'memory-call','type':'function_call','name':'assistant_memory',
+                 'arguments':json.dumps({'request':{'operation':'memory_search','query':'recepce','scope':'all','tags':[],'date_from':None,'date_to':None,'limit':8}})}]}})
+            await wait_for(lambda:len(provider.continuation_ids)==1)
+            assert bridge.task_context.mail.calls == 0
+            assert not any('Mail work reached' in json.dumps(e) for e in provider.sent)
+            assert provider.answers[-1]['code'] == 'ok'
+        finally:
+            await bridge.close()
+    asyncio.run(scenario())

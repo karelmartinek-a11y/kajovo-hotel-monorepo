@@ -1098,7 +1098,7 @@ class VoiceBridge:
                 continue
             if isinstance(calls, dict) and "continuation" in calls:
                 if not self.renew and self.turns.claim_response(calls["continuation"], generation):
-                    if not self.task_context.mail.account(generation, continuations=1):
+                    if self.task_context.mail.calls and not self.task_context.mail.account(generation, continuations=1):
                         await self.item({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Mail work reached its turn safety limit. The result is incomplete. Tell the person truthfully; do not call more mail tools in this turn."}]})
                     if self.registry.readback_pending:
                         await self.registry_readback()

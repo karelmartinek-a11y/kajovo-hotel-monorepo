@@ -113,3 +113,33 @@ def test_api_admin_deploy_does_not_restart_protected_services():
     assert 'sync_host_nginx_config' not in limited
     assert 'compose_cmd down' not in limited
     assert 'alembic upgrade' not in limited.lower()
+
+
+def test_api_admin_live_users_smoke_cannot_create_user_or_contact_smtp():
+    import os
+    import subprocess
+    source = (Path(__file__).resolve().parents[3] / 'scripts/verify_live_admin_users_smoke.mjs').read_text().removeprefix('#!/usr/bin/env node\n')
+    # Execute the actual script: every unapproved route is an error, no network IO.
+    transport = """
+const calls=[];
+globalThis.fetch=async(url,options={})=>{
+  const route=new URL(url).pathname;
+  const method=options.method??'GET';
+  calls.push([method,route]);
+  const headers=new Headers();
+  headers.append('set-cookie','kajovo_session=fixture-session; Max-Age=172800');
+  headers.append('set-cookie','kajovo_csrf=fixture-csrf');
+  if(route==='/api/auth/admin/login') return Response.json({email:'fixture@example.test',actor_type:'admin'},{headers});
+  if(route==='/api/auth/activity') return Response.json({ok:true},{headers});
+  if(route==='/api/v1/users' && method==='GET') return Response.json([{id:1}]);
+  throw new Error('Unexpected route: '+method+' '+route);
+};
+"""
+    env = {**os.environ, 'VERIFY_BASE_URL':'https://fixture.example.test', 'VERIFY_ADMIN_EMAIL':'fixture@example.test',
+           'VERIFY_ADMIN_PASSWORD':'fixture-only', 'HOTEL_DEPLOY_SCOPE':'api-admin'}
+    result = subprocess.run(['node','--input-type=module'],input=transport+source+'\nconsole.log(JSON.stringify(calls));',
+                            text=True,capture_output=True,env=env,check=True)
+    lines = result.stdout.strip().splitlines()
+    report = json.loads(lines[-2])
+    assert report['smtp_send_excluded'] and report['crud'] == report['reset_link_status'] == 'NOT_RUN'
+    assert json.loads(lines[-1]) == [['POST','/api/auth/admin/login'],['POST','/api/auth/activity'],['GET','/api/v1/users']]

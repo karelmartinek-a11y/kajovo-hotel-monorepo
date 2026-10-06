@@ -202,6 +202,7 @@ class MailHost:
         if self.import_item in self.import_transport:
             self.imported.set()
         if typ == "input_audio_buffer.speech_started" and event.get("item_id"):
+            self.task.begin(self.bridge.turns.generation)
             iid = event["item_id"]
             self.audio[iid] = {"start": self.sequence, "committed": False, "generation": self.bridge.turns.generation}
             if len(self.audio) > 32:

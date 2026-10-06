@@ -291,3 +291,14 @@ def test_barge_in_during_control_review_cannot_revive_old_question():
             assert not mail.pending
             assert bridge.sent == [{'type':'mcp_approval_response','approval_request_id':'approval','approve':False}]
     asyncio.run(run())
+
+
+def test_mail_deadline_starts_with_native_input_not_first_result(monkeypatch):
+    _, ports, bridge, mail = host()
+    now = [100.0]
+    monkeypatch.setattr('dagmar_server.mail.time.monotonic',lambda:now[0])
+    with bind(ports):
+        event(bridge,mail,'input_audio_buffer.speech_started',item_id='human')
+        now[0] += 601
+        assert not mail.task.account(bridge.turns.generation,calls=1)
+        assert mail.task.limited

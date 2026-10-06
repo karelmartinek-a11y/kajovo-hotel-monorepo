@@ -104,6 +104,9 @@ API container and recreates only API/admin with `--no-deps`. It compares
 PostgreSQL/web container IDs, images and start times, protected MCP/Dagmar
 service PIDs/start times and Nginx config hashes. It does not reload Nginx.
 Existing TLS validity and runtime-artifact SHA verification remain required.
+API/admin-only live user smoke verifies authenticated user-list access without
+CRUD or reset-link calls: user creation implicitly sends onboarding mail. Both
+mutation scenarios are explicitly `NOT_RUN`; the full-deploy smoke stays unchanged.
 
 Rollback disables Mail and, if needed, ships a compatible main correction.
 Never restore an older database or remove Mail tables, receipts, journals or keys.
