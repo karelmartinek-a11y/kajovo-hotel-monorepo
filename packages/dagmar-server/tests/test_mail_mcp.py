@@ -346,3 +346,63 @@ def test_preflight_uses_real_sdk_transport_before_native_provider_import(monkeyp
                 task.cancel()
                 await asyncio.gather(task,return_exceptions=True)
     asyncio.run(run())
+
+
+def test_reconnect_preserves_send_key_before_native_execution():
+    import json
+    from dagmar_server.mail_storage import MailOperation
+    from dagmar_server.task_context import CallTask
+    async def run():
+        _, ports, bridge, mail = host()
+        bridge.task_context = CallTask()
+        async def control(*args):
+            return snapshot()
+        mail.control = control
+        with bind(ports):
+            await mail.prepare({'id':'original-approval','name':'mail_send_execute',
+                                'arguments':json.dumps({'send_request_id':'request-1','idempotency_key':'original-send-key'})})
+            mail.close()
+            restored = json.dumps(bridge.task_context.snapshot())
+            assert 'original-send-key' in restored and 'request-1' in restored
+            assert 'original-approval' not in restored and 'mcp_approval_request' not in restored
+            assert 'Syntetický obsah' not in restored and 'fixture@example.invalid' not in restored
+            with ports.session_factory() as db:
+                row = db.scalar(select(MailOperation))
+                assert row.state == 'awaiting_approval' and row.idempotency_key == 'original-send-key'
+                assert not {'content','subject','recipient','transcript'} & set(MailOperation.__table__.columns.keys())
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('intervening_turn', [False,True])
+def test_send_it_shortcut_requires_immediately_following_native_input(intervening_turn):
+    async def run():
+        _, ports, bridge, mail = host()
+        data = snapshot()
+        posts = []
+        async def control(method,path,payload=None):
+            if method == 'POST':
+                posts.append(payload)
+                return {'state':'approved','send_request_id':data['send_request_id'],'content_hash':data['content_hash']}
+            return data
+        mail.control = control
+        with bind(ports):
+            mail.disclosure = data
+            event(bridge,mail,'response.created',response={'id':'disclosure'})
+            event(bridge,mail,'response.done',response={'id':'disclosure','status':'completed','output':[
+                {'content':[{'type':'output_audio','transcript':readback(data)}]}]})
+            event(bridge,mail,'output_audio_buffer.stopped',response_id='disclosure')
+            if intervening_turn:
+                event(bridge,mail,'input_audio_buffer.speech_started',item_id='other-task')
+                event(bridge,mail,'input_audio_buffer.committed',item_id='other-task')
+                event(bridge,mail,'conversation.item.input_audio_transcription.completed',item_id='other-task',event_id='other-native',transcript='Kolik je hodin?')
+            event(bridge,mail,'input_audio_buffer.speech_started',item_id='send-it')
+            event(bridge,mail,'input_audio_buffer.committed',item_id='send-it')
+            event(bridge,mail,'conversation.item.input_audio_transcription.completed',item_id='send-it',event_id='send-native',transcript='Pošli to')
+            await mail.prepare({'id':'send-approval','name':'mail_send_execute','arguments':'{"send_request_id":"request-1","idempotency_key":"original-key"}'})
+            questions = [frame for frame in bridge.sent if frame.get('type')=='response.create']
+            if intervening_turn:
+                assert len(questions)==1 and mail.pending['state']=='reading' and not posts
+            else:
+                assert not questions and len(posts)==1 and not mail.pending
+                assert bridge.sent[-1]['approve'] is True
+    asyncio.run(run())

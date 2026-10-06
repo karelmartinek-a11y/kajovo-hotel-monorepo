@@ -76,7 +76,9 @@ The single-use receipt is reserved transactionally before
 successful control approval permits the corresponding native
 `mcp_approval_response`. Receipts contain IDs, hash, version, timestamps,
 expiration and state; no message content, recipient or audio transcript.
-Approval uncertainty does not permit a new send.
+Send identities enter the metadata journal when the approval item is reviewed,
+before control approval or provider execution, so a reconnect retains the original
+status key even if no execution event arrived. Approval uncertainty does not permit a new send.
 
 Working references and mutation/send identities stay in owner-isolated logical
 call RAM. Restored context stays within 4000 compatible tokens / 24000 bytes and

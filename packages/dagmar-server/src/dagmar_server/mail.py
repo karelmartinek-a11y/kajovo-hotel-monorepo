@@ -379,12 +379,14 @@ class MailHost:
         expires = datetime.fromtimestamp(snapshot["expires_at"], timezone.utc)
         if snapshot.get("send_request_id") != rid or expires <= utc_now() or not isinstance(snapshot.get("version"), int) or not isinstance(snapshot.get("content_hash"), str):
             raise MailContractError("invalid_request_snapshot")
+        self.journal(item, "awaiting_approval")
         self.pending = {"state": "prepared", "item_id": item["id"], "args": args, "snapshot": snapshot, "expires": expires, "generation":generation}
         self.metric("approval_requested")
         # Immediate native 'send it' is sufficient only after exactly heard content.
         for digest, version, played in self.played.values():
             for native in self.audio.values():
                 if (digest == snapshot["content_hash"] and version == snapshot["version"] and played is not None and native["start"] > played
+                        and not any(other is not native and other["start"] > played for other in self.audio.values())
                         and native["generation"] == self.bridge.turns.generation
                         and native.get("committed") and native.get("answer") in {normalize("pošli to"), normalize("odešli to")}
                         and native.get("identity")):
