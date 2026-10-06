@@ -15,7 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(*args):
-    return subprocess.run(args, check=True, capture_output=True, text=True).stdout.strip()
+    result = subprocess.run(args, check=False, capture_output=True, text=True)
+    if result.returncode:
+        raise RuntimeError(f"Isolated {args[:3]} failed ({result.returncode}): {result.stderr[-2000:]}")
+    return result.stdout.strip()
 
 
 def check_frontend_config(name):
@@ -192,15 +195,17 @@ def main():
             assert filter_rows[-1]["status"] == 204
 
             # Stop only the disposable API; prove standard errors are not sanitized.
-            api_container = json.loads(run("docker", "inspect", prefix + "-api"))[0]
-            api_address = api_container["NetworkSettings"]["Networks"][prefix]["IPAddress"]
             run("docker", "stop", prefix + "-api")
-            # Keep its isolated IP reachable with no listener. An absent network
+            run("docker", "rm", prefix + "-api")
+            # Keep an isolated endpoint reachable with no listener. An absent network
             # endpoint can blackhole SYNs and test a timeout instead of refusal.
             unavailable = prefix + "-unavailable-api"
             names.append(unavailable)
             run("docker", "run", "-d", "--name", unavailable, "--network", prefix,
-                "--ip", api_address, "--entrypoint", "sleep", "voice-core-api-check", "300")
+                "--network-alias", "api", "--entrypoint", "sleep", "voice-core-api-check", "300")
+            run("docker", "exec", host, "nginx", "-t")
+            run("docker", "exec", host, "nginx", "-s", "reload")
+            time.sleep(.5)
             failed_path = "/api/health?probe=" + query_marker
             assert request(failed_path, referer)[0] == 502
             time.sleep(.1)
