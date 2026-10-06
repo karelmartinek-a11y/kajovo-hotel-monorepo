@@ -13,6 +13,8 @@
 
 - Reverse proxy se validuje proti aktivnímu host-level souboru `infra/reverse-proxy/production-host.conf`.
 - Po změně host-level konfigurace ověřte canonical redirect, `/admin/` routování a health endpointy na živé doméně.
+- CI `scripts/verify_voice_core_proxy.py` ověřuje skutečné image, serverové vypnutí frontendových access logů, hostový `hotel_safe` bez query/refereru, filtry úspěšných technických požadavků a izolovaný upstream výpadek. Frontendové error logy se zachovávají; hostový error log má úroveň `error` v obou serverech.
+- Standardní nginx error log není sanitizovaný a může obsahovat URI, query i referer, včetně tokenových URL `/login/reset` a `/api/auth/unlock`. Access formát ani logrotate tyto údaje neredigují. Aktuální rozsah a retence jsou v [provozním kontraktu](../../docs/observability.md).
 
 ## Basic checks
 
