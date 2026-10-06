@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import httpx
 from jsonschema import Draft202012Validator
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy.exc import IntegrityError
 
 from .mail_contract import LABEL, URL, TOOLS, READ_TOOLS, canonical, decode_output, tool_config, verify_catalog, verify_import, MailContractError
@@ -151,7 +151,7 @@ class MailHost:
             self.status = "loading"
             async with asyncio.timeout(30):
                 async with httpx.AsyncClient(headers={"Authorization": "Bearer " + self.mcp_token}, timeout=10) as http:
-                    async with streamablehttp_client(URL, http_client=http) as (reader, writer, _):
+                    async with streamable_http_client(URL, http_client=http) as (reader, writer, _):
                         async with ClientSession(reader, writer) as session:
                             await session.initialize()
                             tools, cursor = [], None

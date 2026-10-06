@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "tools": 23,
+  "version": "1.1.1",
+  "build_sha": "6dde2763d0dc4ff16ca712f26b258e6875514e7ff50a5fb5ea93fc22257495be",
+  "sdk": "production_api_mcp_1.30.0",
+  "business_tool_calls": 0,
+  "actual_OpenAI_import": "NOT_RUN",
+  "auth_token_printed": false
+}

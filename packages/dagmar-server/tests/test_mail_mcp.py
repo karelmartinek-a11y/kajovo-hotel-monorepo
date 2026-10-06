@@ -302,3 +302,47 @@ def test_mail_deadline_starts_with_native_input_not_first_result(monkeypatch):
         now[0] += 601
         assert not mail.task.account(bridge.turns.generation,calls=1)
         assert mail.task.limited
+
+
+def test_preflight_uses_real_sdk_transport_before_native_provider_import(monkeypatch):
+    import httpx
+    async def run():
+        _, ports, bridge, mail = host()
+        ports.settings.voice_mail_enabled = True
+        ports.settings.voice_release_sha = ports.settings.voice_mail_acceptance_sha = 'sdk-fixture'
+        bridge.model = 'gpt-realtime-2.1'
+        mail.status = 'disabled'
+        requests = []
+        def server(request):
+            assert request.headers['authorization'] == 'Bearer synthetic-mcp-fixture'
+            if request.method != 'POST':
+                return httpx.Response(405)
+            payload = __import__('json').loads(request.content)
+            requests.append(payload['method'])
+            if payload['method'] == 'notifications/initialized':
+                return httpx.Response(202)
+            if payload['method'] == 'initialize':
+                result = {'protocolVersion':payload['params']['protocolVersion'],'capabilities':{},'serverInfo':{'name':'fixture','version':'1'}}
+            elif payload['method'] == 'tools/list':
+                result = {'tools':CATALOG}
+            else:
+                raise AssertionError('unexpected_sdk_operation')
+            return httpx.Response(200,json={'jsonrpc':'2.0','id':payload['id'],'result':result})
+        client = httpx.AsyncClient
+        monkeypatch.setattr('dagmar_server.mail.httpx.AsyncClient',lambda **kwargs:client(transport=httpx.MockTransport(server),**kwargs))
+        with bind(ports):
+            MailSecretStore().save('synthetic-mcp-fixture','synthetic-control-fixture')
+            task = asyncio.create_task(mail.initialize())
+            try:
+                async with asyncio.timeout(3):
+                    while not bridge.sent:
+                        await asyncio.sleep(.01)
+                assert mail.status == 'loading'
+                assert requests == ['initialize','notifications/initialized','tools/list']
+                native = bridge.sent[0]['response']['tools'][0]
+                assert native['authorization'] == 'synthetic-mcp-fixture' and len(native['allowed_tools']) == 23
+                assert 'synthetic-control-fixture' not in str(bridge.sent)
+            finally:
+                task.cancel()
+                await asyncio.gather(task,return_exceptions=True)
+    asyncio.run(run())
