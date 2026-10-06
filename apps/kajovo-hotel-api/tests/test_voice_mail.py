@@ -191,7 +191,7 @@ def call(name, args, cid):
 
 
 def run(h, name, args, cid):
-    asyncio.run(h.result(call(name, args, cid)))
+    asyncio.run(h.mail_result(call(name, args, cid)))
 
 
 def test_standard_send_no_model_consent_then_true_audio_and_duplicate(host):
@@ -325,7 +325,8 @@ def test_parallel_capability_updates_retain_both_independent_tool_sets(host, mon
     asyncio.run(configure())
     for session in sessions:
         names = {t["name"] for t in session["tools"]}
-        assert set(voice_mail.TOOLS) | {"smart_technologie", "assistant_memory"} <= names
+        assert {"mail_conversation", "smart_technologie", "assistant_memory"} <= names
+        assert not set(voice_mail.TOOLS).intersection(names)
 
 
 def test_contract_drift_disables_only_mail_and_invalidates_memory_buffer(host, monkeypatch):

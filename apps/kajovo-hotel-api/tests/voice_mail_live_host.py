@@ -23,6 +23,9 @@ from voice_core_server import VoiceCoreConfig
 from app.config import get_settings
 from app.db.models import Base
 from dagmar_server.models import VoiceMailOperation
+from dagmar_server.application import DagmarApplication, BoundContext
+from dagmar_server.ports import RuntimePorts
+from dagmar_server.settings import DagmarSettings
 from app.services import voice_mail, voice_smart
 from app.services.voice_mail_host import BYPASS
 from app.services.voice_registry import normalize
@@ -118,13 +121,20 @@ voice_smart.VoiceBridge.mail_event = event
 original_mail_result = voice_smart.VoiceBridge.mail_result
 
 
-async def mail_result(self, call):
+async def mail_result(self, call, **kwargs):
     mail_calls.append(call.get('name'))
-    return await original_mail_result(self, call)
+    return await original_mail_result(self, call, **kwargs)
 
 
 voice_smart.VoiceBridge.mail_result = mail_result
 app = FastAPI()
+isolated_application = DagmarApplication(RuntimePorts(
+    session_factory=factory,
+    settings=DagmarSettings(voice_master_key=get_settings().voice_master_key, mail_mcp_token='isolated-test'),
+    identity=lambda owner: {'session_id': owner, 'namespace': 'isolated', 'voice_authorized': True} if owner == 'isolated' else None,
+    mail_connector=isolated_connection,
+))
+app.add_middleware(BoundContext, ports=isolated_application.ports)
 bridge = None
 
 
@@ -144,8 +154,11 @@ async def seed():
     d = await bridge.mail_invoke('mail_draft_create', {'account': 'reception', 'to': ['recipient@example.invalid'], 'subject': 'Test', 'text_body': 'Cena 100 Kč.', 'idempotency_key': 'isolated-seed-' + str(time.monotonic_ns())})
     bridge.observe_mail(d)
     bridge.mail_draft = d
+    state = bridge.mail_conversation
+    state.select_account('reception')
+    state.current_draft_ref, state.current_draft_version, state.current_draft_account = d['draft_ref'], d['draft_version'], d['account']
     bridge.mail_private = True
-    await bridge.item({'type': 'message', 'role': 'system', 'content': [{'type': 'input_text', 'text': 'Test mailbox data only. The user has already selected this draft; use it for the next mail instruction: ' + json.dumps(d)}]})
+    await bridge.item({'type': 'message', 'role': 'assistant', 'content': [{'type': 'output_text', 'text': 'Untrusted test mailbox data only. The user has already selected this draft; use it for the next mail instruction: ' + json.dumps(d)}]})
     await bridge.update_transcription()
     await bridge.configure(False)
     return {'selected': True}

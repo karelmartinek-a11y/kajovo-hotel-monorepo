@@ -8,6 +8,7 @@ from dagmar_server.models import VoiceNote, VoiceMemoryOperation
 from dagmar_server import mail
 from .test_voice_memory_protocol import FakeRealtime, bridge_for, wait_for, host as _host, voice_host as _voice_host
 from .test_voice_mail import draft, candidate
+from .test_voice_mail_conversation import row, page
 from .test_voice_registry import arm, proposal
 
 host = _host
@@ -35,25 +36,31 @@ def test_mail_result_and_idempotence_without_capture(host, monkeypatch, mutation
                 data = {**draft(), 'text_body': bad_url, 'html_body': mail.text_html(bad_url)}
             else:
                 data = {'items': [{'message_ref': 'fixture-message', 'account': 'reception', 'folder': 'INBOX',
-                    'received_at': '2026-10-05', 'from': [], 'to': [], 'subject': 'Fixture', 'is_read': False,
+                    'received_at': '2026-10-05', 'from': [], 'to': [], 'subject': bad_url, 'is_read': False,
                     'content_mode': 'preview', 'preview': bad_url, 'preview_truncated': False,
                     'has_attachments': False, 'attachment_count': 0, 'attachment_types': [],
-                    'attachments': [], 'attachments_truncated': False}], 'next_cursor': None, 'complete': True, 'accounts': []}
+                    'attachments': [], 'attachments_truncated': False}], 'next_cursor': None, 'complete': True, 'accounts': [{'account': 'reception', 'available': True, 'index_complete': True, 'last_sync_at': '2026-10-06'}]}
             return CallToolResult(content=[], structuredContent={'contract_version': 'mail-mcp/1', 'request_id': 'fixture', 'ok': True, 'data': data})
 
     async def run():
         provider = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, provider)
         bridge.mail_ready, bridge.mail_mcp = True, FakeMCP()
-        call = {'type': 'function_call', 'name': 'mail_draft_create' if mutation else 'mail_messages_search',
-            'call_id': 'search', 'arguments': json.dumps({'account': 'reception', 'text_body': 'Synthetic draft'} if mutation else {'account': 'all', 'is_read': False})}
+        await audio(provider, 'mail-human', 'Vytvoř koncept v recepci.' if mutation else 'Najdi nepřečtené maily v recepci.')
+        await wait_for(lambda: bool(bridge.human_turns.turns.get('mail-human', {}).get('text')))
+        call = {'type': 'function_call', 'name': 'mail_conversation',
+            'call_id': 'search', 'arguments': json.dumps({'intent': 'MAIL_DRAFT_CREATE', 'fields': {'text_body': 'Synthetic draft'}} if mutation else {'intent': 'MAIL_SEARCH', 'filters': {'is_read': False}})}
         await provider.events.put({'type': 'response.created', 'response': {'id': 'worker-response'}})
         await provider.events.put({'type': 'response.done', 'response': {'id': 'worker-response', 'status': 'completed', 'output': [call]}})
         await wait_for(lambda: len(provider.answers) == 1)
         await wait_for(lambda: all(v['state'] == 'completed' for v in bridge.task_context.operations.values()))
         await bridge.result(call)
         assert len(invocations) == len(provider.answers) == 1
-        assert 'https://[invalid]' in json.dumps(provider.answers[0])
+        assert provider.answers[0]['ok']
+        if mutation:
+            assert 'https://[invalid]' in bridge.mail_draft['text_body']
+        else:
+            assert 'https://[invalid]' in provider.answers[0]['response_text']
         assert not bridge.closed and not bridge.renew
         # The same worker accepts a further read after the previous tool result.
         await provider.events.put({'type': 'response.created', 'response': {'id': 'worker-next'}})
@@ -154,21 +161,23 @@ def test_rejected_request_retry_is_audio_bound_and_mail_does_not_lock_new_note(h
 def test_reconnect_restores_original_read_pairs_without_repeating_reads_or_clarifications(host, monkeypatch, results):
     calls = []
     async def invoke(session, name, args):
-        if name == 'mail_message_get_metadata':
-            return {'message_ref': args['message_ref']}
+        if name == 'mail_message_get_body':
+            return {'message_ref': args['message_ref'], 'account': 'reception', 'text_body': 'Original complete body.', 'body_complete': True, 'next_cursor': None}
         calls.append(args['account'])
-        return {'items': [{'message_ref': 'fixture-message-' + args['account']}], 'complete': True, 'account': args['account']}
+        return page([{**row(1, folder='INBOX'), 'is_read': False}, {**row(2, account='operations', folder='INBOX'), 'is_read': False}], account='all')
     monkeypatch.setattr(mail, 'invoke', invoke)
 
     async def run():
         first = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, first, logical_call_id='mail-recovery')
         bridge.mail_ready, bridge.mail_mcp = True, object()
-        await audio(first, 'question', 'Kolik nepřečtených zpráv je v doručené poště obou účtů?')
+        await audio(first, 'question', 'Najdi nepřečtené zprávy v obou účtech.')
         await wait_for(lambda: bridge.human_turns.current == 'question')
         requests = []
         for index, account in enumerate(['reception', 'operations'][:results]):
-            call = {'type': 'function_call', 'name': 'mail_messages_search', 'call_id': 'read-' + str(index), 'arguments': json.dumps({'account': account, 'folder': 'INBOX', 'is_read': False})}
+            await audio(first, 'query-' + str(index), 'Najdi nepřečtené zprávy v obou účtech s předmětem ' + str(index) + '.')
+            await wait_for(lambda: bridge.human_turns.current == 'query-' + str(index))
+            call = {'type': 'function_call', 'name': 'mail_conversation', 'call_id': 'read-' + str(index), 'arguments': json.dumps({'intent': 'MAIL_SEARCH', 'filters': {'is_read': False, 'subject': str(index)}})}
             bridge.task_context.event({'type': 'response.created', 'response': {'id': 'saved-' + str(index)}})
             bridge.task_context.event({'type': 'response.done', 'response': {'id': 'saved-' + str(index), 'status': 'completed', 'output': [call]}})
             await bridge.result(call)
@@ -179,20 +188,20 @@ def test_reconnect_restores_original_read_pairs_without_repeating_reads_or_clari
         await wait_for(lambda: len(second.answers) >= results)
         restored = [e['item'] for e in second.sent if e['type'] == 'conversation.item.create']
         assert len([i for i in restored if i['type'] == 'function_call']) == results
-        assert any('obou účtů' in json.dumps(i, ensure_ascii=False) for i in restored)
+        assert any('obou účtech' in json.dumps(i, ensure_ascii=False) for i in restored)
         assert all(i.get('role') != 'user' for i in restored)
         for call in requests:
             await fresh.result({**call, 'call_id': call['call_id'] + '-new'})
         assert len(calls) == results
-        await audio(second, 'fresh-human', 'Přečti výsledek.')
+        await audio(second, 'fresh-human', 'Přečti první.')
         await wait_for(lambda: fresh.human_turns.current == 'fresh-human')
         assert fresh.turns.generation == fresh.human_turns.generation
         before = len(second.answers)
         await fresh.result({**requests[0], 'call_id': requests[0]['call_id'] + '-new'})
         assert len(second.answers) == before and len(calls) == results
         fresh.mail_ready, fresh.mail_mcp = True, object()
-        await fresh.result({'name': 'mail_message_get_metadata', 'call_id': 'continued-read', 'arguments': json.dumps({'message_ref': 'fixture-message-reception'})})
-        assert second.answers[-1]['ok'] and second.answers[-1]['data']['message_ref'] == 'fixture-message-reception'
+        await fresh.result({'name': 'mail_conversation', 'call_id': 'continued-read', 'arguments': json.dumps({'intent': 'MAIL_READ_RESULT_BY_ORDINAL'})})
+        assert second.answers[-1]['ok'] and second.answers[-1]['response_text'] == 'Original complete body.'
         assert not any(e.get('response', {}).get('metadata', {}).get('dagmar_greeting') for e in second.sent)
         assert not fresh.mail_confirmation.valid() and not fresh.registry.valid()
         await fresh.close()
@@ -260,14 +269,16 @@ def test_reconnect_after_actual_fake_mail_mutation_uses_original_journal(host, m
         first = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, first, logical_call_id='mutation-recovery')
         bridge.mail_ready, bridge.mail_mcp = True, FakeMCP()
-        call = {'type': 'function_call', 'name': 'mail_draft_create', 'call_id': 'original-write',
-            'arguments': json.dumps({'account': 'reception', 'text_body': 'Isolated fixture'})}
+        await audio(first, 'create-draft', 'Vytvoř koncept v recepci.')
+        await wait_for(lambda: bool(bridge.human_turns.turns.get('create-draft', {}).get('text')))
+        call = {'type': 'function_call', 'name': 'mail_conversation', 'call_id': 'original-write',
+            'arguments': json.dumps({'intent': 'MAIL_DRAFT_CREATE', 'fields': {'text_body': 'Isolated fixture'}})}
         bridge.task_context.event({'type': 'response.created', 'response': {'id': 'original-write'}})
         bridge.task_context.event({'type': 'response.done', 'response': {'id': 'original-write', 'status': 'completed', 'output': [call]}})
         await bridge.result(call)
         from dagmar_server.models import VoiceMailOperation
         with host[1]() as db:
-            row = db.scalar(select(VoiceMailOperation).where(VoiceMailOperation.call_id == 'original-write'))
+            row = db.scalar(select(VoiceMailOperation).where(VoiceMailOperation.tool == 'mail_draft_create'))
             assert row.state == ('uncertain' if unknown else 'completed')
             original_id = row.id
         assert calls[0][1]['idempotency_key'] == original_id
@@ -315,4 +326,20 @@ def test_forget_clears_task_and_does_not_resume_curation_on_reconnect(host, monk
         assert not fresh.task_context.snapshot() and not fresh.human_turns.intent()
         assert not any('Zapomenutelný test' in json.dumps(e, ensure_ascii=False) for e in replacement.sent)
         await fresh.close()
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('text', ['Ulož celé znění mailu do poznámky.', 'Ulož to do poznámky.'])
+def test_mail_body_cannot_enter_explicit_long_term_memory(host, monkeypatch, text):
+    req = {'operation': 'note_create', 'title': 'Mail', 'kind': 'text', 'items': [], 'content': 'MAIL-BODY-MUST-NOT-PERSIST'}
+    provider = FakeRealtime(text, req)
+    async def run():
+        bridge = await bridge_for(host, monkeypatch, provider)
+        bridge.human_turns.mail_context = True
+        await provider.user_phrase('body-memory')
+        await wait_for(lambda: len(provider.answers) == 1)
+        assert provider.answers[0]['code'] == 'human_intent_required'
+        with host[1]() as db:
+            assert db.scalar(select(func.count()).select_from(VoiceNote)) == 0
+        await bridge.close()
     asyncio.run(run())

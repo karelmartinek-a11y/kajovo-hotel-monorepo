@@ -25,4 +25,4 @@
 - Historické audity, cutover plány, migrační poznámky a jednorázové reporty nejsou current-state autorita.
 - Android release chain, APK workflow a parity pravidla nejsou součástí aktivního webového provozu.
 
-Mail reads and successful tool delivery have no routine log. Availability changes and unexpected errors retain safe component/code/correlation metadata only. Historical diagnostic storage is offline; see docs/dagmar/DIAGNOSTICS.md.
+Mail conversation scope traces retain only canonical account, folder role/path, intent, tool name, ordinal, count/completeness and success/failure. No bodies, subjects, addresses, references, cursors, arguments, transcripts or secrets are logged. Availability changes and unexpected errors retain safe component/code/correlation metadata only. Historical diagnostic storage is offline; see docs/dagmar/DIAGNOSTICS.md.

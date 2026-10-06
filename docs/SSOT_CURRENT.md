@@ -37,4 +37,4 @@
 
 - Dagmar používá nativní Realtime/WebRTC a přerušení řečí; při přehrávání nepozastavuje mikrofon. Volba reproduktorů a ruční přerušení byly v etapě B odstraněny, mute/Stop zůstávají. Celá Dagmar vlastní UI/server/paměť/journals/MCP klienty nad obecným Voice Core; hotel dodává auth a technickou infrastrukturu. Debug je výslovný, šifrovaný a oddělený od společné dlouhodobé paměti. Přesný stav nasazení a omezení akustické přejímky uvádí [protokol](dagmar/IMPLEMENTATION.md).
 
-Mail reads and successful tool delivery have no routine log. Availability changes and unexpected errors retain safe component/code/correlation metadata only. Historical diagnostic storage is offline; see docs/dagmar/DIAGNOSTICS.md.
+Mail conversation scope traces retain only canonical account, folder role/path, intent, tool name, ordinal, count/completeness and success/failure. No bodies, subjects, addresses, references, cursors, arguments, transcripts or secrets are logged. Availability changes and unexpected errors retain safe component/code/correlation metadata only. Historical diagnostic storage is offline; see docs/dagmar/DIAGNOSTICS.md.

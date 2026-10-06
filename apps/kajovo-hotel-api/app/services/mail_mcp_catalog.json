@@ -123,7 +123,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -280,7 +283,10 @@
                                 "CONTENT_TOO_LARGE",
                                 "INVALID_CURSOR",
                                 "IDEMPOTENCY_CONFLICT",
-                                "RESTORE_RECONCILIATION_REQUIRED"
+                                "RESTORE_RECONCILIATION_REQUIRED",
+                                "SCOPE_MISMATCH",
+                                "FOLDER_NOT_FOUND",
+                                "AMBIGUOUS_FOLDER_ROLE"
                               ]
                             },
                             {
@@ -364,7 +370,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -581,7 +590,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -932,7 +944,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -1336,7 +1351,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -1720,7 +1738,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -1912,7 +1933,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -2257,7 +2281,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -2424,7 +2451,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -2591,7 +2621,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -2764,7 +2797,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -2931,7 +2967,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -3198,7 +3237,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -3512,7 +3554,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -3752,7 +3797,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -4058,7 +4106,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -4221,7 +4272,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -4429,7 +4483,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -4629,7 +4686,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {
@@ -4841,7 +4901,10 @@
                       "CONTENT_TOO_LARGE",
                       "INVALID_CURSOR",
                       "IDEMPOTENCY_CONFLICT",
-                      "RESTORE_RECONCILIATION_REQUIRED"
+                      "RESTORE_RECONCILIATION_REQUIRED",
+                      "SCOPE_MISMATCH",
+                      "FOLDER_NOT_FOUND",
+                      "AMBIGUOUS_FOLDER_ROLE"
                     ]
                   },
                   "retryable": {

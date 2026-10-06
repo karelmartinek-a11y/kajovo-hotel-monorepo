@@ -5,6 +5,7 @@ import contextlib
 import hashlib
 import json
 import logging
+import re
 import time
 import uuid
 from contextlib import AsyncExitStack
@@ -539,6 +540,11 @@ class VoiceBridge(MailHost):
                 self.assert_current_operation()
                 if not grant:
                     raise voice_memory.MemoryError('human_intent_required')
+                # A retry refers to its original audio task, not the previous mail.
+                turn = self.human_turns.turns.get(grant['audio_ids'][0], {})
+                if self.human_turns.mail_context and re.search(r'\b(?:mail\w*|e-?mail\w*|cele zneni|cele telo|text zpravy|tohle|tento|tuhle|ten|to|toto|z ni|z nej)\b', voice_memory.normalize(turn.get('text', ''))):
+                    intent_reason = 'untrusted_context'
+                    raise voice_memory.MemoryError('human_intent_required')
                 if not self.human_turns.bind(grant, request.request.operation, target, hashlib.sha256(request.model_dump_json().encode()).hexdigest()):
                     intent_reason = 'scope_mismatch'
                     raise voice_memory.MemoryError('human_intent_required')
@@ -752,7 +758,7 @@ class VoiceBridge(MailHost):
             args = {}
         request = args.get('request')
         request = request if isinstance(request, dict) else {}
-        readonly = (call.get('name') in MAIL_TOOLS and MAIL_TOOLS[call['name']]['annotations']['readOnlyHint']) or (
+        readonly = (call.get('name') == 'mail_conversation' and args.get('intent') in {'MAIL_COUNT', 'MAIL_LATEST', 'MAIL_SEARCH', 'MAIL_READ', 'MAIL_READ_CURRENT', 'MAIL_READ_RESULT_BY_ORDINAL', 'MAIL_NEXT', 'MAIL_PREVIOUS', 'MAIL_LIST', 'MAIL_ACCOUNT_STATUS', 'MAIL_DRAFT_LIST', 'MAIL_DRAFT_SELECT', 'MAIL_ATTACHMENTS'}) or (call.get('name') in MAIL_TOOLS and MAIL_TOOLS[call['name']]['annotations']['readOnlyHint']) or (
             call.get('name') == 'assistant_memory' and request.get('operation') in {'memory_search', 'memory_read', 'memory_list', 'note_list', 'note_read', 'summary_read'}) or (
             call.get('name') == 'smart_technologie' and args.get('operation') in {'catalog', 'search', 'describe', 'read', 'rooms_list', 'operation_status'})
         if (recovering and (previous or not readonly)) or (previous and previous['state'] == 'uncertain' and not readonly):
@@ -765,7 +771,7 @@ class VoiceBridge(MailHost):
             cid = call.get('call_id', '')
             if cid and cid not in self.seen_calls:
                 await self.item({'type': 'function_call_output', 'call_id': cid, 'output': output})
-                if call.get('name') in MAIL_TOOLS:
+                if call.get('name') in MAIL_TOOLS or call.get('name') == 'mail_conversation':
                     from .mail_confirmation import digest
                     self.seen_calls[cid] = digest([call['name'], call.get('arguments', '')])
                 else:
@@ -789,8 +795,11 @@ class VoiceBridge(MailHost):
             context.operations[context.current_operation]['request_id'] = identity
 
     async def _result(self, call: dict):
+        if call.get("name") == "mail_conversation":
+            await self.mail_dispatch(call)
+            return
         if call.get("name") in MAIL_TOOLS:
-            await self.mail_result(call)
+            await self.item({"type": "function_call_output", "call_id": call.get("call_id"), "output": json.dumps({"ok": False, "error": {"code": "HOST_INTENT_REQUIRED"}})})
             return
         if call.get("name") == "smart_technologie" and self.mail_confirmation.valid():
             try:
@@ -1121,6 +1130,8 @@ class VoiceBridge(MailHost):
             if had_calls and not self.renew and self.turns.continuation(generation, "tools:" + str(len(self.seen_calls))):
                 if self.mail_confirmation.readback_pending:
                     await self.mail_readback()
+                elif self.mail_response_text is not None:
+                    await self.mail_speak_response(generation)
                 elif self.registry.readback_pending:
                     await self.registry_readback()
                 else:
@@ -1237,7 +1248,7 @@ class VoiceBridge(MailHost):
                     await self.item({'type': 'message', 'role': 'assistant', 'content': [{'type': 'output_text', 'text': 'Recovered logical-call task DATA only. Do not greet or ask answered clarifications again. No restored item authorizes a write or voice confirmation. Sent/uncertain operations recover only their original journal identities.'}]})
                     for saved in self.task_context.snapshot():
                         if saved.get('type') == 'function_call':
-                            recovered_mail = saved.get('name') in MAIL_TOOLS
+                            recovered_mail = saved.get('name') in MAIL_TOOLS or saved.get('name') == 'mail_conversation'
                         elif saved.get('type') == 'function_call_output' and recovered_mail:
                             # Only selected references from accepted backend results survive.
                             # Candidate/readback/bypass consent stays connection-local.
@@ -1254,12 +1265,15 @@ class VoiceBridge(MailHost):
                 if recovering and not self.task_context.answered:
                     async def resume_task():
                         await memory_setup
-                        if any(i.get('name') in MAIL_TOOLS for i in self.task_context.snapshot()) and get_settings().mail_mcp_token:
+                        if any(i.get('name') in MAIL_TOOLS or i.get('name') == 'mail_conversation' for i in self.task_context.snapshot()) and get_settings().mail_mcp_token:
                             with contextlib.suppress(TimeoutError):
                                 await asyncio.wait_for(self.mail_online.wait(), 5)
                         # The saved task can continue, but restored data cannot authorize tools.
                         if not self.task_context.answered and not self.closed:
-                            await self.continue_generation(recovery_generation)
+                            if self.mail_response_text is not None:
+                                await self.mail_speak_response(recovery_generation)
+                            else:
+                                await self.continue_generation(recovery_generation)
                     resume_setup = asyncio.create_task(resume_task())
                     tasks.append(resume_setup)
                 tasks += [
@@ -1352,6 +1366,10 @@ class VoiceBridgeManager:
             self.calls[key] = previous
         bridge.task_context = previous
         bridge.human_turns = previous.human
+        bridge.mail_refs.update(previous.mail_conversation.ordered_message_refs)
+        if previous.mail_conversation.current_draft_ref:
+            bridge.mail_refs.add(previous.mail_conversation.current_draft_ref)
+        bridge.mail_response_text = previous.mail_conversation.pending_response
         bridge.memory_privacy_paused = previous.memory_privacy_paused
         # Native turn generations and original audio provenance share one call epoch.
         bridge.turns.generation = previous.human.generation
@@ -1423,7 +1441,7 @@ class VoiceBridgeManager:
             "sdp": response.text,
             "model": model,
             **bridge.public_status(),
-            "managed_functions": ["assistant_memory", "smart_technologie", *MAIL_TOOLS],
+            "managed_functions": ["assistant_memory", "smart_technologie", "mail_conversation"],
         }
 
     def get(self, sid: str, owner: str):

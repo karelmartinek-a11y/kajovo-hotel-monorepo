@@ -10,6 +10,8 @@ from .token_budget import measure
 class CallTask:
     def __init__(self):
         self.human = HumanTurns()
+        from .mail_conversation import MailConversationState
+        self.mail_conversation = MailConversationState()
         self.groups = OrderedDict()
         self.operations = {}
         self.pending_calls = {}
@@ -99,6 +101,8 @@ class CallTask:
         return partial + [item for group in self.groups.values() for item in group]
 
     def clear(self):
+        from .mail_conversation import MailConversationState
+        self.mail_conversation = MailConversationState()
         self.groups.clear()
         self.pending_calls.clear()
         self.responses.clear()
