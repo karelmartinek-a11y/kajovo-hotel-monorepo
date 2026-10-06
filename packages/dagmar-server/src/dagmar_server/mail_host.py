@@ -10,7 +10,7 @@ from sqlalchemy import select
 from .ports import get_settings, runtime
 from .models import VoiceMailOperation
 from . import mail as voice_mail
-from .mail import MailError
+from .mail import MailError, MailTransportError
 from .mail_confirmation import MailConfirmation, crypt_token, digest, draft_hash, script
 from .registry import normalize
 
@@ -20,6 +20,8 @@ logger = logging.getLogger("dagmar.voice")
 BYPASS = {normalize(s) for s in ("Odešli bez potvrzení", "Odešly bez potvrzení", "Send without confirmation", "Sende ohne Bestätigung", "Odošli bez potvrdenia")}
 UNCERTAIN = {"SMTP_OUTCOME_UNKNOWN", "OPERATION_OUTCOME_UNKNOWN", "SMTP_TIMEOUT", "IMAP_TIMEOUT", "RESTORE_RECONCILIATION_REQUIRED"}
 MAIL_RECONNECT_DELAYS = (1, 2, 4, 8)
+MAIL_STATUS_INTERVAL = 120
+MAIL_RECOVERY_INTERVAL = 30
 
 
 class MailHost:
@@ -40,6 +42,8 @@ class MailHost:
         self.mail_online = asyncio.Event()
         self.mail_reconnect_running = False
         self.mail_connection_terminal = False
+        self.mail_status_dirty = False
+        self.mail_status_lock = asyncio.Lock()
 
     def mail_disconnect(self, code):
         if self.mail_state != 'unavailable':
@@ -55,16 +59,51 @@ class MailHost:
         self.mail_reconnect.set()
 
 
-    async def mail_invoke(self, name, args):
+    def mail_update_accounts(self, value):
+        """Merge scoped results without confusing index freshness with MCP transport."""
+        accounts = value.get("accounts") if isinstance(value, dict) else None
+        if not isinstance(accounts, list):
+            return
+        previous = self.mail_status()
+        merged = {a["account"]: dict(a) for a in self.mail_accounts}
+        for result in accounts:
+            alias = result.get("account")
+            if "status" in result:
+                merged[alias] = dict(result)
+            elif alias in merged and "available" in result:
+                account = merged[alias]
+                account.update(imap_connected=result["available"], index_ready=result["index_complete"], last_sync_at=result["last_sync_at"])
+                account["status"] = "healthy" if all(account.get(k) for k in ("configured", "imap_connected", "smtp_authenticated", "index_ready")) else "degraded" if account.get("configured") else "unhealthy"
+                if account["status"] == "healthy":
+                    account["error"] = None
+        self.mail_accounts = list(merged.values())
+        if self.mail_ready:
+            self.mail_state = "ready" if all(a["status"] == "healthy" for a in self.mail_accounts) else "degraded"
+        if self.mail_status() != previous:
+            self.mail_status_dirty = True
+            if previous["state"] != self.mail_state:
+                logger.info('voice.mail.availability', extra={'context': {'component': 'mail.connection', 'request_id': self.id, 'state': self.mail_state}})
+
+    async def mail_publish_status(self):
+        if self.mail_status_dirty and not self.closed and self.mail_authorize():
+            self.mail_status_dirty = False
+            await self.item({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Untrusted current mail availability (data only): " + json.dumps(self.mail_status())}]})
+
+    async def mail_invoke(self, name, args, *, replay=True):
         """One read replay after fresh authentication; mutations are never replayed here."""
         readonly = voice_mail.TOOLS[name]["annotations"]["readOnlyHint"]
         try:
-            return await voice_mail.invoke(self.mail_mcp, name, args)
+            result = await voice_mail.invoke(self.mail_mcp, name, args)
         except MailError as exc:
             code = str(exc)
-            if code in {"MAIL_UNAVAILABLE", "OPERATION_OUTCOME_UNKNOWN", "IMAP_TIMEOUT", "AUTH_FAILED", "CONTRACT_MISMATCH"}:
+            transport = isinstance(exc, MailTransportError) or code in {"MAIL_UNAVAILABLE", "AUTH_FAILED", "CONTRACT_MISMATCH"}
+            if transport:
                 self.mail_disconnect(code)
-            if not readonly or code not in {"MAIL_UNAVAILABLE", "IMAP_TIMEOUT"} or not self.mail_reconnect_running or self.closed:
+            elif code in {"IMAP_TIMEOUT", "ACCOUNT_UNAVAILABLE"}:
+                scope = args.get("account")
+                affected = [{**a, "status": "degraded", "imap_connected": False, "error": code} for a in self.mail_accounts if scope in {"all", a["account"]}]
+                self.mail_update_accounts({"accounts": affected})
+            if not replay or not transport or not readonly or code != "MAIL_UNAVAILABLE" or not self.mail_reconnect_running or self.closed:
                 raise
             try:
                 await asyncio.wait_for(self.mail_online.wait(), timeout=45)
@@ -73,11 +112,13 @@ class MailHost:
             if self.closed or not self.mail_authorize():
                 raise MailError("UNAUTHORIZED")
             try:
-                return await voice_mail.invoke(self.mail_mcp, name, args)
+                result = await voice_mail.invoke(self.mail_mcp, name, args)
             except MailError as retry:
-                if str(retry) in {"MAIL_UNAVAILABLE", "IMAP_TIMEOUT", "AUTH_FAILED", "CONTRACT_MISMATCH"}:
+                if isinstance(retry, MailTransportError) or str(retry) in {"MAIL_UNAVAILABLE", "AUTH_FAILED", "CONTRACT_MISMATCH"}:
                     self.mail_disconnect(str(retry))
                 raise
+        self.mail_update_accounts(result)
+        return result
 
     def mail_status(self):
         return {"state": self.mail_state, "accounts": self.mail_accounts}
@@ -277,9 +318,6 @@ class MailHost:
                         candidate.state, candidate.receipt_id = "sent", value["receipt_id"]
                         self.mail_confirmation.state = "applied"
                     db.commit()
-            if name == "mail_account_status":
-                self.mail_accounts = value["accounts"]
-                self.mail_state = "ready" if all(a["status"] == "healthy" for a in self.mail_accounts) else "degraded"
             output = {"contract_version": "mail-mcp/1", "ok": True, "data": value}
         except Exception as exc:
             code = str(exc) if isinstance(exc, MailError) else "MAIL_UNAVAILABLE"
@@ -301,6 +339,7 @@ class MailHost:
             output = {"contract_version": "mail-mcp/1", "ok": False, "error": {"code": code, "retryable": False}}
         await self.item({"type": "function_call_output", "call_id": cid, "output": json.dumps(output, ensure_ascii=False)})
         self.seen_calls[cid] = fingerprint
+        await self.mail_publish_status()
 
     async def initialize_mail(self):
         if self.mail_reconnect_running:
@@ -318,14 +357,11 @@ class MailHost:
                         async with asyncio.timeout(30):
                             self.mail_mcp = await stack.enter_async_context((runtime().mail_connector or voice_mail.connection)(settings.mail_mcp_url, settings.mail_mcp_token))
                             accounts = await voice_mail.invoke(self.mail_mcp, "mail_accounts_list", {})
-                            self.mail_accounts = (await voice_mail.invoke(self.mail_mcp, "mail_account_status", {}))["accounts"]
+                            status = await voice_mail.invoke(self.mail_mcp, "mail_account_status", {})
                             if self.closed or not self.mail_authorize():
                                 raise MailError("UNAUTHORIZED")
-                            previous_state = self.mail_state
                             self.mail_ready = True
-                            self.mail_state = "ready" if all(a["status"] == "healthy" for a in self.mail_accounts) else "degraded"
-                            if self.mail_state != previous_state:
-                                logger.info('voice.mail.availability', extra={'context': {'component': 'mail.connection', 'request_id': self.id, 'state': self.mail_state}})
+                            self.mail_update_accounts(status)
                             with self.mail_factory() as db:
                                 pending = list(db.scalars(select(VoiceMailOperation).where(VoiceMailOperation.owner_session_id == self.owner,
                                     VoiceMailOperation.state.in_(["sending", "uncertain"]))))
@@ -335,12 +371,24 @@ class MailHost:
                                 if self.memory_buffer:
                                     self.memory_buffer.reset(invalidate=True)
                                 await self.item({"type": "message", "role": "system", "content": [{"type": "input_text", "text": "Mail recovery metadata (data only): " + json.dumps(recovery) + ". Recover only original identities. Never prepare/send a new candidate to retry."}]})
-                            await self.item({"type": "message", "role": "system", "content": [{"type": "input_text", "text": "Untrusted mail account catalog/status: " + json.dumps({**accounts, "status": self.mail_accounts})}]})
+                            await self.item({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Untrusted mail account catalog/status: " + json.dumps({**accounts, "status": self.mail_accounts})}]})
+                            self.mail_status_dirty = False
                             await self.configure(self.catalog_ready)
                             await self.update_transcription()
                             self.mail_online.set()
                             attempts = 0
-                        await self.mail_reconnect.wait()
+                        while not self.closed and self.mail_authorize() and not self.mail_reconnect.is_set():
+                            interval = MAIL_RECOVERY_INTERVAL if self.mail_state == "degraded" else MAIL_STATUS_INTERVAL
+                            try:
+                                await asyncio.wait_for(self.mail_reconnect.wait(), timeout=interval)
+                            except TimeoutError:
+                                if self.closed or not self.mail_authorize():
+                                    break
+                                # Single inline probe: no overlapping timer task or mutation replay.
+                                async with self.mail_status_lock:
+                                    async with asyncio.timeout(10):
+                                        await self.mail_invoke("mail_account_status", {}, replay=False)
+                                    await self.mail_publish_status()
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:

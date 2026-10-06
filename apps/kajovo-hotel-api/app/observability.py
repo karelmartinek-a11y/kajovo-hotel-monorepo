@@ -32,6 +32,30 @@ MEMORY_WRITES = {'memory_remember', 'memory_update', 'memory_forget', 'note_crea
 PRIVATE_LOG_FIELDS = {'body', 'text', 'content', 'audio', 'transcript', 'prompt', 'sdp', 'arguments', 'result', 'results', 'request_body', 'text_body', 'html_body', 'messages'}
 
 
+EXTERNAL_LOGGERS = ("mcp", "httpx", "httpcore", "websockets")
+
+
+def external_logger(name):
+    return any(name == prefix or name.startswith(prefix + '.') for prefix in EXTERNAL_LOGGERS)
+
+
+def external_event(level):
+    return 'external.transport.failed' if level >= logging.ERROR else 'external.transport.warning' if level >= logging.WARNING else 'external.transport.event'
+
+
+class SafeTransportFilter(logging.Filter):
+    """Drop SDK chatter and normalize failures before bounded repeat suppression."""
+    def filter(self, record):
+        if not external_logger(record.name):
+            return True
+        if record.levelno < logging.WARNING:
+            return False
+        record.msg, record.args = external_event(record.levelno), ()
+        record.exc_info = record.exc_text = record.stack_info = None
+        record.context = {}
+        return True
+
+
 class RepeatedErrorFilter(logging.Filter):
     """Bound repeated identical failures, never retain payloads or correlation IDs."""
     def __init__(self):
@@ -73,12 +97,14 @@ class JsonFormatter(logging.Formatter):
         payload: dict[str, Any] = {
             "timestamp": utc_now().isoformat(),
             "level": record.levelname,
-            "message": "external.transport.failed" if record.name.startswith(("mcp", "httpx", "httpcore", "websockets")) else record.getMessage()[:512],
+            "message": external_event(record.levelno) if external_logger(record.name) else record.getMessage()[:512],
             "component": record.name,
         }
         context = getattr(record, "context", None)
-        if isinstance(context, dict):
+        if isinstance(context, dict) and not external_logger(record.name):
             payload.update(_log_value(context))
+        if external_logger(record.name) and isinstance(context, dict) and isinstance(context.get('suppressed_repeats'), int):
+            payload['suppressed_repeats'] = context['suppressed_repeats']
         encoded = json.dumps(payload, ensure_ascii=False)
         if len(encoded.encode()) > 4096:
             payload = {key: payload[key] for key in ('timestamp', 'level', 'message', 'component', 'request_id', 'code', 'retryable', 'suppressed_repeats') if key in payload}
@@ -97,6 +123,7 @@ def configure_logging() -> None:
 
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
+    handler.addFilter(SafeTransportFilter())
     handler.addFilter(RepeatedErrorFilter())
 
     root_logger = logging.getLogger()
@@ -105,8 +132,8 @@ def configure_logging() -> None:
 
     # HTTP access belongs to host Nginx; SDK success logs duplicate it and expose URLs.
     logging.getLogger('uvicorn.access').disabled = True
-    logging.getLogger('httpx').setLevel(logging.WARNING)
-    logging.getLogger('httpcore').setLevel(logging.WARNING)
+    for name in EXTERNAL_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     for name in ('uvicorn.error', 'uvicorn'):
         logging.getLogger(name).handlers = []
         logging.getLogger(name).propagate = True

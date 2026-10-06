@@ -556,7 +556,7 @@ def test_transport_unknown_mutation_never_replays_on_reconnect(host, monkeypatch
     calls = []
     async def invoke(*args):
         calls.append(args)
-        raise MailError('OPERATION_OUTCOME_UNKNOWN')
+        raise voice_mail.MailTransportError('OPERATION_OUTCOME_UNKNOWN')
     monkeypatch.setattr(voice_mail, 'invoke', invoke)
     async def check():
         with pytest.raises(MailError, match='OPERATION_OUTCOME_UNKNOWN'):
@@ -654,3 +654,92 @@ def test_bypass_accepts_only_fixed_audio_phrase_including_czech_asr_homophone(ho
     h.mail_event({'type': 'input_audio_buffer.speech_started', 'item_id': 'human'})
     h.mail_event({'type': 'conversation.item.input_audio_transcription.completed', 'event_id': 'real', 'item_id': 'human', 'transcript': transcript})
     assert (h.mail_bypass is not None) == allowed
+
+
+def availability(alias, healthy=True):
+    return {'account': alias, 'email': alias + '@example.invalid', 'display_name': alias,
+            'status': 'healthy' if healthy else 'degraded', 'configured': True,
+            'imap_connected': healthy, 'smtp_authenticated': True, 'index_ready': healthy,
+            'indexed_messages': 1, 'indexed_folders': 1, 'last_sync_at': None, 'error': None if healthy else 'ACCOUNT_UNAVAILABLE'}
+
+
+def test_scoped_results_restore_same_call_and_do_not_disable_healthy_mailbox(host, monkeypatch):
+    h, _, _, outputs = host
+    h.mail_accounts = [availability('reception', False), availability('operations')]
+    h.mail_state = 'degraded'
+    async def invoke(session, name, args):
+        return {'items': [], 'accounts': [{'account': args['account'], 'available': True, 'index_complete': True, 'last_sync_at': None}]}
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    run(h, 'mail_messages_unread', {'account': 'reception', 'limit': 1}, 'recovery')
+    assert h.mail_state == 'ready' and h.mail_ready and not h.mail_reconnect.is_set()
+    assert h.mail_accounts[1]['status'] == 'healthy'
+    assert h.mail_accounts[0]['error'] is None
+    assert outputs[-1]['role'] == 'assistant' and outputs[-1]['content'][0]['type'] == 'output_text'
+    assert 'ready' in outputs[-1]['content'][0]['text']
+    assert outputs[-2]['type'] == 'function_call_output'
+
+
+def test_remote_imap_timeout_does_not_reconnect_or_replay_and_other_account_works(host, monkeypatch):
+    h, _, _, _ = host
+    h.mail_accounts = [availability('reception'), availability('operations')]
+    calls = []
+    async def invoke(session, name, args):
+        calls.append(args['account'])
+        if args['account'] == 'reception':
+            raise MailError('IMAP_TIMEOUT')
+        return {'accounts': [{'account': 'operations', 'available': True, 'index_complete': True, 'last_sync_at': None}]}
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    async def check():
+        with pytest.raises(MailError, match='IMAP_TIMEOUT'):
+            await h.mail_invoke('mail_messages_unread', {'account': 'reception'})
+        await h.mail_invoke('mail_messages_unread', {'account': 'operations'})
+    asyncio.run(check())
+    assert calls == ['reception', 'operations']
+    assert h.mail_ready and h.mail_state == 'degraded' and not h.mail_reconnect.is_set()
+    assert h.mail_accounts[1]['status'] == 'healthy'
+
+
+def test_active_call_sparse_probe_restores_ready_without_connection_or_mutation_replay(host, monkeypatch):
+    from contextlib import asynccontextmanager
+    from app.services import voice_mail_host
+    h, _, _, outputs = host
+    calls, opened, disposed = [], [], []
+    @asynccontextmanager
+    async def connection(*args):
+        opened.append(True)
+        try:
+            yield object()
+        finally:
+            disposed.append(True)
+    async def invoke(session, name, args):
+        calls.append(name)
+        if name == 'mail_accounts_list':
+            return {'accounts': []}
+        return {'accounts': [availability('reception', calls.count('mail_account_status') > 1), availability('operations')]}
+    async def noop(*args):
+        pass
+    monkeypatch.setattr(voice_mail, 'connection', connection)
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    monkeypatch.setattr(voice_mail_host, 'MAIL_RECOVERY_INTERVAL', 0.01)
+    monkeypatch.setattr(voice_mail_host, 'MAIL_STATUS_INTERVAL', 0.01)
+    h.configure = h.update_transcription = noop
+    async def check():
+        task = asyncio.create_task(h.initialize_mail())
+        try:
+            await asyncio.wait_for(h.mail_online.wait(), 1)
+            assert h.mail_state == 'degraded' and h.mail_ready
+            for _ in range(30):
+                if h.mail_state == 'ready':
+                    break
+                await asyncio.sleep(0.005)
+            assert h.mail_state == 'ready' and len(opened) == 1
+            assert any(i.get('role') == 'assistant' and 'current mail availability' in str(i) and 'ready' in str(i) for i in outputs)
+        finally:
+            h.closed = True
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        count = len(calls)
+        await asyncio.sleep(0.03)
+        assert len(calls) == count and disposed == [True]
+        assert set(calls) <= {'mail_account_status', 'mail_accounts_list'}
+    asyncio.run(check())

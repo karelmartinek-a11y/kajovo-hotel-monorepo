@@ -21,7 +21,7 @@ Python log zachovává start/stop služby, významné změny dostupnosti, neoče
 chyby a bezpečnostní stavy 401/403/429. Hlasové chyby mají statický bezpečný kód,
 komponentu, korelační ID a údaj retryable; logger nikdy nevypisuje provider/SQL
 exception repr nebo traceback s daty. SDK transport chybám se nepřebírá raw text.
-Formatter omezuje délku i velikost contextu. Shodné warning/error opakování potlačí
+SDK INFO/DEBUG události mcp/httpx/httpcore/websockets se zahazují. Warning a error mají odlišné statické kategorie external.transport.warning / external.transport.failed; původní SDK zpráva, argumenty, exception a context se nepřebírají. Normalizace před potlačením opakování zabrání tomu, aby citlivý nebo proměnlivý payload vytvářel další logové klíče. Formatter omezuje délku i velikost contextu. Shodné warning/error opakování potlačí
 po dobu 60 sekund s bounded 256-key indexem; další záznam uvede počet potlačených.
 Úspěšné modelové odpovědi, audio chunky/delta, mail tool výsledky a heartbeat
 nemají rutinní aplikační log. Ostatní hotelové logy zůstávají zachované.

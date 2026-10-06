@@ -113,3 +113,19 @@ def test_unexpected_request_error_keeps_safe_code_and_correlation(monkeypatch):
     record=logging.LogRecord('kajovo.api', logging.ERROR, '', 1, errors[-1][0], (), None)
     record.context=errors[-1][1]
     assert 'PRIVATE-CONTENT' not in observability.JsonFormatter().format(record)
+
+
+@pytest.mark.parametrize('name', ['mcp.client', 'httpx', 'httpcore.connection', 'websockets.client'])
+def test_sdk_info_is_dropped_and_failures_are_safe_and_repeat_bounded(name):
+    safe = observability.SafeTransportFilter()
+    info = logging.LogRecord(name, logging.INFO, '', 1, 'PRIVATE token=%s', ('secret',), None)
+    assert not safe.filter(info)
+    assert 'transport.failed' not in observability.JsonFormatter().format(info)
+    limiter = observability.RepeatedErrorFilter()
+    for index in range(2):
+        error = logging.LogRecord(name, logging.ERROR, '', 1, 'PRIVATE %s', (str(index),), None)
+        error.context = {'url': 'secret', 'headers': {'Authorization': 'secret'}}
+        assert safe.filter(error)
+        assert limiter.filter(error) is (index == 0)
+        encoded = observability.JsonFormatter().format(error)
+        assert 'external.transport.failed' in encoded and 'PRIVATE' not in encoded and 'secret' not in encoded

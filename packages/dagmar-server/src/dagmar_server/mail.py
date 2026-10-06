@@ -50,6 +50,10 @@ class MailError(SmartError):
     pass
 
 
+class MailTransportError(MailError):
+    """A failure of the MCP connection, distinct from a remote mailbox error."""
+
+
 def connection_error(exc):
     """Inspect exception categories only, including SDK task groups; never stringify payloads."""
     pending, seen = [exc], set()
@@ -144,4 +148,4 @@ async def invoke(session, name, args):
         raise
     except Exception:
         # SDK/protocol exceptions may embed payloads or credentials. Never expose/log them.
-        raise MailError("OPERATION_OUTCOME_UNKNOWN" if not TOOLS[name]["annotations"]["readOnlyHint"] else "MAIL_UNAVAILABLE") from None
+        raise MailTransportError("OPERATION_OUTCOME_UNKNOWN" if not TOOLS[name]["annotations"]["readOnlyHint"] else "MAIL_UNAVAILABLE") from None
