@@ -1,21 +1,29 @@
 # Současné hlasové schéma
 
-Alembic head `0046_current_voice_schema` je neutrální checkpoint bez DDL
-nebo změn aplikačních dat. Upgrade zachovává paměť, registry a jejich journály.
+Alembic má jediný head `0046_current_voice_schema`, který přímo navazuje na
+`0043_voice_registry_plans`. Upgrade i downgrade checkpointu jsou no-op:
+neprovádějí DDL ani změny aplikačních dat. Nasazené databáze již používají stejnou
+identitu checkpointu. Upgrade head je opakovatelný a zachovává paměť, registry a journály.
 
-## Matice dopadů
+Dagmar podporuje `assistant_memory` a `smart_technologie`. Hotelové SMTP,
+reset/unlock/onboarding a snídaňový import mají samostatné kontrakty.
+Historické snapshoty odstraněných schopností a jejich indexy nejsou součástí
+aktuálního stromu; původní záznamy zůstávají v Git historii. Offline diagnostický
+archiv a původní ledger placených testů mají vlastní pravidla zachování.
 
-| Kategorie | Fáze A | Fáze B |
-| --- | --- | --- |
-| Produkční kód | aktualizovat migrační head | aktualizovat řetězec a deploy/proxy |
-| Testy | aktualizovat head, ověřit SQLite/PostgreSQL | odstranit historické scénáře, ověřit capabilities |
-| CI a gates | ověřit beze změny | aktualizovat runtime/proxy kontroly |
-| Dokumentace a manifesty | aktualizovat checkpoint | odstranit zastaralé snapshoty a indexy |
-| Komentáře a poznámky | ověřit beze změny | aktualizovat podle aktivního kontraktu |
-| Instrukce | aktualizovat checkpoint | ověřit aktuální capabilities |
-| Fixtures a texty | ověřit beze změny | odstranit retired fixtures |
-| Build, klient a deploy | ověřit beze změny | ověřit image, kontrakt a nasazení |
+## Uzavřená matice dopadů
 
-Kompakce řetězce je přípustná až po ověření stejného checkpointu na všech
-známých nasazených databázích. Revize checkpointu se při kompaktování nemění.
-Databáze bez aplikačního Alembic schématu nejsou spotřebiteli tohoto řetězce.
+| Kategorie | Výsledek |
+| --- | --- |
+| Produkční kód | aktualizovat migrační řetězec, deploy a proxy; hlasové schopnosti ověřit beze změny |
+| Testy | aktualizovat checkpoint a podporované routy/schopnosti; odstranit historické scénáře |
+| CI a gates | aktualizovat kontrolu aktuálních rout a proxy; ostatní gates ověřit beze změny |
+| Dokumentace a manifesty | aktualizovat schéma; odstranit zastaralé snapshoty a indexy |
+| Komentáře a poznámky | aktualizovat aktuální kontrakt; ostatní ověřit beze změny |
+| Instrukce | aktualizovat checkpoint a současné schopnosti |
+| Fixtures a texty | odstranit historické fixtures; současné SMTP a UI ověřit beze změny |
+| Build, klient a deploy | ověřit image, PostgreSQL, OpenAPI, generovaný klient a nasazení beze změny kontraktu |
+
+Neutrální checkpoint se před kompakcí nasazuje a ověřuje na všech známých
+spotřebitelích řetězce. Při kompakci se jeho revision ID nemění. Samostatné
+databáze s jiným řetězcem nebo bez aplikačního Alembic schématu se neupravují.

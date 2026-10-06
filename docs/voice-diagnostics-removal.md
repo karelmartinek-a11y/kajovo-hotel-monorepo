@@ -5,7 +5,7 @@
 | Kategorie | Rozhodnutí | Rozsah |
 |---|---|---|
 | Produkční zdroj | aktualizovat / odstranit | Funkční LogicalCall; odstranit browser capture, collectory, diagnostické API a úložiště z aplikace; významový audit a bezpečné logy. |
-| Testy | aktualizovat / odstranit | Zachovat lifecycle, reconnect, VAD, paměť, mail/HA idempotenci; diagnostické scénáře nahradit kontrolou absence capture/API a offline readerem. |
+| Testy | aktualizovat / odstranit | Zachovat lifecycle, reconnect, VAD, paměť a HA idempotenci; diagnostické scénáře nahradit kontrolou absence capture/API a offline readerem. |
 | GitHub a gates | aktualizovat | Runtime image musí odmítat diagnostické routy; zachovat úplný release gate a přenositelnost. |
 | Dokumentace a kontrakty | aktualizovat | Aktuální dokumentace, OpenAPI a klient, offline archiv a rollback. |
 | Komentáře a poznámky | aktualizovat / odstranit | Odstranit aktivní požadavky na capture; zachovat funkční vysvětlení potvrzování a obnovy. |
@@ -18,7 +18,7 @@ Historické diagnostické soubory a samostatný klíč se nesmějí automaticky 
 ## Opakovatelné měření režie
 
 `scripts/measure_voice_overhead.py` běží lokálně nad izolovaným HTTP a SQLite,
-bez providera, mailů nebo ovládání zařízení. Každý běh má stejných 40 heartbeatů,
+bez providera nebo ovládání zařízení. Každý běh má stejných 40 heartbeatů,
 40 playback-ready a 10 skutečně auditovaných config změn; původní verze navíc
 vykoná 40 diagnostických metadatových batchů a create/close archivu s debug Off.
 Tři běhy před a po používají stejný Python/runtime na stejném hostu. SQL počítá
@@ -40,9 +40,8 @@ logů. CPU není produkční využití serveru; latence je in-process HTTP na sy
 zátěži. Hodnoty neprokazují kvalitu živého audia ani vyřešení všech hlasových potíží.
 Raw výsledky jsou v `docs/dagmar/evidence/removal-20261006/`.
 
-Živá read-only kontrola 2026-10-06 ověřila initialize/tools/list, přesné Mail
-input/output schéma a anonymní HTTP 401 obou MCP. Mail: 20 nástrojů; HA: jeden.
-DNS obou služeb je IPv4 bez IPv6. Nebyl vyvolán žádný tools/call ani mutace.
+Živá read-only kontrola HA ověřuje initialize/tools/list a anonymní HTTP 401.
+Aktuální katalog nabízí jeden nástroj `smart_technologie`. DNS používá IPv4 bez IPv6.
 Error/result/idempotence scénáře používají skutečný adapter s fixtures.
 Výpadkový scénář MCP a paměti ověřuje dokončenou hlasovou odpověď každého
 navazujícího tahu se samostatnou provider response identitou před dalším vstupem.

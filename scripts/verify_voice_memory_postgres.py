@@ -77,10 +77,7 @@ def main():
             "-c",
             "from app.db.session import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text(\"INSERT INTO admin_profile (id,email,password_hash,display_name) VALUES (1,'test@example.invalid','test','Test')\")); c.commit(); c.close()",
         )
-        api("alembic", "upgrade", "0044_voice_mail_operations")
-        api("python", "-c", "from app.db.session import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text('CREATE TABLE dagmar_voice_mail_operations (id VARCHAR(80) PRIMARY KEY, encrypted_token TEXT)')); c.execute(text(\"INSERT INTO dagmar_voice_mail_operations VALUES ('retired', 'fixture-only')\")); c.commit(); c.close()")
         api("alembic", "upgrade", "head")
-        api("python", "-c", "from app.db.session import engine; from sqlalchemy import inspect; assert not {'voice_mail_operations', 'dagmar_voice_mail_operations'} & set(inspect(engine).get_table_names()); print('PostgreSQL retired metadata removal PASS')")
         code = """
 from app.db.session import SessionLocal,engine
 from dagmar_server.models import VoiceMemoryPrincipal,VoiceNoteItem,VoiceMemoryOperation,VoiceMemory,VoiceMemoryDependency

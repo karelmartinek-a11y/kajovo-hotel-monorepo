@@ -179,7 +179,7 @@ def main():
             excluded = ["/health", "/healthz", "/ready", "/backend-health", "/api/health", "/api/ready",
                 "/api/auth/session", "/api/auth/activity", "/api/v1/admin/voice-core/sessions/fixture-call"]
             excluded += ["/api/v1/admin/voice-core/sessions/fixture-call/" + suffix
-                for suffix in ["heartbeat", "playback-ready", "registry-plan", "mail-plan"]]
+                for suffix in ["heartbeat", "playback-ready", "registry-plan"]]
             for path in excluded:
                 assert request(path, fixture=True)[0] == 204
                 assert request(path + "?redirect=1", fixture=True)[0] == 302

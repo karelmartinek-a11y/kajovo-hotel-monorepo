@@ -52,3 +52,5 @@ Adresář `docs/` je centrální rozcestník current-state dokumentace pro web, 
 
 - `docs/dagmar/IMPLEMENTATION.md`: dvouetapový protokol, V01–V18, důkazy a limity přejímky.
 - `docs/dagmar/ROLLBACK.md`: kompatibilní obnova vlastního schématu a oddělených klíčů.
+
+- [Současné hlasové schéma](current-voice-schema.md) – neutrální Alembic checkpoint a aktuální schopnosti.

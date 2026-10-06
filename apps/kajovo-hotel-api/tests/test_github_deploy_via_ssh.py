@@ -74,7 +74,7 @@ def test_deploy_preserves_mcp_secret_and_restricts_existing_env_permissions(tmp_
     assert 'umask 077' in script
     env_path = tmp_path / 'infra' / '.env'
     env_path.parent.mkdir()
-    env_path.write_text('KAJAVOICEHA_MCP_TOKEN=contract-fixture-token\nUNCHANGED=value\nKAJOVO_MAIL_MCP_URL=https://retired.invalid/mcp\nKAJOVO_MAIL_MCP_TOKEN=retired-fixture\n')
+    env_path.write_text('KAJAVOICEHA_MCP_TOKEN=contract-fixture-token\nUNCHANGED=value\n')
     env_path.chmod(0o644)
     vars_path = tmp_path / 'deploy-vars.json'
     vars_path.write_text(json.dumps({'HOTEL_ADMIN_EMAIL': 'admin@example.test'}))
@@ -86,6 +86,4 @@ def test_deploy_preserves_mcp_secret_and_restricts_existing_env_permissions(tmp_
     lines = dict(line.split('=', 1) for line in env_path.read_text().splitlines())
     assert lines['KAJAVOICEHA_MCP_TOKEN'] == 'contract-fixture-token'
     assert lines['UNCHANGED'] == 'value'
-    assert 'KAJOVO_MAIL_MCP_URL' not in lines
-    assert 'KAJOVO_MAIL_MCP_TOKEN' not in lines
     assert lines['KAJOVO_API_ADMIN_EMAIL'] == 'admin@example.test'
