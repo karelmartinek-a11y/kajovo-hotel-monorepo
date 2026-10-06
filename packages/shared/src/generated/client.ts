@@ -591,53 +591,11 @@ export type LostFoundItemUpdate = {
   "tags"?: Array<string> | null;
 };
 export type LostFoundStatus = "new" | "stored" | "disposed" | "claimed" | "returned";
-export type MailAccountStatus = {
-  "account": string;
-  "configured": boolean;
-  "display_name": string;
-  "email": string;
-  "error": string | null;
-  "imap_connected": boolean;
-  "index_ready": boolean;
-  "indexed_folders": number;
-  "indexed_messages": number;
-  "last_sync_at": string | null;
-  "smtp_authenticated": boolean;
-  "status": string;
-};
-export type MailConfirmationView = {
-  "attempts": number;
-  "preview"?: MailPreview | null;
-  "state": string;
-};
 export type MailDispatchResponse = {
   "connected": boolean;
   "message": string;
   "ok": boolean;
   "send_attempted": boolean;
-};
-export type MailPreview = {
-  "bcc": Array<string>;
-  "body_hash": string;
-  "cc": Array<string>;
-  "draft_ref": string;
-  "draft_version": number;
-  "expires_at": string;
-  "requires_confirmation": boolean;
-  "send_candidate_id": string;
-  "sender": string;
-  "subject": string;
-  "text_body": string;
-  "to": Array<string>;
-};
-export type MailStatus = {
-  "accounts"?: Array<MailAccountStatus>;
-  "state"?: string;
-};
-export type MailView = {
-  "accounts"?: Array<MailAccountStatus>;
-  "confirmation": MailConfirmationView;
-  "state"?: string;
 };
 export type MediaPhotoRead = {
   "created_at": string | null;
@@ -1008,7 +966,6 @@ export type VoiceSessionRead = {
   "closed"?: boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
   "logical_call_id"?: string | null;
-  "mail"?: MailStatus;
   "managed_functions"?: Array<string>;
   "memory"?: "connecting" | "ready" | "unavailable";
   "model": string;
@@ -1021,7 +978,6 @@ export type VoiceSessionStatus = {
   "closed": boolean;
   "connection_state"?: "connecting" | "ready" | "waiting";
   "logical_call_id"?: string | null;
-  "mail"?: MailStatus;
   "memory"?: "connecting" | "ready" | "unavailable";
   "renew": boolean;
   "session_id": string;
@@ -1191,9 +1147,6 @@ export const apiClient = {
   },
   async sessionHeartbeatApiV1AdminVoiceCoreSessionsSessionIdHeartbeatPost(session_id: string): Promise<VoiceSessionStatus> {
     return request<VoiceSessionStatus>('POST', `/api/v1/admin/voice-core/sessions/${session_id}/heartbeat`, undefined, undefined);
-  },
-  async getMailPlanApiV1AdminVoiceCoreSessionsSessionIdMailPlanGet(session_id: string): Promise<MailView> {
-    return request<MailView>('GET', `/api/v1/admin/voice-core/sessions/${session_id}/mail-plan`, undefined, undefined);
   },
   async registryPlanApiV1AdminVoiceCoreSessionsSessionIdRegistryPlanGet(session_id: string): Promise<RegistryView> {
     return request<RegistryView>('GET', `/api/v1/admin/voice-core/sessions/${session_id}/registry-plan`, undefined, undefined);

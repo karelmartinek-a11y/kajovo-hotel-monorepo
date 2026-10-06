@@ -102,6 +102,9 @@ for raw_line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines
     key, value = raw_line.split("=", 1)
     current[key] = value
 
+for key in ("KAJOVO_MAIL_MCP_URL", "KAJOVO_MAIL_MCP_TOKEN"):
+    current.pop(key, None)
+
 payload = json.loads(vars_path.read_text(encoding="utf-8"))
 updates = {
     "KAJOVO_API_ADMIN_EMAIL": payload.get("KAJOVO_API_ADMIN_EMAIL") or payload.get("HOTEL_ADMIN_EMAIL", ""),

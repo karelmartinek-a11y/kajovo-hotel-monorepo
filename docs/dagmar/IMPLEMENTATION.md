@@ -24,7 +24,7 @@ connection timeout, bounded reconnect a heartbeat lease. Playback neblokuje inpu
 Hlasový orb používá AudioContext analysers a requestAnimationFrame pro živou úroveň.
 MCP, paměť a výpadek externí schopnosti nemění generickou connection readiness.
 
-Sdílená paměť, Mail MCP a HA MCP zachovávají dosavadní funkční endpointy,
+Sdílená paměť a HA MCP zachovávají dosavadní funkční endpointy,
 idempotenci, trvalé výsledky a audio potvrzení. Odeslaná/nejistá mutace se obnovuje
 pouze s původním request/operation ID; nic se neopakuje kvůli logování.
 Provozní diagnostika je odstraněná. Historický archiv se čte samostatně podle

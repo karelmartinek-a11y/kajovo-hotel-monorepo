@@ -7,14 +7,14 @@ znovu ověřuje generaci a životnost. Native VAD vlastní přerušení; žádn�
 cancel/clear ani replay již odeslaných mutací není povolené.
 
 Explicitní memory intent patří konkrétnímu skutečnému audio itemu a cíli; omezení
-pět minut, osm souvisejících turnů a 8000 znaků zůstávají. Tool/mail data a obnovený
+pět minut, osm souvisejících turnů a 8000 znaků zůstávají. Tool data a obnovený
 kontext jsou data, nikoli lidský souhlas. Forget pokrývá odpojené úlohy a privacy
 pause přežívá provider reconnect. Vracení kontextu zachovává function/output páry.
 
-Mail a registry readback vyžadují začaté, dokončené shodné provider audio a drain
+Registry readback vyžaduje začaté, dokončené shodné provider audio a drain
 správného response ID, potom další skutečné lidské audio. Reconnect ruší souhlas,
 nikoli trvalé výsledky a originální request ID. Neznámý výsledek používá původní
-operation_status; nový apply/send není automatická oprava.
+operation_status; nový apply není automatická oprava.
 
 Start/Stop, late allocation, bounded reconnect, recoverable provider rejection,
 interruption a cleanup pokrývají browser a skutečné serverové testy s externími

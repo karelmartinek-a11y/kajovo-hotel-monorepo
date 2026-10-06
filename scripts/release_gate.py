@@ -94,7 +94,6 @@ def check_plan() -> list[tuple[str, list[str]]]:
         ("browser-baseline", _pnpm_command("ci:baseline")),
         ("voice-memory-ui", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "test:voice-memory")),
         ("voice-registry-ui", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "test:voice-registry")),
-        ("voice-mail-ui", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "test:voice-mail")),
         ("voice-lifecycle-ui", _pnpm_command("--filter", "@kajovo/kajovo-hotel-admin", "test:voice-lifecycle")),
         ("voice-ui", _pnpm_command("--filter", "@voice-core/browser", "test:ui")),
     ]

@@ -14,5 +14,3 @@ class DagmarSettings(BaseModel):
     voice_input_noise_reduction: Literal['near_field','far_field'] | None = None
     voice_master_key: str = Field(default='', repr=False)
     ha_mcp_token: str = Field(default='', repr=False)
-    mail_mcp_token: str = Field(default='', repr=False)
-    mail_mcp_url: str = 'https://apimail.hcasc.cz/mcp'

@@ -5,7 +5,7 @@ test('real auth/call/reconnect/Stop without diagnostic requests, recorder or sta
   test.setTimeout(45000);
   const diagnostics:string[]=[];
   const connections:{logical_call_id:string}[]=[];
-  page.on('request',request=>{if(request.url().includes('/diagnostics'))diagnostics.push(request.url());});
+  page.on('request',request=>{if(request.url().includes('/diagnostics')||request.url().includes('/mail-plan'))diagnostics.push(request.url());});
   page.on('response',async response=>{if(response.url().endsWith('/voice-core/sessions')&&response.request().method()==='POST'&&response.ok())connections.push(await response.json());});
   await page.addInitScript(()=>{
     (window as any).voiceFixture={recorders:0,stats:0,peers:[]};
@@ -28,6 +28,8 @@ test('real auth/call/reconnect/Stop without diagnostic requests, recorder or sta
   await expect(page).toHaveURL(/\/admin\/?$/);
   await page.goto('/admin/hlasovy-chat');
   await expect(page.getByRole('button',{name:/debug/i})).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'E-mail v hlasovém chatu'})).toHaveCount(0);
+  await expect(page.locator('section[aria-label=Dagmar]')).not.toContainText(/e-mail|pošta|koncept/i);
   await expect(page.getByRole('region',{name:'Diagnostika hlasových hovorů'})).toHaveCount(0);
   await page.getByLabel('Nový API klíč').fill('sk-isolated-test-only');await page.getByRole('button',{name:'Uložit',exact:true}).click();
   await expect(page.getByText('Klíč je uložen.',{exact:true})).toBeVisible();

@@ -57,30 +57,6 @@ class VoiceRegistryPlan(DagmarBase):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class VoiceMailOperation(DagmarBase):
-    """Durable mail identities and encrypted candidate token; never mail content."""
-    __tablename__ = "dagmar_voice_mail_operations"
-    id: Mapped[str] = mapped_column(String(80), primary_key=True)
-    owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    voice_session_id: Mapped[str] = mapped_column(String(32), nullable=False)
-    call_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    tool: Mapped[str] = mapped_column(String(64), nullable=False)
-    digest: Mapped[str] = mapped_column(String(64), nullable=False)
-    state: Mapped[str] = mapped_column(String(32), nullable=False)
-    candidate_id: Mapped[str | None] = mapped_column(String(128), unique=True)
-    draft_ref: Mapped[str | None] = mapped_column(String(128))
-    draft_version: Mapped[int | None] = mapped_column(Integer)
-    body_hash: Mapped[str | None] = mapped_column(String(64))
-    encrypted_token: Mapped[str | None] = mapped_column(Text)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    response_id: Mapped[str | None] = mapped_column(String(128))
-    input_event_id: Mapped[str | None] = mapped_column(String(256))
-    confirmation_id: Mapped[str | None] = mapped_column(String(80))
-    send_request_id: Mapped[str | None] = mapped_column(String(80))
-    receipt_id: Mapped[str | None] = mapped_column(String(128))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
 class VoiceMemoryPrincipal(DagmarBase):
     __tablename__ = "dagmar_voice_memory_principals"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

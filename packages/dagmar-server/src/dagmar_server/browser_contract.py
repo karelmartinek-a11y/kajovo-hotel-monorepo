@@ -7,7 +7,7 @@ from .application import DagmarApplication
 from .ports import RuntimePorts
 from .settings import DagmarSettings
 
-ROOT_TYPES = {'MemoryRead','MemoryRequest','MemoryResult','NoteRecord','SettingsRead','SummaryRecord','RegistryView','MailView'}
+ROOT_TYPES = {'MemoryRead','MemoryRequest','MemoryResult','NoteRecord','SettingsRead','SummaryRecord','RegistryView'}
 
 def schema():
     product = DagmarApplication(RuntimePorts(None,DagmarSettings(),lambda owner:None))

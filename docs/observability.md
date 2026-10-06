@@ -23,10 +23,7 @@ komponentu, korelační ID a údaj retryable; logger nikdy nevypisuje provider/S
 exception repr nebo traceback s daty. SDK transport chybám se nepřebírá raw text.
 SDK INFO/DEBUG události mcp/httpx/httpcore/websockets se zahazují. Warning a error mají odlišné statické kategorie external.transport.warning / external.transport.failed; původní SDK zpráva, argumenty, exception a context se nepřebírají. Normalizace před potlačením opakování zabrání tomu, aby citlivý nebo proměnlivý payload vytvářel další logové klíče. Formatter omezuje délku i velikost contextu. Shodné warning/error opakování potlačí
 po dobu 60 sekund s bounded 256-key indexem; další záznam uvede počet potlačených.
-Úspěšné modelové odpovědi, audio chunky/delta, obsah mail tool výsledků a heartbeat
-nemají rutinní aplikační log. Mailové scope události mají výhradně intent, kanonický
-účet, roli a skutečný path složky, název nástroje, ordinal, počet/úplnost a výsledek
-operace. Bez těla, předmětu, adres, referencí, cursorů, argumentů a tajných údajů. Ostatní hotelové logy zůstávají zachované.
+Úspěšné modelové odpovědi, audio chunky/delta, obsah tool výsledků a heartbeat nemají rutinní aplikační log. Ostatní hotelové logy zůstávají zachované.
 
 AuditTrail rozhoduje podle významu routy a u memory `/operations` podle typu
 operace. Technické hlasové `/calls`, `/sessions`, heartbeat a playback-ready nejsou

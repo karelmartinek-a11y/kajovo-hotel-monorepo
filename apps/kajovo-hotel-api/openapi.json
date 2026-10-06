@@ -4220,116 +4220,6 @@
         "title": "LostFoundStatus",
         "type": "string"
       },
-      "MailAccountStatus": {
-        "properties": {
-          "account": {
-            "title": "Account",
-            "type": "string"
-          },
-          "configured": {
-            "title": "Configured",
-            "type": "boolean"
-          },
-          "display_name": {
-            "title": "Display Name",
-            "type": "string"
-          },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "imap_connected": {
-            "title": "Imap Connected",
-            "type": "boolean"
-          },
-          "index_ready": {
-            "title": "Index Ready",
-            "type": "boolean"
-          },
-          "indexed_folders": {
-            "title": "Indexed Folders",
-            "type": "integer"
-          },
-          "indexed_messages": {
-            "title": "Indexed Messages",
-            "type": "integer"
-          },
-          "last_sync_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Sync At"
-          },
-          "smtp_authenticated": {
-            "title": "Smtp Authenticated",
-            "type": "boolean"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "account",
-          "email",
-          "display_name",
-          "status",
-          "configured",
-          "imap_connected",
-          "smtp_authenticated",
-          "index_ready",
-          "indexed_messages",
-          "indexed_folders",
-          "last_sync_at",
-          "error"
-        ],
-        "title": "MailAccountStatus",
-        "type": "object"
-      },
-      "MailConfirmationView": {
-        "properties": {
-          "attempts": {
-            "title": "Attempts",
-            "type": "integer"
-          },
-          "preview": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MailPreview"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "state": {
-            "title": "State",
-            "type": "string"
-          }
-        },
-        "required": [
-          "state",
-          "attempts"
-        ],
-        "title": "MailConfirmationView",
-        "type": "object"
-      },
       "MailDispatchResponse": {
         "properties": {
           "connected": {
@@ -4356,125 +4246,6 @@
           "message"
         ],
         "title": "MailDispatchResponse",
-        "type": "object"
-      },
-      "MailPreview": {
-        "properties": {
-          "bcc": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Bcc",
-            "type": "array"
-          },
-          "body_hash": {
-            "title": "Body Hash",
-            "type": "string"
-          },
-          "cc": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Cc",
-            "type": "array"
-          },
-          "draft_ref": {
-            "title": "Draft Ref",
-            "type": "string"
-          },
-          "draft_version": {
-            "title": "Draft Version",
-            "type": "integer"
-          },
-          "expires_at": {
-            "title": "Expires At",
-            "type": "string"
-          },
-          "requires_confirmation": {
-            "title": "Requires Confirmation",
-            "type": "boolean"
-          },
-          "send_candidate_id": {
-            "title": "Send Candidate Id",
-            "type": "string"
-          },
-          "sender": {
-            "title": "Sender",
-            "type": "string"
-          },
-          "subject": {
-            "title": "Subject",
-            "type": "string"
-          },
-          "text_body": {
-            "title": "Text Body",
-            "type": "string"
-          },
-          "to": {
-            "items": {
-              "type": "string"
-            },
-            "title": "To",
-            "type": "array"
-          }
-        },
-        "required": [
-          "send_candidate_id",
-          "draft_ref",
-          "draft_version",
-          "sender",
-          "to",
-          "cc",
-          "bcc",
-          "subject",
-          "text_body",
-          "body_hash",
-          "expires_at",
-          "requires_confirmation"
-        ],
-        "title": "MailPreview",
-        "type": "object"
-      },
-      "MailStatus": {
-        "properties": {
-          "accounts": {
-            "items": {
-              "$ref": "#/components/schemas/MailAccountStatus"
-            },
-            "title": "Accounts",
-            "type": "array"
-          },
-          "state": {
-            "default": "unavailable",
-            "title": "State",
-            "type": "string"
-          }
-        },
-        "title": "MailStatus",
-        "type": "object"
-      },
-      "MailView": {
-        "properties": {
-          "accounts": {
-            "items": {
-              "$ref": "#/components/schemas/MailAccountStatus"
-            },
-            "title": "Accounts",
-            "type": "array"
-          },
-          "confirmation": {
-            "$ref": "#/components/schemas/MailConfirmationView"
-          },
-          "state": {
-            "default": "unavailable",
-            "title": "State",
-            "type": "string"
-          }
-        },
-        "required": [
-          "confirmation"
-        ],
-        "title": "MailView",
         "type": "object"
       },
       "MediaPhotoRead": {
@@ -7102,9 +6873,6 @@
             ],
             "title": "Logical Call Id"
           },
-          "mail": {
-            "$ref": "#/components/schemas/MailStatus"
-          },
           "managed_functions": {
             "items": {
               "type": "string"
@@ -7185,9 +6953,6 @@
               }
             ],
             "title": "Logical Call Id"
-          },
-          "mail": {
-            "$ref": "#/components/schemas/MailStatus"
           },
           "memory": {
             "default": "unavailable",
@@ -8507,49 +8272,6 @@
           }
         },
         "summary": "Session Heartbeat",
-        "tags": [
-          "voice-core",
-          "voice-core"
-        ]
-      }
-    },
-    "/api/v1/admin/voice-core/sessions/{session_id}/mail-plan": {
-      "get": {
-        "operationId": "get_mail_plan_api_v1_admin_voice_core_sessions__session_id__mail_plan_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MailView"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Mail Plan",
         "tags": [
           "voice-core",
           "voice-core"

@@ -77,7 +77,10 @@ def main():
             "-c",
             "from app.db.session import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text(\"INSERT INTO admin_profile (id,email,password_hash,display_name) VALUES (1,'test@example.invalid','test','Test')\")); c.commit(); c.close()",
         )
+        api("alembic", "upgrade", "0044_voice_mail_operations")
+        api("python", "-c", "from app.db.session import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text('CREATE TABLE dagmar_voice_mail_operations (id VARCHAR(80) PRIMARY KEY, encrypted_token TEXT)')); c.execute(text(\"INSERT INTO dagmar_voice_mail_operations VALUES ('retired', 'fixture-only')\")); c.commit(); c.close()")
         api("alembic", "upgrade", "head")
+        api("python", "-c", "from app.db.session import engine; from sqlalchemy import inspect; assert not {'voice_mail_operations', 'dagmar_voice_mail_operations'} & set(inspect(engine).get_table_names()); print('PostgreSQL retired metadata removal PASS')")
         code = """
 from app.db.session import SessionLocal,engine
 from dagmar_server.models import VoiceMemoryPrincipal,VoiceNoteItem,VoiceMemoryOperation,VoiceMemory,VoiceMemoryDependency
@@ -103,7 +106,7 @@ from dagmar_server.ports import bind
 context=bind(create_dagmar().ports)
 context.__enter__()
 with SessionLocal() as db:
-    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0044_voice_mail_operations'
+    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0045_remove_voice_mail'
     p=principal(db,{'voice_authorized':True,'namespace':'pg-test'})
     request=MemoryRequest.model_validate({'request':{'operation':'note_create','title':'PG','kind':'list','items':['a','b'],'content':None}})
     first=execute(db,p,request,session_id='pg',call_id='call')
@@ -156,38 +159,6 @@ with SessionLocal() as db:
     assert row.request_id==rid and row.confirmation_id.startswith('confirmed-')
     assert 'Transient PG room' not in str(row.__dict__)
 print('PostgreSQL registry confirmation and atomic write reservation PASS')
-from app.services.voice_mail_confirmation import MailConfirmation,draft_hash
-from app.services.voice_mail import MailError
-from dagmar_server.models import VoiceMailOperation
-from dagmar_server.ports import get_settings
-import base64,os
-get_settings().voice_master_key=base64.b64encode(os.urandom(32)).decode()
-draft={'draft_ref':'pg-draft-ref','draft_version':1,'account':'reception','from':'test@example.invalid','to':['recipient@example.invalid'],'cc':[],'bcc':[],'subject':'PG','text_body':'Transient mail body','html_body':None,'reply_to':[],'in_reply_to':None,'references':[]}
-candidate={'send_candidate_id':'pg-candidate','draft_ref':'pg-draft-ref','draft_version':1,'sender':draft['from'],'to':draft['to'],'cc':[],'bcc':[],'subject':'PG','body_hash':draft_hash(draft),'expires_at':(utc_now()+timedelta(minutes=5)).isoformat(),'requires_confirmation':True,'confirmation_token':'private-test-canary'}
-with SessionLocal() as db:
-    db.add(VoiceMailOperation(id='pg-mail',owner_session_id='pg-owner',voice_session_id='pg-voice',call_id='prepare',tool='mail_send_prepare',digest='a'*64,state='pending'))
-    db.commit()
-c=MailConfirmation('pg-owner','pg-voice',SessionLocal)
-c.prepare(candidate,draft,'en','pg-mail')
-c.begin_readback('pg-mail-read')
-c.event({'type':'output_audio_buffer.started','response_id':'pg-mail-read'})
-c.event({'type':'response.done','response':{'id':'pg-mail-read','status':'completed','output':[{'content':[{'type':'audio','transcript':c.text}]}]}})
-c.event({'type':'output_audio_buffer.stopped','response_id':'pg-mail-read'})
-c.event({'type':'input_audio_buffer.speech_started','item_id':'pg-mail-audio'})
-c.event({'type':'conversation.item.input_audio_transcription.completed','event_id':'pg-mail-event','item_id':'pg-mail-audio','transcript':'yes'})
-with SessionLocal() as db:
-    assert c.reserve(db,'pg-candidate','pg-send')=='private-test-canary'
-    db.commit()
-with SessionLocal() as db:
-    row=db.get(VoiceMailOperation,'pg-mail')
-    assert 'Transient mail body' not in str(row.__dict__) and 'private-test-canary' not in row.encrypted_token
-    try:
-        c.reserve(db,'pg-candidate','pg-send-again')
-    except MailError:
-        pass
-    else:
-        raise AssertionError('mail receipt reused')
-print('PostgreSQL mail encryption and single-use reservation PASS')
 
 """
         print(api("python", "-c", code))

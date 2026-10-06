@@ -19,7 +19,7 @@ def test_registry_upgrade_preserves_previous_head_and_downgrade(tmp_path):
     migrate("upgrade", "head")
     assert "voice_registry_plans" in inspect(engine).get_table_names()
     with engine.connect() as db:
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0044_voice_mail_operations"
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0045_remove_voice_mail"
         assert db.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='prior'")) == "delivered"
     migrate("downgrade", "0042_voice_memory")
     assert "voice_registry_plans" not in inspect(engine).get_table_names()

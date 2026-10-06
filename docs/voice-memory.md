@@ -42,7 +42,7 @@ Durable receipt i změna jsou jedna transakce. Unikátní principal/author names
 
 ## Dokončené tahy a automatická transformace
 
-GA Realtime sideband propojí native speech/commit s lidským přepisem a odpovídající dokončenou response. Kurátor dostane pouze dokončené lidské audio turny; assistant text a celé mail/tool historie nejsou jeho vstupem. Cancelled/failed/incomplete se nepovažují za závěr. Identita item/content deduplikuje text. Conversation item relationships pomáhají řazení opožděné transcription. Zpoždění přepisu může přesáhnout dávku; backend proto neslibuje dokonale úplný časový přepis.
+GA Realtime sideband propojí native speech/commit s lidským přepisem a odpovídající dokončenou response. Kurátor dostane pouze dokončené lidské audio turny; assistant text a celé tool historie nejsou jeho vstupem. Cancelled/failed/incomplete se nepovažují za závěr. Identita item/content deduplikuje text. Conversation item relationships pomáhají řazení opožděné transcription. Zpoždění přepisu může přesáhnout dávku; backend proto neslibuje dokonale úplný časový přepis.
 
 Audio, delta payloady a celé request/response body se neukládají. Raw dokončený text je pouze v omezeném RAM bufferu. Curator je jednorázová backendová transformace, bez tools a bez autonomní smyčky. Responses API má store:false a strict Structured Outputs s přesným uzavřeným schématem; backend znovu validuje výsledek. Nejvýše pět kandidátů, 600 znaků na automatický obsah, 600 na samotný summary text a celkem 1 200 znaků v souhrnu včetně topics/decisions/open points/continuation.
 

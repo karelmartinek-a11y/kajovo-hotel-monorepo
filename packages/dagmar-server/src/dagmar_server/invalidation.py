@@ -43,7 +43,6 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
                 await bridge.ws.send(json.dumps({"type":"response.cancel", "response_id":bridge.turns.active}))
                 await bridge.ws.send(json.dumps({"type":"output_audio_buffer.clear"}))
             bridge.turns.active = None
-            bridge.mail_confirmation.invalidate()
             bridge.registry.invalidate()
         if bridge.memory_buffer:
             with SessionLocal() as db:

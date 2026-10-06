@@ -33,7 +33,7 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn('browser-baseline', names)
         self.assertIn('api-and-voice-tests', names)
         self.assertIn('voice-registry-ui', names)
-        self.assertIn('voice-mail-ui', names)
+        self.assertNotIn('voice-mail-ui', names)
         for _, command in plan:
             self.assertNotIn('ci:gates', command)
             self.assertFalse(len(command) > 1 and command[1].endswith('live_smoke.py'))

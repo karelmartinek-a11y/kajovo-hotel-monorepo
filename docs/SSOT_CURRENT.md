@@ -7,7 +7,7 @@
 - `apps/kajovo-hotel-api` je FastAPI backend s OpenAPI exportem v `apps/kajovo-hotel-api/openapi.json`.
 - `packages/shared` drží RBAC, i18n a generovaný API klient v `packages/shared/src/generated/client.ts`.
 - `packages/ui` drží sdílený shell a UI komponenty.
-- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`. Hotelový backend obsluhuje nezávislé assistant_memory, smart_technologie a 22 soukromých mailových funkcí mail-mcp/2 přes společný serverový sideband; paměť není MCP ani agent a portable balíčky neobsahují hotelová data. Viz `docs/voice-memory.md` a `docs/voice-mail.md`.
+- `packages/voice-core` a instalovatelný Python balíček `packages/voice-core-server` tvoří přenositelný hlasový produkt na `/admin/hlasovy-chat`. Hotelové adaptery používají existující session a databázi; portable balíčky neimportují hotelové aplikace ani shared/UI. Podrobnosti jsou v `docs/voice-core.md`. Hotelový backend obsluhuje nezávislé assistant_memory a smart_technologie přes společný serverový sideband; paměť není MCP ani agent a portable balíčky neobsahují hotelová data. Viz `docs/voice-memory.md`.
 - Přihlášené aplikace používají `AppShell` s pevným záhlavím a spodní navigací v jedné vodorovně posuvné řadě na desktopu, tabletu i telefonu. Chat je první, následují moduly podle role a nakonec Profil. Podrobnosti jsou v `docs/ui-navigation.md`.
 
 ## Runtime a bezpečnost
@@ -36,5 +36,3 @@
 - Správa místností a názvů KajaVoiceHA 2.1: [aktuální kontrakt](voice-registry.md), potvrzení pouze hlasem a read-only přehled v administraci.
 
 - Dagmar používá nativní Realtime/WebRTC a přerušení řečí; při přehrávání nepozastavuje mikrofon. Volba reproduktorů a ruční přerušení byly v etapě B odstraněny, mute/Stop zůstávají. Celá Dagmar vlastní UI/server/paměť/journals/MCP klienty nad obecným Voice Core; hotel dodává auth a technickou infrastrukturu. Debug je výslovný, šifrovaný a oddělený od společné dlouhodobé paměti. Přesný stav nasazení a omezení akustické přejímky uvádí [protokol](dagmar/IMPLEMENTATION.md).
-
-Mail conversation scope traces retain only canonical account, folder role/path, intent, tool name, ordinal, count/completeness and success/failure. No bodies, subjects, addresses, references, cursors, arguments, transcripts or secrets are logged. Availability changes and unexpected errors retain safe component/code/correlation metadata only. Historical diagnostic storage is offline; see docs/dagmar/DIAGNOSTICS.md.

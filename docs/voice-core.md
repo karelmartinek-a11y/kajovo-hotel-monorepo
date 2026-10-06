@@ -43,7 +43,7 @@ Defaults: automatic model, automatic language, medium response and `marin`. The 
 
 Instructions require honest uncertainty, no invented sources or live/private facts, clarification of ambiguous requests, no claims of external actions and the selected language/length. No user-editable prompt is exposed or accepted by the host API. Model compliance is probabilistic, not a zero-hallucination guarantee; instructions are not secret credentials and OpenAI session events may expose their text. The browser application's supported transport sends no prompt/tool configuration updates; a hostile client is not an immutable-policy security boundary for OpenAI's own data-channel API.
 
-Standalone capability registries are empty, tool configuration is omitted and `tool_choice` is `none`. The portable browser has optional host lifecycle ports and may observe named backend-managed functions without executing them. The hotel-only integration is described in [Smart technologie](voice-smart-technologies.md): the shared hotel API sideband exposes independent `smart_technologie`, `assistant_memory` and one host-owned mail_conversation intent backed by 20 remote [MAIL MCP](voice-mail.md) tools; the technology adapter uses MCP v2 compact search and session-isolated selections and sends controls with durable identity and provider delivery receipts. Hotel sessions use a 4096-token output ceiling while retaining the selected sentence policy.
+Standalone capability registries are empty, tool configuration is omitted and `tool_choice` is `none`. The portable browser has optional host lifecycle ports and may observe named backend-managed functions without executing them. The hotel-only integration is described in [Smart technologie](voice-smart-technologies.md): the shared hotel API sideband exposes independent `smart_technologie` and `assistant_memory`; the technology adapter uses MCP v2 compact search and session-isolated selections and sends controls with durable identity and provider delivery receipts. Hotel sessions use a 4096-token output ceiling while retaining the selected sentence policy.
 
 Official contracts verified on 2026-09-30:
 
@@ -97,7 +97,7 @@ Production acceptance must identify the deployed SHA and actual scenario evidenc
 
 Hotel memory, transient transcription/curation and bounded retrieval are defined in [Voice memory](voice-memory.md). The browser handles generic connection_state independently of individual backend capabilities; portable defaults remain tool-free.
 
-Dagmar uses native Realtime/WebRTC barge-in with one microphone stream, peer and playback path. Playback does not disable input. The former speaker checkbox, microphone tail gate and manual interruption button are removed; mute and Stop remain. Native WebRTC VAD cancels interrupted output and adjusts unheard conversation audio. The backend fences queued tools and continuations by connection/turn/response identity; already sent mutations recover their original request instead of replaying. Exact mail/registry started/completed/drained audio consent remains mandatory. Default capture constraints and native playback remain unchanged; no acoustic improvement is claimed without measurement. Physical iPhone acceptance was cancelled by the user on 2026-10-04.
+Dagmar uses native Realtime/WebRTC barge-in with one microphone stream, peer and playback path. Playback does not disable input. The former speaker checkbox, microphone tail gate and manual interruption button are removed; mute and Stop remain. Native WebRTC VAD cancels interrupted output and adjusts unheard conversation audio. The backend fences queued tools and continuations by connection/turn/response identity; already sent mutations recover their original request instead of replaying. Exact registry started/completed/drained audio consent remains mandatory. Default capture constraints and native playback remain unchanged; no acoustic improvement is claimed without measurement. Physical iPhone acceptance was cancelled by the user on 2026-10-04.
 
 Whole Dagmar orchestration, UI/panels, memory/configuration, journals and public MCP clients are in `packages/dagmar-server` and `packages/dagmar-browser`. Hotel auth, revocation, infrastructure and navigation are host adapters. The standalone `examples/dagmar-host` uses loopback test auth and an injected mock provider; it is not a second production login. Its clean copy-out installs/builds/runs without hotel sources or host node_modules.
 
@@ -111,6 +111,9 @@ one native WebRTC capture/render path. Native barge-in remains active during out
 Dagmar greets only on the dedicated new-call instruction. Reconnect restores bounded
 task data and accepted results without a greeting or renewed action consent. Normal
 commands use at most Moment/Hotovo for true success; questions are answered directly.
-Wait requests preserve the task and require no wake word to resume. Exact risky/mail
+Service work uses only currently advertised tools. Dagmar neither offers nor prepares
+operations without a tool and does not ask clarifying questions for them. Unknown
+function names are rejected as unsupported_capability/not_sent before any journal reservation.
+Wait requests preserve the task and require no wake word to resume. Exact risky registry
 readback remains mandatory. Synthetic lifecycle tests do not prove acoustic AEC.
 The 2026-10-05 physical R3 acceptance is unavailable; no unmeasured DSP/filter is enabled.

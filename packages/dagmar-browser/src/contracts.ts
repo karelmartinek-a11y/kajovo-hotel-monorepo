@@ -31,44 +31,6 @@ export type ItemUpdate = {
   "operation": "note_item_update";
   "revision": number;
 };
-export type MailAccountStatus = {
-  "account": string;
-  "configured": boolean;
-  "display_name": string;
-  "email": string;
-  "error": string | null;
-  "imap_connected": boolean;
-  "index_ready": boolean;
-  "indexed_folders": number;
-  "indexed_messages": number;
-  "last_sync_at": string | null;
-  "smtp_authenticated": boolean;
-  "status": string;
-};
-export type MailConfirmationView = {
-  "attempts": number;
-  "preview"?: MailPreview | null;
-  "state": string;
-};
-export type MailPreview = {
-  "bcc": Array<string>;
-  "body_hash": string;
-  "cc": Array<string>;
-  "draft_ref": string;
-  "draft_version": number;
-  "expires_at": string;
-  "requires_confirmation": boolean;
-  "send_candidate_id": string;
-  "sender": string;
-  "subject": string;
-  "text_body": string;
-  "to": Array<string>;
-};
-export type MailView = {
-  "accounts"?: Array<MailAccountStatus>;
-  "confirmation": MailConfirmationView;
-  "state"?: string;
-};
 export type MemoryList = {
   "limit": number;
   "offset": number;

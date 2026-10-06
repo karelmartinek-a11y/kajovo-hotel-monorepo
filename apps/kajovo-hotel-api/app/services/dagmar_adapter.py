@@ -42,8 +42,7 @@ def identity(owner):
 def create_dagmar():
     config = get_settings()
     settings = DagmarSettings(**{name:getattr(config,name) for name in DagmarSettings.model_fields if name.startswith('voice_')},
-        ha_mcp_token=config.kajavoiceha_mcp_token, mail_mcp_token=config.kajovo_mail_mcp_token,
-        mail_mcp_url=config.kajovo_mail_mcp_url)
+        ha_mcp_token=config.kajavoiceha_mcp_token)
     return DagmarApplication(RuntimePorts(session_factory=SessionLocal, settings=settings, identity=identity, request_identity=request_identity))
 
 

@@ -11,7 +11,6 @@ class HumanTurns:
         self.current = None
         self.speech = False
         self.generation = 0
-        self.mail_context = False
         self.clock = clock
         self.consumed = set()
         self.bindings = {}
@@ -26,7 +25,7 @@ class HumanTurns:
             iid = event.get('item_id')
             if iid and self.speech:
                 self.current = iid
-                self.turns.setdefault(iid, {'text': '', 'mail': False, 'generation': self.generation, 'completed': False, 'received': self.clock(), 'intent_id': uuid.uuid4().hex})
+                self.turns.setdefault(iid, {'text': '', 'generation': self.generation, 'completed': False, 'received': self.clock(), 'intent_id': uuid.uuid4().hex})
                 self.speech = False
                 while len(self.turns) > 16:
                     self.turns.popitem(last=False)
@@ -38,16 +37,6 @@ class HumanTurns:
             text = event.get('transcript', '')
             if value is not None and isinstance(text, str) and len(text) <= 8000:
                 value['text'] = text
-                normalized = normalize(text)
-                if re.search(r'\b(mail\w*|email\w*|posta|zprava|zpravy)\b', normalized) or (self.mail_context and re.search(r'\b(tohle|tento|tuhle|ten|to|toto|z ni|z nej)\b', normalized)):
-                    value['mail'] = True
-
-    def contaminate(self, iid=None):
-        self.mail_context = True
-        value = self.turns.get(iid or self.current)
-        if value is not None:
-            value['mail'] = True
-
     def intent(self, iid=None):
         grant, _ = self.authorization(iid=iid)
         return grant is not None and grant['id'] not in self.consumed
@@ -136,7 +125,7 @@ class HumanTurns:
 
     def clean_completed(self, iid):
         value = self.turns.get(iid)
-        return value and value['text'] and not value['mail']
+        return value and value['text']
 
     def complete(self, generation):
         for value in self.turns.values():

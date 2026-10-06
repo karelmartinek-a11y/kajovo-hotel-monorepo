@@ -6,7 +6,6 @@ import socket
 
 import httpx
 from app.config import get_settings
-from dagmar_server.mail import connection as mail_connection, MCP_URL as MAIL_URL
 from dagmar_server.smart import mcp_connection, MCP_URL as HA_URL
 
 
@@ -14,7 +13,6 @@ async def verify():
     settings = get_settings()
     result = {'mutations': 0, 'tool_calls': 0}
     for name, url, connector in [
-        ('mail', MAIL_URL, lambda: mail_connection(settings.kajovo_mail_mcp_url, settings.kajovo_mail_mcp_token)),
         ('ha', HA_URL, lambda: mcp_connection(settings.kajavoiceha_mcp_token)),
     ]:
         host = httpx.URL(url).host
