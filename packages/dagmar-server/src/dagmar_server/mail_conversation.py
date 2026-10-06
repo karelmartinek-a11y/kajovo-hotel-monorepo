@@ -114,6 +114,10 @@ class MailConversationState:
             raise MailError('RESULT_SCOPE_MISMATCH')
         if name == 'mail_message_move' and value.get('folder') != args['destination_folder']:
             raise MailError('RESULT_SCOPE_MISMATCH')
+        if name == 'mail_draft_move_to_trash':
+            paths = [f['path'] for f in self.folders.get(expected_account, []) if f['role'] == 'trash' and f['selectable']]
+            if len(paths) != 1 or value.get('folder') != paths[0]:
+                raise MailError('RESULT_SCOPE_MISMATCH')
         if name in {'mail_message_mark_read', 'mail_message_mark_unread'} and value.get('is_read') != (name == 'mail_message_mark_read'):
             raise MailError('RESULT_SCOPE_MISMATCH')
         if args.get('draft_ref') and value.get('draft_ref') and value['draft_ref'] != args['draft_ref']:
@@ -225,6 +229,7 @@ def error_text(code):
         'EXPLICIT_SELECTION_REQUIRED': 'Které konkrétní výsledky mám změnit?',
         'MESSAGE_SELECTION_REQUIRED': 'Který mail mám přečíst?',
         'DRAFT_SELECTION_REQUIRED': 'Který koncept mám použít?',
+        'TARGET_AMBIGUOUS': 'Myslíte vybraný mail, nebo koncept?',
         'ORDINAL_REQUIRED': 'Který výsledek mám vybrat?',
         'REQUEST_SCOPE_MISMATCH': 'Požadavek neodpovídá vybrané schránce nebo složce.',
         'SCOPE_MISMATCH': 'Požadavek neodpovídá vybrané schránce nebo složce.',
@@ -433,6 +438,14 @@ class MailConversationHost:
         from .mail_confirmation import digest
         state = self.mail_conversation
         account = state.selected_account
+        normalized = normalize(transcript)
+        draft_named = bool(re.search(r'\b(?:koncept\w*|drafts?)\b', normalized))
+        message_actions = {'MAIL_READ', 'MAIL_READ_CURRENT', 'MAIL_MARK_READ', 'MAIL_MARK_UNREAD', 'MAIL_MOVE', 'MAIL_TRASH', 'MAIL_BATCH_MARK_READ', 'MAIL_BATCH_MARK_UNREAD', 'MAIL_BATCH_MOVE', 'MAIL_BATCH_TRASH'}
+        if intent in message_actions:
+            if draft_named and intent not in {'MAIL_TRASH', 'MAIL_BATCH_TRASH'}:
+                raise MailError('UNSUPPORTED_CAPABILITY')
+            if state.current_message_ref and state.current_draft_ref and not draft_named and not re.search(r'\b(?:mail\w*|email\w*|zprav\w*|tyhle|tyto|vsechny|vsech)\b', normalized) and human_selection(transcript) is None:
+                raise MailError('TARGET_AMBIGUOUS')
         if intent == 'MAIL_SELECT_ACCOUNT':
             if not account:
                 raise MailError('ACCOUNT_REQUIRED')
@@ -471,7 +484,7 @@ class MailConversationHost:
             state.draft_result_set = [{k: r[k] for k in ('draft_ref', 'draft_version', 'account', 'subject')} for r in rows]
             self.mail_refs.update(r['draft_ref'] for r in rows)
             return '\n'.join(str(i + 1) + '. ' + r['subject'] for i, r in enumerate(rows)) or 'Žádný koncept.'
-        if intent == 'MAIL_DRAFT_SELECT' or intent == 'MAIL_DRAFT_EDIT' and human_selection(transcript) is not None:
+        if intent == 'MAIL_DRAFT_SELECT' or (intent == 'MAIL_DRAFT_EDIT' or draft_named and intent in {'MAIL_TRASH', 'MAIL_BATCH_TRASH'}) and human_selection(transcript) is not None:
             index = human_selection(transcript)
             if index is None:
                 if not state.current_draft_ref:
@@ -493,6 +506,16 @@ class MailConversationHost:
             self.mail_draft, self.mail_bypass = value, None
             if intent == 'MAIL_DRAFT_SELECT':
                 return value['text_body'] if re.search(r'\b(?:precti|cti|read)\b', normalize(transcript)) else 'Koncept vybrán.'
+        if draft_named and intent in {'MAIL_TRASH', 'MAIL_BATCH_TRASH'}:
+            if re.search(r'\b(?:tyhle|tyto|vsechny|vsech|koncepty)\b', normalized):
+                raise MailError('EXPLICIT_SELECTION_REQUIRED')
+            if not state.current_draft_ref:
+                raise MailError('DRAFT_SELECTION_REQUIRED')
+            await self.mail_folder(state.current_draft_account, 'trash')
+            await self.mail_internal_mutation('mail_draft_move_to_trash', {'draft_ref': state.current_draft_ref}, digest([cid, 'draft-trash']))
+            state.current_draft_ref = state.current_draft_version = state.current_draft_account = None
+            self.mail_draft = self.mail_bypass = None
+            return 'Koncept přesunut do koše.'
         if intent == 'MAIL_ATTACHMENTS':
             if not state.current_message_ref:
                 raise MailError('MESSAGE_SELECTION_REQUIRED')
@@ -572,8 +595,10 @@ class MailConversationHost:
                 state.ordered_message_refs.clear()
                 state.current_result_index = None
                 counts = [await self.mail_invoke('mail_messages_search', {**query, 'result_mode': 'count'}) for query in queries]
-                if not all(v['complete'] is True and type(v['count']) is int for v in counts):
-                    raise MailError('INDEX_INCOMPLETE')
+                for value in counts:
+                    if value['complete'] is not True or type(value['count']) is not int:
+                        reason = value.get('reason')
+                        raise MailError(reason if reason in {'INDEX_INCOMPLETE', 'INDEX_CHANGED', 'PAGE_LIMIT', 'TIME_LIMIT'} else 'INDEX_INCOMPLETE')
                 state.last_search_complete = True
                 state.last_count = sum(v['count'] for v in counts)
                 return str(state.last_count)

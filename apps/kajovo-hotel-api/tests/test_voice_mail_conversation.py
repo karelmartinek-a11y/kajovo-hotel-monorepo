@@ -79,6 +79,8 @@ def conversation(host, monkeypatch):
             return {'message_ref': item['message_ref'], 'account': item['account'], 'folder': args.get('destination_folder', item['folder']), 'is_read': name != 'mail_message_mark_unread', 'status': 'updated'}
         if name in {'mail_draft_create', 'mail_draft_get', 'mail_draft_update'}:
             return draft()
+        if name == 'mail_draft_move_to_trash':
+            return {'draft_ref': args['draft_ref'], 'account': 'reception', 'folder': 'Deleted Items', 'status': 'trashed'}
         if name == 'mail_send_prepare':
             return candidate()
         if name in {'mail_send_confirmed', 'mail_send_without_confirmation'}:
@@ -118,6 +120,21 @@ def test_a_count_exact_scope_complete_and_number_only(conversation):
     assert result['response_text'] == '9'
     assert conversation[2][-1] == ('mail_messages_search', {'account': 'reception', 'sort': 'date', 'folder': 'Actual Inbox', 'result_mode': 'count'})
     assert conversation[0].mail_conversation.last_search_complete
+
+
+@pytest.mark.parametrize('reason', ['INDEX_CHANGED', 'PAGE_LIMIT', 'TIME_LIMIT'])
+def test_count_preserves_real_incomplete_reason_without_a_partial_number(conversation, monkeypatch, reason):
+    from app.services import voice_mail
+    original = voice_mail.invoke
+    async def invoke(session, name, args):
+        if name == 'mail_messages_search' and args.get('result_mode') == 'count':
+            return {'complete': False, 'count': None, 'reason': reason, 'account': args['account'], 'folder': args.get('folder')}
+        return await original(session, name, args)
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    result = request(conversation, 'Kolik je mailů v doručené poště v recepci?', 'MAIL_COUNT')
+    assert result['error']['code'] == reason
+    assert not result['response_text'].isdecimal()
+    assert not conversation[0].mail_conversation.last_search_complete
 
 
 def test_b_c_i_latest_includes_read_sender_does_not_switch_full_body(conversation):
@@ -520,6 +537,54 @@ def test_existing_draft_list_select_and_edit_owns_version(conversation, monkeypa
     assert h.mail_conversation.current_draft_version == 2
     args = next(a for n, a in calls if n == 'mail_draft_update')
     assert args['draft_ref'] == draft()['draft_ref'] and args['expected_version'] == 1
+
+
+@pytest.mark.parametrize('text,intent', [('Přečti ho.', 'MAIL_READ_CURRENT'), ('Smaž ho.', 'MAIL_TRASH')])
+def test_mail_and_draft_ambiguity_never_substitutes_a_target(conversation, text, intent):
+    request(conversation, 'Přečti nejnovější mail v recepci.', 'MAIL_LATEST')
+    request(conversation, 'Vytvoř koncept v recepci.', 'MAIL_DRAFT_CREATE', 2, fields={'subject': 'Test'})
+    conversation[2].clear()
+    result = request(conversation, text, intent, 3)
+    assert result['error']['code'] == 'TARGET_AMBIGUOUS'
+    assert result['response_text'] == 'Myslíte vybraný mail, nebo koncept?'
+    assert conversation[2] == []
+
+
+def test_explicit_draft_trash_never_moves_the_selected_message(conversation):
+    request(conversation, 'Přečti nejnovější mail v recepci.', 'MAIL_LATEST')
+    request(conversation, 'Vytvoř koncept v recepci.', 'MAIL_DRAFT_CREATE', 2, fields={'subject': 'Test'})
+    conversation[2].clear()
+    result = request(conversation, 'Smaž koncept.', 'MAIL_TRASH', 3)
+    assert result['response_text'] == 'Koncept přesunut do koše.'
+    assert not any(n.startswith('mail_message_') for n, a in conversation[2])
+    assert next(a for n, a in conversation[2] if n == 'mail_draft_move_to_trash')['draft_ref'] == draft()['draft_ref']
+    assert conversation[0].mail_conversation.current_draft_ref is None
+
+
+def test_mark_draft_cannot_mark_an_old_message(conversation):
+    request(conversation, 'Přečti nejnovější mail v recepci.', 'MAIL_LATEST')
+    conversation[2].clear()
+    result = request(conversation, 'Označ koncept jako přečtený.', 'MAIL_MARK_READ', 2)
+    assert result['error']['code'] == 'UNSUPPORTED_CAPABILITY'
+    assert conversation[2] == []
+
+
+def test_draft_trash_wrong_folder_keeps_original_journal_uncertain(conversation, monkeypatch):
+    from app.services import voice_mail
+    from dagmar_server.models import VoiceMailOperation
+    from sqlalchemy import select
+    request(conversation, 'Vytvoř koncept v recepci.', 'MAIL_DRAFT_CREATE', fields={'subject': 'Test'})
+    original = voice_mail.invoke
+    async def invoke(session, name, args):
+        result = await original(session, name, args)
+        return {**result, 'folder': 'Wrong folder'} if name == 'mail_draft_move_to_trash' else result
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    result = request(conversation, 'Smaž koncept.', 'MAIL_TRASH', 2)
+    assert result['error']['code'] == 'RESULT_SCOPE_MISMATCH'
+    assert conversation[0].mail_conversation.current_draft_ref == draft()['draft_ref']
+    with conversation[1]() as db:
+        operations = db.scalars(select(VoiceMailOperation).where(VoiceMailOperation.tool == 'mail_draft_move_to_trash')).all()
+        assert len(operations) == 1 and operations[0].state == 'uncertain'
 
 
 def test_intent_send_still_requires_readback_and_new_real_audio_yes(conversation):
