@@ -106,7 +106,7 @@ from dagmar_server.ports import bind
 context=bind(create_dagmar().ports)
 context.__enter__()
 with SessionLocal() as db:
-    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0045_remove_voice_mail'
+    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0046_current_voice_schema'
     p=principal(db,{'voice_authorized':True,'namespace':'pg-test'})
     request=MemoryRequest.model_validate({'request':{'operation':'note_create','title':'PG','kind':'list','items':['a','b'],'content':None}})
     first=execute(db,p,request,session_id='pg',call_id='call')

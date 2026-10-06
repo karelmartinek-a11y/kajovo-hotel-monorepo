@@ -121,3 +121,5 @@ CI ověřuje absenci diagnostických rout, požadavků, MediaRecorderu a periodi
 
 
 - Dagmar has only assistant_memory and smart_technologie capabilities. No mailbox connector, mail tool catalog, mail preparation/readback instruction, mail session state or mail UI is present. Hotel account SMTP remains independent.
+
+- Alembic current voice schema checkpoint is `0046_current_voice_schema`. Compact its ancestry only after every known deployed consumer has reached this revision; preserve the revision identity and all application data.

@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0045_remove_voice_mail"]
+    assert script.get_heads() == ["0046_current_voice_schema"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -65,3 +65,34 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "from_email" in smtp_columns
     assert "last_test_connected" in smtp_columns
     assert "last_test_send_attempted" in smtp_columns
+
+
+def test_current_checkpoint_preserves_schema_and_journal(tmp_path, monkeypatch) -> None:
+    from sqlalchemy import text
+
+    database = tmp_path / "checkpoint.db"
+    monkeypatch.setenv("KAJOVO_API_DATABASE_URL", f"sqlite:///{database}")
+    get_settings.cache_clear()
+    config = _alembic_config()
+    script = ScriptDirectory.from_config(config)
+    current = script.get_revision(script.get_current_head())
+    engine = create_engine(f"sqlite:///{database}")
+
+    def schema():
+        inspector = inspect(engine)
+        return {name: [{**column, "type": str(column["type"])} for column in inspector.get_columns(name)] for name in inspector.get_table_names()}
+
+    try:
+        command.upgrade(config, current.down_revision)
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO voice_smart_deliveries (id, owner_session_id, arguments_digest, status) VALUES ('checkpoint', 'owner', 'digest', 'delivered')"))
+        before = schema()
+        command.upgrade(config, "head")
+        assert schema() == before
+        command.upgrade(config, "head")
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == current.revision
+            assert connection.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='checkpoint'")) == "delivered"
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
