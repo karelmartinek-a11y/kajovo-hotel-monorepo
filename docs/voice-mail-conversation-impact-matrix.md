@@ -15,4 +15,4 @@ Verified baseline: main 2bf2b144; installed production dagmar_server module hash
 
 Protected scope: no edits to KajaVoiceHA, kajavoiceha.service or /opt/kajovo-mail-mcp. No real mail mutations during production verification. Mail bodies remain transient external data and never enter assistant memory. Standard audio readback/next audio yes and verified bypass remain authoritative.
 
-The live Mail MCP restarted independently during this run. Its 20 tool names and input schemas remained identical; output error enums gained SCOPE_MISMATCH, FOLDER_NOT_FOUND and AMBIGUOUS_FOLDER_ROLE. Both backend installation catalogs were synchronized from tools/list; no external server implementation was changed. Native paid acceptance requires its own reserved budget and evidence, separately from these source/runtime checks.
+The voice installation catalog matches the 22 production mail-mcp/2 tools, schemas and annotations. The independently deployed Mail MCP and HA services remain unchanged. See voice-mail-v2-impact-matrix.md. Native paid acceptance has separate budget/evidence; read-only runtime acceptance performs no mailbox mutations.

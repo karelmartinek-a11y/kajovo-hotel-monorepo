@@ -72,7 +72,7 @@ def test_every_installation_schema_is_valid_and_private_fields_never_reach_model
     for field in voice_mail.PRIVATE_FIELDS:
         with pytest.raises(MailError):
             voice_mail.validate_input(name, {field: "fake"}, model=True)
-    value = {"contract_version": "mail-mcp/1", "request_id": "r", "ok": False, "error": {"code": "INDEX_NOT_READY", "retryable": True, "message": "not ready"}}
+    value = {"contract_version": "mail-mcp/2", "request_id": "r", "ok": False, "error": {"code": "INDEX_NOT_READY", "retryable": True, "message": "not ready"}}
     with pytest.raises(MailError, match="INDEX_NOT_READY"):
         voice_mail.decode(name, CallToolResult(content=[], structuredContent=value, isError=True))
 
@@ -303,7 +303,7 @@ def test_mail_status_is_owner_scoped_admin_only_and_never_a_send_endpoint(voice_
 
 
 def test_invalid_success_or_wrong_mcp_error_flag_fails_closed():
-    value = {"contract_version": "mail-mcp/1", "request_id": "r", "ok": True, "data": {"accounts": []}}
+    value = {"contract_version": "mail-mcp/2", "request_id": "r", "ok": True, "data": {"accounts": []}}
     with pytest.raises(MailError, match="CONTRACT_MISMATCH"):
         voice_mail.decode("mail_accounts_list", CallToolResult(content=[], structuredContent=value, isError=True))
     value["data"]["confirmation_token"] = "bad"

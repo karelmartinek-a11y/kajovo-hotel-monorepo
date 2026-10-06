@@ -49,7 +49,7 @@ voice_smart.authorized = lambda owner: owner == 'isolated'
 @asynccontextmanager
 async def isolated_connection(url, token):
     assert url == voice_mail.MCP_URL and token == 'isolated-test'
-    async with httpx.AsyncClient(headers={'Authorization': 'Bearer isolated-test', 'Host': 'apimail.hcasc.cz'}, timeout=75, follow_redirects=False) as http:
+    async with httpx.AsyncClient(headers={'Authorization': 'Bearer isolated-test', 'Host': 'apimail.hcasc.cz', 'X-Mail-Contract': 'mail-mcp/2'}, timeout=75, follow_redirects=False) as http:
         async with streamable_http_client('http://127.0.0.1:8795/mcp', http_client=http) as (read, write, _):
             async with ClientSession(read, write) as session:
                 await session.initialize()
@@ -58,6 +58,7 @@ async def isolated_connection(url, token):
                 assert set(actual) == set(voice_mail.TOOLS) and not catalog.nextCursor
                 for name, expected in voice_mail.TOOLS.items():
                     assert actual[name].inputSchema == expected['inputSchema'] and actual[name].outputSchema == expected['outputSchema']
+                    assert actual[name].annotations.model_dump(by_alias=True, exclude_none=True) == expected['annotations']
                 yield session
 
 

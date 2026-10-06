@@ -47,8 +47,8 @@ test('opt-in spoken account inquiry uses deployed sideband, no mail mutation', a
           if (e.item.type === 'function_call' && /^(mail_send_|mail_draft_(create|update|move)|mail_message_(mark|move|trash))/.test(e.item.name)) evidence.writes++;
           if (e.item.type === 'function_call_output') {
             const value = JSON.parse(e.item.output);
-            if (value.contract_version === 'mail-mcp/1' && value.ok && value.data?.accounts) evidence.accountOutputs++;
-            if (value.contract_version === 'mail-mcp/1' && !value.ok) evidence.errors++;
+            if (value.contract_version === 'mail-mcp/2' && value.ok && value.data?.accounts) evidence.accountOutputs++;
+            if (value.contract_version === 'mail-mcp/2' && !value.ok) evidence.errors++;
           }
         } catch { /* Never retain raw provider events or bodies. */ }
       });

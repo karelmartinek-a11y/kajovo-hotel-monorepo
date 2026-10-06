@@ -18,7 +18,7 @@ voice_host = _voice_host
 def test_current_remote_scope_errors_are_validated_without_payload_disclosure(code):
     from mcp.types import CallToolResult
     from dagmar_server import mail
-    response = CallToolResult(isError=True, content=[], structuredContent={'contract_version': 'mail-mcp/1', 'request_id': 'test', 'ok': False, 'error': {'code': code, 'retryable': False, 'message': 'PRIVATE-MAIL-DATA'}})
+    response = CallToolResult(isError=True, content=[], structuredContent={'contract_version': 'mail-mcp/2', 'request_id': 'test', 'ok': False, 'error': {'code': code, 'retryable': False, 'message': 'PRIVATE-MAIL-DATA'}})
     with pytest.raises(MailError, match='^' + code + '$'):
         mail.decode('mail_messages_search', response)
 
@@ -38,14 +38,18 @@ def audio(h, text, number):
 
 def row(number, account='reception', folder='Actual Inbox', sender='operations'):
     return {'message_ref': f'message-ref-{number:04}', 'account': account, 'folder': folder,
-            'received_at': f'2026-10-{20 - number:02}T10:00:00Z', 'subject': f'Předmět {number}',
+            'received_at': f'2026-10-06T10:00:{number % 60:02}Z', 'subject': f'Předmět {number}',
             'from': [{'name': sender, 'address': 'sender@example.invalid'}], 'is_read': True,
-            'has_attachments': False, 'preview': 'Never read a preview.'}
+            'has_attachments': False, 'preview': 'Never read a preview.', 'ordinal': number}
 
 
-def page(items, cursor=None, complete=True, account='reception'):
+def page(items, cursor=None, complete=True, account='reception', folder=None, role=None):
     scopes = ['reception', 'operations'] if account == 'all' else [account]
-    return {'items': items, 'next_cursor': cursor, 'complete': complete,
+    return {'items': items, 'next_cursor': cursor, 'complete': complete, 'account': account,
+            'resolved_folder': folder, 'resolved_folder_role': role,
+            'resolved_folders': [{'account': a, 'path': folder, 'role': role or 'other'} for a in scopes] if folder else [],
+            'result_set_ref': 'frozen-result-set', 'basis': 'synchronized_index',
+            'last_sync_at': '2026-10-06T10:00:00Z', 'reason': None if complete else 'INDEX_NOT_READY',
             'accounts': [{'account': a, 'available': True, 'index_complete': True, 'last_sync_at': '2026-10-06T10:00:00Z'} for a in scopes]}
 
 
@@ -60,15 +64,26 @@ def conversation(host, monkeypatch):
         calls.append((name, copy.deepcopy(args)))
         if name == 'mail_folders_list':
             return {'folders': [{'account': args['account'], 'path': path, 'role': role, 'selectable': True} for role, path in [('inbox', 'Actual Inbox'), ('trash', 'Deleted Items'), ('archive', 'Saved')]], 'accounts': []}
+        if name == 'mail_messages_count':
+            return {**page([], account=args['account'], folder='Actual Inbox' if args.get('folder_role') == 'inbox' else args.get('folder'), role=args.get('folder_role')), 'count': 9}
         if name == 'mail_messages_search':
-            if args.get('result_mode') == 'count':
-                return {'complete': True, 'count': 9, 'account': args['account'], 'folder': args.get('folder')}
             items = [r for r in rows if args['account'] in {'all', r['account']}]
+            options = {'account': args['account'], 'folder': 'Actual Inbox' if args.get('folder_role') == 'inbox' else args.get('folder'), 'role': args.get('folder_role')}
             if args.get('limit') == 1:
-                return page(items[:1], account=args['account'])
+                return page(items[:1], **options)
             if args.get('cursor') == 'page-2':
-                return page(items[1:], account=args['account'])
-            return page(items[:1], 'page-2', False, account=args['account'])
+                return page(items[1:], **options)
+            return page(items[:1], 'page-2', **options)
+        if name == 'mail_messages_batch_update':
+            results = []
+            for ref in args['message_refs']:
+                item = next(r for r in rows if r['message_ref'] == ref)
+                if ref in failures:
+                    results.append({'message_ref': ref, 'ok': False, 'status': 'failed', 'error': {'code': 'MESSAGE_NOT_FOUND', 'retryable': False, 'message': 'fixture'}})
+                else:
+                    results.append({'message_ref': ref, 'ok': True, 'status': 'updated', 'account': item['account'], 'folder': args.get('destination_folder', item['folder']), 'is_read': args['action'] != 'mark_unread'})
+            succeeded = sum(r['ok'] for r in results)
+            return {'account': args['account'], 'action': args['action'], 'requested_count': len(results), 'succeeded_count': succeeded, 'failed_count': len(results) - succeeded, 'complete': succeeded == len(results), 'results': results}
         if name == 'mail_message_get_body':
             n = int(args.get('body_cursor', '0'))
             return {'message_ref': args['message_ref'], 'account': next(r['account'] for r in rows if r['message_ref'] == args['message_ref']), 'text_body': body_parts[n], 'body_complete': n == len(body_parts) - 1, 'next_cursor': None if n == len(body_parts) - 1 else str(n + 1)}
@@ -118,17 +133,18 @@ def test_human_ordinals(text, value):
 def test_a_count_exact_scope_complete_and_number_only(conversation):
     result = request(conversation, 'Kolik je mailů v doručené poště v recepci?', 'MAIL_COUNT')
     assert result['response_text'] == '9'
-    assert conversation[2][-1] == ('mail_messages_search', {'account': 'reception', 'sort': 'date', 'folder': 'Actual Inbox', 'result_mode': 'count'})
+    assert conversation[2][-1] == ('mail_messages_count', {'account': 'reception', 'folder_role': 'inbox'})
     assert conversation[0].mail_conversation.last_search_complete
+    assert not any(n == 'mail_messages_search' for n, a in conversation[2])
 
 
-@pytest.mark.parametrize('reason', ['INDEX_CHANGED', 'PAGE_LIMIT', 'TIME_LIMIT'])
+@pytest.mark.parametrize('reason', ['INDEX_NOT_READY', 'ACCOUNT_UNAVAILABLE'])
 def test_count_preserves_real_incomplete_reason_without_a_partial_number(conversation, monkeypatch, reason):
     from app.services import voice_mail
     original = voice_mail.invoke
     async def invoke(session, name, args):
-        if name == 'mail_messages_search' and args.get('result_mode') == 'count':
-            return {'complete': False, 'count': None, 'reason': reason, 'account': args['account'], 'folder': args.get('folder')}
+        if name == 'mail_messages_count':
+            return {**page([], complete=False, account=args['account'], folder='Actual Inbox', role='inbox'), 'count': None, 'reason': reason}
         return await original(session, name, args)
     monkeypatch.setattr(voice_mail, 'invoke', invoke)
     result = request(conversation, 'Kolik je mailů v doručené poště v recepci?', 'MAIL_COUNT')
@@ -142,14 +158,14 @@ def test_b_c_i_latest_includes_read_sender_does_not_switch_full_body(conversatio
     h, _, calls, _, rows, _, parts = conversation
     assert result['response_text'] == ''.join(parts)
     search = next(a for n, a in calls if n == 'mail_messages_search')
-    assert search == {'account': 'reception', 'folder': 'Actual Inbox', 'sort': 'date', 'limit': 1}
+    assert search == {'account': 'reception', 'folder_role': 'inbox', 'sort': 'date', 'limit': 1}
     assert h.mail_conversation.selected_account == 'reception'
     assert h.mail_conversation.current_message_ref == rows[0]['message_ref']
     calls.clear()
     result = request(conversation, 'Přečti ho.', 'MAIL_READ_CURRENT', 2)
     assert result['response_text'] == ''.join(parts)
     assert [n for n, a in calls] == ['mail_message_get_body'] * 3
-    assert all(a['message_ref'] == rows[0]['message_ref'] for n, a in calls)
+    assert all(a['message_ref'] == rows[0]['message_ref'] and a['account'] == 'reception' and a['folder'] == rows[0]['folder'] for n, a in calls)
     assert [a.get('body_cursor') for n, a in calls] == [None, '1', '2']
 
 
@@ -166,10 +182,13 @@ def test_e_stable_original_second_no_new_search(conversation):
     h, _, calls, _, rows, _, _ = conversation
     assert h.mail_conversation.ordered_message_refs == [r['message_ref'] for r in rows]
     assert h.mail_conversation.last_search_complete
+    snapshot = h.mail_conversation.current_result_set_ref
     calls.clear()
     request(conversation, 'Přečti druhý.', 'MAIL_READ_RESULT_BY_ORDINAL', 2)
     assert not any(n == 'mail_messages_search' for n, a in calls)
     assert all(a['message_ref'] == rows[1]['message_ref'] for n, a in calls)
+    assert h.mail_conversation.current_result_set_ref == snapshot
+    assert h.mail_conversation.current_result_set[1]['ordinal'] == 2
     request(conversation, 'Přečti další.', 'MAIL_NEXT', 3)
     assert h.mail_conversation.current_message_ref == rows[2]['message_ref']
     request(conversation, 'Přečti předchozí.', 'MAIL_PREVIOUS', 4)
@@ -179,7 +198,7 @@ def test_e_stable_original_second_no_new_search(conversation):
 def test_f_unread_count_exact_account(conversation):
     result = request(conversation, 'Kolik mám nepřečtených mailů v recepci?', 'MAIL_COUNT')
     assert result['response_text'] == '9'
-    assert conversation[2][-1][1] == {'account': 'reception', 'is_read': False, 'sort': 'date', 'result_mode': 'count'}
+    assert conversation[2][-1][1] == {'account': 'reception', 'is_read': False}
 
 
 def test_g_all_original_batch_targets_and_partial_truth(conversation):
@@ -188,8 +207,12 @@ def test_g_all_original_batch_targets_and_partial_truth(conversation):
     conversation[5].add(conversation[4][1]['message_ref'])
     result = request(conversation, 'Označ tyhle jako přečtené.', 'MAIL_BATCH_MARK_READ', 2)
     assert result['response_text'] == 'Provedeno 2 z 3, selhalo 1.'
-    mutations = [(n, a) for n, a in conversation[2] if n == 'mail_message_mark_read']
-    assert [a['message_ref'] for n, a in mutations] == [r['message_ref'] for r in conversation[4]]
+    mutations = [(n, a) for n, a in conversation[2] if n == 'mail_messages_batch_update']
+    assert len(mutations) == 1
+    assert mutations[0][1]['message_refs'] == [r['message_ref'] for r in conversation[4]]
+    assert mutations[0][1]['account'] == 'reception'
+    assert mutations[0][1]['action'] == 'mark_read'
+    assert not any(n.startswith('mail_message_mark') for n, a in conversation[2])
     assert all('idempotency_key' in a for n, a in mutations)
     assert not any(n == 'mail_messages_search' for n, a in conversation[2])
 
@@ -396,7 +419,7 @@ def test_none_done_batch_and_unread_host_overrides_bad_classifier(conversation):
     conversation[5].update(r['message_ref'] for r in conversation[4])
     result = request(conversation, 'Označ tyhle jako nepřečtené.', 'MAIL_BATCH_MARK_READ', 2)
     assert result['response_text'] == 'Provedeno 0 z 3, selhalo 3.'
-    assert [n for n, a in conversation[2] if n.startswith('mail_message_mark')] == ['mail_message_mark_unread'] * 3
+    assert [(n, a['action']) for n, a in conversation[2] if n == 'mail_messages_batch_update'] == [('mail_messages_batch_update', 'mark_unread')]
 
 
 def test_prepare_script_uses_data_role_without_change_to_confirmation(host, monkeypatch):
@@ -431,7 +454,7 @@ def test_explicit_two_ordinals_target_only_those_references(conversation):
     request(conversation, 'Najdi všechny maily.', 'MAIL_SEARCH')
     conversation[2].clear()
     request(conversation, 'Označ druhý a třetí jako přečtené.', 'MAIL_BATCH_MARK_READ', 2)
-    refs = [a['message_ref'] for n, a in conversation[2] if n == 'mail_message_mark_read']
+    refs = next(a['message_refs'] for n, a in conversation[2] if n == 'mail_messages_batch_update')
     assert refs == [r['message_ref'] for r in conversation[4][1:]]
 
 
@@ -472,7 +495,7 @@ def test_batch_classifier_cannot_expand_singular_current_message(conversation, t
     conversation[2].clear()
     result = request(conversation, text, intent, 3, **args)
     assert result['response_text'] == 'Provedeno 1 z 1.'
-    assert [a['message_ref'] for n, a in conversation[2] if n == 'mail_message_move'] == [conversation[4][1]['message_ref']]
+    assert [a['message_ref'] for n, a in conversation[2] if n in {'mail_message_move', 'mail_message_trash'}] == [conversation[4][1]['message_ref']]
 
 
 def test_count_never_relabels_previous_search_as_its_batch_targets(conversation):
@@ -510,7 +533,7 @@ def test_explicit_list_limit_owns_exact_followup_target_set(conversation):
     assert result['ok']
     conversation[2].clear()
     request(conversation, 'Označ tyhle jako přečtené.', 'MAIL_BATCH_MARK_READ', 2)
-    assert [a['message_ref'] for n, a in conversation[2] if n == 'mail_message_mark_read'] == [r['message_ref'] for r in conversation[4][:2]]
+    assert next(a['message_refs'] for n, a in conversation[2] if n == 'mail_messages_batch_update') == [r['message_ref'] for r in conversation[4][:2]]
 
 
 def test_existing_draft_list_select_and_edit_owns_version(conversation, monkeypatch):
@@ -612,3 +635,113 @@ def test_intent_send_cannot_manufacture_confirmation(conversation, value):
     result = request(conversation, value or 'Ano.', 'MAIL_SEND_CONFIRM', 3)
     assert not result['ok']
     assert not any(n == 'mail_send_confirmed' for n, a in conversation[2])
+
+
+@pytest.mark.parametrize('drift', ['result_set_ref', 'ordinal', 'account', 'resolved_folder', 'resolved_folder_role'])
+def test_cursor_cannot_replace_frozen_snapshot(conversation, monkeypatch, drift):
+    from app.services import voice_mail
+    original = voice_mail.invoke
+    async def invoke(session, name, args):
+        value = await original(session, name, args)
+        if name == 'mail_messages_search' and args.get('cursor'):
+            value = copy.deepcopy(value)
+            if drift == 'ordinal':
+                value['items'][0]['ordinal'] = 1
+            else:
+                value[drift] = {'account': 'operations', 'resolved_folder': 'Other', 'resolved_folder_role': 'archive'}.get(drift, 'new-result-set')
+        return value
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    result = request(conversation, 'Najdi všechny maily v inboxu recepce.', 'MAIL_SEARCH')
+    assert result['error']['code'] == 'RESULT_SCOPE_MISMATCH'
+    assert conversation[0].mail_conversation.ordered_message_refs == []
+    assert not conversation[0].mail_conversation.last_search_complete
+
+
+def test_scoped_complete_count_and_latest_ignore_unrelated_archive_incompleteness(conversation, monkeypatch):
+    from app.services import voice_mail
+    original = voice_mail.invoke
+    async def invoke(session, name, args):
+        value = await original(session, name, args)
+        if name in {'mail_messages_count', 'mail_messages_search'}:
+            for account in value['accounts']:
+                account['index_complete'] = False
+            if not args.get('folder_role'):
+                value.update(complete=False, count=None, reason='INDEX_NOT_READY')
+        return value
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    assert request(conversation, 'Kolik je mailů v inboxu recepce?', 'MAIL_COUNT')['response_text'] == '9'
+    assert request(conversation, 'Přečti nejnovější mail v inboxu recepce.', 'MAIL_LATEST', 2)['ok']
+    result = request(conversation, 'Kolik je mailů v celé schránce recepce?', 'MAIL_COUNT', 3)
+    assert result['error']['code'] == 'INDEX_NOT_READY' and not result['response_text'].isdecimal()
+    result = request(conversation, 'Najdi maily v celé schránce recepce.', 'MAIL_SEARCH', 4)
+    assert result['error']['code'] == 'INDEX_NOT_READY'
+
+
+def test_cross_account_request_rejected_before_body_access_even_with_all_selected(conversation):
+    request(conversation, 'Najdi všechny maily v obou schránkách.', 'MAIL_SEARCH')
+    h = conversation[0]
+    conversation[2].clear()
+    with pytest.raises(MailError, match='REQUEST_SCOPE_MISMATCH'):
+        asyncio.run(h.mail_invoke('mail_message_get_body', {'account': 'operations', 'message_ref': conversation[4][0]['message_ref']}))
+    assert conversation[2] == []
+
+
+def test_batch_over_100_never_truncates_or_splits_targets(conversation):
+    conversation[4][:] = [row(n) for n in range(1, 102)]
+    request(conversation, 'Najdi všechny maily v recepci.', 'MAIL_SEARCH')
+    conversation[2].clear()
+    result = request(conversation, 'Označ všechny jako přečtené.', 'MAIL_BATCH_MARK_READ', 2)
+    assert result['error']['code'] == 'BATCH_LIMIT'
+    assert conversation[2] == []
+
+
+@pytest.mark.parametrize('action,text,extra', [
+    ('mark_read', 'Označ všechny jako přečtené.', {}),
+    ('mark_unread', 'Označ všechny jako nepřečtené.', {}),
+    ('move', 'Přesuň všechny do archivu.', {'destination_role': 'archive'}),
+    ('trash', 'Smaž všechny.', {}),
+])
+def test_every_batch_intent_uses_one_v2_request(conversation, action, text, extra):
+    request(conversation, 'Najdi všechny maily v recepci.', 'MAIL_SEARCH')
+    conversation[2].clear()
+    result = request(conversation, text, 'MAIL_BATCH_' + action.upper(), 2, **extra)
+    assert result['response_text'] == 'Provedeno 3 z 3.'
+    mutations = [(n, a) for n, a in conversation[2] if n == 'mail_messages_batch_update']
+    assert len(mutations) == 1 and mutations[0][1]['action'] == action
+    assert mutations[0][1]['account'] == 'reception'
+    assert mutations[0][1]['message_refs'] == [r['message_ref'] for r in conversation[4]]
+    assert ('destination_folder' in mutations[0][1]) == (action == 'move')
+    assert not any(n.startswith('mail_message_') for n, a in conversation[2])
+
+
+def test_move_preserves_reference_snapshot_and_updates_scope_for_followup_read(conversation):
+    request(conversation, 'Najdi všechny maily v recepci.', 'MAIL_SEARCH')
+    state = conversation[0].mail_conversation
+    snapshot = state.current_result_set_ref
+    result = request(conversation, 'Přesuň druhý do archivu.', 'MAIL_MOVE', 2, destination_role='archive')
+    assert result['response_text'] == 'Provedeno 1 z 1.'
+    conversation[2].clear()
+    result = request(conversation, 'Přečti druhý.', 'MAIL_READ_RESULT_BY_ORDINAL', 3)
+    assert result['ok'] and state.current_result_set_ref == snapshot
+    assert all(a['folder'] == 'Saved' and a['account'] == 'reception' for n, a in conversation[2])
+
+
+def test_batch_unknown_outcome_retains_original_uncertain_journal(conversation, monkeypatch):
+    from app.services import voice_mail
+    from dagmar_server.models import VoiceMailOperation
+    from sqlalchemy import select
+    request(conversation, 'Najdi všechny maily v recepci.', 'MAIL_SEARCH')
+    conversation[5].add(conversation[4][0]['message_ref'])
+    original = voice_mail.invoke
+    async def invoke(session, name, args):
+        value = await original(session, name, args)
+        if name == 'mail_messages_batch_update':
+            value['results'][0]['status'] = 'outcome_unknown'
+            value['results'][0]['error']['code'] = 'OPERATION_OUTCOME_UNKNOWN'
+        return value
+    monkeypatch.setattr(voice_mail, 'invoke', invoke)
+    result = request(conversation, 'Označ všechny jako přečtené.', 'MAIL_BATCH_MARK_READ', 2)
+    assert result['response_text'] == 'Provedeno 2 z 3, selhalo 0, nejisté 1.'
+    with conversation[1]() as db:
+        rows = db.scalars(select(VoiceMailOperation).where(VoiceMailOperation.tool == 'mail_messages_batch_update')).all()
+        assert len(rows) == 1 and rows[0].state == 'uncertain'

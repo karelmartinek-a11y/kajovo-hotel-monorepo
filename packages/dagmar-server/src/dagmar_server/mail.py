@@ -12,7 +12,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from .smart import SmartError
 from .mail_intent import MAIL_INTENT_TOOL
-from .mail_query import COUNT_SCHEMA, MailQueryError, count_messages, validate_result_scope
+from .mail_query import MailQueryError, validate_result_scope
 
 MCP_URL = "https://apimail.hcasc.cz/mcp"
 CATALOG = json.loads(Path(__file__).with_name("mail_mcp_catalog.json").read_text())
@@ -80,14 +80,6 @@ def model_schema(name):
         schema.get("properties", {}).pop(field, None)
     if "required" in schema:
         schema["required"] = [f for f in schema["required"] if f not in PRIVATE_FIELDS]
-    if name == "mail_messages_search":
-        # Host-owned presentation mode; never add it to the remote MCP catalog.
-        schema["properties"]["result_mode"] = {
-            "type": "string", "enum": ["page", "count"],
-            "description": "Use count for how-many questions; the host traverses all result pages. No cursor/limit in count mode.",
-        }
-        schema["properties"]["account"].pop("default", None)
-        schema["required"] = list(dict.fromkeys([*schema.get("required", []), "account"]))
     return schema
 
 
@@ -108,9 +100,6 @@ def validate_input(name, args, *, model=False):
     validator = Draft202012Validator(model_schema(name) if model else TOOLS[name]["inputSchema"])
     if next(validator.iter_errors(args), None) is not None:
         raise MailError("INVALID_INPUT")
-    if model and name == "mail_messages_search" and args.get("result_mode") == "count":
-        if any(field in args for field in ("cursor", "limit")):
-            raise MailError("INVALID_COUNT_QUERY")
 
 
 def decode(name, result):
@@ -134,7 +123,7 @@ def decode(name, result):
 async def connection(url, token):
     if url != MCP_URL or not token or any(c.isspace() for c in token):
         raise MailError("MAIL_UNAVAILABLE")
-    async with httpx.AsyncClient(headers={"Authorization": "Bearer " + token}, timeout=75, follow_redirects=False) as http:
+    async with httpx.AsyncClient(headers={"Authorization": "Bearer " + token, "X-Mail-Contract": "mail-mcp/2"}, timeout=75, follow_redirects=False) as http:
         async with streamable_http_client(MCP_URL, http_client=http) as (read, write, _):
             async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=75)) as session:
                 await session.initialize()
@@ -143,24 +132,15 @@ async def connection(url, token):
                 if set(actual) != set(TOOLS) or catalog.nextCursor:
                     raise MailError("CONTRACT_MISMATCH")
                 for name, expected in TOOLS.items():
-                    if actual[name].inputSchema != expected["inputSchema"] or actual[name].outputSchema != expected["outputSchema"]:
+                    if (actual[name].inputSchema != expected["inputSchema"]
+                        or actual[name].outputSchema != expected["outputSchema"]
+                        or actual[name].annotations is None
+                        or actual[name].annotations.model_dump(by_alias=True, exclude_none=True) != expected["annotations"]):
                         raise MailError("CONTRACT_MISMATCH")
                 yield session
 
 
 async def invoke(session, name, args):
-    if name == "mail_messages_search" and isinstance(args, dict) and "result_mode" in args:
-        validate_input(name, args, model=True)
-        args = dict(args)
-        mode = args.pop("result_mode")
-        if mode == "count":
-            try:
-                value = await count_messages(lambda page: invoke(session, name, page), args)
-            except MailQueryError as exc:
-                raise MailError(str(exc)) from None
-            if next(Draft202012Validator(COUNT_SCHEMA).iter_errors(value), None) is not None:
-                raise MailError("CONTRACT_MISMATCH")
-            return value
     validate_input(name, args)
     try:
         result = await session.call_tool(name, args)

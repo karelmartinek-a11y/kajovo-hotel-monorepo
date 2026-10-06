@@ -13,6 +13,6 @@ Baseline: main c9b4409260558e5541446639eb1e1ab818a4fab0; clean detached worktree
 | Fixtures/user text/translations | Update | HTML fixtures, safe errors and actual readiness expectations; no real mailbox writes |
 | Build/generation/deploy | Verify unchanged | OpenAPI/generated client, frontend builds, image and exact-SHA standard deployment; separate Mail package release |
 
-All 20 mail-mcp/1 tools and schemas stay unchanged. UNSUPPORTED_CAPABILITY covers incompatible independent HTML. Portable Voice Core and HA service/code/config/data must remain unchanged. No new API DTO or migration is required; existing operation journals retain identities and encrypted tokens. Android is unaffected because it does not consume hotel admin voice mail; shared HTTP contract is checked for drift.
+All 22 mail-mcp/2 tools and schemas match the production tools/list; send/draft protection stays unchanged. UNSUPPORTED_CAPABILITY covers incompatible independent HTML. Portable Voice Core and HA service/code/config/data must remain unchanged. No new API DTO or migration is required; existing operation journals retain identities and encrypted tokens. Android is unaffected because it does not consume hotel admin voice mail; shared HTTP contract is checked for drift.
 
 Evidence must distinguish local tests, CI, deployed releases and real provider acceptance. SMTP acceptance by a real recipient, Sent copy and delivery are not authorized and remain unverified. Rollback restores code while retaining the current mutation ledger, never replaying a new send.

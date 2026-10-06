@@ -26,6 +26,7 @@ class MailConversationState:
     current_message_ref: str | None = None
     current_message_account: str | None = None
     current_message_folder: str | None = None
+    current_result_set_ref: str | None = None
     current_result_set: list[dict] = field(default_factory=list)
     ordered_message_refs: list[str] = field(default_factory=list)
     current_result_index: int | None = None
@@ -47,6 +48,7 @@ class MailConversationState:
 
     def clear_selection(self):
         self.current_message_ref = self.current_message_account = self.current_message_folder = None
+        self.current_result_set_ref = None
         self.current_result_set.clear()
         self.ordered_message_refs.clear()
         self.current_result_index = None
@@ -77,6 +79,15 @@ class MailConversationState:
         self.current_message_account, self.current_message_folder = item['account'], item['folder']
         return item
 
+    def record_message_update(self, value):
+        ref = value['message_ref']
+        self.messages[ref]['folder'] = value['folder']
+        for row in self.current_result_set:
+            if row['message_ref'] == ref:
+                row['folder'] = value['folder']
+        if self.current_message_ref == ref:
+            self.current_message_folder = value['folder']
+
     def guard(self, name, args):
         # Catalog/status are administrative observations, never account selection.
         if name in {'mail_accounts_list', 'mail_account_status'}:
@@ -84,23 +95,27 @@ class MailConversationState:
         account = args.get('account')
         if account and self.selected_account not in {None, 'all', account}:
             raise MailError('REQUEST_SCOPE_MISMATCH')
-        for key in ('message_ref', 'origin_message_ref'):
-            ref = args.get(key)
+        refs = [args.get(key) for key in ('message_ref', 'origin_message_ref')] + args.get('message_refs', [])
+        for ref in refs:
             if ref:
                 item = self.messages.get(ref)
                 if not item:
                     raise MailError('REFERENCE_NOT_SELECTED')
-                if self.selected_account not in {None, 'all', item['account']}:
+                if self.selected_account not in {None, 'all', item['account']} or (account and account != item['account']) or (args.get('folder') and args['folder'] != item['folder']):
                     raise MailError('REQUEST_SCOPE_MISMATCH')
         if args.get('draft_ref') and self.current_draft_ref:
             if args['draft_ref'] != self.current_draft_ref:
                 raise MailError('REFERENCE_NOT_SELECTED')
             if self.selected_account not in {None, 'all', self.current_draft_account}:
                 raise MailError('REQUEST_SCOPE_MISMATCH')
-        if name == 'mail_messages_search' and self.selected_folder and args.get('folder') != self.selected_folder:
+        if name in {'mail_messages_search', 'mail_messages_count', 'mail_messages_unread'} and ((self.selected_folder_role and self.selected_folder_role != 'other' and args.get('folder_role') != self.selected_folder_role) or (self.selected_folder_role in {None, 'other'} and self.selected_folder and args.get('folder') != self.selected_folder)):
             raise MailError('REQUEST_SCOPE_MISMATCH')
 
     def validate_result(self, name, args, value):
+        try:
+            validate_result_scope(name, args, value)
+        except MailQueryError as exc:
+            raise MailError(str(exc)) from None
         ref = args.get('message_ref') or args.get('origin_message_ref')
         expected_account = self.messages.get(ref, {}).get('account') if ref else args.get('account')
         if args.get('draft_ref') and self.current_draft_ref:
@@ -287,7 +302,7 @@ class MailConversationHost:
         # Allowlisted operational metadata, no references, text, addresses or secrets.
         context = {'component': 'mail.conversation', 'request_id': self.id,
                    'intent': state.intent, 'resolved_account': args.get('account') or state.current_message_account or state.selected_account,
-                   'resolved_folder_role': state.selected_folder_role,
+                   'resolved_folder_role': args.get('folder_role') or state.selected_folder_role,
                    'resolved_folder_path': args.get('folder') or state.selected_folder,
                    'tool_name': name, 'operation_success': success, 'operation_failure': not success,
                    'selected_account': state.selected_account, 'selected_folder_path': state.selected_folder,
@@ -296,34 +311,45 @@ class MailConversationHost:
             accounts = sorted({r['account'] for r in value.get('items', []) if r.get('account') in {'reception', 'operations'}})
             folders = sorted({r['folder'] for r in value.get('items', []) if isinstance(r.get('folder'), str)})
             context['returned_account'] = value.get('account') or (accounts[0] if len(accounts) == 1 else accounts)
-            context['returned_folder_path'] = value.get('folder') or (folders[0] if len(folders) == 1 else folders)
-            context.update(result_count=value.get('count', len(value.get('items', []))), result_complete=value.get('complete', value.get('body_complete')))
+            context['returned_folder_path'] = value.get('resolved_folder') or value.get('folder') or (folders[0] if len(folders) == 1 else folders)
+            if value.get('resolved_folder'):
+                context['resolved_folder_path'] = value['resolved_folder']
+            context.update(result_count=value.get('count', value.get('requested_count', len(value.get('items', [])))), result_complete=value.get('complete', value.get('body_complete')))
         # Folder paths are explicitly requested diagnostic scope; no mail subjects/addresses.
         logger.info('voice.mail.scope', extra={'context': context})
+
+    def mail_snapshot_page(self, query, page, snapshot=None, rows=None):
+        try:
+            validate_result_scope('mail_messages_search', query, page)
+        except MailQueryError as exc:
+            raise MailError(str(exc)) from None
+        identity = (page['result_set_ref'], page['account'], page['resolved_folder'],
+                    page['resolved_folder_role'], page['resolved_folders'])
+        if snapshot is not None and identity != snapshot:
+            raise MailError('RESULT_SCOPE_MISMATCH')
+        if page['complete'] is not True:
+            raise MailError(page.get('reason') or 'INDEX_NOT_READY')
+        offset = len(rows or [])
+        for index, row in enumerate(page['items'], offset + 1):
+            if type(row['ordinal']) is not int or row['ordinal'] != index:
+                raise MailError('RESULT_SCOPE_MISMATCH')
+        return identity
 
     async def mail_all_results(self, query):
         rows, refs, cursors, snapshot = [], set(), set(), None
         for _ in range(1000):
             page = await self.mail_invoke('mail_messages_search', query)
-            try:
-                validate_result_scope('mail_messages_search', query, page)
-            except MailQueryError as exc:
-                raise MailError(str(exc)) from None
-            current = _account_snapshot(page['accounts'], query['account'])
-            if current is None:
-                raise MailError('INDEX_INCOMPLETE')
-            if snapshot is not None and snapshot != current:
-                raise MailError('INDEX_CHANGED')
-            snapshot = current
+            snapshot = self.mail_snapshot_page(query, page, snapshot, rows)
             for row in page['items']:
                 if row['message_ref'] in refs:
-                    raise MailError('INDEX_CHANGED')
+                    raise MailError('RESULT_SCOPE_MISMATCH')
                 refs.add(row['message_ref'])
                 rows.append(row)
             cursor = page['next_cursor']
             if cursor is None:
-                if page['complete'] is not True:
-                    raise MailError('INDEX_INCOMPLETE')
+                self.mail_conversation.current_result_set_ref = page['result_set_ref']
+                if query['account'] != 'all':
+                    self.mail_conversation.selected_folder = page['resolved_folder']
                 return rows
             if not isinstance(cursor, str) or not cursor or cursor in cursors:
                 raise MailError('INVALID_CURSOR')
@@ -332,7 +358,7 @@ class MailConversationHost:
         raise MailError('PAGE_LIMIT')
 
     async def mail_full_body(self, item):
-        chunks, cursors, query = [], set(), {'message_ref': item['message_ref'], 'body_limit': 60000}
+        chunks, cursors, query = [], set(), {'account': item['account'], 'message_ref': item['message_ref'], 'folder': item['folder'], 'body_limit': 60000}
         for _ in range(1000):
             self.assert_current_operation()
             value = await self.mail_invoke('mail_message_get_body', query)
@@ -411,7 +437,7 @@ class MailConversationHost:
                 if normalize(path) not in normalize(transcript) or not re.search(r'\b(?:slozc\w*|slozk\w*|folder)\b', normalize(transcript)):
                     raise MailError('REQUEST_SCOPE_MISMATCH')
                 state.selected_folder_role, state.selected_folder = 'other', path
-            if re.search(r'\b(?:vsech slozk\w*|all folders|cele schrank\w*|celou schrank\w*)\b', normalize(transcript)):
+            if re.search(r'\b(?:vsech slozk\w*|all folders|cele schran[kc]\w*|celou schran[kc]\w*)\b', normalize(transcript)):
                 state.selected_folder_role = state.selected_folder = None
                 role = None
             if role:
@@ -576,15 +602,12 @@ class MailConversationHost:
             if re.search(r'\b(?:bez priloh\w*|nema\w* priloh\w*)\b', normalized):
                 filters['has_attachments'] = False
             role = state.selected_folder_role or ('inbox' if intent == 'MAIL_LATEST' else None)
-            queries = []
-            for scope in (['reception', 'operations'] if account == 'all' and role else [account]):
-                query = {**filters, 'account': scope, 'sort': 'date'}
-                if role:
-                    path = await self.mail_folder(scope, None, state.selected_folder) if role == 'other' else await self.mail_folder(scope, role)
-                    query['folder'] = path
-                    if account != 'all':
-                        state.selected_folder, state.selected_folder_role = path, role
-                queries.append(query)
+            query = {**filters, 'account': account}
+            if role == 'other':
+                query['folder'] = state.selected_folder
+            elif role:
+                query['folder_role'] = role
+                state.selected_folder_role = role
             state.last_search_filters = filters
             state.last_search_account, state.last_search_folder = account, state.selected_folder
             state.last_search_complete = False
@@ -594,38 +617,40 @@ class MailConversationHost:
                 state.current_result_set.clear()
                 state.ordered_message_refs.clear()
                 state.current_result_index = None
-                counts = [await self.mail_invoke('mail_messages_search', {**query, 'result_mode': 'count'}) for query in queries]
-                for value in counts:
-                    if value['complete'] is not True or type(value['count']) is not int:
-                        reason = value.get('reason')
-                        raise MailError(reason if reason in {'INDEX_INCOMPLETE', 'INDEX_CHANGED', 'PAGE_LIMIT', 'TIME_LIMIT'} else 'INDEX_INCOMPLETE')
+                state.current_result_set_ref = None
+                value = await self.mail_invoke('mail_messages_count', query)
+                if value['complete'] is not True or type(value['count']) is not int:
+                    raise MailError(value.get('reason') or 'INDEX_NOT_READY')
                 state.last_search_complete = True
-                state.last_count = sum(v['count'] for v in counts)
+                state.last_count = value['count']
+                if account != 'all':
+                    state.selected_folder = value['resolved_folder']
+                state.last_search_folder = value['resolved_folder']
                 return str(state.last_count)
+            state.current_result_set_ref = None
             state.current_result_set = []
             state.ordered_message_refs = []
             state.current_message_ref = state.current_message_account = state.current_message_folder = None
             state.current_result_index = None
             state.messages.clear()
-            rows = []
-            for query in queries:
-                if intent == 'MAIL_LATEST':
-                    value = await self.mail_invoke('mail_messages_search', {**query, 'limit': 1})
-                    if _account_snapshot(value['accounts'], query['account']) is None:
-                        raise MailError('INDEX_INCOMPLETE')
-                    rows.extend(value['items'])
-                else:
-                    rows.extend(await asyncio.wait_for(self.mail_all_results({**query, 'limit': 100}), 75))
-            if len(queries) > 1:
-                rows.sort(key=lambda row: (row['received_at'], row['message_ref']), reverse=True)
+            if intent == 'MAIL_LATEST':
+                value = await self.mail_invoke('mail_messages_search', {**query, 'sort': 'date', 'limit': 1})
+                self.mail_snapshot_page(query, value)
+                state.current_result_set_ref = value['result_set_ref']
+                if account != 'all':
+                    state.selected_folder = value['resolved_folder']
+                rows = value['items']
+            else:
+                rows = await asyncio.wait_for(self.mail_all_results({**query, 'sort': 'date', 'limit': 100}), 75)
+            state.last_search_folder = state.selected_folder
             if intent == 'MAIL_LATEST':
                 rows = rows[:1]
             if intent in {'MAIL_SEARCH', 'MAIL_LIST'} and args.get('list_limit'):
                 rows = rows[:args['list_limit']]
-            state.current_result_set = [{k: r[k] for k in ('message_ref', 'account', 'folder', 'subject', 'received_at')} for r in rows]
+            state.current_result_set = [{k: r[k] for k in ('message_ref', 'account', 'folder', 'subject', 'received_at', 'ordinal')} for r in rows]
             state.ordered_message_refs = [r['message_ref'] for r in rows]
             # Keep reference identity metadata only; previews/bodies stay out of RAM state.
-            state.messages = {r['message_ref']: {k: r[k] for k in ('message_ref', 'account', 'folder')} for r in rows}
+            state.messages = {r['message_ref']: {k: r[k] for k in ('message_ref', 'account', 'folder', 'ordinal')} for r in rows}
             self.mail_refs = set(state.ordered_message_refs)
             if state.current_draft_ref:
                 self.mail_refs.add(state.current_draft_ref)
@@ -691,46 +716,50 @@ class MailConversationHost:
             destinations = {}
             # Preflight the whole exact target set before the first mutation.
             for item in targets:
-                state.guard(tool, {'message_ref': item['message_ref']})
-                if suffix in {'move', 'trash'}:
-                    role = 'trash' if suffix == 'trash' else args.get('destination_role')
-                    path = args.get('destination_path') if suffix == 'move' else None
+                state.guard(tool, {'account': item['account'], 'message_ref': item['message_ref'], 'folder': item['folder']})
+                if suffix == 'move':
+                    role = args.get('destination_role')
+                    path = args.get('destination_path')
                     if not role and not path:
                         raise MailError('FOLDER_REQUIRED')
                     if path and normalize(path) not in normalize(transcript):
                         raise MailError('REQUEST_SCOPE_MISMATCH')
-                    if role and suffix == 'move' and not re.search(_ROLE_WORDS.get(role, r'(?!)'), normalize(transcript)):
+                    if role and not re.search(_ROLE_WORDS.get(role, r'(?!)'), normalize(transcript)):
                         raise MailError('REQUEST_SCOPE_MISMATCH')
                     if item['account'] not in destinations:
                         destinations[item['account']] = await self.mail_folder(item['account'], role, path)
-            successes, failures, uncertain = 0, 0, 0
-            for item in targets:
-                self.assert_current_operation()
-                request = {'message_ref': item['message_ref']}
-                if suffix in {'move', 'trash'}:
-                    tool = 'mail_message_move'
-                    request['destination_folder'] = destinations[item['account']]
-                try:
-                    value = await self.mail_internal_mutation(tool, request, digest([cid, item['message_ref'], tool]))
-                    if value['message_ref'] != item['message_ref'] or value['account'] != item['account']:
-                        raise MailError('RESULT_SCOPE_MISMATCH')
-                    if suffix in {'move', 'trash'} and value['folder'] != destinations[item['account']]:
-                        raise MailError('RESULT_SCOPE_MISMATCH')
-                    if suffix in {'mark_read', 'mark_unread'} and value['is_read'] != (suffix == 'mark_read'):
-                        raise MailError('RESULT_SCOPE_MISMATCH')
-                    item['folder'] = value['folder']
-                    if state.current_message_ref == item['message_ref']:
-                        state.current_message_folder = value['folder']
-                    successes += 1
-                except MailError as exc:
-                    from .mail_host import UNCERTAIN
-                    if str(exc) in UNCERTAIN:
-                        uncertain += 1
-                    else:
-                        failures += 1
-            if uncertain:
-                return f'Provedeno {successes} z {len(targets)}, selhalo {failures}, nejisté {uncertain}.'
-            return f'Provedeno {successes} z {len(targets)}, selhalo {failures}.' if failures else f'Provedeno {successes} z {len(targets)}.'
+            is_batch = len(targets) > 1 or (batch and not selections)
+            if is_batch:
+                if len(targets) > 100:
+                    raise MailError('BATCH_LIMIT')
+                accounts = {item['account'] for item in targets}
+                if len(accounts) != 1:
+                    raise MailError('ACCOUNT_REQUIRED')
+                request = {'account': targets[0]['account'], 'message_refs': [item['message_ref'] for item in targets], 'action': suffix}
+                if suffix == 'move':
+                    request['destination_folder'] = destinations[targets[0]['account']]
+                value = await self.mail_internal_mutation('mail_messages_batch_update', request, digest([cid, 'batch']))
+                succeeded, failed = value['succeeded_count'], value['failed_count']
+                for result in value['results']:
+                    if result['ok']:
+                        state.record_message_update(result)
+                uncertain = sum(r.get('status') == 'outcome_unknown' for r in value['results'])
+                if uncertain:
+                    return f'Provedeno {succeeded} z {value["requested_count"]}, selhalo {failed - uncertain}, nejisté {uncertain}.'
+                if value['complete'] is not True:
+                    return f'Provedeno {succeeded} z {value["requested_count"]}, selhalo {failed}.'
+                return f'Provedeno {succeeded} z {value["requested_count"]}.'
+            item = targets[0]
+            request = {'account': item['account'], 'message_ref': item['message_ref'], 'folder': item['folder']}
+            if suffix == 'move':
+                request['destination_folder'] = destinations[item['account']]
+            try:
+                value = await self.mail_internal_mutation(tool, request, digest([cid, item['message_ref'], tool]))
+            except MailError as exc:
+                from .mail_host import UNCERTAIN
+                return 'Provedeno 0 z 1, selhalo 0, nejisté 1.' if str(exc) in UNCERTAIN else 'Provedeno 0 z 1, selhalo 1.'
+            state.record_message_update(value)
+            return 'Provedeno 1 z 1.'
         if intent in {'MAIL_DRAFT_CREATE', 'MAIL_REPLY', 'MAIL_REPLY_ALL'}:
             if account not in {'reception', 'operations'}:
                 if intent in {'MAIL_REPLY', 'MAIL_REPLY_ALL'}:

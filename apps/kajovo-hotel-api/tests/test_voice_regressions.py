@@ -39,8 +39,8 @@ def test_mail_result_and_idempotence_without_capture(host, monkeypatch, mutation
                     'received_at': '2026-10-05', 'from': [], 'to': [], 'subject': bad_url, 'is_read': False,
                     'content_mode': 'preview', 'preview': bad_url, 'preview_truncated': False,
                     'has_attachments': False, 'attachment_count': 0, 'attachment_types': [],
-                    'attachments': [], 'attachments_truncated': False}], 'next_cursor': None, 'complete': True, 'accounts': [{'account': 'reception', 'available': True, 'index_complete': True, 'last_sync_at': '2026-10-06'}]}
-            return CallToolResult(content=[], structuredContent={'contract_version': 'mail-mcp/1', 'request_id': 'fixture', 'ok': True, 'data': data})
+                    'attachments': [], 'attachments_truncated': False, 'ordinal': 1}], 'next_cursor': None, 'complete': True, 'account': 'reception', 'resolved_folder': None, 'resolved_folder_role': None, 'resolved_folders': [], 'basis': 'synchronized_index', 'last_sync_at': '2026-10-06', 'reason': None, 'result_set_ref': 'fixture-result-set', 'accounts': [{'account': 'reception', 'available': True, 'index_complete': True, 'last_sync_at': '2026-10-06'}]}
+            return CallToolResult(content=[], structuredContent={'contract_version': 'mail-mcp/2', 'request_id': 'fixture', 'ok': True, 'data': data})
 
     async def run():
         provider = FakeRealtime('', {})
@@ -264,7 +264,7 @@ def test_reconnect_after_actual_fake_mail_mutation_uses_original_journal(host, m
             calls.append((name, args))
             if unknown:
                 raise TimeoutError('synthetic transport failure')
-            return CallToolResult(content=[], structuredContent={'contract_version': 'mail-mcp/1', 'request_id': 'fixture', 'ok': True, 'data': draft()})
+            return CallToolResult(content=[], structuredContent={'contract_version': 'mail-mcp/2', 'request_id': 'fixture', 'ok': True, 'data': draft()})
     async def run():
         first = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, first, logical_call_id='mutation-recovery')

@@ -19,7 +19,7 @@ logger = logging.getLogger("dagmar.voice")
 
 # Czech i/y are acoustically identical; ASR may spell the fixed imperative as "odešly".
 BYPASS = {normalize(s) for s in ("Odešli bez potvrzení", "Odešly bez potvrzení", "Send without confirmation", "Sende ohne Bestätigung", "Odošli bez potvrdenia")}
-UNCERTAIN = {"SMTP_OUTCOME_UNKNOWN", "OPERATION_OUTCOME_UNKNOWN", "SMTP_TIMEOUT", "IMAP_TIMEOUT", "RESTORE_RECONCILIATION_REQUIRED", "RESULT_SCOPE_MISMATCH"}
+UNCERTAIN = {"SMTP_OUTCOME_UNKNOWN", "OPERATION_OUTCOME_UNKNOWN", "SMTP_TIMEOUT", "IMAP_TIMEOUT", "RESTORE_RECONCILIATION_REQUIRED", "RESULT_SCOPE_MISMATCH", "CONTRACT_MISMATCH"}
 MAIL_RECONNECT_DELAYS = (1, 2, 4, 8)
 MAIL_STATUS_INTERVAL = 120
 MAIL_RECOVERY_INTERVAL = 30
@@ -353,7 +353,7 @@ class MailHost(MailConversationHost):
             elif rid:
                 with self.mail_factory() as db:
                     row = db.get(VoiceMailOperation, rid)
-                    row.state = "sent" if name.startswith("mail_send_") else "completed"
+                    row.state = "sent" if name.startswith("mail_send_") else "uncertain" if name == "mail_messages_batch_update" and any(r.get("status") == "outcome_unknown" for r in value["results"]) else "completed"
                     row.receipt_id = value.get("receipt_id")
                     if name == "mail_send_confirmed":
                         candidate = db.scalar(select(VoiceMailOperation).where(VoiceMailOperation.owner_session_id == self.owner,
@@ -361,7 +361,7 @@ class MailHost(MailConversationHost):
                         candidate.state, candidate.receipt_id = "sent", value["receipt_id"]
                         self.mail_confirmation.state = "applied"
                     db.commit()
-            output = {"contract_version": "mail-mcp/1", "ok": True, "data": value}
+            output = {"contract_version": "mail-mcp/2", "ok": True, "data": value}
         except Exception as exc:
             code = str(exc) if isinstance(exc, MailError) else "MAIL_UNAVAILABLE"
             if code in {"CONTRACT_MISMATCH", "MAIL_UNAVAILABLE"}:
@@ -379,7 +379,7 @@ class MailHost(MailConversationHost):
                             candidate.state = "uncertain" if code in UNCERTAIN else "failed"
                             self.mail_confirmation.state = candidate.state
                     db.commit()
-            output = {"contract_version": "mail-mcp/1", "ok": False, "error": {"code": code, "retryable": False}}
+            output = {"contract_version": "mail-mcp/2", "ok": False, "error": {"code": code, "retryable": False}}
         if publish:
             await self.item({"type": "function_call_output", "call_id": cid, "output": json.dumps(output, ensure_ascii=False)})
         self.seen_calls[cid] = fingerprint
@@ -402,7 +402,7 @@ class MailHost(MailConversationHost):
                         async with asyncio.timeout(30):
                             self.mail_mcp = await stack.enter_async_context((runtime().mail_connector or voice_mail.connection)(settings.mail_mcp_url, settings.mail_mcp_token))
                             accounts = await voice_mail.invoke(self.mail_mcp, "mail_accounts_list", {})
-                            status = await voice_mail.invoke(self.mail_mcp, "mail_account_status", {})
+                            status = await voice_mail.invoke(self.mail_mcp, "mail_account_status", {"account": "all"})
                             if self.closed or not self.mail_authorize():
                                 raise MailError("UNAUTHORIZED")
                             self.mail_ready = True
@@ -432,7 +432,7 @@ class MailHost(MailConversationHost):
                                 # Single inline probe: no overlapping timer task or mutation replay.
                                 async with self.mail_status_lock:
                                     async with asyncio.timeout(10):
-                                        await self.mail_invoke("mail_account_status", {}, replay=False)
+                                        await self.mail_invoke("mail_account_status", {"account": "all"}, replay=False)
                                     await self.mail_publish_status()
                 except asyncio.CancelledError:
                     raise
