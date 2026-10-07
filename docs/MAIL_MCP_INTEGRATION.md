@@ -126,6 +126,16 @@ usage holds must be respected; no replacement ledger may reset the allowance.
 
 ## Reproducible native browser probe
 
+The final acceptance run authorized on 2026-10-07 has separate, unlimited-by-fixed-cap
+accounting, explicitly enabled with a fourth browser runner argument
+`--authorized-final-run`. Its first argument is an outside-Git `COSTS.json`, not
+the historical SQLite ledger. `live_mail/costs.py` records estimates and pending
+or accounted usage without replacing or refunding historical reservations.
+The old `--ledger` path still enforces the original authorization. Paid calls
+remain opt-in and excluded from CI. Temporary synthetic endpoint/tunnel setup
+is authorized for this final run and must be removed afterwards. Activation
+still requires complete actual model/WebRTC/audio acceptance for the exact SHA.
+
 `packages/dagmar-server/tests/live_mail/browser.mjs` starts the loopback test host
 in `host.py` and the existing `examples/dagmar-host` Vite application. It runs the
 actual Dagmar console, routes, orchestration, native MCP and OpenAI WebRTC. It

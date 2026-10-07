@@ -73,11 +73,13 @@ async function main() {
   assert.equal(process.env.VOICE_CORE_LIVE_SMOKE,'1','explicit_paid_opt_in_required');
   assert.ok(!process.env.CI && !process.env.GITHUB_ACTIONS,'outside_CI_required');
   const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../../..');
-  const [ledger,manifest,evidence]=process.argv.slice(2);
+  const [ledger,manifest,evidence,authorization]=process.argv.slice(2);
   assert.ok(ledger && manifest && evidence,'ledger_manifest_evidence_required');
   const hostFile=path.join(path.dirname(fileURLToPath(import.meta.url)),'host.py');
   const hostEvidence=evidence+'.provider.json';
-  const args=[hostFile,'--ledger',ledger,'--fixture',manifest,'--evidence',hostEvidence];
+  assert.ok(!authorization || authorization==='--authorized-final-run','explicit_final_authorization_required');
+  const args=[hostFile,authorization?'--costs':'--ledger',ledger,'--fixture',manifest,'--evidence',hostEvidence,
+    ...(authorization?[authorization]:[])];
   const checked=spawnSync('python3.11',args,{cwd:root,encoding:'utf8'});
   if(checked.status!==0){process.stdout.write(checked.stdout);process.exitCode=2;return;}
   const candidate=JSON.parse(checked.stdout).candidate;

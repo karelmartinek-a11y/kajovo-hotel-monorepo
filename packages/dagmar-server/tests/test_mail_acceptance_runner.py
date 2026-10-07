@@ -6,6 +6,26 @@ import subprocess
 from dagmar_server.paid_budget import BudgetError
 
 
+def test_authorized_final_costs_are_separate_and_pending_usage_does_not_block(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).parent/'live_mail'))
+    from costs import FinalRunCosts
+    history = tmp_path/'historical.sqlite'
+    history.write_bytes(b'unchanged historical artifact')
+    path = tmp_path/'COSTS.json'
+    book = FinalRunCosts(path)
+    book.reserve('first', '20', 'gpt-realtime-2.1', 'current')
+    book.reconcile('first', None, complete=False)
+    book.reserve('second', '20', 'gpt-realtime-2.1', 'current')
+    book.reconcile('second', '.15', complete=True)
+    snapshot = FinalRunCosts(path).snapshot()
+    assert snapshot['pending_entries'] == 1
+    assert snapshot['cumulative_accounted_USD'] == '0.15'
+    assert snapshot['fixed_limit_USD'] is None
+    assert snapshot['historical_ledger_replaced'] is False
+    assert history.read_bytes() == b'unchanged historical artifact'
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
 def test_missing_ledger_blocks_before_manifest_key_or_network(tmp_path):
     source = Path(__file__).parent/'live_mail/host.py'
     spec = importlib.util.spec_from_file_location('isolated_mail_probe', source)

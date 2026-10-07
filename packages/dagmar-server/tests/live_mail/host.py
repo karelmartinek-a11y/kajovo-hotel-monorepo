@@ -26,9 +26,16 @@ ROOT = Path(__file__).resolve().parents[4]
 RESERVATION_USD = '3.80'
 
 
-def preflight(ledger_path, manifest_path, evidence):
-    ledger = PaidBudget.open_original(ledger_path)
-    if ledger.snapshot()['available_micro_usd'] < 3_800_000:
+def preflight(ledger_path, manifest_path, evidence, *, authorized_final_run=False):
+    if authorized_final_run:
+        if Path(ledger_path).resolve().is_relative_to(ROOT):
+            raise ValueError('accounting_outside_git_required')
+        from costs import FinalRunCosts
+        ledger = FinalRunCosts(ledger_path)
+    else:
+        ledger = PaidBudget.open_original(ledger_path)
+    available = ledger.snapshot()['available_micro_usd']
+    if available is not None and available < 3_800_000:
         raise BudgetError('probe_requires_USD_3.80_available')
     path = Path(manifest_path).resolve()
     if not path.is_file() or stat.S_IMODE(path.stat().st_mode) & 0o077:
@@ -104,6 +111,9 @@ def build_host(ledger, fixture, sha, evidence, key):
             ledger.reconcile(state['reservation'], str(total) if complete else None, complete=complete)
             asr_complete = bool(state['asr_started']) and state['asr_started'] == set(state['asr']) and all(v is not None for v in state['asr'].values())
             ledger.reconcile(state['reservation'] + '-transcription', str(sum(state['asr'].values(), Decimal(0))) if asr_complete else None, complete=asr_complete)
+            if hasattr(ledger, 'record_usage'):
+                ledger.record_usage(state['reservation'], list(state['usage'].values()))
+                ledger.record_usage(state['reservation'] + '-transcription', {'committed_items': len(state['asr_started']), 'observed_item_costs': [str(v) if v is not None else None for v in state['asr'].values()]})
         report = {'tested_sha': sha, 'provider_usage': list(state['usage'].values()), 'ledger': ledger.snapshot(),
             'control_token_in_provider': state['control_leak'], 'events': state['events'],
             'full_scenario_acceptance': 'NOT_RUN', 'production_activation': 'NOT_RUN'}
@@ -140,7 +150,15 @@ def build_host(ledger, fixture, sha, evidence, key):
                     await asyncio.sleep(120)
                     await finish()
                 asyncio.create_task(deadline())
-            return await super().request(method, url, **kwargs)
+            response = await super().request(method, url, **kwargs)
+            if str(url) == 'https://api.openai.com/v1/realtime/calls' and response.status_code >= 400:
+                try:
+                    error = response.json().get('error', {})
+                    state['events'].append({'type': 'provider_HTTP_rejection', 'status': response.status_code,
+                        'code': error.get('code'), 'param': error.get('param')})
+                except ValueError:
+                    state['events'].append({'type': 'provider_HTTP_rejection', 'status': response.status_code})
+            return response
 
     class Socket:
         def __init__(self, ws): self.ws = ws
@@ -166,6 +184,8 @@ def build_host(ledger, fixture, sha, evidence, key):
             raw = await self.ws.recv()
             event = json.loads(raw)
             typ, item = event.get('type'), event.get('item', {})
+            if typ == 'error':
+                state['events'].append({'type': 'provider_error_detail', 'code': event.get('error', {}).get('code'), 'param': event.get('error', {}).get('param')})
             if fixture['approval_token'] in raw:
                 state['control_leak'] = True
             if typ == 'response.created':
@@ -241,13 +261,18 @@ def build_host(ledger, fixture, sha, evidence, key):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ledger', required=True)
+    accounting = parser.add_mutually_exclusive_group(required=True)
+    accounting.add_argument('--ledger')
+    accounting.add_argument('--costs')
+    parser.add_argument('--authorized-final-run', action='store_true')
     parser.add_argument('--fixture', required=True)
     parser.add_argument('--evidence', required=True)
     parser.add_argument('--serve', action='store_true')
     args = parser.parse_args()
     try:
-        ledger, fixture, sha, evidence = preflight(args.ledger, args.fixture, args.evidence)
+        if bool(args.costs) != args.authorized_final_run:
+            raise ValueError('explicit_final_run_authorization_required')
+        ledger, fixture, sha, evidence = preflight(args.costs or args.ledger, args.fixture, args.evidence, authorized_final_run=args.authorized_final_run)
         if not args.serve:
             print(json.dumps({'preflight': 'PASS', 'candidate': sha, 'reservation_USD': RESERVATION_USD, 'paid_calls': 0}))
         else:

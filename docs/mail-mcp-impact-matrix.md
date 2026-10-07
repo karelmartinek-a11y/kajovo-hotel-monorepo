@@ -36,3 +36,7 @@ WebRTC credential isolation and audio evidence are required before activation.
 
 Production activation remains a separate exact-SHA acceptance gate. The runner
 is a loopback test process, not a production debug endpoint or acceptance bypass.
+
+Final acceptance authorization (2026-10-07): update test-only accounting, runner,
+guard tests, current documentation and active instructions together. Historical
+ledger and production contracts remain unchanged. No paid call enters CI.
