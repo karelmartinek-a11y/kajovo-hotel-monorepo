@@ -7,6 +7,7 @@ The provider key arrives on stdin from the voice application's secret store.
 import argparse
 import asyncio
 import base64
+import hashlib
 from contextlib import asynccontextmanager
 from decimal import Decimal
 import json
@@ -17,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 import wave
@@ -51,14 +53,22 @@ def preflight(ledger_path, manifest_path, evidence, *, authorized_final_run=Fals
     with wave.open(str(Path(fixture['input_wav']).resolve())) as audio:
         if not 0 < audio.getnframes() / audio.getframerate() <= 8 or audio.getsampwidth() != 2:
             raise ValueError('short_synthetic_PCM16_audio_required')
+    for filename in fixture.get('audio_files', {}).values():
+        with wave.open(str(Path(filename).resolve())) as audio:
+            if not 0 < audio.getnframes()/audio.getframerate() <= 30 or audio.getsampwidth()!=2 or audio.getnchannels() not in {1,2}:
+                raise ValueError('bounded_synthetic_PCM16_audio_required')
     evidence = Path(evidence).resolve()
     if evidence.is_relative_to(ROOT) or evidence.exists():
         raise ValueError('new_evidence_path_outside_git_required')
-    if subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip():
+    dirty = subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip()
+    if dirty and not (authorized_final_run and fixture.get('development_probe') is True):
         raise ValueError('immutable_clean_candidate_required')
     sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     if sha != subprocess.check_output(['git', 'rev-parse', 'origin/main'], cwd=ROOT, text=True).strip():
         raise ValueError('candidate_must_equal_origin_main')
+    if fixture.get('development_probe') is True:
+        diff = subprocess.check_output(['git', 'diff', 'HEAD'], cwd=ROOT)
+        sha += '-dev-' + hashlib.sha256(diff).hexdigest()[:12]
     return ledger, fixture, sha, evidence
 
 
@@ -90,6 +100,9 @@ def build_host(ledger, fixture, sha, evidence, key):
     upgrade(engine)
     factory = sessionmaker(bind=engine)
     origin = fixture['server_url'].removesuffix('/mcp')
+    extended = fixture.get('steps') and hasattr(ledger, 'record_usage')
+    response_bound = 64 if extended else 4
+    output_bound = 4096 if extended else 512
     # Only this isolated process redirects Mail endpoints. No business tool or
     # provider event is emulated; actual MCP executes at the synthetic fixture.
     mail.URL = mail_contract.URL = fixture['server_url']
@@ -99,6 +112,51 @@ def build_host(ledger, fixture, sha, evidence, key):
     mail.httpx = SimpleNamespace(AsyncClient=FixtureHTTP)
     state = {'started': None, 'reservation': None, 'created': set(), 'usage': {},
              'asr_started': set(), 'asr': {}, 'events': [], 'control_leak': False, 'ended': False, 'result_bytes': 0}
+
+    # Test-only exception categories/locations, never exception messages, tool
+    # bodies or arguments. The original methods still execute unchanged.
+    original_journal = mail.MailHost.journal
+    def journal_observation(instance, *args, **kwargs):
+        try:
+            return original_journal(instance, *args, **kwargs)
+        except Exception as exc:
+            state['events'].append({'type':'host_journal_exception','category':type(exc).__name__,
+                'frames':[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(exc.__traceback__)]})
+            raise
+    mail.MailHost.journal = journal_observation
+    original_observe = mail.MailHost.observe
+    def event_observation(instance, event):
+        try:
+            before = instance.pending and instance.pending['state']
+            action = original_observe(instance, event)
+            after = instance.pending and instance.pending['state']
+            if before != after:
+                state['events'].append({'type':'host_approval_state','from':before,'to':after,'event_type':event.get('type'),'action':action if isinstance(action,str) else None})
+            if instance.pending:
+                trace = evidence.with_suffix('.approval.json')
+                trace.write_text(json.dumps({'state':instance.pending['state'],'response_id':instance.pending.get('response_id'),'events':[e for e in state['events'] if e['type']=='host_approval_state']}))
+                trace.chmod(0o600)
+            return action
+        except Exception as exc:
+            state['events'].append({'type':'host_mail_event_exception','event_type':event.get('type'),
+                'category':type(exc).__name__,
+                'frames':[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(exc.__traceback__)]})
+            raise
+    mail.MailHost.observe = event_observation
+    original_result = mail.MailHost.result
+    def result_observation(instance, item):
+        before = instance.status
+        original_result(instance, item)
+        if instance.status != before:
+            state['events'].append({'type':'host_mail_status_change','from':before,'to':instance.status,'tool':item.get('name')})
+            from jsonschema import Draft202012Validator
+            try:
+                value = mail_contract.decode_output(item.get('output'))
+                failures = Draft202012Validator(mail_contract.TOOLS[item['name']]['outputSchema']).iter_errors(value)
+                state['events'].append({'type':'host_output_schema_errors','failures':[{'validator':error.validator,'path':list(error.absolute_path)} for error in failures]})
+            except Exception as exc:
+                state['events'].append({'type':'host_output_decode_error','category':type(exc).__name__})
+    mail.MailHost.result = result_observation
 
     def safe_error(error):
         message = str(error.get('message', ''))
@@ -110,7 +168,10 @@ def build_host(ledger, fixture, sha, evidence, key):
         if state['ended']:
             return
         state['ended'] = True
-        await product.shutdown()
+        try:
+            await product.shutdown()
+        except Exception as exc:
+            state['events'].append({'type':'host_shutdown_failed','category':type(exc).__name__})
         if state['reservation']:
             complete = bool(state['created']) and state['created'] == set(state['usage']) and all(v['cost_estimate']['complete'] for v in state['usage'].values())
             total = sum((Decimal(v['cost_estimate']['usd']) for v in state['usage'].values() if v['cost_estimate']['complete']), Decimal(0))
@@ -148,12 +209,12 @@ def build_host(ledger, fixture, sha, evidence, key):
                 state['started'] = time.monotonic()
                 files = kwargs['files']
                 session = json.loads(files['session'][1])
-                session['max_output_tokens'] = 512
+                session['max_output_tokens'] = output_bound
                 if measure(json.dumps(session)).tokens > 20_000:
                     raise RuntimeError('probe_initial_context_bound')
                 files['session'] = (None, json.dumps(session), 'application/json')
                 async def deadline():
-                    await asyncio.sleep(120)
+                    await asyncio.sleep(1800 if extended else 120)
                     await finish()
                 asyncio.create_task(deadline())
             response = await super().request(method, url, **kwargs)
@@ -172,20 +233,21 @@ def build_host(ledger, fixture, sha, evidence, key):
         async def send(self, raw):
             event = json.loads(raw)
             state['events'].append({'type':'client_write', 'event_type':event['type'], 'event_id':event.get('event_id'),
+                'response_metadata':event.get('response',{}).get('metadata'), 'item_type':event.get('item',{}).get('type'), 'tool_choice':event.get('response',{}).get('tool_choice'), 'instructions_sha256':hashlib.sha256(event.get('response',{}).get('instructions','').encode()).hexdigest(),
                 'mcp_definitions':[{'label':t.get('server_label'), 'full':bool(t.get('server_url'))} for t in (event.get('session',event.get('response',{})).get('tools',[])) if t.get('type')=='mcp']})
             if fixture['approval_token'] in raw:
                 state['control_leak'] = True
                 raise RuntimeError('control_token_in_provider_write')
             if event['type'] == 'session.update':
-                event['session']['max_output_tokens'] = 512
+                event['session']['max_output_tokens'] = output_bound
                 if measure(json.dumps(event['session'])).tokens > 20_000:
                     raise RuntimeError('probe_context_bound')
                 raw = json.dumps(event)
-            if event['type'] == 'response.create' and len(state['created']) >= 4:
+            if event['type'] == 'response.create' and len(state['created']) >= response_bound:
                 raise RuntimeError('probe_response_bound')
             if event['type'] == 'response.create':
                 response = event.setdefault('response', {})
-                response['max_output_tokens'] = min(512, response.get('max_output_tokens', 512))
+                response['max_output_tokens'] = min(output_bound, response.get('max_output_tokens', output_bound))
                 raw = json.dumps(event)
             await self.ws.send(raw)
         async def __anext__(self):
@@ -198,7 +260,7 @@ def build_host(ledger, fixture, sha, evidence, key):
                 state['control_leak'] = True
             if typ == 'response.created':
                 state['created'].add(event['response']['id'])
-                if len(state['created']) > 4:
+                if len(state['created']) > response_bound:
                     asyncio.create_task(finish())
             if typ == 'response.done':
                 state['events'].append({'type':'response_terminal','response_id':event['response']['id'],'status':event['response']['status'],'status_details':safe_error((event['response'].get('status_details') or {}).get('error',{}))})
@@ -212,14 +274,17 @@ def build_host(ledger, fixture, sha, evidence, key):
                     if usage.get('type') == 'tokens' and isinstance(usage.get('input_tokens'), int) and isinstance(usage.get('output_tokens'), int) else None)
             if item.get('type') == 'mcp_call' and typ.endswith('.done'):
                 state['result_bytes'] += len(str(item.get('output', '')).encode())
-                if state['result_bytes'] > 16_384:
+                if state['result_bytes'] > (524288 if extended else 16_384):
                     asyncio.create_task(finish())
             if typ in {'response.created', 'response.done', 'input_audio_buffer.speech_stopped', 'response.mcp_call.in_progress',
                        'response.mcp_call.completed', 'response.mcp_call.failed', 'mcp_list_tools.completed',
-                       'output_audio_buffer.started', 'output_audio_buffer.stopped', 'error'} or item.get('type') in {'mcp_call', 'mcp_list_tools'}:
-                state['events'].append({'type': typ, 'item_type': item.get('type'), 'tool': item.get('name') if item.get('name') in mail_contract.TOOLS else None,
-                    'item_id': event.get('item_id') or item.get('id'), 'response_id': event.get('response_id') or event.get('response', {}).get('id'),
+                       'output_audio_buffer.started', 'output_audio_buffer.stopped', 'error'} or item.get('type') in {'mcp_call', 'mcp_list_tools', 'mcp_approval_request', 'mcp_approval_response'}:
+                state['events'].append({'response_metadata':event.get('response',{}).get('metadata'),'type': typ, 'item_type': item.get('type'), 'tool': item.get('name') if item.get('name') in mail_contract.TOOLS else None,
+                    'approval_request_id':item.get('approval_request_id'),'approve':item.get('approve'),'item_id': event.get('item_id') or item.get('id'), 'response_id': event.get('response_id') or event.get('response', {}).get('id'),
                     'elapsed_ms': round((time.monotonic() - state['started']) * 1000), 'tool_count': len(item.get('tools', [])) if item.get('type') == 'mcp_list_tools' else None})
+            trace = evidence.with_suffix('.events.json')
+            trace.write_text(json.dumps(state['events']))
+            trace.chmod(0o600)
             return raw
 
     @asynccontextmanager
@@ -229,10 +294,18 @@ def build_host(ledger, fixture, sha, evidence, key):
 
     settings = DagmarSettings(voice_master_key=base64.b64encode(os.urandom(32)).decode(),
         voice_release_sha=sha, voice_mail_enabled=True, voice_mail_acceptance_sha=sha)
+    @asynccontextmanager
+    async def synthetic_technologies(token):
+        from technologies import SyntheticTechnologies
+        assert token == 'isolated-public-contract'
+        yield SyntheticTechnologies(state['events'])
+    if fixture.get('synthetic_technologies'):
+        settings.ha_mcp_token = 'isolated-public-contract'
     def identity(owner):
         return {'session_id': owner, 'namespace': 'synthetic-mail-test', 'email': 'test@example.invalid', 'voice_authorized': True} if owner == 'test-admin-a' else None
     ports = RuntimePorts(factory, settings, identity, request_identity=lambda request: identity(request.headers.get('x-test-admin') or request.cookies.get('dagmar_test_admin', '')),
-        provider_http=ProviderHTTP, provider_socket=socket)
+        provider_http=ProviderHTTP, provider_socket=socket,
+        ha_connector=synthetic_technologies if fixture.get('synthetic_technologies') else None)
     product = DagmarApplication(ports)
     with bind(product.ports):
         with factory() as db:
@@ -256,7 +329,11 @@ def build_host(ledger, fixture, sha, evidence, key):
     @app.get('/health')
     def health(): return {'host': 'isolated-real-mail', 'tested_sha': sha, 'ended': state['ended']}
     @app.get('/dagmar/test-input.wav')
-    def input_audio(): return FileResponse(fixture['input_wav'], media_type='audio/wav')
+    def input_audio(name: str = 'default'):
+        filename = fixture.get('audio_files', {}).get(name) if name != 'default' else fixture['input_wav']
+        if not filename:
+            return JSONResponse(status_code=404, content={'code':'synthetic_audio_missing'})
+        return FileResponse(filename, media_type='audio/wav')
     @app.post('/dagmar/test-finish')
     async def end():
         await finish()

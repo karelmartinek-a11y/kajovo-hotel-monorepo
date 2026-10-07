@@ -47,7 +47,7 @@ def test_isolated_host_uses_existing_routes_and_never_exposes_bootstrap_secrets(
     from fastapi.testclient import TestClient
     import httpx
     import json
-    for target, name in ((mail, 'URL'), (mail_contract, 'URL'), (mail, 'httpx')):
+    for target, name in ((mail, 'URL'), (mail_contract, 'URL'), (mail, 'httpx'), (mail.MailHost, 'journal'), (mail.MailHost, 'observe'), (mail.MailHost, 'result')):
         monkeypatch.setattr(target, name, getattr(target, name))
     async def forbidden(*args, **kwargs):
         pytest.fail('unit guard must not request a provider or MCP')

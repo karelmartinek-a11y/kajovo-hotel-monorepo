@@ -1,6 +1,10 @@
 """Response intent reservations; native VAD wins without duplicate cancel/clear."""
 
 
+import hashlib
+import json
+
+
 class TurnCoordinator:
     def __init__(self):
         self.generation = 0
@@ -15,7 +19,6 @@ class TurnCoordinator:
         self.native_generation = None
         self.work = {}
         self.items = {}
-        self.out_of_band = set()
 
     def event(self, event):
         eid = event.get("event_id")
@@ -28,10 +31,6 @@ class TurnCoordinator:
         typ = event.get("type")
         response = event.get("response", {})
         rid = response.get("id") or event.get("response_id")
-        if typ == "response.created" and (response.get("metadata") or {}).get("dagmar_mail_import"):
-            self.out_of_band.add(rid)
-        if rid in self.out_of_band:
-            return True
         if typ == "input_audio_buffer.speech_started":
             self.generation += 1
             self.active = None
@@ -67,8 +66,18 @@ class TurnCoordinator:
             state = self.work.setdefault(rid, {"done": False, "items": set(), "generation": self.responses.get(rid, self.generation)})
             if typ == "response.done":
                 state["done"] = True
+                state["speech_limited"] = bool(response.get("status") == "incomplete"
+                    and (response.get("status_details") or {}).get("reason") == "max_output_tokens"
+                    and response.get("output")
+                    and all(item.get("type") == "message" for item in response["output"])
+                    and any(part.get("type") in {"audio", "output_audio"} for item in response["output"] for part in item.get("content", []))
+                    and not (response.get("metadata") or {}).get("dagmar_mail_readback"))
                 for item in response.get("output", []):
                     self.observe_item(item, rid, output=True)
+            if typ == "output_audio_buffer.stopped":
+                state["played"] = True
+            elif typ == "output_audio_buffer.cleared":
+                state["speech_limited"] = False
             if isinstance(event.get("item"), dict):
                 self.observe_item(event["item"], rid, output=typ.endswith(".done"))
         elif isinstance(event.get("item"), dict):
@@ -93,6 +102,19 @@ class TurnCoordinator:
             return
         state = self.items.setdefault(iid, self.new_item(kind))
         state["kind"] = kind
+        if kind in {"mcp_call", "mcp_approval_request"} and item.get("arguments"):
+            try:
+                arguments = json.dumps(json.loads(item["arguments"]), sort_keys=True, separators=(",", ":"))
+                state["request_key"] = (item.get("server_label"), item.get("name"), hashlib.sha256(arguments.encode()).hexdigest())
+            except (ValueError, TypeError):
+                pass
+        if kind == "mcp_approval_request" and not rid and state.get("request_key"):
+            matches = [call for call in self.items.values() if call["kind"] == "mcp_call"
+                       and call.get("request_key") == state["request_key"] and not call["transport"]
+                       and call["response_id"] in self.work
+                       and self.current(self.work[call["response_id"]]["generation"])]
+            if len(matches) == 1:
+                rid = matches[0]["response_id"]
         if rid:
             state["response_id"] = rid
             self.work[rid]["items"].add(iid)
@@ -108,11 +130,15 @@ class TurnCoordinator:
             if item.get("call_id") == call_id:
                 item["output"] = item["transport"] = True
 
-    def approval_finished(self, item_id):
+    def approval_finished(self, item_id, *, approved=True):
         item = self.items.get(item_id)
         if item:
             item["approval"] = False
             item["output"] = item["transport"] = True
+            if not approved and item.get("request_key"):
+                for call in self.items.values():
+                    if call["kind"] == "mcp_call" and call.get("request_key") == item["request_key"] and call["response_id"] == item["response_id"]:
+                        call["output"] = call["transport"] = call["failed"] = True
 
     def ready_responses(self):
         ready = []
@@ -126,6 +152,14 @@ class TurnCoordinator:
 
     def claim_response(self, rid, generation):
         return (rid, generation) in self.ready_responses() and self.continuation(generation, "response:" + rid)
+
+    def ready_speech(self):
+        return [(rid, value["generation"]) for rid, value in self.work.items()
+                if value.get("speech_limited") and value.get("played") and self.current(value["generation"])
+                and (value["generation"], "speech:" + rid) not in self.continuations]
+
+    def claim_speech(self, rid, generation):
+        return (rid, generation) in self.ready_speech() and self.continuation(generation, "speech:" + rid)
 
     def current(self, generation):
         return generation == self.generation

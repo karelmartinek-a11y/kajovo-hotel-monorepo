@@ -549,7 +549,10 @@ def test_rate_limit_resumes_generation_without_replaying_tools(monkeypatch):
         worker.cancel()
         await asyncio.gather(worker, return_exceptions=True)
         assert configured == [(True, False), (True, True)]
-        assert sent == [{"type": "response.create"}]
+        assert len(sent) == 1 and sent[0]['type'] == 'response.create'
+        response = sent[0]['response']
+        assert response['tool_choice'] == 'auto' and response['output_modalities'] == ['audio']
+        assert {tool['name'] for tool in response['tools']} == {'smart_technologie','assistant_memory'}
         assert b.technologies == "ready"
 
     asyncio.run(scenario())

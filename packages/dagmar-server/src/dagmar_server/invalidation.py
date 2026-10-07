@@ -33,6 +33,7 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
         if deleted:
             bridge.memory_privacy_paused = True
             bridge.task_context.clear()
+            getattr(bridge, 'partial_text', {}).clear()
             bridge.task_context.memory_privacy_paused = True
             if bridge.mail.pending:
                 try:

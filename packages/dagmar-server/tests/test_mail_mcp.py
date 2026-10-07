@@ -68,6 +68,58 @@ def test_catalog_is_exact_and_requires_only_send_approval():
         verify_import(native[:-1])
 
 
+@pytest.mark.parametrize('barge_in', [False, True])
+def test_output_limit_continues_only_after_drained_current_speech_once(barge_in):
+    turns = TurnCoordinator()
+    turns.event({'type':'response.created','response':{'id':'reading'}})
+    turns.event({'type':'response.done','response':{'id':'reading','status':'incomplete',
+        'status_details':{'reason':'max_output_tokens'},'output':[{'type':'message','content':[{'type':'output_audio','transcript':'First half'}]}]}})
+    assert turns.ready_speech() == []
+    if barge_in:
+        turns.event({'type':'input_audio_buffer.speech_started','item_id':'stop'})
+    turns.event({'type':'output_audio_buffer.stopped','response_id':'reading'})
+    assert turns.claim_speech('reading',0) == (not barge_in)
+    assert not turns.claim_speech('reading',0)
+
+
+@pytest.mark.parametrize('kind', ['function_call','mcp_call','mcp_approval_request','readback','cleared'])
+def test_output_limit_never_replays_tools_or_completes_partial_consent(kind):
+    turns = TurnCoordinator()
+    turns.event({'type':'response.created','response':{'id':'r'}})
+    output = [{'type':'message','content':[{'type':'output_audio','transcript':'partial'}]}]
+    if kind in {'function_call','mcp_call','mcp_approval_request'}:
+        output.append({'type':kind,'id':'pending'})
+    turns.event({'type':'response.done','response':{'id':'r','status':'incomplete',
+        'status_details':{'reason':'max_output_tokens'},'metadata':{'dagmar_mail_readback':'approval'} if kind=='readback' else {},'output':output}})
+    if kind=='cleared':
+        turns.event({'type':'output_audio_buffer.cleared','response_id':'r'})
+    turns.event({'type':'output_audio_buffer.stopped','response_id':'r'})
+    assert not turns.ready_speech()
+
+
+@pytest.mark.parametrize('mail_status,catalog_ready', [('ready', True), ('ready', False), ('unavailable', True)])
+def test_manual_continuation_explicitly_keeps_available_functions_and_native_mcp(mail_status, catalog_ready):
+    async def run():
+        from dagmar_server.orchestration import VoiceBridge
+        from dagmar_server.smart import SMART_TOOL
+        from dagmar_server.memory_contract import MEMORY_TOOL
+        _, ports, bridge, mail = host()
+        bridge.mail = mail
+        bridge.catalog_ready = catalog_ready
+        mail.status = mail_status
+        with bind(ports):
+            await VoiceBridge.continue_generation(bridge, bridge.turns.generation)
+        response = bridge.sent[-1]['response']
+        assert response['tool_choice'] == 'auto'
+        assert response['output_modalities'] == (['text'] if mail_status == 'ready' else ['audio'])
+        assert MEMORY_TOOL in response['tools']
+        assert (SMART_TOOL in response['tools']) == catalog_ready
+        native = [tool for tool in response['tools'] if tool['type'] == 'mcp']
+        assert bool(native) == (mail_status == 'ready')
+        assert all(tool['server_label'] == 'hotel_mail' and 'authorization' not in tool for tool in native)
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize('order', [('transport','output','done'), ('done','transport','output'), ('output','done','transport')])
 def test_continuation_waits_for_transport_result_and_response_once(order):
     turns = TurnCoordinator()
@@ -136,6 +188,9 @@ def test_approval_requires_exact_completed_drained_audio_and_committed_next_inpu
             await mail.prepare(item)
             text = mail.pending['text']
             assert text == readback(data) + ' Mám tuto zprávu odeslat?'
+            question = next(frame['response'] for frame in bridge.sent if frame.get('type') == 'response.create')
+            assert question['input'] == [] and question['tools'] == [] and question['tool_choice'] == 'none'
+            assert question['output_modalities'] == ['audio']
             event(bridge, mail, 'response.done', response={'id':'readback','status':'completed','output':[{'content':[{'type':'output_audio','transcript':text}]}]})
             assert mail.pending['state'] == 'reading'
             event(bridge, mail, 'output_audio_buffer.stopped', response_id='readback')
@@ -253,22 +308,18 @@ def test_schema_drift_and_import_transport_are_independent():
         assert other.status == 'incompatible'
 
 
-@pytest.mark.parametrize('status', ['completed', 'incomplete', 'failed'])
-def test_provider_import_response_must_finish_before_cached_label_activation(status):
+def test_initial_session_registration_is_full_and_reuse_has_no_credential():
     _, ports, bridge, mail = host()
     with bind(ports):
         mail.status = 'loading'
-        response = {'id':'import-response', 'metadata':{'dagmar_mail_import':bridge.id}}
-        event(bridge,mail,'response.created', response=response)
-        tools = [{'name':t['name'],'input_schema':t['inputSchema']} for t in CATALOG]
-        event(bridge,mail,'mcp_list_tools.completed',item_id='catalog')
-        event(bridge,mail,'conversation.item.done',item={'type':'mcp_list_tools','id':'catalog','server_label':'hotel_mail','tools':tools})
-        assert mail.imported.is_set() and not mail.import_finished.is_set()
-        event(bridge,mail,'response.done',response={'id':'unrelated','status':'completed'})
-        assert not mail.import_finished.is_set()
-        event(bridge,mail,'response.done',response={**response,'status':status})
-        assert mail.import_finished.is_set()
-        assert mail.status == ('loading' if status == 'completed' else 'unavailable')
+        mail.mcp_token = 'synthetic-not-real'
+        initial = mail.tools()
+        assert initial[0]['server_url'] and initial[0]['authorization'] == 'synthetic-not-real'
+        assert len(initial[0]['allowed_tools']) == 23
+        mail.status = 'ready'
+        cached = mail.tools()
+        assert cached[0]['server_label'] == 'hotel_mail'
+        assert 'authorization' not in str(cached) and 'server_url' not in str(cached)
 
 
 def test_reconnect_mail_context_never_restores_provider_approval_or_bodies():
@@ -348,6 +399,9 @@ def test_preflight_uses_real_sdk_transport_before_native_provider_import(monkeyp
             return httpx.Response(200,json={'jsonrpc':'2.0','id':payload['id'],'result':result})
         client = httpx.AsyncClient
         monkeypatch.setattr('dagmar_server.mail.httpx.AsyncClient',lambda **kwargs:client(transport=httpx.MockTransport(server),**kwargs))
+        async def configure(*args):
+            bridge.sent.append({'type':'session.update','session':{'tools':mail.tools()}})
+        bridge.configure = configure
         with bind(ports):
             MailSecretStore().save('synthetic-mcp-fixture','synthetic-control-fixture')
             task = asyncio.create_task(mail.initialize())
@@ -357,7 +411,7 @@ def test_preflight_uses_real_sdk_transport_before_native_provider_import(monkeyp
                         await asyncio.sleep(.01)
                 assert mail.status == 'loading'
                 assert requests == ['initialize','notifications/initialized','tools/list']
-                native = bridge.sent[0]['response']['tools'][0]
+                native = bridge.sent[0]['session']['tools'][0]
                 assert native['authorization'] == 'synthetic-mcp-fixture' and len(native['allowed_tools']) == 23
                 assert 'synthetic-control-fixture' not in str(bridge.sent)
             finally:
@@ -388,6 +442,30 @@ def test_reconnect_preserves_send_key_before_native_execution():
                 row = db.scalar(select(MailOperation))
                 assert row.state == 'awaiting_approval' and row.idempotency_key == 'original-send-key'
                 assert not {'content','subject','recipient','transcript'} & set(MailOperation.__table__.columns.keys())
+    asyncio.run(run())
+
+
+def test_acknowledged_refusal_preserves_rejected_original_send_journal():
+    import json
+    from dagmar_server.mail_storage import MailOperation
+    async def run():
+        _, ports, bridge, mail = host()
+        args={'send_request_id':'request-1','idempotency_key':'original-send-key'}
+        original={'id':'original-call','name':'mail_send_execute','arguments':json.dumps(args)}
+        async def control(*args):
+            return snapshot()
+        mail.control=control
+        with bind(ports):
+            mail.calls[original['id']]=original
+            mail.journal(original,'uncertain')
+            await mail.prepare({**original,'id':'approval'})
+            await mail.approve(False)
+            assert bridge.sent[-1]['approve'] is False
+            with ports.session_factory() as db:
+                rows=list(db.scalars(select(MailOperation)))
+                assert len(rows)==2 and all(row.state=='rejected' for row in rows)
+                assert all(row.idempotency_key=='original-send-key' for row in rows)
+            assert all(row['state']=='rejected' for row in mail.task.mutations.values())
     asyncio.run(run())
 
 
@@ -424,3 +502,123 @@ def test_send_it_shortcut_requires_immediately_following_native_input(intervenin
                 assert not questions and len(posts)==1 and not mail.pending
                 assert bridge.sent[-1]['approve'] is True
     asyncio.run(run())
+
+
+def test_vad_updates_preserve_native_mcp_registration_and_pending_approval():
+    from dagmar_server.orchestration import VoiceBridge
+    from voice_core_server import VoiceCoreConfig
+    async def run():
+        _, ports, _, _ = host()
+        with bind(ports):
+            bridge = VoiceBridge('owner', 'provider', 'key', 'token', VoiceCoreConfig(), 'gpt-realtime-2.1')
+            bridge.mail.status = 'ready'
+            sent = []
+            async def accepted(event, match):
+                sent.append(event['session'])
+                return {'type':'session.updated'}
+            bridge.send = accepted
+            await bridge.configure(False)
+            assert any(tool.get('server_label')=='hotel_mail' for tool in sent[-1]['tools'])
+            assert sent[-1]['output_modalities'] == ['text']
+            bridge.mail.pending = {'state':'reading'}
+            await bridge.configure(False)
+            assert 'tools' not in sent[-1]
+            assert not sent[-1]['audio']['input']['turn_detection']['create_response']
+            bridge.mail.pending = None
+            await bridge.configure(False)
+            assert 'tools' not in sent[-1]
+            bridge.mail.status = 'unavailable'
+            await bridge.configure(False)
+            assert sent[-1]['output_modalities'] == ['audio']
+            assert all(tool.get('server_label')!='hotel_mail' for tool in sent[-1]['tools'])
+    asyncio.run(run())
+
+
+def test_speech_render_waits_for_tool_free_current_completed_text_not_progress_or_audio():
+    from dagmar_server.orchestration import VoiceBridge
+    from voice_core_server import VoiceCoreConfig
+    async def run():
+        _, ports, _, _ = host()
+        with bind(ports):
+            bridge=VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            bridge.mail.status='ready'
+            bridge.turns.responses['r']=0
+            text={'type':'message','content':[{'type':'output_text','text':'47.'}]}
+            await bridge.queue_spoken_result({'id':'r','status':'completed','output':[text,{'type':'mcp_call'}]})
+            await bridge.queue_spoken_result({'id':'r','status':'incomplete','status_details':{'reason':'cancelled'},'output':[text]})
+            await bridge.queue_spoken_result({'id':'r','status':'completed','output':[{'type':'message','content':[{'type':'output_audio','transcript':'47.'}]}]})
+            assert bridge.queue.empty()
+            await bridge.queue_spoken_result({'id':'r','status':'completed','output':[text]})
+            queued=bridge.queue.get_nowait()
+            assert queued['speak_result']=='47.' and queued['_turn_generation']==0
+            bridge.turns.event({'type':'input_audio_buffer.speech_started','item_id':'new'})
+            await bridge.queue_spoken_result({'id':'r','status':'completed','output':[text]})
+            assert bridge.queue.empty()
+            assert not bridge.turns.continuation(queued['_turn_generation'],'speak:r')
+    asyncio.run(run())
+
+
+def test_text_limit_uses_bounded_native_continuation_before_any_spoken_result():
+    from dagmar_server.orchestration import VoiceBridge
+    from voice_core_server import VoiceCoreConfig
+    async def run():
+        _, ports, _, _ = host()
+        with bind(ports):
+            bridge=VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            bridge.mail.status='ready'
+            bridge.turns.responses.update(first=0,second=0)
+            partial={'id':'first','status':'incomplete','status_details':{'reason':'max_output_tokens'},
+                'output':[{'type':'message','content':[{'type':'output_text','text':'First half. '}]}]}
+            await bridge.queue_spoken_result(partial)
+            queued=bridge.queue.get_nowait()
+            assert queued['text_continuation']=='first' and 'speak_result' not in queued
+            await bridge.queue_spoken_result(partial)
+            assert bridge.queue.empty()
+            await bridge.queue_spoken_result({'id':'second','status':'completed','metadata':{'dagmar_text_continuation':'first'},
+                'output':[{'type':'message','content':[{'type':'output_text','text':'Second half.'}]}]})
+            assert bridge.queue.get_nowait()['speak_result']=='First half. Second half.'
+            assert bridge.partial_text=={}
+    asyncio.run(run())
+
+
+def test_native_approval_ack_uses_request_and_decision_not_client_item_id():
+    from dagmar_server.orchestration import VoiceBridge
+    from voice_core_server import VoiceCoreConfig
+    async def run():
+        _, ports, _, _ = host()
+        with bind(ports):
+            bridge = VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            writes = []
+            async def accepted(event, match):
+                writes.append(event)
+                base = {'type':'conversation.item.done','item':{'id':'provider-generated','type':'mcp_approval_response','approval_request_id':'approval','approve':False}}
+                assert not match({**base,'item':{**base['item'],'approval_request_id':'foreign'}})
+                assert not match({**base,'item':{**base['item'],'approve':True}})
+                assert match(base)
+                return base
+            bridge.send = accepted
+            assert await bridge.item({'type':'mcp_approval_response','approval_request_id':'approval','approve':False}) == 'provider-generated'
+            assert len(writes) == 1
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('approved',[False,True])
+def test_conversation_only_approval_binds_original_call_and_denial_finishes_without_execution(approved):
+    turns = TurnCoordinator()
+    call = {'id':'native-call','type':'mcp_call','name':'mail_send_execute','server_label':'hotel_mail','arguments':'{"send_request_id":"r","idempotency_key":"k"}'}
+    turns.event({'type':'response.created','response':{'id':'r'}})
+    turns.event({'type':'response.output_item.added','response_id':'r','item':call})
+    turns.event({'type':'response.done','response':{'id':'r','output':[call]}})
+    approval = {**call,'id':'approval','type':'mcp_approval_request','arguments':'{"idempotency_key":"k","send_request_id":"r"}'}
+    turns.event({'type':'conversation.item.done','item':approval})
+    assert turns.items['approval']['response_id'] == 'r'
+    assert not turns.ready_responses()
+    turns.approval_finished('approval',approved=approved)
+    if approved:
+        assert not turns.ready_responses()
+        turns.event({'type':'response.mcp_call.completed','item_id':'native-call'})
+        assert not turns.ready_responses()
+        turns.event({'type':'conversation.item.done','item':{**call,'output':'actual-result'}})
+    assert turns.ready_responses() == [('r',0)]
+    assert turns.claim_response('r',0)
+    assert not turns.claim_response('r',0)

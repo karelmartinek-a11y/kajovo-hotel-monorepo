@@ -18,6 +18,15 @@ real WebRTC token-isolation and native Realtime/audio acceptance. An environment
 flag alone is not acceptance evidence. With an absent or mismatched acceptance
 SHA, Mail remains unavailable and no credential is sent to the provider.
 
+For this completion run on 2026-10-07 the owner explicitly stopped further paid
+tests and accepted the remaining tests for implementation and activation.
+The final immutable release may therefore be activated under that recorded
+owner acceptance. Evidence distinguishes measured results from `USER_ACCEPTED`
+and retains unperformed live tests as `NOT_RUN`; no synthetic result is promoted
+to a real-provider PASS. The exact-SHA runtime gate, credential boundaries and
+send consent checks remain enforced. This is an owner decision for this run,
+not a public bootstrap switch or a replacement for the default acceptance policy.
+
 `MailSecretStore.save` accepts the handoff's two credentials only in backend
 context. It encrypts them in `dagmar_mail_secrets`, using the existing voice
 master key and distinct authenticated data `dagmar:mail:mcp:v1` and
@@ -30,10 +39,13 @@ frontend artifacts; filtering tokens after arrival does not satisfy this gate.
 ## Import and continuation
 
 The backend checks the public catalog's names, input/output schemas and
-annotations. One isolated, text-only, out-of-band response imports tools per
-provider session. Only a matching provider list with the full input schemas and
-completed import transport and a completed import response enable the session-scoped server label. The backend does not reuse its label while that response is still generating; failed or incomplete import responses disable Mail. Import
-failure disables Mail; ordinary conversation, memory and technologies remain
+annotations. The full native MCP definition is registered through `session.update`
+once per provider session. Only a matching provider list with all input schemas
+and completed import transport enable the session-scoped server label. Subsequent
+updates reference that cached label without credentials. Real WebRTC observations
+must verify that OpenAI does not return the authorization to the browser;
+sideband alone is not evidence. An out-of-band response's tool cache is insufficient
+for this session-level reuse. Import failure disables Mail; ordinary conversation, memory and technologies remain
 available independently.
 
 `TurnCoordinator` records human-input generation, provider responses and related
@@ -44,7 +56,23 @@ outputs must be acknowledged. A response's continuation is claimed once, with
 the existing transport-lock lifetime/generation fence. Native VAD supersedes old
 generations. A late result may update its journal, but cannot revive old speech.
 
-Principled mail instructions require explicit account/folder scope, exact count
+While Mail is ready, native responses choose tools and produce completed answer
+text silently (`output_modalities=["text"]`). Mixed message/tool responses never
+start speech. A completed tool-free answer is spoken by a separate native audio
+response with no tools, tied to its source response and current generation. This
+is a generic response lifecycle, not a mail intent router; native MCP results
+remain provider-owned and never become manually authored function outputs.
+Native VAD continues to interrupt playback. Output-token exhaustion resumes only
+after the matching audio buffer drains, within the turn bounds and generation;
+it cannot replay tools or complete a truncated approval readback.
+An unfinished silent text response continues within the same bounds before
+speech. Its bounded partial text stays in process RAM and is cleared by a new
+human generation, forgetting, disconnect or Stop. Duplicate response completion
+cannot enqueue speech twice; reaching a limit reports incomplete reading.
+
+Mail forbids all progress speech before a tool result, including “Chvilku”. The
+technology-specific Moment/Hotovo rule does not apply to Mail. Principled mail
+instructions require explicit account/folder scope, exact count
 coverage, proven global ordering and every full-text cursor. They preserve
 partial errors and treat mailbox content as untrusted data. These instructions
 must be tested through the actual model; deterministic protocol tests establish
@@ -137,7 +165,9 @@ or accounted usage without replacing or refunding historical reservations.
 The old `--ledger` path still enforces the original authorization. Paid calls
 remain opt-in and excluded from CI. Temporary synthetic endpoint/tunnel setup
 is authorized for this final run and must be removed afterwards. Activation
-still requires complete actual model/WebRTC/audio acceptance for the exact SHA.
+uses the exact-SHA acceptance policy above, including the owner's explicitly
+recorded decision for this completion run. Further paid calls were cancelled
+by the owner after the provider reported exhausted credit.
 
 `packages/dagmar-server/tests/live_mail/browser.mjs` starts the loopback test host
 in `host.py` and the existing `examples/dagmar-host` Vite application. It runs the
@@ -145,9 +175,14 @@ actual Dagmar console, routes, orchestration, native MCP and OpenAI WebRTC. It
 uses an empty temporary database, a random test master key and synthetic Mail
 credentials. Automatic memory curation is disabled in this isolated process;
 technologies are unavailable rather than connected to real devices.
+An optional `synthetic_technologies` manifest entry uses the existing public
+technology fixture contract through the host connector; it never connects to
+production devices. The browser runner builds the actual candidate's existing
+Dagmar test console before opening WebRTC, and records served bundle hashes.
 
 First fetch `origin/main` and select an immutable clean candidate. Supply the
-original SQLite ledger and a private (0600) fixture manifest outside the repo.
+original SQLite ledger, or the explicitly authorized separate final-run accounting,
+and a private (0600) fixture manifest outside the repo.
 The manifest contains `synthetic: true`, `existing_authorized_endpoint: true`,
 the already authorized HTTPS `server_url` ending in `/mcp`, distinct synthetic
 `mcp_token`/`approval_token` starting with `dagmar-canary-`, and `input_wav`.
@@ -162,7 +197,11 @@ paid synthesis must be reserved separately. Browser instrumentation connects it
 to a genuine audio MediaStream; no user text, expected tool result or fabricated
 provider event enters the conversation. It observes original data-channel
 envelopes before the product handler, HTTP bodies, fetched frontend bundles,
-browser storage and actual played remote audio energy. Tokens are compared only
+browser storage and actual played remote audio energy associated with the response
+whose playback starts after the result. Do not mistake the previous response's
+remaining audio for a spoken result. Optional `audio_files` and `steps` run sequential
+native audio prompts and compare business results with synthetic fixture counts.
+Tokens are compared only
 in Node memory: injecting the expected canary into the browser would invalidate
 the test. Only metadata and artifact hashes survive outside the Git tree.
 

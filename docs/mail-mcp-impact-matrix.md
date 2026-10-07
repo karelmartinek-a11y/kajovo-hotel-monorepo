@@ -46,3 +46,27 @@ regressions and isolated sanitized provider evidence. Update current import
 documentation and active instructions. Verify shared functions, browser contract,
 generated schemas and protected services unchanged; full gates and actual
 Realtime/WebRTC replay are required.
+
+## Real-provider import and progress-speech repair
+
+| Category | Decision | Scope |
+| --- | --- | --- |
+| Production source | Update | Session-level import; native silent tool selection and generation-bound audio; token-limit speech recovery; provider-generated approval identities and rejected send journals |
+| Tests | Update | Import/cache, mixed response suppression, drained current speech, refusal journals, response-correlated played audio and genuine sequential/interrupting audio prompts |
+| Actions and gates | Verify unchanged | Full unpaid gates and API/admin-only deploy; no paid requests in CI |
+| Current documentation | Update | Session cache and two-stage native output; development versus immutable acceptance; actual audio checks |
+| Comments and notes | Update | Remove obsolete out-of-band import exceptions |
+| Active instructions | Update | Native session import, credential proof and exact final candidate |
+| Fixtures and text | Update | Bounded caller-owned PCM prompts, closed synthetic technology connector and business-result checks |
+| Build and generated contracts | Update runner; verify production unchanged | Build candidate test console; no HTTP/generated schema change; validate actual runtime image |
+
+Partial answer buffers stay in RAM and follow existing forgetting, interruption
+and disconnect invalidation. Verify memory, technology and native response
+lifecycle regressions alongside the new text/audio continuation tests.
+
+Owner decision for this completion run (2026-10-07): further paid tests are
+cancelled and the remaining acceptance is USER_ACCEPTED. Update current
+documentation and active instructions; preserve measured PASS/FAIL and NOT_RUN
+separately outside Git. Unpaid gates and deployment must target the final main
+SHA. Activation still requires the matching release and acceptance SHA; no new
+bootstrap, debug API, provider simulation or CI waiver is introduced.

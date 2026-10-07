@@ -110,7 +110,9 @@ one native WebRTC capture/render path. Native barge-in remains active during out
 
 Dagmar greets only on the dedicated new-call instruction. Reconnect restores bounded
 task data and accepted results without a greeting or renewed action consent. Normal
-commands use at most Moment/Hotovo for true success; questions are answered directly.
+technology commands use at most Moment/Hotovo for true success; questions are answered directly.
+When Mail is ready, native tool selection is silent and only completed tool-free
+results create generation-bound audio; native VAD still interrupts playback.
 Service work uses only currently advertised tools. Dagmar neither offers nor prepares
 operations without a tool and does not ask clarifying questions for them. Unknown
 function names are rejected as unsupported_capability/not_sent before any journal reservation.

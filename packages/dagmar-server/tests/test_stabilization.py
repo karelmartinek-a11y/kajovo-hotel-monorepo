@@ -9,6 +9,9 @@ from dagmar_server.turns import TurnCoordinator
 
 def bridge():
     value = VoiceBridge.__new__(VoiceBridge)
+    from types import SimpleNamespace
+    value.catalog_ready = False
+    value.mail = SimpleNamespace(tools=lambda: [], status='disabled')
     value.closed = False
     value.turns = TurnCoordinator()
     value.write_lock = asyncio.Lock()
