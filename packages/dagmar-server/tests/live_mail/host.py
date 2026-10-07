@@ -100,6 +100,12 @@ def build_host(ledger, fixture, sha, evidence, key):
     state = {'started': None, 'reservation': None, 'created': set(), 'usage': {},
              'asr_started': set(), 'asr': {}, 'events': [], 'control_leak': False, 'ended': False, 'result_bytes': 0}
 
+    def safe_error(error):
+        message = str(error.get('message', ''))
+        for secret in (key, fixture['mcp_token'], fixture['approval_token']):
+            message = message.replace(secret, '[redacted]')
+        return {'code':error.get('code'), 'param':error.get('param'), 'event_id':error.get('event_id'), 'message':message[:1500]}
+
     async def finish():
         if state['ended']:
             return
@@ -165,6 +171,8 @@ def build_host(ledger, fixture, sha, evidence, key):
         def __aiter__(self): return self
         async def send(self, raw):
             event = json.loads(raw)
+            state['events'].append({'type':'client_write', 'event_type':event['type'], 'event_id':event.get('event_id'),
+                'mcp_definitions':[{'label':t.get('server_label'), 'full':bool(t.get('server_url'))} for t in (event.get('session',event.get('response',{})).get('tools',[])) if t.get('type')=='mcp']})
             if fixture['approval_token'] in raw:
                 state['control_leak'] = True
                 raise RuntimeError('control_token_in_provider_write')
@@ -185,7 +193,7 @@ def build_host(ledger, fixture, sha, evidence, key):
             event = json.loads(raw)
             typ, item = event.get('type'), event.get('item', {})
             if typ == 'error':
-                state['events'].append({'type': 'provider_error_detail', 'code': event.get('error', {}).get('code'), 'param': event.get('error', {}).get('param')})
+                state['events'].append({'type': 'provider_error_detail', **safe_error(event.get('error',{}))})
             if fixture['approval_token'] in raw:
                 state['control_leak'] = True
             if typ == 'response.created':
@@ -193,6 +201,7 @@ def build_host(ledger, fixture, sha, evidence, key):
                 if len(state['created']) > 4:
                     asyncio.create_task(finish())
             if typ == 'response.done':
+                state['events'].append({'type':'response_terminal','response_id':event['response']['id'],'status':event['response']['status'],'status_details':safe_error((event['response'].get('status_details') or {}).get('error',{}))})
                 value = usage_record(event['response'], 'gpt-realtime-2.1')
                 state['usage'][value['response_id']] = value
             if typ == 'input_audio_buffer.committed':

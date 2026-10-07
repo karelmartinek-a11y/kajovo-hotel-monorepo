@@ -40,3 +40,9 @@ is a loopback test process, not a production debug endpoint or acceptance bypass
 Final acceptance authorization (2026-10-07): update test-only accounting, runner,
 guard tests, current documentation and active instructions together. Historical
 ledger and production contracts remain unchanged. No paid call enters CI.
+
+Native import completion repair: update Mail lifecycle, import-order/failure
+regressions and isolated sanitized provider evidence. Update current import
+documentation and active instructions. Verify shared functions, browser contract,
+generated schemas and protected services unchanged; full gates and actual
+Realtime/WebRTC replay are required.

@@ -253,6 +253,24 @@ def test_schema_drift_and_import_transport_are_independent():
         assert other.status == 'incompatible'
 
 
+@pytest.mark.parametrize('status', ['completed', 'incomplete', 'failed'])
+def test_provider_import_response_must_finish_before_cached_label_activation(status):
+    _, ports, bridge, mail = host()
+    with bind(ports):
+        mail.status = 'loading'
+        response = {'id':'import-response', 'metadata':{'dagmar_mail_import':bridge.id}}
+        event(bridge,mail,'response.created', response=response)
+        tools = [{'name':t['name'],'input_schema':t['inputSchema']} for t in CATALOG]
+        event(bridge,mail,'mcp_list_tools.completed',item_id='catalog')
+        event(bridge,mail,'conversation.item.done',item={'type':'mcp_list_tools','id':'catalog','server_label':'hotel_mail','tools':tools})
+        assert mail.imported.is_set() and not mail.import_finished.is_set()
+        event(bridge,mail,'response.done',response={'id':'unrelated','status':'completed'})
+        assert not mail.import_finished.is_set()
+        event(bridge,mail,'response.done',response={**response,'status':status})
+        assert mail.import_finished.is_set()
+        assert mail.status == ('loading' if status == 'completed' else 'unavailable')
+
+
 def test_reconnect_mail_context_never_restores_provider_approval_or_bodies():
     from dagmar_server.task_context import CallTask
     from dagmar_server.token_budget import measure

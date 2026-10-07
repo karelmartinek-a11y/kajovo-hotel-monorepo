@@ -32,7 +32,7 @@ frontend artifacts; filtering tokens after arrival does not satisfy this gate.
 The backend checks the public catalog's names, input/output schemas and
 annotations. One isolated, text-only, out-of-band response imports tools per
 provider session. Only a matching provider list with the full input schemas and
-completed import transport enables the session-scoped server label. Import
+completed import transport and a completed import response enable the session-scoped server label. The backend does not reuse its label while that response is still generating; failed or incomplete import responses disable Mail. Import
 failure disables Mail; ordinary conversation, memory and technologies remain
 available independently.
 
@@ -54,6 +54,9 @@ The browser observes only advertised `managed_mcp_servers` and
 `managed_mcp_status`; its lifecycle never executes or approves MCP calls.
 `mail` separately reports disabled/loading/ready/unavailable/incompatible.
 Working and awaiting-approval UI states come from native lifecycle events.
+An advertised managed MCP cache rejection does not close the browser's ordinary
+voice connection; the backend owns the capability availability. The browser
+does not retry, continue or approve the rejected request.
 
 ## Consent and recovery
 

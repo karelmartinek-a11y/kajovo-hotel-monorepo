@@ -49,6 +49,21 @@ test('unadvertised native MCP fails closed', async () => {
   await h.client.stop();
 });
 
+test('an advertised MCP cache rejection preserves ordinary voice without browser retry', async () => {
+  const h=host({create:async()=>({sdp:'v=0 answer',model:'test-model',managed_mcp_servers:['test-server']})});
+  await h.client.start();
+  h.send({type:'error',error:{code:'mcp_cached_tool_unavailable'}});
+  assert.equal(h.client.getSnapshot().error,null);
+  assert.equal(h.tracks[0].readyState,'live');
+  assert.equal(h.tracks[0].enabled,true);
+  assert.equal(h.peers[0].channel.sent.length,0);
+  h.send({type:'error',error:{code:'unrecognized_fatal'}});
+  assert.equal(h.client.getSnapshot().error.category,'realtime_error');
+  const bare=host();await bare.client.start();
+  bare.send({type:'error',error:{code:'mcp_cached_tool_unavailable'}});
+  assert.equal(bare.client.getSnapshot().error.category,'realtime_error');
+});
+
 test('playback, heartbeat and overlapping drains preserve natural input and explicit mute', async () => {
   const h = host({heartbeat: async () => ({technologies: 'ready', renew: false, closed: false}),
     create: async () => ({sdp: 'v=0 answer', model: 'test-model', session_id: 'speaker'})});

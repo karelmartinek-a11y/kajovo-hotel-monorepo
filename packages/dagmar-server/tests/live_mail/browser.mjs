@@ -115,7 +115,7 @@ sys.stdout.write(result.stdout)
   host.stdin.end(key+'\n');
   const vite=spawn('pnpm',['exec','vite','--host','127.0.0.1','--port','5173','--strictPort'],{
     cwd:path.join(root,'examples/dagmar-host'),stdio:'ignore'});
-  let browser, page;
+  let browser, page, sessionId, backendMailStatus;
   const leaks=[],events=[],bundleHashes={};
   const scan=(surface,raw,time)=>{
     if(secrets.some(secret=>raw.includes(secret)))leaks.push({surface,time});
@@ -154,13 +154,24 @@ sys.stdout.write(result.stdout)
         const body=await response.body();
         scan('HTTP',body.toString('utf8'),Date.now());
         const url=new URL(response.url());
+        if(url.pathname==='/dagmar/sessions' && response.request().method()==='POST') {
+          const answer=JSON.parse(body.toString('utf8'));
+          sessionId=answer.session_id;
+        }
         if(/\.(js|tsx?)(?:$|\?)/.test(url.pathname))bundleHashes[url.pathname]=createHash('sha256').update(body).digest('hex');
       })().catch(()=>{leaks.push({surface:'uninspected_HTTP',time:Date.now()});});
       pending.add(work);void work.finally(()=>pending.delete(work));
     });
     await page.goto('http://127.0.0.1:5173');
     await page.getByRole('button',{name:'Zahájit hovor',exact:true}).click();
-    await wait(()=>page.getByTestId('voice-mcp-hotel_mail').textContent().then(text=>text==='Pošta je připravená.'));
+    await wait(async()=>{
+      if(!sessionId)return false;
+      const response=await page.request.get('http://127.0.0.1:8008/dagmar/sessions/'+sessionId,{headers:{'x-test-admin':'test-admin-a'}});
+      const raw=await response.text();scan('HTTP',raw,Date.now());
+      backendMailStatus=JSON.parse(raw).managed_mcp_status?.hotel_mail;
+      assert.ok(!['unavailable','incompatible'].includes(backendMailStatus),'native_mail_import_'+backendMailStatus);
+      return backendMailStatus==='ready';
+    });
     await Promise.all([...pending]);
     scan('storage',await page.evaluate(()=>JSON.stringify({local:{...localStorage},session:{...sessionStorage},cookies:document.cookie})),Date.now());
     assert.deepEqual(await page.evaluate(async()=>({databases:(await indexedDB.databases()).length,caches:(await caches.keys()).length})),{databases:0,caches:0},'uninspected_browser_storage');
@@ -187,7 +198,7 @@ sys.stdout.write(result.stdout)
     await browser?.close();
     host.kill('SIGTERM');vite.kill('SIGTERM');
     await writeFile(evidence,JSON.stringify({status,reason,tested_sha:candidate,
-      credential_leaks:leaks,events,bundle_sha256:bundleHashes,played_audio_observations:events.filter(event=>event.type==='played_audio').length,
+      credential_leaks:leaks,backend_mail_status:backendMailStatus,events,bundle_sha256:bundleHashes,played_audio_observations:events.filter(event=>event.type==='played_audio').length,
       full_spoken_content_verification:'NOT_RUN',groups_A_H:'NOT_RUN',synthetic_SMTP_acceptance:'NOT_RUN',production_activation:'NOT_RUN'},null,2),{flag:'wx',mode:0o600});
   }
   process.stdout.write(JSON.stringify({status,reason,tested_sha:candidate})+'\n');

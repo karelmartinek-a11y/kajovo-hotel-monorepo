@@ -191,6 +191,7 @@ export class VoiceRealtimeClient {
     }
     const responseFailure=event.type==='response.done' && event.response?.status==='failed';
     if(event.type==='error' || responseFailure) {
+      if (this.managedMcpServers.size && failure === 'mcp_cached_tool_unavailable') return;
       const recoverable=['conversation_already_has_active_response','response_cancel_not_active','input_audio_buffer_commit_empty'].includes(failure ?? '');
       if(recoverable) return; // No retry, replay or blanket cancel of the native turn.
       this.fail('realtime_error'); return;

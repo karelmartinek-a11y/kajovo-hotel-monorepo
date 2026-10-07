@@ -101,6 +101,8 @@ class MailHost:
         self.imported = asyncio.Event()
         self.import_transport = set()
         self.import_item = None
+        self.import_response_id = None
+        self.import_finished = asyncio.Event()
         self.pending = None
         self.seen = set()
         self.sequence = 0
@@ -165,11 +167,12 @@ class MailHost:
                                     raise MailContractError("catalog_names_mismatch")
                             verify_catalog(tools)
                 await self.bridge.send({"type": "response.create", "response": {
-                    "conversation": "none", "output_modalities": ["text"], "input": [], "max_output_tokens": 16,
+                    "conversation": "none", "output_modalities": ["text"], "input": [], "max_output_tokens": 128,
                     "tools": [tool_config(self.mcp_token)], "tool_choice": "none",
                     "metadata": {"dagmar_mail_import": self.bridge.id}}},
                     lambda e: e.get("type") == "response.created" and (e.get("response", {}).get("metadata") or {}).get("dagmar_mail_import") == self.bridge.id)
                 await self.imported.wait()
+                await self.import_finished.wait()
                 if self.status != "loading" or not self.import_item:
                     raise MailContractError("import_contract_mismatch")
                 self.status = "ready"
@@ -187,6 +190,13 @@ class MailHost:
     def observe(self, event):
         self.sequence += 1
         typ, item = event.get("type"), event.get("item", {})
+        response = event.get("response", {})
+        if typ == "response.created" and (response.get("metadata") or {}).get("dagmar_mail_import") == self.bridge.id:
+            self.import_response_id = response.get("id")
+        if typ == "response.done" and self.import_response_id and response.get("id") == self.import_response_id:
+            if response.get("status") != "completed":
+                self.status = "unavailable"
+            self.import_finished.set()
         if typ == "mcp_list_tools.completed":
             self.import_transport.add(event.get("item_id"))
         if typ == "mcp_list_tools.failed":
