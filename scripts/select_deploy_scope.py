@@ -12,7 +12,8 @@ def select_scope(message, paths):
     allowed_prefixes = ('apps/kajovo-hotel-api/', 'apps/kajovo-hotel-admin/', 'packages/dagmar-', 'packages/voice-core', 'docs/')
     allowed_files = {'AGENTS.md', 'README.md', '.github/workflows/ci-gates.yml', '.github/workflows/deploy-production.yml',
         'scripts/select_deploy_scope.py', 'scripts/verify_live_admin_users_smoke.mjs', 'scripts/mail_mcp_fixture_acceptance.py', 'scripts/github_deploy_via_ssh.py', 'scripts/verify_voice_memory_postgres.py',
-        'infra/ops/deploy-production.sh', 'infra/compose.prod.yml', 'packages/shared/src/generated/client.ts'}
+        'infra/ops/deploy-production.sh', 'infra/compose.prod.yml', 'packages/shared/src/generated/client.ts',
+        'examples/dagmar-host/native_acceptance.py', 'examples/dagmar-host/README.md'}
     if not paths or any(not (path.startswith(allowed_prefixes) or path in allowed_files) for path in paths):
         raise ValueError('api_admin_scope_contains_other_sources')
     return 'api-admin'

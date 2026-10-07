@@ -28,3 +28,9 @@ It refuses normal CI, requires a backend key on stdin and reserves the shared
 paid-budget ledger before setup. Its MCP clients are isolated public-contract
 fakes. Current results and missing usage are in `docs/dagmar/IMPLEMENTATION.md`;
 starting that host does not authorize real SMTP/device writes or exceed the ledger.
+
+Live hosts must open the original ledger with `PaidBudget.open_original` before
+key input or setup. A missing file never creates a fresh allowance. The native
+Mail browser probe and its separate evidence boundaries are documented in
+`docs/MAIL_MCP_INTEGRATION.md` in the monorepo; its test-only implementation is
+`packages/dagmar-server/tests/live_mail`.

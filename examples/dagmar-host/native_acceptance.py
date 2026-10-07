@@ -42,12 +42,12 @@ compact_control = os.environ.get('DAGMAR_NATIVE_COMPACT_CONTROL') == '1'
 two_responses = os.environ.get('DAGMAR_NATIVE_TWO_RESPONSES') == '1'
 assert not two_responses or compact_control
 assert not compact_control or bounded
+ledger = PaidBudget.open_original(os.environ['DAGMAR_PAID_LEDGER'])
 key = sys.stdin.readline().strip()
 if not key:
     raise SystemExit('Provider key required on stdin')
 root = Path(os.environ['DAGMAR_NATIVE_DATA'])
 root.mkdir(parents=True, exist_ok=True, mode=0o700)
-ledger = PaidBudget(os.environ['DAGMAR_PAID_LEDGER'])
 engine = create_engine('sqlite:///' + str(root/'memory.db'), hide_parameters=True)
 upgrade(engine)
 factory = sessionmaker(bind=engine)

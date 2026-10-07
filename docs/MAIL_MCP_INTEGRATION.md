@@ -119,7 +119,86 @@ The impact matrix is [mail-mcp-impact-matrix.md](mail-mcp-impact-matrix.md).
 Unpaid regression tests exercise lifecycle ordering, catalog drift, encryption,
 native-audio provenance, approval transactions, interruption and safe deployment
 scope. Normal CI does not call paid providers or mutate actual MCP/SMTP services.
-Real Realtime, Secure MCP Tunnel, model scenarios A–L and audio/SMTP acceptance
+Real Realtime, authorized synthetic endpoint access, model scenarios A–L and audio/SMTP acceptance
 are separate gates. Missing tests are `NOT_RUN`, not inferred from fake-provider
 or protocol fixture results. The original shared USD10 ledger and unresolved
 usage holds must be respected; no replacement ledger may reset the allowance.
+
+## Reproducible native browser probe
+
+`packages/dagmar-server/tests/live_mail/browser.mjs` starts the loopback test host
+in `host.py` and the existing `examples/dagmar-host` Vite application. It runs the
+actual Dagmar console, routes, orchestration, native MCP and OpenAI WebRTC. It
+uses an empty temporary database, a random test master key and synthetic Mail
+credentials. Automatic memory curation is disabled in this isolated process;
+technologies are unavailable rather than connected to real devices.
+
+First fetch `origin/main` and select an immutable clean candidate. Supply the
+original SQLite ledger and a private (0600) fixture manifest outside the repo.
+The manifest contains `synthetic: true`, `existing_authorized_endpoint: true`,
+the already authorized HTTPS `server_url` ending in `/mcp`, distinct synthetic
+`mcp_token`/`approval_token` starting with `dagmar-canary-`, and `input_wav`.
+These declarations describe caller-owned fixture setup; they do not authorize
+publication. The endpoint must use only synthetic data and a closed SMTP
+receiver. All known production MCP/application hosts are rejected. This runner
+does not create an endpoint, install a tunnel or change production configuration.
+
+The input is a Czech synthetic PCM16 WAV of at most eight seconds, asking for
+unread mail in recepce/INBOX. Free local speech synthesis may prepare this file;
+paid synthesis must be reserved separately. Browser instrumentation connects it
+to a genuine audio MediaStream; no user text, expected tool result or fabricated
+provider event enters the conversation. It observes original data-channel
+envelopes before the product handler, HTTP bodies, fetched frontend bundles,
+browser storage and actual played remote audio energy. Tokens are compared only
+in Node memory: injecting the expected canary into the browser would invalidate
+the test. Only metadata and artifact hashes survive outside the Git tree.
+
+Run the unpaid preflight first (no key lookup or provider request):
+
+```sh
+python3.11 packages/dagmar-server/tests/live_mail/host.py \
+  --ledger "$ORIGINAL_LEDGER" --fixture "$PRIVATE_FIXTURE_MANIFEST" \
+  --evidence "$OUTSIDE_GIT_EVIDENCE.provider.json"
+```
+
+With successful preflight, existing fixture authorization and available funds:
+
+```sh
+VOICE_CORE_LIVE_SMOKE=1 node packages/dagmar-server/tests/live_mail/browser.mjs \
+  "$ORIGINAL_LEDGER" "$PRIVATE_FIXTURE_MANIFEST" "$OUTSIDE_GIT_EVIDENCE"
+```
+
+The browser runner retrieves the current hotel voice key through
+`VoiceSecretAdapter` in an API-container read-only database transaction. It
+captures the encrypted SSH transport's output in Node RAM and passes the key
+to the isolated backend on stdin. No separate Mail MCP OpenAI key is required.
+The test backend stores it through the existing voice encryption adapter; no
+key is supplied to frontend code, arguments, environment or reports.
+
+`PaidBudget.open_original` verifies all eight original reservation identities,
+models, amounts and the two already accounted charges without creating or
+altering a file. Missing/foreign ledgers stop before key input or host creation.
+Unknown costs retain their holds. The original four-call identity survives
+later reconciliation and additional tests. Synthetic unit ledgers are not
+authorization artifacts.
+
+The short probe reserves USD 3.75 for Realtime and USD 0.05 for input ASR before
+the first paid request. Test-only limits are 120 seconds, four responses before
+closing on an unexpected fifth, 512 output tokens, 20000 initial/configuration
+tokens, a pinned catalog below 21000 tokens and 16384 result bytes. A conservative
+five-response bound (including a late cancelled response) is
+`5 * ((20000+21000+16384+4*512)*4 + (12000+4*512)*32 + 512*64)/1e6`
+or USD 3.60016, below the USD 3.75 reservation. Pricing is the current public
+Realtime 2.1 tariff; cached input is conservatively charged uncached. These
+limits bound this first probe, not the full scenario suite. Incomplete response
+or ASR usage prevents reconciliation. No budget is newly authorized by the runner.
+
+Probe PASS establishes only actual import, a successful native result, credential
+observation and subsequent played audio. It does not establish the correctness
+of spoken counts, full spoken reading, consent, synthetic SMTP, groups A–H,
+latency statistics or production activation. Those remain separate `NOT_RUN`
+gates until measured through the real model/audio. In particular, provider
+transcripts and audio energy alone do not prove every spoken marker/address.
+Do not activate from this probe or from its unpaid guard tests. Final evidence
+belongs outside the Git tree and names the exact tested source SHA; no later
+report commit may silently substitute a different release.

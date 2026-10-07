@@ -20,3 +20,19 @@ web and their production configuration: verify unchanged. No real mail send.
 
 Acceptance is not inferred from a unit fixture or workflow success. Paid Realtime,
 WebRTC credential isolation and audio evidence are required before activation.
+
+## Live acceptance preparation
+
+| Category | Decision | Scope |
+| --- | --- | --- |
+| Production source | Update | Fail closed when an opt-in test cannot open the original budget; voice business behavior unchanged |
+| Tests | Update | Missing/foreign ledger rejection and isolated runner preflight |
+| Actions and gates | Update | Allow only the existing native test-host script/README in selective scope; unpaid full gates, no paid call in CI |
+| Current documentation | Update | Reproducible real browser probe, accounting and remaining live gates |
+| Comments and notes | Update | Test-only bounds and evidence limits |
+| Active instructions | Update | Existing ledger required before any live test bootstrap |
+| Fixtures and text | Update | Portable unit ledger data, original-envelope observer tests and caller-owned synthetic native-audio/canary inputs |
+| Build and generated contracts | Verify unchanged | No public API/schema/browser contract change; actual existing Dagmar test-host bundle |
+
+Production activation remains a separate exact-SHA acceptance gate. The runner
+is a loopback test process, not a production debug endpoint or acceptance bypass.

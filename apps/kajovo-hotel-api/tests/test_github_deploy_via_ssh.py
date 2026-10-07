@@ -97,6 +97,9 @@ def test_explicit_api_admin_scope_rejects_other_sources():
     import pytest
     assert module.select_scope('ordinary correction', ['apps/kajovo-hotel-web/src/main.tsx']) == 'full'
     assert module.select_scope('Voice integration\n\nHotel-Deploy-Scope: api-admin', ['packages/dagmar-server/src/dagmar_server/mail.py']) == 'api-admin'
+    assert module.select_scope('Hotel-Deploy-Scope: api-admin', ['examples/dagmar-host/native_acceptance.py', 'examples/dagmar-host/README.md']) == 'api-admin'
+    with pytest.raises(ValueError):
+        module.select_scope('Hotel-Deploy-Scope: api-admin', ['examples/dagmar-host/server.py'])
     with pytest.raises(ValueError):
         module.select_scope('Hotel-Deploy-Scope: api-admin', ['apps/kajovo-hotel-web/src/main.tsx'])
     with pytest.raises(ValueError):
