@@ -18,10 +18,13 @@ Android: verify unchanged; voice is admin-only and Android has no voice API cons
 Protected Mail MCP, KajaVoiceHA, read-only MCP, standalone dagmar-backend, PostgreSQL,
 web and their production configuration: verify unchanged. No real mail send.
 
-Acceptance is not inferred from a unit fixture or workflow success. Paid Realtime,
-WebRTC credential isolation and audio evidence are required before activation.
+Measured real-provider acceptance is never inferred from a unit fixture or workflow
+success. Real provider acceptance is preferred by default. For this particular
+owner-approved completion, paid acceptance was explicitly cancelled; unpaid gates
+and exact-SHA activation suffice. Unperformed paid tests remain
+`NOT_RUN_BY_OWNER_POLICY`, not PASS.
 
-## Live acceptance preparation
+## Historical live acceptance preparation
 
 | Category | Decision | Scope |
 | --- | --- | --- |
@@ -44,8 +47,9 @@ ledger and production contracts remain unchanged. No paid call enters CI.
 Native import completion repair: update Mail lifecycle, import-order/failure
 regressions and isolated sanitized provider evidence. Update current import
 documentation and active instructions. Verify shared functions, browser contract,
-generated schemas and protected services unchanged; full gates and actual
-Realtime/WebRTC replay are required.
+generated schemas and protected services unchanged. Full unpaid gates remain
+mandatory. The subsequent owner policy cancels further real Realtime/WebRTC replay;
+its missing measurements remain `NOT_RUN_BY_OWNER_POLICY`.
 
 ## Real-provider import and progress-speech repair
 
@@ -66,7 +70,26 @@ lifecycle regressions alongside the new text/audio continuation tests.
 
 Owner decision for this completion run (2026-10-07): further paid tests are
 cancelled and the remaining acceptance is USER_ACCEPTED. Update current
-documentation and active instructions; preserve measured PASS/FAIL and NOT_RUN
+documentation and active instructions; preserve measured PASS/FAIL and NOT_RUN_BY_OWNER_POLICY
 separately outside Git. Unpaid gates and deployment must target the final main
 SHA. Activation still requires the matching release and acceptance SHA; no new
 bootstrap, debug API, provider simulation or CI waiver is introduced.
+
+## Final unpaid closure (2026-10-07)
+
+| Category | Decision | Scope |
+| --- | --- | --- |
+| Production source | Verify unchanged | Audit native MCP, silent output, continuation, scope, credential and consent boundaries; repair only reproduced defects |
+| Tests | Update | Strengthen existing closed TLS Mail protocol fixture: temporary-path isolation on macOS, 100-row pagination, truthfulness, MIME, version/expiry rejection and original-key send recovery; rerun all unpaid regressions |
+| Actions and gates | Verify unchanged | Full CI gates, actual API image and exact-SHA API/admin-only deploy; no provider calls |
+| Current documentation | Update | One authoritative USER_ACCEPTED completion policy; paid tests NOT_RUN_BY_OWNER_POLICY |
+| Comments and notes | Update | Distinguish protocol observations from real provider/audio measurements |
+| Active instructions | Update | Cancel further paid acceptance and infrastructure for this integration; preserve runtime safety |
+| Fixtures and text | Verify unchanged | Immutable standalone code with existing isolated TLS fixture, random credentials, own database and closed SMTP receiver |
+| Build and generated contracts | Verify unchanged | No API/browser schema change; regenerate/check contracts, builds and runtime artifact |
+
+Historical evidence is immutable. Current evidence lives outside Git and binds
+USER_ACCEPTED to the final main SHA. No paid call, budget reservation, ledger,
+tunnel or production voice smoke is permitted in this closure. The exception
+applies only to this integration, including its final documentation/test commit;
+it creates no public bypass and weakens no runtime safety check.

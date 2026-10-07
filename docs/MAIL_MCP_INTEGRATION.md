@@ -11,28 +11,37 @@ hotel account SMTP configuration.
 
 ## Activation and credentials
 
-Default `KAJOVO_API_VOICE_MAIL_ENABLED=false`. Enabling also requires
+Default `KAJOVO_API_VOICE_MAIL_ENABLED=false`. Enabling requires
 `KAJOVO_API_VOICE_MAIL_ACCEPTANCE_SHA` to equal the current
-`KAJOVO_API_VOICE_RELEASE_SHA`. This SHA may be recorded only after successful
-real WebRTC token-isolation and native Realtime/audio acceptance. An environment
-flag alone is not acceptance evidence. With an absent or mismatched acceptance
-SHA, Mail remains unavailable and no credential is sent to the provider.
+`KAJOVO_API_VOICE_RELEASE_SHA`. With an absent or mismatched acceptance SHA,
+Mail remains unavailable and no credential is sent to the provider.
 
-For this completion run on 2026-10-07 the owner explicitly stopped further paid
-tests and accepted the remaining tests for implementation and activation.
-The final immutable release may therefore be activated under that recorded
-owner acceptance. Evidence distinguishes measured results from `USER_ACCEPTED`
-and retains unperformed live tests as `NOT_RUN`; no synthetic result is promoted
-to a real-provider PASS. The exact-SHA runtime gate, credential boundaries and
-send consent checks remain enforced. This is an owner decision for this run,
-not a public bootstrap switch or a replacement for the default acceptance policy.
+Real provider acceptance is preferred by default. **Paid acceptance was explicitly
+cancelled by the owner** for this particular integration on 2026-10-07, including
+its final unpaid closure release. The authoritative `USER_ACCEPTED` decision
+permits completion and activation after unpaid deterministic/protocol/security
+gates, successful exact-SHA CI, matching runtime artifacts and protected-service
+checks. Record that decision outside Git against the immutable final main SHA.
+
+Real Realtime, WebRTC, audio acceptance and production voice smoke remain
+`NOT_RUN_BY_OWNER_POLICY`. This does not mean PASS; synthetic protocol and event
+fixtures do not establish actual model interpretation, credential redaction by
+OpenAI or physical audio quality. These cancelled measurements do not block
+activation or IMPLEMENTED status under this owner-approved completion policy.
+No further test provider call, paid transcription/synthesis, budget reservation,
+ledger, tunnel or public synthetic endpoint is permitted in this closure.
+
+The exception applies only to this integration. Exact-SHA runtime checks,
+credential boundaries, native import/schema checks, trusted audio consent,
+idempotency and all unpaid gates remain mandatory. An environment flag alone
+is not acceptance evidence. No public acceptance bypass is introduced.
 
 `MailSecretStore.save` accepts the handoff's two credentials only in backend
 context. It encrypts them in `dagmar_mail_secrets`, using the existing voice
 master key and distinct authenticated data `dagmar:mail:mcp:v1` and
 `dagmar:mail:approval:v1`. There is no browser credential route. Only the ordinary
 MCP token enters the provider's native tool configuration. The approval token
-is sent exclusively to the Mail control API. The required live probe uses
+is sent exclusively to the Mail control API. When separately authorized, a live probe uses
 synthetic tokens and checks actual browser WebRTC events, HTTP answers and
 frontend artifacts; filtering tokens after arrival does not satisfy this gate.
 
@@ -42,8 +51,8 @@ The backend checks the public catalog's names, input/output schemas and
 annotations. The full native MCP definition is registered through `session.update`
 once per provider session. Only a matching provider list with all input schemas
 and completed import transport enable the session-scoped server label. Subsequent
-updates reference that cached label without credentials. Real WebRTC observations
-must verify that OpenAI does not return the authorization to the browser;
+updates reference that cached label without credentials. A real WebRTC measurement
+can verify whether OpenAI returns authorization to the browser;
 sideband alone is not evidence. An out-of-band response's tool cache is insufficient
 for this session-level reuse. Import failure disables Mail; ordinary conversation, memory and technologies remain
 available independently.
@@ -75,8 +84,9 @@ technology-specific Moment/Hotovo rule does not apply to Mail. Principled mail
 instructions require explicit account/folder scope, exact count
 coverage, proven global ordering and every full-text cursor. They preserve
 partial errors and treat mailbox content as untrusted data. These instructions
-must be tested through the actual model; deterministic protocol tests establish
-host behavior only.
+describe the intended model behavior; deterministic protocol tests establish
+host behavior only. Actual model/audio measurement is `NOT_RUN_BY_OWNER_POLICY`
+for this completion and is never inferred from those tests.
 
 The browser observes only advertised `managed_mcp_servers` and
 `managed_mcp_status`; its lifecycle never executes or approves MCP calls.
@@ -150,12 +160,30 @@ The impact matrix is [mail-mcp-impact-matrix.md](mail-mcp-impact-matrix.md).
 Unpaid regression tests exercise lifecycle ordering, catalog drift, encryption,
 native-audio provenance, approval transactions, interruption and safe deployment
 scope. Normal CI does not call paid providers or mutate actual MCP/SMTP services.
-Real Realtime, authorized synthetic endpoint access, model scenarios A–L and audio/SMTP acceptance
-are separate gates. Missing tests are `NOT_RUN`, not inferred from fake-provider
-or protocol fixture results. The original shared USD10 ledger and unresolved
-usage holds must be respected; no replacement ledger may reset the allowance.
+Real Realtime, model scenarios A–L and physical audio measurements are separate
+evidence categories. Their unperformed paid tests are `NOT_RUN_BY_OWNER_POLICY`,
+not inferred from fake-provider or protocol fixture results, and do not block
+this owner-approved completion. The existing local TLS fixture verifies actual
+Mail protocol, cursors and closed synthetic SMTP without OpenAI or public access.
+Historical ledgers and usage holds remain untouched; this closure creates none.
 
-## Reproducible native browser probe
+`python scripts/mail_mcp_fixture_acceptance.py --source <isolated-copy>` runs in
+the copied server's separate locked SDK environment. It rejects production paths
+and escaped symlinks; `/tmp` aliases are resolved on macOS. The existing 50,000
+message TLS fixture verifies the pinned 23 input/output schemas and annotations,
+100-row pagination versus exact totals, cross-account/folder newest chronology,
+all text cursors, MIME/attachment metadata, partial errors, draft versions/sender,
+hash/expiry rejection, control approval and exactly one closed SMTP submission.
+Reconnect uses original send status. An explicitly simulated uncertain journal
+verifies status/replay without a second SMTP attempt; it is not a measured
+network failure. No production credentials, database or content enter the copy.
+
+## Historical reproducible native browser probe
+
+The following runner and paid commands document the earlier live investigation.
+**Do not run them for this closure.** Any future paid test needs a new explicit
+owner instruction; historical opt-in flags and accounting do not authorize it.
+Its historical evidence must not be rewritten to claim a later PASS.
 
 The final acceptance run authorized on 2026-10-07 has separate, unlimited-by-fixed-cap
 accounting, explicitly enabled with a fourth browser runner argument
@@ -251,6 +279,7 @@ of spoken counts, full spoken reading, consent, synthetic SMTP, groups A–H,
 latency statistics or production activation. Those remain separate `NOT_RUN`
 gates until measured through the real model/audio. In particular, provider
 transcripts and audio energy alone do not prove every spoken marker/address.
-Do not activate from this probe or from its unpaid guard tests. Final evidence
-belongs outside the Git tree and names the exact tested source SHA; no later
-report commit may silently substitute a different release.
+This probe alone does not authorize activation. For this completion, the
+USER_ACCEPTED policy above permits activation after all mandatory unpaid gates
+and exact-SHA checks. Final evidence belongs outside Git and identifies that
+SHA; a later report commit cannot silently substitute a different release.
