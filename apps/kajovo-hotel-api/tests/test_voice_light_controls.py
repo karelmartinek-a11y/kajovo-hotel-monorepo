@@ -221,7 +221,7 @@ def test_live_session_receives_light_schema_and_fixed_instructions(light_host):
         tool = next(t for t in session["tools"] if t["name"] == "smart_technologie")
         assert tool == SMART_TOOL and SMART_INSTRUCTIONS in session["instructions"]
         properties = tool["parameters"]["properties"]
-        assert "ONLY toggle on/off" in properties["action"]["description"]
+        assert "legacy only, AI must never use it" in properties["action"]["description"]
         assert "current describe" in properties["parameters"]["description"]
         assert "additionalProperties" not in properties["parameters"]
     asyncio.run(scenario())
