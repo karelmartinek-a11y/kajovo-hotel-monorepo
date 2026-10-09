@@ -1,9 +1,12 @@
 """Verify migration/constraints/transactions using the production API image and PostgreSQL."""
 
 import subprocess
+import os
 import time
 import uuid
 from pathlib import Path
+
+API_IMAGE = os.environ.get('VOICE_MEMORY_TEST_IMAGE', 'kajovo-api-ci')
 
 
 def run(*args):
@@ -55,14 +58,14 @@ def main():
                 "KAJOVO_API_DATABASE_URL=postgresql+psycopg://postgres:memory_test_only@postgres:5432/memory",
                 "--entrypoint",
                 entrypoint,
-                "kajovo-api-ci",
+                API_IMAGE,
                 *args,
             )
 
         # Dagmar schema in a genuinely empty PostgreSQL database, without hotel migrations.
         api("python", "-c", "from sqlalchemy import create_engine,inspect; from dagmar_server.migrations import upgrade; e=create_engine('postgresql+psycopg://postgres:memory_test_only@postgres:5432/memory'); upgrade(e); names=inspect(e).get_table_names(); assert all(n.startswith('dagmar_') for n in names); print('Own empty PostgreSQL schema PASS'); from sqlalchemy import text; c=e.connect(); [c.execute(text('DROP TABLE '+n+' CASCADE')) for n in names]; c.commit(); c.close()")
         # Exercise old/new MCP shapes with this exact production image, without backend IO.
-        run("docker", "run", "--rm", "-v", str(Path("scripts/verify_voice_mcp_compatibility.py").resolve())+":/tmp/compatibility.py:ro", "--entrypoint", "python", "kajovo-api-ci", "-c", "exec(open('/tmp/compatibility.py').read())")
+        run("docker", "run", "--rm", "-v", str(Path("scripts/verify_voice_mcp_compatibility.py").resolve())+":/tmp/compatibility.py:ro", "--entrypoint", "python", API_IMAGE, "-c", "exec(open('/tmp/compatibility.py').read())")
 
         # Match the existing production deploy's VARCHAR(128) version storage reconciliation.
         # Historical revision 0002 is longer than Alembic's default VARCHAR(32).
@@ -130,10 +133,58 @@ with SessionLocal() as db:
     assert execute(db,p,remove).code=='ok'
     assert db.scalar(select(func.count()).select_from(VoiceMemory))==0
     assert db.scalar(select(func.count()).select_from(VoiceMemoryDependency))==0
+    # Exercise the actual backend adapter over Streamable HTTP against this
+    # disposable PostgreSQL, including a committed write with a lost response.
+    import socket, time, uvicorn
+    from threading import Thread
+    from dataclasses import replace
+    from mcp.server.fastmcp import FastMCP
+    from dagmar_server import memory_dispatch
+    from dagmar_server.ports import runtime
+    from dagmar_server.memory_contract import MemoryResult
+    from app.services.listecky_mcp import ListeckyMemory
+    with socket.socket() as listener:
+        listener.bind(('127.0.0.1',0));port=listener.getsockname()[1]
+    fixture=FastMCP('isolated-postgres-memory',stateless_http=True,json_response=True)
+    @fixture.tool()
+    def assistant_memory(request:dict,operation_id:str|None=None)->MemoryResult:
+        with SessionLocal() as remote:
+            return execute(remote,p,MemoryRequest.model_validate({'request':request}),session_id='mcp-v1',call_id=operation_id,receipt_namespace='isolated-pg-mcp')
+    server=uvicorn.Server(uvicorn.Config(fixture.streamable_http_app(),host='127.0.0.1',port=port,access_log=False,log_level='critical'))
+    thread=Thread(target=server.run,daemon=True);thread.start()
+    for _ in range(100):
+        if server.started:break
+        time.sleep(.05)
+    assert server.started
+    async def transport_acceptance():
+        adapter=ListeckyMemory('Bearer isolated-pg-only',url=f'http://127.0.0.1:{port}/mcp')
+        identities=[]
+        async def lose_once(request,operation_id):
+            identities.append(operation_id)
+            result=await adapter(request,operation_id)
+            if len(identities)==1:raise ConnectionError('lost_after_commit')
+            return result
+        with bind(replace(runtime(),memory_connector=lose_once)):
+            for attempt in range(2):
+                with SessionLocal() as host:
+                    result=await memory_dispatch.execute(host,p,request,session_id='pg-logical',call_id='pg-native-task',receipt_namespace='pg-author')
+                assert result.code==('unavailable' if attempt==0 else 'ok')
+            assert result.replayed and identities[0]==identities[1]
+            updated=await adapter(MemoryRequest.model_validate({'request':{'operation':'note_item_add','id':result.note.id,'revision':1,'content':'c','position':None}}),'00000000-0000-0000-0000-000000000001')
+            assert updated.code=='ok' and updated.note.revision==2
+            conflict=await adapter(MemoryRequest.model_validate({'request':{'operation':'note_clear','id':result.note.id,'revision':1}}),'00000000-0000-0000-0000-000000000002')
+            assert conflict.code=='revision_conflict'
+            deleted=await adapter(MemoryRequest.model_validate({'request':{'operation':'note_delete','id':result.note.id,'revision':2}}),'00000000-0000-0000-0000-000000000003')
+            assert deleted.code=='ok'
+    try:asyncio.run(transport_acceptance())
+    finally:
+        server.should_exit=True;thread.join(timeout=5)
+    assert not thread.is_alive()
+    db.expire_all()
     db.delete(db.get(VoiceMemoryPrincipal,p));db.commit()
     assert db.scalar(select(func.count()).select_from(VoiceNoteItem))==0
     assert db.scalar(select(func.count()).select_from(VoiceMemoryOperation))==0
-print('PostgreSQL migration, retries, revisions, ordering and cascades PASS')
+print('PostgreSQL migration, real MCP adapter, lost-response retries, revisions, ordering and cascades PASS')
 from app.services.voice_registry import RegistryConfirmation
 from app.services.voice_smart import claim_operation
 from dagmar_server.models import VoiceRegistryPlan

@@ -34,6 +34,7 @@ from .smart import (
 from .ports import utc_now
 from .ports import get_settings, runtime
 from . import memory as voice_memory
+from . import memory_dispatch
 from .memory_contract import MEMORY_TOOL, MEMORY_INSTRUCTIONS, MemoryRequest, MemoryResult
 from .curator import TurnBuffer
 from .models import VoiceMemoryOperation, VoiceMemorySettings
@@ -225,6 +226,9 @@ class VoiceBridge:
         if self.closed:
             raise asyncio.CancelledError
         response_event=event.get("type")=="response.create"
+        if response_event:
+            from .memory_sync import synchronize
+            await synchronize(self)
         generation=event.pop("_turn_generation",self.turns.generation)
         intent=uuid.uuid4().hex if response_event else None
         if response_event and not self.turns.reserve(generation,intent):
@@ -249,6 +253,12 @@ class VoiceBridge:
             async with self.write_lock:
                 if self.closed:
                     raise asyncio.CancelledError
+                if response_event and getattr(self, 'memory_principal', None):
+                    from .memory_sync import epoch, privacy_changed, fence
+                    saved = (self.task_context.memory_generation, None, self.task_context.memory_settings_revision)
+                    if privacy_changed(saved, epoch(self.memory_principal)):
+                        fence(self)
+                        raise SmartError('memory_context_changed')
                 if response_event and not self.turns.writable(generation,intent):
                     return None
                 self.waiters.append(waiter)
@@ -479,6 +489,8 @@ class VoiceBridge:
                 automatic = db.get(VoiceMemorySettings, self.memory_principal).automatic and not self.memory_privacy_paused
             self.memory_buffer = TurnBuffer(self.memory_principal, self.id, self.key, factory=SessionLocal, authorize=lambda: authorized(self.owner), namespace=current_identity(self.owner)["namespace"])
             self.memory_buffer.enabled = automatic
+            from .memory_sync import synchronize
+            await synchronize(self)
             await self.update_transcription()
             self.memory_status = "ready"
             await self.refresh_memory_context()
@@ -521,7 +533,17 @@ class VoiceBridge:
 
     async def memory_work(self):
         while True:
-            await asyncio.sleep(5)
+            await asyncio.sleep(0.5)
+            from .memory_sync import synchronize
+            try:
+                await synchronize(self)
+            except Exception:
+                # Failure to verify the privacy epoch cannot authorize stale continuation.
+                from .memory_sync import fence
+                fence(self)
+                self.memory_status = 'unavailable'
+                self.renew = True
+                return
             if self.memory_buffer and self.memory_buffer.due():
                 try:
                     await self.memory_buffer.flush()
@@ -589,7 +611,7 @@ class VoiceBridge:
                 if grant and grant['id'] in self.human_turns.consumed and not receipt:
                     intent_reason = 'revoked'
                     raise voice_memory.MemoryError("human_intent_required")
-                output = voice_memory.execute(db, pid, request, session_id=memory_session_id, call_id=memory_call_id, receipt_namespace=receipt_namespace)
+                output = await memory_dispatch.execute(db, pid, request, session_id=memory_session_id, call_id=memory_call_id, receipt_namespace=receipt_namespace)
             if output.code == 'ok' and grant:
                 self.human_turns.consume(grant)
             if output.code == "ok" and request.request.operation not in {"memory_search", "memory_read", "memory_list", "note_list", "note_read", "summary_read"}:
@@ -1333,6 +1355,8 @@ class VoiceBridge:
                 )
                 reader = asyncio.create_task(self.read_events())
                 tasks.append(reader)
+                from .memory_sync import synchronize
+                await synchronize(self)
                 recovering = bool(self.task_context.groups)
                 recovery_generation = self.turns.generation
                 await self.configure(False, create_response=not recovering)

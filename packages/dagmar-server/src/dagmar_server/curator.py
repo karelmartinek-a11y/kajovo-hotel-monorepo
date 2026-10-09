@@ -134,6 +134,7 @@ class TurnBuffer:
         self.dropped = False
         self.blocked = set()
         self.references = set()
+        self.source_generation = self.settings()[1]
 
 
     def reference(self, kind, identity):
@@ -205,6 +206,10 @@ class TurnBuffer:
                     self.add(*value)
 
     def add(self, iid, index, role, text):
+        if self.settings()[1] != self.source_generation:
+            self.enabled = False
+            self.reset(invalidate=True)
+            return
         identity = (iid, index)
         if not iid or iid in self.blocked or identity in self.seen:
             return
@@ -252,6 +257,10 @@ class TurnBuffer:
                 enabled, generation = self.settings()
             except Exception:
                 self.reset()
+                return
+            if generation != self.source_generation:
+                self.enabled = False
+                self.reset(invalidate=True)
                 return
             if not self.enabled or not enabled or not self.turns or not self.authorize():
                 self.reset()

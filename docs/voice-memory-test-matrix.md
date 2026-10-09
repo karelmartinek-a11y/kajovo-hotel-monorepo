@@ -23,7 +23,7 @@ Běžné testy jsou deterministické a nevolají placené API. Názvy níže odk
 | 17 | budget | M test_context_budget_relevance_and_bounded_selection |
 | 18 | selection/relevance | M stejné; P preference/project next session |
 | 19 | bounded SQL | M context s 200 položkami; žádná neomezená query contextu |
-| 20 | bez MCP | P test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_mcp |
+| 20 | Portable místní transport | P test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_mcp; výslovný testovací port, nikoli produkční fallback |
 | 21 | MCP outage | P test_mcp_outage_and_memory_outage_keep_ordinary_voice_enabled + test_stalled_mcp_initialization_does_not_block_memory |
 | 22 | memory outage | P stejné, output unavailable a následná response.create |
 | 23 | injection | M test_prompt_injection_is_only_note_data; P datový user-role context; backend nemá SQL operaci |
@@ -49,7 +49,7 @@ Dodatečné M testy ověřují strict Responses store:false/no tools, cancelled 
 | Acceptance 1 | P preference v nové RTC session a její Memory Context + function search. |
 | Acceptance 2 | P Nákup→žárovky+baterie→Nákup hotel→remove baterie; výsledek pouze žárovky. |
 | Acceptance 3 | P dlouhý raw dialog→curated summary→nová RTC session lookup; bez raw dialogu. |
-| Acceptance 4 | P bez tokenu a MCP outage; memory operace potvrzené. |
+| Acceptance 4 | P izolovaný místní port funguje bez MCP technologií. Hotelový MCP transport má samostatné skutečné Streamable HTTP testy v test_listecky_mcp.py: retry po ztracené odpovědi, revize, plný obsah, ochrana profilu a outage bez fallbacku. |
 | Acceptance 5 | P backend exception→unavailable output→potvrzená response.create; ordinary generation zůstává zapnutá. |
 
 Živá modelová interpretace, provider paid transport, fyzický mikrofon a náhlý kill se odlišují od fake protokolu. Bez opt-in se paid smoke vynechá; RAM při náhlém kill může ztratit poslední dávku. Automatická extrakce je modelová a privacy filtr heuristický; lidská oprava/deaktivace/zapomenutí zůstává k dispozici.

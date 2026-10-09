@@ -20,6 +20,8 @@ class DagmarApplication:
     def __init__(self, ports: RuntimePorts):
         self.manager = VoiceBridgeManager()
         self.refreshes = {}
+        self.memory_stamps = {}
+        self.memory_sync_locks = {}
         self.ports = replace(ports, application=self)
         self.core = APIRouter()
         self.core.include_router(core_router)

@@ -11,6 +11,7 @@ from .models import VoiceConversationSummary, VoiceMemorySettings
 from .ports import get_db
 from .ports import require_session
 from . import memory
+from . import memory_dispatch
 from .memory_contract import (
     MemoryList,
     MemoryRequest,
@@ -50,7 +51,7 @@ async def operation(payload: MemoryRequest, db: Db, request: Request):
     operation_key = request.headers.get("x-dagmar-operation-id")
     if operation_key and (len(operation_key) > 128 or not all(c.isalnum() or c in "_-" for c in operation_key)):
         raise HTTPException(422, detail={"code":"invalid_arguments"})
-    result = memory.execute(db, pid, payload, session_id=str(identity["session_id"]) if operation_key else None, call_id=operation_key, receipt_namespace=identity["namespace"])
+    result = await memory_dispatch.execute(db, pid, payload, session_id=str(identity["session_id"]) if operation_key else None, call_id=operation_key, receipt_namespace=identity["namespace"])
     if result.code == "ok" and payload.request.operation not in {"memory_list", "memory_search", "memory_read", "note_list", "note_read", "summary_read"}:
         await invalidate(pid, deleted=payload.request.operation in {"memory_forget", "note_delete", "note_clear"})
     errors = {
@@ -69,18 +70,18 @@ async def operation(payload: MemoryRequest, db: Db, request: Request):
 
 
 @router.post("/search", response_model=MemoryResult)
-def search(payload: Search, db: Db, request: Request):
-    return memory.execute(db, owner(request, db), MemoryRequest(request=payload))
+async def search(payload: Search, db: Db, request: Request):
+    return await memory_dispatch.execute(db, owner(request, db), MemoryRequest(request=payload))
 
 
 @router.get("/memories", response_model=MemoryResult)
-def memories(
+async def memories(
     db: Db,
     request: Request,
     limit: int = Query(20, ge=1, le=50),
     offset: int = Query(0, ge=0, le=10000),
 ):
-    return memory.execute(
+    return await memory_dispatch.execute(
         db,
         owner(request, db),
         MemoryRequest(
@@ -90,8 +91,8 @@ def memories(
 
 
 @router.get("/memories/{identity}", response_model=MemoryResult)
-def read_memory(identity: UUID, db: Db, request: Request):
-    return memory.execute(
+async def read_memory(identity: UUID, db: Db, request: Request):
+    return await memory_dispatch.execute(
         db,
         owner(request, db),
         MemoryRequest(request=ReadMemory(operation="memory_read", id=identity)),
@@ -99,14 +100,14 @@ def read_memory(identity: UUID, db: Db, request: Request):
 
 
 @router.get("/notes", response_model=MemoryResult)
-def notes(
+async def notes(
     db: Db,
     request: Request,
     limit: int = Query(20, ge=1, le=50),
     offset: int = Query(0, ge=0, le=10000),
     archived: bool = False,
 ):
-    return memory.execute(
+    return await memory_dispatch.execute(
         db,
         owner(request, db),
         MemoryRequest(
@@ -118,8 +119,8 @@ def notes(
 
 
 @router.get("/notes/{identity}", response_model=MemoryResult)
-def read_note(identity: UUID, db: Db, request: Request):
-    return memory.execute(
+async def read_note(identity: UUID, db: Db, request: Request):
+    return await memory_dispatch.execute(
         db, owner(request, db), MemoryRequest(request=NoteRead(operation="note_read", id=identity))
     )
 
@@ -148,8 +149,8 @@ def summaries(
 
 
 @router.get("/summaries/{identity}", response_model=MemoryResult)
-def read_summary(identity: UUID, db: Db, request: Request):
-    return memory.execute(
+async def read_summary(identity: UUID, db: Db, request: Request):
+    return await memory_dispatch.execute(
         db,
         owner(request, db),
         MemoryRequest(request=SummaryRead(operation="summary_read", id=identity)),

@@ -21,12 +21,22 @@ async def invalidate(pid, *, deleted=False, keep_call_id=None, keep_bridge_id=No
     await _apply(app, pid, True, keep_call_id, keep_bridge_id)
 
 async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
+    from .memory_sync import stamp, privacy_changed
+    current = stamp(pid)
+    previous = getattr(app, 'memory_stamps', {}).get(pid)
+    deleted |= privacy_changed(previous, current)
+    # A coalesced local refresh may race an independent MCP deletion. It must
+    # apply the privacy barrier before advancing any task's observed epoch.
+    deleted |= any(task.memory_principal == pid and privacy_changed((getattr(task, 'memory_generation', None), None, getattr(task, 'memory_settings_revision', None)), current)
+                   for task in app.manager.calls.values())
     if deleted:
         # Closed provider connections can still own a reconnectable logical task.
         for task in app.manager.calls.values():
             if task.memory_principal in {None, pid}:
                 task.clear()
                 task.memory_privacy_paused = True
+                task.memory_generation = current[0]
+                task.memory_settings_revision = current[2]
     for bridge in list(app.manager.sessions.values()):
         if bridge.memory_principal != pid or bridge.closed or not authorized(bridge.owner):
             continue
@@ -57,6 +67,7 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
                 enabled = bool(config and config.automatic and not bridge.memory_privacy_paused)
                 if deleted or bridge.memory_buffer.enabled != enabled:
                     bridge.memory_buffer.reset(invalidate=True)
+                    bridge.memory_buffer.source_generation = config.generation if config else current[0]
                 bridge.memory_buffer.enabled = enabled
         if deleted:
             # Remove all provider dialogue which could paraphrase the forgotten data, including paired tool items.
@@ -74,3 +85,7 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
             bridge.call_items.clear()
         await bridge.refresh_memory_context()
         await bridge.update_transcription()
+        bridge.task_context.memory_generation = current[0]
+        bridge.task_context.memory_settings_revision = current[2]
+    if hasattr(app, 'memory_stamps'):
+        app.memory_stamps[pid] = current

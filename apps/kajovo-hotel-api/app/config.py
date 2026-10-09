@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     voice_memory_curator_model: str = "gpt-4.1-mini-2025-04-14"
     voice_memory_batch_seconds: int = Field(default=90, ge=15, le=300)
     voice_memory_max_calls_per_hour: int = Field(default=40, ge=1, le=120)
+    voice_memory_mcp_enabled: bool = False
+    voice_memory_mcp_authorization: str = Field(default='', repr=False)
     voice_input_noise_reduction: Literal["near_field", "far_field"] | None = None
     voice_master_key: str = Field(default="", repr=False)
     kajavoiceha_mcp_token: str = Field(default="", repr=False, validation_alias="KAJAVOICEHA_MCP_TOKEN")

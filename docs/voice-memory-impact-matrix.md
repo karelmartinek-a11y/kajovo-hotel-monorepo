@@ -1,5 +1,7 @@
 # Voice memory impact matrix
 
+Current transport/invalidation changes and validation are specified in [Lístečky integration impact matrix](listecky-integration-impact-matrix.md). Public HTTP schemas, UI, shared database and the portable Voice Core boundary stay compatible.
+
 | Category | Action |
 |---|---|
 | Production source | Update API models, services, sideband and host UI; portable lifecycle only. |

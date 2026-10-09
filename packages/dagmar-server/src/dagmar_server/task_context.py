@@ -21,6 +21,8 @@ class CallTask:
         self.last_activity = time.monotonic()
         self.partial = False
         self.memory_principal = None
+        self.memory_generation = None
+        self.memory_settings_revision = None
         self.memory_privacy_paused = False
         from .mail import MailTask
         self.mail = MailTask()
