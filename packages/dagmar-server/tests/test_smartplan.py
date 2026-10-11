@@ -335,6 +335,23 @@ def test_upstream_business_error_cannot_echo_credential_as_code():
     asyncio.run(run())
 
 
+@pytest.mark.parametrize('field', ['link_id', 'owner_confirmation_url', 'malformed_url'])
+def test_owner_link_response_cannot_expose_credential(field):
+    async def run():
+        _, ports, _, host, _ = setup()
+        value = {'link_id': 'owner-link', 'owner_confirmation_url': 'https://smartplan.hcasc.cz/link/owner-link'}
+        token = host.client.token
+        value[field if field != 'malformed_url' else 'owner_confirmation_url'] = (
+            {} if field == 'malformed_url' else token if field == 'link_id' else 'https://smartplan.hcasc.cz/link/'+token)
+        async def response(*args, **kwargs):
+            return value
+        host.client.post = response
+        with bind(ports), pytest.raises(SmartError, match='incompatible'):
+            await host.client.link()
+        await host.close()
+    asyncio.run(run())
+
+
 def test_schema_has_all_supported_time_condition_action_variants():
     schema = TOOLS['smartplan_preview']['inputSchema']
     text = json.dumps(schema)

@@ -197,8 +197,11 @@ class SmartPlanClient:
 
     async def link(self):
         value = await self.post('/host/link', {'authenticated_subject': self.subject}, linked=False)
-        url = urlparse(value.get('owner_confirmation_url', ''))
-        if not isinstance(value.get('link_id'), str) or url.scheme != 'https' or url.netloc != 'smartplan.hcasc.cz' or url.username or url.fragment:
+        link_id, raw_url = value.get('link_id'), value.get('owner_confirmation_url')
+        if not isinstance(link_id, str) or not 1 <= len(link_id) <= 512 or not isinstance(raw_url, str) or self.token in link_id or self.token in raw_url:
+            raise SmartError('smartplan_incompatible')
+        url = urlparse(raw_url)
+        if url.scheme != 'https' or url.netloc != 'smartplan.hcasc.cz' or url.username or url.fragment:
             raise SmartError('smartplan_incompatible')
         with SessionLocal() as db:
             row = db.get(SmartPlanLink, self.subject)

@@ -11,7 +11,7 @@ The hotel authenticates the voice owner and runs a backend HTTPS gateway to the 
 
 Initialization and tools/list are verified once per voice connection. All eleven names and complete schemas must match before tools become available. Each new connection revalidates the catalog. A protocol/authentication incompatibility removes only SmartPlan; normal conversation, memory, Mail and immediate technologies retain their existing paths. The existing Realtime function-result/continuation coordinator processes results; browser clients only observe managed functions.
 
-Upstream business error codes are bounded identifiers; a code containing the host credential is replaced with a generic error, just as credentials are excluded from successful tool results.
+Upstream business error codes are bounded identifiers; a code containing the host credential is replaced with a generic error, just as credentials are excluded from successful tool results. Owner-link responses containing the credential in their ID or browser URL are rejected before persistence or browser delivery.
 
 Ready SmartPlan continuations inherit the acknowledged session tools instead of resending the full schemas on every response. Its fixed schema token count is added to the existing context-pressure allowance only while SmartPlan is ready; the conversational allowance and 4,000-token/24,000-byte reconnect snapshot remain unchanged.
 
