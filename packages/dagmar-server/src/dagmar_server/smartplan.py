@@ -191,7 +191,8 @@ class SmartPlanClient:
             # Business errors remain explicit; never expose arbitrary upstream error text.
             error = value.get('error', {})
             code = error.get('code', 'smartplan_error') if isinstance(error, dict) else 'smartplan_error'
-            return {'error': {'code': code if isinstance(code, str) and re.fullmatch('[a-zA-Z0-9_]{1,80}', code) else 'smartplan_error'}}
+            valid_code = isinstance(code, str) and re.fullmatch('[a-zA-Z0-9_]{1,80}', code) and self.token not in code
+            return {'error': {'code': code if valid_code else 'smartplan_error'}}
         return safe(value, self.token)
 
     async def link(self):

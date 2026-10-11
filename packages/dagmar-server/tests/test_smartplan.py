@@ -321,6 +321,20 @@ def test_security_injection_and_unsupported_fields():
     assert 'expected_revision' in TOOLS['smartplan_prepare']['inputSchema']['properties']
 
 
+def test_upstream_business_error_cannot_echo_credential_as_code():
+    async def run():
+        _, ports, _, host, fixture = setup()
+        canary = 'CanaryCredential0123456789'
+        host.client.token = canary
+        fixture.results['smartplan_search'] = {'error': {'code': canary}}
+        with bind(ports):
+            value = await host.execute('smartplan_search', {})
+            assert canary not in json.dumps(value)
+            assert value == {'error': {'code': 'smartplan_error'}}
+            await host.close()
+    asyncio.run(run())
+
+
 def test_schema_has_all_supported_time_condition_action_variants():
     schema = TOOLS['smartplan_preview']['inputSchema']
     text = json.dumps(schema)
