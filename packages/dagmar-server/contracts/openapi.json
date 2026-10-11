@@ -1452,6 +1452,30 @@
         "title": "SettingsWrite",
         "type": "object"
       },
+      "SmartPlanConnection": {
+        "properties": {
+          "owner_confirmation_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Confirmation Url"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SmartPlanConnection",
+        "type": "object"
+      },
       "SummaryRead": {
         "additionalProperties": false,
         "properties": {
@@ -2947,6 +2971,48 @@
         "summary": "Registry Plan",
         "tags": [
           "voice-core"
+        ]
+      }
+    },
+    "/voice/smartplan": {
+      "get": {
+        "operationId": "connection_voice_smartplan_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartPlanConnection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Connection",
+        "tags": [
+          "smartplan"
+        ]
+      }
+    },
+    "/voice/smartplan/link": {
+      "post": {
+        "operationId": "link_voice_smartplan_link_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartPlanConnection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Link",
+        "tags": [
+          "smartplan"
         ]
       }
     }

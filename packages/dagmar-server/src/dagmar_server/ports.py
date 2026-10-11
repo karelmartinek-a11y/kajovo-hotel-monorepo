@@ -16,6 +16,7 @@ class RuntimePorts:
     provider_socket: Callable | None = None
     ha_connector: Callable | None = None
     memory_connector: Callable | None = None
+    smartplan_transport: Any = None
 
 _current: ContextVar[RuntimePorts] = ContextVar('dagmar_runtime_ports')
 

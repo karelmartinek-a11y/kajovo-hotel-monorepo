@@ -1,0 +1,1449 @@
+{
+  "contract": "SMARTPLAN-UPSTREAM",
+  "version": "1.0",
+  "server_release_version": "2.1.18",
+  "api_version": 2,
+  "base_url": "https://apimcpkajavoiceha.hcasc.cz",
+  "mcp": {
+    "endpoint": "/mcp",
+    "tool": "smart_technologie",
+    "additive_operations": [
+      "smartplan_handoff",
+      "solar_calendar"
+    ],
+    "selection_ttl_seconds": 1800,
+    "handoff_ticket_ttl_seconds": 120,
+    "context_ttl_seconds": 600,
+    "handoff_targets_max": 64,
+    "handoff_argument_schema": {
+      "additionalProperties": false,
+      "description": "smartplan_handoff: ověřené předání nebo odvolání delegace.",
+      "properties": {
+        "action": {
+          "description": "issue vyžaduje aktuální selection_id; revoke vlastní grant_id.",
+          "enum": [
+            "issue",
+            "revoke"
+          ],
+          "type": "string"
+        },
+        "context_id": {
+          "description": "Kontext SmartPlanu; nevymýšlet.",
+          "type": "string"
+        },
+        "grant_id": {
+          "description": "Vlastní delegace k odvolání, pouze revoke.",
+          "type": "string"
+        },
+        "targets": {
+          "description": "Funkce a čtení z describe téhož výběru.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "function": {
+                "description": "Přesné cNN/rNN komponenty.",
+                "type": "string"
+              },
+              "kind": {
+                "description": "cNN ovládání, rNN čtení.",
+                "enum": [
+                  "control",
+                  "reading"
+                ],
+                "type": "string"
+              },
+              "row": {
+                "description": "Řádek ověřeného výběru.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "row",
+              "kind",
+              "function"
+            ],
+            "type": "object"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "type": "object"
+    },
+    "solar_argument_schema": {
+      "additionalProperties": false,
+      "description": "solar_calendar: výpočet konkrétního dne; next_* znamená následující výskyt.",
+      "properties": {
+        "date": {
+          "description": "Konkrétní den Europe/Prague, 2000–2100.",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "type": "string"
+        },
+        "offset_seconds": {
+          "description": "Sekundy v UTC: -18000 před úsvitem, 10800 po západu. Zachová datum přes půlnoc i DST.",
+          "maximum": 604800,
+          "minimum": -604800,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "date"
+      ],
+      "type": "object"
+    }
+  },
+  "authentication": {
+    "service": "dedicated revocable Bearer header; not accepted by /mcp",
+    "parent": "authenticated upstream OAuth grant or legacy account, never model user_id",
+    "service_permissions": [
+      "discover",
+      "handoff",
+      "read",
+      "control",
+      "events"
+    ],
+    "scope_rule": "intersection(service permissions, exact delegation, live parent rights, approved catalog)",
+    "owner_binding": "SmartPlan backend derives from authenticated local account; Kaja binds to verified MCP subject via context+claim+ticket",
+    "forward_user_oauth_token": false,
+    "credentials_in_model": false,
+    "host_https_origin_guards": true
+  },
+  "endpoints": {
+    "/smartplan/v1/contexts": {
+      "method": "POST",
+      "permission": "handoff",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner_binding"
+        ],
+        "properties": {
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context_id",
+          "claim_secret",
+          "expires_at"
+        ],
+        "properties": {
+          "context_id": {
+            "type": "string"
+          },
+          "claim_secret": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "/smartplan/v1/redeem": {
+      "method": "POST",
+      "permission": "handoff",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "context_id",
+          "claim_secret",
+          "ticket"
+        ],
+        "properties": {
+          "context_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "claim_secret": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "ticket": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "targets",
+          "expires_at"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "grant_id": {
+            "type": "string"
+          },
+          "owner_ref": {
+            "type": "string"
+          },
+          "owner_binding": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "/smartplan/v1/describe": {
+      "method": "POST",
+      "permission": "read",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "targets"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "catalog_revision",
+          "targets",
+          "events_transport",
+          "lease_seconds"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "catalog_revision": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ref",
+                "kind",
+                "name",
+                "location",
+                "semantic_revision",
+                "available",
+                "unit"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "device",
+                    "component",
+                    "control",
+                    "reading"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "semantic_revision": {
+                  "type": "string"
+                },
+                "available": {
+                  "type": "boolean"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "parameters": {
+                  "type": "object"
+                },
+                "device_ref": {
+                  "type": "string"
+                },
+                "component_ref": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "events_transport": {
+            "const": "filtered_sse"
+          },
+          "lease_seconds": {
+            "const": 60
+          }
+        }
+      }
+    },
+    "/smartplan/v1/read": {
+      "method": "POST",
+      "permission": "read",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "targets"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "catalog_revision",
+          "readings"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "catalog_revision": {
+            "type": "string"
+          },
+          "readings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "ref",
+                "value",
+                "unit",
+                "available",
+                "observed_at_utc",
+                "source_updated_at_utc",
+                "source",
+                "semantic_revision"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "value": {},
+                "unit": {
+                  "type": "string"
+                },
+                "available": {
+                  "type": "boolean"
+                },
+                "observed_at_utc": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "source_updated_at_utc": {
+                  "type": "string"
+                },
+                "source": {
+                  "const": "ha_state"
+                },
+                "semantic_revision": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/smartplan/v1/control": {
+      "method": "POST",
+      "permission": "control",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "target",
+          "request_id"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,128}$"
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "operation",
+          "results",
+          "summary",
+          "is_error"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "status"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "started_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "finished_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "replay": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "room_ref": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "row": {
+                  "type": "integer"
+                },
+                "function": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_error": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "/smartplan/v1/operation_status": {
+      "method": "POST",
+      "permission": "read",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "request_id"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "request_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,128}$"
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "operation",
+          "results",
+          "summary",
+          "is_error"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "status"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "started_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "finished_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "replay": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "room_ref": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "row": {
+                  "type": "integer"
+                },
+                "function": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_error": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "/smartplan/v1/event_mapping": {
+      "method": "POST",
+      "permission": "events",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "targets"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "catalog_revision",
+          "targets",
+          "events_transport",
+          "lease_seconds"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "catalog_revision": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "reading_ref",
+                "source_ref",
+                "semantic_revision"
+              ],
+              "properties": {
+                "reading_ref": {
+                  "type": "string"
+                },
+                "source_ref": {
+                  "type": "string"
+                },
+                "semantic_revision": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "events_transport": {
+            "const": "filtered_sse"
+          },
+          "lease_seconds": {
+            "const": 60
+          }
+        }
+      }
+    },
+    "/smartplan/v1/events": {
+      "method": "POST",
+      "permission": "events",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "targets"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      },
+      "response_content_type": "text/event-stream"
+    },
+    "/smartplan/v1/solar_calendar": {
+      "method": "POST",
+      "permission": "read",
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant_id",
+          "owner_ref",
+          "owner_binding",
+          "targets",
+          "solar"
+        ],
+        "properties": {
+          "grant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner_binding": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "solar": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "date"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "offset_seconds": {
+                "type": "integer",
+                "minimum": -604800,
+                "maximum": 604800
+              }
+            }
+          }
+        }
+      },
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "solar",
+          "results",
+          "is_error"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "solar": {
+            "anyOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "date",
+                  "offset_seconds",
+                  "offset_basis",
+                  "observer",
+                  "events"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string"
+                  },
+                  "offset_seconds": {
+                    "type": "integer"
+                  },
+                  "offset_basis": {
+                    "const": "elapsed_seconds_in_UTC"
+                  },
+                  "observer": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "latitude",
+                      "longitude",
+                      "timezone",
+                      "elevation",
+                      "elevation_verified"
+                    ],
+                    "properties": {
+                      "latitude": {
+                        "type": "number"
+                      },
+                      "longitude": {
+                        "type": "number"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      },
+                      "elevation": {
+                        "type": "number"
+                      },
+                      "elevation_verified": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  "events": {
+                    "type": "array",
+                    "minItems": 4,
+                    "maxItems": 4,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "event",
+                        "event_date",
+                        "timezone",
+                        "source",
+                        "available",
+                        "elevation_verified"
+                      ],
+                      "properties": {
+                        "event": {
+                          "enum": [
+                            "dawn",
+                            "rising",
+                            "setting",
+                            "dusk"
+                          ]
+                        },
+                        "event_date": {
+                          "type": "string"
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "const": "calculated_astral_3.2"
+                        },
+                        "available": {
+                          "type": "boolean"
+                        },
+                        "elevation_verified": {
+                          "type": "boolean"
+                        },
+                        "utc": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "local": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "shifted_utc": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "shifted_local": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "reason": {
+                          "const": "no_event_on_date"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "room_ref": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                },
+                "row": {
+                  "type": "integer"
+                },
+                "function": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "is_error": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "/smartplan/v1/capabilities": {
+      "method": "GET",
+      "permission": "discover",
+      "response_content_type": "application/json",
+      "response_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "api_version",
+          "catalog_revision",
+          "release",
+          "handoff",
+          "events",
+          "event_lease_seconds",
+          "max_event_readings",
+          "max_streams",
+          "permissions",
+          "authorization_revision"
+        ],
+        "properties": {
+          "version": {
+            "const": "1.0"
+          },
+          "api_version": {
+            "const": 2
+          },
+          "catalog_revision": {
+            "type": "string"
+          },
+          "release": {
+            "type": "string"
+          },
+          "handoff": {
+            "const": "smart_technologie.smartplan_handoff"
+          },
+          "events": {
+            "const": "filtered_sse"
+          },
+          "event_lease_seconds": {
+            "const": 60
+          },
+          "max_event_readings": {
+            "const": 64
+          },
+          "max_streams": {
+            "const": 2
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authorization_revision": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "references": {
+    "prefix": "kt_",
+    "kinds": [
+      "device",
+      "component",
+      "control",
+      "reading"
+    ],
+    "opaque": true,
+    "credential": false,
+    "persistent": true,
+    "non_reusable": true,
+    "identity_basis": "approved device registry UUID and pinned stable entity registry entry identity, or explicit logical solar observer binding",
+    "on_unproven_identity": "binding_required",
+    "on_identity_or_semantics_change": "target_changed; explicit new binding required",
+    "retired_refs_deleted": false
+  },
+  "events": {
+    "architecture": "filtered SSE projection through KajaVoiceHA",
+    "ha_subscription": "subscribe_trigger/platform=state/exact approved sources",
+    "internal_ha_ids_exposed": false,
+    "service_ha_credential_required": false,
+    "max_streams": 2,
+    "max_reading_refs": 64,
+    "queue_max_projected_events": 64,
+    "max_projected_event_bytes": 16384,
+    "max_ha_frame_bytes": 2097152,
+    "lease_seconds": 60,
+    "heartbeat_seconds": 10,
+    "write_deadline_seconds": 5,
+    "event_types": [
+      "gap",
+      "heartbeat",
+      "state"
+    ],
+    "gap_reasons": [
+      "snapshot_required",
+      "lease_expired",
+      "upstream_disconnected",
+      "overflow",
+      "event_too_large",
+      "authorization_or_target_changed"
+    ],
+    "replay_supported": false,
+    "reconnect": "jitter+backoff 1..30s, gap + explicit snapshot, no inferred edge across gap",
+    "state_polling": false,
+    "state_data_schema": {
+      "type": "object",
+      "required": [
+        "ref",
+        "value",
+        "unit",
+        "available",
+        "observed_at_utc",
+        "source_updated_at_utc",
+        "source",
+        "semantic_revision",
+        "stream_id",
+        "sequence"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "value": {},
+        "unit": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "observed_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_updated_at_utc": {
+          "type": "string"
+        },
+        "source": {
+          "const": "ha_state"
+        },
+        "semantic_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "stream_id": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "read_value_schema": {
+    "type": "object",
+    "required": [
+      "ref",
+      "value",
+      "unit",
+      "available",
+      "observed_at_utc",
+      "source_updated_at_utc",
+      "source",
+      "semantic_revision"
+    ],
+    "properties": {
+      "ref": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "value": {},
+      "unit": {
+        "type": "string"
+      },
+      "available": {
+        "type": "boolean"
+      },
+      "observed_at_utc": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "source_updated_at_utc": {
+        "type": "string"
+      },
+      "source": {
+        "const": "ha_state"
+      },
+      "semantic_revision": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      }
+    }
+  },
+  "solar": {
+    "catalog_append_row": 200,
+    "controls": [],
+    "readings": {
+      "r01": "next_dawn",
+      "r02": "next_rising",
+      "r03": "next_setting",
+      "r04": "next_dusk"
+    },
+    "meaning": "next occurrence, not always today",
+    "observer": {
+      "latitude": 50.0399147,
+      "longitude": 14.5054778,
+      "timezone": "Europe/Prague",
+      "elevation": 0,
+      "elevation_verified": false
+    },
+    "source_for_next": "ha_next_occurrence",
+    "source_for_calendar": "calculated_astral_3.2",
+    "library": {
+      "library": "astral",
+      "version": "3.2",
+      "source": "https://pypi.org/project/astral/3.2/",
+      "documentation": "https://astral.readthedocs.io/en/latest/package.html",
+      "wheel": "astral-3.2-py3-none-any.whl",
+      "sha256": "cb7b49a3f0d4c64ae666be131276d2a3226134c598db10e672028cf8ff855f83",
+      "license": "Apache-2.0"
+    },
+    "calendar_year_range": [
+      2000,
+      2100
+    ],
+    "dawn_dusk_depression_degrees": 6,
+    "offset_basis": "elapsed seconds in UTC; date/timezone conversion after offset",
+    "max_offset_seconds": 604800,
+    "weather_exposed": false
+  },
+  "idempotency": {
+    "request_id": "SmartPlan backend persists original per occurrence before first control",
+    "transport_request_id_is_operation_id": false,
+    "namespace": "service identity + delegated owner_ref",
+    "replay": "identical original envelope and request_id -> original journal; different intent -> request_conflict",
+    "required_after_control": [
+      "operation_status with original request_id",
+      "exact read and comparison"
+    ],
+    "automatic_control_retry": false,
+    "historical_fingerprints_rewritten": false
+  },
+  "errors": {
+    "401": [
+      "unauthorized"
+    ],
+    "403": [
+      "forbidden",
+      "handoff_invalid"
+    ],
+    "404": [
+      "not_found"
+    ],
+    "405": [
+      "method_not_allowed"
+    ],
+    "400": [
+      "invalid_request",
+      "invalid_target"
+    ],
+    "409": [
+      "request_conflict",
+      "target_changed",
+      "forbidden"
+    ],
+    "503": [
+      "unavailable",
+      "capacity",
+      "service_busy",
+      "stream_capacity"
+    ],
+    "business_http_200": [
+      "is_error and original operation/results statuses",
+      "solar_config_unavailable"
+    ]
+  },
+  "examples": {
+    "handoff_mcp": {
+      "api_version": 2,
+      "operation": "smartplan_handoff",
+      "selection_id": "<selection from current search>",
+      "handoff": {
+        "action": "issue",
+        "context_id": "<SmartPlan context_id>",
+        "targets": [
+          {
+            "row": 200,
+            "kind": "reading",
+            "function": "r01"
+          }
+        ]
+      }
+    },
+    "calendar_mcp": {
+      "api_version": 2,
+      "operation": "solar_calendar",
+      "solar": {
+        "date": "2026-10-12",
+        "offset_seconds": -18000
+      }
+    },
+    "control_service": {
+      "grant_id": "<grant>",
+      "owner_ref": "<opaque owner>",
+      "owner_binding": "<backend account binding>",
+      "target": "<delegated control ref>",
+      "parameters": {},
+      "request_id": "scenario_occurrence_0001"
+    },
+    "status_service": {
+      "grant_id": "<same grant>",
+      "owner_ref": "<same owner>",
+      "owner_binding": "<same binding>",
+      "request_id": "scenario_occurrence_0001"
+    }
+  },
+  "separation": {
+    "shared_database": false,
+    "shared_catalog_files": false,
+    "shared_mounts": false,
+    "implementation_imports": false,
+    "same_server_required": false
+  },
+  "limitations": [
+    "SmartPlan implementation and real account integration not part of this project",
+    "event stream is gap-aware, not lossless",
+    "configured elevation 0 not independently verified",
+    "source/isolated tests/public read do not prove real ChatGPT UI, audio or physical outcomes"
+  ],
+  "error_response_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "version",
+      "error"
+    ],
+    "properties": {
+      "version": {
+        "const": "1.0"
+      },
+      "error": {
+        "type": "string"
+      }
+    }
+  },
+  "max_request_body_bytes": 262144,
+  "max_regular_requests_in_flight": 4
+}

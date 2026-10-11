@@ -6179,6 +6179,30 @@
         "title": "SettingsWrite",
         "type": "object"
       },
+      "SmartPlanConnection": {
+        "properties": {
+          "owner_confirmation_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Confirmation Url"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SmartPlanConnection",
+        "type": "object"
+      },
       "SmtpOperationalStatusRead": {
         "properties": {
           "can_send_real_email": {
@@ -8370,6 +8394,50 @@
         "tags": [
           "voice-core",
           "voice-core"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/smartplan": {
+      "get": {
+        "operationId": "connection_api_v1_admin_voice_core_smartplan_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartPlanConnection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Connection",
+        "tags": [
+          "voice-core",
+          "smartplan"
+        ]
+      }
+    },
+    "/api/v1/admin/voice-core/smartplan/link": {
+      "post": {
+        "operationId": "link_api_v1_admin_voice_core_smartplan_link_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartPlanConnection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Link",
+        "tags": [
+          "voice-core",
+          "smartplan"
         ]
       }
     },

@@ -90,7 +90,9 @@ class RegistryChange(BaseModel):
 class SmartArguments(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     response_mode: Literal["complete"] | None = Field(default=None, description="Whole search/describe/read selection; never combine offset/limit. Host negotiates MCP support.")
-    operation: Literal["catalog", "search", "describe", "read", "control", "operation_status", "camera_view", "rooms_list", "registry_prepare", "registry_apply"]
+    operation: Literal["catalog", "search", "describe", "read", "control", "operation_status", "camera_view", "rooms_list", "registry_prepare", "registry_apply", "smartplan_handoff", "solar_calendar"]
+    handoff: dict | None = None
+    solar: dict | None = None
     changes: list[RegistryChange] | None = Field(default=None, min_length=1, max_length=200)
     plan_id: str | None = Field(default=None, min_length=1, max_length=256)
     catalog_revision: str | None = Field(default=None, min_length=1)
@@ -119,6 +121,8 @@ class SmartArguments(BaseModel):
             "rooms_list": {"query", "offset", "limit"},
             "registry_prepare": {"changes"},
             "registry_apply": {"plan_id"},
+            "smartplan_handoff": {"selection_id", "handoff"},
+            "solar_calendar": {"solar"},
         }[self.operation] | {"operation", "catalog_revision"}
         if any(key not in allowed and getattr(self, key) is not None for key in self.model_fields_set):
             raise ValueError("unexpected_operation_fields")
@@ -150,6 +154,18 @@ class SmartArguments(BaseModel):
             raise ValueError("one_camera_required")
         if self.operation in {"describe", "read"} and self.limit and self.limit > 8:
             raise ValueError("detail_page_limit")
+        if self.operation in {"smartplan_handoff", "solar_calendar"}:
+            from jsonschema import Draft202012Validator
+            upstream = json.loads(Path(__file__).with_name('smartplan_upstream_contract.json').read_text())['mcp']
+            key = 'handoff' if self.operation == 'smartplan_handoff' else 'solar'
+            value = getattr(self, key)
+            if value is None or any(Draft202012Validator(upstream[key + '_argument_schema']).iter_errors(value)):
+                raise ValueError('invalid_smartplan_upstream_arguments')
+            if key == 'handoff':
+                if value['action'] == 'issue' and (not self.selection_id or not value.get('context_id') or not value.get('targets')):
+                    raise ValueError('invalid_smartplan_upstream_arguments')
+                if value['action'] == 'revoke' and (not value.get('grant_id') or self.selection_id or value.get('context_id') or value.get('targets')):
+                    raise ValueError('invalid_smartplan_upstream_arguments')
         return self
 
 
@@ -175,6 +191,9 @@ SMART_TOOL = {
 
 _SHARED_INSTRUCTIONS = json.loads(Path(__file__).with_name("smart_instructions.json").read_text())
 SMART_TOOL["description"] = _SHARED_INSTRUCTIONS["mandatory"]
+_upstream = json.loads(Path(__file__).with_name('smartplan_upstream_contract.json').read_text())['mcp']
+for _field in ('handoff', 'solar'):
+    SMART_TOOL['parameters']['properties'][_field] = _upstream[_field + '_argument_schema']
 SMART_INSTRUCTIONS = _SHARED_INSTRUCTIONS["guide"] + "\n\n" + _SHARED_INSTRUCTIONS["mandatory"] + "\n\n" + 'Room, location, location type, area and zone (místnost, umístění, typ umístění, oblast, zóna) mean the SAME registered room. kind means device kind. Actual room names remain distinct.\n"Jaké mám typy umístění?" ALWAYS rooms_list including empty rooms, never overview.locations.\n"Vytvoř umístění Sklad" means create_room; "přejmenuj typ umístění Lobby na Recepce" means rename_room.\n"Změň typ umístění zařízení LobbyPas na Lobby" means assign_devices; "odeber LobbyPas z místnosti" means remove_devices; "přejmenuj zařízení LobbyPas" means rename_devices; "smaž umístění X" means delete_room.\nFor all matching devices in THIS room resolve the exact room_ref then filters.room_ref plus capabilities. If the server reports room_ref unsupported, explain unavailability; never substitute a broader location substring group write. (bez umístění) is absence of assignment, not a deletable room.\nRooms use rooms_list and room_ref/room_selection_id, NEVER device selection_id. Keep last_room_selection separate from last_selection and last_target. Rooms paginate at most 200 per page; total counts every matching room, not the current page. For full enumeration keep requesting offsets until every match is listed; room_selection covers every match even across pages.\nRegistry changes use registry_prepare with catalog_revision and changes. Use only returned public references and approved global device rows. Templates support {name}, {room}, {index}; final names come from the server plan. A target can change only once per plan; compound create-and-assign requires successive plans using the newly returned room_ref.\nregistry_apply accepts only plan_id. Backend owns identity and confirmation. Never invent confirmed or confirmation_id. If requires_confirmation=false and the user clearly requested the change, finish prepare then apply without another question.\nIf requires_confirmation=true, the backend reads the EXACT plan and verifies the following real audio confirmation. Do not paraphrase, confirm on the user\'s behalf or call apply before backend confirmation. A text message cannot confirm. When confirmed, call registry_apply with that exact plan_id. After refusal, ambiguity, new target, interruption or expiry require a fresh preparation and voice confirmation.\nDo not remove devices from integrations. Deleting a room unassigns ALL members, never deletes devices. detached_devices counts approved devices only. A legacy protected_members rejection must be reported accurately; never reveal hidden members. Physical unavailability alone does not forbid registry changes.\nFor registry results report created/updated/deleted/unchanged and all errors. plan_changed, plan_expired, selection_expired require fresh preparation, never reuse confirmation. uncertain requires operation_status ORIGINAL request_id, never replay a write. Never claim atomic create-and-assign.\nThe host supplies api_version, authenticated session and write identity. Preserve unresolved_request_ids, original status recovery and durable delivery identities. Interruption of speech never cancels or repeats a sent write. Only validation explicitly marked not_sent permits repair before network submission. Devices use GLOBAL rows[i], never page index i+1; read omits controls and describe retains approved schemas. Exact component values, units and ranges come from this device. Never substitute power for unsupported settings. Camera image retrieval is not capture-time proof. Continue ordinary conversation when technologies are unavailable. Legacy MCP pagination is resolved inside the host. Main ON/OFF and child-lock actions remain separate.\n'
 
 

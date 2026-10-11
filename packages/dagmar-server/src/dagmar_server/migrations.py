@@ -32,10 +32,12 @@ def upgrade(engine, *, import_legacy=False):
         marker.create(connection, checkfirst=True)
         existing = connection.scalar(select(marker.c.version))
         from .mail_storage import migrate as migrate_mail
+        from .smartplan_storage import migrate as migrate_smartplan
         if existing is not None:
             if existing != VERSION:
                 raise RuntimeError('unsupported_dagmar_schema')
             migrate_mail(connection)
+            migrate_smartplan(connection)
             return {'version': VERSION, 'already_applied': True}
         DagmarBase.metadata.create_all(connection)
         evidence = {}
@@ -85,4 +87,5 @@ def upgrade(engine, *, import_legacy=False):
         connection.execute(settings.insert().values(principal_id=SHARED_ID, automatic=all(r['automatic'] for r in rows), revision=max([r['revision'] for r in rows], default=0), generation=max([r['generation'] for r in rows], default=0)))
         connection.execute(marker.insert().values(version=VERSION))
         migrate_mail(connection)
+        migrate_smartplan(connection)
         return {'version': VERSION, 'already_applied': False, 'tables': evidence}

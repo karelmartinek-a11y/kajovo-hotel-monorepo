@@ -105,6 +105,8 @@ def test_manual_continuation_explicitly_keeps_available_functions_and_native_mcp
         from dagmar_server.memory_contract import MEMORY_TOOL
         _, ports, bridge, mail = host()
         bridge.mail = mail
+        from dagmar_server.smartplan import SmartPlanHost
+        bridge.smartplan = SmartPlanHost(bridge)
         bridge.catalog_ready = catalog_ready
         mail.status = mail_status
         with bind(ports):

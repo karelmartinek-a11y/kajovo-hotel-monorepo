@@ -1,5 +1,7 @@
 # Kájovo Hotel – závazná pravidla práce
 
+- SmartPlan voice integration belongs to Dagmar's backend HTTPS gateway and normal authenticated owner-link panel. Use the pinned deployed `smartplan_contract.json` and `smartplan_upstream_contract.json`; all eleven tools remain remote, with no local scheduler or HA implementation import. Immediate actions stay in KajaVoiceHA; future/recurring actions use SmartPlan. The backend verifies current described handoff targets and owner-linked identity, never model user/session IDs. `SMARTPLAN_VOICE_HOST_TOKEN` is encrypted with separate AES-GCM associated data in additive SmartPlan metadata tables. Proposal confirmation requires exact completed/drained native audio readback followed by genuine committed user audio; `/host/confirm` is never a model/browser tool. Commit recovery uses the same durable proposal/input IDs. Preserve scopes, expected_revision conflicts, server runs after pause/delete/Stop, and per-target uncertainty. See docs/SMARTPLAN_INTEGRATION.md. No paid provider/audio tests or production automation/device mutations are authorized for this integration.
+
 ## Rozsah a zdroj pravdy
 
 - Pracuj výhradně v aktuálním repozitáři `karelmartinek-a11y/kajovo-hotel-monorepo` a před každou změnou ověř branch, remote, `git status`, poslední commity a stav vůči vzdálenému repozitáři.

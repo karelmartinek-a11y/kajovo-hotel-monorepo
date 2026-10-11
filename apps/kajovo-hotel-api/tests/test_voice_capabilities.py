@@ -6,6 +6,7 @@ SUPPORTED_ROUTES = {
     "/api-key", "/calls", "/calls/{identity}/close", "/config", "/sessions",
     "/sessions/{identity}/playback-ready", "/sessions/{session_id}",
     "/sessions/{session_id}/heartbeat", "/sessions/{session_id}/registry-plan",
+    "/smartplan", "/smartplan/link",
 }
 
 

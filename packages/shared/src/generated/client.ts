@@ -857,6 +857,10 @@ export type SettingsWrite = {
   "automatic": boolean;
   "revision": number;
 };
+export type SmartPlanConnection = {
+  "owner_confirmation_url"?: string | null;
+  "status": string;
+};
 export type SmtpOperationalStatusRead = {
   "can_send_real_email": boolean;
   "configured": boolean;
@@ -1156,6 +1160,12 @@ export const apiClient = {
   },
   async registryPlanApiV1AdminVoiceCoreSessionsSessionIdRegistryPlanGet(session_id: string): Promise<RegistryView> {
     return request<RegistryView>('GET', `/api/v1/admin/voice-core/sessions/${session_id}/registry-plan`, undefined, undefined);
+  },
+  async connectionApiV1AdminVoiceCoreSmartplanGet(): Promise<SmartPlanConnection> {
+    return request<SmartPlanConnection>('GET', `/api/v1/admin/voice-core/smartplan`, undefined, undefined);
+  },
+  async linkApiV1AdminVoiceCoreSmartplanLinkPost(): Promise<SmartPlanConnection> {
+    return request<SmartPlanConnection>('POST', `/api/v1/admin/voice-core/smartplan/link`, undefined, undefined);
   },
   async memoriesApiV1AdminVoiceMemoryMemoriesGet(query: { "limit"?: number; "offset"?: number; }): Promise<MemoryResult> {
     return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/memories`, query, undefined);

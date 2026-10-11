@@ -13,6 +13,16 @@ SPEC.loader.exec_module(gate)
 
 
 class ReleaseGateTests(unittest.TestCase):
+    def test_targeted_deploy_accepts_updated_validation_but_rejects_web(self):
+        spec = importlib.util.spec_from_file_location('select_deploy_scope', Path(__file__).parents[1] / 'select_deploy_scope.py')
+        scope = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(scope)
+        message = 'Connect SmartPlan\n\nHotel-Deploy-Scope: api-admin\n'
+        paths = ['packages/dagmar-server/src/dagmar_server/smartplan.py', 'scripts/release_gate.py', 'scripts/tests/test_release_gate.py']
+        self.assertEqual(scope.select_scope(message, paths), 'api-admin')
+        with self.assertRaises(ValueError):
+            scope.select_scope(message, paths + ['apps/kajovo-hotel-web/src/App.tsx'])
+
     def test_failed_process_is_failure(self):
         result = gate._run_check('failure', [sys.executable, '-c', 'raise SystemExit(3)'])
         self.assertEqual((result.status, result.return_code), ('FAIL', 3))
@@ -33,6 +43,7 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn('browser-baseline', names)
         self.assertIn('api-and-voice-tests', names)
         self.assertIn('voice-registry-ui', names)
+        self.assertIn('smartplan-owner-ui', names)
         for _, command in plan:
             self.assertNotIn('ci:gates', command)
             self.assertFalse(len(command) > 1 and command[1].endswith('live_smoke.py'))

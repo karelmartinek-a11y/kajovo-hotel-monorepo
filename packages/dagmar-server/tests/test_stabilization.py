@@ -12,6 +12,8 @@ def bridge():
     from types import SimpleNamespace
     value.catalog_ready = False
     value.mail = SimpleNamespace(tools=lambda: [], status='disabled')
+    from dagmar_server.smartplan import SmartPlanHost
+    value.smartplan = SmartPlanHost(value)
     value.closed = False
     value.turns = TurnCoordinator()
     value.write_lock = asyncio.Lock()

@@ -1,0 +1,3334 @@
+{
+  "contract": "SMARTPLAN",
+  "version": "1.0",
+  "service_version": "1.0.1",
+  "release": "v1.0.1-20261011-r2",
+  "mcp_url": "https://smartplan.hcasc.cz/mcp",
+  "issuer": "https://smartplan.hcasc.cz",
+  "resource": "https://smartplan.hcasc.cz/mcp",
+  "transport": {
+    "type": "stateless_streamable_http",
+    "methods": [
+      "POST"
+    ],
+    "response": "application/json",
+    "protocol_versions": [
+      "2025-03-26",
+      "2025-06-18",
+      "2025-11-25",
+      "2026-07-28"
+    ],
+    "bearer_required": true,
+    "notification_response": 202,
+    "get_delete_response": 405
+  },
+  "oauth": {
+    "library": "Authlib 1.8.0",
+    "client_id": "smartplan-chatgpt",
+    "client_secret": null,
+    "client_registration": "pre_registered_public",
+    "redirect_uris": [
+      "https://chatgpt.com/connector_platform_oauth_redirect"
+    ],
+    "pkce": "S256_required",
+    "authorization_response_iss_parameter_supported": true,
+    "authorization_endpoint": "https://smartplan.hcasc.cz/oauth/authorize",
+    "token_endpoint": "https://smartplan.hcasc.cz/oauth/token",
+    "revocation_endpoint": "https://smartplan.hcasc.cz/oauth/revoke",
+    "discovery": "https://smartplan.hcasc.cz/.well-known/oauth-authorization-server",
+    "protected_resource_metadata": "https://smartplan.hcasc.cz/.well-known/oauth-protected-resource/mcp",
+    "access_lifetime_seconds": 900,
+    "refresh_lifetime_seconds": 2592000,
+    "refresh_rotation": true,
+    "resource_parameter_required": true,
+    "opaque_tokens_hashed_at_rest": true,
+    "revocation": "entire_owner_client_lineage"
+  },
+  "scopes": {
+    "oauth": [
+      "smartplan:read",
+      "smartplan:write",
+      "smartplan:execute"
+    ],
+    "voice_host": [
+      "smartplan:read",
+      "smartplan:write",
+      "smartplan:execute",
+      "smartplan:link",
+      "smartplan:attest"
+    ],
+    "dynamic_requirements": {
+      "smartplan_bind.list": [
+        "smartplan:read"
+      ],
+      "smartplan_bind.context_redeem": [
+        "smartplan:read",
+        "smartplan:write"
+      ],
+      "smartplan_prepare.create_update_rename_pause_delete": [
+        "smartplan:write"
+      ],
+      "smartplan_prepare.enable_run_or_update_enabled": [
+        "smartplan:write",
+        "smartplan:execute"
+      ],
+      "smartplan_commit": [
+        "smartplan:write"
+      ],
+      "smartplan_commit.enable_run_or_update_enabled": [
+        "smartplan:write",
+        "smartplan:execute"
+      ]
+    }
+  },
+  "identity": {
+    "owner_source": "verified_local_OAuth_owner_or_explicit_browser_approved_voice_link",
+    "model_user_id": "forbidden",
+    "ids_generated_by_backend": [
+      "scenario_id",
+      "revision",
+      "run_id",
+      "action_id",
+      "execution_request_id",
+      "proposal_id",
+      "binding_id",
+      "link_id"
+    ],
+    "voice_host_id": "kajovo-hotel-voice",
+    "link_header": "X-SmartPlan-Link",
+    "upstream_owner_binding": "HMAC_SHA256_server_key_over_verified_owner_id",
+    "user_oauth_forwarded_upstream": false
+  },
+  "host_endpoints": {
+    "POST /host/link": {
+      "scope": "smartplan:link",
+      "requires_link": false,
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "authenticated_subject"
+        ],
+        "properties": {
+          "authenticated_subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "response_fields": [
+        "link_id",
+        "approved",
+        "owner_confirmation_url"
+      ],
+      "subject_source": "authenticated_hotel_backend_only"
+    },
+    "POST /host/confirm": {
+      "scope": "smartplan:attest",
+      "requires_link": true,
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "proposal_id",
+          "proposal_fingerprint",
+          "input_event_id",
+          "source",
+          "authenticated_subject_hash"
+        ],
+        "properties": {
+          "proposal_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "proposal_fingerprint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "input_event_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "source": {
+            "const": "authenticated_user_audio"
+          },
+          "authenticated_subject_hash": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      },
+      "subject_hash": "SHA256_utf8_exact_authenticated_subject",
+      "event_identity": "trusted_host_persisted_before_request",
+      "response_fields": [
+        "approved",
+        "proposal_id"
+      ]
+    }
+  },
+  "confirmation": {
+    "prepare": "complete_proposal_summary_next_occurrences_review_url_fingerprint",
+    "browser": "authenticated_form_CSRF_explicit_user_submit",
+    "voice": "separate_scoped_backend_attestation_from_actual_authenticated_user_audio",
+    "model_confirmed_true": "not_supported",
+    "tool_output_confirmation": "not_trusted",
+    "commit_replay": "same_proposal_id_returns_original_result",
+    "create_initial_status": "paused",
+    "read_only_confirmation": "none"
+  },
+  "concurrency": {
+    "mutation": "expected_revision_required_for_existing_scenario",
+    "conflict": "revision_conflict_current_revision_no_overwrite",
+    "start_boundary": "BEGIN_IMMEDIATE_enabled_revision_dedup_immutable_run_INSERT_COMMIT",
+    "pause_delete": "prevents_new_starts_at_transaction_commit_clears_only_unstarted_candidates",
+    "started_runs": "original_immutable_revision_all_durable_delays_finish",
+    "rename": "keeps_scenario_id_and_history",
+    "component_conflict": "first_live_run_owns_opaque_component_until_finished",
+    "potential_event_action_cycles": "rejected_statically_without_upstream_origin_provenance",
+    "scenario_calls": false
+  },
+  "calendar": {
+    "timezone": "Europe/Prague",
+    "weekday": "Monday=0_Sunday=6",
+    "intervals": "any_positive_N_hours_days_weeks_calendar_months",
+    "elapsed_vs_calendar": "explicit_basis",
+    "anchor": "calendar_naive_local_or_elapsed_explicit_offset",
+    "missing_hour": "explicit_skip",
+    "repeated_hour": "explicit_first_or_second_one_execution",
+    "missing_monthday": "explicit_skip_or_last",
+    "ISO_week_parity": "ISO_calendar_not_anchored_two_week_interval",
+    "window": "start_inclusive_end_exclusive_wrap_midnight_equal_empty",
+    "date_bounds": "inclusive_local_dates",
+    "excluded_instants": "explicit_offset",
+    "misfire_default": "skip_audit",
+    "catchup": "latest_within_grace_max3600_seconds_bounded_scan2days",
+    "preview_horizon_days": 1830,
+    "solar_offset_basis": "elapsed_seconds_from_original_event",
+    "solar_filter_date": "original_event_date"
+  },
+  "conditions": {
+    "logic": "typed_nested_AND_OR_NOT_Kleene_three_valued",
+    "unknown": "never_zero_off_closed_NOT_unknown_is_unknown",
+    "state_operators": [
+      "eq",
+      "ne",
+      "gt",
+      "ge",
+      "lt",
+      "le",
+      "between",
+      "changed",
+      "crossed_above",
+      "crossed_below",
+      "unavailable",
+      "available"
+    ],
+    "units": "exact_upstream_unit_match",
+    "hysteresis": "Schmitt_latch",
+    "duration_debounce": "continuous_fresh_observation_max_of_two_durations",
+    "snapshot_reconnect": "no_inferred_edges_gap_resets_duration_proofs",
+    "freshness": "collector_receipt_or_continuous_stream_heartbeat_proof",
+    "event_source_times": "separate_from_our_received_at"
+  },
+  "results": {
+    "action_outcomes": [
+      "confirmed_reported",
+      "failed",
+      "unverified",
+      "conflict",
+      "uncertain"
+    ],
+    "run_outcomes": [
+      "success",
+      "partial",
+      "failed"
+    ],
+    "accepted": "command_acceptance_only",
+    "operation_completed": "processing_completion_only",
+    "physical_exactly_once": false,
+    "mandatory_post_write": [
+      "original_execution_request_id",
+      "operation_status_same_id",
+      "subsequent_exact_component_read"
+    ],
+    "timestamps": [
+      "scheduled_for",
+      "trigger_received_at",
+      "run_started_at",
+      "action_sent_at",
+      "response_received_at",
+      "verification_received_at",
+      "finished_at"
+    ],
+    "missing_times": null,
+    "physical_change_time": "not_measured",
+    "monotonic": "in_process_durations_only",
+    "recovery": "persist_intent_and_original_identity_before_dispatch_no_new_id_blind_retry"
+  },
+  "upstream": {
+    "contract": "SMARTPLAN-UPSTREAM-CONTRACT.json",
+    "version": "1.0",
+    "sha256": "dd0ef3bb9b16643083e4ac9f7e784bb411f25ed514398cd10096576a3120ba98",
+    "mcp_url": "https://apimcpkajavoiceha.hcasc.cz/mcp",
+    "service_base": "https://apimcpkajavoiceha.hcasc.cz/smartplan/v1",
+    "events": "filtered_sse",
+    "dedicated_credential": "upstream-token",
+    "catalog_authority": "KajaVoiceHA_only",
+    "state_polling": false,
+    "weather": false,
+    "limitations": [
+      "2 simultaneous event streams, 64 reading refs per stream and 60-second lease",
+      "With two separate grants, lease renewal may have a gap resetting continuous duration",
+      "No action-origin provenance: temporary restore conservatively conflicts/skips",
+      "Unavailable cause unknown/null/unavailable is not distinguished",
+      "Astral 3.2 configured observer elevation is explicitly unverified",
+      "Solar original dates supported 2000 through 2100"
+    ]
+  },
+  "errors": {
+    "tool_business": "MCP_result_isError_true_content.error.code_detail",
+    "validation": "invalid_schema_paths_types_no_input_echo",
+    "common_codes": [
+      "user_confirmation_required",
+      "revision_conflict",
+      "not_found",
+      "scenario_deleted",
+      "proposal_expired",
+      "insufficient_scope",
+      "upstream_not_ready",
+      "binding_not_owned",
+      "target_changed",
+      "component_or_capability_mismatch",
+      "unsupported_parameters",
+      "potential_event_action_cycle",
+      "upstream_event_stream_capacity",
+      "executor_fenced",
+      "condition_structure_limit",
+      "invalid_structure"
+    ],
+    "transport_http": {
+      "401": "unauthorized_or_owner_link_required",
+      "403": "scope_host_origin_CSRF",
+      "409": "revision_conflict",
+      "503": "storage_unavailable"
+    },
+    "fallback": "none"
+  },
+  "tools": [
+    {
+      "name": "smartplan_capabilities",
+      "description": "Zjistí verzi, připravenost upstreamu a deterministického workeru, skutečné možnosti a limity. Nic neovládá.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "Empty",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_bind",
+      "description": "action=context vytvoří most pro ověřeného vlastníka; předej context_id do KajaVoiceHA search/describe → smartplan_handoff. action=redeem převezme jeho ticket a přesné trvalé opaque vazby; obě vyžadují smartplan:write. action=list jen se smartplan:read vrátí vlastní vazby. Claim secret zůstává na serveru; handoff není souhlas s automatizací.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "context",
+              "redeem",
+              "list"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Id"
+          },
+          "handoff_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Handoff Token"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "BindingImport",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_search",
+      "description": "Hledá scénáře podle názvu/popisů, zařízení/místnosti, role trigger/condition/action, rozvrhu, intervalu budoucích termínů, stavu, běžícího běhu a posledního výsledku. Více shod se musí vyjasnit.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "default": "",
+            "title": "Query",
+            "type": "string"
+          },
+          "device": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Device"
+          },
+          "room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Room"
+          },
+          "binding_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Binding Id"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "trigger",
+                  "condition",
+                  "action"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Role"
+          },
+          "schedule_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "once",
+                  "interval",
+                  "calendar",
+                  "solar"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Schedule Kind"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "enabled",
+                  "paused",
+                  "deleted"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Running"
+          },
+          "last_result": {
+            "anyOf": [
+              {
+                "enum": [
+                  "success",
+                  "partial",
+                  "failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Last Result"
+          },
+          "scheduled_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scheduled From"
+          },
+          "scheduled_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scheduled Until"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "Search",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_detail",
+      "description": "Vrátí celý scénář včetně neměnné identity, aktuální revize, běžících běhů a posledního výsledku. Smazané scénáře mají historii.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": {
+            "title": "Scenario Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario_id"
+        ],
+        "title": "ScenarioId",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_preview",
+      "description": "Validuje typed scénář a ukáže konkrétní příští termíny, časovou sémantiku a ověření vazeb bez uložení či ovládání.",
+      "inputSchema": {
+        "$defs": {
+          "All": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "and",
+                  "or"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "children": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "and": "#/$defs/All",
+                      "calendar": "#/$defs/CalendarCondition",
+                      "constant": "#/$defs/Constant",
+                      "not": "#/$defs/Not",
+                      "or": "#/$defs/All",
+                      "solar": "#/$defs/SolarCondition",
+                      "state": "#/$defs/StateCondition"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/Constant"
+                    },
+                    {
+                      "$ref": "#/$defs/StateCondition"
+                    },
+                    {
+                      "$ref": "#/$defs/CalendarCondition"
+                    },
+                    {
+                      "$ref": "#/$defs/SolarCondition"
+                    },
+                    {
+                      "$ref": "#/$defs/All"
+                    },
+                    {
+                      "$ref": "#/$defs/Not"
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "title": "Children",
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "children"
+            ],
+            "title": "All",
+            "type": "object"
+          },
+          "Calendar": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "calendar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "times": {
+                "items": {
+                  "format": "time",
+                  "type": "string"
+                },
+                "maxItems": 24,
+                "minItems": 1,
+                "title": "Times",
+                "type": "array"
+              },
+              "policy": {
+                "$ref": "#/$defs/CalendarPolicy"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "times",
+              "policy"
+            ],
+            "title": "Calendar",
+            "type": "object"
+          },
+          "CalendarCondition": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "calendar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "filters"
+            ],
+            "title": "CalendarCondition",
+            "type": "object"
+          },
+          "CalendarPolicy": {
+            "additionalProperties": false,
+            "properties": {
+              "timezone": {
+                "const": "Europe/Prague",
+                "default": "Europe/Prague",
+                "title": "Timezone",
+                "type": "string"
+              },
+              "missing_hour": {
+                "const": "skip",
+                "title": "Missing Hour",
+                "type": "string"
+              },
+              "repeated_hour": {
+                "enum": [
+                  "first",
+                  "second"
+                ],
+                "title": "Repeated Hour",
+                "type": "string"
+              },
+              "missing_monthday": {
+                "enum": [
+                  "skip",
+                  "last"
+                ],
+                "title": "Missing Monthday",
+                "type": "string"
+              }
+            },
+            "required": [
+              "missing_hour",
+              "repeated_hour",
+              "missing_monthday"
+            ],
+            "title": "CalendarPolicy",
+            "type": "object"
+          },
+          "Constant": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "constant",
+                "title": "Kind",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "title": "Constant",
+            "type": "object"
+          },
+          "DelayAction": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "delay",
+                "title": "Kind",
+                "type": "string"
+              },
+              "seconds": {
+                "exclusiveMinimum": 0,
+                "title": "Seconds",
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "seconds"
+            ],
+            "title": "DelayAction",
+            "type": "object"
+          },
+          "EventTrigger": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "event",
+                "title": "Kind",
+                "type": "string"
+              },
+              "predicate": {
+                "$ref": "#/$defs/StateCondition"
+              }
+            },
+            "required": [
+              "kind",
+              "predicate"
+            ],
+            "title": "EventTrigger",
+            "type": "object"
+          },
+          "Filters": {
+            "additionalProperties": false,
+            "properties": {
+              "weekdays": {
+                "default": [],
+                "items": {
+                  "maximum": 6,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "title": "Weekdays",
+                "type": "array"
+              },
+              "monthdays": {
+                "default": [],
+                "items": {
+                  "maximum": 31,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "title": "Monthdays",
+                "type": "array"
+              },
+              "hour_parity": {
+                "default": "any",
+                "enum": [
+                  "any",
+                  "odd",
+                  "even"
+                ],
+                "title": "Hour Parity",
+                "type": "string"
+              },
+              "iso_week_parity": {
+                "default": "any",
+                "enum": [
+                  "any",
+                  "odd",
+                  "even"
+                ],
+                "title": "Iso Week Parity",
+                "type": "string"
+              },
+              "month_parity": {
+                "default": "any",
+                "enum": [
+                  "any",
+                  "odd",
+                  "even"
+                ],
+                "title": "Month Parity",
+                "type": "string"
+              },
+              "window": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Window"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "valid_from": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid From"
+              },
+              "valid_until": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid Until"
+              },
+              "exclude_dates": {
+                "default": [],
+                "items": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "title": "Exclude Dates",
+                "type": "array"
+              },
+              "exclude_instants": {
+                "default": [],
+                "items": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "title": "Exclude Instants",
+                "type": "array"
+              }
+            },
+            "title": "Filters",
+            "type": "object"
+          },
+          "Interval": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "interval",
+                "title": "Kind",
+                "type": "string"
+              },
+              "every": {
+                "exclusiveMinimum": 0,
+                "title": "Every",
+                "type": "integer"
+              },
+              "unit": {
+                "enum": [
+                  "hours",
+                  "days",
+                  "weeks",
+                  "months"
+                ],
+                "title": "Unit",
+                "type": "string"
+              },
+              "basis": {
+                "enum": [
+                  "elapsed",
+                  "calendar"
+                ],
+                "title": "Basis",
+                "type": "string"
+              },
+              "anchor": {
+                "format": "date-time",
+                "title": "Anchor",
+                "type": "string"
+              },
+              "policy": {
+                "$ref": "#/$defs/CalendarPolicy"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "every",
+              "unit",
+              "basis",
+              "anchor",
+              "policy"
+            ],
+            "title": "Interval",
+            "type": "object"
+          },
+          "Not": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "not",
+                "title": "Kind",
+                "type": "string"
+              },
+              "child": {
+                "discriminator": {
+                  "mapping": {
+                    "and": "#/$defs/All",
+                    "calendar": "#/$defs/CalendarCondition",
+                    "constant": "#/$defs/Constant",
+                    "not": "#/$defs/Not",
+                    "or": "#/$defs/All",
+                    "solar": "#/$defs/SolarCondition",
+                    "state": "#/$defs/StateCondition"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Constant"
+                  },
+                  {
+                    "$ref": "#/$defs/StateCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/CalendarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/SolarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/All"
+                  },
+                  {
+                    "$ref": "#/$defs/Not"
+                  }
+                ],
+                "title": "Child"
+              }
+            },
+            "required": [
+              "kind",
+              "child"
+            ],
+            "title": "Not",
+            "type": "object"
+          },
+          "Once": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "once",
+                "title": "Kind",
+                "type": "string"
+              },
+              "at": {
+                "format": "date-time",
+                "title": "At",
+                "type": "string"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "at"
+            ],
+            "title": "Once",
+            "type": "object"
+          },
+          "Scenario": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Name",
+                "type": "string"
+              },
+              "description": {
+                "default": "",
+                "maxLength": 4000,
+                "title": "Description",
+                "type": "string"
+              },
+              "triggers": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "event": "#/$defs/EventTrigger",
+                      "time": "#/$defs/TimeTrigger"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/TimeTrigger"
+                    },
+                    {
+                      "$ref": "#/$defs/EventTrigger"
+                    }
+                  ]
+                },
+                "maxItems": 64,
+                "minItems": 1,
+                "title": "Triggers",
+                "type": "array"
+              },
+              "condition": {
+                "discriminator": {
+                  "mapping": {
+                    "and": "#/$defs/All",
+                    "calendar": "#/$defs/CalendarCondition",
+                    "constant": "#/$defs/Constant",
+                    "not": "#/$defs/Not",
+                    "or": "#/$defs/All",
+                    "solar": "#/$defs/SolarCondition",
+                    "state": "#/$defs/StateCondition"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Constant"
+                  },
+                  {
+                    "$ref": "#/$defs/StateCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/CalendarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/SolarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/All"
+                  },
+                  {
+                    "$ref": "#/$defs/Not"
+                  }
+                ],
+                "title": "Condition"
+              },
+              "exceptions": {
+                "discriminator": {
+                  "mapping": {
+                    "and": "#/$defs/All",
+                    "calendar": "#/$defs/CalendarCondition",
+                    "constant": "#/$defs/Constant",
+                    "not": "#/$defs/Not",
+                    "or": "#/$defs/All",
+                    "solar": "#/$defs/SolarCondition",
+                    "state": "#/$defs/StateCondition"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Constant"
+                  },
+                  {
+                    "$ref": "#/$defs/StateCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/CalendarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/SolarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/All"
+                  },
+                  {
+                    "$ref": "#/$defs/Not"
+                  }
+                ],
+                "title": "Exceptions"
+              },
+              "actions": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "delay": "#/$defs/DelayAction",
+                      "set": "#/$defs/SetAction",
+                      "temporary": "#/$defs/TemporaryAction"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/SetAction"
+                    },
+                    {
+                      "$ref": "#/$defs/DelayAction"
+                    },
+                    {
+                      "$ref": "#/$defs/TemporaryAction"
+                    }
+                  ]
+                },
+                "maxItems": 256,
+                "minItems": 1,
+                "title": "Actions",
+                "type": "array"
+              },
+              "retrigger": {
+                "enum": [
+                  "ignore",
+                  "queue",
+                  "parallel",
+                  "extend"
+                ],
+                "title": "Retrigger",
+                "type": "string"
+              },
+              "cooldown_seconds": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Cooldown Seconds",
+                "type": "number"
+              },
+              "queue_limit": {
+                "default": 32,
+                "maximum": 256,
+                "minimum": 1,
+                "title": "Queue Limit",
+                "type": "integer"
+              },
+              "misfire": {
+                "enum": [
+                  "skip",
+                  "latest_within_grace"
+                ],
+                "title": "Misfire",
+                "type": "string"
+              },
+              "misfire_grace_seconds": {
+                "default": 0,
+                "maximum": 3600,
+                "minimum": 0,
+                "title": "Misfire Grace Seconds",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "triggers",
+              "condition",
+              "actions",
+              "retrigger",
+              "misfire"
+            ],
+            "title": "Scenario",
+            "type": "object"
+          },
+          "SetAction": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "set",
+                "title": "Kind",
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "title": "Targets",
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "targets"
+            ],
+            "title": "SetAction",
+            "type": "object"
+          },
+          "Solar": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "solar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "reading_ref": {
+                "title": "Reading Ref",
+                "type": "string"
+              },
+              "event": {
+                "enum": [
+                  "dawn",
+                  "sunrise",
+                  "sunset",
+                  "dusk"
+                ],
+                "title": "Event",
+                "type": "string"
+              },
+              "offset_seconds": {
+                "default": 0,
+                "title": "Offset Seconds",
+                "type": "integer"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "binding_id",
+              "reading_ref",
+              "event"
+            ],
+            "title": "Solar",
+            "type": "object"
+          },
+          "SolarCondition": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "solar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "reading_ref": {
+                "title": "Reading Ref",
+                "type": "string"
+              },
+              "event": {
+                "enum": [
+                  "dawn",
+                  "sunrise",
+                  "sunset",
+                  "dusk"
+                ],
+                "title": "Event",
+                "type": "string"
+              },
+              "relation": {
+                "enum": [
+                  "before",
+                  "after"
+                ],
+                "title": "Relation",
+                "type": "string"
+              },
+              "offset_seconds": {
+                "default": 0,
+                "title": "Offset Seconds",
+                "type": "integer"
+              },
+              "boundary": {
+                "const": "local_midnight",
+                "title": "Boundary",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "binding_id",
+              "reading_ref",
+              "event",
+              "relation",
+              "boundary"
+            ],
+            "title": "SolarCondition",
+            "type": "object"
+          },
+          "StateCondition": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "state",
+                "title": "Kind",
+                "type": "string"
+              },
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "reading_ref": {
+                "title": "Reading Ref",
+                "type": "string"
+              },
+              "operator": {
+                "enum": [
+                  "eq",
+                  "ne",
+                  "gt",
+                  "ge",
+                  "lt",
+                  "le",
+                  "between",
+                  "changed",
+                  "crossed_above",
+                  "crossed_below",
+                  "unavailable",
+                  "available"
+                ],
+                "title": "Operator",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Value"
+              },
+              "upper": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Upper"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Unit"
+              },
+              "freshness_seconds": {
+                "exclusiveMinimum": 0,
+                "title": "Freshness Seconds",
+                "type": "number"
+              },
+              "hysteresis": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Hysteresis",
+                "type": "number"
+              },
+              "debounce_seconds": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Debounce Seconds",
+                "type": "number"
+              },
+              "for_seconds": {
+                "default": 0,
+                "minimum": 0,
+                "title": "For Seconds",
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "binding_id",
+              "reading_ref",
+              "operator",
+              "freshness_seconds"
+            ],
+            "title": "StateCondition",
+            "type": "object"
+          },
+          "Target": {
+            "additionalProperties": false,
+            "properties": {
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "capability_ref": {
+                "title": "Capability Ref",
+                "type": "string"
+              },
+              "parameters": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Parameters",
+                "type": "object"
+              },
+              "verification_reading_ref": {
+                "title": "Verification Reading Ref",
+                "type": "string"
+              },
+              "expected_value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "title": "Expected Value"
+              }
+            },
+            "required": [
+              "binding_id",
+              "capability_ref",
+              "verification_reading_ref",
+              "expected_value"
+            ],
+            "title": "Target",
+            "type": "object"
+          },
+          "TemporaryAction": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "temporary",
+                "title": "Kind",
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "title": "Targets",
+                "type": "array"
+              },
+              "seconds": {
+                "exclusiveMinimum": 0,
+                "title": "Seconds",
+                "type": "number"
+              },
+              "restore_targets": {
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "title": "Restore Targets",
+                "type": "array"
+              },
+              "conflict_policy": {
+                "const": "require_proven_ownership",
+                "default": "require_proven_ownership",
+                "title": "Conflict Policy",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "targets",
+              "seconds",
+              "restore_targets"
+            ],
+            "title": "TemporaryAction",
+            "type": "object"
+          },
+          "TimeTrigger": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "time",
+                "title": "Kind",
+                "type": "string"
+              },
+              "schedule": {
+                "discriminator": {
+                  "mapping": {
+                    "calendar": "#/$defs/Calendar",
+                    "interval": "#/$defs/Interval",
+                    "once": "#/$defs/Once",
+                    "solar": "#/$defs/Solar"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Once"
+                  },
+                  {
+                    "$ref": "#/$defs/Interval"
+                  },
+                  {
+                    "$ref": "#/$defs/Calendar"
+                  },
+                  {
+                    "$ref": "#/$defs/Solar"
+                  }
+                ],
+                "title": "Schedule"
+              }
+            },
+            "required": [
+              "kind",
+              "schedule"
+            ],
+            "title": "TimeTrigger",
+            "type": "object"
+          },
+          "Window": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "format": "time",
+                "title": "Start",
+                "type": "string"
+              },
+              "end": {
+                "format": "time",
+                "title": "End",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "Window",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "scenario": {
+            "$ref": "#/$defs/Scenario"
+          },
+          "from_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Time"
+          },
+          "count": {
+            "default": 10,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scenario"
+        ],
+        "title": "Preview",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_prepare",
+      "description": "Připraví konkrétní návrh create/update/rename/enable/pause/delete/run s expected_revision, shrnutím a termíny. Vyžaduje scopes podle operace. Create je vždy paused. Vrať review_url uživateli; modelový souhlas návrh nepotvrzuje.",
+      "inputSchema": {
+        "$defs": {
+          "All": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "and",
+                  "or"
+                ],
+                "title": "Kind",
+                "type": "string"
+              },
+              "children": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "and": "#/$defs/All",
+                      "calendar": "#/$defs/CalendarCondition",
+                      "constant": "#/$defs/Constant",
+                      "not": "#/$defs/Not",
+                      "or": "#/$defs/All",
+                      "solar": "#/$defs/SolarCondition",
+                      "state": "#/$defs/StateCondition"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/Constant"
+                    },
+                    {
+                      "$ref": "#/$defs/StateCondition"
+                    },
+                    {
+                      "$ref": "#/$defs/CalendarCondition"
+                    },
+                    {
+                      "$ref": "#/$defs/SolarCondition"
+                    },
+                    {
+                      "$ref": "#/$defs/All"
+                    },
+                    {
+                      "$ref": "#/$defs/Not"
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "title": "Children",
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "children"
+            ],
+            "title": "All",
+            "type": "object"
+          },
+          "Calendar": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "calendar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "times": {
+                "items": {
+                  "format": "time",
+                  "type": "string"
+                },
+                "maxItems": 24,
+                "minItems": 1,
+                "title": "Times",
+                "type": "array"
+              },
+              "policy": {
+                "$ref": "#/$defs/CalendarPolicy"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "times",
+              "policy"
+            ],
+            "title": "Calendar",
+            "type": "object"
+          },
+          "CalendarCondition": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "calendar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "filters"
+            ],
+            "title": "CalendarCondition",
+            "type": "object"
+          },
+          "CalendarPolicy": {
+            "additionalProperties": false,
+            "properties": {
+              "timezone": {
+                "const": "Europe/Prague",
+                "default": "Europe/Prague",
+                "title": "Timezone",
+                "type": "string"
+              },
+              "missing_hour": {
+                "const": "skip",
+                "title": "Missing Hour",
+                "type": "string"
+              },
+              "repeated_hour": {
+                "enum": [
+                  "first",
+                  "second"
+                ],
+                "title": "Repeated Hour",
+                "type": "string"
+              },
+              "missing_monthday": {
+                "enum": [
+                  "skip",
+                  "last"
+                ],
+                "title": "Missing Monthday",
+                "type": "string"
+              }
+            },
+            "required": [
+              "missing_hour",
+              "repeated_hour",
+              "missing_monthday"
+            ],
+            "title": "CalendarPolicy",
+            "type": "object"
+          },
+          "Constant": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "constant",
+                "title": "Kind",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "title": "Constant",
+            "type": "object"
+          },
+          "DelayAction": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "delay",
+                "title": "Kind",
+                "type": "string"
+              },
+              "seconds": {
+                "exclusiveMinimum": 0,
+                "title": "Seconds",
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "seconds"
+            ],
+            "title": "DelayAction",
+            "type": "object"
+          },
+          "EventTrigger": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "event",
+                "title": "Kind",
+                "type": "string"
+              },
+              "predicate": {
+                "$ref": "#/$defs/StateCondition"
+              }
+            },
+            "required": [
+              "kind",
+              "predicate"
+            ],
+            "title": "EventTrigger",
+            "type": "object"
+          },
+          "Filters": {
+            "additionalProperties": false,
+            "properties": {
+              "weekdays": {
+                "default": [],
+                "items": {
+                  "maximum": 6,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "title": "Weekdays",
+                "type": "array"
+              },
+              "monthdays": {
+                "default": [],
+                "items": {
+                  "maximum": 31,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "title": "Monthdays",
+                "type": "array"
+              },
+              "hour_parity": {
+                "default": "any",
+                "enum": [
+                  "any",
+                  "odd",
+                  "even"
+                ],
+                "title": "Hour Parity",
+                "type": "string"
+              },
+              "iso_week_parity": {
+                "default": "any",
+                "enum": [
+                  "any",
+                  "odd",
+                  "even"
+                ],
+                "title": "Iso Week Parity",
+                "type": "string"
+              },
+              "month_parity": {
+                "default": "any",
+                "enum": [
+                  "any",
+                  "odd",
+                  "even"
+                ],
+                "title": "Month Parity",
+                "type": "string"
+              },
+              "window": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Window"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "valid_from": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid From"
+              },
+              "valid_until": {
+                "anyOf": [
+                  {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Valid Until"
+              },
+              "exclude_dates": {
+                "default": [],
+                "items": {
+                  "format": "date",
+                  "type": "string"
+                },
+                "title": "Exclude Dates",
+                "type": "array"
+              },
+              "exclude_instants": {
+                "default": [],
+                "items": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "title": "Exclude Instants",
+                "type": "array"
+              }
+            },
+            "title": "Filters",
+            "type": "object"
+          },
+          "Interval": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "interval",
+                "title": "Kind",
+                "type": "string"
+              },
+              "every": {
+                "exclusiveMinimum": 0,
+                "title": "Every",
+                "type": "integer"
+              },
+              "unit": {
+                "enum": [
+                  "hours",
+                  "days",
+                  "weeks",
+                  "months"
+                ],
+                "title": "Unit",
+                "type": "string"
+              },
+              "basis": {
+                "enum": [
+                  "elapsed",
+                  "calendar"
+                ],
+                "title": "Basis",
+                "type": "string"
+              },
+              "anchor": {
+                "format": "date-time",
+                "title": "Anchor",
+                "type": "string"
+              },
+              "policy": {
+                "$ref": "#/$defs/CalendarPolicy"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "every",
+              "unit",
+              "basis",
+              "anchor",
+              "policy"
+            ],
+            "title": "Interval",
+            "type": "object"
+          },
+          "Not": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "not",
+                "title": "Kind",
+                "type": "string"
+              },
+              "child": {
+                "discriminator": {
+                  "mapping": {
+                    "and": "#/$defs/All",
+                    "calendar": "#/$defs/CalendarCondition",
+                    "constant": "#/$defs/Constant",
+                    "not": "#/$defs/Not",
+                    "or": "#/$defs/All",
+                    "solar": "#/$defs/SolarCondition",
+                    "state": "#/$defs/StateCondition"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Constant"
+                  },
+                  {
+                    "$ref": "#/$defs/StateCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/CalendarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/SolarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/All"
+                  },
+                  {
+                    "$ref": "#/$defs/Not"
+                  }
+                ],
+                "title": "Child"
+              }
+            },
+            "required": [
+              "kind",
+              "child"
+            ],
+            "title": "Not",
+            "type": "object"
+          },
+          "Once": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "once",
+                "title": "Kind",
+                "type": "string"
+              },
+              "at": {
+                "format": "date-time",
+                "title": "At",
+                "type": "string"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "at"
+            ],
+            "title": "Once",
+            "type": "object"
+          },
+          "Patch": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "anyOf": [
+                  {
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Name"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "maxLength": 4000,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Description"
+              },
+              "triggers": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "discriminator": {
+                        "mapping": {
+                          "event": "#/$defs/EventTrigger",
+                          "time": "#/$defs/TimeTrigger"
+                        },
+                        "propertyName": "kind"
+                      },
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/TimeTrigger"
+                        },
+                        {
+                          "$ref": "#/$defs/EventTrigger"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Triggers"
+              },
+              "condition": {
+                "anyOf": [
+                  {
+                    "discriminator": {
+                      "mapping": {
+                        "and": "#/$defs/All",
+                        "calendar": "#/$defs/CalendarCondition",
+                        "constant": "#/$defs/Constant",
+                        "not": "#/$defs/Not",
+                        "or": "#/$defs/All",
+                        "solar": "#/$defs/SolarCondition",
+                        "state": "#/$defs/StateCondition"
+                      },
+                      "propertyName": "kind"
+                    },
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/Constant"
+                      },
+                      {
+                        "$ref": "#/$defs/StateCondition"
+                      },
+                      {
+                        "$ref": "#/$defs/CalendarCondition"
+                      },
+                      {
+                        "$ref": "#/$defs/SolarCondition"
+                      },
+                      {
+                        "$ref": "#/$defs/All"
+                      },
+                      {
+                        "$ref": "#/$defs/Not"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Condition"
+              },
+              "exceptions": {
+                "anyOf": [
+                  {
+                    "discriminator": {
+                      "mapping": {
+                        "and": "#/$defs/All",
+                        "calendar": "#/$defs/CalendarCondition",
+                        "constant": "#/$defs/Constant",
+                        "not": "#/$defs/Not",
+                        "or": "#/$defs/All",
+                        "solar": "#/$defs/SolarCondition",
+                        "state": "#/$defs/StateCondition"
+                      },
+                      "propertyName": "kind"
+                    },
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/Constant"
+                      },
+                      {
+                        "$ref": "#/$defs/StateCondition"
+                      },
+                      {
+                        "$ref": "#/$defs/CalendarCondition"
+                      },
+                      {
+                        "$ref": "#/$defs/SolarCondition"
+                      },
+                      {
+                        "$ref": "#/$defs/All"
+                      },
+                      {
+                        "$ref": "#/$defs/Not"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Exceptions"
+              },
+              "actions": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "discriminator": {
+                        "mapping": {
+                          "delay": "#/$defs/DelayAction",
+                          "set": "#/$defs/SetAction",
+                          "temporary": "#/$defs/TemporaryAction"
+                        },
+                        "propertyName": "kind"
+                      },
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/SetAction"
+                        },
+                        {
+                          "$ref": "#/$defs/DelayAction"
+                        },
+                        {
+                          "$ref": "#/$defs/TemporaryAction"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Actions"
+              },
+              "retrigger": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "ignore",
+                      "queue",
+                      "parallel",
+                      "extend"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Retrigger"
+              },
+              "cooldown_seconds": {
+                "anyOf": [
+                  {
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Cooldown Seconds"
+              },
+              "queue_limit": {
+                "anyOf": [
+                  {
+                    "maximum": 256,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Queue Limit"
+              },
+              "misfire": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "skip",
+                      "latest_within_grace"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Misfire"
+              },
+              "misfire_grace_seconds": {
+                "anyOf": [
+                  {
+                    "maximum": 3600,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Misfire Grace Seconds"
+              }
+            },
+            "title": "Patch",
+            "type": "object"
+          },
+          "Scenario": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "maxLength": 200,
+                "minLength": 1,
+                "title": "Name",
+                "type": "string"
+              },
+              "description": {
+                "default": "",
+                "maxLength": 4000,
+                "title": "Description",
+                "type": "string"
+              },
+              "triggers": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "event": "#/$defs/EventTrigger",
+                      "time": "#/$defs/TimeTrigger"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/TimeTrigger"
+                    },
+                    {
+                      "$ref": "#/$defs/EventTrigger"
+                    }
+                  ]
+                },
+                "maxItems": 64,
+                "minItems": 1,
+                "title": "Triggers",
+                "type": "array"
+              },
+              "condition": {
+                "discriminator": {
+                  "mapping": {
+                    "and": "#/$defs/All",
+                    "calendar": "#/$defs/CalendarCondition",
+                    "constant": "#/$defs/Constant",
+                    "not": "#/$defs/Not",
+                    "or": "#/$defs/All",
+                    "solar": "#/$defs/SolarCondition",
+                    "state": "#/$defs/StateCondition"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Constant"
+                  },
+                  {
+                    "$ref": "#/$defs/StateCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/CalendarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/SolarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/All"
+                  },
+                  {
+                    "$ref": "#/$defs/Not"
+                  }
+                ],
+                "title": "Condition"
+              },
+              "exceptions": {
+                "discriminator": {
+                  "mapping": {
+                    "and": "#/$defs/All",
+                    "calendar": "#/$defs/CalendarCondition",
+                    "constant": "#/$defs/Constant",
+                    "not": "#/$defs/Not",
+                    "or": "#/$defs/All",
+                    "solar": "#/$defs/SolarCondition",
+                    "state": "#/$defs/StateCondition"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Constant"
+                  },
+                  {
+                    "$ref": "#/$defs/StateCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/CalendarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/SolarCondition"
+                  },
+                  {
+                    "$ref": "#/$defs/All"
+                  },
+                  {
+                    "$ref": "#/$defs/Not"
+                  }
+                ],
+                "title": "Exceptions"
+              },
+              "actions": {
+                "items": {
+                  "discriminator": {
+                    "mapping": {
+                      "delay": "#/$defs/DelayAction",
+                      "set": "#/$defs/SetAction",
+                      "temporary": "#/$defs/TemporaryAction"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/SetAction"
+                    },
+                    {
+                      "$ref": "#/$defs/DelayAction"
+                    },
+                    {
+                      "$ref": "#/$defs/TemporaryAction"
+                    }
+                  ]
+                },
+                "maxItems": 256,
+                "minItems": 1,
+                "title": "Actions",
+                "type": "array"
+              },
+              "retrigger": {
+                "enum": [
+                  "ignore",
+                  "queue",
+                  "parallel",
+                  "extend"
+                ],
+                "title": "Retrigger",
+                "type": "string"
+              },
+              "cooldown_seconds": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Cooldown Seconds",
+                "type": "number"
+              },
+              "queue_limit": {
+                "default": 32,
+                "maximum": 256,
+                "minimum": 1,
+                "title": "Queue Limit",
+                "type": "integer"
+              },
+              "misfire": {
+                "enum": [
+                  "skip",
+                  "latest_within_grace"
+                ],
+                "title": "Misfire",
+                "type": "string"
+              },
+              "misfire_grace_seconds": {
+                "default": 0,
+                "maximum": 3600,
+                "minimum": 0,
+                "title": "Misfire Grace Seconds",
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "triggers",
+              "condition",
+              "actions",
+              "retrigger",
+              "misfire"
+            ],
+            "title": "Scenario",
+            "type": "object"
+          },
+          "SetAction": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "set",
+                "title": "Kind",
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "title": "Targets",
+                "type": "array"
+              }
+            },
+            "required": [
+              "kind",
+              "targets"
+            ],
+            "title": "SetAction",
+            "type": "object"
+          },
+          "Solar": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "solar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "reading_ref": {
+                "title": "Reading Ref",
+                "type": "string"
+              },
+              "event": {
+                "enum": [
+                  "dawn",
+                  "sunrise",
+                  "sunset",
+                  "dusk"
+                ],
+                "title": "Event",
+                "type": "string"
+              },
+              "offset_seconds": {
+                "default": 0,
+                "title": "Offset Seconds",
+                "type": "integer"
+              },
+              "filters": {
+                "$ref": "#/$defs/Filters"
+              }
+            },
+            "required": [
+              "kind",
+              "binding_id",
+              "reading_ref",
+              "event"
+            ],
+            "title": "Solar",
+            "type": "object"
+          },
+          "SolarCondition": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "solar",
+                "title": "Kind",
+                "type": "string"
+              },
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "reading_ref": {
+                "title": "Reading Ref",
+                "type": "string"
+              },
+              "event": {
+                "enum": [
+                  "dawn",
+                  "sunrise",
+                  "sunset",
+                  "dusk"
+                ],
+                "title": "Event",
+                "type": "string"
+              },
+              "relation": {
+                "enum": [
+                  "before",
+                  "after"
+                ],
+                "title": "Relation",
+                "type": "string"
+              },
+              "offset_seconds": {
+                "default": 0,
+                "title": "Offset Seconds",
+                "type": "integer"
+              },
+              "boundary": {
+                "const": "local_midnight",
+                "title": "Boundary",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "binding_id",
+              "reading_ref",
+              "event",
+              "relation",
+              "boundary"
+            ],
+            "title": "SolarCondition",
+            "type": "object"
+          },
+          "StateCondition": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "state",
+                "title": "Kind",
+                "type": "string"
+              },
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "reading_ref": {
+                "title": "Reading Ref",
+                "type": "string"
+              },
+              "operator": {
+                "enum": [
+                  "eq",
+                  "ne",
+                  "gt",
+                  "ge",
+                  "lt",
+                  "le",
+                  "between",
+                  "changed",
+                  "crossed_above",
+                  "crossed_below",
+                  "unavailable",
+                  "available"
+                ],
+                "title": "Operator",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Value"
+              },
+              "upper": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Upper"
+              },
+              "unit": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Unit"
+              },
+              "freshness_seconds": {
+                "exclusiveMinimum": 0,
+                "title": "Freshness Seconds",
+                "type": "number"
+              },
+              "hysteresis": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Hysteresis",
+                "type": "number"
+              },
+              "debounce_seconds": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Debounce Seconds",
+                "type": "number"
+              },
+              "for_seconds": {
+                "default": 0,
+                "minimum": 0,
+                "title": "For Seconds",
+                "type": "number"
+              }
+            },
+            "required": [
+              "kind",
+              "binding_id",
+              "reading_ref",
+              "operator",
+              "freshness_seconds"
+            ],
+            "title": "StateCondition",
+            "type": "object"
+          },
+          "Target": {
+            "additionalProperties": false,
+            "properties": {
+              "binding_id": {
+                "title": "Binding Id",
+                "type": "string"
+              },
+              "capability_ref": {
+                "title": "Capability Ref",
+                "type": "string"
+              },
+              "parameters": {
+                "additionalProperties": true,
+                "default": {},
+                "title": "Parameters",
+                "type": "object"
+              },
+              "verification_reading_ref": {
+                "title": "Verification Reading Ref",
+                "type": "string"
+              },
+              "expected_value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "title": "Expected Value"
+              }
+            },
+            "required": [
+              "binding_id",
+              "capability_ref",
+              "verification_reading_ref",
+              "expected_value"
+            ],
+            "title": "Target",
+            "type": "object"
+          },
+          "TemporaryAction": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "temporary",
+                "title": "Kind",
+                "type": "string"
+              },
+              "targets": {
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "title": "Targets",
+                "type": "array"
+              },
+              "seconds": {
+                "exclusiveMinimum": 0,
+                "title": "Seconds",
+                "type": "number"
+              },
+              "restore_targets": {
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "title": "Restore Targets",
+                "type": "array"
+              },
+              "conflict_policy": {
+                "const": "require_proven_ownership",
+                "default": "require_proven_ownership",
+                "title": "Conflict Policy",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "targets",
+              "seconds",
+              "restore_targets"
+            ],
+            "title": "TemporaryAction",
+            "type": "object"
+          },
+          "TimeTrigger": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "time",
+                "title": "Kind",
+                "type": "string"
+              },
+              "schedule": {
+                "discriminator": {
+                  "mapping": {
+                    "calendar": "#/$defs/Calendar",
+                    "interval": "#/$defs/Interval",
+                    "once": "#/$defs/Once",
+                    "solar": "#/$defs/Solar"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/Once"
+                  },
+                  {
+                    "$ref": "#/$defs/Interval"
+                  },
+                  {
+                    "$ref": "#/$defs/Calendar"
+                  },
+                  {
+                    "$ref": "#/$defs/Solar"
+                  }
+                ],
+                "title": "Schedule"
+              }
+            },
+            "required": [
+              "kind",
+              "schedule"
+            ],
+            "title": "TimeTrigger",
+            "type": "object"
+          },
+          "Window": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "format": "time",
+                "title": "Start",
+                "type": "string"
+              },
+              "end": {
+                "format": "time",
+                "title": "End",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "Window",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "enum": [
+              "create",
+              "update",
+              "rename",
+              "enable",
+              "pause",
+              "delete",
+              "run"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scenario Id"
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Revision"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Scenario"
+              },
+              {
+                "$ref": "#/$defs/Patch"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Change"
+          }
+        },
+        "required": [
+          "operation"
+        ],
+        "title": "Prepare",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:write"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_commit",
+      "description": "Idempotentně aplikuje serverem vydaný návrh po skutečném potvrzení v přihlášeném browseru nebo odděleném důvěryhodném hlasovém hostu. Run/enable navíc vyžadují smartplan:execute. Bez potvrzení nic neprovede.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "proposal_id": {
+            "title": "Proposal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id"
+        ],
+        "title": "Commit",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:write"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_next",
+      "description": "Ukáže konkrétní budoucí časové výskyty scénáře v Europe/Prague a UTC, jejich původ a efekt aktivace/pause/delete. Eventové triggery nemají předvídatelný termín.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": {
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "from_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "From Time"
+          },
+          "count": {
+            "default": 10,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scenario_id"
+        ],
+        "title": "Next",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_runs",
+      "description": "Seznam běhů a výsledků jen ověřeného vlastníka; rozlišuje běžící, durable čekání, nejistotu a dokončení.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scenario Id"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "running",
+                  "waiting",
+                  "uncertain",
+                  "finished"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "offset": {
+            "default": 0,
+            "minimum": 0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "Runs",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_run_detail",
+      "description": "Úplný běh s původní revizí, durable časovači, každou akcí a původním execution ID, oddělenými časy a výsledky jednotlivých cílů. Stav přijatý ze služby není fyzické měření.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "title": "RunId",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "smartplan_audit",
+      "description": "Stránkovaný audit vlastníka, scénáře nebo běhu včetně chyb, přeskočených termínů, potvrzení a přiznaných mezer událostí. Časy nepřepočítává ani nedoplňuje.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Scenario Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run Id"
+          },
+          "after_id": {
+            "default": 0,
+            "minimum": 0,
+            "title": "After Id",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "Audit",
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "securitySchemes": [
+          {
+            "type": "oauth2",
+            "scopes": [
+              "smartplan:read"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

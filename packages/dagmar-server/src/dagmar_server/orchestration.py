@@ -173,6 +173,8 @@ class VoiceBridge:
         self.configured_tools_digest = None
         from .mail import MailHost
         self.mail = MailHost(self)
+        from .smartplan import SmartPlanHost
+        self.smartplan = SmartPlanHost(self)
         self.continuations_queued = set()
 
     def operation_failure(self, exc, phase):
@@ -309,7 +311,7 @@ class VoiceBridge:
         )
         value = {
             "type": "realtime",
-            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL] + self.mail.tools(),
+            "tools": ([SMART_TOOL] if enabled else []) + [MEMORY_TOOL] + self.mail.tools() + self.smartplan.tools(),
             "tool_choice": "auto",
             "truncation": "disabled",
             "max_output_tokens": 4096,
@@ -338,6 +340,10 @@ class VoiceBridge:
             value["instructions"] += "\nMail is unavailable: never invent current mail facts."
         if self.mail.blocking:
             value["audio"]["input"]["turn_detection"]["create_response"] = False
+        from .smartplan import INSTRUCTIONS as SMARTPLAN_INSTRUCTIONS
+        value['instructions'] += '\n' + (SMARTPLAN_INSTRUCTIONS if self.smartplan.status == 'ready' else 'SmartPlan is unavailable. Do not promise or emulate future scheduling; immediate technologies and ordinary conversation remain independent.')
+        if self.smartplan.blocking:
+            value['audio']['input']['turn_detection']['create_response'] = False
         if get_settings().voice_input_noise_reduction:
             value["audio"]["input"]["noise_reduction"]={"type":get_settings().voice_input_noise_reduction}
         digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -379,7 +385,7 @@ class VoiceBridge:
 
     async def update_transcription(self):
         automatic = bool(self.memory_buffer and self.memory_buffer.enabled and not self.memory_privacy_paused)
-        confirming = bool(self.registry.plan and self.registry.plan.requires_confirmation and self.registry.valid()) or self.mail.blocking
+        confirming = bool(self.registry.plan and self.registry.plan.requires_confirmation and self.registry.valid()) or self.mail.blocking or self.smartplan.blocking
         transcription = {"model": "gpt-4o-mini-transcribe"} if self.memory_principal or automatic or confirming or self.mail.status == "ready" else None
         if transcription is not None:
             language = self.config.manual_language if self.config.language_mode == "manual" else self.registry.language if confirming else None
@@ -671,12 +677,15 @@ class VoiceBridge:
             except Exception:
                 self.mail.status = "incompatible"
                 await self.enqueue({"mail": "configure"})
-            registry_dialog = self.registry.state in {"reading", "awaiting_confirmation"}
+            registry_dialog = self.registry.state in {"reading", "awaiting_confirmation"} or self.smartplan.blocking
             registry_event = self.registry.plan and typ in {"response.created", "response.done", "input_audio_buffer.speech_started", "output_audio_buffer.stopped", "output_audio_buffer.cleared", "conversation.item.input_audio_transcription.completed", "conversation.item.input_audio_transcription.failed"}
             registry_action = self.registry.event(event) if registry_event and authorized(self.owner) else None
             if registry_action:
                 await self.queue_registry_action(registry_action)
             self.human_turns.event(event)
+            smartplan_action = self.smartplan.observe(event)
+            if smartplan_action:
+                await self.enqueue({'smartplan': smartplan_action})
             self.task_context.event(event, generation=self.turns.responses.get(event.get('response', {}).get('id') or event.get('response_id'), self.turns.generation))
             if self.logical_call_id and typ in {"input_audio_buffer.speech_started", "output_audio_buffer.started", "output_audio_buffer.stopped", "output_audio_buffer.cleared", "response.created", "response.done"}:
                 with SessionLocal() as db:
@@ -743,7 +752,7 @@ class VoiceBridge:
                 await self.queue_spoken_result(response)
                 current_input_tokens = (response.get("usage") or {}).get("input_tokens")
                 self.input_tokens = current_input_tokens if isinstance(current_input_tokens, int) else 0
-                if self.input_tokens > get_settings().voice_context_prune_tokens:
+                if self.input_tokens > get_settings().voice_context_prune_tokens + self.smartplan.schema_tokens:
                     self.pressure = True
                 else:
                     self.pruned = False
@@ -795,6 +804,11 @@ class VoiceBridge:
         raise SmartError("sideband_disconnected")
 
     async def result(self, call: dict):
+        from .smartplan import TOOLS as SMARTPLAN_TOOLS
+        if call.get('name') in SMARTPLAN_TOOLS:
+            # SmartPlan owns commit replay by durable proposal ID, independently of provider function IDs.
+            await self.smartplan.result(call)
+            return
         context = self.task_context
         key = context.key(call)
         previous = context.operations.get(key)
@@ -883,6 +897,8 @@ class VoiceBridge:
                 raise SmartError("technologies_unavailable")
             args = SmartArguments.model_validate_json(call["arguments"])
             payload = args.model_dump(exclude_none=True)
+            if args.operation == 'smartplan_handoff':
+                self.smartplan.check_handoff(args)
             if args.filters and args.filters.room_ref and not getattr(self.mcp, "room_ref_supported", False):
                 raise SmartError("exact_room_ref_not_supported")
             if args.operation in {"rooms_list", "registry_apply"}:
@@ -917,6 +933,7 @@ class VoiceBridge:
             )
             public, images = decode_result(result)
             validate_public(public)
+            self.smartplan.described_targets(args, public)
             if args.operation == "rooms_list" and "rooms" in public:
                 public["has_more"] = (args.offset or 0) + len(public["rooms"]) < public["total"]
             if args.operation == "registry_prepare" and not public.get("plan"):
@@ -1131,9 +1148,12 @@ class VoiceBridge:
 
     async def continue_generation(self, generation):
         if self.turns.current(generation) and not self.turns.active and not self.closed:
-            tools = ([SMART_TOOL] if self.catalog_ready else []) + [MEMORY_TOOL] + self.mail.tools()
-            await self.send({"type": "response.create", "response": {"tools": tools, "tool_choice": "auto",
-                "output_modalities":["text"] if self.mail.status == "ready" else ["audio"]},
+            tools = ([SMART_TOOL] if self.catalog_ready else []) + [MEMORY_TOOL] + self.mail.tools() + self.smartplan.tools()
+            response = {"tool_choice": "auto", "output_modalities": ["text"] if self.mail.status == "ready" else ["audio"]}
+            if self.smartplan.status != 'ready':
+                response['tools'] = tools
+            # A ready SmartPlan inherits the acknowledged session tools, avoiding repeated large schemas.
+            await self.send({"type": "response.create", "response": response,
                              "_turn_generation":generation}, lambda e: e.get("type") == "response.created")
 
     async def queue_continuations(self):
@@ -1203,12 +1223,22 @@ class VoiceBridge:
                 if not self.renew and self.turns.claim_response(calls["continuation"], generation):
                     if self.task_context.mail.calls and not self.task_context.mail.account(generation, continuations=1):
                         await self.item({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "Mail work reached its turn safety limit. The result is incomplete. Tell the person truthfully; do not call more mail tools in this turn."}]})
-                    if self.registry.readback_pending:
+                    if self.smartplan.blocking:
+                        await self.smartplan.readback()
+                    elif self.registry.readback_pending:
                         await self.registry_readback()
                     else:
                         await self.update_transcription()
                         await self.configure(self.catalog_ready)
                         await self.continue_generation(generation)
+                continue
+            if isinstance(calls, dict) and 'smartplan' in calls:
+                if calls['smartplan'] == 'readback':
+                    await self.smartplan.readback()
+                else:
+                    await self.update_transcription()
+                    await self.configure(self.catalog_ready)
+                    await self.continue_generation(generation)
                 continue
             if isinstance(calls, dict) and "registry" in calls:
                 if calls["registry"] == "readback":
@@ -1384,6 +1414,7 @@ class VoiceBridge:
                     asyncio.create_task(self.memory_work()),
                     asyncio.create_task(self.initialize_technologies()),
                     asyncio.create_task(self.mail.initialize()),
+                    asyncio.create_task(self.smartplan.initialize()),
                 ]
                 done, _ = await asyncio.wait([task for task in tasks if task is not memory_setup and task is not resume_setup], return_when=asyncio.FIRST_COMPLETED)
                 for completed in done:
@@ -1408,6 +1439,7 @@ class VoiceBridge:
                 self.task_context.clear()
             self.registry.invalidate()
             self.mail.close()
+            await self.smartplan.close()
             self.registry.text = None
             self.registry.plan = None
             for task in tasks:
@@ -1539,7 +1571,7 @@ class VoiceBridgeManager:
             "sdp": response.text,
             "model": model,
             **bridge.public_status(),
-            "managed_functions": ["assistant_memory", "smart_technologie"],
+            "managed_functions": ["assistant_memory", "smart_technologie"] + list(__import__('dagmar_server.smartplan', fromlist=['TOOLS']).TOOLS),
             "managed_mcp_servers": ["hotel_mail"] if get_settings().voice_mail_enabled else [],
             "mail": bridge.mail.status,
             "managed_mcp_status": {"hotel_mail": bridge.mail.status},
