@@ -369,7 +369,9 @@ class VoiceBridge:
             value["audio"]["input"]["noise_reduction"]={"type":get_settings().voice_input_noise_reduction}
         provenance = self.contract_provenance(enabled)
         digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        needs_contract_ack = any(entry and not self.contract_acknowledgements.get(capability, {}).get('provider_event_id')
+        needs_contract_ack = any(entry and (
+            not self.contract_acknowledgements.get(capability, {}).get('provider_event_id') or
+            self.contract_acknowledgements.get(capability, {}).get('transport_session_id') != entry.get('transport_session_id'))
             for capability, entry in provenance.items())
         if digest == self.configuration_digest and not needs_contract_ack:
             # The exact model view is already ACKed; a verified metadata/output
@@ -409,7 +411,7 @@ class VoiceBridge:
             available = (enabled if capability == 'ha' else self.smartplan.status == 'ready') and getattr(client, 'metadata_available', True)
             result[capability] = ({'_client':client, **{key:projection[key] for key in
                 ('metadata_digest', 'projection_digest', 'translator_version', 'compatibility_profile',
-                 'contract_version', 'guidance_version', 'schema_policy') if key in projection}}
+                 'contract_version', 'guidance_version', 'schema_policy', 'transport_session_id') if key in projection}}
                 if projection and available else None)
         return result
 
@@ -419,9 +421,32 @@ class VoiceBridge:
         for capability, provenance in snapshot.items():
             client = self.mcp if capability == 'ha' else self.smartplan.client
             projection = getattr(client, 'model_projection' if capability == 'ha' else 'projection', None)
+            # An older coroutine cannot erase a newer exact ACK, nor activate
+            # a replacement client/session or metadata view.
+            stale = provenance and (
+                provenance.get('_client', client) is not client or
+                provenance.get('transport_session_id') != getattr(client, 'transport_session_id', None) or
+                provenance.get('projection_digest') != (projection or {}).get('projection_digest'))
+            if stale:
+                previous = self.contract_acknowledgements.get(capability, {})
+                current = bool(projection and getattr(client, 'metadata_available', True) and
+                    previous.get('provider_event_id') and
+                    previous.get('transport_session_id') == getattr(client, 'transport_session_id', None) and
+                    all(previous.get(key) == projection.get(key) for key in ('metadata_digest','projection_digest')) and
+                    (capability != 'smartplan' or self.smartplan.status == 'ready'))
+                if not current:
+                    self.contract_acknowledgements.pop(capability, None)
+                continue
+            previous = self.contract_acknowledgements.get(capability, {})
+            if provenance and projection and provenance.get('metadata_digest') != projection.get('metadata_digest') and (
+                    previous.get('provider_event_id') and
+                    previous.get('transport_session_id') == getattr(client, 'transport_session_id', None) and
+                    all(previous.get(key) == projection.get(key) for key in ('metadata_digest','projection_digest'))):
+                continue
             # A late provider ACK cannot revive a capability invalidated during await.
             if (not projection or getattr(client, 'metadata_available', True) is False
                     or (provenance and provenance.get('_client', client) is not client)
+                    or (provenance and provenance.get('transport_session_id') != getattr(client, 'transport_session_id', None))
                     or (capability == 'smartplan' and self.smartplan.status != 'ready')):
                 provenance = None
             if provenance is None:
@@ -445,7 +470,8 @@ class VoiceBridge:
         record = self.contract_acknowledgements.get(capability, {})
         if (not projection or getattr(client, 'metadata_available', True) is False
                 or not record.get('provider_event_id')
-                or record.get('projection_digest') != projection.get('projection_digest')):
+                or record.get('projection_digest') != projection.get('projection_digest')
+                or record.get('transport_session_id') != getattr(client, 'transport_session_id', None)):
             raise SmartError('mcp_configuration_unacknowledged' if capability == 'ha'
                              else 'smartplan_configuration_unacknowledged')
 

@@ -7,11 +7,15 @@ shared readers and never interprets speech cancellation as a server-run cancel.
 """
 import asyncio
 import json
+from contextvars import ContextVar
 from importlib.metadata import version
 
 import anyio
 from mcp import ClientSession
+from .transport_evidence import dispatch_evidence, WireAttempt
 from mcp.types import ClientNotification, CancelledNotification, CancelledNotificationParams
+
+result_contract = ContextVar('mcp_result_contract', default=None)
 
 SUPPORTED_PROTOCOLS = {'2025-03-26','2025-06-18','2025-11-25'}
 
@@ -32,11 +36,18 @@ class ScopedClientSession(ClientSession):
         self.negotiated_protocol = result.protocolVersion
         return result
 
+    async def call_tool(self, *args, **kwargs):
+        token = result_contract.set(getattr(self, 'public_contract', None))
+        try:
+            return await super().call_tool(*args, **kwargs)
+        finally:
+            result_contract.reset(token)
+
     async def _validate_tool_result(self,name,result):
         # MCP 1.30.0's implementation calls jsonschema.validate, which checks the
         # entire metaschema on every successful result. Retain full validation
         # against the authenticated, already checked canonical schema instead.
-        contract = getattr(self,'public_contract',None)
+        contract = result_contract.get() or getattr(self,'public_contract',None)
         if contract is None:
             raise RuntimeError('public_contract_required_before_tool_call')
         if name not in contract.tools:
@@ -59,9 +70,23 @@ class ScopedClientSession(ClientSession):
         method = getattr(getattr(request, 'root', None), 'method', None)
         if method == 'tools/call' and (guard := getattr(self, 'before_tool_dispatch', None)):
             guard()
+        evidence = dispatch_evidence.get()
+        if method == 'tools/call' and (wire := getattr(self, 'wire_dispatches', None)) is not None:
+            guards = [getattr(self, 'before_tool_dispatch', None), evidence.before if evidence else None]
+            def final_guard():
+                for check in guards:
+                    if check:
+                        check()
+            binding = WireAttempt(before=final_guard, sent=evidence.dispatch if evidence else None)
+            binding.origin = evidence
+            wire[request_id] = binding
+        else:
+            binding = None
         try:
             return await super().send_request(request, result_type, *args, **kwargs)
         except asyncio.CancelledError:
+            if binding and not binding.entered:
+                binding.cancelled = True
             if method != 'initialize' and getattr(self, 'negotiated_protocol', None) in SUPPORTED_PROTOCOLS:
                 # Bounded evidence transport; no credentials, payload or target names.
                 with anyio.move_on_after(1, shield=True):
@@ -71,3 +96,6 @@ class ScopedClientSession(ClientSession):
                     except Exception:
                         pass
             raise
+        finally:
+            if binding and wire.get(request_id) is binding:
+                wire.pop(request_id, None)

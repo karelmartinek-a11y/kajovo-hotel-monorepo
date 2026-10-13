@@ -420,7 +420,7 @@ def test_generation_change_after_legacy_host_confirm_sends_no_commit():
                 current = False
                 return value
             host.client.post = attested
-            with pytest.raises(SmartError,match='uncertain'):
+            with pytest.raises(SmartError,match='cancelled_not_sent'):
                 await host.commit('server-proposal')
             assert fixture.submissions == 0
             with engine.connect() as db:

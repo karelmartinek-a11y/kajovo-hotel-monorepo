@@ -377,3 +377,18 @@ def legacy_contract(instructions, tools, fixtures, *, profile, version, guidance
             policy = 'smartplan-known-calendar/1' if profile == 'smartplan-known-2025' else 'known-2025-object-root/1'
             return PublicContract(value, profiles={profile:version}, schema_policy=policy)
     raise ValueError('unsupported_legacy_contract')
+
+
+def contract_from_fixtures(value, fixtures):
+    """A profile may have several explicitly tested public schema revisions."""
+    profile = value.get('compatibility_profile') if isinstance(value, dict) else None
+    for fixture in fixtures:
+        if fixture['compatibility_profile'] != profile:
+            continue
+        try:
+            return PublicContract(value, profiles={profile:fixture['contract_version']},
+                expected_tools={t['name']:t['inputSchema'] for t in fixture['tools']},
+                expected_outputs={t['name']:t['outputSchema'] for t in fixture['tools'] if t.get('outputSchema')})
+        except (ValueError, KeyError, TypeError):
+            pass
+    raise ValueError('unsupported_contract_revision')
