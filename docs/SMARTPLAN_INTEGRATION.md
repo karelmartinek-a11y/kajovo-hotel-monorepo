@@ -1,3 +1,5 @@
+> Historický popis před přechodem na veřejné kontrakty. Aktuální pravidla a přejímka jsou v [voice-public-contract.md](voice-public-contract.md) a [IMPACT-MATRIX.md](IMPACT-MATRIX.md). Níže uvedené pevné implementation/schema piny a povinná potvrzovací/status kola nejsou pravidla nového profilu.
+
 # SmartPlan in Dagmar
 
 The hotel authenticates the voice owner and runs a backend HTTPS gateway to the independent SmartPlan service. It stores no scenarios, schedules, timers, execution queues or device state. The model composes the eleven deployed `smartplan_*` tools. The exact input schemas are packaged in `smartplan_contract.json`; there is no hotel intent classifier or replacement API.

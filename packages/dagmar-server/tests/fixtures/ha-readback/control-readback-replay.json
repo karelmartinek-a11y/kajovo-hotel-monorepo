@@ -1,0 +1,74 @@
+{
+  "fixture_scope": "isolated fake HA; no production devices",
+  "request": {
+    "verification_mode": "readback",
+    "api_version": 2,
+    "operation": "control",
+    "request_id": "fixture-readback-full",
+    "session_id": "fixture-session",
+    "selection_id": "352ba6f01a5a0b004038655cba3e1b49",
+    "action": "zapnout"
+  },
+  "result": {
+    "batch_counts": {
+      "action_records": 2,
+      "confirmed_records": 2,
+      "matches": 2,
+      "unique_components": 2
+    },
+    "catalog_revision": "fixture-revision",
+    "contract_sha256": "ecdd2526f253a7fe6295d5508665a0cea1bae87ec99763fa04297be11eab7e69",
+    "contract_version": "smart/2",
+    "guidance_version": "2026-10-13.2",
+    "observed_at": "2026-10-13T12:45:17.402100545Z",
+    "operation": {
+      "finished_at": "2026-10-13T12:45:17.40214186Z",
+      "replay": true,
+      "request_id": "fixture-readback-full",
+      "started_at": "2026-10-13T12:45:17.379736343Z",
+      "status": "completed"
+    },
+    "presentation_revision": "a8f9c16e87f0609909b5b10763a150ca677f791ee86e84941d1c3e646772154a",
+    "results": [],
+    "summary": {
+      "accepted": 2
+    },
+    "verification": {
+      "complete": true,
+      "mode": "readback",
+      "observed_at": "2026-10-13T12:45:17.402100545Z",
+      "request_id": "fixture-readback-full",
+      "results": [
+        {
+          "evidence": [
+            {
+              "expected": "zapnuto",
+              "matched": true,
+              "observed": "zapnuto",
+              "reading": "r01"
+            }
+          ],
+          "function": "c01",
+          "message": "Požadované hodnoty odpovídají následnému hlášení zařízení; nejde o nezávislé fyzické ověření.",
+          "row": 1,
+          "status": "confirmed"
+        },
+        {
+          "evidence": [
+            {
+              "expected": "zapnuto",
+              "matched": true,
+              "observed": "zapnuto",
+              "reading": "r01"
+            }
+          ],
+          "function": "c01",
+          "message": "Požadované hodnoty odpovídají následnému hlášení zařízení; nejde o nezávislé fyzické ověření.",
+          "row": 2,
+          "status": "confirmed"
+        }
+      ]
+    }
+  },
+  "selection_count": 2
+}

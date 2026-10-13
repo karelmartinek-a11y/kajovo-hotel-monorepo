@@ -517,7 +517,7 @@ def test_vad_updates_preserve_native_mcp_registration_and_pending_approval():
             sent = []
             async def accepted(event, match):
                 sent.append(event['session'])
-                return {'type':'session.updated'}
+                return {'type':'session.updated', 'session':event['session']}
             bridge.send = accepted
             await bridge.configure(False)
             assert any(tool.get('server_label')=='hotel_mail' for tool in sent[-1]['tools'])

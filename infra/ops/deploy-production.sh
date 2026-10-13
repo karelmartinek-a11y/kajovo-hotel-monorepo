@@ -317,8 +317,7 @@ if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   protected_state() {
     docker inspect "$(compose_cmd ps -q postgres)" "$(compose_cmd ps -q web)" \
       --format '{{.Id}} {{.Image}} {{.State.StartedAt}}'
-    systemctl show mail-mcp-standalone.service kajavoiceha.service dagmar-backend.service kajovo-server-readonly-mcp.service kajovo-server-readonly-mcp-auth.service kajovo-server-readonly-mcp-broker.service nginx.service \
-      --property=Id --property=MainPID --property=ExecMainStartTimestampMonotonic
+    python3 "$ROOT_DIR/scripts/protected_runtime_snapshot.py"
     sha256sum /etc/nginx/sites-enabled/*
   }
   protected_state > "$protected_before"
@@ -336,7 +335,7 @@ if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   cmp "$protected_before" "$protected_after" || { echo "Protected runtime changed during API/admin deployment" >&2; exit 1; }
   mkdir -p "$ROOT_DIR/artifacts/deploy-runtime"
   cat > "$ROOT_DIR/artifacts/deploy-runtime/latest.json" <<JSON
-{"deployed_at":"$(date -u +%FT%TZ)","branch":"$current_branch","sha":"$commit_sha","scope":"api-admin","artifact_mode":"$SKIP_GIT_SYNC","checks":{"protected_runtime":"unchanged","api_ready":"200","api_health":"200","admin_healthz":"200"}}
+{"deployed_at":"$(date -u +%FT%TZ)","branch":"$current_branch","sha":"$commit_sha","scope":"api-admin","artifact_mode":"$SKIP_GIT_SYNC","checks":{"protected_runtime":"accessible_subset_unchanged","privileged_snapshot":"required","api_ready":"200","api_health":"200","admin_healthz":"200"}}
 JSON
   rm -f "$protected_before" "$protected_after"
   exit 0

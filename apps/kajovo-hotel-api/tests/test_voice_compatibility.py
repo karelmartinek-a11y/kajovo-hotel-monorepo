@@ -135,7 +135,7 @@ def test_readonly_reconnect_after_initial_outage_keeps_original_unresolved_ids(v
     async def run():
         b = voice_smart.VoiceBridge("owner", "reconnect", "key", "token", VoiceCoreConfig(), "gpt-realtime-2.1")
         b.unresolved_requests.add("original-id")
-        attempts, calls = [], []
+        attempts, calls, configurations = [], [], []
         @asynccontextmanager
         async def connection(token):
             attempts.append(True)
@@ -151,11 +151,13 @@ def test_readonly_reconnect_after_initial_outage_keeps_original_unresolved_ids(v
         async def replace(value):
             assert value["exact_room_ref_supported"]
         async def configure(enabled):
-            assert enabled
-            b.closed = True
+            configurations.append(enabled)
+            if enabled:
+                b.closed = True
         b.replace_context, b.configure = replace, configure
         await b.initialize_technologies()
         assert len(attempts) == 2 and calls == ["catalog"]
+        assert configurations == [False, True]
         assert b.unresolved_requests == {"original-id"}
     asyncio.run(run())
 

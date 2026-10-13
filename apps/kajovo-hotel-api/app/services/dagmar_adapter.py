@@ -41,8 +41,10 @@ def identity(owner):
 
 def create_dagmar():
     config = get_settings()
-    settings = DagmarSettings(**{name:getattr(config,name) for name in DagmarSettings.model_fields if name.startswith('voice_')},
-        ha_mcp_token=config.kajavoiceha_mcp_token)
+    settings = DagmarSettings(**{name:getattr(config,name) for name in DagmarSettings.model_fields if name.startswith('voice_') and hasattr(config, name)},
+        ha_mcp_token=config.kajavoiceha_mcp_token,
+        ha_mcp_url='https://apimcpkajavoiceha.hcasc.cz/mcp', ha_trusted_origins=('https://apimcpkajavoiceha.hcasc.cz',),
+        smartplan_base_url='https://smartplan.hcasc.cz', smartplan_trusted_origins=('https://smartplan.hcasc.cz',))
     from .listecky_mcp import ListeckyMemory
     connector = ListeckyMemory(config.voice_memory_mcp_authorization) if config.voice_memory_mcp_enabled else None
     return DagmarApplication(RuntimePorts(session_factory=SessionLocal, settings=settings, identity=identity, request_identity=request_identity, memory_connector=connector))

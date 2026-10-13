@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from mcp.server.fastmcp import FastMCP
 import pytest
-from sqlalchemy import select, func
+from sqlalchemy import create_engine, select, func
 import uvicorn
 
 from app.services.listecky_mcp import ListeckyMemory
@@ -30,8 +30,36 @@ def request(operation, **args):
 
 
 @pytest.fixture
-def service(host):
+def mcp_store(host, tmp_path):
     _, factory, _ = host
+    original = factory.kw["bind"]
+    engine = create_engine(
+        "sqlite:///" + str(tmp_path / "listecky.sqlite"),
+        connect_args={"check_same_thread": False, "timeout": 5},
+    )
+    # The MCP server runs in another thread. StaticPool shares one DBAPI
+    # connection, so closing a reader can roll back another session's write.
+    # Keep the same logical store/auth state but use isolated connections.
+    source = original.raw_connection()
+    target = engine.raw_connection()
+    try:
+        source.driver_connection.backup(target.driver_connection)
+        target.driver_connection.execute("PRAGMA journal_mode=WAL")
+        target.commit()
+    finally:
+        target.close()
+        source.close()
+    factory.configure(bind=engine)
+    try:
+        yield factory
+    finally:
+        factory.configure(bind=original)
+        engine.dispose()
+
+
+@pytest.fixture
+def service(mcp_store):
+    factory = mcp_store
     with factory() as db:
         memory.ensure_profile(db, SHARED_ID)
     with socket.socket() as listener:

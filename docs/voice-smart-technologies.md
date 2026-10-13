@@ -1,3 +1,5 @@
+> Historický popis před přechodem na veřejné kontrakty. Aktuální pravidla a přejímka jsou v [voice-public-contract.md](voice-public-contract.md) a [IMPACT-MATRIX.md](IMPACT-MATRIX.md). Níže uvedené pevné implementation/schema piny a povinná potvrzovací/status kola nejsou pravidla nového profilu.
+
 # Smart technologie v hotelovém hlasovém chatu
 
 Administrátorský `/admin/hlasovy-chat` používá přenosný Voice Core pro WebRTC zvuk a hotelový backend pro jedinou funkci `smart_technologie`. Portál ani Android nemají hlasový přístup. Žádná hotelová komponenta nevolá Home Assistant přímo.

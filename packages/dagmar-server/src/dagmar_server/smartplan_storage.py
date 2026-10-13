@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from sqlalchemy import Column, Integer, MetaData, String, Table, Text, DateTime, UniqueConstraint, select
+from sqlalchemy import Column, Integer, MetaData, String, Table, Text, DateTime, UniqueConstraint, select, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from voice_core_server import VoiceError
 
@@ -51,6 +51,8 @@ class SmartPlanDelivery(SmartPlanBase):
     tool: Mapped[str] = mapped_column(String(64))
     arguments_digest: Mapped[str] = mapped_column(String(64))
     state: Mapped[str] = mapped_column(String(32))
+    proposal_id: Mapped[str | None] = mapped_column(String(512))
+    request_key: Mapped[str | None] = mapped_column(String(128))
 
 
 def migrate(connection):
@@ -60,6 +62,11 @@ def migrate(connection):
     if version not in (None, 1):
         raise RuntimeError('unsupported_dagmar_smartplan_schema')
     SmartPlanBase.metadata.create_all(connection)
+    # Nullable additive metadata remains readable by the previous v1 rollback code.
+    columns = {item['name'] for item in inspect(connection).get_columns('dagmar_smartplan_deliveries')}
+    for name, length in (('proposal_id',512), ('request_key',128)):
+        if name not in columns:
+            connection.execute(text(f'ALTER TABLE dagmar_smartplan_deliveries ADD COLUMN {name} VARCHAR({length})'))
     if version is None:
         connection.execute(marker.insert().values(version=1))
 

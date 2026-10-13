@@ -1,10 +1,7 @@
 # Úplné Smart výběry a ověřené komponenty
 
-Host použije response_mode:complete jen po detekci enumu v MCP schématu. Původní MCP obslouží interním stránkováním read-only operací; lokální slovníky se přemapují bez záměny cNN/rNN/rows. Mutace se nepřepisují a neopakují. Mění se pouze transport čtení. Jedna relace zachovává již otevřené MCP spojení a schéma.
+Aktuální veřejný kontrakt, modelová projekce, budgety a návrat: [voice-public-contract.md](voice-public-contract.md). Host používá response_mode:complete po ověření podpory v MCP schématu. Starý kompatibilní profil obslouží interním read-only stránkováním; globální rows a osm polí se zachovají. Celá selection zahrnuje všechny shody.
 
-Společné povinné texty jsou v balíčku dagmar_server/smart_instructions.json, shodné s fixtures standalone MCP. Po control následuje operation_status původního request_id a read celého dotčeného výběru. Zapnutí hlavního výstupu se nesmí zaměnit se zabezpečením pojistky; parametry a význam funkcí pocházejí z konkrétního describe. Host status rozpracované operace sleduje nejdříve za .5s, pak 1s, dále nejvýše jednou za 2s a nejdéle 30s. Uncertain se automaticky neopakuje. Dokončený status nevyvolává čekání.
+Úplný control readback se stejným request ID a všemi per-command výsledky nahrazuje nadbytečné status/read. Při neúplnosti či nejistotě se dohledá původní operation_status; nový write se automaticky nevydává. Status polling má budget 30 s, SDK _result 35 s; obsolete čekání nesmí blokovat nový turn. Accepted/completed nejsou potvrzení požadované hodnoty a replay není nové měření.
 
-Existující ready_responses/continuations_queued a potvrzení doručení již spouští právě jedno navázání po výsledku, bez pevné prodlevy. Tyto mechanismy, Mail, paměť, barge-in a registry audio confirmation zůstávají zachovány. Produkční důkaz je oddělen od izolovaných testů a od skutečné odezvy modelu/hlasu.
-
-## Matice dopadů
-Zdroj: Smart schéma/transport/instrukce aktualizovat. Testy/fixtures: complete a legacy stránky, počty/dictionary refs, polling identity, chyby, literal instructions aktualizovat. CI/release gates: stávající plné kontroly beze změny. Dokumentace a AGENTS: aktualizovat. API/OpenAPI/UI a DB: ověřit beze změny, žádná veřejná HTTP změna/migrace. Docker package-data: JSON již balen, ověřit v runtime image. Mail a business moduly: nedotčeny. Nasadit kompatibilní adaptér před standalone MCP; rollback zachová živá data a identity.
+Public contract → deterministická hostová projekce → matching provider ack nahrazuje ruční domain kopie pro nové profily. Identity/consent zůstávají v hostu. [Matice dopadů](IMPACT-MATRIX.md) uvádí kontrolované hranice; skutečné audio/provider/fyzické měření je samostatná přejímka.

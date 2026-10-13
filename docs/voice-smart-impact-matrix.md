@@ -1,3 +1,5 @@
+> Historický popis před přechodem na veřejné kontrakty. Aktuální pravidla a přejímka jsou v [voice-public-contract.md](voice-public-contract.md) a [IMPACT-MATRIX.md](IMPACT-MATRIX.md). Níže uvedené pevné implementation/schema piny a povinná potvrzovací/status kola nejsou pravidla nového profilu.
+
 # Smart technologie: matice dopadů MCP v2
 
 | Kategorie | Rozhodnutí | Artefakty a ověření |

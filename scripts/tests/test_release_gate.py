@@ -13,6 +13,57 @@ SPEC.loader.exec_module(gate)
 
 
 class ReleaseGateTests(unittest.TestCase):
+    def test_protected_snapshot_detects_smartplan_release_and_config_changes(self):
+        spec = importlib.util.spec_from_file_location('protected_snapshot', Path(__file__).parents[1] / 'protected_runtime_snapshot.py')
+        runtime = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runtime)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / 'etc/smartplan/config.json'
+            config.parent.mkdir(parents=True)
+            config.write_text('private-fixture-a')
+            current = root / 'opt/smartplan/current'
+            current.parent.mkdir(parents=True)
+            current.symlink_to('releases/a')
+            commands = []
+            def unit_state(args, **kwargs):
+                commands.append(args)
+                return 'Id=smartplan.service\nMainPID=42\n'
+            first = runtime.snapshot(root, unit_state)
+            self.assertIn('smartplan.service', commands[0])
+            self.assertNotIn('private-fixture-a', json.dumps(first))
+            config.write_text('private-fixture-b')
+            self.assertNotEqual(first, runtime.snapshot(root, unit_state))
+            config.write_text('private-fixture-a')
+            current.unlink()
+            current.symlink_to('releases/b')
+            self.assertNotEqual(first, runtime.snapshot(root, unit_state))
+            self.assertFalse(any('/var/lib/' in path or path.endswith(('.db', '.sqlite', '-wal')) for path in runtime.FILES))
+
+    def test_protected_snapshot_hashes_dropins_and_marks_denied_traversal(self):
+        spec = importlib.util.spec_from_file_location('protected_snapshot', Path(__file__).parents[1] / 'protected_runtime_snapshot.py')
+        runtime = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runtime)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            dropin = root / 'etc/systemd/system/kajavoiceha.service.d/smartplan.conf'
+            dropin.parent.mkdir(parents=True)
+            dropin.write_text('private-fixture-a')
+            def unit_state(*args, **kwargs):
+                return 'Id=kajavoiceha.service\nDropInPaths=/etc/systemd/system/kajavoiceha.service.d/smartplan.conf\n'
+            first = runtime.snapshot(root, unit_state)
+            dropin.write_text('private-fixture-b')
+            self.assertNotEqual(first, runtime.snapshot(root, unit_state))
+            self.assertNotIn('private-fixture-a', json.dumps(first))
+            def denied(*args, **kwargs):
+                raise PermissionError('fixture')
+            (root / 'etc/smartplan').mkdir(parents=True)
+            with patch.object(runtime.os, 'walk', denied):
+                report = runtime.snapshot(root, unit_state)
+            # stat succeeds; traversal denial must still be explicit.
+            self.assertEqual(report['coverage'], 'privileged_required')
+            self.assertTrue(report['privileged_snapshot_required'])
+
     def test_targeted_deploy_accepts_updated_validation_but_rejects_web(self):
         spec = importlib.util.spec_from_file_location('select_deploy_scope', Path(__file__).parents[1] / 'select_deploy_scope.py')
         scope = importlib.util.module_from_spec(spec)

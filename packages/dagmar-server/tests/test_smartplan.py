@@ -17,14 +17,14 @@ from dagmar_server.ports import RuntimePorts, bind, utc_now
 from dagmar_server.provenance import HumanTurns
 from dagmar_server.settings import DagmarSettings
 from dagmar_server.smart import SmartArguments, SmartError, SMART_TOOL
-from dagmar_server.smartplan import TOOLS, FUNCTIONS, SmartPlanClient, SmartPlanHost, ProposalConfirmation, safe, validate
+from dagmar_server.smartplan import CONTRACT, TOOLS, FUNCTIONS, SmartPlanClient, SmartPlanHost, ProposalConfirmation, safe, validate
 from dagmar_server.smartplan_storage import SmartPlanSecretStore, SmartPlanSecret, SmartPlanLink, SmartPlanReceipt
 
 
 class Fixture:
     def __init__(self):
         self.calls = []
-        self.catalog = copy.deepcopy(list(TOOLS.values()))
+        self.catalog = copy.deepcopy(CONTRACT['tools'])
         self.results = {}
         self.commits = {}
         self.submissions = 0
@@ -97,7 +97,7 @@ def setup(fixture=None):
     fixture = fixture or Fixture()
     engine = create_engine('sqlite://')
     upgrade(engine)
-    ports = RuntimePorts(sessionmaker(engine), DagmarSettings(voice_master_key=base64.b64encode(b'k'*32).decode()),
+    ports = RuntimePorts(sessionmaker(engine), DagmarSettings(voice_master_key=base64.b64encode(b'k'*32).decode(), smartplan_base_url='https://smartplan.hcasc.cz', smartplan_trusted_origins=('https://smartplan.hcasc.cz',)),
         lambda owner: {'voice_authorized': True, 'namespace': 'admin-profile:1'} if owner == 'owner' else None,
         smartplan_transport=httpx.MockTransport(fixture))
     bridge = SimpleNamespace(owner='owner', id='provider-one', logical_call_id='logical-call', human_turns=HumanTurns(), seen_calls={},
@@ -141,9 +141,8 @@ def test_exact_deployed_schema_and_transport_cache():
     async def run():
         _, ports, _, host, fixture = setup()
         with bind(ports):
-            assert len(FUNCTIONS) == 11
-            assert {f['name']: f['parameters'] for f in FUNCTIONS} == {n: t['inputSchema'] for n, t in TOOLS.items()}
             await host.execute('smartplan_capabilities', {})
+            assert len(host.client.projection['tools']) == 11
             await host.execute('smartplan_search', {'query': 'lobby', 'role': 'action'})
             assert [b['method'] for p, b in fixture.calls].count('initialize') == 1
             assert [b['method'] for p, b in fixture.calls].count('tools/list') == 1
@@ -160,7 +159,7 @@ def test_schema_drift_fails_closed(drift):
         elif drift == 'duplicate':
             fixture.catalog.append(fixture.catalog[0])
         else:
-            fixture.catalog[0]['inputSchema']['properties']['extra'] = {'type': 'string'}
+            fixture.catalog[0]['inputSchema']['type'] = 'array'
         with bind(ports), pytest.raises(SmartError, match='incompatible'):
             await host.client.initialize()
     asyncio.run(run())
@@ -318,7 +317,7 @@ def test_security_injection_and_unsupported_fields():
         with pytest.raises(SmartError):
             validate(name, args)
     assert 'smartplan_handoff' in SMART_TOOL['parameters']['properties']['operation']['enum']
-    assert 'expected_revision' in TOOLS['smartplan_prepare']['inputSchema']['properties']
+    assert 'expected_revision' in json.dumps(TOOLS['smartplan_prepare']['inputSchema'])
 
 
 def test_upstream_business_error_cannot_echo_credential_as_code():
@@ -366,7 +365,7 @@ def test_business_error_and_unavailable_do_not_fallback():
         _, ports, _, host, fixture = setup()
         with bind(ports):
             fixture.results['smartplan_detail'] = {'error': {'code': 'revision_conflict', 'detail': 'private body'}}
-            assert await host.execute('smartplan_detail', {'scenario_id': 'same'}) == {'error': {'code':'revision_conflict'}}
+            assert await host.execute('smartplan_detail', {'scenario_id': 'same'}) == {'error': {'code':'revision_conflict','detail':'private body'}}
             fixture.status = 503
             with pytest.raises(SmartError, match='unavailable'):
                 await host.execute('smartplan_runs', {})
@@ -386,7 +385,7 @@ def test_typed_schedule_nested_conditions_and_multi_action_forwarding(kind):
             schedule = {'kind': 'once', 'at': '2026-10-15T18:00:00+02:00', 'filters': filters}
         elif kind.startswith('interval'):
             schedule = {'kind': 'interval', 'unit': kind.split('-')[1], 'every': 2, 'basis': 'calendar',
-                'anchor': '2026-10-11T18:00:00+02:00', 'policy': policy, 'filters': filters}
+                'anchor': '2026-10-11T18:00:00', 'policy': policy, 'filters': filters}
         elif kind == 'calendar':
             schedule = {'kind': 'calendar', 'times': ['18:00:00'], 'policy': policy, 'filters': filters}
         else:

@@ -3,6 +3,7 @@ import json
 import hashlib
 import time
 from collections import OrderedDict
+from contextvars import ContextVar
 from .provenance import HumanTurns
 from .token_budget import measure
 
@@ -17,7 +18,7 @@ class CallTask:
         self.answered = True
         self.answered_generation = None
         self.recovered_generation = None
-        self.current_operation = None
+        self._current_operation = ContextVar("dagmar_task_operation", default=None)
         self.last_activity = time.monotonic()
         self.partial = False
         self.memory_principal = None
@@ -26,6 +27,14 @@ class CallTask:
         self.memory_privacy_paused = False
         from .mail import MailTask
         self.mail = MailTask()
+
+    @property
+    def current_operation(self):
+        return self._current_operation.get()
+
+    @current_operation.setter
+    def current_operation(self, value):
+        self._current_operation.set(value)
 
     @staticmethod
     def key(call):
