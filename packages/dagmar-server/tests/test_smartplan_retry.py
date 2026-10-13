@@ -455,3 +455,49 @@ def test_actual_sdk_auth_status_closes_scope_without_transient_retry(code,stage)
             await host.close()
             await asyncio.gather(task,return_exceptions=True)
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('failure',['not_configured','transient'])
+def test_actual_voice_bridge_run_end_call_cancels_initializer_during_immediate_cleanup(failure):
+    from contextlib import asynccontextmanager
+    async def run():
+        fixture=Candidate()
+        _,ports,_,old,_=setup(fixture)
+        @asynccontextmanager
+        async def socket(*args,**kwargs):
+            yield object()
+        @asynccontextmanager
+        async def unavailable(*args):
+            raise SmartError('mcp_unavailable')
+            yield
+        async def transport(request):
+            return httpx.Response(503)
+        settings=ports.settings if failure=='transient' else ports.settings.model_copy(update={
+            'smartplan_base_url':'','smartplan_trusted_origins':()})
+        ports=replace(ports,settings=settings,provider_socket=socket,ha_connector=unavailable,
+            smartplan_transport=httpx.MockTransport(transport))
+        with bind(ports):
+            await old.close()
+            bridge=VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            configured=[]
+            async def reader():
+                await asyncio.Future()
+            async def lease():
+                return
+            async def configure(enabled,*,create_response=True):
+                configured.append(enabled)
+                assert enabled is False and create_response
+            async def hangup():
+                pass
+            bridge.read_events,bridge.lease,bridge.configure,bridge.hangup=reader,lease,configure,hangup
+            # A test-only bounded deadline proves completion; runtime budgets
+            # and the existing ordinary-conversation outage test stay unchanged.
+            async with asyncio.timeout(1):
+                await bridge.run()
+            assert bridge.closed and bridge.ready.is_set()
+            assert configured and all(enabled is False for enabled in configured)
+            assert bridge.smartplan.lifecycle_task is None
+            if bridge.smartplan.client:
+                assert bridge.smartplan.client.session_task is None
+            assert not fixture.commits
+    asyncio.run(run())
