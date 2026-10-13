@@ -57,6 +57,8 @@ class ScopedClientSession(ClientSession):
     async def send_request(self, request, result_type, *args, **kwargs):
         request_id = self._request_id
         method = getattr(getattr(request, 'root', None), 'method', None)
+        if method == 'tools/call' and (guard := getattr(self, 'before_tool_dispatch', None)):
+            guard()
         try:
             return await super().send_request(request, result_type, *args, **kwargs)
         except asyncio.CancelledError:

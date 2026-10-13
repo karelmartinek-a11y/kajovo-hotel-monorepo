@@ -99,6 +99,7 @@ class SmartPlanClient:
         self.trusted_origins = config.smartplan_trusted_origins
         self.contract = None
         self.projection = None
+        self.metadata_available = False
         self.recommended = list(RECOMMENDED)
         self.token = token if token is not None else SmartPlanSecretStore().read()
         with SessionLocal() as db:
@@ -189,11 +190,14 @@ class SmartPlanClient:
                         raise SmartError('smartplan_incompatible') from None
                     session.public_contract = self.contract
                     self.session = session
+                    self.metadata_available = True
+                    session.before_tool_dispatch = self.require_metadata
                     self.initialized = True
                     self.ready.set_result(None)
                     active = {}
                     async def dispatch(name, arguments, pending, before_dispatch):
                         try:
+                            self.require_metadata()
                             if before_dispatch:
                                 before_dispatch()
                             result = await session.call_tool(name, arguments)
@@ -259,13 +263,31 @@ class SmartPlanClient:
                 if not pending.done():
                     pending.set_exception(SmartError(error))
 
+    def invalidate_metadata(self):
+        # Keep the contract/session and original IDs for already-sent recovery.
+        self.metadata_available = False
+        self.projection = None
+
+    def require_metadata(self):
+        if not self.metadata_available:
+            raise SmartError('smartplan_incompatible')
+
     async def refresh_metadata(self):
+        try:
+            return await self._refresh_metadata()
+        except Exception:
+            self.invalidate_metadata()
+            raise
+
+    async def _refresh_metadata(self):
         """Off the tool critical path; a proven change must pass the same profile gate."""
         response = await self.http.get(self.base_url + '/contract', headers=self.headers())
         if response.status_code in (401,403):
             raise SmartError('smartplan_access_denied')
         if response.status_code in (404,405):
-            return False  # Known legacy profile keeps its acknowledged snapshot.
+            if self.metadata_available and self.contract.value['compatibility_profile'] == 'smartplan-known-2025':
+                return False
+            raise SmartError('smartplan_incompatible')
         response.raise_for_status()
         if self.token in response.text:
             raise SmartError('smartplan_contract_credential_echo')
@@ -281,6 +303,7 @@ class SmartPlanClient:
         except (ValueError,KeyError,TypeError):
             raise SmartError('smartplan_incompatible') from None
         self.contract, self.projection = candidate, projection
+        self.metadata_available = True
         self.session.public_contract = candidate
         self.recommended = list(RECOMMENDED)
         return True
@@ -291,6 +314,7 @@ class SmartPlanClient:
 
     async def _call(self, name, arguments, *, before_dispatch=None):
         await self.initialize()
+        self.require_metadata()
         if before_dispatch:
             before_dispatch()
         try:
@@ -459,8 +483,16 @@ class SmartPlanHost:
 
     async def initialize(self):
         try:
+            getattr(self.bridge, 'contract_acknowledgements', {}).pop('smartplan', None)
             self.client = SmartPlanClient(owner_subject(self.bridge.owner))
             await self.client.initialize()
+            if hasattr(self.bridge, 'require_contract_ack'):
+                def host_dispatch_guard(client=self.client):
+                    if client is not self.client:
+                        raise SmartError('smartplan_configuration_unacknowledged')
+                    client.require_metadata()
+                    self.bridge.require_contract_ack('smartplan')
+                self.client.session.before_tool_dispatch = host_dispatch_guard
             self.confirmation = ProposalConfirmation(self.bridge)
             self.status = 'ready'
             with SessionLocal() as db:
@@ -484,6 +516,9 @@ class SmartPlanHost:
                     await self.bridge.configure(self.bridge.catalog_ready)
         except Exception:
             self.status = 'unavailable'
+            if self.client:
+                self.client.invalidate_metadata()
+            getattr(self.bridge, 'contract_acknowledgements', {}).pop('smartplan', None)
             await self.bridge.configure(self.bridge.catalog_ready)
             await asyncio.Future()
         finally:
@@ -501,6 +536,8 @@ class SmartPlanHost:
 
     async def execute(self, name, arguments):
         owner_subject(self.bridge.owner)
+        if guard := getattr(self.bridge, 'require_contract_ack', None):
+            guard('smartplan')
         self.validate_input(name, arguments)
         if self.status != 'ready' or not self.client:
             raise SmartError('smartplan_unavailable')
@@ -645,6 +682,8 @@ class SmartPlanHost:
             return
         try:
             self.bridge.assert_current_operation()
+            if guard := getattr(self.bridge, 'require_contract_ack', None):
+                guard('smartplan')
             args = json.loads(call.get('arguments', '{}'))
             if call['name'] == 'smartplan_prepare_change':
                 native = self.bridge.human_turns.turns.get(self.bridge.human_turns.current)

@@ -325,6 +325,7 @@ class VoiceBridge:
             await self._configure(enabled or self.catalog_ready, create_response=create_response)
 
     async def _configure(self, enabled: bool, *, create_response: bool = True):
+        enabled = enabled and getattr(self.mcp, 'metadata_available', True)
         language = (
             "Reply in the speaker's language."
             if self.config.language_mode == "automatic"
@@ -368,14 +369,16 @@ class VoiceBridge:
             value["audio"]["input"]["noise_reduction"]={"type":get_settings().voice_input_noise_reduction}
         provenance = self.contract_provenance(enabled)
         digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        if digest == self.configuration_digest:
+        needs_contract_ack = any(entry and not self.contract_acknowledgements.get(capability, {}).get('provider_event_id')
+            for capability, entry in provenance.items())
+        if digest == self.configuration_digest and not needs_contract_ack:
             # The exact model view is already ACKed; a verified metadata/output
             # revision can reuse that ACK while retaining its new provenance.
             self.record_contract_acknowledgements(provenance, self.configuration_provider_event_id, reused=True)
             return
         tools_digest = hashlib.sha256(json.dumps(value["tools"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         session = dict(value)
-        if tools_digest == self.configured_tools_digest:
+        if tools_digest == self.configured_tools_digest and not needs_contract_ack:
             session.pop("tools")
         accepted = await self.send(
             {"type": "session.update", "session": session},
@@ -402,10 +405,11 @@ class VoiceBridge:
         result = {}
         for capability, projection in [('ha', getattr(self.mcp, 'model_projection', None)),
                 ('smartplan', getattr(self.smartplan.client, 'projection', None))]:
-            available = enabled if capability == 'ha' else self.smartplan.status == 'ready'
-            result[capability] = ({key:projection[key] for key in
+            client = self.mcp if capability == 'ha' else self.smartplan.client
+            available = (enabled if capability == 'ha' else self.smartplan.status == 'ready') and getattr(client, 'metadata_available', True)
+            result[capability] = ({'_client':client, **{key:projection[key] for key in
                 ('metadata_digest', 'projection_digest', 'translator_version', 'compatibility_profile',
-                 'contract_version', 'guidance_version', 'schema_policy') if key in projection}
+                 'contract_version', 'guidance_version', 'schema_policy') if key in projection}}
                 if projection and available else None)
         return result
 
@@ -413,15 +417,37 @@ class VoiceBridge:
         # Snapshot belongs to the exact view sent before await, even if a public
         # metadata refresh completes while the provider ACK is in flight.
         for capability, provenance in snapshot.items():
+            client = self.mcp if capability == 'ha' else self.smartplan.client
+            projection = getattr(client, 'model_projection' if capability == 'ha' else 'projection', None)
+            # A late provider ACK cannot revive a capability invalidated during await.
+            if (not projection or getattr(client, 'metadata_available', True) is False
+                    or (provenance and provenance.get('_client', client) is not client)
+                    or (capability == 'smartplan' and self.smartplan.status != 'ready')):
+                provenance = None
             if provenance is None:
                 self.contract_acknowledgements.pop(capability, None)
             else:
+                provenance = {key:value for key,value in provenance.items() if key != '_client'}
                 previous = self.contract_acknowledgements.get(capability, {})
                 if reused and all(previous.get(key) == value for key,value in provenance.items()):
                     continue
                 self.contract_acknowledgements[capability] = {
                     **provenance, 'provider_event_id':provider_event_id, 'provider_ack_reused':reused,
                 }
+
+    def require_contract_ack(self, capability):
+        client = self.mcp if capability == 'ha' else self.smartplan.client
+        projection = getattr(client, 'model_projection' if capability == 'ha' else 'projection', None)
+        # Trusted host test adapters may expose no public metadata; real public
+        # clients always carry metadata_available and an authenticated projection.
+        if projection is None and not hasattr(client, 'metadata_available'):
+            return
+        record = self.contract_acknowledgements.get(capability, {})
+        if (not projection or getattr(client, 'metadata_available', True) is False
+                or not record.get('provider_event_id')
+                or record.get('projection_digest') != projection.get('projection_digest')):
+            raise SmartError('mcp_configuration_unacknowledged' if capability == 'ha'
+                             else 'smartplan_configuration_unacknowledged')
 
     async def enqueue(self, value):
         if value is None:
@@ -971,6 +997,7 @@ class VoiceBridge:
                 raise SmartError("unauthorized")
             if not self.catalog_ready or not self.mcp:
                 raise SmartError("technologies_unavailable")
+            self.require_contract_ack('ha')
             args = SmartArguments.model_validate_json(call["arguments"])
             payload = args.model_dump(exclude_none=True)
             if args.operation == 'smartplan_handoff':
@@ -1442,6 +1469,8 @@ class VoiceBridge:
                     async with asyncio.timeout(20):
                         if not authorized(self.owner):
                             raise SmartError("unauthorized")
+                        self.catalog_ready = False
+                        self.contract_acknowledgements.pop('ha', None)
                         self.mcp = await stack.enter_async_context((runtime().ha_connector or mcp_connection)(self.token))
                         public, _ = decode_result(await self.mcp_call({"operation": "catalog"}))
                         if public.get("error"):
@@ -1452,15 +1481,35 @@ class VoiceBridge:
                                 VoiceSmartOperation.status.in_(["pending", "uncertain"]))))
                         self.unresolved_requests.update(pending)
                         public["exact_room_ref_supported"] = getattr(self.mcp, "room_ref_supported", False)
+                        metadata_guard = getattr(self.mcp, 'before_tool_dispatch', None)
+                        def host_dispatch_guard(client=self.mcp, metadata_guard=metadata_guard):
+                            if client is not self.mcp:
+                                raise SmartError('mcp_configuration_unacknowledged')
+                            if metadata_guard:
+                                metadata_guard()
+                            self.require_contract_ack('ha')
+                        self.mcp.before_tool_dispatch = host_dispatch_guard
                         await self.replace_context(public)
+                        self.catalog_ready = False
                         await self.configure(True)
+                        self.catalog_ready = True
                         self.technologies = "ready"
                         delay = 1
                     refresh_at = time.monotonic() + get_settings().voice_metadata_refresh_seconds
                     while not self.closed and self.technologies == "ready":
                         await asyncio.sleep(1)
                         if time.monotonic() >= refresh_at and hasattr(self.mcp, 'refresh_metadata'):
-                            if await self.mcp.refresh_metadata():
+                            try:
+                                changed = await self.mcp.refresh_metadata()
+                            except Exception:
+                                # Pause before AsyncExitStack/session cleanup can await.
+                                self.technologies = 'unavailable'
+                                self.catalog_ready = False
+                                self.contract_acknowledgements.pop('ha', None)
+                                if invalidate := getattr(self.mcp, 'invalidate_metadata', None):
+                                    invalidate()
+                                raise
+                            if changed:
                                 await self.configure(True)
                             refresh_at = time.monotonic() + get_settings().voice_metadata_refresh_seconds
             except Exception as exc:

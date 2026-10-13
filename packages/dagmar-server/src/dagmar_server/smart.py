@@ -313,16 +313,25 @@ async def mcp_connection(token: str):
                         contract.verify_wire(listed.tools)
                     client.public_contract = contract
                     client.model_projection = contract.project(host_rules=HOST_RULES)
+                    client.metadata_available = True
+                    client.before_tool_dispatch = lambda: require_metadata(client)
                 except (ValueError, TypeError, KeyError):
                     raise SmartError('mcp_incompatible') from None
                 if [tool.name for tool in listed.tools] != ["smart_technologie"]:
                     raise SmartError("unexpected_mcp_tools")
-                async def refresh_metadata():
+                def invalidate_metadata():
+                    # Retain the original contract for already-sent response validation.
+                    client.metadata_available = False
+                    client.model_projection = None
+                client.invalidate_metadata = invalidate_metadata
+                async def _refresh_metadata():
                     response = await http.get(endpoint + '?contract=1')
                     if response.status_code in (401,403):
                         raise SmartError('mcp_access_denied')
                     if response.status_code in (404,405):
-                        return False
+                        if client.metadata_available and client.public_contract.value['compatibility_profile'] == 'ha-smart-known-2025':
+                            return False
+                        raise SmartError('mcp_incompatible')
                     response.raise_for_status()
                     if token in response.text:
                         raise SmartError('mcp_contract_credential_echo')
@@ -338,7 +347,14 @@ async def mcp_connection(token: str):
                         raise SmartError('mcp_incompatible') from None
                     client.public_contract = current
                     client.model_projection = current.project(host_rules=HOST_RULES)
+                    client.metadata_available = True
                     return True
+                async def refresh_metadata():
+                    try:
+                        return await _refresh_metadata()
+                    except Exception:
+                        invalidate_metadata()
+                        raise
                 client.refresh_metadata = refresh_metadata
                 mode = listed.tools[0].inputSchema.get("properties", {}).get("response_mode", {})
                 client.complete_supported = "complete" in mode.get("enum", [])
@@ -373,6 +389,11 @@ def normalize_public(value):
             value.setdefault("has_more", False)
 
 
+def require_metadata(client):
+    if getattr(client, 'metadata_available', True) is False:
+        raise SmartError('mcp_incompatible')
+
+
 async def call_smart(client, request, *, before_dispatch=None):
     """A single total public-request deadline, including compatibility pagination."""
     async with asyncio.timeout(30):
@@ -385,6 +406,7 @@ async def call_smart(client, request, *, before_dispatch=None):
 async def _call_smart(client, request, *, before_dispatch=None):
     """Negotiate read-only transport, never retry or rewrite a mutation."""
     request = dict(request)
+    require_metadata(client)
     if before_dispatch:
         before_dispatch()
     op = request.get("operation")
@@ -435,6 +457,7 @@ async def _call_smart(client, request, *, before_dispatch=None):
         await asyncio.sleep(delay)
         remaining = deadline - time.monotonic()
         try:
+            require_metadata(client)
             result = await asyncio.wait_for(client.call_tool("smart_technologie", request), timeout=remaining)
         except asyncio.TimeoutError:
             return result
@@ -474,6 +497,7 @@ async def _legacy_complete(client, request):
     offset = 0
     merged = None
     while True:
+        require_metadata(client)
         result = await client.call_tool("smart_technologie", {**request, "offset": offset, "limit": limit})
         if result.isError:
             return result
