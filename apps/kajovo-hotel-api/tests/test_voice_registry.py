@@ -402,7 +402,10 @@ def test_real_sideband_event_reader_worker_dispatcher_and_acknowledged_output(vo
                 event = json.loads(raw)
                 sent.append(event)
                 if event["type"] == "session.update":
-                    await inbox.put({"type": "session.updated"})
+                    accepted = getattr(self, "session", {})
+                    accepted.update(event["session"])
+                    self.session = accepted
+                    await inbox.put({"type": "session.updated", "event_id":"fixture-ack", "session":copy.deepcopy(accepted)})
                 elif event["type"] == "conversation.item.create":
                     await inbox.put({"type": "conversation.item.created", "item": event["item"]})
                 elif event["type"] == "conversation.item.delete":

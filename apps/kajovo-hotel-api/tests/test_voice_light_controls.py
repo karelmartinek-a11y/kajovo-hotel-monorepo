@@ -215,6 +215,9 @@ def test_live_session_receives_light_schema_and_fixed_instructions(light_host):
         events = []
         async def send(event, match):
             events.append(copy.deepcopy(event))
+            accepted = {"type":"session.updated", "event_id":"fixture-ack", "session":copy.deepcopy(event["session"])}
+            assert match(accepted)
+            return accepted
         h.b.send = send
         await h.b.configure(True, create_response=False)
         session = events[0]["session"]
