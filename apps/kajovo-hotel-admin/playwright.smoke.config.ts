@@ -31,11 +31,11 @@ const powerShellQuote = (value: string): string => `'${value.replace(/'/g, "''")
 const dbPathNormalized = isWin ? smokeDbPath.replace(/\\/g, '/') : smokeDbPath;
 const pythonCmd = isWin ? 'python' : 'python3.11';
 const initDbCommand = isWin
-  ? `powershell -NoLogo -NoProfile -Command "$env:PYTHONPATH='..\\\\kajovo-hotel-api'; ${pythonCmd} ..\\\\kajovo-hotel-api\\\\scripts\\\\init_smoke_db.py ${smokeDbPath}"`
+  ? `powershell -NoLogo -NoProfile -Command "$env:PYTHONPATH='..\\\\..\\\\packages\\\\dagmar-server\\\\src;..\\\\..\\\\packages\\\\voice-core-server\\\\src;..\\\\kajovo-hotel-api'; ${pythonCmd} ..\\\\kajovo-hotel-api\\\\scripts\\\\init_smoke_db.py ${smokeDbPath}"`
   : `PYTHONPATH=../kajovo-hotel-api ${pythonCmd} ../kajovo-hotel-api/scripts/init_smoke_db.py ${smokeDbPath}`;
 
 const apiEnv = [
-  `PYTHONPATH=../kajovo-hotel-api`,
+  `PYTHONPATH=../../packages/dagmar-server/src:../../packages/voice-core-server/src:../kajovo-hotel-api`,
   `KAJOVO_API_DATABASE_URL=sqlite:///${dbPathNormalized}`,
   `KAJOVO_API_SMTP_ENABLED=false`,
   `KAJOVO_API_SMTP_CAPTURE_PATH=${shellQuote(smokeSmtpCapturePath)}`,
@@ -45,7 +45,7 @@ const apiEnv = [
 ].join(' ');
 
 const apiEnvWin = [
-  `$env:PYTHONPATH='..\\\\kajovo-hotel-api'`,
+  `$env:PYTHONPATH='..\\\\..\\\\packages\\\\dagmar-server\\\\src;..\\\\..\\\\packages\\\\voice-core-server\\\\src;..\\\\kajovo-hotel-api'`,
   `$env:KAJOVO_API_DATABASE_URL='sqlite:///${dbPathNormalized}'`,
   `$env:KAJOVO_API_SMTP_ENABLED='false'`,
   `$env:KAJOVO_API_SMTP_CAPTURE_PATH=${powerShellQuote(smokeSmtpCapturePath)}`,
