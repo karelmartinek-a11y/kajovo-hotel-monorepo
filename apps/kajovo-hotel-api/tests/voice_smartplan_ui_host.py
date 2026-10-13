@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.main import create_app
 from dagmar_server.application import BoundContext
 from dagmar_server.ports import bind
-from dagmar_server.smartplan import TOOLS
+from dagmar_server.smartplan import LIVE_CONTRACT
 from dagmar_server.smartplan_storage import SmartPlanSecretStore
 
 get_settings().voice_master_key = base64.b64encode(os.urandom(32)).decode()
@@ -36,9 +36,10 @@ def fixture(request):
             'owner_confirmation_url': 'https://smartplan.hcasc.cz/link/fixture-link'})
     assert request.headers['X-SmartPlan-Link'] == 'fixture-link'
     if body['method'] == 'initialize':
-        result = {'serverInfo': {'name': 'SmartPlan', 'version': '1.0.1'}, 'protocolVersion': '2025-11-25', 'capabilities': {'tools': {}}}
+        result = {'serverInfo': {'name': 'SmartPlan', 'version': LIVE_CONTRACT['implementation_version']},
+            'instructions': LIVE_CONTRACT['instructions'], 'protocolVersion': '2025-11-25', 'capabilities': {'tools': {}}}
     elif body['method'] == 'tools/list':
-        result = {'tools': list(TOOLS.values())}
+        result = {'tools': LIVE_CONTRACT['tools']}
     else:
         raise AssertionError('No tool execution is needed for connection UI')
     return httpx.Response(200, json={'jsonrpc': '2.0', 'id': body['id'], 'result': result})
