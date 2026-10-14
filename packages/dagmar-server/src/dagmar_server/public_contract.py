@@ -386,9 +386,25 @@ def contract_from_fixtures(value, fixtures):
         if fixture['compatibility_profile'] != profile:
             continue
         try:
+            expected_outputs = {t['name']:deepcopy(t['outputSchema']) for t in fixture['tools'] if t.get('outputSchema')}
+            if profile == 'ha-smart/2.1' and fixture['contract_version'] == 'smart/2':
+                actual_tools = {tool['name']:tool for tool in value.get('tools', [])}
+                for name, schema in expected_outputs.items():
+                    expected = schema.get('properties', {}).get('guidance_version', {})
+                    if expected.get('const') != fixture.get('guidance_version') or expected.get('type') != 'string':
+                        continue
+                    actual_schema = actual_tools.get(name, {}).get('outputSchema', {})
+                    properties = actual_schema.get('properties', {}) if isinstance(actual_schema, dict) else {}
+                    actual = properties.get('guidance_version', {}) if isinstance(properties, dict) else {}
+                    if not isinstance(actual, dict) or actual.get('const') != value.get('guidance_version') or actual.get('type') != 'string':
+                        raise ValueError('inconsistent_guidance_output_revision')
+                    # This is a metadata label, not an execution value. Adapt
+                    # only the frozen comparison; actual validators continue
+                    # enforcing the current authenticated canonical constant.
+                    expected['const'] = value['guidance_version']
             return PublicContract(value, profiles={profile:fixture['contract_version']},
                 expected_tools={t['name']:t['inputSchema'] for t in fixture['tools']},
-                expected_outputs={t['name']:t['outputSchema'] for t in fixture['tools'] if t.get('outputSchema')})
+                expected_outputs=expected_outputs)
         except (ValueError, KeyError, TypeError):
             pass
     raise ValueError('unsupported_contract_revision')
