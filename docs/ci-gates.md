@@ -2,7 +2,7 @@
 
 Změny se commitují a pushují přímo na `main`. GitHub má `has_pull_requests=false`; nové PR jsou zakázané. Ostatní větve nepřijímají nové commity ani vytvoření. `main` nesmí být smazán ani přepsán force pushem. Povinné status checks před pushem nejsou nastavené: nový commit se testuje po pushi, neúspěch zastaví deploy.
 
-Jediné automatické web/API workflow je `.github/workflows/ci-gates.yml` (`CI Gates - Kajovo Hotel`), pouze pro push na main nebo ruční běh na main. Běží dvě kontroly:
+Jediné automatické web/API workflow je `.github/workflows/ci-gates.yml` (`CI Gates - Kajovo Hotel`), pouze pro push na main nebo ruční běh na main. Oba joby používají explicitní runner `ubuntu-24.04`, podporovaný připnutým Playwrightem 1.58.2; pohyblivý `ubuntu-latest` neurčuje jejich systém. Běží dvě kontroly:
 
 | Job | Co dokládá |
 |---|---|

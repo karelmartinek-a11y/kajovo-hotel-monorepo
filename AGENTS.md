@@ -71,7 +71,7 @@ Každá změna, i sebemenší, je dokončena pouze jako jeden atomický celek. P
 
 - Nová PR jsou zakázaná (`has_pull_requests=false`). Změny commituj a pushuj přímo na `main`; nevytvářej feature větve ani PR. Pokud main používá jiný worktree, pracuj nad přesným `origin/main` v detached checkoutu a pushuj `HEAD:main` bez přepisování historie.
 - Ostatní větve mají zakázané creation/update; main je chráněný proti deletion/non_fast_forward. Lokální kontroly jsou před pushem, GitHub status checks po pushi blokují deploy.
-- Jediné základní CI má jobs `validate` a `api-runtime-image`. `pnpm ci:gates` je úplný plán `scripts/release_gate.py` bez přeskočení. Browser baseline má dva skutečné API toky na desktopu/tabletu/telefonu, `workers: 1`, bez retry/mock rout. Podrobné existující smoke/visual sady jsou povinné podle dopadu změny, ne jako duplicitní běh každého commitu.
+- Jediné základní CI má jobs `validate` a `api-runtime-image`, oba na explicitním `ubuntu-24.04` kompatibilním s připnutým Playwrightem; nepoužívej pro ně pohyblivý `ubuntu-latest`. `pnpm ci:gates` je úplný plán `scripts/release_gate.py` bez přeskočení. Browser baseline má dva skutečné API toky na desktopu/tabletu/telefonu, `workers: 1`, bez retry/mock rout. Podrobné existující smoke/visual sady jsou povinné podle dopadu změny, ne jako duplicitní běh každého commitu.
 - Docker runtime/proxy, přenositelnost Voice Core a Android oddělení zůstávají povinné. Placené provider volání do běžného CI nepatří. Deploy přijímá pouze úspěšný push CI nad stále aktuálním main SHA.
 
 ## Commit, deploy a produkční ověření
