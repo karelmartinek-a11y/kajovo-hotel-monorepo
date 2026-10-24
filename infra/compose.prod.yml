@@ -6,7 +6,7 @@ x-logging: &bounded-logging
 
 services:
   postgres:
-    image: postgres:16.4-alpine
+    image: postgres:16.15-alpine3.23
     restart: unless-stopped
     logging: *bounded-logging
     environment:

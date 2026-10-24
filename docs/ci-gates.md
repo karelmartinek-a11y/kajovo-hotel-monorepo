@@ -28,6 +28,8 @@ Přihlašovací údaje CI pocházejí z GitHub Secrets/Variables; lokálně plat
 
 ## Deploy a meze důkazu
 
+Produkční compose, PostgreSQL runtime test i izolovaný recovery nástroj používají `postgres:16.15-alpine3.23`. Plný deploy porovná skutečnou běžící verzi s cílovým image před vypínáním služeb a odmítne downgrade, změnu hlavní verze i neurčený tag. Existující datový volume se zachovává.
+
 Deploy navazuje pouze na úspěšný push CI na main se stejným SHA. Před nasazením kontroluje, že ověřené SHA stále odpovídá aktuálnímu main; ruční CI ani starší úspěšný commit nový deploy nespustí. Produkční environment approval zůstává samostatnou podmínkou. Deploy ověřuje serverový runtime artefakt, přihlášení, správu uživatelů, snídaně a pokojský přehled.
 
 Zelené CI dokládá uvedené scénáře, nikoliv úplnou funkčnost produkce. Skutečné MCP/OpenAI, fyzický mikrofon, Bluetooth, živý Better Hotel a nativní vydání vyžadují vlastní autorizované ověření. Placené hlasové volání vyžaduje `VOICE_CORE_LIVE_SMOKE=1` a v běžném CI je zakázané.
@@ -47,7 +49,7 @@ Zelené CI dokládá uvedené scénáře, nikoliv úplnou funkčnost produkce. S
 
 Historické `CI Core`, `CI Full` a `CI Release` nemají samostatný aktuální kontrakt; jejich povinné validační vrstvy zajišťuje jediný plán, proto jsou jejich workflow odstraněná. Staré běhy v GitHub historii zůstávají důkazem minulého stavu.
 
-The validate plan includes voice-memory-ui (real API, desktop/tablet/phone, no transcript traces). api-runtime-image additionally verifies voice memory migrations and transactions against PostgreSQL 16.4 with scripts/verify_voice_memory_postgres.py. Existing jobs and deploy dependencies are unchanged.
+The validate plan includes voice-memory-ui (real API, desktop/tablet/phone, no transcript traces). api-runtime-image additionally verifies voice memory migrations and transactions against PostgreSQL 16.15 with scripts/verify_voice_memory_postgres.py. Existing jobs and deploy dependencies are unchanged.
 
 Voice-registry-ui ověřuje read-only návrh přes skutečné HTTP/auth/DB na desktopu/tabletu/telefonu s izolovaným provider portem. API testy zahrnují hlasové potvrzení a obnovu; PostgreSQL runtime kontrola ověřuje také migraci 0043 a transakční rezervaci registry zápisu. Placená registry přejímka běží samostatně mimo CI.
 

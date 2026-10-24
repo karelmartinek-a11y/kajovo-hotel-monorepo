@@ -95,7 +95,7 @@ Input transcription gpt-4o-mini-transcribe je také pomocným důkazem skutečn�
 
 ## Ověření
 
-`python3.11 -m pytest apps/kajovo-hotel-api/tests/test_voice_memory*.py -q`; `pnpm --filter @kajovo/kajovo-hotel-admin test:voice-memory`; `pnpm ci:voice-core`; `pnpm ci:gates`. Docker job sestaví API a `scripts/verify_voice_memory_postgres.py` provede skutečný upgrade/downgrade a service transakce na PostgreSQL 16.4. SQLite test migruje z 0041 bez create_all jako náhrady migrace. Browser memory test používá skutečné izolované API a DB na desktop/tablet/phone; trace/video jsou vypnuté.
+`python3.11 -m pytest apps/kajovo-hotel-api/tests/test_voice_memory*.py -q`; `pnpm --filter @kajovo/kajovo-hotel-admin test:voice-memory`; `pnpm ci:voice-core`; `pnpm ci:gates`. Docker job sestaví API a `scripts/verify_voice_memory_postgres.py` provede skutečný upgrade/downgrade a service transakce na PostgreSQL 16.15. SQLite test migruje z 0041 bez create_all jako náhrady migrace. Browser memory test používá skutečné izolované API a DB na desktop/tablet/phone; trace/video jsou vypnuté.
 
 Fake Realtime provider prokazuje phrase → completed function call → skutečný dispatcher/DB → potvrzený output → response.create. Neprokazuje jazykovou správnost živého modelu ani fyzický mikrofon. [Matice testů](voice-memory-test-matrix.md) uvádí důkazy a jejich limity. Paid live smoke vyžaduje existující VOICE_CORE_LIVE_SMOKE=1 a dostupné secrets, mimo běžné CI.
 

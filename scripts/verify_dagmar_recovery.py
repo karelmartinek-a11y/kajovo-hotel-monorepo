@@ -35,7 +35,7 @@ def main():
 
     run('docker', 'network', 'create', '--internal', name)
     try:
-        run('docker', 'run', '-d', '--name', name, '--network', name, '--network-alias', 'postgres', '-e', 'POSTGRES_PASSWORD=recovery-test-only', '-e', 'POSTGRES_DB=memory', 'postgres:16.4-alpine')
+        run('docker', 'run', '-d', '--name', name, '--network', name, '--network-alias', 'postgres', '-e', 'POSTGRES_PASSWORD=recovery-test-only', '-e', 'POSTGRES_DB=memory', 'postgres:16.15-alpine3.23')
         for _ in range(120):
             if subprocess.run(['docker', 'exec', name, 'psql', '-U', 'postgres', '-d', 'memory', '-c', 'SELECT 1'], capture_output=True).returncode == 0:
                 break
@@ -94,7 +94,7 @@ assert AESGCM(key).decrypt(nonce,cipher,b'diagnostic recovery')==b'recovery fixt
 print(json.dumps({'post_migration_restore':True,'new_write_durable':True,'original_receipt_replayed':True,'provider_key_decrypt':True,'separate_diagnostic_key_restore':True,'schema_version':1}))
 '''
         recovery = json.loads(api(verify, 'recovered'))
-        proof = {'postgres_image':'16.4-alpine','api_image':args.api_image,'backup_schema':args.expect_schema,'migration':migration,'recovery':recovery,'legacy_source_untouched':True,'old_stage_a_code_compatible':False,'rollback_requires_dagmar_schema_and_receipts':True}
+        proof = {'postgres_image':'16.15-alpine3.23','api_image':args.api_image,'backup_schema':args.expect_schema,'migration':migration,'recovery':recovery,'legacy_source_untouched':True,'old_stage_a_code_compatible':False,'rollback_requires_dagmar_schema_and_receipts':True}
         Path(args.evidence).write_text(json.dumps(proof, indent=2)+'\n')
         print('Dagmar PostgreSQL backup/migration/new-write/restore/key recovery PASS')
     finally:

@@ -34,7 +34,7 @@ def main():
             "POSTGRES_PASSWORD=memory_test_only",
             "-e",
             "POSTGRES_DB=memory",
-            "postgres:16.4-alpine",
+            "postgres:16.15-alpine3.23",
         )
         for _ in range(60):
             status = subprocess.run(

@@ -13,6 +13,18 @@ SPEC.loader.exec_module(gate)
 
 
 class ReleaseGateTests(unittest.TestCase):
+    def test_postgres_guard_rejects_production_downgrade_and_major_migration(self):
+        spec = importlib.util.spec_from_file_location('postgres_guard', Path(__file__).parents[1] / 'check_postgres_deploy_version.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.check_version('postgres (PostgreSQL) 16.15', 'postgres:16.15-alpine3.23')
+        module.check_version('postgres (PostgreSQL) 16.4', 'postgres:16.15-alpine3.23')
+        for image in ('postgres:16.4-alpine', 'postgres:17.6-alpine', 'postgres:latest', 'postgres:16-alpine'):
+            with self.subTest(image=image), self.assertRaises(ValueError):
+                module.check_version('postgres (PostgreSQL) 16.15', image)
+        with self.assertRaises(ValueError):
+            module.check_version('unknown', 'postgres:16.15-alpine3.23')
+
     def test_protected_snapshot_detects_smartplan_release_and_config_changes(self):
         spec = importlib.util.spec_from_file_location('protected_snapshot', Path(__file__).parents[1] / 'protected_runtime_snapshot.py')
         runtime = importlib.util.module_from_spec(spec)

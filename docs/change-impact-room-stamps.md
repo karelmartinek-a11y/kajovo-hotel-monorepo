@@ -4,7 +4,7 @@
 |---|---|
 | Produkční zdroj | Aktualizovat sdílené webové dlaždice a paletu; odstranit z přehledu celoplošný pokračující pobyt. Doplnit opt-in čtení skutečných Better Hotel blokací mode=block do serverové projekce. |
 | Testy | Aktualizovat web/admin očekávání, přidat hranice blokací, prázdné poloviny, obrys a kontrast čísla, geometrii, detail a zachované zápisy. |
-| GitHub/gates | Aktualizovat CI runner na explicitní Ubuntu 24.04 podporované Playwrightem. Ověřit beze změny main-only gates, runtime image, úplný release gate a návazný deploy pro stejné SHA. |
+| GitHub/gates | Aktualizovat CI runner na explicitní Ubuntu 24.04 podporované Playwrightem. Synchronizovat produkční PostgreSQL 16.15 s CI/recovery a odmítat databázový downgrade před vypnutím služeb. Ověřit beze změny main-only gates, runtime image, úplný release gate a návazný deploy pro stejné SHA. |
 | Dokumentace/schémata | Aktualizovat module-pokoje, OpenAPI a generovaný klient. |
 | Komentáře/poznámky | Odstranit neplatné popisy pokračujícího pobytu a staré palety; ověřit výskyty v celém repozitáři. |
 | Aktivní instrukce | Aktualizovat AGENTS pro nové webové zobrazení. |

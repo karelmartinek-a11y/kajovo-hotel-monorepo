@@ -310,6 +310,15 @@ if [[ "$HOTEL_DEPLOY_SCOPE" != "full" && "$HOTEL_DEPLOY_SCOPE" != "api-admin" ]]
   exit 1
 fi
 
+if [[ "$HOTEL_DEPLOY_SCOPE" == "full" && "$RESET_DB_ON_DEPLOY" == "false" ]]; then
+  postgres_id="$(compose_cmd ps -aq postgres)"
+  if [[ -n "$postgres_id" ]]; then
+    running_postgres_version="$(docker exec "$postgres_id" postgres --version)"
+    target_postgres_image="$(compose_cmd config --format json | python3 -c 'import json, sys; print(json.load(sys.stdin)["services"]["postgres"]["image"])')"
+    python3 "$ROOT_DIR/scripts/check_postgres_deploy_version.py" "$running_postgres_version" "$target_postgres_image"
+  fi
+fi
+
 if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   [[ "$RESET_DB_ON_DEPLOY" == "false" ]] || { echo "API/admin cannot reset the database" >&2; exit 1; }
   protected_before="$(mktemp)"

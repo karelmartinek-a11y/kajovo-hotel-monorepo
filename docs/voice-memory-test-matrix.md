@@ -37,7 +37,7 @@ Běžné testy jsou deterministické a nevolají placené API. Názvy níže odk
 | 31 | API/OpenAPI | M test_openapi_exposes_exact_closed_contract; pnpm contract:check |
 | 32 | previous migration | DB upgrade0041→0042→downgrade→upgrade; PG stejný upgrade |
 | 33 | SQLite | DB a všechny M/P API testy |
-| 34 | PostgreSQL | PG produkční API image, skutečná PostgreSQL16.4; revisions/order/retries/cascades |
+| 34 | PostgreSQL | PG produkční API image, skutečná PostgreSQL16.15; revisions/order/retries/cascades |
 
 Dodatečné M testy ověřují strict Responses store:false/no tools, cancelled assistant text, datum Europe/Prague, vypnutí automatiky, hard limit lístku, timeout/rate cap a opožděnou známou transcription po invalidaci. Portable runtime test ověřuje generic connection readiness oddělenou od nedostupných technologií. Privacy assertions používají umělé sentinelové texty, nikoli reálná tajemství.
 
