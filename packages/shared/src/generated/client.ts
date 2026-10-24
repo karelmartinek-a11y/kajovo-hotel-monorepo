@@ -252,6 +252,12 @@ export type HTTPValidationError = {
 export type HintRequest = {
   "email": string;
 };
+export type HousekeepingBlockRead = {
+  "arrival": string;
+  "block_id": string;
+  "coverage": "left" | "right" | "full";
+  "departure": string;
+};
 export type HousekeepingChargeRead = {
   "date"?: string | null;
   "kind": ReservationAmenityKind;
@@ -268,6 +274,7 @@ export type HousekeepingOperationalState = "checkout_departed_dirty" | "checkout
 export type HousekeepingRoomRead = {
   "arrival_today": boolean;
   "arrivals": Array<HousekeepingStayRead>;
+  "blocks"?: Array<HousekeepingBlockRead>;
   "checked_out": boolean;
   "current_persons"?: number;
   "departure_today": boolean;
@@ -1293,10 +1300,10 @@ export const apiClient = {
   async confirmReservationRequirementApiV1HousekeepingReservationsReservationIdRequirementsKindConfirmPost(reservation_id: string, kind: ReservationAmenityKind, query: { "room_id": string; "date": string; }, body: ReservationRequirementConfirm): Promise<ReservationAmenityRead> {
     return request<ReservationAmenityRead>('POST', `/api/v1/housekeeping/reservations/${reservation_id}/requirements/${kind}/confirm`, query, body);
   },
-  async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; "include_options"?: boolean; }): Promise<HousekeepingRoomsOverview> {
+  async getHousekeepingRoomsApiV1HousekeepingRoomsGet(query: { "date": string; "include_options"?: boolean; "include_blocks"?: boolean; }): Promise<HousekeepingRoomsOverview> {
     return request<HousekeepingRoomsOverview>('GET', `/api/v1/housekeeping/rooms`, query, undefined);
   },
-  async updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(room_id: string, query: { "date": string; "include_options"?: boolean; }, body: HousekeepingRoomStatusUpdate): Promise<HousekeepingRoomRead> {
+  async updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(room_id: string, query: { "date": string; "include_options"?: boolean; "include_blocks"?: boolean; }, body: HousekeepingRoomStatusUpdate): Promise<HousekeepingRoomRead> {
     return request<HousekeepingRoomRead>('PATCH', `/api/v1/housekeeping/rooms/${room_id}`, query, body);
   },
   async listItemsApiV1InventoryGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {

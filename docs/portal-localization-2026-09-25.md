@@ -32,7 +32,7 @@ Překladový katalog `packages/shared/src/i18n/portal-translations.json` má 505
 | Sklad | Inventory | Склад |
 | Hlášení | Reports | Звіти |
 | Uklizeno | Clean | Прибрано |
-| Průběžný úklid | Stayover cleaning | Поточне прибирання |
+| Pobyt bez ložního prádla | Stay without linen change | Проживання без заміни білизни |
 | Příjezd | Arrival | Заїзд |
 | Odjezd | Departure | Виїзд |
 

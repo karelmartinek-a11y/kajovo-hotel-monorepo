@@ -152,7 +152,8 @@ def test_billing_is_scoped_to_each_reservations_room():
 
 @pytest.mark.parametrize('method', ['GET', 'PATCH'])
 @pytest.mark.parametrize('include_options', [False, True])
-def test_web_query_is_preserved_in_reads_and_verified_write_response(monkeypatch, method, include_options):
+@pytest.mark.parametrize('include_blocks', [False, True])
+def test_web_query_is_preserved_in_reads_and_verified_write_response(monkeypatch, method, include_options, include_blocks):
     from types import SimpleNamespace
 
     from fastapi import FastAPI
@@ -163,12 +164,14 @@ def test_web_query_is_preserved_in_reads_and_verified_write_response(monkeypatch
 
     provider = FakeHousekeepingClient()
     provider.reservations_for_day = lambda day: []
+    block = {'block_id': 'block-1', 'room_id': 'room-101', 'arrival': '2026-09-17', 'departure': '2026-09-20', 'coverage': 'right'}
+    provider.blocks_for_day = lambda day: [block]
     calls = []
     original = provider.build_overview
 
     def overview(day, **kwargs):
-        calls.append(kwargs.get('include_options', False))
-        return original(day)
+        calls.append((kwargs.get('include_options', False), kwargs.get('include_blocks', False)))
+        return original(day, include_blocks=kwargs.get('include_blocks', False))
 
     provider.build_overview = overview
     provider.update_room_status = lambda *args, **kwargs: None
@@ -179,7 +182,10 @@ def test_web_query_is_preserved_in_reads_and_verified_write_response(monkeypatch
     app.add_api_route('/rooms/{room_id}', route.update_housekeeping_room_status, methods=['PATCH'])
     app.dependency_overrides[get_db] = lambda: SimpleNamespace(bind=None)
     path = '/rooms' if method == 'GET' else '/rooms/room-101'
-    query = '?date=2026-09-17' + ('&include_options=true' if include_options else '')
+    query = '?date=2026-09-17' + ('&include_options=true' if include_options else '') + ('&include_blocks=true' if include_blocks else '')
     response = TestClient(app).request(method, path + query, **({'json': {'status': 'clean', 'expected_status': 'dirty'}} if method == 'PATCH' else {}))
     assert response.status_code == 200
-    assert calls == [include_options]
+    assert calls == [(include_options, include_blocks)]
+    body = response.json()
+    room = body['rooms'][0] if method == 'GET' else body
+    assert room['blocks'] == ([{k: v for k, v in block.items() if k != 'room_id'}] if include_blocks else [])

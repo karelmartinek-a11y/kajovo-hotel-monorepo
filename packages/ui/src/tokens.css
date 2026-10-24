@@ -21,14 +21,16 @@
   --k-color-room-occupied-badge: #ffded4;
   --k-color-room-occupied-copy: #8b3822;
   --k-color-room-number: #000000;
+  --k-color-room-number-outline: #111111;
+  --k-color-room-block-cross: #ff0000;
   --k-color-room-clean: #22c55e;
   --k-color-room-dirty: #f97316;
   --k-color-room-technical: #f04452;
-  --k-color-room-dnd: #c253df;
-  --k-color-room-stay-clean: #a7e8b8;
-  --k-color-room-linen: #facc15;
-  --k-color-room-windows: #3b9bea;
-  --k-color-room-painted: #d9b8f1;
+  --k-color-room-dnd: #581c87;
+  --k-color-room-stay-clean: #2dd4bf;
+  --k-color-room-linen: #a7e8b8;
+  --k-color-room-windows: #1e40af;
+  --k-color-room-painted: #facc15;
   --k-color-reservation-confirmed: #66c86f;
   --k-color-reservation-checked-in: #54adf1;
   --k-color-reservation-checked-out: #686b73;
@@ -172,7 +174,6 @@ body {
   --k-hk-border-room: 1px solid #cbd9e7;
   --k-hk-border-action: 1px solid #cfdae6;
   --k-hk-gradient-floor: linear-gradient(110deg, #fff, var(--k-hk-bg));
-  --k-hk-gradient-room: linear-gradient(145deg, #fff, #edf3f8);
   --k-hk-gradient-thanks: linear-gradient(100deg, #dff5ef, #effbfa);
   --k-hk-shadow-control: 0 3px 10px rgba(18, 52, 86, .08);
   --k-hk-shadow-floor: 0 7px 20px rgba(32, 74, 110, .07);
@@ -286,7 +287,7 @@ body {
   padding: var(--k-hk-space-10) var(--k-hk-space-11);
   border: var(--k-hk-border-room);
   border-radius: var(--k-hk-radius-9);
-  background: var(--k-hk-gradient-room);
+  background: var(--k-color-room-empty);
   color: var(--k-hk-navy);
   font: inherit;
   text-align: left;

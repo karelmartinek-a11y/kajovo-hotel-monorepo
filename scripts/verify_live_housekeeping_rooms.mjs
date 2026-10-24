@@ -41,7 +41,7 @@ if (login.actor_type !== 'admin') throw new Error(`Unexpected login payload: ${J
 const cookie = parseCookieHeader(loginResponse.headers);
 if (!cookie.includes('kajovo_session=')) throw new Error('Admin login did not issue a session cookie.');
 
-const response = await fetch(`${origin}/api/v1/housekeeping/rooms?date=${encodeURIComponent(serviceDate)}&include_options=true`, {
+const response = await fetch(`${origin}/api/v1/housekeeping/rooms?date=${encodeURIComponent(serviceDate)}&include_options=true&include_blocks=true`, {
   headers: { cookie, 'user-agent': 'kajovo-housekeeping-verify/1.0' },
 });
 const overview = await jsonOrThrow(response, 'Housekeeping rooms overview');
@@ -64,6 +64,9 @@ const invalid = overview.rooms.find((room) =>
     ['arrival_time', 'departure_time'].some((key) => stay[key] !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(stay[key])) ||
     (stay.cot_required !== null && typeof stay.cot_required !== 'boolean') || !Array.isArray(stay.guests) || !Array.isArray(stay.charges) ||
     stay.amenities.some((item) => !['dog', 'cot'].includes(item.kind) || !['red', 'green'].includes(item.state) || !Number.isInteger(item.version)))) ||
+  !Array.isArray(room.blocks) || room.blocks.some((block) =>
+    typeof block.block_id !== 'string' || !['left', 'right', 'full'].includes(block.coverage) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(block.arrival) || !/^\d{4}-\d{2}-\d{2}$/.test(block.departure)) ||
   typeof room.arrival_today !== 'boolean' ||
   typeof room.departure_today !== 'boolean'
 );
@@ -75,4 +78,5 @@ console.log(JSON.stringify({
   date: serviceDate,
   roomCount: overview.rooms.length,
   housekeepingStatusIsCurrent: overview.housekeeping_status_is_current,
+  blockCount: overview.rooms.reduce((sum, room) => sum + room.blocks.length, 0),
 }, null, 2));

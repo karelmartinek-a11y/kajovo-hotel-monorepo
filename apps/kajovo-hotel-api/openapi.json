@@ -1517,6 +1517,41 @@
         "title": "HintRequest",
         "type": "object"
       },
+      "HousekeepingBlockRead": {
+        "properties": {
+          "arrival": {
+            "format": "date",
+            "title": "Arrival",
+            "type": "string"
+          },
+          "block_id": {
+            "title": "Block Id",
+            "type": "string"
+          },
+          "coverage": {
+            "enum": [
+              "left",
+              "right",
+              "full"
+            ],
+            "title": "Coverage",
+            "type": "string"
+          },
+          "departure": {
+            "format": "date",
+            "title": "Departure",
+            "type": "string"
+          }
+        },
+        "required": [
+          "block_id",
+          "arrival",
+          "departure",
+          "coverage"
+        ],
+        "title": "HousekeepingBlockRead",
+        "type": "object"
+      },
       "HousekeepingChargeRead": {
         "properties": {
           "date": {
@@ -1627,6 +1662,13 @@
               "$ref": "#/components/schemas/HousekeepingStayRead"
             },
             "title": "Arrivals",
+            "type": "array"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/HousekeepingBlockRead"
+            },
+            "title": "Blocks",
             "type": "array"
           },
           "checked_out": {
@@ -10413,6 +10455,16 @@
               "title": "Include Options",
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "include_blocks",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Blocks",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -10473,6 +10525,16 @@
             "schema": {
               "default": false,
               "title": "Include Options",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_blocks",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Blocks",
               "type": "boolean"
             }
           }

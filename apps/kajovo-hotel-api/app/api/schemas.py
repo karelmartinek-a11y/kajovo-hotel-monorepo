@@ -329,6 +329,13 @@ class HousekeepingStayRead(BaseModel):
     charges: list[HousekeepingChargeRead] = Field(default_factory=list)
 
 
+class HousekeepingBlockRead(BaseModel):
+    block_id: str
+    arrival: date
+    departure: date
+    coverage: Literal['left', 'right', 'full']
+
+
 class HousekeepingRoomRead(BaseModel):
     room_id: str
     room_number: str
@@ -344,6 +351,7 @@ class HousekeepingRoomRead(BaseModel):
     departures: list[HousekeepingStayRead]
     arrivals: list[HousekeepingStayRead]
     stays: list[HousekeepingStayRead]
+    blocks: list[HousekeepingBlockRead] = Field(default_factory=list)
     arrival_today: bool
     departure_today: bool
     checked_out: bool

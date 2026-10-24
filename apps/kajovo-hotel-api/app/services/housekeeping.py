@@ -308,9 +308,31 @@ class BetterHotelHousekeepingClient:
                     records[str(item["id"])] = item
         return sorted(records.values(), key=lambda item: (str(item.get("arrival")), str(item["id"])))
 
-    def build_overview(self, service_date: date, *, include_options: bool = False) -> dict[str, Any]:
+    def blocks_for_day(self, day: date) -> list[dict[str, Any]]:
+        records = self._list_pages('/reservation', {
+            'filter[from]': day.isoformat(), 'filter[to]': day.isoformat(),
+            'filter[range_type]': 'intersect', 'filter[mode]': 'block',
+            'filter[state]': 'all', 'expand[]': ['room'],
+        })
+        blocks: dict[str, dict[str, Any]] = {}
+        for item in records:
+            try:
+                start, end = date.fromisoformat(item['arrival']), date.fromisoformat(item['departure'])
+                room = _reservation_room(item)
+                if item.get('mode') != 3 or not item.get('id') or room is None or end < start:
+                    raise ValueError('Invalid block')
+            except (KeyError, TypeError, ValueError) as exc:
+                raise BetterHotelHousekeepingError('Better Hotel vrátil neplatnou blokaci pokoje.') from exc
+            if start <= day <= end:
+                blocks[str(item['id'])] = {'block_id': str(item['id']), 'room_id': room[0],
+                    'arrival': start.isoformat(), 'departure': end.isoformat(),
+                    'coverage': 'full' if start < day < end or start == end else 'right' if start == day else 'left'}
+        return list(blocks.values())
+
+    def build_overview(self, service_date: date, *, include_options: bool = False, include_blocks: bool = False) -> dict[str, Any]:
         today = current_hotel_date()
         current_rooms = self.list_current_rooms()
+        blocks = self.blocks_for_day(service_date) if include_blocks else []
         selected = self.reservations_for_day(service_date, include_options=True) if include_options else self.reservations_for_day(service_date)
         current = [item for item in selected if not _is_option(item)] if service_date == today else self.reservations_for_day(today)
         output_rooms: list[dict[str, Any]] = []
@@ -368,6 +390,7 @@ class BetterHotelHousekeepingClient:
                     "departures": [_stay_read(item, service_date) for item in departures],
                     "arrivals": [_stay_read(item, service_date) for item in arrivals],
                     "stays": [_stay_read(item, service_date) for item in stays],
+                    "blocks": [{key: value for key, value in block.items() if key != 'room_id'} for block in blocks if block['room_id'] == room_id],
                     "arrival_today": bool(arrivals),
                     "departure_today": bool(departures),
                     "checked_out": is_checked_out,

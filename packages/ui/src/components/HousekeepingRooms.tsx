@@ -34,31 +34,34 @@ const OPERATIONAL_LABELS: Record<HousekeepingOperationalState, string> = {
 };
 
 const STATUS_ACTIONS: Array<{ value: HousekeepingRoomStatus; label: string; detail: string }> = [
-  { value: 'clean', label: 'Uklizeno', detail: 'Pokoj je uklizený.' },
+  { value: 'clean', label: 'Uklizeno pro nájezd', detail: 'Pokoj je uklizený.' },
   { value: 'dirty', label: 'Neuklizeno', detail: 'Pokoj čeká na úklid.' },
-  { value: 'stay_no_linen', label: 'Průběžný úklid', detail: 'Bez výměny ložního prádla.' },
-  { value: 'stay_with_linen', label: 'Průběžný úklid + prádlo', detail: 'S výměnou ložního prádla.' },
+  { value: 'stay_no_linen', label: 'Pobyt bez ložního prádla', detail: 'Bez výměny ložního prádla.' },
+  { value: 'stay_with_linen', label: 'Uklizeno s ložním prádlem', detail: 'S výměnou ložního prádla.' },
   { value: 'do_not_disturb', label: 'Nerušenka', detail: 'Host si nepřeje být rušen.' },
-  { value: 'technical_issue', label: 'Technická závada', detail: 'Pokoj vyžaduje technický zásah.' },
+  { value: 'technical_issue', label: 'Technický problém', detail: 'Pokoj vyžaduje technický zásah.' },
   { value: 'windows_cleaned', label: 'Umytá okna', detail: 'Okna jsou umytá.' },
   { value: 'painted', label: 'Vymalováno', detail: 'Pokoj je vymalovaný.' },
 ];
 
 const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: HousekeepingRoomRead; onSelect: (room: HousekeepingRoomRead) => void; locale: string }): JSX.Element {
-  const reservations: Array<[StayKind, HousekeepingStayRead[]]> = [['departure', room.departures], ['arrival', room.arrivals], ['stay', room.stays]];
-  const split = room.departures.length > 0 || room.arrivals.length > 0;
+  const reservations: Array<[StayKind, HousekeepingStayRead[]]> = [['departure', room.departures], ['arrival', room.arrivals]];
+  const blocks = room.blocks ?? [];
+  const fullBlock = blocks.some((block) => block.coverage === 'full');
+  const coverage = fullBlock ? ['full'] : ['left', 'right'].filter((side) => blocks.some((block) => block.coverage === side));
   const stays = reservations.flatMap(([, items]) => items);
-  const statusLabel = room.housekeeping_status ? t(room.housekeeping_status) : t('Neurčen');
+  const statusLabel = t(STATUS_ACTIONS.find((action) => action.value === room.housekeeping_status_key)?.label ?? room.housekeeping_status ?? 'Neurčen');
   const describe = stays.map((stay) => [stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
     ...(['dog', 'cot'] as const).filter((kind) => kind === 'dog' ? (stay.dog_count ?? 0) > 0 : stay.cot_required).map((kind) => `${t(kind === 'dog' ? 'Pes' : 'Dětská postýlka')}: ${t(requirementConfirmed(stay, kind) ? 'Potvrzeno' : 'Nepotvrzeno')}`),
   ].join(', ')).join('; ');
-  return <button className={`k-hk-room k-hk-room--stamp${split ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
-    aria-label={`${t('Pokoj')} ${room.room_number}, ${statusLabel}, ${t(OPERATIONAL_LABELS[room.operational_state])}. ${describe}. ${stays.some((stay) => stay.housekeeping_note?.trim()) ? `${t('Poznámka pro pokojskou')}. ` : ''}${t('Změnit stav pokoje.')}`}>
+  return <button className={`k-hk-room k-hk-room--stamp${fullBlock ? ' k-hk-room--blocked' : room.departures.length && room.arrivals.length ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
+    aria-label={`${t('Pokoj')} ${room.room_number}, ${statusLabel}, ${t(OPERATIONAL_LABELS[room.operational_state])}. ${describe}. ${stays.some((stay) => stay.housekeeping_note?.trim()) ? `${t('Poznámka pro pokojskou')}. ` : ''}${blocks.length ? `${t('Blokace pokoje / zastavení prodeje')}. ` : ''}${t('Změnit stav pokoje.')}`}>
     <span className={`k-hk-room__topline k-hk-room-status--${room.housekeeping_status_key ?? 'unknown'}`} title={statusLabel}><strong>{room.room_number}</strong></span>
     <span className="k-hk-room__body">
-      {(split ? reservations.slice(0, 2) : reservations.slice(2)).map(([kind, items]) => <span key={kind} className={`k-hk-room__slot${!split ? ' k-hk-room__slot--full' : ''}`}>
+      {reservations.map(([kind, items]) => <span key={kind} className="k-hk-room__slot">
         {items.length === 1 ? <ReservationStamp stay={items[0]} kind={kind} /> : items.length > 1 ? <span className="k-hk-room__conflict" title={t('Nejednoznačné přiřazení rezervací')}>!</span> : null}
       </span>)}
+      {coverage.map((side) => <svg key={side} className={`k-hk-room__block k-hk-room__block--${side}`} data-block-coverage={side} viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={t('Blokace pokoje / zastavení prodeje')}><title>{t('Blokace pokoje / zastavení prodeje')}</title><path d="M3 3 97 97 M97 3 3 97" /></svg>)}
     </span>
   </button>;
 });
@@ -84,7 +87,7 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
     const sequence = ++requestSequence.current;
     if (!background) { setLoading(true); setError(null); }
     try {
-      const response = await apiClient.getHousekeepingRoomsApiV1HousekeepingRoomsGet({ date: dateValue, include_options: true });
+      const response = await apiClient.getHousekeepingRoomsApiV1HousekeepingRoomsGet({ date: dateValue, include_options: true, include_blocks: true });
       if (sequence === requestSequence.current) { setOverview(response); setError(null); }
     } catch {
       if (sequence === requestSequence.current) setError(t('Přehled se nepodařilo obnovit. Zobrazené údaje mohou být zastaralé.'));
@@ -125,7 +128,7 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
     try {
       const updated = await apiClient.updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(
         selectedRoom.room_id,
-        { date: selectedDate, include_options: true },
+        { date: selectedDate, include_options: true, include_blocks: true },
         { status, expected_status: expectedStatus },
       );
       setOverview((current) => current ? {

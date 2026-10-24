@@ -231,15 +231,15 @@ test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní deta
     await modal.getByRole('button', { name: 'Zavřít dialog' }).click();
   }
   await cards.first().click();
-  await page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /^Uklizeno pro nájezd/ }).click();
   await expect(page.getByRole('dialog')).toContainText('Změnu se nepodařilo ověřit');
-  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toHaveCount(0);
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno pro nájezd/ })).toHaveCount(0);
   expect(await page.getByRole('dialog').evaluate((node) => node.getBoundingClientRect().bottom <= innerHeight + 1)).toBeTruthy();
   await page.getByRole('button', { name: 'Zavřít dialog' }).click();
   await cards.first().click();
-  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toHaveCount(0);
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno pro nájezd/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Obnovit stav' }).click();
-  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno/ })).toBeEnabled();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /^Uklizeno pro nájezd/ })).toBeEnabled();
 });
 
 const { email: ADMIN_EMAIL, password: ADMIN_PASSWORD } = getAdminCredentials();
@@ -369,7 +369,7 @@ test.describe('CI smoke auth flows', () => {
     await expect(page.getByTestId('housekeeping-rooms-view')).toBeVisible();
     await page.getByRole('button', { name: /pokoj 301/i }).click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('button', { name: /^Technická závada /i }).click();
+    await dialog.getByRole('button', { name: /^Technický problém /i }).click();
     await expect(dialog).toContainText('Zapisuji změnu');
     await expect(dialog.getByRole('button')).toHaveCount(0);
     finishWrite!();

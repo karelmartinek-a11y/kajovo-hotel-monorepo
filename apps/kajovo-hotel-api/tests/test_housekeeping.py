@@ -285,3 +285,41 @@ def test_housekeeping_route_returns_http_409_for_stale_status_without_provider_p
     assert "změnil" in response.json()["detail"]
     assert database.locked_resources == ["housekeeping:room:room-101"]
     assert provider.patch_attempted is False
+
+
+@pytest.mark.parametrize(('arrival', 'departure', 'coverage'), [
+    ('2026-09-17', '2026-09-20', 'right'),
+    ('2026-09-14', '2026-09-17', 'left'),
+    ('2026-09-14', '2026-09-20', 'full'),
+    ('2026-09-17', '2026-09-17', 'full'),
+    ('2026-09-18', '2026-09-20', None),
+])
+def test_block_projection_is_room_bound_and_does_not_change_occupancy(monkeypatch, arrival, departure, coverage):
+    client = FakeHousekeepingClient()
+    calls = []
+    def pages(path, query):
+        calls.append((path, query))
+        return [{'id': 'block-1', 'mode': 3, 'arrival': arrival, 'departure': departure,
+                 'room': {'id': 'room-103', 'name': '103 KOMFORT'}}]
+    monkeypatch.setattr(client, '_list_pages', pages)
+    original = client.build_overview(date(2026, 9, 17))
+    assert calls == []
+    projected = client.build_overview(date(2026, 9, 17), include_blocks=True)
+    assert len(calls) == 1
+    assert calls[0] == ('/reservation', {'filter[from]': '2026-09-17', 'filter[to]': '2026-09-17',
+        'filter[range_type]': 'intersect', 'filter[mode]': 'block', 'filter[state]': 'all', 'expand[]': ['room']})
+    for before, after in zip(original['rooms'], projected['rooms']):
+        assert {k: v for k, v in before.items() if k != 'blocks'} == {k: v for k, v in after.items() if k != 'blocks'}
+        assert after['blocks'] == ([{'block_id': 'block-1', 'arrival': arrival, 'departure': departure, 'coverage': coverage}]
+            if coverage and after['room_id'] == 'room-103' else [])
+
+
+@pytest.mark.parametrize('changes', [{'mode': 1}, {'room': None}, {'arrival': 'bad'}, {'departure': '2026-09-16'}, {'id': ''}])
+def test_invalid_block_is_an_error_not_an_empty_room(monkeypatch, changes):
+    from app.services.housekeeping import BetterHotelHousekeepingError
+    client = FakeHousekeepingClient()
+    block = {'id': 'block-1', 'mode': 3, 'arrival': '2026-09-17', 'departure': '2026-09-20',
+             'room': {'id': 'room-103', 'name': '103 KOMFORT'}, **changes}
+    monkeypatch.setattr(client, '_list_pages', lambda *_: [block])
+    with pytest.raises(BetterHotelHousekeepingError, match='blokaci'):
+        client.build_overview(date(2026, 9, 17), include_blocks=True)
