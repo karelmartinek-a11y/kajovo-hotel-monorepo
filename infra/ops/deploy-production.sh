@@ -324,11 +324,15 @@ fi
 if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   [[ "$RESET_DB_ON_DEPLOY" == "false" ]] || { echo "API/admin cannot reset the database" >&2; exit 1; }
   protected_dir="$(mktemp -d)"
-  trap 'rm -rf "$protected_dir"' EXIT
+  protected_image_guard=""
+  trap 'if [[ -n "$protected_image_guard" ]]; then docker rm "$protected_image_guard" >/dev/null; fi; rm -rf "$protected_dir"' EXIT
   protected_before="$protected_dir/before.txt"
   protected_after="$protected_dir/after.txt"
   # Freeze the already running, CI-verified image before tags change during the build.
   snapshot_image="$(docker inspect "$(compose_cmd ps -q api)" --format '{{.Image}}')"
+  # An ID alone is not a GC reference after API replacement. This container never starts.
+  protected_image_guard="$(docker create --pull=never --network=none --read-only --cap-drop=ALL \
+    --security-opt=no-new-privileges:true --entrypoint=python "$snapshot_image" -c pass)"
   protected_state() {
     docker inspect "$(compose_cmd ps -q postgres)" "$(compose_cmd ps -q web)" \
       --format '{{.Id}} {{.Image}} {{.State.StartedAt}}'

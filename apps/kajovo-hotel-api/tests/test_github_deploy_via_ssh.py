@@ -179,6 +179,9 @@ def test_api_admin_deploy_requires_complete_immutable_snapshot_and_retains_evide
     limited = script.split('if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then', 1)[1].split('\nfi\n', 1)[0]
     assert limited.index('snapshot_image=') < limited.index('docker_build_with_snapshot_retry api admin')
     assert '--docker-image "$snapshot_image"' in limited
+    assert limited.index('protected_image_guard="$(docker create') < limited.index('docker_build_with_snapshot_retry api admin')
+    assert 'docker rm "$protected_image_guard"' in limited
+    assert 'docker start' not in limited
     assert 'sha256sum /etc/nginx/sites-enabled/*' not in limited
     assert '"protected_runtime":"complete_unchanged"' in limited
     assert '"snapshot_transport":"docker_readonly"' in limited

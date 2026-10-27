@@ -100,7 +100,44 @@ def verify_stale_root_artifact_cleanup(image):
     print('Docker stale-release cleanup: root-owned artifacts removed without permission changes; latest/unrecognized/symlink targets preserved PASS')
 
 
+def verify_snapshot_image_survives_gc(image):
+    import uuid
+    token = uuid.uuid4().hex[:10]
+    base_tag, child_tag = 'deploy-snapshot-base:' + token, 'deploy-snapshot-gc:' + token
+    label = 'io.kajovo.snapshot-gc-test=' + token
+    subprocess.run(['docker','image','tag',image,base_tag],check=True)
+    guard = None
+    try:
+        with tempfile.TemporaryDirectory(prefix='snapshot-gc-') as directory:
+            root = Path(directory)
+            (root/'Dockerfile').write_text('FROM ' + base_tag + '\nLABEL ' + label + '\n')
+            subprocess.run(['docker','build','--pull=false','--network=none','-q','-t',child_tag,str(root)],check=True,
+                           stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            image_id = subprocess.check_output(['docker','image','inspect',child_tag,'--format','{{.Id}}'],text=True).strip()
+            guard = subprocess.check_output(['docker','create','--pull=never','--network=none','--read-only',
+                '--cap-drop=ALL','--security-opt=no-new-privileges:true','--entrypoint=python',image_id,'-c','pass'],text=True).strip()
+            subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
+            subprocess.run(['docker','image','inspect',image_id],check=True,stdout=subprocess.PIPE)
+            state = subprocess.check_output(['docker','inspect',guard,'--format','{{.State.Status}}'],text=True).strip()
+            assert state == 'created'
+            # The same original runtime remains executable after real filtered GC.
+            subprocess.run(['docker','run','--rm','--network=none','--read-only','--cap-drop=ALL',
+                '--entrypoint=python',image_id,'-c','pass'],check=True)
+            subprocess.run(['docker','rm',guard],check=True,stdout=subprocess.PIPE)
+            guard = None
+            subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
+            gone = subprocess.run(['docker','image','inspect',image_id],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            assert gone.returncode != 0
+    finally:
+        if guard:
+            subprocess.run(['docker','rm',guard],check=True,stdout=subprocess.PIPE)
+        subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
+        subprocess.run(['docker','image','rm',base_tag],check=True,stdout=subprocess.PIPE)
+    print('Docker immutable snapshot runtime survives filtered image GC until the unstarted guard is removed PASS')
+
+
 if __name__ == '__main__':
     image = os.environ.get('DEPLOY_SNAPSHOT_TEST_IMAGE', 'kajovo-api-ci')
     run(image)
     verify_stale_root_artifact_cleanup(image)
+    verify_snapshot_image_survives_gc(image)

@@ -3,7 +3,10 @@
 GitHub workflow nasazuje pouze úspěšný push CI pro stále aktuální `main` SHA.
 API/admin větev `infra/ops/deploy-production.sh` před buildem uloží neměnné
 `sha256:` ID právě běžícího API image a použije stejný image pro oba snapshoty.
-Změna tagu během buildu proto nemění měřicí prostředí.
+Změna tagu během buildu proto nemění měřicí prostředí. Dočasný kontejner
+ve stavu `created` drží původní image proti garbage collection i po výměně API.
+Nikdy se nespouští a EXIT trap jej odstraní při úspěchu i při selhání.
+Samotné neměnné ID image není ochrana proti jeho odstranění.
 
 `protected_runtime_snapshot.py --docker-image <immutable-id>` načítá veřejná
 systemd metadata přes deploy účet. Soubory hashují standardní Python knihovny
@@ -46,7 +49,7 @@ Databázové a mediální volumes ani běžící image nejsou cílem úklidu.
 | Kategorie | Rozhodnutí |
 | --- | --- |
 | Produkční zdroje | aktualizovat deploy/snapshot, cleanup starých artefaktů a HTTP kontrolu; aplikační chování beze změny |
-| Testy | aktualizovat shell/protokolové regrese, přidat skutečný Docker test privátní konfigurace, read-only mountu, neúplné evidence a úklidu root artefaktů |
+| Testy | aktualizovat shell/protokolové regrese, přidat skutečný Docker test privátní konfigurace, read-only mountu, neúplné evidence, úklidu root artefaktů a zachování image při GC |
 | CI/gates | doplnit Docker scénář do stávajícího api-runtime-image jobu, zachovat úplný validate plán |
 | Dokumentace | aktualizovat deploy runbook a tento kontrakt |
 | Komentáře | popsat úplný automatický snapshot bez požadavku na ruční root měření |
