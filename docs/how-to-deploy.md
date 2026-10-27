@@ -37,3 +37,5 @@ Přesný mechanismus, odmítnuté stavy a matice dopadů jsou v
 [DEPLOY_AUTOMATION.md](DEPLOY_AUTOMATION.md).
 
 Pomocný nespouštěný snapshot kontejner přepisuje zděděné Compose project/service labely na prázdné; výměna API jej nesmí převzít ani odstranit. Docker test ověřuje skutečnou Compose výměnu i GC.
+
+Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespouštěný kontejner; tag drží adresovatelnost původního image při přesměrování build tagu a kontejner jej chrání před image GC. EXIT trap odstraní oba dočasné objekty.

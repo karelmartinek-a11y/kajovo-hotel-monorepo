@@ -67,3 +67,5 @@ commit jako základ a ověř navazující aktuální release; nevracej starý st
 | AGENTS | aktualizovat závaznou hranici existujících oprávnění a odmítnutí neúplného snapshotu |
 | Fixtures/texty | syntetické neveřejné soubory a symlinky pouze v izolovaném testu; UI beze změny |
 | Build/OpenAPI/deploy | ověřit automatický GitHub release; OpenAPI, klient, Android a UI nemají změněný kontrakt |
+
+Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespouštěný kontejner; tag drží adresovatelnost původního image při přesměrování build tagu a kontejner jej chrání před image GC. EXIT trap odstraní oba dočasné objekty.

@@ -156,8 +156,14 @@ def filesystem_command(image, mounts):
 def filesystem_snapshot(image, units, mounts):
     command = filesystem_command(image, mounts)
     command += ["--entrypoint=python", image, "-c", Path(__file__).read_text(), "--filesystem"]
-    result = subprocess.run(command, input=json.dumps({"units": units, "roots": [target for _, target in mounts]}),
-        text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, check=True)
+    try:
+        result = subprocess.run(command, input=json.dumps({"units": units, "roots": [target for _, target in mounts]}),
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, check=True)
+    except subprocess.CalledProcessError as error:
+        # Keep private stderr and the source-bearing command out of deployment logs.
+        detail = (error.stderr or "").lower()
+        reason = "image_unavailable" if "no such image" in detail else "container_failed"
+        raise RuntimeError(f"protected_snapshot_{reason}:exit={error.returncode}") from None
     value = require_complete(json.loads(result.stdout))
     value["transport"] = "docker_readonly"
     return value

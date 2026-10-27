@@ -132,3 +132,5 @@ CI ověřuje absenci diagnostických rout, požadavků, MediaRecorderu a periodi
 - For the 2026-10-07 Mail completion run, the owner subsequently cancelled all further paid tests and explicitly accepted the remaining tests for implementation and activation. Record this exact-SHA decision outside Git as USER_ACCEPTED; unperformed paid measurements remain NOT_RUN_BY_OWNER_POLICY, never measured PASS. Complete unpaid gates and activate the matching immutable release without further provider calls. Preserve the default real-acceptance policy for future runs, all credential/consent safeguards and protected services; this exception adds no public bypass.
 
 Pomocný nespouštěný snapshot kontejner přepisuje zděděné Compose project/service labely na prázdné; výměna API jej nesmí převzít ani odstranit. Docker test ověřuje skutečnou Compose výměnu i GC.
+
+Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespouštěný kontejner; tag drží adresovatelnost původního image při přesměrování build tagu a kontejner jej chrání před image GC. EXIT trap odstraní oba dočasné objekty.

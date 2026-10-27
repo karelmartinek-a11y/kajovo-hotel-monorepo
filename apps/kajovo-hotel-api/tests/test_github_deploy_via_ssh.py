@@ -182,6 +182,8 @@ def test_api_admin_deploy_requires_complete_immutable_snapshot_and_retains_evide
     assert limited.index('protected_image_guard="$(docker create') < limited.index('docker_build_with_snapshot_retry api admin')
     assert '--label com.docker.compose.project=' in limited
     assert '--label com.docker.compose.service=' in limited
+    assert 'docker image tag "$snapshot_image" "$protected_image_tag"' in limited
+    assert 'docker image rm "$protected_image_tag"' in limited
     assert 'docker rm "$protected_image_guard"' in limited
     assert 'docker start' not in limited
     assert 'sha256sum /etc/nginx/sites-enabled/*' not in limited
@@ -189,3 +191,18 @@ def test_api_admin_deploy_requires_complete_immutable_snapshot_and_retains_evide
     assert '"snapshot_transport":"docker_readonly"' in limited
     assert 'protected-before.txt' in limited and 'protected-after.txt' in limited
     assert 'sudo' not in limited and 'chmod' not in limited and 'chown' not in limited
+
+
+def test_snapshot_container_failure_reports_only_fixed_metadata():
+    import importlib.util
+    import subprocess
+    from unittest.mock import patch
+    spec = importlib.util.spec_from_file_location('snapshot_failure', Path(__file__).resolve().parents[3] / 'scripts/protected_runtime_snapshot.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for stderr, reason in [('No such image: private-reference', 'image_unavailable'), ('private-config-content', 'container_failed')]:
+        with patch.object(module.subprocess, 'run', side_effect=subprocess.CalledProcessError(125, ['private-source'], stderr=stderr)):
+            with __import__('pytest').raises(RuntimeError) as error:
+                module.filesystem_snapshot('sha256:'+'a'*64, '', [])
+        assert str(error.value) == f'protected_snapshot_{reason}:exit=125'
+        assert 'private' not in str(error.value)

@@ -50,7 +50,7 @@ def run(image):
             try:
                 filesystem_snapshot(image_id, units, mounts)
                 raise AssertionError('unreadable evidence was accepted')
-            except subprocess.CalledProcessError:
+            except RuntimeError:
                 pass
         finally:
             root.chmod(0o755)
@@ -106,6 +106,7 @@ def verify_snapshot_image_survives_gc(image):
     base_tag, child_tag = 'deploy-snapshot-base:' + token, 'deploy-snapshot-gc:' + token
     label = 'io.kajovo.snapshot-gc-test=' + token
     subprocess.run(['docker','image','tag',image,base_tag],check=True)
+    pin_tag = 'deploy-snapshot-pin:' + token
     guard = None
     project = 'snapshot-compose-' + token
     compose = None
@@ -118,16 +119,20 @@ def verify_snapshot_image_survives_gc(image):
             subprocess.run(['docker','build','--pull=false','--network=none','-q','-t',child_tag,str(root)],check=True,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             image_id = subprocess.check_output(['docker','image','inspect',child_tag,'--format','{{.Id}}'],text=True).strip()
+            subprocess.run(['docker','image','tag',image_id,pin_tag],check=True)
             guard = subprocess.check_output(['docker','create','--pull=never','--network=none','--read-only',
                 '--cap-drop=ALL','--security-opt=no-new-privileges:true','--label','com.docker.compose.project=',
                 '--label','com.docker.compose.service=','--entrypoint=python',image_id,'-c','pass'],text=True).strip()
             # Production images inherit Compose labels. Replacing the service must not adopt/remove the guard.
             compose_file = root/'compose.json'
-            compose_config = json.dumps({'services': {'api': {'image': base_tag,
+            compose_config = json.dumps({'services': {'api': {'image': child_tag, 'build': {'context': str(root)},
                 'entrypoint': ['python'], 'command': ['-c', 'import time; time.sleep(120)'],
                 'network_mode': 'none', 'read_only': True, 'cap_drop': ['ALL']}}})
             compose_file.write_text(compose_config)
             compose = ['docker','compose','-p',project,'-f',str(compose_file)]
+            with (root/'Dockerfile').open('a') as dockerfile:
+                dockerfile.write('LABEL io.kajovo.snapshot-generation=replacement\n')
+            subprocess.run([*compose,'build','api'],check=True,cwd=root,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             subprocess.run([*compose,'up','-d','--no-deps','--force-recreate','api'],check=True,cwd=root,
                            stdout=subprocess.PIPE)
             subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
@@ -139,6 +144,8 @@ def verify_snapshot_image_survives_gc(image):
                 '--entrypoint=python',image_id,'-c','pass'],check=True)
             subprocess.run(['docker','rm',guard],check=True,stdout=subprocess.PIPE)
             guard = None
+            subprocess.run(['docker','image','rm',pin_tag],check=True,stdout=subprocess.PIPE)
+            pin_tag = None
             subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
             gone = subprocess.run(['docker','image','inspect',image_id],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             assert gone.returncode != 0
@@ -148,6 +155,8 @@ def verify_snapshot_image_survives_gc(image):
                            check=True,cwd=tempfile.gettempdir(),stdout=subprocess.PIPE)
         if guard:
             subprocess.run(['docker','rm',guard],check=True,stdout=subprocess.PIPE)
+        if pin_tag:
+            subprocess.run(['docker','image','rm',pin_tag],check=True,stdout=subprocess.PIPE)
         subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
         subprocess.run(['docker','image','rm',base_tag],check=True,stdout=subprocess.PIPE)
     print('Docker immutable snapshot runtime survives Compose service replacement and filtered image GC until the unstarted guard is removed PASS')
