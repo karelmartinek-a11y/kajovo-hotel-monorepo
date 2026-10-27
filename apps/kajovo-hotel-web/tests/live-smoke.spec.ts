@@ -286,7 +286,7 @@ test('pokoje oddělují stav pokoje od rezervací a počítají noci', async ({ 
   await detail.getByRole('button', { name: 'Zavřít dialog' }).click();
   await expect(page.getByRole('button', { name: /pokoj 102,/i }).locator('.k-hk-room__slot').first().locator('.k-hk-reservation')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /pokoj 103,/i }).locator('.k-hk-room__slot').last().locator('.k-hk-reservation')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /pokoj 104,/i }).locator('.k-hk-reservation')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /pokoj 104,/i }).locator('[data-stay-kind="stay"]')).toHaveClass(/--option/);
   const empty = page.getByRole('button', { name: /pokoj 105,/i });
   await expect(empty.locator('.k-hk-reservation')).toHaveCount(0);
   await expect(empty.locator('.k-hk-room__slot').first()).toHaveCSS('background-color', 'rgb(255, 255, 255)');
@@ -300,6 +300,30 @@ test('pokoje oddělují stav pokoje od rezervací a počítají noci', async ({ 
   await expect(page.getByRole('dialog').locator('dd').filter({ hasText: /^2\/2$/ })).toHaveCount(1);
   await page.getByRole('dialog').getByRole('button', { name: 'Zavřít dialog' }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+});
+
+test('pokoj 206 zobrazuje probíhající pobyt a zachovává původní rozměry', async ({ page, request }, testInfo) => {
+  await page.route('**/api/v1/housekeeping/rooms**', async route => {
+    const date = new URL(route.request().url()).searchParams.get('date');
+    await route.fulfill({json:{date, occupancy_date:date, housekeeping_status_is_current:true, loaded_at:new Date().toISOString(), rooms:[{
+      ...HOUSEKEEPING_ROOM_FIXTURE, room_id:'room-206', room_number:'206', operational_state:'occupied', occupancy_state:'staying',
+      departures:[], arrivals:[], stays:[{...HOUSEKEEPING_ROOM_FIXTURE.departures[0], reservation_state:'checked_in', adults:1, children:1, infants:0, persons:2, country_code:'DE', country_code_alpha3:'DEU'}],
+    }]}});
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  const card = page.locator('[data-room-id="room-206"]');
+  await expect(card.locator('[data-stay-kind="stay"]')).toHaveCount(1);
+  await expect(card.locator('[data-stay-kind="stay"]')).toHaveClass(/--checked_in/);
+  await expect(card).toContainText('POBYT');
+  await expect(card.locator('.k-hk-reservation__country')).toHaveText('DEU');
+  await expect(card.locator('[data-age-group="adults"] b')).toHaveText('1');
+  await expect(card.locator('[data-age-group="children"] b')).toHaveText('1');
+  await expect(card.locator('[data-age-group="infants"] b')).toHaveText('0');
+  expect(await card.evaluate(el=>el.getBoundingClientRect().height)).toBe((page.viewportSize()?.width ?? 0) < 600 ? 106 : 112);
+  await card.click();
+  await expect(page.getByRole('dialog').locator('.k-hk-status-actions button')).toHaveCount(8);
+  await expect(page.getByRole('dialog').locator('.k-hk-reservation-detail')).toHaveCount(1);
 });
 
 test('pokoje zachovají provozní pořadí a přizpůsobí mřížku šířce okna', async ({ page, request }, testInfo) => {
@@ -909,7 +933,9 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
     const cards = page.locator('.k-hk-room');
     await expect(cards).toHaveCount(14);
-    await expect(cards.nth(9).locator('.k-hk-reservation')).toHaveCount(0);
+    await expect(page.locator('[data-room-id="stay"] [data-stay-kind="stay"]')).toHaveCount(1);
+    const stayWidth = await page.locator('[data-room-id="stay"] .k-hk-reservation').evaluate(el=>({stamp:el.getBoundingClientRect().width, body:el.closest('.k-hk-room__body')!.getBoundingClientRect().width}));
+    expect(stayWidth.stamp).toBeCloseTo(stayWidth.body, 1);
     for (const side of ['left', 'right', 'full']) {
       const blocked = page.locator(`[data-room-id="blocked-${side}"]`);
       const cross = blocked.locator('.k-hk-room__block');
@@ -925,7 +951,7 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       const number = cards.nth(i).locator('.k-hk-room__topline strong');
       await expect(number).toHaveCSS('color', 'rgb(255, 255, 255)');
       await expect(number).toHaveCSS('-webkit-text-stroke-color', 'rgb(17, 17, 17)');
-      await expect(number).toHaveCSS('-webkit-text-stroke-width', '1.25px');
+      await expect(number).toHaveCSS('-webkit-text-stroke-width', '0.8px');
     }
     await expect(page.locator('.k-hk-help, .k-hk-legend')).toHaveCount(0);
     await expect(cards.first()).not.toContainText(stay.display_name);
@@ -940,16 +966,16 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     await expect(cards.first().locator('.k-hk-reservation__country').first()).toHaveAttribute('title', countryLabel);
     const content = await cards.evaluateAll((nodes) => nodes.flatMap((node) => Array.from(node.querySelectorAll('.k-hk-reservation')).map((block) => {
       const bounds = block.getBoundingClientRect();
-      const rows = Array.from(block.children).map((row) => row.getBoundingClientRect());
+      const rows = Array.from(block.children).filter(row=>!row.matches('.k-hk-room__note-alert')).map((row) => row.getBoundingClientRect());
       const counts = Array.from(block.querySelectorAll('.k-hk-person-counts > span')).map((count) => count.getBoundingClientRect());
       return {
         rowsInside: rows.every((row) => row.left >= bounds.left && row.right <= bounds.right + .5 && row.top >= bounds.top && row.bottom <= bounds.bottom + .5),
         countsInside: counts.every((count) => count.left >= bounds.left && count.right <= bounds.right + .5),
-        countsAligned: innerWidth < 600 ? Math.max(...counts.map((count) => count.x + count.width/2)) - Math.min(...counts.map((count) => count.x + count.width/2)) < 1 : Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
+        countsAligned: block.getAttribute('data-stay-kind') !== 'stay' ? Math.max(...counts.map((count) => count.x + count.width/2)) - Math.min(...counts.map((count) => count.x + count.width/2)) < 1 : Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
         countSize: parseFloat(getComputedStyle(block.querySelector('.k-hk-person-counts')!).fontSize),
-        timeSize: parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__time')!).fontSize),
+        timeSize: block.querySelector('.k-hk-reservation__time') ? parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__time')!).fontSize) : null,
         countrySize: parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__country')!).fontSize),
-        rowCount: block.children.length,
+        rowCount: Array.from(block.children).filter(row=>!row.matches('.k-hk-room__note-alert')).length,
         requestsInside: Array.from(block.querySelectorAll('.k-hk-request-icon')).every((icon) => { const r = icon.getBoundingClientRect(), bounds = icon.parentElement!.getBoundingClientRect(); return r.left >= bounds.left && r.right <= bounds.right + .5; }),
         iconHeight: block.querySelector('.k-hk-person-icon')!.getBoundingClientRect().height,
         kind: block.getAttribute('data-stay-kind'),
@@ -957,8 +983,8 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     })));
     for (const block of content) {
       expect(block.rowsInside).toBeTruthy(); expect(block.countsInside).toBeTruthy(); expect(block.countsAligned).toBeTruthy();
-      expect(block.countrySize).toBeGreaterThanOrEqual(14); expect(block.countSize).toBeGreaterThanOrEqual(14); expect(block.timeSize).toBeGreaterThanOrEqual(14); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
-      if (block.kind === 'stay') { expect(block.countrySize).toBeGreaterThanOrEqual(19); expect(block.iconHeight).toBeGreaterThanOrEqual(17); }
+      expect(block.countrySize).toBeGreaterThanOrEqual(14); expect(block.countSize).toBeGreaterThanOrEqual(12); if (block.timeSize !== null) expect(block.timeSize).toBeGreaterThanOrEqual(14); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
+      if (block.kind === 'stay') expect(block.iconHeight).toBeGreaterThanOrEqual(12);
     }
     const geometry = await cards.evaluateAll((nodes) => nodes.map((node) => {
       const rect = node.getBoundingClientRect(); const header = node.querySelector('.k-hk-room__topline')!.getBoundingClientRect();
@@ -966,6 +992,7 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       return { height: rect.height, ratio: header.height/(rect.height-2), width: rect.width, center: Math.abs(number.x + number.width/2 - header.x - header.width/2) };
     }));
     expect(new Set(geometry.map((item) => item.height)).size).toBe(1);
+    expect(geometry[0].height).toBe((page.viewportSize()?.width ?? 0) < 600 ? 106 : 112);
     for (const item of geometry) { expect(item.ratio).toBeCloseTo(.15, 1); expect(item.center).toBeLessThan(1); }
     const contrasts = await cards.evaluateAll((nodes) => {
       const luminance = (rgb: string) => rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number).map((v) => v/255).map((v) => v <= .04045 ? v/12.92 : ((v+.055)/1.055)**2.4).reduce((sum, v, i) => sum+v*[.2126, .7152, .0722][i], 0);

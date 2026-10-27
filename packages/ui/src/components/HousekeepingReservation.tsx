@@ -49,7 +49,7 @@ export function ReservationRequests({ stay, compact = false }: { stay: Housekeep
       {stay.cot_required ? <RequestIcon kind="cot" confirmed={requirementConfirmed(stay, 'cot')} /> : null}
       {stay.dog_count == null || stay.cot_required == null ? <span className="k-hk-request-unknown" title={t('Požadavky se nepodařilo určit')}>?</span> : null}
     </span>
-    {stay.housekeeping_note?.trim() ? <span className="k-hk-room__note-alert" title={t('Poznámka pro pokojskou')} aria-label={t('Poznámka pro pokojskou')}>!</span> : null}
+    {!compact && stay.housekeeping_note?.trim() ? <span className="k-hk-room__note-alert" title={t('Poznámka pro pokojskou')} aria-label={t('Poznámka pro pokojskou')}>!</span> : null}
   </span>;
 }
 
@@ -70,6 +70,7 @@ export function ReservationStamp({ stay, kind }: { stay: HousekeepingStayRead; k
     <span className="k-hk-reservation__event" title={`${label}${kind === 'stay' ? '' : ` ${time ?? '?'}`}`}><StayEvent kind={kind} /><b className="k-hk-reservation__event-label">{label}</b>{kind !== 'stay' ? <b className="k-hk-reservation__time">{time ?? '?'}</b> : null}</span>
     <span className="k-hk-reservation__country" title={countryName(stay.country_code, stay.country_name)}>{stay.country_code_alpha3 ?? '?'}</span>
     <ReservationRequests stay={stay} compact />
+    {stay.housekeeping_note?.trim() ? <span className="k-hk-room__note-alert" title={t('Poznámka pro pokojskou')} aria-label={t('Poznámka pro pokojskou')}>!</span> : null}
   </span>;
 }
 

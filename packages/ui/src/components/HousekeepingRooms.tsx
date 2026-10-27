@@ -45,7 +45,8 @@ const STATUS_ACTIONS: Array<{ value: HousekeepingRoomStatus; label: string; deta
 ];
 
 const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: HousekeepingRoomRead; onSelect: (room: HousekeepingRoomRead) => void; locale: string }): JSX.Element {
-  const reservations: Array<[StayKind, HousekeepingStayRead[]]> = [['departure', room.departures], ['arrival', room.arrivals]];
+  const continuing = !room.departures.length && !room.arrivals.length && room.stays.length > 0;
+  const reservations: Array<[StayKind, HousekeepingStayRead[]]> = continuing ? [['stay', room.stays]] : [['departure', room.departures], ['arrival', room.arrivals]];
   const blocks = room.blocks ?? [];
   const fullBlock = blocks.some((block) => block.coverage === 'full');
   const coverage = fullBlock ? ['full'] : ['left', 'right'].filter((side) => blocks.some((block) => block.coverage === side));
@@ -54,7 +55,7 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: Housek
   const describe = stays.map((stay) => [stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
     ...(['dog', 'cot'] as const).filter((kind) => kind === 'dog' ? (stay.dog_count ?? 0) > 0 : stay.cot_required).map((kind) => `${t(kind === 'dog' ? 'Pes' : 'Dětská postýlka')}: ${t(requirementConfirmed(stay, kind) ? 'Potvrzeno' : 'Nepotvrzeno')}`),
   ].join(', ')).join('; ');
-  return <button className={`k-hk-room k-hk-room--stamp${fullBlock ? ' k-hk-room--blocked' : room.departures.length && room.arrivals.length ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
+  return <button className={`k-hk-room k-hk-room--stamp${continuing ? ' k-hk-room--stay' : ''}${fullBlock ? ' k-hk-room--blocked' : room.departures.length && room.arrivals.length ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
     aria-label={`${t('Pokoj')} ${room.room_number}, ${statusLabel}, ${t(OPERATIONAL_LABELS[room.operational_state])}. ${describe}. ${stays.some((stay) => stay.housekeeping_note?.trim()) ? `${t('Poznámka pro pokojskou')}. ` : ''}${blocks.length ? `${t('Blokace pokoje / zastavení prodeje')}. ` : ''}${t('Změnit stav pokoje.')}`}>
     <span className={`k-hk-room__topline k-hk-room-status--${room.housekeeping_status_key ?? 'unknown'}`} title={statusLabel}><strong>{room.room_number}</strong></span>
     <span className="k-hk-room__body">
