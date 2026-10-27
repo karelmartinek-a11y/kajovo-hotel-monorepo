@@ -121,6 +121,10 @@ for key, value in updates.items():
     if value:
         current[key] = value
 
+# Retired voice connectors must not survive the preserved environment.
+for key in ("KAJAVOICEHA_MCP_TOKEN", "SMARTPLAN_VOICE_HOST_TOKEN"):
+    current.pop(key, None)
+
 env_path.write_text("".join(f"{key}={value}\\n" for key, value in sorted(current.items())), encoding="utf-8")
 env_path.chmod(0o600)
 PY

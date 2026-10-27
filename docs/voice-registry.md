@@ -1,3 +1,5 @@
+> Hotelové produkční zapojení KajaVoiceHA a SmartPlan je odpojené. Níže jsou zachované kontrakty přenositelných balíčků a izolovaných testů. Aktuální hostový stav: [SMART konektory](SMART_CONNECTOR_RETIREMENT.md).
+
 # Správa místností hlasem: KajaVoiceHA 2.1
 
 Hotelový Python sideband rozšiřuje `smart_technologie` o `rooms_list`, `registry_prepare` a `registry_apply`. Nejde o další modelový nástroj ani nový MCP server. `assistant_memory` zůstává nezávislá. Portable Voice Core, zaměstnanecký portál a Android správní kontrakt nekonzumují.

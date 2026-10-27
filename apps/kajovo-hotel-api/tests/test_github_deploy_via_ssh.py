@@ -69,12 +69,12 @@ def test_web_push_vapid_configuration_is_forwarded_to_remote_deploy(tmp_path, mo
         assert f'"{key}": payload.get("{key}", "")' in script
 
 
-def test_deploy_preserves_mcp_secret_and_restricts_existing_env_permissions(tmp_path, monkeypatch) -> None:
+def test_deploy_removes_retired_smart_secrets_and_restricts_existing_env_permissions(tmp_path, monkeypatch) -> None:
     script = _load_deploy_module().remote_script_text()
     assert 'umask 077' in script
     env_path = tmp_path / 'infra' / '.env'
     env_path.parent.mkdir()
-    env_path.write_text('KAJAVOICEHA_MCP_TOKEN=contract-fixture-token\nUNCHANGED=value\n')
+    env_path.write_text('KAJAVOICEHA_MCP_TOKEN=contract-fixture-token\nSMARTPLAN_VOICE_HOST_TOKEN=retired-fixture\nUNCHANGED=value\n')
     env_path.chmod(0o644)
     vars_path = tmp_path / 'deploy-vars.json'
     vars_path.write_text(json.dumps({'HOTEL_ADMIN_EMAIL': 'admin@example.test'}))
@@ -84,7 +84,8 @@ def test_deploy_preserves_mcp_secret_and_restricts_existing_env_permissions(tmp_
     exec(compile(python_update, '<deployment-env-update>', 'exec'), {})
     assert env_path.stat().st_mode & 0o777 == 0o600
     lines = dict(line.split('=', 1) for line in env_path.read_text().splitlines())
-    assert lines['KAJAVOICEHA_MCP_TOKEN'] == 'contract-fixture-token'
+    assert 'KAJAVOICEHA_MCP_TOKEN' not in lines
+    assert 'SMARTPLAN_VOICE_HOST_TOKEN' not in lines
     assert lines['UNCHANGED'] == 'value'
     assert lines['KAJOVO_API_ADMIN_EMAIL'] == 'admin@example.test'
 

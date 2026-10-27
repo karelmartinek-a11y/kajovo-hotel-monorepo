@@ -1,3 +1,5 @@
+> Hotelové produkční zapojení KajaVoiceHA a SmartPlan je odpojené. Níže jsou zachované kontrakty přenositelných balíčků a izolovaných testů. Aktuální hostový stav: [SMART konektory](SMART_CONNECTOR_RETIREMENT.md).
+
 > Historický popis před přechodem na veřejné kontrakty. Aktuální pravidla a přejímka jsou v [voice-public-contract.md](voice-public-contract.md) a [IMPACT-MATRIX.md](IMPACT-MATRIX.md). Níže uvedené pevné implementation/schema piny a povinná potvrzovací/status kola nejsou pravidla nového profilu.
 
 # Smart technologie v hotelovém hlasovém chatu
@@ -6,7 +8,7 @@ Administrátorský `/admin/hlasovy-chat` používá přenosný Voice Core pro We
 
 ## Připojení a relace
 
-Oficiální Python MCP SDK 1.30.0 používá Streamable HTTP, initialize a notifications/initialized na pevné veřejné adrese `https://apimcpkajavoiceha.hcasc.cz/mcp`. `KAJAVOICEHA_MCP_TOKEN` je backendový secret. HTTP klient nesleduje přesměrování. Compose jej předává pouze API; SSH deploy zachovává stávající serverový `.env`, používá umask 077 a vynucuje práva souboru 0600. Hodnota nepatří do zdrojů, browseru, modelových instrukcí ani logů.
+Přenositelné kontraktové testy používají oficiální Python MCP SDK 1.30.0 a izolované adaptéry. Hotelový produkční host nepředává endpoint ani token KajaVoiceHA; Compose a deploy tento token neprovisionují.
 
 API vytváří Realtime call, uchová jeho identitu z Location a otevře serverový WebSocket sideband. Browser dostane pouze SDP, veřejný stav a neprůhlednou identitu hostitelské relace. Během inicializace nevytváří VAD odpovědi a mikrofon se zpřístupní až po potvrzeném zprovoznění chatu. Stabilní heartbeat běží každých 15 sekund, úvodní readiness se kontroluje každou sekundu. Lease vyprší po 45 sekundách s kontrolou každých 5 sekund. Periodické požadavky neprodlužují webovou relaci.
 

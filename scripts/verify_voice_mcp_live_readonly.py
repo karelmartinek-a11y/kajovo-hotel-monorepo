@@ -16,6 +16,12 @@ from sqlalchemy import select
 async def verify(application):
     settings = application.ports.settings
     result = {'mutations': 0, 'tool_calls': 0}
+    if not settings.ha_mcp_url and not settings.smartplan_base_url:
+        assert not settings.ha_mcp_token
+        assert not settings.ha_trusted_origins and not settings.smartplan_trusted_origins
+        result.update({'ha': 'not_configured', 'smartplan': 'not_configured', 'provider_ack': 'NOT_RUN'})
+        print(json.dumps(result, sort_keys=True))
+        return
     for name, url, connector in [
         ('ha', settings.ha_mcp_url, lambda: mcp_connection(settings.ha_mcp_token)),
     ]:

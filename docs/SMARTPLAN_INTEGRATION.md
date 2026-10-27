@@ -1,3 +1,5 @@
+> Hotelové produkční zapojení KajaVoiceHA a SmartPlan je odpojené. Níže jsou zachované kontrakty přenositelných balíčků a izolovaných testů. Aktuální hostový stav: [SMART konektory](SMART_CONNECTOR_RETIREMENT.md).
+
 > Historický popis před přechodem na veřejné kontrakty. Aktuální pravidla a přejímka jsou v [voice-public-contract.md](voice-public-contract.md) a [IMPACT-MATRIX.md](IMPACT-MATRIX.md). Níže uvedené pevné implementation/schema piny a povinná potvrzovací/status kola nejsou pravidla nového profilu.
 
 # SmartPlan in Dagmar
@@ -21,11 +23,7 @@ Ready SmartPlan continuations inherit the acknowledged session tools instead of 
 
 The handed-off credential is named `SMARTPLAN_VOICE_HOST_TOKEN`. Its protected source is `/etc/smartplan/credentials/voice-host-token`; it is copied through stdin into the hotel-owned AES-GCM secret store `dagmar_smartplan_secrets`, using the existing voice master key with separate associated data. The source file is never mounted or shared with the hotel. No credential browser endpoint or public acceptance bypass exists.
 
-After the additive migration, import without placing the value in process arguments:
-
-```sh
-docker exec -i kajovo-prod-api-1 python -m app.services.import_smartplan_secret < /etc/smartplan/credentials/voice-host-token
-```
+The hotel provides no credential import CLI and provisions no SmartPlan endpoint.
 
 The normal authenticated Dagmar panel uses `GET /smartplan` and `POST /smartplan/link` under the existing host prefix and CSRF/session policy. The subject comes from the backend's verified voice namespace, never a request/model user ID. SmartPlan's owner must log into its browser and explicitly approve `/host/link`; only then does the stored `X-SmartPlan-Link` authorize MCP and `/host/confirm`. The same SmartPlan owner sees the same scenarios/history from ChatGPT OAuth and voice. Actual ChatGPT UI linking is a separate user action and is not established by fixtures. Owner link/host scopes and revocation remain enforced on every remote request.
 

@@ -45,7 +45,12 @@ def fixture(request):
     return httpx.Response(200, json={'jsonrpc': '2.0', 'id': body['id'], 'result': result})
 
 
-app.state.dagmar.ports = replace(app.state.dagmar.ports, smartplan_transport=httpx.MockTransport(fixture))
+# This isolated portable-host fixture explicitly configures its own connector.
+app.state.dagmar.ports = replace(app.state.dagmar.ports,
+    settings=app.state.dagmar.ports.settings.model_copy(update={
+        'smartplan_base_url': 'https://smartplan.hcasc.cz',
+        'smartplan_trusted_origins': ('https://smartplan.hcasc.cz',)}),
+    smartplan_transport=httpx.MockTransport(fixture))
 for middleware in app.user_middleware:
     if middleware.cls is BoundContext:
         middleware.kwargs['ports'] = app.state.dagmar.ports

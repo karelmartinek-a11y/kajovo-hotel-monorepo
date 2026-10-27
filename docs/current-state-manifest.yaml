@@ -92,6 +92,8 @@ voice_memory:
   persistent_transcript: false
 
 voice_registry:
+  hotel_connection: disabled
+  documentation_current_host: docs/SMART_CONNECTOR_RETIREMENT.md
   version: KajaVoiceHA-2.1
   migration: 0043_voice_registry_plans
   confirmation: audio_only

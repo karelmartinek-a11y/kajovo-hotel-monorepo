@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     voice_memory_mcp_authorization: str = Field(default='', repr=False)
     voice_input_noise_reduction: Literal["near_field", "far_field"] | None = None
     voice_master_key: str = Field(default="", repr=False)
-    kajavoiceha_mcp_token: str = Field(default="", repr=False, validation_alias="KAJAVOICEHA_MCP_TOKEN")
     smtp_enabled: bool = False
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"

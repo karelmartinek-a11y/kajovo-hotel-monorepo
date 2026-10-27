@@ -4,7 +4,7 @@ Dagmar vlastní klientský stav, aktivní turn/generation, trvalé identity záp
 
 ## Metadata a kompatibilita
 
-DagmarSettings určuje ha_mcp_url/ha_trusted_origins a smartplan_base_url/smartplan_trusted_origins. Hotel injektuje své produkční hodnoty; přenesený host poskytuje vlastní. Model ani zařízení neurčují URL. HTTPS, explicitní trusted origin, audience a zákaz credentials v URL platí i pro owner-link; redirect není náhradní povolená cesta.
+DagmarSettings určuje ha_mcp_url/ha_trusted_origins a smartplan_base_url/smartplan_trusted_origins. Hotel ponechává oba konektory bez konfigurace; přenesený host může poskytnout vlastní explicitní hodnoty. Viz [odpojení hotelových konektorů](SMART_CONNECTOR_RETIREMENT.md). Model ani zařízení neurčují URL. HTTPS, explicitní trusted origin, audience a zákaz credentials v URL platí i pro owner-link; redirect není náhradní povolená cesta.
 
 Klient po spojení ověří kanonický veřejný kontrakt, známý compatibility profile, jeho verzi, schema a skutečný tools/list. Metadata digest je SHA256 celého dokumentu bez polí vlastního digestu: UTF-8, seřazené klíče, kompaktní oddělovače, nezměněné Unicode znaky. Digest není autentizace ani souhlas; ty zůstávají v hostu.
 

@@ -1,3 +1,5 @@
+> Hotelové produkční zapojení KajaVoiceHA a SmartPlan je odpojené. Níže jsou zachované kontrakty přenositelných balíčků a izolovaných testů. Aktuální hostový stav: [SMART konektory](SMART_CONNECTOR_RETIREMENT.md).
+
 # SmartPlan voice correction lifecycle
 
 The host keeps authorization distinct from transport evidence. A receipt preserves the original owner, logical call, voice session, exact proposal/fingerprint, native input and expiry. A fresh exact prepare under a new native intent appends a separate authorization; it does not rewrite the original receipt or previous grant.
