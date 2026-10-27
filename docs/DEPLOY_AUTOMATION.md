@@ -45,6 +45,16 @@ Práva ani vlastnictví se nemění. Deploy účet pak odstraní prázdný adres
 zbytek starého zdrojového stromu. Ostatní chyby oprávnění deploy zastaví.
 Databázové a mediální volumes ani běžící image nejsou cílem úklidu.
 
+## Dokončení a opakování běhu
+
+Úspěch znamená dokončený GitHub deploy pro úspěšné CI aktuálního `main` SHA,
+shodný nasazený commit a runtime artefakt s dokončenými kontrolami. Zdravé API
+po částečném deployi samo o sobě neprokazuje úspěch celého workflow.
+Při selhání kontrol oprav příčinu v repozitáři a nech nový push projít celým
+CI → deploy řetězcem. Ruční root dokončení ani změna oprávnění nenahrazují
+ověření automatické cesty. Pokud `main` posune souběžná změna, přijmi nový
+commit jako základ a ověř navazující aktuální release; nevracej starý stav.
+
 ## Matice dopadů
 
 | Kategorie | Rozhodnutí |
