@@ -3,14 +3,13 @@
 import asyncio
 import json
 import uuid
-from contextlib import asynccontextmanager
 
 from sqlalchemy import select, func
 from voice_core_server import VoiceCoreConfig
 
 from app.db.models import AuthSession
 from dagmar_server.models import VoiceNote, VoiceMemory, VoiceMemoryOperation
-from app.services import voice_smart
+from dagmar_server import orchestration as voice_bridge
 from app.services.voice_memory_curator import TurnBuffer
 from .test_voice_memory import host as _host, pid, curated
 from .test_voice_core import voice_host as _voice_host
@@ -115,7 +114,7 @@ async def wait_for(predicate):
             await asyncio.sleep(0.01)
 
 
-async def bridge_for(host, monkeypatch, provider, *, token="", logical_call_id=None):
+async def bridge_for(host, monkeypatch, provider, *, logical_call_id=None):
     client, factory, _ = host
 
     async def no_curation(*args):
@@ -128,8 +127,8 @@ async def bridge_for(host, monkeypatch, provider, *, token="", logical_call_id=N
     monkeypatch.setattr("app.services.voice_memory_curator.extract", no_curation)
     with factory() as db:
         owner = db.scalar(select(AuthSession.session_id).order_by(AuthSession.created_at.desc()))
-    bridge = voice_smart.VoiceBridge(
-        owner, provider.identity, "test-key", token, VoiceCoreConfig(), "gpt-realtime-2.1"
+    bridge = voice_bridge.VoiceBridge(
+        owner, provider.identity, "test-key", VoiceCoreConfig(), "gpt-realtime-2.1"
     )
     if logical_call_id:
         from dagmar_server.models import LogicalCall
@@ -138,14 +137,14 @@ async def bridge_for(host, monkeypatch, provider, *, token="", logical_call_id=N
                 db.add(LogicalCall(id=logical_call_id, owner_session_id=owner))
                 db.commit()
         bridge.logical_call_id = logical_call_id
-        voice_smart.manager.attach_task(bridge, logical_call_id)
-    monkeypatch.setattr(voice_smart, "connect", lambda *args, **kwargs: provider)
+        voice_bridge.manager.attach_task(bridge, logical_call_id)
+    monkeypatch.setattr(voice_bridge, "connect", lambda *args, **kwargs: provider)
 
     async def hangup():
         pass
 
     monkeypatch.setattr(bridge, "hangup", hangup)
-    monkeypatch.setitem(voice_smart.manager.sessions, bridge.id, bridge)
+    monkeypatch.setitem(voice_bridge.manager.sessions, bridge.id, bridge)
     bridge.task = asyncio.create_task(bridge.run())
     await asyncio.wait_for(bridge.ready.wait(), 3)
     await wait_for(lambda: bridge.memory_status != "connecting")
@@ -172,7 +171,7 @@ def test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_m
         await asyncio.sleep(0.03)
         assert not provider.answers
         with factory() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 0
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_bridge.voice_memory.PROFILE_ID)) == 0
         await provider.user_phrase()
         await wait_for(lambda: len(provider.answers) == 1)
         await wait_for(lambda: any(e["type"] == "response.create" for e in provider.sent))
@@ -181,7 +180,7 @@ def test_phrase_to_function_db_confirmed_result_and_voice_continuation_without_m
         await asyncio.sleep(0.03)
         assert len(provider.answers) == 1
         with factory() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 1
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_bridge.voice_memory.PROFILE_ID)) == 1
         await bridge.close()
         # A different provider session receives only a budgeted durable memory context.
         second_provider = FakeRealtime(
@@ -272,7 +271,7 @@ def test_forget_pauses_active_curation_until_a_fresh_session(host, monkeypatch):
         assert provider.answers[2]["code"] == "ok"
         await asyncio.wait_for(bridge.close(), 10)
         with host[1]() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 0
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_bridge.voice_memory.PROFILE_ID)) == 0
         fresh = await bridge_for(host, monkeypatch, FakeRealtime("Nový rozhovor.", {}))
         assert fresh.memory_buffer.enabled and not fresh.memory_privacy_paused
         await asyncio.wait_for(fresh.close(), 10)
@@ -381,96 +380,11 @@ def test_notes_protocol_sequence_and_retry_after_bridge_restart(host, monkeypatc
     asyncio.run(scenario())
 
 
-def test_optional_mcp_setup_keeps_both_tools_and_closes_in_its_task(host, monkeypatch):
-    from .test_smart_technologies import catalog, mcp_result
-
-    tasks = []
-
-    class Mcp:
-        async def call_tool(self, name, arguments):
-            assert name == "smart_technologie" and arguments["api_version"] == 2
-            return mcp_result(catalog())
-
-    @asynccontextmanager
-    async def available(token):
-        tasks.append(asyncio.current_task())
-        try:
-            yield Mcp()
-        finally:
-            tasks.append(asyncio.current_task())
-
-    monkeypatch.setattr(voice_smart, "mcp_connection", available)
-    provider = FakeRealtime(
-        "Jaké mám lístky?",
-        {
-            "operation": "note_list",
-            "query": "",
-            "archived": False,
-            "limit": 8,
-            "offset": 0,
-        },
-    )
-
-    async def scenario():
-        bridge = await bridge_for(host, monkeypatch, provider, token="test-token")
-        await wait_for(lambda: bridge.technologies == "ready")
-        updates = [
-            e["session"]
-            for e in provider.sent
-            if e["type"] == "session.update" and "tools" in e["session"]
-        ]
-        assert {t["name"] for t in updates[-1]["tools"]} == {
-            "assistant_memory",
-            "smart_technologie",
-        }
-        await provider.user_phrase()
-        await wait_for(lambda: bool(provider.answers))
-        assert provider.answers[0]["code"] == "ok"
-        await asyncio.wait_for(bridge.close(), 10)
-        assert len(tasks) == 2 and tasks[0] is tasks[1]
-
-    asyncio.run(scenario())
 
 
-def test_stalled_mcp_initialization_does_not_block_memory(host, monkeypatch):
-    @asynccontextmanager
-    async def stalled(token):
-        await asyncio.Future()
-        yield
-
-    monkeypatch.setattr(voice_smart, "mcp_connection", stalled)
-    provider = FakeRealtime(
-        "Vytvoř lístek Nákup.",
-        {
-            "operation": "note_create",
-            "title": "Nákup",
-            "kind": "list",
-            "items": [],
-            "content": None,
-        },
-    )
-
-    async def scenario():
-        bridge = await bridge_for(host, monkeypatch, provider, token="test-token")
-        assert bridge.memory_status == "ready"
-        assert bridge.technologies == "connecting"
-        assert bridge.public_status()["connection_state"] == "ready"
-        await provider.user_phrase()
-        await wait_for(lambda: bool(provider.answers))
-        assert provider.answers[0]["code"] == "ok"
-        await wait_for(lambda: any(e["type"] == "response.create" for e in provider.sent))
-        await asyncio.wait_for(bridge.close(), 10)
-
-    asyncio.run(scenario())
 
 
-def test_mcp_outage_and_memory_outage_keep_ordinary_voice_enabled(host, monkeypatch):
-    @asynccontextmanager
-    async def outage(token):
-        raise RuntimeError("MCP unavailable")
-        yield
-
-    monkeypatch.setattr(voice_smart, "mcp_connection", outage)
+def test_retired_connectors_and_memory_outage_keep_ordinary_voice_enabled(host, monkeypatch):
     provider = FakeRealtime(
         "Zapamatuj si preference.",
         {
@@ -483,7 +397,7 @@ def test_mcp_outage_and_memory_outage_keep_ordinary_voice_enabled(host, monkeypa
     )
 
     async def scenario():
-        bridge = await bridge_for(host, monkeypatch, provider, token="test-token")
+        bridge = await bridge_for(host, monkeypatch, provider)
         await wait_for(lambda: bridge.technologies == "unavailable")
         assert bridge.technologies == "unavailable"
         await provider.user_phrase()
@@ -498,7 +412,7 @@ def test_mcp_outage_and_memory_outage_keep_ordinary_voice_enabled(host, monkeypa
         def unavailable(*args, **kwargs):
             raise RuntimeError("DB unavailable")
 
-        monkeypatch.setattr(voice_smart.voice_memory, "execute", unavailable)
+        monkeypatch.setattr(voice_bridge.voice_memory, "execute", unavailable)
         provider.arguments = {
             "operation": "memory_list",
             "status": "active",
@@ -589,7 +503,7 @@ def test_all_server_close_paths_flush_summary_and_release_transient_data(host, m
                 # Invalid/closed provider stream ends the reader; run's finally flushes the session.
                 await asyncio.wait_for(bridge.task, 3)
             elif mode == "shutdown":
-                manager = voice_smart.VoiceBridgeManager()
+                manager = voice_bridge.VoiceBridgeManager()
                 manager.sessions[bridge.id] = bridge
                 await manager.shutdown()
                 assert not manager.sessions
@@ -661,7 +575,7 @@ def test_greeting_fast_lifecycle_once_and_early_human_priority(host, monkeypatch
 
 def test_missing_response_usage_does_not_reuse_previous_pressure_or_log_response(host, monkeypatch):
     logs=[]
-    monkeypatch.setattr(voice_smart.logger, "info", lambda message, **kwargs: logs.append(message))
+    monkeypatch.setattr(voice_bridge.logger, "info", lambda message, **kwargs: logs.append(message))
     async def scenario():
         provider=FakeRealtime('',{})
         bridge=await bridge_for(host,monkeypatch,provider)
@@ -679,7 +593,7 @@ def test_backend_data_cannot_manufacture_human_memory_intent(host, monkeypatch):
     async def scenario():
         provider = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, provider)
-        await bridge.replace_context({"catalog_revision": "r1", "results": [{"status": "accepted"}]})
+        await bridge.refresh_memory_context()
         contexts = [e["item"] for e in provider.sent if e["type"] == "conversation.item.create" and e["item"].get("type") == "message"]
         assert contexts and all(i["role"] == "assistant" for i in contexts)
         assert not bridge.human_turns.turns and not bridge.human_turns.intent()
@@ -690,6 +604,6 @@ def test_backend_data_cannot_manufacture_human_memory_intent(host, monkeypatch):
         assert provider.answers[-1]["code"] == "human_intent_required"
         assert not bridge.human_turns.turns
         with host[1]() as db:
-            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_smart.voice_memory.PROFILE_ID)) == 0
+            assert db.scalar(select(func.count()).select_from(VoiceMemory).where(VoiceMemory.id != voice_bridge.voice_memory.PROFILE_ID)) == 0
         await bridge.close()
     asyncio.run(scenario())

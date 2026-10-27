@@ -1,17 +1,14 @@
-import React, {useMemo, useRef, useState} from 'react';
+import React, {useMemo, useRef} from 'react';
 import {VoiceConsole, type VoiceConfigSnapshot, type VoiceConfigStore, type VoiceSecretStore, type RealtimeSessionProvider} from '@voice-core/browser';
 import '@voice-core/browser/styles.css';
 import {LogicalCallClient} from './calls.js';
 import {VoiceMemoryPanel} from './VoiceMemoryPanel.js';
-import {VoiceRegistryPanel} from './VoiceRegistryPanel.js';
-import {SmartPlanPanel} from './SmartPlanPanel.js';
 import type {DagmarRequest} from './ports.js';
 
 /** Dagmar owns configuration, orchestration and all panels. Host maps/authenticates transport. */
 export function DagmarConsole({request,memoryRequest}:{request:DagmarRequest;memoryRequest:DagmarRequest}) {
   const revision=useRef(0);
   const calls=useMemo(()=>new LogicalCallClient(request),[request]);
-  const [sessionId,setSessionId]=useState<string|null>(null);
   const configStore=useMemo<VoiceConfigStore>(()=>{
     const remember=(value:VoiceConfigSnapshot)=>{revision.current=value.revision;return value;};
     return {read:async()=>remember(await request('/config')),save:async(config,expected)=>remember(await request('/config','PUT',{...config,revision:expected}))};
@@ -26,15 +23,15 @@ export function DagmarConsole({request,memoryRequest}:{request:DagmarRequest;mem
     create:async(sdp,signal)=>{
       const logical_call_id=await calls.identity(signal);
       const answer=await request<Awaited<ReturnType<RealtimeSessionProvider['create']>>>('/sessions','POST',{sdp,revision:revision.current,...(logical_call_id?{logical_call_id}:{})},signal);
-      setSessionId(answer.session_id??null);return answer;
+      return answer;
     },
-    heartbeat:async(id,signal)=>{const value=await request<Awaited<ReturnType<NonNullable<RealtimeSessionProvider['heartbeat']>>>>(`/sessions/${encodeURIComponent(id)}/heartbeat`,'POST',undefined,signal);if(value.closed)setSessionId(current => current === id ? null : current);return value;},
-    close:async(id)=>{setSessionId(current => current === id ? null : current);await request(`/sessions/${encodeURIComponent(id)}`,'DELETE');},
+    heartbeat:async(id,signal)=>{const value=await request<Awaited<ReturnType<NonNullable<RealtimeSessionProvider['heartbeat']>>>>(`/sessions/${encodeURIComponent(id)}/heartbeat`,'POST',undefined,signal);return value;},
+    close:async(id)=>{await request(`/sessions/${encodeURIComponent(id)}`,'DELETE');},
     playbackReady:async(id)=>{await request(`/sessions/${encodeURIComponent(id)}/playback-ready`,'POST');},
     connectionTimeoutMs:60000,
-    disclosure:'Hovoříte s AI asistentkou Dagmar. Oprávnění administrátoři sdílejí paměť. Rizikový správní návrh vyžadují celé přečtení a následné skutečné hlasové potvrzení. Potvrzení běžného povelu znamená přijaté provedení podle kontraktu.',
+    disclosure:'Hovoříte s AI asistentkou Dagmar. Oprávnění administrátoři sdílejí paměť.',
     capabilityLabels:{ready:'Externí schopnosti jsou připravené.',connecting:'Načítám externí schopnosti…',waiting:'Čekám na obnovení limitu hlasové služby. Odeslaný povel se nebude opakovat.',unavailable:'Externí schopnosti jsou nedostupné. Běžný rozhovor může pokračovat.'},
     managedMcpLabels:{hotel_mail:{disabled:'Pošta není aktivovaná.',loading:'Načítám poštovní nástroje…',ready:'Pošta je připravená.',unavailable:'Pošta je nedostupná. Běžný rozhovor může pokračovat.',incompatible:'Poštovní nástroje mají nekompatibilní kontrakt.',working:'Zpracovávám poštu…',awaiting_approval:'Čekám na hlasový souhlas s odesláním.'}},
   }),[request,calls]);
-  return <section aria-label="Dagmar"><h1>Hlasový chat</h1><VoiceConsole configStore={configStore} secretStore={secretStore} sessionProvider={provider}/><SmartPlanPanel request={request}/><VoiceRegistryPanel sessionId={sessionId} request={request}/><VoiceMemoryPanel request={memoryRequest}/></section>;
+  return <section aria-label="Dagmar"><h1>Hlasový chat</h1><VoiceConsole configStore={configStore} secretStore={secretStore} sessionProvider={provider}/><VoiceMemoryPanel request={memoryRequest}/></section>;
 }

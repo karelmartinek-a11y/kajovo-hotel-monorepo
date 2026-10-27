@@ -6,8 +6,7 @@ intent router, business-tool executor or duplicate function schemas. The pinned
 catalog contains the 23 tools of Mail MCP 1.1.1 (build
 `6dde2763d0dc4ff16ca712f26b258e6875514e7ff50a5fb5ea93fc22257495be`).
 `mail_send_execute` is the only tool in `require_approval.always`; the other 22
-are in `never`. Mail does not change the meanings of `smart_technologie` or the
-hotel account SMTP configuration.
+are in `never`. Hotel account SMTP configuration has an independent contract.
 
 ## Activation and credentials
 
@@ -202,10 +201,7 @@ in `host.py` and the existing `examples/dagmar-host` Vite application. It runs t
 actual Dagmar console, routes, orchestration, native MCP and OpenAI WebRTC. It
 uses an empty temporary database, a random test master key and synthetic Mail
 credentials. Automatic memory curation is disabled in this isolated process;
-technologies are unavailable rather than connected to real devices.
-An optional `synthetic_technologies` manifest entry uses the existing public
-technology fixture contract through the host connector; it never connects to
-production devices. The browser runner builds the actual candidate's existing
+historical SMART connectors are absent. The browser runner builds the actual candidate's existing
 Dagmar test console before opening WebRTC, and records served bundle hashes.
 
 First fetch `origin/main` and select an immutable clean candidate. Supply the

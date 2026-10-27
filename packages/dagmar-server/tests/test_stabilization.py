@@ -3,6 +3,8 @@
 import asyncio
 import json
 
+import pytest
+
 from dagmar_server.orchestration import VoiceBridge
 from dagmar_server.turns import TurnCoordinator
 
@@ -10,10 +12,7 @@ from dagmar_server.turns import TurnCoordinator
 def bridge():
     value = VoiceBridge.__new__(VoiceBridge)
     from types import SimpleNamespace
-    value.catalog_ready = False
     value.mail = SimpleNamespace(tools=lambda: [], status='disabled')
-    from dagmar_server.smartplan import SmartPlanHost
-    value.smartplan = SmartPlanHost(value)
     value.closed = False
     value.turns = TurnCoordinator()
     value.write_lock = asyncio.Lock()
@@ -139,7 +138,6 @@ def test_noise_filter_candidate_accepted_configuration_keeps_native_model_and_va
                 "owner",
                 "isolated",
                 "key",
-                "token",
                 VoiceCoreConfig(),
                 "gpt-realtime-2.1",
             )
@@ -152,7 +150,7 @@ def test_noise_filter_candidate_accepted_configuration_keeps_native_model_and_va
                 return response
 
             value.send = accepted
-            await value.configure(False)
+            await value.configure()
             setting = sent[0]["session"]["audio"]["input"]
             assert setting["noise_reduction"] == {"type": "far_field"}
             assert (
@@ -161,4 +159,27 @@ def test_noise_filter_candidate_accepted_configuration_keeps_native_model_and_va
             )
             assert value.model == "gpt-realtime-2.1"
 
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('mismatch', ['missing_ack', 'tools', 'instructions'])
+def test_configuration_rejects_provider_ack_for_another_model_view(mismatch):
+    from dagmar_server.errors import BridgeError
+    from dagmar_server.ports import bind, RuntimePorts
+    from dagmar_server.settings import DagmarSettings
+    from voice_core_server import VoiceCoreConfig
+
+    async def run():
+        with bind(RuntimePorts(lambda: None, DagmarSettings(), lambda _: None)):
+            value = VoiceBridge('owner', 'isolated', 'key', VoiceCoreConfig(), 'gpt-realtime-2.1')
+            async def accepted(event, match):
+                if mismatch == 'missing_ack':
+                    return None
+                session = dict(event['session'])
+                session['tools' if mismatch == 'tools' else 'instructions'] = [] if mismatch == 'tools' else 'different'
+                return {'type': 'session.updated', 'session': session}
+            value.send = accepted
+            with pytest.raises(BridgeError):
+                await value.configure()
+            assert value.configuration_digest is None and value.configured_tools_digest is None
     asyncio.run(run())

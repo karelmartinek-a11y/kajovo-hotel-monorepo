@@ -5,8 +5,7 @@ from dagmar_server.browser_contract import schema
 SUPPORTED_ROUTES = {
     "/api-key", "/calls", "/calls/{identity}/close", "/config", "/sessions",
     "/sessions/{identity}/playback-ready", "/sessions/{session_id}",
-    "/sessions/{session_id}/heartbeat", "/sessions/{session_id}/registry-plan",
-    "/smartplan", "/smartplan/link",
+    "/sessions/{session_id}/heartbeat",
 }
 
 

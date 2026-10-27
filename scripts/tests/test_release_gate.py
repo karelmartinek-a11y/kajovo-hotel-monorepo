@@ -43,6 +43,8 @@ class ReleaseGateTests(unittest.TestCase):
                 return 'Id=smartplan.service\nMainPID=42\n'
             first = runtime.snapshot(root, unit_state)
             self.assertIn('smartplan.service', commands[0])
+            self.assertIn('kajovosmart-mcp.service', commands[0])
+            self.assertIn('kajovosmart-mcp-chatgpt-oauth.service', commands[0])
             self.assertNotIn('private-fixture-a', json.dumps(first))
             config.write_text('private-fixture-b')
             self.assertNotEqual(first, runtime.snapshot(root, unit_state))
@@ -105,8 +107,8 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn('dagmar-copy-out', names)
         self.assertIn('browser-baseline', names)
         self.assertIn('api-and-voice-tests', names)
-        self.assertIn('voice-registry-ui', names)
-        self.assertIn('smartplan-owner-ui', names)
+        self.assertNotIn('voice-registry-ui', names)
+        self.assertNotIn('smartplan-owner-ui', names)
         for _, command in plan:
             self.assertNotIn('ci:gates', command)
             self.assertFalse(len(command) > 1 and command[1].endswith('live_smoke.py'))

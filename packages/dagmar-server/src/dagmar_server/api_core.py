@@ -6,7 +6,6 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 from voice_core_server import VoiceCoreConfig, VoiceError, catalog
 
-from .ports import get_settings
 from .models import VoiceCoreSettings, LogicalCall
 from .ports import get_db
 from .ports import require_session
@@ -15,7 +14,6 @@ from .config import (
     VoiceSecretAdapter,
     get_record,
 )
-from .registry_contract import RegistryView
 from .ports import manager
 
 
@@ -166,7 +164,7 @@ async def create_session(payload: VoiceSessionWrite, db: Db, request: Request):
             if not call or call.owner_session_id != owner or not call.open:
                 raise HTTPException(404, detail={"code": "call_not_found"})
             answer = await manager.create(payload.sdp, VoiceConfigAdapter(db).read(), key,
-                str(require_session(request)["session_id"]), get_settings().ha_mcp_token, logical_call_id=identity)
+                str(require_session(request)["session_id"]), logical_call_id=identity)
             answer['logical_call_id'] = identity
             return answer
         except (VoiceError, HTTPException):
@@ -189,9 +187,6 @@ def session_status(session_id: str, request: Request):
     return owned_bridge(session_id, request).public_status()
 
 
-@router.get("/sessions/{session_id}/registry-plan", response_model=RegistryView)
-def registry_plan(session_id: str, request: Request):
-    return owned_bridge(session_id, request).registry.view()
 
 
 @router.post("/sessions/{session_id}/heartbeat", response_model=VoiceSessionStatus)

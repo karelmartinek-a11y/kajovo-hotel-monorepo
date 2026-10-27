@@ -36,8 +36,8 @@ def test_external_change_refresh_and_forget_barrier_survive_reconnect(tmp_path):
         bridge = SimpleNamespace(id='bridge', owner='owner', memory_principal=SHARED_ID, task_context=task,
             closed=False, memory_privacy_paused=False, memory_buffer=None, mail=SimpleNamespace(pending=False, forget=lambda:None),
             partial_text={}, curated_inputs=set(), turns=TurnCoordinator(), human_turns=task.human,
-            ws=None, registry=SimpleNamespace(invalidate=lambda:None), dialog_items=['old-memory', 'old-tool'],
-            catalog_item=None, call_items={}, memory_outputs={'old-tool'}, protected_items={'old-memory'},
+            ws=None, dialog_items=['old-memory', 'old-tool'],
+            call_items={}, memory_outputs={'old-tool'}, protected_items={'old-memory'},
             refresh_memory_context=refresh, update_transcription=update_transcription, delete_item=delete_item)
         app = SimpleNamespace(manager=SimpleNamespace(calls={'connected':task, 'disconnected':disconnected}, sessions={'bridge':bridge}), refreshes={}, memory_stamps={}, memory_sync_locks={})
         with bind(RuntimePorts(factory, SimpleNamespace(), lambda _: {'voice_authorized':True,'namespace':'admin-a'}, application=app)):

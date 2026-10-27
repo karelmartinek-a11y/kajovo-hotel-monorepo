@@ -60,7 +60,6 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
                 await bridge.ws.send(json.dumps({"type":"response.cancel", "response_id":bridge.turns.active}))
                 await bridge.ws.send(json.dumps({"type":"output_audio_buffer.clear"}))
             bridge.turns.active = None
-            bridge.registry.invalidate()
         if bridge.memory_buffer:
             with SessionLocal() as db:
                 config = db.get(VoiceMemorySettings, pid)
@@ -72,7 +71,7 @@ async def _apply(app, pid, deleted, keep_call_id=None, keep_bridge_id=None):
         if deleted:
             # Remove all provider dialogue which could paraphrase the forgotten data, including paired tool items.
             # A missing provider acknowledgment forces a fresh connection; do not permit stale continuation.
-            targets = set(bridge.dialog_items) - {bridge.catalog_item} - (bridge.call_items.get(keep_call_id, set()) if keep_call_id and bridge.id == keep_bridge_id else set())
+            targets = set(bridge.dialog_items) - (bridge.call_items.get(keep_call_id, set()) if keep_call_id and bridge.id == keep_bridge_id else set())
             for iid in targets:
                 try:
                     await bridge.delete_item(iid)

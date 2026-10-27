@@ -4,7 +4,6 @@ import subprocess
 import os
 import time
 import uuid
-from pathlib import Path
 
 API_IMAGE = os.environ.get('VOICE_MEMORY_TEST_IMAGE', 'kajovo-api-ci')
 
@@ -64,9 +63,6 @@ def main():
 
         # Dagmar schema in a genuinely empty PostgreSQL database, without hotel migrations.
         api("python", "-c", 'from sqlalchemy import create_engine, inspect, text\nfrom dagmar_server.migrations import upgrade\ne=create_engine(\'postgresql+psycopg://postgres:memory_test_only@postgres:5432/memory\')\nupgrade(e)\nnames=inspect(e).get_table_names()\nassert all(n.startswith(\'dagmar_\') for n in names)\nwith e.begin() as c:\n    # Rehearse the actual existing v99 schema, not merely empty create_all.\n    c.execute(text(\'DROP TABLE dagmar_smartplan_authorizations\'))\n    for column in (\'transport_state\',\'voice_session_id\',\'input_event_id\',\'created_at\'):\n        c.execute(text(\'ALTER TABLE dagmar_smartplan_deliveries DROP COLUMN \'+column))\n    c.execute(text("INSERT INTO dagmar_smartplan_receipts (id,subject,logical_call_id,voice_session_id,proposal_id,fingerprint,expected_revision,expires_at,state,input_event_id) VALUES (\'legacy-receipt\',\'owner\',\'logical\',\'voice\',\'original-proposal\',\'original-fingerprint\',7,now()+interval \'20 minutes\',\'uncertain\',\'original-input\')"))\n    c.execute(text("INSERT INTO dagmar_smartplan_deliveries (id,subject,logical_call_id,tool,arguments_digest,state,proposal_id,request_key) VALUES (\'legacy-delivery\',\'owner\',\'logical\',\'smartplan_prepare_change\',\'original-digest\',\'dispatching\',\'original-proposal\',\'original-request-key\')"))\nupgrade(e)\nupgrade(e)\nwith e.connect() as c:\n    row=c.execute(text("SELECT * FROM dagmar_smartplan_deliveries WHERE id=\'legacy-delivery\'")).mappings().one()\n    assert row[\'state\']==\'dispatching\' and row[\'proposal_id\']==\'original-proposal\' and row[\'request_key\']==\'original-request-key\'\n    assert all(row[key] is None for key in (\'transport_state\',\'voice_session_id\',\'input_event_id\',\'created_at\'))\n    receipt=c.execute(text("SELECT * FROM dagmar_smartplan_receipts WHERE id=\'legacy-receipt\'")).mappings().one()\n    assert receipt[\'state\']==\'uncertain\' and receipt[\'input_event_id\']==\'original-input\' and receipt[\'fingerprint\']==\'original-fingerprint\'\n    assert c.scalar(text(\'SELECT count(*) FROM dagmar_smartplan_authorizations\'))==0\n    assert c.scalar(text(\'SELECT version FROM dagmar_smartplan_schema_version\'))==1\nprint(\'Own PostgreSQL v99 additive upgrade, null legacy evidence and preserved original IDs PASS\')\nwith e.begin() as c:\n    for name in inspect(e).get_table_names():\n        c.execute(text(\'DROP TABLE \'+name+\' CASCADE\'))\n')
-        # Exercise old/new MCP shapes with this exact production image, without backend IO.
-        run("docker", "run", "--rm", "-v", str(Path("scripts/verify_voice_mcp_compatibility.py").resolve())+":/tmp/compatibility.py:ro", "--entrypoint", "python", API_IMAGE, "-c", "exec(open('/tmp/compatibility.py').read())")
-
         # Match the existing production deploy's VARCHAR(128) version storage reconciliation.
         # Historical revision 0002 is longer than Alembic's default VARCHAR(32).
         api(
@@ -185,28 +181,8 @@ with SessionLocal() as db:
     assert db.scalar(select(func.count()).select_from(VoiceNoteItem))==0
     assert db.scalar(select(func.count()).select_from(VoiceMemoryOperation))==0
 print('PostgreSQL migration, real MCP adapter, lost-response retries, revisions, ordering and cascades PASS')
-from app.services.voice_registry import RegistryConfirmation
-from app.services.voice_smart import claim_operation
-from dagmar_server.models import VoiceRegistryPlan
 from app.time_utils import utc_now
 from datetime import timedelta
-r=RegistryConfirmation('pg-registry','pg-voice',SessionLocal)
-r.prepare({'id':'pg-plan','expires_at':(utc_now()+timedelta(minutes=5)).isoformat(),'requires_confirmation':True,'changes':[{'action':'delete_room','old_name':'Transient PG room','room_ref':'public','status':'planned'}]},'en')
-r.begin_readback('pg-response')
-r.event({'type':'output_audio_buffer.started','response_id':'pg-response'})
-r.event({'type':'response.done','response':{'id':'pg-response','status':'completed','output':[{'content':[{'type':'audio','transcript':r.text}]}]}})
-r.event({'type':'output_audio_buffer.stopped','response_id':'pg-response'})
-r.event({'type':'input_audio_buffer.speech_started','item_id':'pg-audio'})
-r.event({'type':'conversation.item.input_audio_transcription.completed','event_id':'pg-event','item_id':'pg-audio','transcript':'yes'})
-args={'operation':'registry_apply','plan_id':'pg-plan'}
-rid,fresh=claim_operation('pg-registry','pg-voice','pg-call',args,r)
-assert fresh
-assert claim_operation('pg-registry','pg-voice','pg-call',args,r)==(rid,False)
-with SessionLocal() as db:
-    row=db.get(VoiceRegistryPlan,r.identity)
-    assert row.request_id==rid and row.confirmation_id.startswith('confirmed-')
-    assert 'Transient PG room' not in str(row.__dict__)
-print('PostgreSQL registry confirmation and atomic write reservation PASS')
 from dagmar_server.mail_storage import MailReceipt,MailSecrets,MailSecretStore
 from sqlalchemy.exc import IntegrityError
 from dagmar_server.ports import get_settings

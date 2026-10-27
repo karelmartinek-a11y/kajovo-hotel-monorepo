@@ -5,7 +5,7 @@ Alembic má jediný head `0046_current_voice_schema`, který přímo navazuje na
 neprovádějí DDL ani změny aplikačních dat. Nasazené databáze již používají stejnou
 identitu checkpointu. Upgrade head je opakovatelný a zachovává paměť, registry a journály.
 
-Dagmar podporuje `assistant_memory`, `smart_technologie`, volitelný native Realtime MCP `hotel_mail` a backendový HTTPS adaptér jedenácti nástrojů `smartplan_*`. SmartPlan používá vlastní aditivní tabulky `dagmar_smartplan_*` a schema marker verze 1; původní checkpointy a Mail tabulky zůstávají zachované. Viz [SmartPlan integration](SMARTPLAN_INTEGRATION.md) a [Mail MCP integration](MAIL_MCP_INTEGRATION.md), včetně existující owner acceptance policy Mailu. Hotelové SMTP,
+Dagmar podporuje `assistant_memory` a volitelný native Realtime MCP `hotel_mail`. Historické KajaVoiceHA/SmartPlan konektory, nástroje, routy a panely jsou odstraněné; jejich metadata a migrační markery zůstávají zachované. Viz [hranice konektorů](SMART_CONNECTOR_RETIREMENT.md) a [Mail MCP integration](MAIL_MCP_INTEGRATION.md), včetně existující owner acceptance policy Mailu. Hotelové SMTP,
 reset/unlock/onboarding a snídaňový import mají samostatné kontrakty.
 Historické snapshoty odstraněných schopností a jejich indexy nejsou součástí
 aktuálního stromu; původní záznamy zůstávají v Git historii. Offline diagnostický

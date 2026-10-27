@@ -13,6 +13,7 @@ import subprocess
 
 
 UNITS = (
+    "kajovosmart-mcp.service", "kajovosmart-mcp-chatgpt-oauth.service",
     "mail-mcp-standalone.service", "kajavoiceha.service", "smartplan.service",
     "dagmar-backend.service", "kajovo-server-readonly-mcp.service",
     "kajovo-server-readonly-mcp-auth.service", "kajovo-server-readonly-mcp-broker.service",
@@ -23,6 +24,10 @@ PROPERTIES = (
     "FragmentPath", "DropInPaths", "User", "Group", "WorkingDirectory",
 )
 FILES = (
+    "/etc/systemd/system/kajovosmart-mcp.service",
+    "/etc/systemd/system/kajovosmart-mcp-chatgpt-oauth.service",
+    "/etc/smartnewgen/runtime.env", "/etc/smartnewgen/secret-library.json",
+    "/etc/smartnewgen-chatgpt-oauth/config.json", "/opt/smartnewgen/current/smartnewgen",
     "/etc/systemd/system/kajavoiceha.service", "/etc/systemd/system/smartplan.service",
     "/etc/kajavoiceha/clients.json", "/etc/kajavoiceha/oauth-config.json",
     "/etc/smartplan/config.json",
@@ -36,8 +41,8 @@ FILES = (
     "/opt/smartplan/current/smartplan/app.py",
 )
 RUNTIME_TREES = ("/opt/kajavoiceha/current/bin", "/opt/smartplan/current/smartplan")
-CONFIG_TREES = ("/etc/kajavoiceha", "/etc/smartplan")
-CURRENT = ("/opt/kajavoiceha/current", "/opt/smartplan/current")
+CONFIG_TREES = ("/etc/smartnewgen", "/etc/smartnewgen-chatgpt-oauth", "/etc/kajavoiceha", "/etc/smartplan")
+CURRENT = ("/opt/smartnewgen/current", "/opt/kajavoiceha/current", "/opt/smartplan/current")
 
 
 def fingerprint(path):

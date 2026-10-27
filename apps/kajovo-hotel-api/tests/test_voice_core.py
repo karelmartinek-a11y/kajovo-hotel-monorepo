@@ -146,7 +146,7 @@ def test_session_uses_server_snapshot_only(voice_host, monkeypatch):
     login()
     client.put(BASE + "/api-key", json={"api_key": KEY})
     calls = []
-    async def create(sdp, config, key, owner, token, **kwargs):
+    async def create(sdp, config, key, owner, **kwargs):
         calls.append((sdp, config, key))
         return {"sdp": "v=0\r\nanswer", "model": "gpt-realtime-2.1", "session_id": "test-host", "technologies": "unavailable", "managed_functions": ["assistant_memory"]}
     monkeypatch.setattr("dagmar_server.api_core.manager.create", create)

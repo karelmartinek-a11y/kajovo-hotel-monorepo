@@ -91,10 +91,8 @@ voice_memory:
   postgres_validation: scripts/verify_voice_memory_postgres.py
   persistent_transcript: false
 
-voice_registry:
-  hotel_connection: disabled
-  documentation_current_host: docs/SMART_CONNECTOR_RETIREMENT.md
-  version: KajaVoiceHA-2.1
-  migration: 0043_voice_registry_plans
-  confirmation: audio_only
-  documentation: docs/voice-registry.md
+retired_voice_connectors:
+  implementation: absent
+  routes_and_panels: absent
+  historical_metadata: retained
+  documentation: docs/SMART_CONNECTOR_RETIREMENT.md

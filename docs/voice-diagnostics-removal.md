@@ -40,10 +40,8 @@ logů. CPU není produkční využití serveru; latence je in-process HTTP na sy
 zátěži. Hodnoty neprokazují kvalitu živého audia ani vyřešení všech hlasových potíží.
 Raw výsledky jsou v `docs/dagmar/evidence/removal-20261006/`.
 
-Živá read-only kontrola HA ověřuje initialize/tools/list a anonymní HTTP 401.
-Aktuální katalog nabízí jeden nástroj `smart_technologie`. DNS používá IPv4 bez IPv6.
-Error/result/idempotence scénáře používají skutečný adapter s fixtures.
-Výpadkový scénář MCP a paměti ověřuje dokončenou hlasovou odpověď každého
+Historické SMART konektory nejsou součástí runtime; viz [aktuální hranice](SMART_CONNECTOR_RETIREMENT.md).
+Výpadkový scénář paměti ověřuje dokončenou hlasovou odpověď každého
 navazujícího tahu se samostatnou provider response identitou před dalším vstupem.
 
 ## Kontrola referencí a funkčních hranic

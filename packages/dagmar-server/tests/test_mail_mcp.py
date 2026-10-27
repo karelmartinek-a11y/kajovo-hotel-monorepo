@@ -24,7 +24,7 @@ def host():
     ports = RuntimePorts(sessionmaker(engine), DagmarSettings(voice_master_key=base64.b64encode(b'k'*32).decode()),
                          lambda owner: {'voice_authorized': True, 'namespace': owner} if owner == 'owner' else None)
     bridge = SimpleNamespace(owner='owner', id='provider-one', logical_call_id='logical-one', closed=False,
-        turns=TurnCoordinator(), catalog_ready=False, task_context=SimpleNamespace(mail=MailTask(), recovered_generation=None),
+        turns=TurnCoordinator(), task_context=SimpleNamespace(mail=MailTask(), recovered_generation=None),
         human_turns=SimpleNamespace(generation=0), sent=[])
     async def item(value):
         bridge.sent.append(value)
@@ -97,28 +97,19 @@ def test_output_limit_never_replays_tools_or_completes_partial_consent(kind):
     assert not turns.ready_speech()
 
 
-@pytest.mark.parametrize('mail_status,catalog_ready', [('ready', True), ('ready', False), ('unavailable', True)])
-def test_manual_continuation_explicitly_keeps_available_functions_and_native_mcp(mail_status, catalog_ready):
+@pytest.mark.parametrize('mail_status', ['ready', 'unavailable'])
+def test_manual_continuation_inherits_acknowledged_functions_and_native_mcp(mail_status):
     async def run():
         from dagmar_server.orchestration import VoiceBridge
-        from dagmar_server.smart import SMART_TOOL
-        from dagmar_server.memory_contract import MEMORY_TOOL
         _, ports, bridge, mail = host()
         bridge.mail = mail
-        from dagmar_server.smartplan import SmartPlanHost
-        bridge.smartplan = SmartPlanHost(bridge)
-        bridge.catalog_ready = catalog_ready
         mail.status = mail_status
         with bind(ports):
             await VoiceBridge.continue_generation(bridge, bridge.turns.generation)
         response = bridge.sent[-1]['response']
         assert response['tool_choice'] == 'auto'
         assert response['output_modalities'] == (['text'] if mail_status == 'ready' else ['audio'])
-        assert MEMORY_TOOL in response['tools']
-        assert (SMART_TOOL in response['tools']) == catalog_ready
-        native = [tool for tool in response['tools'] if tool['type'] == 'mcp']
-        assert bool(native) == (mail_status == 'ready')
-        assert all(tool['server_label'] == 'hotel_mail' and 'authorization' not in tool for tool in native)
+        assert 'tools' not in response
     asyncio.run(run())
 
 
@@ -512,25 +503,25 @@ def test_vad_updates_preserve_native_mcp_registration_and_pending_approval():
     async def run():
         _, ports, _, _ = host()
         with bind(ports):
-            bridge = VoiceBridge('owner', 'provider', 'key', 'token', VoiceCoreConfig(), 'gpt-realtime-2.1')
+            bridge = VoiceBridge('owner', 'provider', 'key', VoiceCoreConfig(), 'gpt-realtime-2.1')
             bridge.mail.status = 'ready'
             sent = []
             async def accepted(event, match):
                 sent.append(event['session'])
                 return {'type':'session.updated', 'session':event['session']}
             bridge.send = accepted
-            await bridge.configure(False)
+            await bridge.configure()
             assert any(tool.get('server_label')=='hotel_mail' for tool in sent[-1]['tools'])
             assert sent[-1]['output_modalities'] == ['text']
             bridge.mail.pending = {'state':'reading'}
-            await bridge.configure(False)
+            await bridge.configure()
             assert 'tools' not in sent[-1]
             assert not sent[-1]['audio']['input']['turn_detection']['create_response']
             bridge.mail.pending = None
-            await bridge.configure(False)
+            await bridge.configure()
             assert 'tools' not in sent[-1]
             bridge.mail.status = 'unavailable'
-            await bridge.configure(False)
+            await bridge.configure()
             assert sent[-1]['output_modalities'] == ['audio']
             assert all(tool.get('server_label')!='hotel_mail' for tool in sent[-1]['tools'])
     asyncio.run(run())
@@ -542,7 +533,7 @@ def test_speech_render_waits_for_tool_free_current_completed_text_not_progress_o
     async def run():
         _, ports, _, _ = host()
         with bind(ports):
-            bridge=VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            bridge=VoiceBridge('owner','provider','key',VoiceCoreConfig(),'gpt-realtime-2.1')
             bridge.mail.status='ready'
             bridge.turns.responses['r']=0
             text={'type':'message','content':[{'type':'output_text','text':'47.'}]}
@@ -566,7 +557,7 @@ def test_text_limit_uses_bounded_native_continuation_before_any_spoken_result():
     async def run():
         _, ports, _, _ = host()
         with bind(ports):
-            bridge=VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            bridge=VoiceBridge('owner','provider','key',VoiceCoreConfig(),'gpt-realtime-2.1')
             bridge.mail.status='ready'
             bridge.turns.responses.update(first=0,second=0)
             partial={'id':'first','status':'incomplete','status_details':{'reason':'max_output_tokens'},
@@ -589,7 +580,7 @@ def test_native_approval_ack_uses_request_and_decision_not_client_item_id():
     async def run():
         _, ports, _, _ = host()
         with bind(ports):
-            bridge = VoiceBridge('owner','provider','key','token',VoiceCoreConfig(),'gpt-realtime-2.1')
+            bridge = VoiceBridge('owner','provider','key',VoiceCoreConfig(),'gpt-realtime-2.1')
             writes = []
             async def accepted(event, match):
                 writes.append(event)

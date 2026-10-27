@@ -5,7 +5,7 @@ import uuid
 
 from app.config import get_settings
 from app.main import create_app
-from app.services.voice_smart import VoiceBridge, manager
+from dagmar_server.orchestration import VoiceBridge, manager
 from app.db.session import SessionLocal
 from app.db.models import AuditTrail
 from dagmar_server.models import LogicalCall
@@ -16,8 +16,8 @@ app = create_app()
 greetings = []
 
 
-async def isolated_provider(sdp, config, key, owner, token, **kwargs):
-    bridge=VoiceBridge(owner,"rtc_"+uuid.uuid4().hex,key,token,config,"isolated-provider")
+async def isolated_provider(sdp, config, key, owner, **kwargs):
+    bridge=VoiceBridge(owner,"rtc_"+uuid.uuid4().hex,key,config,"isolated-provider")
     bridge.logical_call_id=kwargs.get('logical_call_id')
     manager.attach_task(bridge, bridge.logical_call_id)
     async def send(event, match):

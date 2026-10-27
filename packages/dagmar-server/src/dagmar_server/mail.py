@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from .mail_contract import LABEL, URL, TOOLS, READ_TOOLS, canonical, decode_output, tool_config, verify_catalog, verify_import, MailContractError
 from .mail_storage import MailOperation, MailReceipt, MailSecretStore
 from .ports import SessionLocal, authorized, get_settings, utc_now
-from .registry import normalize, YES
+from .audio_confirmation import normalize, YES
 
 
 class MailTask:
@@ -166,13 +166,13 @@ class MailHost:
                                 if len(tools) > 23:
                                     raise MailContractError("catalog_names_mismatch")
                             verify_catalog(tools)
-                await self.bridge.configure(self.bridge.catalog_ready)
+                await self.bridge.configure()
                 await self.imported.wait()
                 if self.status != "loading" or not self.import_item:
                     raise MailContractError("import_contract_mismatch")
                 self.status = "ready"
                 self.metric("import_ready",duration=time.monotonic()-started)
-                await self.bridge.configure(self.bridge.catalog_ready)
+                await self.bridge.configure()
         except MailContractError:
             self.status = "incompatible"
             self.metric("import_incompatible")
@@ -283,7 +283,7 @@ class MailHost:
 
     async def work(self, action):
         if action == "configure":
-            await self.bridge.configure(self.bridge.catalog_ready)
+            await self.bridge.configure()
             return
         if isinstance(action, dict):
             item = action["item"]
@@ -300,7 +300,7 @@ class MailHost:
             else:
                 self.result(item)
                 if self.task.limited or self.status != "ready":
-                    await self.bridge.configure(self.bridge.catalog_ready)
+                    await self.bridge.configure()
         elif action == "readback":
             await self.question()
         elif action in {"approve", "reject"}:
@@ -405,7 +405,7 @@ class MailHost:
             await self.approve(False)
             return
         await self.bridge.update_transcription()
-        await self.bridge.configure(self.bridge.catalog_ready)
+        await self.bridge.configure()
         pending["state"] = "reading"
         accepted = await self.bridge.send({"type": "response.create", "response": {
             "output_modalities":["audio"], "input": [], "tools": [], "tool_choice": "none", "metadata": {"dagmar_mail_readback": pending["item_id"]},
@@ -467,7 +467,7 @@ class MailHost:
             coordinator.work[approval["response_id"]]["generation"] = coordinator.generation
         self.pending = None
         self.metric("approval_approved" if allow else "approval_rejected")
-        await self.bridge.configure(self.bridge.catalog_ready)
+        await self.bridge.configure()
 
     def close(self):
         self.forget()

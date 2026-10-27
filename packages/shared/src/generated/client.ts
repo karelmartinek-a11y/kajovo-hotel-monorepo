@@ -759,48 +759,9 @@ export type PortalUserUpdate = {
   "phone"?: string | null;
   "roles": Array<string>;
 };
-export type PublicChange = {
-  "action": "create_room" | "rename_room" | "delete_room" | "assign_devices" | "remove_devices" | "rename_devices";
-  "detached_devices"?: number | null;
-  "name"?: string | null;
-  "new_location"?: string | null;
-  "new_name"?: string | null;
-  "old_location"?: string | null;
-  "old_name"?: string | null;
-  "room_ref"?: string | null;
-  "row"?: number | null;
-  "status": string;
-};
-export type PublicPlan = {
-  "changes": Array<PublicChange>;
-  "expires_at": string;
-  "id": string;
-  "requires_confirmation": boolean;
-};
-export type PublicRegistryResult = {
-  "action"?: string | null;
-  "detached_devices"?: number | null;
-  "function"?: string | null;
-  "location"?: string | null;
-  "message"?: string | null;
-  "name"?: string | null;
-  "new_location"?: string | null;
-  "new_name"?: string | null;
-  "old_location"?: string | null;
-  "old_name"?: string | null;
-  "room_ref"?: string | null;
-  "row"?: number | null;
-  "status": string;
-};
 export type ReadMemory = {
   "id": string;
   "operation": string;
-};
-export type RegistryView = {
-  "attempts"?: number;
-  "plan"?: PublicPlan | null;
-  "results"?: Array<PublicRegistryResult>;
-  "state"?: string;
 };
 export type Remember = {
   "content": string;
@@ -863,10 +824,6 @@ export type SettingsRead = {
 export type SettingsWrite = {
   "automatic": boolean;
   "revision": number;
-};
-export type SmartPlanConnection = {
-  "owner_confirmation_url"?: string | null;
-  "status": string;
 };
 export type SmtpOperationalStatusRead = {
   "can_send_real_email": boolean;
@@ -1164,15 +1121,6 @@ export const apiClient = {
   },
   async sessionHeartbeatApiV1AdminVoiceCoreSessionsSessionIdHeartbeatPost(session_id: string): Promise<VoiceSessionStatus> {
     return request<VoiceSessionStatus>('POST', `/api/v1/admin/voice-core/sessions/${session_id}/heartbeat`, undefined, undefined);
-  },
-  async registryPlanApiV1AdminVoiceCoreSessionsSessionIdRegistryPlanGet(session_id: string): Promise<RegistryView> {
-    return request<RegistryView>('GET', `/api/v1/admin/voice-core/sessions/${session_id}/registry-plan`, undefined, undefined);
-  },
-  async connectionApiV1AdminVoiceCoreSmartplanGet(): Promise<SmartPlanConnection> {
-    return request<SmartPlanConnection>('GET', `/api/v1/admin/voice-core/smartplan`, undefined, undefined);
-  },
-  async linkApiV1AdminVoiceCoreSmartplanLinkPost(): Promise<SmartPlanConnection> {
-    return request<SmartPlanConnection>('POST', `/api/v1/admin/voice-core/smartplan/link`, undefined, undefined);
   },
   async memoriesApiV1AdminVoiceMemoryMemoriesGet(query: { "limit"?: number; "offset"?: number; }): Promise<MemoryResult> {
     return request<MemoryResult>('GET', `/api/v1/admin/voice-memory/memories`, query, undefined);

@@ -294,18 +294,10 @@ def build_host(ledger, fixture, sha, evidence, key):
 
     settings = DagmarSettings(voice_master_key=base64.b64encode(os.urandom(32)).decode(),
         voice_release_sha=sha, voice_mail_enabled=True, voice_mail_acceptance_sha=sha)
-    @asynccontextmanager
-    async def synthetic_technologies(token):
-        from technologies import SyntheticTechnologies
-        assert token == 'isolated-public-contract'
-        yield SyntheticTechnologies(state['events'])
-    if fixture.get('synthetic_technologies'):
-        settings.ha_mcp_token = 'isolated-public-contract'
     def identity(owner):
         return {'session_id': owner, 'namespace': 'synthetic-mail-test', 'email': 'test@example.invalid', 'voice_authorized': True} if owner == 'test-admin-a' else None
     ports = RuntimePorts(factory, settings, identity, request_identity=lambda request: identity(request.headers.get('x-test-admin') or request.cookies.get('dagmar_test_admin', '')),
-        provider_http=ProviderHTTP, provider_socket=socket,
-        ha_connector=synthetic_technologies if fixture.get('synthetic_technologies') else None)
+        provider_http=ProviderHTTP, provider_socket=socket)
     product = DagmarApplication(ports)
     with bind(product.ports):
         with factory() as db:

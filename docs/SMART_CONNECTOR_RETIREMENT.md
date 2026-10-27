@@ -1,55 +1,36 @@
 # Hotelové konektory SMART
 
-Hotelový API host Dagmar neprovisionuje historické KajaVoiceHA ani SmartPlan.
-`create_dagmar()` předává pouze hostové `voice_*` nastavení a paměťový adaptér.
-HA endpoint, token, trusted origins a SmartPlan endpoint zůstávají prázdné.
-Staré proměnné prostředí nemohou konektory aktivovat. Deploy odstraňuje
-`KAJAVOICEHA_MCP_TOKEN` a `SMARTPLAN_VOICE_HOST_TOKEN` z přenášeného prostředí;
-Compose již token KajaVoiceHA nepředává. Importní CLI SmartPlan není součástí hostu.
-Přenositelné balíčky si zachovávají izolované kontrakty a testy pro jiné hostitele.
-Bez konfigurace skončí konektor před sítí a čtením uloženého tajemství.
-Čtecí provozní kontrola `scripts/verify_voice_mcp_live_readonly.py` tento stav
-vykáže jako `not_configured` bez pokusu o připojení.
+Dagmar neobsahuje historické konektory KajaVoiceHA/SmartPlan, jejich veřejné
+kontraktové fixtures, modelové nástroje, API routy ani browser panely. Hotelové
+aliasy `voice_smart`, `voice_registry` a `smart_technologies` jsou odstraněné.
+Staré proměnné prostředí nemohou schopnosti aktivovat; deploy jejich přenos odmítá.
+Není k dispozici propojení vlastníka, ukládání klíče ani připojovací transport.
 
-Současný KajovoSmart je samostatná služba `smartnewgen.service`. Jeho HA přístup
-„SMART NEW GEN“, aktivní OAuth adaptér, databáze a scénáře nejsou touto změnou měněné.
+Běžný hlasový hovor, logický lifecycle, paměť/Lístečky a volitelný native Mail
+zůstávají v Dagmar. Mail používá vlastní pomocný modul `audio_confirmation`
+pro rozpoznávání hlasového souhlasu. Voice Core zůstává přenositelný a bez nástrojů.
 
-## Provozní uzavření
+Historické tabulky a migrační checkpointy jsou zachované. Modul
+`retired_connector_storage` obsahuje pouze metadata a aditivní kompatibilitu
+existujících tabulek, bez čtení nebo zápisu tajemství a bez síťového klienta.
+Migrace nemažou operace, doručení, účtenky ani původní ID a nevytvářejí souhlas
+ze starých nullable údajů. Offline diagnostický archiv zůstává nedotčený.
 
-Před změnou pořiď chráněnou konzistentní zálohu PostgreSQL a Smart SQLite,
-fingerprint definic scénářů, procesů a konfigurací. Zálohy a citlivá data nepatří do Gitu.
-Po nasazení cíleně odstraň pouze starý hostový ciphertext z `dagmar_smartplan_secrets`
-a starou vazbu z `dagmar_smartplan_links` v jedné transakci s kontrolou počtů.
-Historické operace, účtenky, doručení a hlasová nastavení zachovej.
-
-HA přístupy „MCP chytré technologie“ a „MCP SmarNGRW“ odvolej podporovaným
-WebSocket příkazem `auth/delete_refresh_token`, po kontrole přesného jména,
-typu a identity záznamu. Neupravuj živý soubor HA auth ručně.
-Ověř odmítnutí odvolaných přístupů a funkční autorizované čtení současným přístupem.
-
-Nepoužívaný soubor `/etc/smartnewgen/chatgpt-oauth/config.json` lze po chráněné
-záloze odstranit. Aktivní adaptér načítá `/etc/smartnewgen-chatgpt-oauth/config.json`;
-jeho obsah, databázi a aktuální přihlášení zachovej. Samotné odstranění nepoužívaného
-souboru nevyžaduje restart Smart ani HA.
-
-## Ověření a hranice
-
-Regrese hostového adaptéru a deploy prostředí musí odmítnout aktivaci starých
-konektorů i se zbylými env hodnotami. Spusť úplné CI a ověření API image.
-Nasazení je omezené na API/admin přes `Hotel-Deploy-Scope: api-admin` a `--no-deps`.
-Živě ověř prázdné konfigurace konektorů, odstraněné staré env hodnoty a cílené DB řádky,
-zachování historických záznamů a definic současných scénářů. Neprováděj spínací testy.
-Odpojení starých přístupů samo o sobě nedokazuje historickou příčinu zapnutí zařízení.
+Současný KajovoSmart, HA, jeho přístupy, služby a scénáře se spravují odděleně.
+Hotelový release je nemění a neprovádí spínací ani placené provider testy.
+API/admin deploy zachovává web, PostgreSQL, ostatní služby a Nginx.
+Před nasazením se koordinuje okamžik chráněných runtime snapshotů s jejich správcem.
 
 ## Matice dopadů
 
-| Oblast | Rozhodnutí |
+| Kategorie | Rozhodnutí a ověření |
 | --- | --- |
-| API adaptér, konfigurace, import CLI | aktualizovat / odstranit staré zapojení |
-| Hostové regresní testy, deploy testy | aktualizovat |
-| Compose a přenos deploy prostředí | odstranit starý token |
-| AGENTS a aktuální provozní dokumentace | aktualizovat |
-| Přenositelné knihovny, fixtures a kontrakty | ověřit beze změny, stále použitelné izolovaně |
-| UI, OpenAPI a generovaný klient | ověřit beze změny, schéma rout se nemění |
-| CI, runtime image a deploy gates | ověřit stávajícími kontrolami |
-| Android, účetní/hostovská data, modelové volání | nerelevantní, žádný změněný kontrakt ani účinek |
+| Produkční zdroje | odstranit konektory, dispatch, routy, panely a hotelové aliasy; zachovat hlas, paměť a Mail |
+| Testy | odstranit výhradně testy odstraněných schopností; aktualizovat lifecycle a ověřit absenci i zachování historie |
+| CI a gates | odstranit registry/owner panel scénáře; zachovat baseline, paměť, lifecycle, copy-out, image a PostgreSQL |
+| Dokumentace a schémata | odstranit návody starých schopností; aktualizovat současný stav a generované kontrakty |
+| Komentáře a poznámky | odstranit staré instrukce a aktualizovat sdílenou orchestraci |
+| AGENTS | aktualizovat hranici Dagmar a nepřítomnost konektorů |
+| Fixtures a texty | odstranit staré katalogy a UI selektory; zachovat Mail souhlas a paměťové scénáře |
+| Build, generování, deploy | aktualizovat OpenAPI/klienta a API image kontrolu; zachovat main-only řetězec |
+| Android | ověřit beze změny: nespotřebovává odstraněné administrátorské hlasové routy |

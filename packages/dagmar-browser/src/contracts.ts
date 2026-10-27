@@ -122,48 +122,9 @@ export type NoteText = {
   "operation": "note_text_update";
   "revision": number;
 };
-export type PublicChange = {
-  "action": "create_room" | "rename_room" | "delete_room" | "assign_devices" | "remove_devices" | "rename_devices";
-  "detached_devices"?: number | null;
-  "name"?: string | null;
-  "new_location"?: string | null;
-  "new_name"?: string | null;
-  "old_location"?: string | null;
-  "old_name"?: string | null;
-  "room_ref"?: string | null;
-  "row"?: number | null;
-  "status": string;
-};
-export type PublicPlan = {
-  "changes": Array<PublicChange>;
-  "expires_at": string;
-  "id": string;
-  "requires_confirmation": boolean;
-};
-export type PublicRegistryResult = {
-  "action"?: string | null;
-  "detached_devices"?: number | null;
-  "function"?: string | null;
-  "location"?: string | null;
-  "message"?: string | null;
-  "name"?: string | null;
-  "new_location"?: string | null;
-  "new_name"?: string | null;
-  "old_location"?: string | null;
-  "old_name"?: string | null;
-  "room_ref"?: string | null;
-  "row"?: number | null;
-  "status": string;
-};
 export type ReadMemory = {
   "id": string;
   "operation": "memory_read";
-};
-export type RegistryView = {
-  "attempts"?: number;
-  "plan"?: PublicPlan | null;
-  "results"?: Array<PublicRegistryResult>;
-  "state"?: string;
 };
 export type Remember = {
   "content": string;

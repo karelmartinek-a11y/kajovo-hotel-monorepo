@@ -4,8 +4,9 @@ import {getAdminCredentials} from '../test-admin-credentials';
 test('real auth/call/reconnect/Stop without diagnostic requests, recorder or stats timer',async({page},info)=>{
   test.setTimeout(45000);
   const diagnostics:string[]=[];
+  const retiredRequests:string[]=[];
   const connections:{logical_call_id:string}[]=[];
-  page.on('request',request=>{if(request.url().includes('/diagnostics'))diagnostics.push(request.url());});
+  page.on('request',request=>{if(request.url().includes('/diagnostics'))diagnostics.push(request.url());if(/\/(smartplan|registry-plan)(?:[/?]|$)/.test(request.url()))retiredRequests.push(request.url());});
   page.on('response',async response=>{if(response.url().endsWith('/voice-core/sessions')&&response.request().method()==='POST'&&response.ok())connections.push(await response.json());});
   await page.addInitScript(()=>{
     (window as any).voiceFixture={recorders:0,stats:0,peers:[]};
@@ -28,6 +29,9 @@ test('real auth/call/reconnect/Stop without diagnostic requests, recorder or sta
   await expect(page).toHaveURL(/\/admin\/?$/);
   await page.goto('/admin/hlasovy-chat');
   await expect(page.getByRole('button',{name:/debug/i})).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'SmartPlan',exact:true})).toHaveCount(0);
+  await expect(page.getByTestId('voice-registry')).toHaveCount(0);
+  await expect(page.getByRole('region',{name:'Správa hlasové paměti'})).toBeVisible();
   await expect(page.getByRole('region',{name:'Diagnostika hlasových hovorů'})).toHaveCount(0);
   await page.getByLabel('Nový API klíč').fill('sk-isolated-test-only');await page.getByRole('button',{name:'Uložit',exact:true}).click();
   await expect(page.getByText('Klíč je uložen.',{exact:true})).toBeVisible();
@@ -52,6 +56,7 @@ test('real auth/call/reconnect/Stop without diagnostic requests, recorder or sta
   });
   expect(fixture).toEqual({recorders:0,stats:0,live:false});
   expect(diagnostics).toEqual([]);
+  expect(retiredRequests).toEqual([]);
   await expect.poll(async()=>{const result=await (await page.request.get('/api/__voice_fixture')).json();return result.open_calls;}).toBe(0);
   const metrics=await (await page.request.get('/api/__voice_fixture')).json();
   expect(metrics.technical_audits).toBe(0);expect(metrics.key_audits).toBeGreaterThan(0);

@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     voice_mail_max_seconds: int = Field(default=600, ge=10, le=1800)
     voice_mail_max_bytes: int = Field(default=524288, ge=1024, le=2097152)
     voice_context_prune_tokens: int = Field(default=24000, ge=8000, le=80000)
-    voice_smart_frame_max_chars: int = Field(default=60000, ge=8000, le=100000)
     voice_memory_context_max_tokens: int = Field(default=2000, ge=500, le=12000, validation_alias="VOICE_MEMORY_CONTEXT_MAX_TOKENS")
     voice_memory_curator_model: str = "gpt-4.1-mini-2025-04-14"
     voice_memory_batch_seconds: int = Field(default=90, ge=15, le=300)

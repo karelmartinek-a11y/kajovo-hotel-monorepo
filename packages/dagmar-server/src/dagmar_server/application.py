@@ -25,8 +25,6 @@ class DagmarApplication:
         self.ports = replace(ports, application=self)
         self.core = APIRouter()
         self.core.include_router(core_router)
-        from .api_smartplan import router as smartplan_router
-        self.core.include_router(smartplan_router)
         self.memory = memory_router
         @self.core.post('/calls')
         def create_call(request: Request):

@@ -1,15 +1,9 @@
-"""Separately versioned host metadata. Scenarios and running jobs remain on SmartPlan."""
-import base64
-import os
+"""Retired connector metadata retained solely for non-destructive schema compatibility."""
 from datetime import datetime
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from sqlalchemy import Column, Integer, MetaData, String, Table, Text, DateTime, UniqueConstraint, select, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from voice_core_server import VoiceError
 
-from .config import master_key
-from .ports import SessionLocal
 
 
 class SmartPlanBase(DeclarativeBase):
@@ -97,33 +91,3 @@ def migrate(connection):
         connection.execute(text(f'ALTER TABLE dagmar_smartplan_deliveries ADD COLUMN created_at {timestamp_type}'))
     if version is None:
         connection.execute(marker.insert().values(version=1))
-
-
-class SmartPlanSecretStore:
-    AAD = b'dagmar:smartplan:SMARTPLAN_VOICE_HOST_TOKEN:v1'
-
-    def save(self, token):
-        if not isinstance(token, str) or not 16 <= len(token) <= 512 or any(c.isspace() for c in token):
-            raise VoiceError('invalid_smartplan_secret')
-        nonce = os.urandom(12)
-        cipher = base64.b64encode(nonce + AESGCM(master_key()).encrypt(nonce, token.encode(), self.AAD)).decode()
-        with SessionLocal() as db:
-            row = db.get(SmartPlanSecret, 1)
-            if row is None:
-                row = SmartPlanSecret(id=1)
-                db.add(row)
-            row.ciphertext = cipher
-            db.commit()
-
-    def read(self):
-        try:
-            with SessionLocal() as db:
-                row = db.get(SmartPlanSecret, 1)
-                if row is None:
-                    raise VoiceError('missing_smartplan_secret')
-                cipher = base64.b64decode(row.ciphertext, validate=True)
-            return AESGCM(master_key()).decrypt(cipher[:12], cipher[12:], self.AAD).decode()
-        except VoiceError:
-            raise
-        except Exception:
-            raise VoiceError('smartplan_secret_store_unavailable') from None

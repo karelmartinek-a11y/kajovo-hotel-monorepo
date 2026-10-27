@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import select, func
 from dagmar_server.models import VoiceNote, VoiceMemoryOperation
 from .test_voice_memory_protocol import FakeRealtime, bridge_for, wait_for, host as _host, voice_host as _voice_host
-from .test_voice_registry import arm, proposal
 
 host = _host
 voice_host = _voice_host
@@ -20,23 +19,6 @@ async def audio(provider, iid, text):
         await provider.events.put(event)
 
 
-def test_reconnect_during_completed_readback_invalidates_audio_consent(host, monkeypatch):
-    async def run():
-        first = FakeRealtime('', {})
-        bridge = await bridge_for(host, monkeypatch, first, logical_call_id='readback-registry')
-        consent = bridge.registry
-        consent.prepare(proposal(), 'cs')
-        arm(consent)
-        assert consent.valid() and consent.state == 'awaiting_confirmation'
-        await bridge.close()
-        assert not consent.valid()
-        second = FakeRealtime('', {})
-        fresh = await bridge_for(host, monkeypatch, second, logical_call_id='readback-registry')
-        await audio(second, 'after-reconnect', 'Ano.')
-        await wait_for(lambda: fresh.human_turns.current == 'after-reconnect')
-        assert not fresh.registry.valid()
-        await fresh.close()
-    asyncio.run(run())
 
 
 def test_multisentence_dictation_single_write_readback_and_new_function_id_retry(host, monkeypatch):
@@ -97,7 +79,7 @@ def test_reconnect_uncertain_mutation_never_executes_new_identity_or_restores_co
     async def run():
         first = FakeRealtime('', {})
         bridge = await bridge_for(host, monkeypatch, first, logical_call_id='uncertain')
-        call = {'name': 'smart_technologie', 'call_id': 'original', 'arguments': json.dumps({'operation': 'control'})}
+        call = {'name': 'assistant_memory', 'call_id': 'original', 'arguments': json.dumps({'request': {'operation': 'note_create', 'title': 'Uncertain', 'kind': 'list', 'items': []}})}
         key = bridge.task_context.key(call)
         bridge.task_context.operations[key] = {'call_id': 'original', 'state': 'uncertain'}
         await bridge.close()
@@ -109,7 +91,7 @@ def test_reconnect_uncertain_mutation_never_executes_new_identity_or_restores_co
         await fresh.result({**call, 'call_id': 'new-id'})
         assert second.answers[-1]['code'] == 'not_sent'
         assert second.answers[-1]['original_function_call_id'] == 'original'
-        assert not fresh.registry.valid()
+        assert not fresh.human_turns.intent()
         await fresh.close()
     asyncio.run(run())
 
@@ -201,6 +183,6 @@ def test_reconnect_restores_memory_read_pairs_without_repeating_reads(host, monk
         for call in requests:
             await fresh.result({**call, 'call_id': call['call_id'] + '-new'})
         assert not any(event.get('response', {}).get('metadata', {}).get('dagmar_greeting') for event in second.sent)
-        assert not fresh.registry.valid()
+        assert not fresh.human_turns.intent()
         await fresh.close()
     asyncio.run(run())

@@ -42,8 +42,7 @@ def main():
         run(["pnpm","--filter","@dagmar/browser","test"],target,env)
         run(["pnpm","--filter","dagmar-minimal-host","build"],target,env)
         run([python,str(target/"examples/dagmar-host/verify.py")],target,env)
-        run([python,str(target/"examples/dagmar-host/verify_mcp.py")],target,env)
-        print("Whole Dagmar clean install/build/test-auth server/own DB/mock provider/public-MCP copy-out PASS")
+        print("Whole Dagmar clean install/build/test-auth server/own DB/mock provider/memory/Mail copy-out PASS")
 
 
 if __name__ == "__main__":

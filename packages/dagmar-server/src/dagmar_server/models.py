@@ -17,7 +17,7 @@ class VoiceCoreSettings(DagmarBase):
 
 
 class VoiceSmartOperation(DagmarBase):
-    """Idempotency/recovery metadata only: no arguments, device values or transcripts."""
+    """Retained historical operation metadata; no executable connector or request content."""
     __tablename__ = "dagmar_voice_smart_operations"
     __table_args__ = (UniqueConstraint("owner_session_id", "call_id", name="dagmar_uq_voice_smart_provider_call"),)
 
@@ -30,7 +30,7 @@ class VoiceSmartOperation(DagmarBase):
 
 
 class VoiceSmartDelivery(DagmarBase):
-    """Provider delivery receipt only; no tool output, image or transcript storage."""
+    """Retained historical delivery receipts; no tool output, image or transcript storage."""
     __tablename__ = "dagmar_voice_smart_deliveries"
     id: Mapped[str] = mapped_column(String(80), primary_key=True)
     owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -40,7 +40,7 @@ class VoiceSmartDelivery(DagmarBase):
 
 
 class VoiceRegistryPlan(DagmarBase):
-    """Confirmation metadata only. Plan names, transcripts and audio stay transient."""
+    """Retained historical confirmation metadata; no plan names, transcripts or audio."""
     __tablename__ = "dagmar_voice_registry_plans"
     id: Mapped[str] = mapped_column(String(80), primary_key=True)
     owner_session_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)

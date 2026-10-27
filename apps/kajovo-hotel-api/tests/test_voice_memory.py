@@ -7,7 +7,8 @@ from sqlalchemy import select, func
 from app.db.models import AdminProfile, AuditTrail, PortalUser, PortalUserRole
 from dagmar_server.models import VoiceMemory, VoiceMemoryPrincipal, VoiceMemoryRevision, VoiceNote, VoiceNoteItem, VoiceConversationSummary
 from app.security import auth
-from app.services import voice_memory as memory, voice_smart
+from app.services import voice_memory as memory
+from dagmar_server import orchestration as voice_bridge
 from app.services.voice_memory_contract import MEMORY_TOOL, MemoryRequest
 from dagmar_server.memory import PROFILE_ID
 from dagmar_server.token_budget import measure
@@ -30,7 +31,7 @@ def host(voice_host, monkeypatch):
             )
         )
         db.commit()
-    monkeypatch.setattr(voice_smart, "SessionLocal", factory)
+    monkeypatch.setattr(voice_bridge, "SessionLocal", factory)
     login()
     return client, factory, login
 
