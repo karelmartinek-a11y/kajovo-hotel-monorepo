@@ -92,6 +92,7 @@ python3 - <<'PY'
 from pathlib import Path
 import json
 import os
+import subprocess
 
 env_path = Path(os.environ["DEPLOY_ROOT"]) / "infra/.env"
 vars_path = Path(os.environ["DEPLOY_VARS_PATH"])
@@ -117,9 +118,16 @@ updates = {
     "KAJOVO_API_WEB_PUSH_VAPID_SUBJECT": payload.get("KAJOVO_API_WEB_PUSH_VAPID_SUBJECT", ""),
     "KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64": payload.get("KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64", ""),
 }
+credentials_changed = any(updates[key] and updates[key] != current.get(key) for key in (
+    "BETTER_HOTEL_CONNECTOR_BASE_URL", "BETTER_HOTEL_ACCESS_TOKEN", "BETTER_HOTEL_CLIENT_TOKEN",
+))
 for key, value in updates.items():
     if value:
         current[key] = value
+
+# New provider credentials must support an actual read before replacing the environment or services.
+if credentials_changed:
+    subprocess.run(["python3", str(Path(os.environ["DEPLOY_ROOT"]) / "scripts/check_better_hotel_credentials_env.py"), "--probe"], env={**os.environ, **current}, check=True)
 
 # Retired voice connectors must not survive the preserved environment.
 for key in ("KAJAVOICEHA_MCP_TOKEN", "SMARTPLAN_VOICE_HOST_TOKEN"):

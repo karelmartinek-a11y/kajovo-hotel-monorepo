@@ -58,7 +58,7 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: Housek
     aria-label={`${t('Pokoj')} ${room.room_number}, ${statusLabel}, ${t(OPERATIONAL_LABELS[room.operational_state])}. ${describe}. ${stays.some((stay) => stay.housekeeping_note?.trim()) ? `${t('Poznámka pro pokojskou')}. ` : ''}${blocks.length ? `${t('Blokace pokoje / zastavení prodeje')}. ` : ''}${t('Změnit stav pokoje.')}`}>
     <span className={`k-hk-room__topline k-hk-room-status--${room.housekeeping_status_key ?? 'unknown'}`} title={statusLabel}><strong>{room.room_number}</strong></span>
     <span className="k-hk-room__body">
-      {reservations.map(([kind, items]) => <span key={kind} className="k-hk-room__slot">
+      {reservations.map(([kind, items]) => <span key={kind} className={`k-hk-room__slot k-hk-reservation--${items.length === 1 ? items[0].reservation_state ?? 'unknown' : 'unknown'}`}>
         {items.length === 1 ? <ReservationStamp stay={items[0]} kind={kind} /> : items.length > 1 ? <span className="k-hk-room__conflict" title={t('Nejednoznačné přiřazení rezervací')}>!</span> : null}
       </span>)}
       {coverage.map((side) => <svg key={side} className={`k-hk-room__block k-hk-room__block--${side}`} data-block-coverage={side} viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={t('Blokace pokoje / zastavení prodeje')}><title>{t('Blokace pokoje / zastavení prodeje')}</title><path d="M3 3 97 97 M97 3 3 97" /></svg>)}

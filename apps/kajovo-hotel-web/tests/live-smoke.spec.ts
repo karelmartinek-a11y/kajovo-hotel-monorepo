@@ -316,12 +316,12 @@ test('pokoje zachovají provozní pořadí a přizpůsobí mřížku šířce ok
   await expect(firstCard).toBeVisible();
   await expect(page.locator('.k-hk-room')).toHaveCount(39);
   expect(await page.locator('.k-hk-room').evaluateAll((nodes) => nodes.map((node) => node.querySelector('.k-hk-room__topline strong')?.textContent))).toEqual([...EXPECTED_ROOM_ORDER, 99, 410].map(String));
-  for (const width of [1440, 768, 390]) {
+  for (const width of [1440, 768, 430, 390, 360, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     await firstCard.scrollIntoViewIfNeeded();
     await expect.poll(() => firstCard.evaluate((element) => element.getBoundingClientRect().right)).toBeLessThanOrEqual(width);
     await expect.poll(() => page.locator('.k-hk-board').evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(width);
-    if (width === 390) {
+    if (width < 600) {
       const rows = await page.locator('.k-hk-room').evaluateAll((nodes) => nodes.slice(0, 8).map((node) => node.getBoundingClientRect().top));
       expect(rows.slice(0, 4).every((top) => Math.abs(top - rows[0]) < 2)).toBeTruthy();
       expect(rows.slice(4).every((top) => Math.abs(top - rows[4]) < 2)).toBeTruthy();
@@ -525,7 +525,7 @@ for (const role of ['recepce', 'pokojska']) {
     await loginPortalUser(page, user.portalEmail, user.portalPassword);
     if (role === 'recepce') await page.goto('/pokojska');
     const card = page.getByRole('button', { name: /pokoj 101/i });
-    await expect(card.locator('[data-stay-kind="arrival"] .k-hk-request-icon')).toHaveCount(3);
+    await expect(card.locator('[data-stay-kind="arrival"] .k-hk-request-icon')).toHaveCount(2);
     await expect(card.locator('[data-stay-kind="departure"] .k-hk-request-icon')).toHaveCount(0);
     await card.click();
     const detail = page.getByRole('dialog');
@@ -925,14 +925,15 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       const number = cards.nth(i).locator('.k-hk-room__topline strong');
       await expect(number).toHaveCSS('color', 'rgb(255, 255, 255)');
       await expect(number).toHaveCSS('-webkit-text-stroke-color', 'rgb(17, 17, 17)');
-      await expect(number).toHaveCSS('-webkit-text-stroke-width', '2px');
+      await expect(number).toHaveCSS('-webkit-text-stroke-width', '1.25px');
     }
     await expect(page.locator('.k-hk-help, .k-hk-legend')).toHaveCount(0);
     await expect(cards.first()).not.toContainText(stay.display_name);
     await expect(cards.first()).not.toHaveAttribute('aria-label', new RegExp(stay.display_name));
     await expect(cards.first()).not.toContainText(stay.company_name);
     for (let i=0; i<8; i++) await expect(cards.nth(i).locator('.k-hk-room__topline')).toHaveCSS('background-color', colors[i]);
-    await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-icon')).toHaveCount(3);
+    await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-icon')).toHaveCount(2);
+    await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-badge')).toContainText('×2');
     await expect(cards.first().locator('.k-hk-room__note-alert')).toHaveCount(2);
     await expect(cards.first().locator('.k-hk-reservation__country').first()).toHaveText('GBR');
     const countryLabel = new Intl.DisplayNames([locale], { type: 'region' }).of('GB')!;
@@ -944,7 +945,9 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       return {
         rowsInside: rows.every((row) => row.left >= bounds.left && row.right <= bounds.right + .5 && row.top >= bounds.top && row.bottom <= bounds.bottom + .5),
         countsInside: counts.every((count) => count.left >= bounds.left && count.right <= bounds.right + .5),
-        countsAligned: Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
+        countsAligned: innerWidth < 600 ? Math.max(...counts.map((count) => count.x + count.width/2)) - Math.min(...counts.map((count) => count.x + count.width/2)) < 1 : Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
+        countSize: parseFloat(getComputedStyle(block.querySelector('.k-hk-person-counts')!).fontSize),
+        timeSize: parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__time')!).fontSize),
         countrySize: parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__country')!).fontSize),
         rowCount: block.children.length,
         requestsInside: Array.from(block.querySelectorAll('.k-hk-request-icon')).every((icon) => { const r = icon.getBoundingClientRect(), bounds = icon.parentElement!.getBoundingClientRect(); return r.left >= bounds.left && r.right <= bounds.right + .5; }),
@@ -954,7 +957,7 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     })));
     for (const block of content) {
       expect(block.rowsInside).toBeTruthy(); expect(block.countsInside).toBeTruthy(); expect(block.countsAligned).toBeTruthy();
-      expect(block.countrySize).toBeGreaterThanOrEqual(12); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
+      expect(block.countrySize).toBeGreaterThanOrEqual(14); expect(block.countSize).toBeGreaterThanOrEqual(14); expect(block.timeSize).toBeGreaterThanOrEqual(14); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
       if (block.kind === 'stay') { expect(block.countrySize).toBeGreaterThanOrEqual(19); expect(block.iconHeight).toBeGreaterThanOrEqual(17); }
     }
     const geometry = await cards.evaluateAll((nodes) => nodes.map((node) => {
@@ -980,6 +983,13 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
         return Array.from(row.querySelectorAll('b')).every((count) => { const rect = count.getBoundingClientRect(); return rect.left >= bounds.left && rect.right <= bounds.right + .5; });
       }));
       expect(boundedCounts).toBeTruthy();
+      const boundedTimes = await cards.locator('.k-hk-reservation__time').evaluateAll((times) => times.map((time) => {
+        const range = document.createRange(); range.selectNodeContents(time);
+        const text = range.getBoundingClientRect(), slot = time.closest('.k-hk-room__slot')!.getBoundingClientRect();
+        return { fits: text.left >= slot.left && text.right <= slot.right + .5, text: {left: text.left, right: text.right}, slot: {left: slot.left, right: slot.right} };
+      }));
+      expect(boundedTimes.filter((time) => !time.fits)).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`room-stamps-320-${locale}.png`), fullPage: true });
       await page.setViewportSize(original);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
@@ -1032,8 +1042,10 @@ for (const locale of ['cs', 'en', 'uk'] as const) {
     const user = await createPortalUserForRole(request, testInfo, 'pokojska');
     await loginPortalUser(page, user.portalEmail, user.portalPassword);
     await page.getByRole('button', { name: {cs:'Čeština',en:'English',uk:'Українська'}[locale], exact:true }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.getByRole('heading', {name: {cs:'Pokoje',en:'Rooms',uk:'Номери'}[locale], exact:true})).toBeVisible();
     const card = page.locator('.k-hk-room').first();
-    await expect(card.locator('[data-request-state="red"]')).toHaveCount(6);
+    await expect(card.locator('[data-request-state="red"]')).toHaveCount(4);
     await card.click();
     const dialog = page.getByRole('dialog');
     const arrival = dialog.locator('[data-reservation-id="new"]');
@@ -1052,11 +1064,11 @@ for (const locale of ['cs', 'en', 'uk'] as const) {
     await expect(dialog.locator('[data-reservation-id="reservation-old"]')).toHaveCount(0);
     await expect(dialog.locator('[data-reservation-id="old"] [data-request-state="red"]')).toHaveCount(3);
     await dialog.getByRole('button',{name:{cs:'Zavřít dialog',en:'Close dialog',uk:'Закрити діалог'}[locale]}).click();
-    await expect(card.locator('[data-stay-kind="arrival"] [data-request-state="green"]')).toHaveCount(3);
+    await expect(card.locator('[data-stay-kind="arrival"] [data-request-state="green"]')).toHaveCount(2);
     await page.screenshot({path:testInfo.outputPath(`confirmed-${locale}.png`),fullPage:true});
     await page.reload();
-    await expect(card.locator('[data-stay-kind="arrival"] [data-request-state="green"]')).toHaveCount(3);
-    await expect(card.locator('[data-stay-kind="departure"] [data-request-state="red"]')).toHaveCount(3);
+    await expect(card.locator('[data-stay-kind="arrival"] [data-request-state="green"]')).toHaveCount(2);
+    await expect(card.locator('[data-stay-kind="departure"] [data-request-state="red"]')).toHaveCount(2);
     expect(changes).toEqual([{id:'new',kind:'dog'},{id:'new',kind:'cot'}]);
   });
 }

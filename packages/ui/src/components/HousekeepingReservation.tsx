@@ -38,12 +38,14 @@ function RequestIcon({ kind, confirmed }: { kind: ReservationAmenityKind; confir
   </svg>;
 }
 
-export function ReservationRequests({ stay }: { stay: HousekeepingStayRead }): JSX.Element {
+export function ReservationRequests({ stay, compact = false }: { stay: HousekeepingStayRead; compact?: boolean }): JSX.Element {
   const dogs = stay.dog_count ?? 0;
-  return <span className="k-hk-requests">
+  return <span className={`k-hk-requests${compact ? ' k-hk-requests--compact' : ''}`}>
     <span className="k-hk-requests__items" title={`${t('Pes')}: ${stay.dog_count ?? '?'}; ${t('Dětská postýlka')}: ${stay.cot_required == null ? '?' : stay.cot_required ? '1' : '0'}`}>
-      {Array.from({ length: Math.min(dogs, 32) }, (_, index) => <RequestIcon key={index} kind="dog" confirmed={requirementConfirmed(stay, 'dog')} />)}
-      {dogs > 32 ? <b>+{dogs - 32}</b> : null}
+      {compact ? dogs > 0 ? <span className="k-hk-request-badge"><RequestIcon kind="dog" confirmed={requirementConfirmed(stay, 'dog')} />{dogs > 1 ? <b>×{dogs}</b> : null}</span> : null : <>
+        {Array.from({ length: Math.min(dogs, 32) }, (_, index) => <RequestIcon key={index} kind="dog" confirmed={requirementConfirmed(stay, 'dog')} />)}
+        {dogs > 32 ? <b>+{dogs - 32}</b> : null}
+      </>}
       {stay.cot_required ? <RequestIcon kind="cot" confirmed={requirementConfirmed(stay, 'cot')} /> : null}
       {stay.dog_count == null || stay.cot_required == null ? <span className="k-hk-request-unknown" title={t('Požadavky se nepodařilo určit')}>?</span> : null}
     </span>
@@ -67,7 +69,7 @@ export function ReservationStamp({ stay, kind }: { stay: HousekeepingStayRead; k
     <PersonCounts stay={stay} />
     <span className="k-hk-reservation__event" title={`${label}${kind === 'stay' ? '' : ` ${time ?? '?'}`}`}><StayEvent kind={kind} /><b className="k-hk-reservation__event-label">{label}</b>{kind !== 'stay' ? <b className="k-hk-reservation__time">{time ?? '?'}</b> : null}</span>
     <span className="k-hk-reservation__country" title={countryName(stay.country_code, stay.country_name)}>{stay.country_code_alpha3 ?? '?'}</span>
-    <ReservationRequests stay={stay} />
+    <ReservationRequests stay={stay} compact />
   </span>;
 }
 

@@ -13,6 +13,49 @@ SPEC.loader.exec_module(gate)
 
 
 class ReleaseGateTests(unittest.TestCase):
+    def test_better_hotel_deploy_probe_requires_authenticated_inventory(self):
+        import urllib.error
+        from unittest.mock import MagicMock
+        spec = importlib.util.spec_from_file_location('bh_probe', Path(__file__).parents[1] / 'check_better_hotel_credentials_env.py')
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        env = {'A_TOKEN': 'private-a-fixture', 'C_TOKEN': 'private-c-fixture'}
+        probe.check(env)
+        with self.assertRaises(ValueError):
+            probe.check({})
+        with patch.object(probe.urllib.request, 'build_opener') as factory:
+            opener = factory.return_value
+            response = MagicMock()
+            opener.open.return_value.__enter__.return_value = response
+            response.read.return_value = b'{"data":[{"id":"room-101"}],"meta":{}}'
+            probe.check(env, probe=True)
+            request = opener.open.call_args.args[0]
+            self.assertEqual(request.get_method(), 'GET')
+            self.assertEqual(request.full_url, 'https://api.better-hotel.com/api/connector/v/1/room-current-status?count=1')
+            self.assertEqual(request.get_header('X-access-token'), env['A_TOKEN'])
+            self.assertEqual(request.get_header('User-agent'), 'kajovo-hotel-housekeeping/1.0')
+            for payload in (b'{}', b'{"data":[]}', b'{"data":[{}],"meta":[]}', b'{"data":[{}],"meta":{"problems":["private"]}}', b'not json'):
+                response.read.return_value = payload
+                with self.subTest(payload=payload), self.assertRaises(ValueError):
+                    probe.check(env, probe=True)
+            opener.open.side_effect = urllib.error.HTTPError('private-url', 401, 'private-provider-body', {}, None)
+            with self.assertRaises(ValueError) as error:
+                probe.check(env, probe=True)
+            self.assertIn('HTTP 401', str(error.exception))
+            self.assertNotIn('private', str(error.exception))
+            opener.reset_mock()
+            with self.assertRaises(ValueError):
+                probe.check({**env, 'BETTER_HOTEL_CONNECTOR_BASE_URL': 'https://other.invalid'}, probe=True)
+            opener.open.assert_not_called()
+        self.assertIsNone(probe.NoRedirect().redirect_request(None, None, 302, '', {}, 'https://other.invalid'))
+        spec = importlib.util.spec_from_file_location('github_deploy', Path(__file__).parents[1] / 'github_deploy_via_ssh.py')
+        deploy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(deploy)
+        script = deploy.remote_script_text()
+        self.assertIn('if credentials_changed:', script)
+        self.assertLess(script.index('"--probe"'), script.index('env_path.write_text'))
+        self.assertLess(script.index('"--probe"'), script.index('"$deploy_root/infra/ops/deploy-production.sh"'))
+
     def test_postgres_guard_rejects_production_downgrade_and_major_migration(self):
         spec = importlib.util.spec_from_file_location('postgres_guard', Path(__file__).parents[1] / 'check_postgres_deploy_version.py')
         module = importlib.util.module_from_spec(spec)
