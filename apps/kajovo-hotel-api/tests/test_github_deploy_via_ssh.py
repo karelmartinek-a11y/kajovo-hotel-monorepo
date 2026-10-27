@@ -19,6 +19,12 @@ def test_pre_upload_cleanup_preserves_runtime_data_and_running_images() -> None:
     assert "releases[1:]" in script
     assert "docker builder prune -af" in script
     assert "docker image prune -af" in script
+    assert "--cap-drop=ALL" in script
+    assert "--network=none" in script
+    assert "artifacts.rmdir()" in script
+    assert "len(path.name) == 40" in script
+    assert "not path.is_symlink()" in script
+    assert "chmod" not in script and "chown" not in script
     assert "docker volume" not in script
     assert "docker system prune" not in script
 
@@ -147,3 +153,34 @@ globalThis.fetch=async(url,options={})=>{
     report = json.loads(lines[-2])
     assert report['smtp_send_excluded'] and report['crud'] == report['reset_link_status'] == 'NOT_RUN'
     assert json.loads(lines[-1]) == [['POST','/api/auth/admin/login'],['POST','/api/auth/activity'],['GET','/api/v1/users']]
+
+
+def test_health_probe_rejects_transport_failure_even_after_http_200(tmp_path):
+    import os
+    import subprocess
+    script = (Path(__file__).resolve().parents[3] / 'infra/ops/deploy-production.sh').read_text()
+    function = 'http_check() {' + script.split('http_check() {', 1)[1].split('\n}\n', 1)[0] + '\n}\n'
+    curl = tmp_path / 'curl'
+    curl.write_text('#!/bin/sh\nprintf "%s" "$FIXTURE_HTTP_STATUS"\nexit "$FIXTURE_CURL_EXIT"\n')
+    curl.chmod(0o755)
+    for status, exit_code, success in [('200', '0', True), ('200', '23', False), ('503', '0', False)]:
+        env = {**os.environ, 'PATH': str(tmp_path) + os.pathsep + os.environ['PATH'],
+               'FIXTURE_HTTP_STATUS': status, 'FIXTURE_CURL_EXIT': exit_code}
+        result = subprocess.run(['bash', '-c', function + '\nhttp_check https://fixture.invalid/ready readiness'],
+                                env=env, capture_output=True, text=True)
+        assert (result.returncode == 0) == success
+        assert ('PASS' in result.stdout) == success
+    assert '/tmp/kajovo-deploy-http.txt' not in script
+    assert '-o /dev/null' in function
+
+
+def test_api_admin_deploy_requires_complete_immutable_snapshot_and_retains_evidence():
+    script = (Path(__file__).resolve().parents[3] / 'infra/ops/deploy-production.sh').read_text()
+    limited = script.split('if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then', 1)[1].split('\nfi\n', 1)[0]
+    assert limited.index('snapshot_image=') < limited.index('docker_build_with_snapshot_retry api admin')
+    assert '--docker-image "$snapshot_image"' in limited
+    assert 'sha256sum /etc/nginx/sites-enabled/*' not in limited
+    assert '"protected_runtime":"complete_unchanged"' in limited
+    assert '"snapshot_transport":"docker_readonly"' in limited
+    assert 'protected-before.txt' in limited and 'protected-after.txt' in limited
+    assert 'sudo' not in limited and 'chmod' not in limited and 'chown' not in limited

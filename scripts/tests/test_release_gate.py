@@ -78,6 +78,55 @@ class ReleaseGateTests(unittest.TestCase):
             self.assertEqual(report['coverage'], 'privileged_required')
             self.assertTrue(report['privileged_snapshot_required'])
 
+    def test_nginx_hashes_private_files_and_symlink_identity(self):
+        spec = importlib.util.spec_from_file_location('protected_snapshot', Path(__file__).parents[1] / 'protected_runtime_snapshot.py')
+        runtime = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runtime)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            nginx = root / 'etc/nginx'
+            nginx.mkdir(parents=True)
+            (nginx / 'private.conf').write_text('private-fixture-a')
+            (nginx / 'other.conf').write_text('private-fixture-a')
+            link = nginx / 'enabled.conf'
+            link.symlink_to('private.conf')
+            first = runtime.snapshot(root, lambda *a, **kw: 'Id=nginx.service\n')
+            self.assertEqual(first['coverage'], 'complete')
+            self.assertNotIn('private-fixture-a', json.dumps(first))
+            link.unlink()
+            link.symlink_to('other.conf')
+            self.assertNotEqual(first, runtime.snapshot(root, lambda *a, **kw: 'Id=nginx.service\n'))
+            (nginx / 'private.conf').write_text('private-fixture-b')
+            self.assertNotEqual(first, runtime.snapshot(root, lambda *a, **kw: 'Id=nginx.service\n'))
+
+    def test_snapshot_container_uses_existing_rights_with_strict_readonly_isolation(self):
+        spec = importlib.util.spec_from_file_location('protected_snapshot', Path(__file__).parents[1] / 'protected_runtime_snapshot.py')
+        runtime = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runtime)
+        image = 'sha256:' + 'a' * 64
+        command = runtime.filesystem_command(image, [('/etc/nginx', '/etc/nginx')])
+        for option in ('--network=none', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges:true', '--user=0:0', '--pull=never'):
+            self.assertIn(option, command)
+        self.assertNotIn('--privileged', command)
+        self.assertNotIn('/var/run/docker.sock', ' '.join(command))
+        self.assertIn('type=bind,src=/etc/nginx,dst=/etc/nginx,readonly,bind-recursive=disabled', command)
+        for bad in ('', 'kajovo-api:latest', 'sha256:short', 'sha256:' + 'z' * 64):
+            with self.assertRaises(ValueError):
+                runtime.filesystem_command(bad, [])
+        for value in ({'coverage': 'privileged_required'}, {'coverage': 'complete', 'privileged_snapshot_required': ['private']}):
+            with self.assertRaises(RuntimeError):
+                runtime.require_complete(value)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            allowed = root / 'allowed'
+            allowed.mkdir()
+            outside = root / 'outside'
+            outside.write_text('private-outside')
+            (allowed / 'escape').symlink_to(outside)
+            runtime._MOUNTED_ROOTS = (allowed,)
+            with self.assertRaisesRegex(RuntimeError, 'outside_readonly_mounts'):
+                runtime.fingerprint(allowed / 'escape')
+
     def test_targeted_deploy_accepts_updated_validation_but_rejects_web(self):
         spec = importlib.util.spec_from_file_location('select_deploy_scope', Path(__file__).parents[1] / 'select_deploy_scope.py')
         scope = importlib.util.module_from_spec(spec)

@@ -230,18 +230,37 @@ find "$upload_home" -maxdepth 1 -type f -name 'kajovo-deploy-*.tar.gz' -delete
 RELEASE_DIR="$release_dir" python3 - <<'PY'
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 root = Path(os.environ["RELEASE_DIR"])
 if root.is_dir():
     releases = sorted(
-        (path for path in root.iterdir() if path.is_dir()),
+        (path for path in root.iterdir() if path.is_dir() and not path.is_symlink()
+         and len(path.name) == 40 and all(c in "0123456789abcdef" for c in path.name)),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
     for stale in releases[1:]:
         print(f"Removing stale deploy source tree: {stale.name}")
-        shutil.rmtree(stale)
+        try:
+            shutil.rmtree(stale)
+        except PermissionError:
+            # Earlier root deployments may own only this generated metadata subtree.
+            artifacts = stale / "artifacts"
+            if artifacts.is_symlink() or artifacts.stat().st_uid != 0:
+                raise
+            api = os.environ.get("COMPOSE_PROJECT_NAME", "kajovo-prod") + "-api-1"
+            image = subprocess.check_output(["docker", "inspect", api, "--format", "{{.Image}}"], text=True).strip()
+            if len(image) != 71 or not image.startswith("sha256:") or any(c not in "0123456789abcdef" for c in image[7:]):
+                raise RuntimeError("immutable_cleanup_image_required")
+            cleanup = "from pathlib import Path; import shutil; root=Path('/cleanup'); [(shutil.rmtree(p) if p.is_dir() and not p.is_symlink() else p.unlink()) for p in root.iterdir()]"
+            subprocess.run(["docker", "run", "--rm", "--pull=never", "--network=none", "--read-only",
+                "--cap-drop=ALL", "--security-opt=no-new-privileges:true", "--user=0:0", "--pids-limit=32", "--memory=128m", "--cpus=0.5",
+                "--mount", "type=bind,src=" + str(artifacts) + ",dst=/cleanup,bind-recursive=disabled",
+                "--entrypoint=python", image, "-c", cleanup], check=True, timeout=60)
+            artifacts.rmdir()
+            shutil.rmtree(stale)
 PY
 
 # These commands remove only cache and images that are not referenced by a

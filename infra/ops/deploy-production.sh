@@ -236,10 +236,12 @@ http_check() {
   local label="$2"
   local expected="${3:-200}"
   local code
-  code="$(curl -sS -o /tmp/kajovo-deploy-http.txt -w '%{http_code}' --max-time 10 "$url" || true)"
+  if ! code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$url")"; then
+    echo "$label failed: HTTP transport error" >&2
+    return 1
+  fi
   if [[ "$code" != "$expected" ]]; then
     echo "$label failed: expected HTTP $expected got $code" >&2
-    cat /tmp/kajovo-deploy-http.txt >&2 || true
     return 1
   fi
   echo "$label PASS ($code)"
@@ -321,13 +323,16 @@ fi
 
 if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   [[ "$RESET_DB_ON_DEPLOY" == "false" ]] || { echo "API/admin cannot reset the database" >&2; exit 1; }
-  protected_before="$(mktemp)"
-  protected_after="$(mktemp)"
+  protected_dir="$(mktemp -d)"
+  trap 'rm -rf "$protected_dir"' EXIT
+  protected_before="$protected_dir/before.txt"
+  protected_after="$protected_dir/after.txt"
+  # Freeze the already running, CI-verified image before tags change during the build.
+  snapshot_image="$(docker inspect "$(compose_cmd ps -q api)" --format '{{.Image}}')"
   protected_state() {
     docker inspect "$(compose_cmd ps -q postgres)" "$(compose_cmd ps -q web)" \
       --format '{{.Id}} {{.Image}} {{.State.StartedAt}}'
-    python3 "$ROOT_DIR/scripts/protected_runtime_snapshot.py"
-    sha256sum /etc/nginx/sites-enabled/*
+    python3 "$ROOT_DIR/scripts/protected_runtime_snapshot.py" --docker-image "$snapshot_image"
   }
   protected_state > "$protected_before"
   wait_for_container_health postgres 30
@@ -341,12 +346,13 @@ if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   http_check "http://127.0.0.1:${API_PORT:-8202}/api/health" "API health"
   http_check "http://127.0.0.1:${ADMIN_PORT:-8083}/healthz" "Admin health"
   protected_state > "$protected_after"
-  cmp "$protected_before" "$protected_after" || { echo "Protected runtime changed during API/admin deployment" >&2; exit 1; }
   mkdir -p "$ROOT_DIR/artifacts/deploy-runtime"
+  cp "$protected_before" "$ROOT_DIR/artifacts/deploy-runtime/protected-before.txt"
+  cp "$protected_after" "$ROOT_DIR/artifacts/deploy-runtime/protected-after.txt"
+  cmp "$protected_before" "$protected_after" || { echo "Protected runtime changed during API/admin deployment" >&2; exit 1; }
   cat > "$ROOT_DIR/artifacts/deploy-runtime/latest.json" <<JSON
-{"deployed_at":"$(date -u +%FT%TZ)","branch":"$current_branch","sha":"$commit_sha","scope":"api-admin","artifact_mode":"$SKIP_GIT_SYNC","checks":{"protected_runtime":"accessible_subset_unchanged","privileged_snapshot":"required","api_ready":"200","api_health":"200","admin_healthz":"200"}}
+{"deployed_at":"$(date -u +%FT%TZ)","branch":"$current_branch","sha":"$commit_sha","scope":"api-admin","artifact_mode":"$SKIP_GIT_SYNC","checks":{"protected_runtime":"complete_unchanged","snapshot_transport":"docker_readonly","api_ready":"200","api_health":"200","admin_healthz":"200"}}
 JSON
-  rm -f "$protected_before" "$protected_after"
   exit 0
 fi
 

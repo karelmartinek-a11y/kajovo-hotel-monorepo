@@ -25,3 +25,13 @@
 - Android release chain, APK workflow a parity pravidla nejsou součástí aktivního webového provozu.
 
 Voice Core ukládá ciphertext pod samostatným `KAJOVO_API_VOICE_MASTER_KEY`. Volitelný stejnojmenný GitHub secret se přenáší pouze do API runtime; chybějící hodnota nepřepisuje existující serverový master klíč. Jeho změna vyžaduje opětovné zadání OpenAI klíče nebo naplánovanou migraci ciphertextu. Pouhé vytvoření pracovní větve funkci nenasazuje; hlasový smoke v CI není placený. Viz [Voice Core](voice-core.md).
+
+
+## Automatický API/admin deploy
+
+Úspěšný push CI pro stále aktuální `main` spouští GitHub deploy. Trailer
+`Hotel-Deploy-Scope: api-admin` omezuje výměnu na API/admin bez restartu webu,
+PostgreSQL nebo ostatních služeb. Úplný chráněný snapshot používá stávající
+Docker přístup deploy účtu, bez změny sudo, skupin, ACL či práv konfigurace.
+Přesný mechanismus, odmítnuté stavy a matice dopadů jsou v
+[DEPLOY_AUTOMATION.md](DEPLOY_AUTOMATION.md).
