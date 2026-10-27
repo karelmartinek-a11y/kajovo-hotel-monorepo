@@ -28,6 +28,9 @@ COPY apps/kajovo-hotel-web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /workspace/apps/kajovo-hotel-web/dist /usr/share/nginx/html
 COPY --from=builder /workspace/apps/kajovo-hotel-web/public/brand /usr/share/nginx/html/brand
 
+# Deployment archives are private; the Nginx worker must still read public assets.
+RUN chmod -R a+rX /usr/share/nginx/html
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

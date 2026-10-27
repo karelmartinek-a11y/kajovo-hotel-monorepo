@@ -29,6 +29,9 @@ FROM nginx:1.27.2-alpine3.20 AS runtime
 COPY apps/kajovo-hotel-admin/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /workspace/apps/kajovo-hotel-admin/dist /usr/share/nginx/html
 
+# Deployment archives are private; the Nginx worker must still read public assets.
+RUN chmod -R a+rX /usr/share/nginx/html
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
