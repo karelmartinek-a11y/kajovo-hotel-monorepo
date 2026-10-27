@@ -332,7 +332,8 @@ if [[ "$HOTEL_DEPLOY_SCOPE" == "api-admin" ]]; then
   snapshot_image="$(docker inspect "$(compose_cmd ps -q api)" --format '{{.Image}}')"
   # An ID alone is not a GC reference after API replacement. This container never starts.
   protected_image_guard="$(docker create --pull=never --network=none --read-only --cap-drop=ALL \
-    --security-opt=no-new-privileges:true --entrypoint=python "$snapshot_image" -c pass)"
+    --security-opt=no-new-privileges:true --label com.docker.compose.project= \
+    --label com.docker.compose.service= --entrypoint=python "$snapshot_image" -c pass)"
   protected_state() {
     docker inspect "$(compose_cmd ps -q postgres)" "$(compose_cmd ps -q web)" \
       --format '{{.Id}} {{.Image}} {{.State.StartedAt}}'

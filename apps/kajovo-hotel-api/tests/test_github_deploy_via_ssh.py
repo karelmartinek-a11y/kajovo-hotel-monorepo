@@ -180,6 +180,8 @@ def test_api_admin_deploy_requires_complete_immutable_snapshot_and_retains_evide
     assert limited.index('snapshot_image=') < limited.index('docker_build_with_snapshot_retry api admin')
     assert '--docker-image "$snapshot_image"' in limited
     assert limited.index('protected_image_guard="$(docker create') < limited.index('docker_build_with_snapshot_retry api admin')
+    assert '--label com.docker.compose.project=' in limited
+    assert '--label com.docker.compose.service=' in limited
     assert 'docker rm "$protected_image_guard"' in limited
     assert 'docker start' not in limited
     assert 'sha256sum /etc/nginx/sites-enabled/*' not in limited

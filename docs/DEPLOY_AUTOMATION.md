@@ -5,6 +5,7 @@ API/admin větev `infra/ops/deploy-production.sh` před buildem uloží neměnn�
 `sha256:` ID právě běžícího API image a použije stejný image pro oba snapshoty.
 Změna tagu během buildu proto nemění měřicí prostředí. Dočasný kontejner
 ve stavu `created` drží původní image proti garbage collection i po výměně API.
+Zděděné Compose project/service labely jsou prázdné, aby jej Compose při výměně API nepřevzal ani neodstranil.
 Nikdy se nespouští a EXIT trap jej odstraní při úspěchu i při selhání.
 Samotné neměnné ID image není ochrana proti jeho odstranění.
 

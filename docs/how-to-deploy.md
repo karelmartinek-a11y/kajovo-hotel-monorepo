@@ -35,3 +35,5 @@ PostgreSQL nebo ostatních služeb. Úplný chráněný snapshot používá stá
 Docker přístup deploy účtu, bez změny sudo, skupin, ACL či práv konfigurace.
 Přesný mechanismus, odmítnuté stavy a matice dopadů jsou v
 [DEPLOY_AUTOMATION.md](DEPLOY_AUTOMATION.md).
+
+Pomocný nespouštěný snapshot kontejner přepisuje zděděné Compose project/service labely na prázdné; výměna API jej nesmí převzít ani odstranit. Docker test ověřuje skutečnou Compose výměnu i GC.

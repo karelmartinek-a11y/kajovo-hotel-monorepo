@@ -107,15 +107,29 @@ def verify_snapshot_image_survives_gc(image):
     label = 'io.kajovo.snapshot-gc-test=' + token
     subprocess.run(['docker','image','tag',image,base_tag],check=True)
     guard = None
+    project = 'snapshot-compose-' + token
+    compose = None
+    compose_config = None
     try:
         with tempfile.TemporaryDirectory(prefix='snapshot-gc-') as directory:
             root = Path(directory)
-            (root/'Dockerfile').write_text('FROM ' + base_tag + '\nLABEL ' + label + '\n')
+            (root/'Dockerfile').write_text('FROM ' + base_tag + '\nLABEL ' + label + '\n'
+                'LABEL com.docker.compose.project=' + project + '\nLABEL com.docker.compose.service=api\n')
             subprocess.run(['docker','build','--pull=false','--network=none','-q','-t',child_tag,str(root)],check=True,
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             image_id = subprocess.check_output(['docker','image','inspect',child_tag,'--format','{{.Id}}'],text=True).strip()
             guard = subprocess.check_output(['docker','create','--pull=never','--network=none','--read-only',
-                '--cap-drop=ALL','--security-opt=no-new-privileges:true','--entrypoint=python',image_id,'-c','pass'],text=True).strip()
+                '--cap-drop=ALL','--security-opt=no-new-privileges:true','--label','com.docker.compose.project=',
+                '--label','com.docker.compose.service=','--entrypoint=python',image_id,'-c','pass'],text=True).strip()
+            # Production images inherit Compose labels. Replacing the service must not adopt/remove the guard.
+            compose_file = root/'compose.json'
+            compose_config = json.dumps({'services': {'api': {'image': base_tag,
+                'entrypoint': ['python'], 'command': ['-c', 'import time; time.sleep(120)'],
+                'network_mode': 'none', 'read_only': True, 'cap_drop': ['ALL']}}})
+            compose_file.write_text(compose_config)
+            compose = ['docker','compose','-p',project,'-f',str(compose_file)]
+            subprocess.run([*compose,'up','-d','--no-deps','--force-recreate','api'],check=True,cwd=root,
+                           stdout=subprocess.PIPE)
             subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
             subprocess.run(['docker','image','inspect',image_id],check=True,stdout=subprocess.PIPE)
             state = subprocess.check_output(['docker','inspect',guard,'--format','{{.State.Status}}'],text=True).strip()
@@ -129,11 +143,14 @@ def verify_snapshot_image_survives_gc(image):
             gone = subprocess.run(['docker','image','inspect',image_id],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             assert gone.returncode != 0
     finally:
+        if compose:
+            subprocess.run(['docker','compose','-p',project,'-f','-','down'],input=compose_config,text=True,
+                           check=True,cwd=tempfile.gettempdir(),stdout=subprocess.PIPE)
         if guard:
             subprocess.run(['docker','rm',guard],check=True,stdout=subprocess.PIPE)
         subprocess.run(['docker','image','prune','-af','--filter','label='+label],check=True,stdout=subprocess.PIPE)
         subprocess.run(['docker','image','rm',base_tag],check=True,stdout=subprocess.PIPE)
-    print('Docker immutable snapshot runtime survives filtered image GC until the unstarted guard is removed PASS')
+    print('Docker immutable snapshot runtime survives Compose service replacement and filtered image GC until the unstarted guard is removed PASS')
 
 
 if __name__ == '__main__':

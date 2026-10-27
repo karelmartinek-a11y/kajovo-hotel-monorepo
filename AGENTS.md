@@ -130,3 +130,5 @@ CI ověřuje absenci diagnostických rout, požadavků, MediaRecorderu a periodi
 
 - Authorized final-run development probes may fingerprint a dirty tracked diff only in an isolated process using a private development_probe manifest. Such evidence is never an accepted SHA. Final acceptance requires a clean immutable origin/main commit and the same deployed runtime artifact.
 - For the 2026-10-07 Mail completion run, the owner subsequently cancelled all further paid tests and explicitly accepted the remaining tests for implementation and activation. Record this exact-SHA decision outside Git as USER_ACCEPTED; unperformed paid measurements remain NOT_RUN_BY_OWNER_POLICY, never measured PASS. Complete unpaid gates and activate the matching immutable release without further provider calls. Preserve the default real-acceptance policy for future runs, all credential/consent safeguards and protected services; this exception adds no public bypass.
+
+Pomocný nespouštěný snapshot kontejner přepisuje zděděné Compose project/service labely na prázdné; výměna API jej nesmí převzít ani odstranit. Docker test ověřuje skutečnou Compose výměnu i GC.
