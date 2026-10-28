@@ -6,6 +6,8 @@ const adminPassword = process.env.VERIFY_ADMIN_PASSWORD;
 const deploySha = process.env.VERIFY_DEPLOY_SHA ?? 'unknown';
 const runId = process.env.GITHUB_RUN_ID ?? 'local';
 const deploymentScope = process.env.HOTEL_DEPLOY_SCOPE ?? 'full';
+const usersSmokeMode = process.env.HOTEL_USERS_SMOKE_MODE ?? 'full';
+if (!['full', 'read-only'].includes(usersSmokeMode)) throw new Error('Invalid users smoke mode.');
 if (!['full', 'api-admin'].includes(deploymentScope)) throw new Error('Invalid deployment scope.');
 
 if (!baseUrl) {
@@ -151,8 +153,8 @@ let session = null;
 try {
   session = await createSession();
 
-  if (deploymentScope === 'api-admin') {
-    // User creation implicitly sends onboarding mail: this scope must stay read-only.
+  if (deploymentScope === 'api-admin' || usersSmokeMode === 'read-only') {
+    // User creation implicitly sends onboarding mail; these releases authorize reads only.
     const overview = await requestJson(session, '/api/v1/users');
     assertStatus(overview, 200, 'GET /api/v1/users');
     if (!Array.isArray(overview.payload)) throw new Error('Invalid users overview.');

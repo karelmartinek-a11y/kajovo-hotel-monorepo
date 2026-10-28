@@ -23,8 +23,18 @@ def select_scope(message, paths):
     return 'api-admin'
 
 
+def select_users_smoke_mode(paths):
+    """Frontend-only releases do not authorize production users or onboarding mail."""
+    prefixes = ('packages/ui/', 'packages/shared/src/i18n/', 'apps/kajovo-hotel-web/',
+                'apps/kajovo-hotel-admin/', 'apps/kajovo-hotel-api/tests/', 'docs/')
+    files = {'AGENTS.md', 'README.md', 'pnpm-lock.yaml', '.github/workflows/ci-gates.yml',
+             '.github/workflows/deploy-production.yml', 'scripts/select_deploy_scope.py',
+             'scripts/verify_live_admin_users_smoke.mjs'}
+    return 'read-only' if paths and all(path.startswith(prefixes) or path in files for path in paths) else 'full'
+
+
 if __name__ == '__main__':
     sha = sys.argv[1]
     message = subprocess.check_output(['git', 'show', '-s', '--format=%B', sha], text=True)
     paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', sha], text=True).splitlines()
-    print(select_scope(message, paths))
+    print(select_users_smoke_mode(paths) if sys.argv[2:] == ['--users-smoke'] else select_scope(message, paths))

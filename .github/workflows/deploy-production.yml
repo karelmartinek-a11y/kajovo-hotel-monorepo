@@ -50,7 +50,9 @@ jobs:
           fetch-depth: 0
 
       - name: Resolve explicit deployment scope
-        run: echo "HOTEL_DEPLOY_SCOPE=$(python3 scripts/select_deploy_scope.py "$DEPLOY_SHA")" >> "$GITHUB_ENV"
+        run: |
+          echo "HOTEL_DEPLOY_SCOPE=$(python3 scripts/select_deploy_scope.py "$DEPLOY_SHA")" >> "$GITHUB_ENV"
+          echo "HOTEL_USERS_SMOKE_MODE=$(python3 scripts/select_deploy_scope.py "$DEPLOY_SHA" --users-smoke)" >> "$GITHUB_ENV"
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -246,6 +248,7 @@ jobs:
           VERIFY_ADMIN_PASSWORD: ${{ env.KAJOVO_API_ADMIN_PASSWORD != '' && env.KAJOVO_API_ADMIN_PASSWORD || env.HOTEL_ADMIN_PASSWORD }}
           VERIFY_DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
           HOTEL_DEPLOY_SCOPE: ${{ env.HOTEL_DEPLOY_SCOPE }}
+          HOTEL_USERS_SMOKE_MODE: ${{ env.HOTEL_USERS_SMOKE_MODE }}
         run: node scripts/verify_live_admin_users_smoke.mjs
 
       - name: Dump API logs after failed live users smoke

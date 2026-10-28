@@ -111,6 +111,10 @@ def test_explicit_api_admin_scope_rejects_other_sources():
         module.select_scope('Hotel-Deploy-Scope: api-admin', ['apps/kajovo-hotel-web/src/main.tsx'])
     with pytest.raises(ValueError):
         module.select_scope('Hotel-Deploy-Scope: unknown', ['docs/voice-core.md'])
+    assert module.select_users_smoke_mode(['packages/ui/src/components/HousekeepingRooms.tsx', 'pnpm-lock.yaml']) == 'read-only'
+    assert module.select_users_smoke_mode(['packages/ui/src/workspace.css', 'apps/kajovo-hotel-api/app/api/routes/users.py']) == 'full'
+    assert module.select_users_smoke_mode([]) == 'full'
+
 
 
 def test_api_admin_deploy_does_not_restart_protected_services():
@@ -145,14 +149,17 @@ globalThis.fetch=async(url,options={})=>{
   throw new Error('Unexpected route: '+method+' '+route);
 };
 """
-    env = {**os.environ, 'VERIFY_BASE_URL':'https://fixture.example.test', 'VERIFY_ADMIN_EMAIL':'fixture@example.test',
-           'VERIFY_ADMIN_PASSWORD':'fixture-only', 'HOTEL_DEPLOY_SCOPE':'api-admin'}
-    result = subprocess.run(['node','--input-type=module'],input=transport+source+'\nconsole.log(JSON.stringify(calls));',
-                            text=True,capture_output=True,env=env,check=True)
-    lines = result.stdout.strip().splitlines()
-    report = json.loads(lines[-2])
-    assert report['smtp_send_excluded'] and report['crud'] == report['reset_link_status'] == 'NOT_RUN'
-    assert json.loads(lines[-1]) == [['POST','/api/auth/admin/login'],['POST','/api/auth/activity'],['GET','/api/v1/users']]
+    for deployment_scope, smoke_mode in [('api-admin', 'full'), ('full', 'read-only')]:
+        env = {**os.environ, 'VERIFY_BASE_URL':'https://fixture.example.test', 'VERIFY_ADMIN_EMAIL':'fixture@example.test',
+               'VERIFY_ADMIN_PASSWORD':'fixture-only', 'HOTEL_DEPLOY_SCOPE':deployment_scope,
+               'HOTEL_USERS_SMOKE_MODE':smoke_mode}
+        result = subprocess.run(['node','--input-type=module'],input=transport+source+'\nconsole.log(JSON.stringify(calls));',
+                                text=True,capture_output=True,env=env,check=True)
+        lines = result.stdout.strip().splitlines()
+        report = json.loads(lines[-2])
+        assert report['smtp_send_excluded'] and report['crud'] == report['reset_link_status'] == 'NOT_RUN'
+        assert json.loads(lines[-1]) == [['POST','/api/auth/admin/login'],['POST','/api/auth/activity'],['GET','/api/v1/users']]
+
 
 
 def test_health_probe_rejects_transport_failure_even_after_http_200(tmp_path):

@@ -614,7 +614,10 @@
     "Potvrzuji připravený požadavek…": "Confirming the prepared requirement…",
     "Blokace pokoje / zastavení prodeje": "Room blocked / sales stopped",
     "Pobyt bez ložního prádla": "Stay without linen change",
-    "Uklizeno s ložním prádlem": "Cleaned with linen change"
+    "Uklizeno s ložním prádlem": "Cleaned with linen change",
+    "Více rezervací": "Multiple reservations",
+    "Neurčený stav rezervace": "Reservation status unknown",
+    "Celý den": "Whole day"
   },
   "uk": {
     ". Po zápisu se vrátíte na přehled.": ". Після збереження змін ви повернетеся до огляду.",
@@ -1231,6 +1234,9 @@
     "Potvrzuji připravený požadavek…": "Підтверджую підготовлену вимогу…",
     "Blokace pokoje / zastavení prodeje": "Блокування номера / зупинка продажу",
     "Pobyt bez ložního prádla": "Проживання без заміни білизни",
-    "Uklizeno s ložním prádlem": "Прибрано із заміною білизни"
+    "Uklizeno s ložním prádlem": "Прибрано із заміною білизни",
+    "Více rezervací": "Кілька бронювань",
+    "Neurčený stav rezervace": "Статус бронювання не визначено",
+    "Celý den": "Увесь день"
   }
 }

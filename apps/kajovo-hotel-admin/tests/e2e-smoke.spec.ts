@@ -216,7 +216,7 @@ test('pokoje mají provozní pořadí, čtyři dlaždice na mobilu, spodní deta
       expect(boxes.slice(0, 4).every((box) => Math.abs(box.y - boxes[0].y) < 2)).toBeTruthy();
       expect(boxes[4].y).toBeGreaterThan(boxes[0].y + boxes[0].h);
     }
-    expect(boxes.every((box) => Math.abs(box.h - boxes[0].h) < 1)).toBeTruthy();
+    expect(boxes.every((box) => box.h === 122)).toBeTruthy();
     expect(boxes.every((box) => Math.abs(box.w - boxes[0].w) < 1)).toBeTruthy();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
     await page.screenshot({ path: `/tmp/kajovo-rooms-${size.width}.png`, fullPage: false });
@@ -443,7 +443,10 @@ test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', asy
     await expect(card).not.toContainText(stay.display_name);
     await expect(card).not.toHaveAttribute('aria-label', new RegExp(stay.display_name));
     await expect(card).not.toContainText(stay.company_name);
-    await expect(card.locator('.k-hk-reservation__country').first()).toHaveText('CZE');
+    await expect(card.locator('.k-hk-reservation__country').first()).toHaveAttribute('title', 'Česko');
+    await expect(card.locator('.k-hk-country-flag')).toHaveCount(2);
+    await expect(card.locator('.k-hk-reservation__name').first()).toHaveText(stay.guests[0].name);
+    expect(await card.evaluate(el => el.getBoundingClientRect().height)).toBe(122);
     await expect(card.locator('[data-stay-kind="departure"]')).toHaveCSS('background-color','rgb(104, 107, 115)');
     await expect(card.locator('[data-stay-kind="arrival"]')).toHaveCSS('background-color','rgb(84, 173, 241)');
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);

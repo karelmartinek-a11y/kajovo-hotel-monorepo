@@ -44,15 +44,17 @@ const STATUS_ACTIONS: Array<{ value: HousekeepingRoomStatus; label: string; deta
   { value: 'painted', label: 'Vymalováno', detail: 'Pokoj je vymalovaný.' },
 ];
 
-const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: HousekeepingRoomRead; onSelect: (room: HousekeepingRoomRead) => void; locale: string }): JSX.Element {
+const RoomCard = React.memo(function RoomCard({ room, onSelect, date }: { room: HousekeepingRoomRead; onSelect: (room: HousekeepingRoomRead) => void; locale: string; date: string }): JSX.Element {
   const continuing = !room.departures.length && !room.arrivals.length && room.stays.length > 0;
   const reservations: Array<[StayKind, HousekeepingStayRead[]]> = continuing ? [['stay', room.stays]] : [['departure', room.departures], ['arrival', room.arrivals]];
   const blocks = room.blocks ?? [];
   const fullBlock = blocks.some((block) => block.coverage === 'full');
-  const coverage = fullBlock ? ['full'] : ['left', 'right'].filter((side) => blocks.some((block) => block.coverage === side));
+  const available = ['left', 'right'].filter((side) => !continuing && !(side === 'left' ? room.departures.length : room.arrivals.length));
+  const partialCoverage = available.filter((side) => fullBlock || blocks.some((block) => block.coverage === side));
+  const coverage = fullBlock && partialCoverage.length === 2 ? ['full'] : partialCoverage;
   const stays = reservations.flatMap(([, items]) => items);
   const statusLabel = t(STATUS_ACTIONS.find((action) => action.value === room.housekeeping_status_key)?.label ?? room.housekeeping_status ?? 'Neurčen');
-  const describe = stays.map((stay) => [stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
+  const describe = stays.map((stay) => [(stay.guests ?? []).map((guest) => guest.name).filter(Boolean).join(', '), stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
     ...(['dog', 'cot'] as const).filter((kind) => kind === 'dog' ? (stay.dog_count ?? 0) > 0 : stay.cot_required).map((kind) => `${t(kind === 'dog' ? 'Pes' : 'Dětská postýlka')}: ${t(requirementConfirmed(stay, kind) ? 'Potvrzeno' : 'Nepotvrzeno')}`),
   ].join(', ')).join('; ');
   return <button className={`k-hk-room k-hk-room--stamp${continuing ? ' k-hk-room--stay' : ''}${fullBlock ? ' k-hk-room--blocked' : room.departures.length && room.arrivals.length ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
@@ -60,7 +62,7 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect }: { room: Housek
     <span className={`k-hk-room__topline k-hk-room-status--${room.housekeeping_status_key ?? 'unknown'}`} title={statusLabel}><strong>{room.room_number}</strong></span>
     <span className="k-hk-room__body">
       {reservations.map(([kind, items]) => <span key={kind} className={`k-hk-room__slot k-hk-reservation--${items.length === 1 ? items[0].reservation_state ?? 'unknown' : 'unknown'}`}>
-        {items.length === 1 ? <ReservationStamp stay={items[0]} kind={kind} /> : items.length > 1 ? <span className="k-hk-room__conflict" title={t('Nejednoznačné přiřazení rezervací')}>!</span> : null}
+        {items.length === 1 ? items[0].reservation_state ? <ReservationStamp stay={items[0]} kind={kind} date={date} /> : <span className="k-hk-room__conflict">{t('Neurčený stav rezervace')}</span> : items.length > 1 ? <span className="k-hk-room__conflict" title={t('Nejednoznačné přiřazení rezervací')}>{t('Více rezervací')}</span> : null}
       </span>)}
       {coverage.map((side) => <svg key={side} className={`k-hk-room__block k-hk-room__block--${side}`} data-block-coverage={side} viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={t('Blokace pokoje / zastavení prodeje')}><title>{t('Blokace pokoje / zastavení prodeje')}</title><path d="M3 3 97 97 M97 3 3 97" /></svg>)}
     </span>
@@ -188,7 +190,7 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
       {loading ? <div className="k-hk-loading" aria-live="polite">{t("Načítám aktuální přehled pokojů…")}</div> : null}
       {!loading && overview?.rooms.length === 0 ? <div className="k-hk-loading">{t("Better Hotel nevrátil žádné provozní pokoje.")}</div> : null}
       {!loading && orderedRooms.length > 0 ? <div className="k-hk-room-grid" aria-label={t('Pokoje')}>
-        {orderedRooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} locale={getPortalLocale()} />)}
+        {orderedRooms.map((room) => <RoomCard key={room.room_id} room={room} onSelect={selectRoom} locale={getPortalLocale()} date={selectedDate} />)}
       </div> : null}
 
       {selectedRoom ? <TaskDialog title={busy ? t('Zapisuji změnu…') : `${t('Pokoj')} ${selectedRoom.room_number}`} busy={busy} onClose={() => setSelectedRoomId(null)} className="k-hk-task k-hk-task--sheet">
@@ -197,6 +199,7 @@ export function HousekeepingRooms({ canWrite = true }: HousekeepingRoomsProps): 
           {!error ? <div className="k-hk-status-actions">{STATUS_ACTIONS.map((action) => <button key={action.value} className={`k-hk-room-status--${action.value}`} type="button" title={t(action.detail)} aria-label={`${t(action.label)} ${t(action.detail)}`} onClick={() => void updateStatus(action.value)} disabled={!canWrite || busy}><strong>{t(action.label)}</strong></button>)}</div> : null}
           <p className="k-hk-modal__current">{t('Aktuální stav úklidu:')}{' '}<strong>{selectedRoom.housekeeping_status ? t(selectedRoom.housekeeping_status) : t('Neurčen')}</strong></p>
           <div className="k-hk-detail-summary"><strong className={selectedRoom.occupied ? 'k-hk-detail-summary__occupied' : ''}>{selectedRoom.occupied ? `${selectedRoom.current_persons ?? selectedRoom.persons} ${t('Uvnitř teď')}` : t('Prázdný teď')}</strong><span>{t(OPERATIONAL_LABELS[selectedRoom.operational_state])}</span></div>
+          {(selectedRoom.blocks ?? []).length ? <section className="k-hk-detail-blocks"><h3>{t('Blokace pokoje / zastavení prodeje')}</h3><ul>{selectedRoom.blocks!.map((block) => <li key={block.block_id}>{block.arrival} – {block.departure} · {t(block.coverage === 'full' ? 'Celý den' : block.coverage === 'left' ? 'Odjezd' : 'Příjezd')}</li>)}</ul></section> : null}
           <div className="k-hk-detail-stays">
             {([['departure', selectedRoom.departures], ['arrival', selectedRoom.arrivals], ['stay', selectedRoom.stays]] as Array<[StayKind, HousekeepingStayRead[]]>).map(([kind, stays]) => stays.map((stay) => <ReservationDetails key={`${kind}-${stay.reservation_id}`} stay={stay} kind={kind} date={selectedDate} onConfirm={canWrite && !error ? (item, requirement) => void confirmRequirement(item, requirement) : undefined} />))}
             {!selectedRoom.departures.length && !selectedRoom.arrivals.length && !selectedRoom.stays.length ? <p>{t('Bez pobytu ve vybraný den')}</p> : null}

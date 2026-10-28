@@ -276,7 +276,7 @@ test('pokoje oddělují stav pokoje od rezervací a počítají noci', async ({ 
   await expect(card.locator('[data-stay-kind="departure"]')).toHaveClass(/k-hk-reservation--checked_in/);
   await expect(card.locator('[data-stay-kind="arrival"]')).toHaveClass(/k-hk-reservation--confirmed/);
   await expect(card.locator('[data-stay-kind="departure"]')).toContainText('10:15');
-  await expect(card.locator('[data-stay-kind="arrival"] .k-hk-reservation__time')).toHaveText('?');
+  await expect(card.locator('[data-stay-kind="arrival"] .k-hk-reservation__time')).toHaveText('→?');
   await card.click();
   const detail = page.getByRole('dialog');
   await expect(detail.locator('.k-hk-status-actions button')).toHaveCount(8);
@@ -302,7 +302,7 @@ test('pokoje oddělují stav pokoje od rezervací a počítají noci', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 });
 
-test('pokoj 206 zobrazuje probíhající pobyt a zachovává původní rozměry', async ({ page, request }, testInfo) => {
+test('pokoj 206 zobrazuje probíhající pobyt v pevných 122 px', async ({ page, request }, testInfo) => {
   await page.route('**/api/v1/housekeeping/rooms**', async route => {
     const date = new URL(route.request().url()).searchParams.get('date');
     await route.fulfill({json:{date, occupancy_date:date, housekeeping_status_is_current:true, loaded_at:new Date().toISOString(), rooms:[{
@@ -316,11 +316,12 @@ test('pokoj 206 zobrazuje probíhající pobyt a zachovává původní rozměry'
   await expect(card.locator('[data-stay-kind="stay"]')).toHaveCount(1);
   await expect(card.locator('[data-stay-kind="stay"]')).toHaveClass(/--checked_in/);
   await expect(card).toContainText('POBYT');
-  await expect(card.locator('.k-hk-reservation__country')).toHaveText('DEU');
+  await expect(card.locator('.k-hk-reservation__country')).toHaveAttribute('title', 'Německo');
+  await expect(card.locator('.k-hk-country-flag')).toHaveCount(1);
   await expect(card.locator('[data-age-group="adults"] b')).toHaveText('1');
   await expect(card.locator('[data-age-group="children"] b')).toHaveText('1');
   await expect(card.locator('[data-age-group="infants"] b')).toHaveText('0');
-  expect(await card.evaluate(el=>el.getBoundingClientRect().height)).toBe((page.viewportSize()?.width ?? 0) < 600 ? 106 : 112);
+  expect(await card.evaluate(el=>el.getBoundingClientRect().height)).toBe(122);
   await card.click();
   await expect(page.getByRole('dialog').locator('.k-hk-status-actions button')).toHaveCount(8);
   await expect(page.getByRole('dialog').locator('.k-hk-reservation-detail')).toHaveCount(1);
@@ -518,7 +519,7 @@ test('pokoj s poznámkou pokojské upozorní ikonou a ukáže text v detailu', a
 test('pokoje nepřepíše opožděná odpověď předchozího dne', async ({ page, request }, testInfo) => {
   let held: import('@playwright/test').Route | undefined;
   let count = 0;
-  const response = (date: string, label: string) => ({ date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE, departures: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], guest_label: label, display_name: label, country_code_alpha3: label === 'První den' ? 'CZE' : label === 'Nový den' ? 'DEU' : 'AUT' }] }] });
+  const response = (date: string, label: string) => ({ date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: [{ ...HOUSEKEEPING_ROOM_FIXTURE, departures: [{ ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], guest_label: label, display_name: label, country_code: label === 'První den' ? 'CZ' : label === 'Nový den' ? 'DE' : 'AT', country_code_alpha3: label === 'První den' ? 'CZE' : label === 'Nový den' ? 'DEU' : 'AUT' }] }] });
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     count += 1;
     if (count === 2) { held = route; return; }
@@ -526,13 +527,13 @@ test('pokoje nepřepíše opožděná odpověď předchozího dne', async ({ pag
   });
   const user = await createPortalUserForRole(request, testInfo, 'pokojska');
   await loginPortalUser(page, user.portalEmail, user.portalPassword);
-  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('CZE');
+  await expect(page.getByRole('button', { name: /pokoj 101/i }).locator('.k-hk-reservation__country')).toHaveAttribute('title', 'Česko');
   await page.getByRole('button', { name: 'Předchozí den' }).click();
   await expect.poll(() => Boolean(held)).toBe(true);
   await page.getByRole('button', { name: 'Předchozí den' }).click();
-  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('DEU');
+  await expect(page.getByRole('button', { name: /pokoj 101/i }).locator('.k-hk-reservation__country')).toHaveAttribute('title', 'Německo');
   await held!.fulfill({ json: response(new URL(held!.request().url()).searchParams.get('date')!, 'Starý den') });
-  await expect(page.getByRole('button', { name: /pokoj 101/i })).toContainText('DEU');
+  await expect(page.getByRole('button', { name: /pokoj 101/i }).locator('.k-hk-reservation__country')).toHaveAttribute('title', 'Německo');
 });
 
 for (const role of ['recepce', 'pokojska']) {
@@ -942,11 +943,15 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       await expect(cross).toHaveCount(1);
       await expect(cross).toHaveAttribute('data-block-coverage', side);
       await expect(cross).toHaveCSS('stroke', 'rgb(255, 0, 0)');
-      const geometry = await cross.evaluate((el) => ({ cross: el.getBoundingClientRect().width, body: el.parentElement!.getBoundingClientRect().width }));
+      const geometry = await cross.evaluate((el) => ({ cross: el.getBoundingClientRect().height, body: el.parentElement!.getBoundingClientRect().height }));
       expect(geometry.cross / geometry.body).toBeCloseTo(side === 'full' ? 1 : .5, 2);
       if (side === 'full') await expect(blocked.locator('.k-hk-room__slot').last()).toHaveCSS('border-left-width', '0px');
     }
     await expect(page.locator('[data-room-id="blocked-arrival"] .k-hk-reservation')).toHaveCount(2);
+    await expect(page.locator('[data-room-id="blocked-arrival"] .k-hk-room__block')).toHaveCount(0);
+    await page.locator('[data-room-id="blocked-arrival"]').click();
+    await expect(page.getByRole('dialog').locator('.k-hk-detail-blocks li')).toHaveCount(1);
+    await page.keyboard.press('Escape');
     for (let i = 0; i < 8; i++) {
       const number = cards.nth(i).locator('.k-hk-room__topline strong');
       await expect(number).toHaveCSS('color', 'rgb(255, 255, 255)');
@@ -956,12 +961,15 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     await expect(page.locator('.k-hk-help, .k-hk-legend')).toHaveCount(0);
     await expect(cards.first()).not.toContainText(stay.display_name);
     await expect(cards.first()).not.toHaveAttribute('aria-label', new RegExp(stay.display_name));
+    await expect(cards.first().locator('.k-hk-reservation__name').first()).toHaveText(stay.guests[0].name);
+    await expect(cards.first()).toHaveAttribute('aria-label', new RegExp(stay.guests[0].name));
     await expect(cards.first()).not.toContainText(stay.company_name);
     for (let i=0; i<8; i++) await expect(cards.nth(i).locator('.k-hk-room__topline')).toHaveCSS('background-color', colors[i]);
     await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-icon')).toHaveCount(2);
     await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-badge')).toContainText('×2');
     await expect(cards.first().locator('.k-hk-room__note-alert')).toHaveCount(2);
-    await expect(cards.first().locator('.k-hk-reservation__country').first()).toHaveText('GBR');
+    await expect(cards.first().locator('.k-hk-country-flag')).toHaveCount(2);
+    await expect(cards.first().locator('.k-hk-country-flag').first()).toHaveCSS('border-top-width', '0px');
     const countryLabel = new Intl.DisplayNames([locale], { type: 'region' }).of('GB')!;
     await expect(cards.first().locator('.k-hk-reservation__country').first()).toHaveAttribute('title', countryLabel);
     const content = await cards.evaluateAll((nodes) => nodes.flatMap((node) => Array.from(node.querySelectorAll('.k-hk-reservation')).map((block) => {
@@ -971,7 +979,8 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       return {
         rowsInside: rows.every((row) => row.left >= bounds.left && row.right <= bounds.right + .5 && row.top >= bounds.top && row.bottom <= bounds.bottom + .5),
         countsInside: counts.every((count) => count.left >= bounds.left && count.right <= bounds.right + .5),
-        countsAligned: block.getAttribute('data-stay-kind') !== 'stay' ? Math.max(...counts.map((count) => count.x + count.width/2)) - Math.min(...counts.map((count) => count.x + count.width/2)) < 1 : Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
+        countsAligned: Math.max(...counts.map((count) => count.y + count.height/2)) - Math.min(...counts.map((count) => count.y + count.height/2)) < 1,
+        rowOffsets: rows.map((row) => row.y - bounds.y),
         countSize: parseFloat(getComputedStyle(block.querySelector('.k-hk-person-counts')!).fontSize),
         timeSize: block.querySelector('.k-hk-reservation__time') ? parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__time')!).fontSize) : null,
         countrySize: parseFloat(getComputedStyle(block.querySelector('.k-hk-reservation__country')!).fontSize),
@@ -983,8 +992,9 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     })));
     for (const block of content) {
       expect(block.rowsInside).toBeTruthy(); expect(block.countsInside).toBeTruthy(); expect(block.countsAligned).toBeTruthy();
-      expect(block.countrySize).toBeGreaterThanOrEqual(14); expect(block.countSize).toBeGreaterThanOrEqual(12); if (block.timeSize !== null) expect(block.timeSize).toBeGreaterThanOrEqual(14); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
-      if (block.kind === 'stay') expect(block.iconHeight).toBeGreaterThanOrEqual(12);
+      expect(block.countrySize).toBeGreaterThanOrEqual(10); expect(block.countSize).toBeGreaterThanOrEqual(10); if (block.timeSize !== null) expect(block.timeSize).toBeGreaterThanOrEqual(9); expect(block.rowCount).toBe(4); expect(block.requestsInside).toBeTruthy();
+      expect(block.rowOffsets.map(Math.round)).toEqual([1, 14, 26, 36]);
+      expect(block.iconHeight).toBeGreaterThanOrEqual(10);
     }
     const geometry = await cards.evaluateAll((nodes) => nodes.map((node) => {
       const rect = node.getBoundingClientRect(); const header = node.querySelector('.k-hk-room__topline')!.getBoundingClientRect();
@@ -992,7 +1002,7 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
       return { height: rect.height, ratio: header.height/(rect.height-2), width: rect.width, center: Math.abs(number.x + number.width/2 - header.x - header.width/2) };
     }));
     expect(new Set(geometry.map((item) => item.height)).size).toBe(1);
-    expect(geometry[0].height).toBe((page.viewportSize()?.width ?? 0) < 600 ? 106 : 112);
+    expect(geometry[0].height).toBe(122);
     for (const item of geometry) { expect(item.ratio).toBeCloseTo(.15, 1); expect(item.center).toBeLessThan(1); }
     const contrasts = await cards.evaluateAll((nodes) => {
       const luminance = (rgb: string) => rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number).map((v) => v/255).map((v) => v <= .04045 ? v/12.92 : ((v+.055)/1.055)**2.4).reduce((sum, v, i) => sum+v*[.2126, .7152, .0722][i], 0);
@@ -1117,4 +1127,76 @@ test('pokoje po nejistém potvrzení požadavku blokují opakování do obnovy',
   await dialog.getByRole('button',{name:'Obnovit stav',exact:true}).click();
   await expect(dialog.getByRole('button',{name:'Potvrdit: Pes ×1',exact:true})).toBeEnabled();
   expect(posts).toBe(1);
+});
+
+test('pokoje vykreslí 500 variant pevného layoutu bez ztráty čísel a překrytí', async ({ page, request }, testInfo) => {
+  const keys = ['clean', 'dirty', 'stay_no_linen', 'stay_with_linen', 'do_not_disturb', 'technical_issue', 'windows_cleaned', 'painted'];
+  const colors = ['rgb(34, 197, 94)', 'rgb(249, 115, 22)', 'rgb(45, 212, 191)', 'rgb(167, 232, 184)', 'rgb(88, 28, 135)', 'rgb(240, 68, 82)', 'rgb(30, 64, 175)', 'rgb(250, 204, 21)'];
+  const states = ['confirmed', 'checked_in', 'checked_out', 'option'] as const;
+  await page.route('**/api/v1/housekeeping/rooms**', async route => {
+    const date = new URL(route.request().url()).searchParams.get('date')!;
+    const day = Date.parse(`${date}T00:00:00Z`);
+    const offset = (days: number) => new Date(day + days * 86_400_000).toISOString().slice(0, 10);
+    const stay = (i: number, kind: 'departure' | 'arrival' | 'stay') => ({
+      ...HOUSEKEEPING_ROOM_FIXTURE.departures[0], reservation_id: `r-${i}-${kind}`, reservation_state: states[i % states.length],
+      guests: [{ name: i % 3 ? 'Černohorský-Novotný Jan' : 'Шевченко Олена', country_code: 'CZ', age: 35, age_group: 'adults' }],
+      adults: i % 9 === 0 ? null : i % 7 === 0 ? 100 : 2, children: i % 9 === 0 ? null : 1, infants: i % 9 === 0 ? null : 0,
+      country_code: i % 11 === 0 ? null : ['CZ', 'DE', 'GB', 'UA'][i % 4],
+      dog_count: [null, 0, 1, 2, 10, 120][Math.floor(i / 5) % 6], cot_required: i % 7 === 0 ? null : i % 3 !== 0,
+      housekeeping_note: i % 2 ? 'Poznámka pro pokojskou' : null,
+      amenities: i % 2 ? [{kind:'dog', state:'green', active:true, version:1}, {kind:'cot', state:'green', active:true, version:1}] : [],
+      arrival: kind === 'arrival' ? date : offset(-3), departure: kind === 'departure' ? date : offset(2),
+      arrival_time: '23:59', departure_time: '00:00',
+    });
+    const rooms = Array.from({ length: 500 }, (_, i) => ({
+      ...HOUSEKEEPING_ROOM_FIXTURE, room_id: `layout-${i}`, room_number: String(1000 + i), housekeeping_status_key: keys[i % keys.length],
+      departures: i % 5 === 0 || i % 5 === 1 ? [stay(i, 'departure')] : [],
+      arrivals: i % 5 === 0 || i % 5 === 2 ? [stay(i, 'arrival')] : [],
+      stays: i % 5 === 3 ? [stay(i, 'stay')] : [],
+      blocks: i % 5 === 4 ? [{block_id:`block-${i}`, arrival:date, departure:date, coverage: 'full'}] : i % 5 === 1 ? [{block_id:`block-${i}`, arrival:date, departure:date, coverage:'right'}] : [],
+    }));
+    await route.fulfill({json:{date,occupancy_date:date,housekeeping_status_is_current:true,loaded_at:new Date().toISOString(),rooms}});
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page, user.portalEmail, user.portalPassword);
+  const cards = page.locator('.k-hk-room');
+  await expect(cards).toHaveCount(500);
+  for (const size of [{width:320,height:740},{width:390,height:844},{width:834,height:1112},{width:1440,height:900}]) {
+    await page.setViewportSize(size);
+    const result = await cards.evaluateAll(nodes => {
+      const errors: string[] = [];
+      const box = (e: Element) => e.getBoundingClientRect();
+      for (const card of nodes) {
+        if (box(card).height !== 122) errors.push('height');
+        for (const reservation of card.querySelectorAll('.k-hk-reservation')) {
+          const bounds = box(reservation);
+          const rows = Array.from(reservation.children).map(box);
+          if (rows.length !== 4 || rows.some((r,i)=>Math.abs(r.y-bounds.y-[1,14,26,36][i])>.1)) errors.push('fixed rows');
+          for (const row of reservation.children) {
+            const children = Array.from(row.children).map(box);
+            for (let i=0;i<children.length;i++) for(let j=i+1;j<children.length;j++) {
+              if(Math.min(children[i].right,children[j].right)-Math.max(children[i].left,children[j].left)>.5 && Math.min(children[i].bottom,children[j].bottom)-Math.max(children[i].top,children[j].top)>.5) errors.push('overlap');
+            }
+          }
+          for (const field of reservation.querySelectorAll('.k-hk-reservation__time,.k-hk-reservation__nights,.k-hk-request-badge b,.k-hk-person-counts b')) {
+            const range=document.createRange();range.selectNodeContents(field);const r=range.getBoundingClientRect(),f=box(field);
+            if(r.left<f.left-.5||r.right>f.right+.5)errors.push(`number overflow ${field.textContent}`);
+          }
+          for(const cross of card.querySelectorAll('.k-hk-room__block')){const r=box(cross);if(Math.min(r.right,bounds.right)-Math.max(r.left,bounds.left)>.5&&Math.min(r.bottom,bounds.bottom)-Math.max(r.top,bounds.top)>.5)errors.push('block over reservation')}
+          for(const flag of reservation.querySelectorAll('.k-hk-country-flag')) if(parseFloat(getComputedStyle(flag).borderTopWidth)!==0)errors.push('flag border');
+          for(const cot of reservation.querySelectorAll('.k-hk-requests__cot .k-hk-request-icon')){const r=box(cot),p=box(cot.parentElement!);if(Math.abs(r.x+r.width/2-p.x-p.width/2)>.1||Math.abs(r.y+r.height/2-p.y-p.height/2)>.1)errors.push('cot centering')}
+        }
+      }
+      const first = box(nodes[0]);
+      return {errors,columns:nodes.filter(n=>Math.abs(box(n).y-first.y)<.5).length};
+    });
+    expect(result.errors).toEqual([]);
+    if (size.width < 600) expect(result.columns).toBe(4);
+    for(let i=0;i<keys.length;i++)await expect(page.locator(`[data-room-id="layout-${i}"] .k-hk-room__topline`)).toHaveCSS('background-color',colors[i]);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+    if(size.width===390)await page.screenshot({path:testInfo.outputPath('fixed-layout-500-phone.png'),fullPage:false});
+  }
+  await expect(page.locator('[data-room-id="layout-0"] .k-hk-reservation__nights').first()).toHaveText('3/3');
+  await expect(page.locator('[data-room-id="layout-0"] .k-hk-reservation__nights').last()).toHaveText('0/2');
+  await expect(page.locator('[data-room-id="layout-3"] .k-hk-reservation__nights')).toHaveText('3/5');
 });

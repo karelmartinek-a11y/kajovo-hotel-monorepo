@@ -51,6 +51,8 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -70,6 +72,17 @@ jobs:
         run: pnpm --filter @voice-core/browser exec playwright install --with-deps chromium webkit
       - name: Validate the complete SSOT test plan once
         run: python scripts/release_gate.py
+      - name: Detect housekeeping layout changes
+        id: housekeeping
+        run: |
+          if git diff --quiet HEAD^ HEAD -- packages/ui apps/kajovo-hotel-web/tests/live-smoke.spec.ts; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate changed housekeeping layout
+        if: steps.housekeeping.outputs.changed == 'true'
+        run: node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts -- --grep 'pevná razítka|500 variant' --project desktop --project tablet --project phone --workers 1
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v6

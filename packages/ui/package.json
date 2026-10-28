@@ -6,13 +6,14 @@
   "types": "src/index.ts",
   "dependencies": {
     "@kajovo/shared": "workspace:*",
+    "country-flag-icons": "1.6.20",
     "react": "^18.3.1",
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1"
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
   },
   "scripts": {
     "lint": "tsc --noEmit"

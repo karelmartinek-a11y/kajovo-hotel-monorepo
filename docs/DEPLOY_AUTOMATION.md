@@ -69,3 +69,7 @@ commit jako základ a ověř navazující aktuální release; nevracej starý st
 | Build/OpenAPI/deploy | ověřit automatický GitHub release; OpenAPI, klient, Android a UI nemají změněný kontrakt |
 
 Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespouštěný kontejner; tag drží adresovatelnost původního image při přesměrování build tagu a kontejner jej chrání před image GC. EXIT trap odstraní oba dočasné objekty.
+
+## Produkční ověření frontendových změn
+
+`select_users_smoke_mode` určuje pro omezené frontendové změny režim `read-only`. Uživatelský smoke pak ověří autentizaci, obnovu relace a čtení seznamu bez založení uživatele a implicitního onboardingového SMTP. Aplikační API změny a neznámé zdroje zachovávají plný režim; prázdný seznam není výjimka. Volba neomezuje full deploy, kontroly TLS/runtime artefaktu ani čtení pokojů a snídaní. Lokální a CI testy uživatelských zápisů zůstávají v izolovaném testovacím prostředí.
