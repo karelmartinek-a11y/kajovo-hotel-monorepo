@@ -136,3 +136,5 @@ CI ověřuje absenci diagnostických rout, požadavků, MediaRecorderu a periodi
 Pomocný nespouštěný snapshot kontejner přepisuje zděděné Compose project/service labely na prázdné; výměna API jej nesmí převzít ani odstranit. Docker test ověřuje skutečnou Compose výměnu i GC.
 
 Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespouštěný kontejner; tag drží adresovatelnost původního image při přesměrování build tagu a kontejner jej chrání před image GC. EXIT trap odstraní oba dočasné objekty.
+
+- Věkové skupiny v pevné dlaždici mají běžná čísla 11 px a siluety 7 × 11 px, zarovnané vlevo/uprostřed/vpravo ve vlastních třetinách. Poznámka je samostatný červený vykřičník 13 px bez podkladu, rámečku či stínu.

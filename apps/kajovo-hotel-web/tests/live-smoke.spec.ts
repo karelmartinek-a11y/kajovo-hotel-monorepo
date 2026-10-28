@@ -968,6 +968,23 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-icon')).toHaveCount(2);
     await expect(cards.first().locator('[data-stay-kind="departure"] .k-hk-request-badge')).toContainText('×2');
     await expect(cards.first().locator('.k-hk-room__note-alert')).toHaveCount(2);
+    const note = cards.first().locator('.k-hk-requests--compact .k-hk-room__note-alert').first();
+    await expect(note).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(note).toHaveCSS('border-radius', '0px');
+    await expect(note).toHaveCSS('box-shadow', 'none');
+    await expect(note).toHaveCSS('font-size', '13px');
+    const referenceCounts = await cards.first().locator('.k-hk-person-counts').evaluateAll(rows => rows.map(row => Array.from(row.children).map(span=>{
+      const field=span.getBoundingClientRect(), icon=span.querySelector('svg')!.getBoundingClientRect(), number=span.querySelector('b')!;
+      const range=document.createRange();range.selectNodeContents(number);const glyph=range.getBoundingClientRect();
+      return {fieldLeft:field.left,fieldRight:field.right,left:Math.min(icon.left,glyph.left),right:Math.max(icon.right,glyph.right),iconWidth:icon.width,iconHeight:icon.height,fontSize:parseFloat(getComputedStyle(number).fontSize)};
+    })));
+    for (const groups of referenceCounts) {
+      expect(groups[0].left).toBeCloseTo(groups[0].fieldLeft, 0);
+      expect((groups[1].left+groups[1].right)/2).toBeCloseTo((groups[1].fieldLeft+groups[1].fieldRight)/2, 0);
+      expect(groups[2].right).toBeCloseTo(groups[2].fieldRight, 0);
+      for(const group of groups){ expect(group.iconWidth).toBe(7); expect(group.iconHeight).toBe(11); expect(group.fontSize).toBe(11); }
+    }
+
     await expect(cards.first().locator('.k-hk-country-flag')).toHaveCount(2);
     await expect(cards.first().locator('.k-hk-country-flag').first()).toHaveCSS('border-top-width', '0px');
     const countryLabel = new Intl.DisplayNames([locale], { type: 'region' }).of('GB')!;

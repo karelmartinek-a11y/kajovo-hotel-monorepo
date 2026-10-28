@@ -675,9 +675,11 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-person-counts > span { display: inline-flex; align-items: center; justify-content: center; gap: var(--k-spacing-hairline); white-space: nowrap; min-width: 0; }
 .k-hk-person-icon { flex-shrink: 0; width: 8px; height: 12px; fill: currentColor; }
 .k-hk-reservation .k-hk-person-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--k-spacing-hairline); height: 12px; width: 100%; font-size: 10px; line-height: 12px; }
-.k-hk-reservation .k-hk-person-counts > span { container-type: inline-size; display: grid; grid-template-columns: 6px minmax(0, 1fr); gap: var(--k-spacing-hairline); height: 12px; justify-content: start; }
-.k-hk-reservation .k-hk-person-counts b { display: block; min-width: 0; font-size: min(10px, calc((100cqi - 7px) / var(--k-hk-number-length, 1) / .65)); line-height: 12px; text-align: left; font-variant-numeric: tabular-nums; }
-.k-hk-reservation .k-hk-person-icon { width: 6px; height: 10px; }
+.k-hk-reservation .k-hk-person-counts > span { container-type: inline-size; display: flex; align-items: center; justify-content: center; gap: 0; height: 12px; }
+.k-hk-reservation .k-hk-person-counts > span:first-child { justify-content: flex-start; }
+.k-hk-reservation .k-hk-person-counts > span:last-child { justify-content: flex-end; }
+.k-hk-reservation .k-hk-person-counts b { display: block; min-width: 0; font-size: min(11px, calc((100cqi - 7px) / var(--k-hk-number-length, 1) / .65)); line-height: 12px; text-align: left; font-variant-numeric: tabular-nums; }
+.k-hk-reservation .k-hk-person-icon { width: 7px; height: 11px; }
 .k-hk-reservation__event { display: grid; grid-template-columns: minmax(0, 1fr) 28px; column-gap: var(--k-spacing-compact); align-items: center; width: 100%; height: 10px; min-width: 0; overflow: hidden; }
 .k-hk-reservation__time { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-align: left; font-size: 9px; line-height: 10px; font-variant-numeric: tabular-nums; letter-spacing: -.4px; }
 .k-hk-reservation__nights { display: block; width: 28px; min-width: 0; overflow: hidden; white-space: nowrap; font-size: min(9px, calc(28px / var(--k-hk-number-length, 3) / .65)); line-height: 10px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -726,6 +728,7 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 
 .k-hk-task--sheet .k-hk-status-actions button:hover:not(:disabled) { background: var(--k-hk-status-swatch); }
 .k-hk-requests .k-hk-room__note-alert { background: var(--k-color-error); color: var(--k-color-brand-white); }
+.k-hk-requests--compact .k-hk-room__note-alert { background: transparent; color: var(--k-color-error); border: 0; border-radius: 0; box-shadow: none; font-size: 13px; line-height: 13px; }
 
 .k-hk-confirm-actions { display: flex; flex-wrap: wrap; gap: var(--k-spacing-2); margin-top: var(--k-spacing-2); }
 .k-hk-confirm-actions button { min-height: 44px; padding: var(--k-spacing-2); font-size: 13px; font-weight: 700; color: var(--k-color-ink); background: var(--k-color-surface); border: 1px solid currentColor; border-radius: var(--k-radius-2); }
