@@ -82,7 +82,7 @@ jobs:
           fi
       - name: Validate changed housekeeping layout
         if: steps.housekeeping.outputs.changed == 'true'
-        run: node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts -- --grep 'pevná razítka|500 variant' --project desktop --project tablet --project phone --workers 1
+        run: node scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts -- --grep 'pevná razítka|500 variant|doplní název' --project desktop --project tablet --project phone --workers 1
       - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v6

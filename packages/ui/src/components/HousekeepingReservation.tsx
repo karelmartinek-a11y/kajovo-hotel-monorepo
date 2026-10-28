@@ -81,16 +81,22 @@ function CountryFlag({ stay }: { stay: HousekeepingStayRead }): JSX.Element {
   </span>;
 }
 
+export function reservationTileName(stay: HousekeepingStayRead): string {
+  return [...(stay.guests ?? []).map(guest => guest.name), stay.main_guest_name, stay.company_name, stay.display_name]
+    .map(name => name?.trim()).find(Boolean) ?? '?';
+}
+
 export function ReservationStamp({ stay, kind, date }: { stay: HousekeepingStayRead; kind: StayKind; date: string }): JSX.Element {
   const label = kind === 'departure' ? t('CHECK-OUT') : kind === 'arrival' ? t('CHECK-IN') : t('POBYT');
   const time = kind === 'departure' ? stay.departure_time : stay.arrival_time;
   const names = (stay.guests ?? []).map((guest) => guest.name?.trim()).filter((name): name is string => Boolean(name));
   const nights = reservationNightProgress(stay, date);
+  const name = reservationTileName(stay);
   return <span className={`k-hk-reservation k-hk-reservation--${stay.reservation_state ?? 'unknown'}`} data-reservation-id={stay.reservation_id} data-stay-kind={kind}>
-    <span className="k-hk-reservation__identity"><b className="k-hk-reservation__name" title={names.join(', ')}>{names[0] ?? '?'}</b><CountryFlag stay={stay} /></span>
+    <span className="k-hk-reservation__identity"><b className="k-hk-reservation__name" title={names.length ? names.join(', ') : name}>{name}</b><CountryFlag stay={stay} /></span>
     <PersonCounts stay={stay} />
     <span className="k-hk-reservation__event" title={`${label}${kind === 'stay' ? '' : ` ${time ?? '?'}`} · ${t('Noc pobytu:')} ${nights}`}>
-      <b className="k-hk-reservation__time">{kind === 'stay' ? label : `${kind === 'departure' ? '←' : '→'}${time ?? '?'}`}</b><b className="k-hk-reservation__nights" style={numberWidth(nights)}>{nights}</b>
+      <b className="k-hk-reservation__time">{kind === 'stay' ? '' : `${kind === 'departure' ? '←' : '→'}${time ?? '?'}`}</b><b className="k-hk-reservation__nights" style={numberWidth(nights)}>{nights}</b>
     </span>
     <ReservationRequests stay={stay} compact />
   </span>;

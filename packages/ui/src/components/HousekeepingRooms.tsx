@@ -12,7 +12,7 @@ import {
   type ReservationAmenityKind,
 } from '@kajovo/shared';
 import { DateNavigation, hotelToday } from './DateNavigation';
-import { ReservationDetails, ReservationStamp, RESERVATION_LABELS, requirementConfirmed, type StayKind } from './HousekeepingReservation';
+import { ReservationDetails, ReservationStamp, reservationTileName, RESERVATION_LABELS, requirementConfirmed, type StayKind } from './HousekeepingReservation';
 
 const ROOM_ORDER = [
   '101', '102', '103', '104', '105', '106', '107', '108',
@@ -54,7 +54,7 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect, date }: { room: 
   const coverage = fullBlock && partialCoverage.length === 2 ? ['full'] : partialCoverage;
   const stays = reservations.flatMap(([, items]) => items);
   const statusLabel = t(STATUS_ACTIONS.find((action) => action.value === room.housekeeping_status_key)?.label ?? room.housekeeping_status ?? 'Neurčen');
-  const describe = stays.map((stay) => [(stay.guests ?? []).map((guest) => guest.name).filter(Boolean).join(', '), stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
+  const describe = stays.map((stay) => [(stay.guests ?? []).map(guest => guest.name?.trim()).filter(Boolean).join(', ') || reservationTileName(stay), stay.country_code_alpha3 ?? '?', stay.reservation_state ? t(RESERVATION_LABELS[stay.reservation_state]) : '?', `${stay.persons} ${t('Celkem osob')}`,
     ...(['dog', 'cot'] as const).filter((kind) => kind === 'dog' ? (stay.dog_count ?? 0) > 0 : stay.cot_required).map((kind) => `${t(kind === 'dog' ? 'Pes' : 'Dětská postýlka')}: ${t(requirementConfirmed(stay, kind) ? 'Potvrzeno' : 'Nepotvrzeno')}`),
   ].join(', ')).join('; ');
   return <button className={`k-hk-room k-hk-room--stamp${continuing ? ' k-hk-room--stay' : ''}${fullBlock ? ' k-hk-room--blocked' : room.departures.length && room.arrivals.length ? ' k-hk-room--split' : ''}`} type="button" onClick={() => onSelect(room)} data-room-id={room.room_id}
@@ -64,6 +64,7 @@ const RoomCard = React.memo(function RoomCard({ room, onSelect, date }: { room: 
       {reservations.map(([kind, items]) => <span key={kind} className={`k-hk-room__slot k-hk-reservation--${items.length === 1 ? items[0].reservation_state ?? 'unknown' : 'unknown'}`}>
         {items.length === 1 ? items[0].reservation_state ? <ReservationStamp stay={items[0]} kind={kind} date={date} /> : <span className="k-hk-room__conflict">{t('Neurčený stav rezervace')}</span> : items.length > 1 ? <span className="k-hk-room__conflict" title={t('Nejednoznačné přiřazení rezervací')}>{t('Více rezervací')}</span> : null}
       </span>)}
+      {continuing && room.stays.length === 1 && room.stays[0].reservation_state ? <span className={`k-hk-room__stay-label k-hk-reservation--${room.stays[0].reservation_state}`} style={{ '--k-hk-label-length': t('POBYT').length } as React.CSSProperties}><b>{t('POBYT')}</b></span> : null}
       {coverage.map((side) => <svg key={side} className={`k-hk-room__block k-hk-room__block--${side}`} data-block-coverage={side} viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={t('Blokace pokoje / zastavení prodeje')}><title>{t('Blokace pokoje / zastavení prodeje')}</title><path d="M3 3 97 97 M97 3 3 97" /></svg>)}
     </span>
   </button>;

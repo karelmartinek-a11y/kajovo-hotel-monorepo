@@ -24,10 +24,12 @@ def select_scope(message, paths):
 
 
 def select_users_smoke_mode(paths):
-    """Frontend-only releases do not authorize production users or onboarding mail."""
+    """UI and housekeeping projections do not authorize users or onboarding mail."""
     prefixes = ('packages/ui/', 'packages/shared/src/i18n/', 'apps/kajovo-hotel-web/',
                 'apps/kajovo-hotel-admin/', 'apps/kajovo-hotel-api/tests/', 'docs/')
-    files = {'AGENTS.md', 'README.md', 'pnpm-lock.yaml', '.github/workflows/ci-gates.yml',
+    files = {'apps/kajovo-hotel-api/app/services/housekeeping.py',
+             'apps/kajovo-hotel-api/app/services/housekeeping_reservations.py',
+             'AGENTS.md', 'README.md', 'pnpm-lock.yaml', '.github/workflows/ci-gates.yml',
              '.github/workflows/deploy-production.yml', 'scripts/select_deploy_scope.py',
              'scripts/verify_live_admin_users_smoke.mjs'}
     return 'read-only' if paths and all(path.startswith(prefixes) or path in files for path in paths) else 'full'

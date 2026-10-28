@@ -665,6 +665,8 @@ body:has(.k-users, .k-hk-board) .k-page { background: var(--k-color-surface); }
 .k-hk-room__slot { display: block; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
 .k-hk-room--split .k-hk-room__slot + .k-hk-room__slot { box-shadow: inset 0 1px var(--k-color-border); }
 .k-hk-room__block { position: absolute; z-index: var(--k-z-content); left: 0; top: 0; width: 100%; height: 50%; pointer-events: none; fill: none; stroke: var(--k-color-room-block-cross); stroke-width: 2px; }
+.k-hk-room__stay-label { position: absolute; left: 0; top: var(--k-hk-block-start); width: 100%; height: 50%; display: grid; place-items: center; container-type: inline-size; pointer-events: none; }
+.k-hk-room__stay-label b { font-family: Arial, var(--k-font-family); font-size: min(14px, calc(100cqi / var(--k-hk-label-length) / .75)); line-height: 1.4; }
 .k-hk-room__block path { vector-effect: non-scaling-stroke; }
 .k-hk-room__block--right { top: var(--k-hk-block-start); }
 .k-hk-room__block--full { height: 100%; }

@@ -315,7 +315,9 @@ test('pokoj 206 zobrazuje probíhající pobyt v pevných 122 px', async ({ page
   const card = page.locator('[data-room-id="room-206"]');
   await expect(card.locator('[data-stay-kind="stay"]')).toHaveCount(1);
   await expect(card.locator('[data-stay-kind="stay"]')).toHaveClass(/--checked_in/);
-  await expect(card).toContainText('POBYT');
+  await expect(card.locator('.k-hk-room__stay-label')).toHaveText('POBYT');
+  await expect(card.locator('.k-hk-reservation__time')).toBeEmpty();
+  await page.screenshot({ path: testInfo.outputPath('continuing-stay-label.png'), fullPage: false });
   await expect(card.locator('.k-hk-reservation__country')).toHaveAttribute('title', 'Německo');
   await expect(card.locator('.k-hk-country-flag')).toHaveCount(1);
   await expect(card.locator('[data-age-group="adults"] b')).toHaveText('1');
@@ -935,6 +937,8 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
     const cards = page.locator('.k-hk-room');
     await expect(cards).toHaveCount(14);
     await expect(page.locator('[data-room-id="stay"] [data-stay-kind="stay"]')).toHaveCount(1);
+    await expect(page.locator('[data-room-id="stay"] .k-hk-room__stay-label')).toHaveText(locale === 'cs' ? 'POBYT' : locale === 'en' ? 'STAY' : 'ПРОЖИВАННЯ');
+    await expect(page.locator('[data-room-id="stay"] .k-hk-reservation__time')).toBeEmpty();
     const stayWidth = await page.locator('[data-room-id="stay"] .k-hk-reservation').evaluate(el=>({stamp:el.getBoundingClientRect().width, body:el.closest('.k-hk-room__body')!.getBoundingClientRect().width}));
     expect(stayWidth.stamp).toBeCloseTo(stayWidth.body, 1);
     for (const side of ['left', 'right', 'full']) {
@@ -1037,7 +1041,7 @@ for (const [locale, language] of [['cs', 'Čeština'], ['en', 'English'], ['uk',
         return Array.from(row.querySelectorAll('b')).every((count) => { const rect = count.getBoundingClientRect(); return rect.left >= bounds.left && rect.right <= bounds.right + .5; });
       }));
       expect(boundedCounts).toBeTruthy();
-      const boundedTimes = await cards.locator('.k-hk-reservation__time').evaluateAll((times) => times.map((time) => {
+      const boundedTimes = await cards.locator('.k-hk-reservation__time').evaluateAll((times) => times.filter(time => time.textContent).map((time) => {
         const range = document.createRange(); range.selectNodeContents(time);
         const text = range.getBoundingClientRect(), slot = time.closest('.k-hk-room__slot')!.getBoundingClientRect();
         return { fits: text.left >= slot.left && text.right <= slot.right + .5, text: {left: text.left, right: text.right}, slot: {left: slot.left, right: slot.right} };
@@ -1185,6 +1189,21 @@ test('pokoje vykreslí 500 variant pevného layoutu bez ztráty čísel a překr
       const box = (e: Element) => e.getBoundingClientRect();
       for (const card of nodes) {
         if (box(card).height !== 122) errors.push('height');
+        const stay = card.querySelector('[data-stay-kind="stay"]');
+        const label = card.querySelector('.k-hk-room__stay-label');
+        if (Boolean(stay) !== Boolean(label)) errors.push('stay label presence');
+        if (stay && label) {
+          const body = box(card.querySelector('.k-hk-room__body')!), l = box(label);
+          if (Math.abs(l.y - body.y - body.height / 2) > .1 || Math.abs(l.height - body.height / 2) > .1) errors.push('stay label lower half');
+          const text = label.querySelector('b')!, t = box(text);
+          if (Math.abs(t.x + t.width / 2 - l.x - l.width / 2) > .1 || Math.abs(t.y + t.height / 2 - l.y - l.height / 2) > .1) errors.push('stay label center');
+          const range = document.createRange(); range.selectNodeContents(text); const r = range.getBoundingClientRect();
+          if (r.left < l.left - .5 || r.right > l.right + .5) errors.push('stay label overflow');
+          if (stay.querySelector('.k-hk-reservation__time')!.textContent !== '') errors.push('stay has event time');
+          if (getComputedStyle(label).backgroundColor !== getComputedStyle(stay).backgroundColor) errors.push('stay label color');
+          if (box(stay.querySelector('.k-hk-requests')!).bottom > l.top) errors.push('stay label over fields');
+        }
+
         for (const reservation of card.querySelectorAll('.k-hk-reservation')) {
           const bounds = box(reservation);
           const rows = Array.from(reservation.children).map(box);
@@ -1196,6 +1215,7 @@ test('pokoje vykreslí 500 variant pevného layoutu bez ztráty čísel a překr
             }
           }
           for (const field of reservation.querySelectorAll('.k-hk-reservation__time,.k-hk-reservation__nights,.k-hk-request-badge b,.k-hk-person-counts b')) {
+            if (!field.textContent) continue;
             const range=document.createRange();range.selectNodeContents(field);const r=range.getBoundingClientRect(),f=box(field);
             if(r.left<f.left-.5||r.right>f.right+.5)errors.push(`number overflow ${field.textContent}`);
           }
@@ -1216,4 +1236,33 @@ test('pokoje vykreslí 500 variant pevného layoutu bez ztráty čísel a překr
   await expect(page.locator('[data-room-id="layout-0"] .k-hk-reservation__nights').first()).toHaveText('3/3');
   await expect(page.locator('[data-room-id="layout-0"] .k-hk-reservation__nights').last()).toHaveText('0/2');
   await expect(page.locator('[data-room-id="layout-3"] .k-hk-reservation__nights')).toHaveText('3/5');
+});
+
+
+test('pokoje doplní název v pořadí host, rezervující, firma, agentura, otazník', async ({ page, request }, testInfo) => {
+  const cases = [
+    {guests:[{name:' '},{name:' Ubytovaný Host '}], main_guest_name:'Rezervující Osoba', company_name:'Firma', display_name:'Agentura', expected:'Ubytovaný Host'},
+    {guests:[{name:' '}], main_guest_name:' Rezervující Osoba ', company_name:'Firma', display_name:'Agentura', expected:'Rezervující Osoba'},
+    {guests:[], main_guest_name:' ', company_name:' Dlouhý název firmy pro kontrolu výpustky ', display_name:'Agentura', expected:'Dlouhý název firmy pro kontrolu výpustky'},
+    {guests:[], main_guest_name:null, company_name:' ', display_name:' Název agentury ', expected:'Název agentury'},
+    {guests:[], main_guest_name:' ', company_name:null, display_name:' ', expected:'?'},
+  ];
+  await page.route('**/api/v1/housekeeping/rooms**', async route => {
+    const date = new URL(route.request().url()).searchParams.get('date');
+    await route.fulfill({json:{date,occupancy_date:date,housekeeping_status_is_current:true,loaded_at:new Date().toISOString(),rooms:cases.map((entry,i)=>({
+      ...HOUSEKEEPING_ROOM_FIXTURE,room_id:`fallback-${i}`,room_number:String(101+i),arrivals:[],stays:[],
+      departures:[{...HOUSEKEEPING_ROOM_FIXTURE.departures[0],...entry,reservation_state:'checked_in',guest_label:'Popisek není náhradní jméno'}],
+    }))}});
+  });
+  const user = await createPortalUserForRole(request, testInfo, 'pokojska');
+  await loginPortalUser(page,user.portalEmail,user.portalPassword);
+  for (const [i,entry] of cases.entries()) {
+    const card=page.locator(`[data-room-id="fallback-${i}"]`), name=card.locator('.k-hk-reservation__name');
+    await expect(name).toHaveText(entry.expected);
+    await expect(name).toHaveAttribute('title',entry.expected);
+    await expect(card).toHaveAttribute('aria-label',new RegExp(entry.expected==='?'?'\\?':entry.expected));
+    await expect(name).toHaveCSS('text-overflow','ellipsis');
+    expect(await card.evaluate(el=>el.getBoundingClientRect().height)).toBe(122);
+  }
+  await page.screenshot({path:testInfo.outputPath('reservation-name-fallbacks.png'),fullPage:false});
 });

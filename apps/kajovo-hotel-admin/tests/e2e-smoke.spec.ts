@@ -432,7 +432,7 @@ test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', asy
   await page.route('**/api/v1/housekeeping/rooms**', async (route) => {
     expect(new URL(route.request().url()).searchParams.get('include_options')).toBe('true');
     const date = new URL(route.request().url()).searchParams.get('date');
-    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: keys.map((key, i) => ({ room_id: String(101+i), room_number: String(101+i), housekeeping_status_key: key, housekeeping_status: key, operational_state: 'free', occupied: false, persons: 0, departures: [stay], arrivals: [{ ...stay, reservation_id: 'arrive', reservation_state: 'checked_in', display_name: 'Dvořák Petr', housekeeping_note: 'Poznámka příjezdu' }], stays: [] })) } });
+    await route.fulfill({ json: { date, occupancy_date: date, housekeeping_status_is_current: true, loaded_at: new Date().toISOString(), rooms: keys.map((key, i) => ({ room_id: String(101+i), room_number: String(101+i), housekeeping_status_key: key, housekeeping_status: key, operational_state: 'free', occupied: false, persons: 0, departures: i === 7 ? [] : [stay], arrivals: i === 7 ? [] : [{ ...stay, reservation_id: 'arrive', reservation_state: 'checked_in', display_name: 'Dvořák Petr', housekeeping_note: 'Poznámka příjezdu' }], stays: i === 7 ? [{ ...stay, reservation_state: 'checked_in' }] : [] })) } });
   });
   await page.goto('/admin/pokojska');
   for (const [name,width,height] of [['desktop',1440,900],['tablet',834,1112],['phone',390,844]] as const) {
@@ -443,6 +443,8 @@ test('admin razítka pokojů mají vlastní barvy a pevný mobilní detail', asy
     await expect(card).not.toContainText(stay.display_name);
     await expect(card).not.toHaveAttribute('aria-label', new RegExp(stay.display_name));
     await expect(card).not.toContainText(stay.company_name);
+    await expect(page.locator('[data-room-id="108"] .k-hk-room__stay-label')).toHaveText('POBYT');
+    await expect(page.locator('[data-room-id="108"] .k-hk-reservation__time')).toBeEmpty();
     await expect(card.locator('.k-hk-reservation__country').first()).toHaveAttribute('title', 'Česko');
     await expect(card.locator('.k-hk-country-flag')).toHaveCount(2);
     await expect(card.locator('.k-hk-reservation__name').first()).toHaveText(stay.guests[0].name);

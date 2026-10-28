@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.api.schemas import HousekeepingStayRead
-from app.services.housekeeping import _stay_read
+from app.services.housekeeping import BetterHotelHousekeepingClient, _stay_read
 from app.services.housekeeping_reservations import guest_age, reservation_details
 from tests.test_housekeeping import FakeHousekeepingClient, _reservation
 
@@ -189,3 +189,36 @@ def test_web_query_is_preserved_in_reads_and_verified_write_response(monkeypatch
     body = response.json()
     room = body['rooms'][0] if method == 'GET' else body
     assert room['blocks'] == ([{k: v for k, v in block.items() if k != 'room_id'}] if include_blocks else [])
+
+
+@pytest.mark.parametrize('level,expected', [(0, 'Guest'), (1, 'Booker'), (2, 'Company'), (3, 'Agency'), (4, None)])
+def test_tile_name_fallbacks_skip_blank_values_in_order(level, expected):
+    reservation = booking()
+    reservation.update(guest_list=[{'position': 1, 'guest': {'full_name': '   '}}, {'position': 2, 'guest': {'full_name': ' Guest ' if level == 0 else ' '}}],
+                       main_guest={'full_name': ' Booker ' if level <= 1 else ' '},
+                       company={'name': ' Company ' if level <= 2 else ' '},
+                       agency={'name': ' Agency ' if level <= 3 else ' '})
+    result = reservation_details(reservation, DAY)
+    assert result['display_name'] == expected
+    assert 'agency' not in result
+    assert HousekeepingStayRead.model_validate(_stay_read(reservation, DAY)).display_name == expected
+
+
+def test_unexpanded_agency_reference_is_not_a_display_name():
+    reservation = booking()
+    reservation.update(guest_list=[], main_guest=None, company=None, agency='agency-uuid')
+    assert reservation_details(reservation, DAY)['display_name'] is None
+
+
+def test_reservation_read_expands_agency_in_same_request(monkeypatch):
+    client = FakeHousekeepingClient()
+    calls = []
+    def pages(path, query):
+        calls.append((path, query))
+        return []
+    monkeypatch.setattr(client, '_list_pages', pages)
+    assert BetterHotelHousekeepingClient.list_reservations(client, DAY, range_type='intersect', state='all') == []
+    assert len(calls) == 1
+    assert calls[0][0] == '/reservation'
+    assert 'agency' in calls[0][1]['expand[]']
+    assert calls[0][1]['filter[range_type]'] == 'intersect'

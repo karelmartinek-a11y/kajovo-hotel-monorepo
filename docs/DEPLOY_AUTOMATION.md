@@ -72,4 +72,4 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
 
 ## Produkční ověření frontendových změn
 
-`select_users_smoke_mode` určuje pro omezené frontendové změny režim `read-only`. Uživatelský smoke pak ověří autentizaci, obnovu relace a čtení seznamu bez založení uživatele a implicitního onboardingového SMTP. Aplikační API změny a neznámé zdroje zachovávají plný režim; prázdný seznam není výjimka. Volba neomezuje full deploy, kontroly TLS/runtime artefaktu ani čtení pokojů a snídaní. Lokální a CI testy uživatelských zápisů zůstávají v izolovaném testovacím prostředí.
+`select_users_smoke_mode` určuje pro omezené frontendové změny a datovou projekci v housekeeping.py/housekeeping_reservations.py režim `read-only`. Uživatelský smoke pak ověří autentizaci, obnovu relace a čtení seznamu bez založení uživatele a implicitního onboardingového SMTP. Ostatní aplikační API změny a neznámé zdroje zachovávají plný režim; prázdný seznam není výjimka. Volba neomezuje full deploy, kontroly TLS/runtime artefaktu ani čtení pokojů a snídaní. Lokální a CI testy uživatelských zápisů zůstávají v izolovaném testovacím prostředí.

@@ -228,7 +228,7 @@ class BetterHotelHousekeepingClient:
                 "filter[range_type]": range_type,
                 "filter[mode]": "hotel",
                 "filter[state]": state,
-                "expand[]": ["room", "reservation_status", "reservation_action", "guest", "guest.address", "company", "company.address", "guest_list", "guest_list.guest", "guest_list.guest.address", "guest_list.guest_type", "reservation_note", "bill.bill_item"],
+                "expand[]": ["room", "reservation_status", "reservation_action", "guest", "guest.address", "company", "company.address", "agency", "guest_list", "guest_list.guest", "guest_list.guest.address", "guest_list.guest_type", "reservation_note", "bill.bill_item"],
             },
         )
         deduplicated: dict[str, dict[str, Any]] = {}

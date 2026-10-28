@@ -113,6 +113,8 @@ def test_explicit_api_admin_scope_rejects_other_sources():
         module.select_scope('Hotel-Deploy-Scope: unknown', ['docs/voice-core.md'])
     assert module.select_users_smoke_mode(['packages/ui/src/components/HousekeepingRooms.tsx', 'pnpm-lock.yaml']) == 'read-only'
     assert module.select_users_smoke_mode(['packages/ui/src/workspace.css', 'apps/kajovo-hotel-api/app/api/routes/users.py']) == 'full'
+    assert module.select_users_smoke_mode(['apps/kajovo-hotel-api/app/services/housekeeping.py', 'apps/kajovo-hotel-api/app/services/housekeeping_reservations.py']) == 'read-only'
+    assert module.select_users_smoke_mode(['apps/kajovo-hotel-api/app/api/routes/housekeeping.py']) == 'full'
     assert module.select_users_smoke_mode([]) == 'full'
 
 

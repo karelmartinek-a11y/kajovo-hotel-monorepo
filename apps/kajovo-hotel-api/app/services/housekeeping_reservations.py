@@ -100,6 +100,8 @@ def reservation_details(reservation: dict[str, Any], day: date) -> dict[str, Any
             (item["guest"] for item in slots if isinstance(item.get("guest"), dict) and str(item["guest"].get("id")) == str(main)), None)
     company = reservation.get("company")
     company_name = str(company.get("name") or "").strip() or None if isinstance(company, dict) else None
+    agency = reservation.get("agency")
+    agency_name = str(agency.get("name") or "").strip() or None if isinstance(agency, dict) else None
     guests = []
     counts = {"adults": 0, "children": 0, "infants": 0, "unknown": 0}
     for item in slots:
@@ -117,7 +119,7 @@ def reservation_details(reservation: dict[str, Any], day: date) -> dict[str, Any
         "reservation_code": str(reservation.get("code") or "").strip() or None,
         "reservation_state": states.get(status_name.casefold()),
         "reservation_status_name": status_name or None,
-        "display_name": next((guest["name"] for guest in guests if guest["name"]), None) or person_name(main) or company_name,
+        "display_name": next((guest["name"] for guest in guests if guest["name"]), None) or person_name(main) or company_name or agency_name,
         "main_guest_name": person_name(main), "company_name": company_name,
         "country_code": selected_country,
         "country_code_alpha3": pycountry.countries.get(alpha_2=selected_country).alpha_3 if selected_country else None,
