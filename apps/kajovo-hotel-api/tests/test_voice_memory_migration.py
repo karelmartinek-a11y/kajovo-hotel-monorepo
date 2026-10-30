@@ -33,7 +33,7 @@ def test_sqlite_real_upgrade_from_previous_head_and_downgrade(tmp_path):
                 "INSERT INTO admin_profile (id,email,password_hash,display_name) VALUES (1,'migration@example.invalid','test','Test')"
             )
         )
-    alembic("upgrade", "head")
+    alembic("upgrade", "0046_current_voice_schema")
     tables = inspect(engine).get_table_names()
     for table in [
         "voice_memory_principals",
@@ -55,5 +55,5 @@ def test_sqlite_real_upgrade_from_previous_head_and_downgrade(tmp_path):
         )
     alembic("downgrade", "0041_voice_smart_deliveries")
     assert "voice_memories" not in inspect(engine).get_table_names()
-    alembic("upgrade", "head")
+    alembic("upgrade", "0046_current_voice_schema")
     engine.dispose()

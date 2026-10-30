@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0046_current_voice_schema"]
+    assert script.get_heads() == ["0047_cml_web_nonce"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -75,7 +75,7 @@ def test_current_checkpoint_preserves_schema_and_journal(tmp_path, monkeypatch) 
     get_settings.cache_clear()
     config = _alembic_config()
     script = ScriptDirectory.from_config(config)
-    current = script.get_revision(script.get_current_head())
+    current = script.get_revision("0046_current_voice_schema")
     engine = create_engine(f"sqlite:///{database}")
 
     def schema():
@@ -87,12 +87,45 @@ def test_current_checkpoint_preserves_schema_and_journal(tmp_path, monkeypatch) 
         with engine.begin() as connection:
             connection.execute(text("INSERT INTO voice_smart_deliveries (id, owner_session_id, arguments_digest, status) VALUES ('checkpoint', 'owner', 'digest', 'delivered')"))
         before = schema()
-        command.upgrade(config, "head")
+        command.upgrade(config, current.revision)
         assert schema() == before
-        command.upgrade(config, "head")
+        command.upgrade(config, current.revision)
         with engine.connect() as connection:
             assert connection.scalar(text("SELECT version_num FROM alembic_version")) == current.revision
             assert connection.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='checkpoint'")) == "delivered"
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+
+
+def test_cml_nonce_upgrade_is_additive_and_cannot_remove_replay_protection(tmp_path, monkeypatch) -> None:
+    from sqlalchemy import text
+    database=tmp_path/"cml-replay.db"
+    monkeypatch.setenv("KAJOVO_API_DATABASE_URL",f"sqlite:///{database}")
+    get_settings.cache_clear()
+    config=_alembic_config()
+    engine=create_engine(f"sqlite:///{database}")
+    def schema():
+        inspector=inspect(engine)
+        return {name:[{**column,"type":str(column["type"])}for column in inspector.get_columns(name)]for name in inspector.get_table_names()}
+    try:
+        command.upgrade(config,"0046_current_voice_schema")
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO voice_smart_deliveries(id,owner_session_id,arguments_digest,status) VALUES('cml-preserve','owner','digest','delivered')"))
+        before=schema()
+        command.upgrade(config,"head")
+        after=schema()
+        assert set(after)==set(before)|{"cml_web_nonce"}
+        assert {name:after[name]for name in before}==before
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO cml_web_nonce(jti,expires_at)VALUES('11111111-1111-4111-8111-111111111111',2000000000)"))
+        import pytest
+        with pytest.raises(RuntimeError,match="replay protection"):
+            command.downgrade(config,"0046_current_voice_schema")
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT version_num FROM alembic_version"))=="0047_cml_web_nonce"
+            assert connection.scalar(text("SELECT count(*) FROM cml_web_nonce"))==1
+            assert connection.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='cml-preserve'"))=="delivered"
     finally:
         engine.dispose()
         get_settings.cache_clear()

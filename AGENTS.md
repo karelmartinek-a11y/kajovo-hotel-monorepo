@@ -145,3 +145,4 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
 - `/cml-web/` přijímá pouze podepsané CML žádosti pro audience `hotel`, s trvalým jednorázovým jti. Nativní aktivita uživatele, přiřazené role a endpointové oprávnění se znovu ověřují lokálně; data prohlížeče nemohou vytvořit ASGI identity state.
 - Zachovat původní technickou admin identitu pro chat a hlasovou historii. Vložený frontend nesmí získat provider tokeny ani přístup k DOM CML.
 - `docs/CML_WEB_CANDIDATE.md` uvádí neuzavřené části přechodu. Opaque sandbox bez samostatného mikrofonního ověření není funkční hlasový chat a kandidát není potvrzené produkční nasazení.
+- CML účetní routy `/api/v1/users` připouštějí hlavní účet a pro zápis vyžadují čerstvé podepsané `reauthUntil`; lokální credentials/resetovací toky touto cestou odmítat. Zachovat původní nativní API a role, databázi i historickou technickou identitu správce.
