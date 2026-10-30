@@ -138,3 +138,10 @@ Pomocný nespouštěný snapshot kontejner přepisuje zděděné Compose project
 Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespouštěný kontejner; tag drží adresovatelnost původního image při přesměrování build tagu a kontejner jej chrání před image GC. EXIT trap odstraní oba dočasné objekty.
 
 - Věkové skupiny v pevné dlaždici mají běžná čísla 11 px a siluety 7 × 11 px, zarovnané vlevo/uprostřed/vpravo ve vlastních třetinách. Poznámka je samostatný červený vykřičník 13 px bez podkladu, rámečku či stínu.
+
+## Kandidát jednotného webu CML
+
+- Nové samostatně napsané UI patří do `apps/kajovo-hotel-api/app/web_ui/` a používá `kajovo-web-ui/1`. Úprava původních frontendů není náhradou požadovaného nového UI.
+- `/cml-web/` přijímá pouze podepsané CML žádosti pro audience `hotel`, s trvalým jednorázovým jti. Nativní aktivita uživatele, přiřazené role a endpointové oprávnění se znovu ověřují lokálně; data prohlížeče nemohou vytvořit ASGI identity state.
+- Zachovat původní technickou admin identitu pro chat a hlasovou historii. Vložený frontend nesmí získat provider tokeny ani přístup k DOM CML.
+- `docs/CML_WEB_CANDIDATE.md` uvádí neuzavřené části přechodu. Opaque sandbox bez samostatného mikrofonního ověření není funkční hlasový chat a kandidát není potvrzené produkční nasazení.

@@ -174,6 +174,10 @@ def create_app() -> FastAPI:
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await chat_task
 
+    from pathlib import Path
+    from app.security.cml_web import CmlWebBoundary
+    from app.services.cml_identity import resolve_identity
+    app.add_middleware(CmlWebBoundary, audience='hotel', session_factory=SessionLocal, resolve_identity=resolve_identity, ui_root=Path(__file__).parent / 'web_ui')
     return app
 
 

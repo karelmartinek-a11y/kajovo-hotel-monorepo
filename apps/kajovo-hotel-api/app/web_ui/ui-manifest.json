@@ -1,0 +1,60 @@
+{
+  "contract": "kajovo-web-ui/1",
+  "views": [
+    {
+      "id": "hotel.admin.5",
+      "title": "Pokoje a úklid",
+      "path": "/sections/hotel/?view=rooms",
+      "icon": "housekeeping",
+      "admin": false,
+      "permission": "housekeeping:read"
+    },
+    {
+      "id": "hotel.admin.6",
+      "title": "Snídaně",
+      "path": "/sections/hotel/?view=breakfast",
+      "icon": "breakfast",
+      "admin": false,
+      "permission": "breakfast:read"
+    },
+    {
+      "id": "hotel.admin.2",
+      "title": "Soukromé zprávy",
+      "path": "/sections/hotel/?view=chat",
+      "icon": "chat",
+      "admin": false
+    },
+    {
+      "id": "hotel.admin.10",
+      "title": "Ztráty a nálezy",
+      "path": "/sections/hotel/?view=lostfound",
+      "icon": "lostfound",
+      "admin": false,
+      "permission": "lost_found:read"
+    },
+    {
+      "id": "hotel.admin.14",
+      "title": "Závady",
+      "path": "/sections/hotel/?view=issues",
+      "icon": "issue",
+      "admin": false,
+      "permission": "issues:read"
+    },
+    {
+      "id": "hotel.admin.18",
+      "title": "Sklad",
+      "path": "/sections/hotel/?view=inventory",
+      "icon": "inventory",
+      "admin": false,
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.admin.22",
+      "title": "Hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "icon": "report",
+      "admin": false,
+      "permission": "reports:read"
+    }
+  ]
+}

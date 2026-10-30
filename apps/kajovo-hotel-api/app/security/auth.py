@@ -301,6 +301,8 @@ def set_active_role(db: Session, session_id: str, active_role: str | None) -> Au
 
 
 def ensure_csrf(request: Request) -> None:
+    if getattr(request.state, 'cml_web_claims', None):
+        return
     if request.method not in WRITE_METHODS:
         return
     if request.url.path.startswith("/api/v1/device/"):
