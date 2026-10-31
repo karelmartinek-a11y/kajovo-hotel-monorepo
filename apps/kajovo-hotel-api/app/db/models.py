@@ -1074,3 +1074,17 @@ class CmlWebNonce(Base):
     jti: Mapped[str] = mapped_column(String(36), primary_key=True)
     expires_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
     __table_args__ = (Index("ix_cml_web_nonce_expiry", "expires_at"),)
+
+
+class CmlWebRequest(Base):
+    """The original native HTTP result, isolated by verified central identity."""
+    __tablename__ = 'cml_web_request'
+    owner: Mapped[str] = mapped_column(String(100), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    permission: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    response_status: Mapped[int | None] = mapped_column(Integer)
+    response_json: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (CheckConstraint("state IN ('pending','completed','uncertain')", name='cml_web_request_state'),)

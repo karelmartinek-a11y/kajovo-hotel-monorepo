@@ -71,6 +71,8 @@ def check_plan() -> list[tuple[str, list[str]]]:
         ("ci-runner-tests", _python_command("-m", "unittest", "discover", "-s", "scripts/tests", "-p", "test_release_gate.py")),
         ("typecheck", _pnpm_command("typecheck")),
         ("python-lint", _python_command("-m", "ruff", "check", "--config", "apps/kajovo-hotel-api/pyproject.toml", "--select", "E,F", "--ignore", "E501", "apps/kajovo-hotel-api/app", "apps/kajovo-hotel-api/tests", "packages/voice-core-server", "packages/dagmar-server", "scripts/release_gate.py", "scripts/github_deploy_via_ssh.py", "scripts/select_deploy_scope.py", "scripts/check_postgres_deploy_version.py", "scripts/tests/test_release_gate.py", "scripts/check_voice_core_boundaries.py", "scripts/verify_voice_core_copy_out.py", "scripts/verify_dagmar_copy_out.py", "scripts/verify_dagmar_recovery.py", "scripts/verify_voice_core_proxy.py", "scripts/voice_core_live_smoke.py", "scripts/verify_voice_memory_postgres.py", "scripts/protected_runtime_snapshot.py", "scripts/verify_deploy_snapshot.py")),
+        ("native-web-syntax", ["node", "scripts/check_cml_web_ui.mjs"]),
+        ("native-web-tests", ["node", "--test", "apps/kajovo-hotel-api/tests/web/time.test.mjs"]),
         ("api-and-voice-tests", _python_command("-m", "pytest", "apps/kajovo-hotel-api/tests", "packages/voice-core-server/tests", "packages/dagmar-server/tests", "-q")),
         ("dagmar-browser-tests", _pnpm_command("--filter", "@dagmar/browser", "test")),
         ("dagmar-contract", _python_command("-m", "dagmar_server.browser_contract", "--typescript", "packages/dagmar-browser/src/contracts.ts", "--openapi", "packages/dagmar-server/contracts/openapi.json", "--check")),

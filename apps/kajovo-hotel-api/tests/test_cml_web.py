@@ -125,3 +125,105 @@ def test_central_account_routes_require_owner_fresh_reauth_and_keep_credentials_
         assert call('GET',body=b'',sub='user:'+str(uuid.uuid4()),nativeId='1').status_code==401
         assert calls==['GET','PATCH']
     engine.dispose()
+
+
+def test_native_mutation_receipt_survives_reply_loss_and_rechecks_current_permissions(tmp_path, monkeypatch):
+    from app.db.models import Base
+    key, jwks = fixture_key()
+    public = tmp_path/'public.json'
+    public.write_text(json.dumps(jwks))
+    monkeypatch.setenv('CML_WEB_JWKS_PATH',str(public))
+    engine=create_engine('sqlite://',connect_args={'check_same_thread':False},poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    factory=sessionmaker(bind=engine)
+    app=FastAPI()
+    writes=[]
+    permissions=['reports:read','reports:write']
+    @app.post('/api/v1/reports')
+    async def create(request:Request):
+        writes.append(await request.json())
+        return {'id':len(writes),'title':writes[-1]['title']}
+    def resolve(*_):
+        return {'state':{},'public':{'admin':True,'permissions':list(permissions)}}
+    boundary=CmlWebBoundary(app,audience='hotel',session_factory=factory,resolve_identity=resolve,ui_root=tmp_path)
+    with TestClient(boundary) as client:
+        request_id=str(uuid.uuid4())
+        def call(method='POST',path='/cml-web/api/v1/reports',body=b'{"title":"Synthetic original"}',**patch):
+            return client.request(method,path,content=body,headers={'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':assertion(key,'hotel',path=path,method=method,body=body,**patch),'X-CSRF-Token':'a'*43,'Content-Type':'application/json','Idempotency-Key':request_id})
+        first=call()
+        assert first.status_code==200
+        # A new signed request after a lost response must return the old result.
+        assert call().json()==first.json()
+        assert len(writes)==1
+        status='/cml-web/api/request-status?request_id='+request_id
+        recovered=call('GET',status,b'')
+        assert recovered.status_code==200
+        assert recovered.json()['state']=='completed'
+        assert recovered.json()['body']==first.json()
+        assert call(body=b'{"title":"Different intent"}').status_code==409
+        assert len(writes)==1
+        permissions.remove('reports:write')
+        assert call().status_code==403
+        assert call('GET',status,b'').status_code==403
+        assert len(writes)==1
+        permissions.append('reports:write')
+        foreign=call('GET',status,b'',sub='user:'+str(uuid.uuid4()),nativeId='1')
+        assert foreign.status_code==200 and foreign.json()['state']=='not_found'
+        assert call('GET',status+'&request_id=second-identity',b'').status_code==400
+        # Effect committed, but the response cannot be recorded: uncertainty is
+        # durable and neither a POST nor GET may repeat the business effect.
+        from app.security.cml_requests import ReceiptFault
+        original_finish=boundary.requests.finish
+        def lost_storage(*_):
+            raise ReceiptFault('WEB_REQUEST_UNCERTAIN',503)
+        monkeypatch.setattr(boundary.requests,'finish',lost_storage)
+        request_id=str(uuid.uuid4())
+        unknown=call()
+        assert unknown.status_code==503 and unknown.json()['uncertain'] is True
+        assert len(writes)==2
+        monkeypatch.setattr(boundary.requests,'finish',original_finish)
+        assert call().status_code==409 and len(writes)==2
+        unknown_status='/cml-web/api/request-status?request_id='+request_id
+        recovered=call('GET',unknown_status,b'')
+        assert recovered.json()=={'request_id':request_id,'state':'uncertain','may_retry':False}
+        assert len(writes)==2
+    engine.dispose()
+
+
+def test_native_receipt_admission_is_shared_between_workers(tmp_path, monkeypatch):
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    from app.db.models import Base
+    key,jwks=fixture_key()
+    public=tmp_path/'worker-public.json'
+    public.write_text(json.dumps(jwks))
+    monkeypatch.setenv('CML_WEB_JWKS_PATH',str(public))
+    engine=create_engine('sqlite:///'+str(tmp_path/'workers.db'),connect_args={'check_same_thread':False})
+    Base.metadata.create_all(engine)
+    factory=sessionmaker(bind=engine)
+    app=FastAPI()
+    effects=[]
+    @app.post('/api/v1/reports')
+    async def create():
+        effects.append('synthetic-local-effect')
+        await asyncio.sleep(.05)
+        return {'id':len(effects),'title':'Synthetic worker result'}
+    def resolve(*_):
+        return {'state':{},'public':{'admin':True,'permissions':['reports:write']}}
+    def boundary():
+        return CmlWebBoundary(app,audience='hotel',session_factory=factory,resolve_identity=resolve,ui_root=tmp_path)
+    ident=str(uuid.uuid4())
+    path='/cml-web/api/v1/reports'
+    def call(client):
+        return client.post(path,content=b'{}',headers={'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':assertion(key,'hotel',path=path,body=b'{}'),'X-CSRF-Token':'a'*43,'Content-Type':'application/json','Idempotency-Key':ident})
+    try:
+        with TestClient(boundary()) as first,TestClient(boundary()) as second:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results=list(pool.map(call,[first,second]))
+            assert any(result.status_code==200 for result in results)
+            assert all(result.status_code in {200,409} for result in results)
+            assert len(effects)==1
+            assert call(second).json()=={'id':1,'title':'Synthetic worker result'}
+            assert len(effects)==1
+    finally:
+        engine.dispose()

@@ -10,4 +10,9 @@ Nové UI čte původní housekeeping, snídaňové, skladové, hlásicí a chato
 
 Dosud není dokončené pokrytí všech předloh, lokalizací a funkcí, centrální správa účtů/rolí, převod identit, uzavření přímých browserových přihlášení ani hlasový chat v izolovaném kontextu. Opaque sandbox se nesmí zaměnit za ověřený mikrofonní přístup. Publikace na main, produkční nasazení a úplná přejímka zůstávají neprovedené. Nativní Android, strojová API a stávající hlasová implementace nebyly odstřiženy.
 
-Centrální CML detail účtu používá původní Hotel API pro pracovní role a profil. CML routy `/api/v1/users` připouštějí pouze hlavní účet a pro zápis vyžadují podepsanou čerstvou reautentizaci. Lokální resetovací endpointy a heslo v JSON aktualizaci jsou odmítnuté. Nativní role se stále ověřují proti aktuálnímu Hotel účtu. Browserová kvalifikace nového hotelového profilu a celý migrační cutover dosud nejsou uzavřené.
+Centrální CML detail účtu používá původní Hotel API pro pracovní role a profil. CML routy `/api/v1/users` připouštějí pouze hlavní účet a pro zápis vyžadují podepsanou čerstvou reautentizaci. Lokální resetovací endpointy a heslo v JSON aktualizaci jsou odmítnuté. Nativní role se stále ověřují proti aktuálnímu Hotel účtu. Browserové ověření centrálního profilu proběhlo nad izolovaným původním API. Celý migrační cutover a produkční nasazení dosud nejsou provedené.
+
+Aktuální podrobný místní rozsah a zbývající brány jsou v
+[CML_UI_COMPLETION.md](CML_UI_COMPLETION.md). Deset hlavních pohledů již má
+prohlížečovou kvalifikaci přes skutečnou CML gateway; toto ověření není úplným
+pokrytím všech referencí, Docker releasem nebo produkčním cutoverem.

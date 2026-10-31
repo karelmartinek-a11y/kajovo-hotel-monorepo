@@ -2,12 +2,66 @@
   "contract": "kajovo-web-ui/1",
   "views": [
     {
+      "id": "hotel.admin.4",
+      "title": "Hotel · přehled správce",
+      "path": "/sections/hotel/?view=overview",
+      "icon": "dashboard",
+      "admin": true,
+      "navigation_title": "Přehled"
+    },
+    {
+      "id": "hotel.portal.42",
+      "title": "Hotel · provozní přehled",
+      "path": "/sections/hotel/?view=overview",
+      "icon": "dashboard",
+      "audienceRole": "member",
+      "navigation_title": "Přehled"
+    },
+    {
+      "id": "hotel.admin.2",
+      "title": "Soukromé zprávy",
+      "path": "/sections/hotel/?view=chat",
+      "icon": "chat",
+      "admin": false,
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.portal.40",
+      "title": "Soukromé zprávy",
+      "path": "/sections/hotel/?view=chat",
+      "icon": "chat",
+      "admin": false,
+      "audienceRole": "member"
+    },
+    {
+      "id": "hotel.portal.43",
+      "title": "Recepce",
+      "path": "/sections/hotel/?view=reception",
+      "icon": "reception",
+      "permission": "reports:read",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
       "id": "hotel.admin.5",
       "title": "Pokoje a úklid",
       "path": "/sections/hotel/?view=rooms",
       "icon": "housekeeping",
       "admin": false,
-      "permission": "housekeeping:read"
+      "permission": "housekeeping:read",
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.portal.45",
+      "title": "Pokojská · stav pokojů",
+      "path": "/sections/hotel/?view=rooms",
+      "icon": "housekeeping",
+      "admin": false,
+      "permission": "housekeeping:read",
+      "audienceRole": "member",
+      "navigation_title": "Pokoje a úklid"
     },
     {
       "id": "hotel.admin.6",
@@ -15,14 +69,17 @@
       "path": "/sections/hotel/?view=breakfast",
       "icon": "breakfast",
       "admin": false,
-      "permission": "breakfast:read"
+      "permission": "breakfast:read",
+      "audienceRole": "admin"
     },
     {
-      "id": "hotel.admin.2",
-      "title": "Soukromé zprávy",
-      "path": "/sections/hotel/?view=chat",
-      "icon": "chat",
-      "admin": false
+      "id": "hotel.portal.46",
+      "title": "Snídaně",
+      "path": "/sections/hotel/?view=breakfast",
+      "icon": "breakfast",
+      "admin": false,
+      "permission": "breakfast:read",
+      "audienceRole": "member"
     },
     {
       "id": "hotel.admin.10",
@@ -30,7 +87,17 @@
       "path": "/sections/hotel/?view=lostfound",
       "icon": "lostfound",
       "admin": false,
-      "permission": "lost_found:read"
+      "permission": "lost_found:read",
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.portal.50",
+      "title": "Ztráty a nálezy",
+      "path": "/sections/hotel/?view=lostfound",
+      "icon": "lostfound",
+      "admin": false,
+      "permission": "lost_found:read",
+      "audienceRole": "member"
     },
     {
       "id": "hotel.admin.14",
@@ -38,7 +105,17 @@
       "path": "/sections/hotel/?view=issues",
       "icon": "issue",
       "admin": false,
-      "permission": "issues:read"
+      "permission": "issues:read",
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.portal.54",
+      "title": "Závady",
+      "path": "/sections/hotel/?view=issues",
+      "icon": "issue",
+      "admin": false,
+      "permission": "issues:read",
+      "audienceRole": "member"
     },
     {
       "id": "hotel.admin.18",
@@ -46,15 +123,399 @@
       "path": "/sections/hotel/?view=inventory",
       "icon": "inventory",
       "admin": false,
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.portal.58",
+      "title": "Sklad",
+      "path": "/sections/hotel/?view=inventory",
+      "icon": "inventory",
+      "admin": false,
+      "permission": "inventory:read",
+      "audienceRole": "member"
     },
     {
       "id": "hotel.admin.22",
-      "title": "Hlášení",
+      "title": "Provozní hlášení",
       "path": "/sections/hotel/?view=reports",
       "icon": "report",
       "admin": false,
+      "permission": "reports:read",
+      "audienceRole": "admin",
+      "navigation_title": "Hlášení"
+    },
+    {
+      "id": "hotel.portal.62",
+      "title": "Provozní hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "icon": "report",
+      "admin": false,
+      "permission": "reports:read",
+      "audienceRole": "member",
+      "navigation_title": "Hlášení"
+    },
+    {
+      "id": "hotel.admin.27",
+      "title": "Nastavení Hotelu",
+      "path": "/sections/hotel/?view=settings",
+      "icon": "gear",
+      "admin": true,
+      "permission": "settings:read",
+      "group": "Administrace"
+    },
+    {
+      "id": "hotel.admin.15",
+      "title": "Nová závada",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.admin.14",
+      "audienceRole": "admin",
+      "permission": "issues:write"
+    },
+    {
+      "id": "hotel.portal.55",
+      "title": "Nová závada",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.portal.54",
+      "audienceRole": "member",
+      "permission": "issues:write"
+    },
+    {
+      "id": "hotel.admin.17",
+      "title": "Upravit závadu",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.admin.14",
+      "audienceRole": "admin",
+      "permission": "issues:write"
+    },
+    {
+      "id": "hotel.portal.57",
+      "title": "Upravit závadu",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.portal.54",
+      "audienceRole": "member",
+      "permission": "issues:write"
+    },
+    {
+      "id": "hotel.admin.16",
+      "title": "Detail závady",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.admin.14",
+      "audienceRole": "admin",
+      "permission": "issues:read"
+    },
+    {
+      "id": "hotel.portal.56",
+      "title": "Detail závady",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.portal.54",
+      "audienceRole": "member",
+      "permission": "issues:read"
+    },
+    {
+      "id": "hotel.issues.delete",
+      "title": "Smazat závadu",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.admin.14",
+      "audienceRole": "admin",
+      "permission": "issues:write"
+    },
+    {
+      "id": "hotel.issues.delete",
+      "title": "Smazat závadu",
+      "path": "/sections/hotel/?view=issues",
+      "navigation": false,
+      "parent": "hotel.portal.54",
+      "audienceRole": "member",
+      "permission": "issues:write"
+    },
+    {
+      "id": "hotel.admin.23",
+      "title": "Nové hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.admin.22",
+      "audienceRole": "admin",
+      "permission": "reports:write"
+    },
+    {
+      "id": "hotel.portal.63",
+      "title": "Nové hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.portal.62",
+      "audienceRole": "member",
+      "permission": "reports:write"
+    },
+    {
+      "id": "hotel.admin.25",
+      "title": "Upravit hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.admin.22",
+      "audienceRole": "admin",
+      "permission": "reports:write"
+    },
+    {
+      "id": "hotel.portal.65",
+      "title": "Upravit hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.portal.62",
+      "audienceRole": "member",
+      "permission": "reports:write"
+    },
+    {
+      "id": "hotel.admin.24",
+      "title": "Detail hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.admin.22",
+      "audienceRole": "admin",
       "permission": "reports:read"
+    },
+    {
+      "id": "hotel.portal.64",
+      "title": "Detail hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.portal.62",
+      "audienceRole": "member",
+      "permission": "reports:read"
+    },
+    {
+      "id": "hotel.admin.11",
+      "title": "Nový nález nebo ztráta",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.admin.10",
+      "audienceRole": "admin",
+      "permission": "lost_found:write"
+    },
+    {
+      "id": "hotel.portal.51",
+      "title": "Nový nález nebo ztráta",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.portal.50",
+      "audienceRole": "member",
+      "permission": "lost_found:write"
+    },
+    {
+      "id": "hotel.admin.13",
+      "title": "Upravit nález nebo ztrátu",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.admin.10",
+      "audienceRole": "admin",
+      "permission": "lost_found:write"
+    },
+    {
+      "id": "hotel.portal.53",
+      "title": "Upravit nález nebo ztrátu",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.portal.50",
+      "audienceRole": "member",
+      "permission": "lost_found:write"
+    },
+    {
+      "id": "hotel.admin.12",
+      "title": "Detail nálezu nebo ztráty",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.admin.10",
+      "audienceRole": "admin",
+      "permission": "lost_found:read"
+    },
+    {
+      "id": "hotel.portal.52",
+      "title": "Detail nálezu nebo ztráty",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.portal.50",
+      "audienceRole": "member",
+      "permission": "lost_found:read"
+    },
+    {
+      "id": "hotel.lostfound.delete",
+      "title": "Smazat nález nebo ztrátu",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.admin.10",
+      "audienceRole": "admin",
+      "permission": "lost_found:write"
+    },
+    {
+      "id": "hotel.lostfound.delete",
+      "title": "Smazat nález nebo ztrátu",
+      "path": "/sections/hotel/?view=lostfound",
+      "navigation": false,
+      "parent": "hotel.portal.50",
+      "audienceRole": "member",
+      "permission": "lost_found:write"
+    },
+    {
+      "id": "hotel.admin.19",
+      "title": "Nová skladová položka",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.portal.59",
+      "title": "Nová skladová položka",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.admin.21",
+      "title": "Upravit skladovou položku",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.portal.61",
+      "title": "Upravit skladovou položku",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.admin.20",
+      "title": "Detail skladové položky",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.portal.60",
+      "title": "Detail skladové položky",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.housekeeping.room",
+      "title": "Pokoj 203 · detail a úklid",
+      "path": "/sections/hotel/?view=rooms",
+      "navigation": false,
+      "parent": "hotel.admin.5",
+      "audienceRole": "admin",
+      "permission": "housekeeping:read",
+      "dynamic_title": true
+    },
+    {
+      "id": "hotel.housekeeping.room",
+      "title": "Pokoj 203 · detail a úklid",
+      "path": "/sections/hotel/?view=rooms",
+      "navigation": false,
+      "parent": "hotel.portal.45",
+      "audienceRole": "member",
+      "permission": "housekeeping:read",
+      "dynamic_title": true
+    },
+    {
+      "id": "hotel.inventory.movement-in",
+      "title": "Sklad · příjem",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.movement-in",
+      "title": "Sklad · příjem",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.movement-out",
+      "title": "Sklad · výdej",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.movement-out",
+      "title": "Sklad · výdej",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.movement-adjust",
+      "title": "Sklad · odpis",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.movement-adjust",
+      "title": "Sklad · odpis",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.delete",
+      "title": "Smazat skladový pohyb",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false
+    },
+    {
+      "id": "hotel.inventory.delete",
+      "title": "Smazat skladový pohyb",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false
     }
-  ]
+  ],
+  "navigation_mode": "message"
 }

@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse, JSONResponse
 
 from app.security.cml_assertion import AssertionDenied, WebVerifier
+from app.security.cml_requests import WebRequests, ReceiptFault, mutation_permission, owner_key, request_id
 
 
 class CmlWebBoundary:
@@ -24,6 +25,7 @@ class CmlWebBoundary:
         self.session_factory = session_factory
         self.resolve_identity = resolve_identity
         self.ui_root = Path(ui_root).resolve()
+        self.requests = WebRequests(session_factory)
         path = os.getenv('CML_WEB_JWKS_PATH')
         self.verifier = WebVerifier.from_file(audience, path) if path else None
 
@@ -75,9 +77,17 @@ class CmlWebBoundary:
             if suffix == 'identity':
                 await JSONResponse(identity['public'], headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return
+            if suffix == 'api/request-status':
+                params = parse_qs(query, keep_blank_values=True)
+                if scope['method'] != 'GET' or set(params) - {'request_id', '_role'} or len(params.get('request_id', [])) != 1:
+                    raise ReceiptFault('WEB_REQUEST_ID_INVALID', 400)
+                ident = request_id(params['request_id'][0])
+                result = await asyncio.to_thread(self.requests.read, owner_key(claims), ident, identity)
+                await JSONResponse(result, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                return
             if suffix == 'ui-manifest.json':
                 manifest = json.loads((self.ui_root / 'ui-manifest.json').read_text(encoding='utf-8'))
-                manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('permissions', []))]
+                manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (not v.get('roles') or any(role in v['roles'] for role in identity['public'].get('roles', []))) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('available_permissions', identity['public'].get('permissions', [])))]
                 await JSONResponse(manifest, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return
             if not suffix.startswith('api/'):
@@ -122,6 +132,22 @@ class CmlWebBoundary:
                     return {'type': 'http.request', 'body': bytes(body), 'more_body': False}
                 return await receive()
 
-            await self.app(forwarded, replay_body, send)
+            permission = mutation_permission(suffix) if self.audience == 'hotel' else None
+            if scope['method'] not in {'GET', 'HEAD'} and permission and 'idempotency-key' in headers:
+                ident = request_id(headers['idempotency-key'])
+                previous = await asyncio.to_thread(self.requests.admit, owner_key(claims), ident, identity, scope['method'], exact_path, bytes(body), permission)
+                if previous is not None:
+                    if previous['state'] != 'completed':
+                        raise ReceiptFault('WEB_REQUEST_UNCERTAIN', 409)
+                    from starlette.responses import Response
+                    response = Response(status_code=204) if previous['status'] == 204 else JSONResponse(previous['body'], status_code=previous['status'])
+                    response.headers['Cache-Control'] = 'no-store'
+                    await response(scope, receive, send)
+                    return
+                await self.requests.dispatch(owner_key(claims), ident, self.app, forwarded, replay_body, send)
+            else:
+                await self.app(forwarded, replay_body, send)
+        except ReceiptFault as exc:
+            await JSONResponse({'error': {'code': exc.code, 'message': 'Načtěte původní výsledek operace.'}, 'uncertain': exc.code == 'WEB_REQUEST_UNCERTAIN'}, status_code=exc.status, headers={'Cache-Control': 'no-store'})(scope, receive, send)
         except (AssertionDenied, UnicodeError):
             await JSONResponse({'error': 'cml_web_denied'}, status_code=401, headers={'Cache-Control': 'no-store'})(scope, receive, send)

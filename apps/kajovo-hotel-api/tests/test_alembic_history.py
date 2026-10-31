@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0047_cml_web_nonce"]
+    assert script.get_heads() == ["0048_cml_web_request"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -113,7 +113,7 @@ def test_cml_nonce_upgrade_is_additive_and_cannot_remove_replay_protection(tmp_p
         with engine.begin() as connection:
             connection.execute(text("INSERT INTO voice_smart_deliveries(id,owner_session_id,arguments_digest,status) VALUES('cml-preserve','owner','digest','delivered')"))
         before=schema()
-        command.upgrade(config,"head")
+        command.upgrade(config,"0047_cml_web_nonce")
         after=schema()
         assert set(after)==set(before)|{"cml_web_nonce"}
         assert {name:after[name]for name in before}==before
@@ -126,6 +126,42 @@ def test_cml_nonce_upgrade_is_additive_and_cannot_remove_replay_protection(tmp_p
             assert connection.scalar(text("SELECT version_num FROM alembic_version"))=="0047_cml_web_nonce"
             assert connection.scalar(text("SELECT count(*) FROM cml_web_nonce"))==1
             assert connection.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='cml-preserve'"))=="delivered"
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+
+
+def test_cml_receipt_upgrade_preserves_native_rows_and_prevents_identity_rollback(tmp_path, monkeypatch):
+    import pytest
+    from sqlalchemy import text
+    database=tmp_path/'cml-receipt.db'
+    monkeypatch.setenv('KAJOVO_API_DATABASE_URL',f'sqlite:///{database}')
+    get_settings.cache_clear()
+    config=_alembic_config()
+    engine=create_engine(f'sqlite:///{database}')
+    def schema():
+        inspector=inspect(engine)
+        return {name:[{**column,'type':str(column['type'])}for column in inspector.get_columns(name)]for name in inspector.get_table_names()}
+    try:
+        command.upgrade(config,'0047_cml_web_nonce')
+        with engine.begin() as conn:
+            conn.execute(text("INSERT INTO voice_smart_deliveries(id,owner_session_id,arguments_digest,status) VALUES('receipt-preserve','owner','digest','delivered')"))
+            conn.execute(text("INSERT INTO cml_web_nonce(jti,expires_at)VALUES('11111111-1111-4111-8111-111111111111',2000000000)"))
+        before=schema()
+        command.upgrade(config,'head')
+        after=schema()
+        assert set(after)==set(before)|{'cml_web_request'}
+        assert {name:after[name]for name in before}==before
+        with engine.begin() as conn:
+            conn.execute(text("INSERT INTO cml_web_request(owner,request_id,fingerprint,permission,state)VALUES('owner','synthetic-receipt','fingerprint','reports:write','uncertain')"))
+        command.upgrade(config,'head')
+        with pytest.raises(RuntimeError,match='identities must survive'):
+            command.downgrade(config,'0047_cml_web_nonce')
+        with engine.connect() as conn:
+            assert conn.scalar(text('SELECT version_num FROM alembic_version'))=='0048_cml_web_request'
+            assert conn.scalar(text('SELECT count(*) FROM cml_web_nonce'))==1
+            assert conn.scalar(text('SELECT state FROM cml_web_request'))=='uncertain'
+            assert conn.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='receipt-preserve'"))=='delivered'
     finally:
         engine.dispose()
         get_settings.cache_clear()
