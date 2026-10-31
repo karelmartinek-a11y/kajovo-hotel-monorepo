@@ -1195,6 +1195,33 @@
         "title": "ChatMessageRead",
         "type": "object"
       },
+      "ChatMessageResult": {
+        "properties": {
+          "message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatMessageRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "confirmed",
+              "not_found"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "ChatMessageResult",
+        "type": "object"
+      },
       "ChatParticipantRead": {
         "properties": {
           "display_name": {
@@ -1221,6 +1248,61 @@
           "is_active"
         ],
         "title": "ChatParticipantRead",
+        "type": "object"
+      },
+      "ChatPushConfigRead": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "participant_id": {
+            "title": "Participant Id",
+            "type": "integer"
+          },
+          "public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Key"
+          }
+        },
+        "required": [
+          "enabled",
+          "public_key",
+          "participant_id"
+        ],
+        "title": "ChatPushConfigRead",
+        "type": "object"
+      },
+      "ChatPushSubscriptionStatus": {
+        "properties": {
+          "participant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participant Id"
+          },
+          "subscribed": {
+            "title": "Subscribed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "subscribed",
+          "participant_id"
+        ],
+        "title": "ChatPushSubscriptionStatus",
         "type": "object"
       },
       "ChatReadThrough": {
@@ -9117,6 +9199,23 @@
           },
           {
             "in": "query",
+            "name": "after_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After Id"
+            }
+          },
+          {
+            "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
@@ -9337,6 +9436,50 @@
         ]
       }
     },
+    "/api/v1/chat/messages/result": {
+      "get": {
+        "operationId": "chat_message_result",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "client_message_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Client Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Message Result",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
     "/api/v1/chat/push/config": {
       "get": {
         "operationId": "chat_push_config",
@@ -9345,9 +9488,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Chat Push Config",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ChatPushConfigRead"
                 }
               }
             },
@@ -9421,6 +9562,49 @@
           }
         },
         "summary": "Register Push Subscription",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/push/subscriptions/status": {
+      "get": {
+        "operationId": "chat_push_subscription_status",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "subscription_hash",
+            "required": true,
+            "schema": {
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Subscription Hash",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatPushSubscriptionStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push Subscription Status",
         "tags": [
           "chat"
         ]
@@ -10723,6 +10907,16 @@
               "title": "Kind",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Download",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -11146,6 +11340,16 @@
               "title": "Kind",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Download",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -11553,6 +11757,16 @@
               "title": "Kind",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Download",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -11927,6 +12141,16 @@
             "schema": {
               "title": "Kind",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Download",
+              "type": "boolean"
             }
           }
         ],

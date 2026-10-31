@@ -157,7 +157,7 @@ aby se pevné záhlaví neobjevovalo uprostřed exportu dlouhé stránky.
 ## Neuzavřené části
 
 Zbývá úplná matice 111 předloh a všech jejich chybových stavů, přesné lokální
-překlady, zbývající snídaňové operace a všechny okrajové/rolové stavy, oznámení, úplná týmová konverzace a hlas.
+překlady, zbývající snídaňové operace a všechny okrajové/rolové stavy, živé doručení oznámení a hlas.
 Hlas dosud nemá ověřený mikrofon v opaque rámci. Přímé browserové přihlášení
 není odstřižené a nový převod identit není provedený v produkci. Centrální životní
 cyklus nových profilů/pozvánek a širší členské granty mají vlastní společné brány.
@@ -170,3 +170,33 @@ HTTP chyba nikdy není označena jako potvrzení, že obchodní účinek nenasta
 Publikace GitHub main, plné CI, produkční build/rollout a živá přejímka celé
 integrace zůstávají neprovedené. Staré browserové vstupy ani nativní Android
 nebyly tímto checkpointem vypnuté. Nebyla založena žádná firma ani agentura.
+
+## Soukromý Chat a CML upozornění – místní kvalifikace
+
+Patnáctý nový modul realizuje soukromé konverzace nad původními tabulkami
+a endpointy. Původní UI nebylo kopírované. Přidaný sender-bound GET výsledku
+`client_message_id` nikdy nevytváří účastníka, zprávu ani stav přečtení.
+Nenalezený výsledek se neinterpretuje jako nepotvrzené neodeslání. ASC kurzor
+`after_id` doplňuje původní stránkování `before_id` a nevypouští příchozí bloky
+větší než jednu stránku. Žádný nejistý POST se automaticky neopakuje.
+
+Chromium i WebKit ověřily původní API a izolovanou DB: 61 zpráv se starší historií,
+rozpracovaný text i kurzor během obnovování, přepnutí podsekce při ztracené
+odpovědi, jedinou uloženou zprávu a jedinou frontovou položku, 125 dalších
+zpráv bez vynechání, obnovu konverzace bez druhého POST a odmítnutí cizího
+výsledku i konverzace. Zobrazení má samostatné snímky při 1920/834/390 px.
+Tato kvalifikace nenahrazuje úplné vizuální porovnání všech předloh.
+
+Upozornění používají původní subscription API, čtecí stav otisku celého odběru
+a canonical `participant_id`. WebPush payload nově obsahuje příjemce; FCM
+kontrakt a provider granty se nemění. CML zajišťuje opt-in, vlastní úzce omezený
+worker a kontrolu účtu/příjemce/odběru před zobrazením. Browser testy obou enginů
+potvrdily skutečný CML bridge, IndexedDB, Hotel zápis a čtecí obnovu po ztraceném
+ACK i skutečnou instalaci module workeru bez převzetí hlavní stránky. PushManager
+a systémové oprávnění používají řízené adaptéry. Externí push a OS doručení
+nebyly provedené; produkční konfigurace ani žádná skutečná zpráva se neměnila.
+
+Celá API sada: 385 PASS / 0 skipped, 268 dosavadních FastAPI deprecation warnings.
+OpenAPI a sdílený TS klient jsou znovu generované z tohoto API. Povinný Python lint
+používá přesné parametry CI (`E,F`, existující `E501` ignore); syntaxe 15 modulů
+a oba testy pražských datumů prošly. Plné CI a produkční build nadále chybí.

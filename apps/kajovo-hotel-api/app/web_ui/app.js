@@ -1,10 +1,11 @@
-import {el,icon,field,select,button,table,panel,notice,modal,formData,showError} from './ui.js';
-import {api,view,setRole,download,exportLink} from './api.js';
+import {el,icon,select,button,panel,notice,modal,showError} from './ui.js';
+import {api,view,setRole} from './api.js';
 import {saveMutation} from './operations.js';
 import {overview,reception} from './summary.js';
 import {hotelSettings} from './settings.js';
 import {breakfastList,breakfastEditor,breakfastDetail} from './breakfast.js';
 import {readBreakfastDate} from './preferences.js';
+import {privateChat} from './chat.js';
 import {warehouseCards,warehouseCardForm,warehouseCardDetail,warehouseMovements} from './warehouse.js';
 import {modules,recordList,recordEditor,recordDetail,recordSubmitted} from './records.js';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
@@ -41,28 +42,6 @@ function roomDetail(room){
  return content;
  },{id:'hotel.housekeeping.room'});
 }
-async function chat(){const main=heading(label('hotel.admin.2','hotel.portal.40'),'Soukromé zprávy','Interní týmové konverzace. Zpráva se odešle pouze vaším výslovným tlačítkem.');const conversations=await api('api/v1/chat/conversations'),list=el('div',{class:'chat-directory'}),thread=el('div',{class:'chat-thread'});for(const c of conversations)list.append(button(c.participant.display_name+(c.unread_count?' ('+c.unread_count+')':''),()=>openThread(c,thread)));main.append(el('div',{class:'toolbar'},button('Nová konverzace',async()=>{const directory=await api('api/v1/chat/directory');modal('Nová soukromá konverzace',close=>el('div',{},directory.map(p=>button(p.display_name,async()=>{try{const c=await api('api/v1/chat/conversations',{method:'POST',body:{recipient_id:p.id}});close();await openThread(c,thread);}catch(e){error(e);}}))));})),el('div',{class:'chat-layout'},list,thread));}
-async function openThread(conversation,thread){
- const messages=await api('api/v1/chat/conversations/'+conversation.id+'/messages');
- const rendered=messages.map(m=>el('article',{class:'message '+(m.is_mine?'mine':'')},
-  el('p',{},m.body),
-  el('small',{},new Date(m.sent_at).toLocaleString('cs')+(m.read_at?' · přečteno':''))));
- thread.replaceChildren(el('h2',{},conversation.participant.display_name),el('div',{class:'messages'},rendered));
- if(messages.length)await api('api/v1/chat/conversations/'+conversation.id+'/read',{method:'POST',body:{through_message_id:messages.at(-1).id}});
- const text=el('textarea',{name:'body',required:true,maxlength:4000,'aria-label':'Zpráva'});
- const send=el('button',{type:'submit',class:'primary'},'Odeslat');
- const form=el('form',{},text,send);
- let id=crypto.randomUUID(),uncertain=false;
- form.addEventListener('submit',async e=>{
-  e.preventDefault();if(uncertain)return;send.disabled=true;
-  try{
-   await api('api/v1/chat/messages',{method:'POST',body:{recipient_id:conversation.participant.id,body:text.value,client_message_id:id}});
-   id=crypto.randomUUID();await openThread(conversation,thread);
-  }catch(err){uncertain=!!err.uncertain;showError(form,err);if(!uncertain)send.disabled=false;}
- });
- thread.append(form);
-}
-
 const viewPermission={'inventory-cards':'inventory:read','inventory-card-new':'inventory:write','inventory-card-detail':'inventory:read','inventory-movements':'inventory:read','breakfast-new':'breakfast:read','breakfast-edit':'breakfast:read','breakfast-detail':'breakfast:read',reception:'breakfast:read',rooms:'housekeeping:read',breakfast:'breakfast:read',issues:'issues:read',inventory:'inventory:read',reports:'reports:read',lostfound:'lost_found:read',settings:'settings:read'};
 async function selectViewRole(name){
  const base=name.replace(/-(new|edit|detail|submitted)$/,''),permission=viewPermission[name]??(viewPermission[base]&&(/-(new|submitted)$/.test(name)?viewPermission[base].replace(':read',':write'):viewPermission[base]));if(!permission||state.identity.permissions.includes(permission))return;
@@ -71,7 +50,7 @@ async function selectViewRole(name){
  setRole(role);state.identity=await api('identity');
 }
 const context={state,heading,go:async name=>{state.view=name;await render();}};
-async function render(){for(const dispose of state.cleanup??[])dispose();state.cleanup=[];const generation=++state.generation;document.querySelector('#content').setAttribute('aria-busy','true');try{await selectViewRole(state.view);if(generation!==state.generation)return;if(state.view==='overview')await overview(context);else if(state.view==='reception')reception(context);else if(state.view==='settings')await hotelSettings(context);else if(state.view==='rooms')await rooms();else if(state.view==='breakfast')await breakfastList(context);else if(['breakfast-new','breakfast-edit'].includes(state.view))await breakfastEditor(context);else if(state.view==='breakfast-detail')await breakfastDetail(context);else if(state.view==='chat')await chat();else if(state.view==='inventory-cards')await warehouseCards(context);else if(state.view==='inventory-card-new')await warehouseCardForm(context);else if(state.view==='inventory-card-detail')await warehouseCardDetail(context);else if(state.view==='inventory-movements')await warehouseMovements(context);else if(modules[state.view])await recordList(context,state.view);else if(/-(new|edit|detail|submitted)$/.test(state.view)){const [,key,mode]=state.view.match(/^(.+)-(new|edit|detail|submitted)$/);if(!modules[key])throw Error('Pohled neexistuje.');if(mode==='submitted')await recordSubmitted(context,key);else if(mode==='detail')await recordDetail(context,key);else await recordEditor(context,key,mode);}else throw Error('Požadovaný pohled neexistuje.');if(generation===state.generation)document.querySelector('#content').append(el('footer',{},el('span',{},document.querySelector('#content').dataset.view),el('span',{},'KájovoHotel')));}catch(e){if(generation===state.generation)error(e);}finally{if(generation===state.generation)document.querySelector('#content').setAttribute('aria-busy','false');}}
+async function render(){for(const dispose of state.cleanup??[])dispose();state.cleanup=[];const generation=++state.generation;document.querySelector('#content').setAttribute('aria-busy','true');try{await selectViewRole(state.view);if(generation!==state.generation)return;if(state.view==='overview')await overview(context);else if(state.view==='reception')reception(context);else if(state.view==='settings')await hotelSettings(context);else if(state.view==='rooms')await rooms();else if(state.view==='breakfast')await breakfastList(context);else if(['breakfast-new','breakfast-edit'].includes(state.view))await breakfastEditor(context);else if(state.view==='breakfast-detail')await breakfastDetail(context);else if(state.view==='chat')await privateChat(context);else if(state.view==='inventory-cards')await warehouseCards(context);else if(state.view==='inventory-card-new')await warehouseCardForm(context);else if(state.view==='inventory-card-detail')await warehouseCardDetail(context);else if(state.view==='inventory-movements')await warehouseMovements(context);else if(modules[state.view])await recordList(context,state.view);else if(/-(new|edit|detail|submitted)$/.test(state.view)){const [,key,mode]=state.view.match(/^(.+)-(new|edit|detail|submitted)$/);if(!modules[key])throw Error('Pohled neexistuje.');if(mode==='submitted')await recordSubmitted(context,key);else if(mode==='detail')await recordDetail(context,key);else await recordEditor(context,key,mode);}else throw Error('Požadovaný pohled neexistuje.');if(generation===state.generation)document.querySelector('#content').append(el('footer',{},el('span',{},document.querySelector('#content').dataset.view),el('span',{},'KájovoHotel')));}catch(e){if(generation===state.generation)error(e);}finally{if(generation===state.generation)document.querySelector('#content').setAttribute('aria-busy','false');}}
 
 const availableViews=await api('ui-manifest.json');
 addEventListener('message',event=>{
@@ -81,4 +60,5 @@ addEventListener('message',event=>{
  state.view=name;state.pendingNavigation=true;if(state.initialized)render();
 });
 
+parent.postMessage({type:'CML_SECTION_READY',prefix:'/sections/hotel/'},location.origin);
 try{state.breakfastDate=await readBreakfastDate();state.identity=await api('identity');setRole(state.identity.active_role);if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'chat';state.initialized=true;await render();}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}

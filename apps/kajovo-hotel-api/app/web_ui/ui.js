@@ -12,8 +12,8 @@ export function busy(form,task){const controls=[...form.querySelectorAll('button
 export function showError(container,error){container.querySelector('[role=alert]')?.remove();container.prepend(notice(error.message,'error'));}
 export function modal(title,build,options={}){
  const d=document.querySelector('#dialog'),announce=(id,title)=>parent.postMessage({type:'KAJOVO_VIEW',prefix:'/sections/hotel/',id,title},location.origin);
- d.dataset.nativeRole=getRole()??'';
- d.replaceChildren(el('h2',{id:'dialog-title'},title));const close=()=>d.close();d.append(build(close));d.append(el('div',{class:'actions'},button('Zavřít',close)));
+ const modalToken=Symbol('native-modal');d.nativeModalToken=modalToken;d.dataset.nativeRole=getRole()??'';
+ d.replaceChildren(el('h2',{id:'dialog-title'},title));const close=()=>{if(d.nativeModalToken===modalToken)d.close();};d.append(build(close));d.append(el('div',{class:'actions'},button('Zavřít',close)));
  d.onclose=()=>{if(d.open)return;d.replaceChildren();announce(document.querySelector('#content').dataset.view);};
  if(!d.open)d.showModal();if(options.id)announce(options.id,title);return d;
 }

@@ -19,6 +19,12 @@ def build_fixture():
     _private = tempfile.TemporaryDirectory(prefix="cml-hotel-fixture-")
     os.environ["KAJOVO_API_MEDIA_ROOT"] = _private.name
     os.environ["KAJOVO_API_SMTP_ENABLED"] = "false"
+    os.environ["KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64"] = ""
+    # Config-only browser qualification: no outbox worker runs in this fixture,
+    # and the socket guard below rejects every external provider connection.
+    push_public = os.getenv("HOTEL_CML_UI_PUSH_PUBLIC_KEY", "")
+    os.environ["KAJOVO_API_WEB_PUSH_VAPID_PRIVATE_KEY"] = "synthetic-unused" if push_public else ""
+    os.environ["KAJOVO_API_WEB_PUSH_VAPID_PUBLIC_KEY"] = push_public
     os.environ["KAJOVO_API_BREAKFAST_SCHEDULER_ENABLED"] = "false"
     _connect = socket.socket.connect
 
@@ -44,6 +50,11 @@ def build_fixture():
         AdminProfile,
         Base,
         BreakfastOrder,
+        ChatParticipant,
+        ChatConversation,
+        ChatMessage,
+        ChatPushOutbox,
+        ChatPushSubscription,
         InventoryItem,
         InventoryCard,
         InventoryMovement,
@@ -140,6 +151,25 @@ def build_fixture():
                 ),
             ]
         )
+        db.commit()
+
+    with factory() as db:
+        owner = ChatParticipant(principal_type="admin_profile", principal_id=1,
+                                email="owner@example.invalid", display_name="karmar78", is_active=True)
+        employee = ChatParticipant(principal_type="portal", principal_id=1,
+                                   email="attendance@example.invalid", display_name="Testovací Zaměstnanec", is_active=True)
+        db.add_all([owner, employee])
+        db.flush()
+        conversation = ChatConversation(participant_low_id=min(owner.id, employee.id),
+                                        participant_high_id=max(owner.id, employee.id))
+        db.add(conversation)
+        db.flush()
+        for index in range(1, 62):
+            db.add(ChatMessage(conversation_id=conversation.id,
+                               sender_id=employee.id if index < 61 else owner.id,
+                               body="Syntetická historická zpráva " + str(index),
+                               client_message_id="synthetic-history-" + str(index),
+                               sent_at=datetime.now(ZoneInfo("UTC"))-timedelta(minutes=62-index)))
         db.commit()
 
     class SyntheticProvider(BetterHotelHousekeepingClient):
@@ -365,6 +395,20 @@ def build_fixture():
         photo_fault["armed"] = True
         return {"armed": True}
 
+    @app.post("/__fixture/chat-burst")
+    def chat_burst():
+        with factory() as db:
+            owner = db.scalar(select(ChatParticipant).where(ChatParticipant.principal_type == "admin_profile"))
+            employee = db.scalar(select(ChatParticipant).where(ChatParticipant.principal_type == "portal", ChatParticipant.principal_id == 1))
+            conversation = db.scalar(select(ChatConversation).where(ChatConversation.participant_low_id == min(owner.id, employee.id), ChatConversation.participant_high_id == max(owner.id, employee.id)))
+            start = db.query(ChatMessage).count()
+            for index in range(1, 126):
+                db.add(ChatMessage(conversation_id=conversation.id, sender_id=employee.id,
+                                   body="Syntetický příchozí blok " + str(index),
+                                   client_message_id=f"synthetic-burst-{start}-{index}"))
+            db.commit()
+            return {"count": 125}
+
     @app.get("/__fixture/readback")
     def readback():
         with factory() as db:
@@ -380,6 +424,9 @@ def build_fixture():
                 ],
                 "issues": [{"id": row.id, "title": row.title, "status": row.status, "photos": len(row.photos)} for row in db.scalars(select(Issue))],
                 "lostfound": [{"id": row.id, "description": row.description, "status": row.status, "photos": len(row.photos)} for row in db.scalars(select(LostFoundItem))],
+                "chat": [{"id": row.id, "conversation_id": row.conversation_id, "sender_id": row.sender_id, "body": row.body, "client_id": row.client_message_id, "read": row.read_at is not None} for row in db.scalars(select(ChatMessage))],
+                "chat_push_outbox": db.query(ChatPushOutbox).count(),
+                "chat_push_subscriptions": [{"participant_id": row.participant_id} for row in db.scalars(select(ChatPushSubscription))],
                 "cards": [{"id": card.id, "number": card.number, "type": card.card_type, "items": [{"id": row.id, "ingredient_id": row.ingredient_id, "quantity": row.quantity_base} for row in card.items]} for card in db.scalars(select(InventoryCard))],
                 "movements": [{"id": row.id, "item_id": row.item_id, "card_id": row.card_id, "quantity": row.quantity} for row in db.scalars(select(InventoryMovement))],
                 "inventory": [

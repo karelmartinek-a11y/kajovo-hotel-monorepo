@@ -87,6 +87,10 @@ class CmlWebBoundary:
                 return
             if suffix == 'ui-manifest.json':
                 manifest = json.loads((self.ui_root / 'ui-manifest.json').read_text(encoding='utf-8'))
+                if self.audience == 'hotel':
+                    from app.config import get_settings
+                    config = get_settings()
+                    manifest['notifications'] = {'contract': 'kajovo-chat-push/1', 'enabled': bool(config.web_push_vapid_public_key and config.web_push_vapid_private_key)}
                 manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (not v.get('roles') or any(role in v['roles'] for role in identity['public'].get('roles', []))) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('available_permissions', identity['public'].get('permissions', [])))]
                 await JSONResponse(manifest, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return

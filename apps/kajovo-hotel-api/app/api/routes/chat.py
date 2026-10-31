@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import logging
 from datetime import timedelta
@@ -16,7 +17,10 @@ from app.api.schemas import (
     ChatFcmTokenRequest,
     ChatMessageCreate,
     ChatMessageRead,
+    ChatMessageResult,
     ChatParticipantRead,
+    ChatPushConfigRead,
+    ChatPushSubscriptionStatus,
     ChatReadThrough,
     WebPushSubscriptionCreate,
     WebPushSubscriptionDelete,
@@ -142,6 +146,30 @@ def _actor_participant(request: Request, db: Session) -> tuple[dict[str, object]
     return session, participant
 
 
+def _read_actor_participant(request: Request, db: Session) -> ChatParticipant | None:
+    """Resolve the same current principal without registering/updating a directory row."""
+    session = require_session(request, db)
+    user_id = session.get("portal_user_id")
+    if user_id is not None:
+        user = db.get(PortalUser, int(user_id))
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        kind, ident = "portal", user.id
+    else:
+        email = str(session.get("email") or "").strip().lower()
+        user = _portal_user_by_email(db, email, admin_only=True)
+        if user is not None and user.is_active:
+            kind, ident = "portal", user.id
+        else:
+            admin = db.get(AdminProfile, 1)
+            if admin is None or admin.email.strip().lower() != email:
+                raise HTTPException(status_code=403, detail="Chat is available to signed-in users only.")
+            kind, ident = "admin_profile", admin.id
+    return db.scalar(select(ChatParticipant).where(
+        ChatParticipant.principal_type == kind, ChatParticipant.principal_id == ident,
+    ))
+
+
 def _participant_live(db: Session, participant: ChatParticipant) -> bool:
     if participant.principal_type == "portal_deleted":
         return False
@@ -197,12 +225,28 @@ def _create_or_get_conversation(db: Session, first_id: int, second_id: int) -> C
     return row
 
 
-@router.get("/push/config", operation_id="chat_push_config")
-def get_push_config(request: Request, db: Session = Depends(get_db)) -> dict[str, object]:
-    _actor_participant(request, db)
+@router.get("/push/config", response_model=ChatPushConfigRead, operation_id="chat_push_config")
+def get_push_config(request: Request, db: Session = Depends(get_db)) -> ChatPushConfigRead:
+    _, actor = _actor_participant(request, db)
     settings = get_settings()
     enabled = bool(settings.web_push_vapid_public_key and settings.web_push_vapid_private_key)
-    return {"enabled": enabled, "public_key": settings.web_push_vapid_public_key if enabled else None}
+    return ChatPushConfigRead(enabled=enabled, public_key=settings.web_push_vapid_public_key if enabled else None, participant_id=actor.id)
+
+
+@router.get("/push/subscriptions/status", response_model=ChatPushSubscriptionStatus, operation_id="chat_push_subscription_status")
+def push_subscription_status(
+    request: Request,
+    response: Response,
+    subscription_hash: str = Query(pattern=r"^[0-9a-f]{64}$"),
+    db: Session = Depends(get_db),
+) -> ChatPushSubscriptionStatus:
+    response.headers["Cache-Control"] = "no-store"
+    actor = _read_actor_participant(request, db)
+    if actor is None:
+        return ChatPushSubscriptionStatus(subscribed=False, participant_id=None)
+    rows = db.scalars(select(ChatPushSubscription).where(ChatPushSubscription.participant_id == actor.id))
+    found = any(hashlib.sha256(json.dumps({'endpoint': row.endpoint, 'keys': {'auth': row.auth, 'p256dh': row.p256dh}}, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest() == subscription_hash for row in rows)
+    return ChatPushSubscriptionStatus(subscribed=found, participant_id=actor.id)
 
 
 @router.get("/directory", response_model=list[ChatParticipantRead], operation_id="chat_directory")
@@ -279,6 +323,7 @@ def list_messages(
     conversation_id: int,
     request: Request,
     before_id: int | None = Query(default=None, ge=1),
+    after_id: int | None = Query(default=None, ge=0),
     limit: int = Query(default=50, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[ChatMessageRead]:
@@ -287,8 +332,31 @@ def list_messages(
     stmt = select(ChatMessage).where(ChatMessage.conversation_id == conversation_id)
     if before_id is not None:
         stmt = stmt.where(ChatMessage.id < before_id)
-    rows = db.execute(stmt.order_by(ChatMessage.id.desc()).limit(limit)).scalars().all()
-    return [_message_read(row, actor.id) for row in reversed(rows)]
+    if after_id is not None:
+        stmt = stmt.where(ChatMessage.id > after_id)
+    order = ChatMessage.id.asc() if after_id is not None else ChatMessage.id.desc()
+    rows = db.execute(stmt.order_by(order).limit(limit)).scalars().all()
+    return [_message_read(row, actor.id) for row in (rows if after_id is not None else reversed(rows))]
+
+
+@router.get("/messages/result", response_model=ChatMessageResult, operation_id="chat_message_result")
+def message_result(
+    request: Request,
+    response: Response,
+    client_message_id: str = Query(min_length=1, max_length=64),
+    db: Session = Depends(get_db),
+) -> ChatMessageResult:
+    response.headers["Cache-Control"] = "no-store"
+    actor = _read_actor_participant(request, db)
+    if actor is None:
+        return ChatMessageResult(state="not_found")
+    message = db.scalar(select(ChatMessage).where(
+        ChatMessage.sender_id == actor.id, ChatMessage.client_message_id == client_message_id,
+    ))
+    if message is None:
+        return ChatMessageResult(state="not_found")
+    _conversation_for(db, message.conversation_id, actor.id)
+    return ChatMessageResult(state="confirmed", message=_message_read(message, actor.id))
 
 
 @router.post("/messages", response_model=ChatMessageRead, status_code=status.HTTP_201_CREATED, operation_id="chat_send_message")
@@ -454,7 +522,7 @@ def dispatch_pending_chat_pushes() -> None:
                 try:
                     webpush(
                         subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},
-                        data=json.dumps({"title": db.get(ChatParticipant, message.sender_id).display_name, "body": message.body[:160], "url": _notification_url(db, recipient, conversation.id) if recipient else f"/chat/{conversation.id}"}),
+                        data=json.dumps({"title": db.get(ChatParticipant, message.sender_id).display_name, "body": message.body[:160], "url": _notification_url(db, recipient, conversation.id) if recipient else f"/chat/{conversation.id}", "recipient_id": recipient_id}),
                         vapid_private_key=settings.web_push_vapid_private_key,
                         vapid_claims={"sub": settings.web_push_vapid_subject},
                         ttl=60 * 60 * 24,

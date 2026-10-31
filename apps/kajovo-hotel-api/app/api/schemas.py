@@ -46,6 +46,11 @@ class ChatMessageRead(BaseModel):
     read_at: datetime | None = None
 
 
+class ChatMessageResult(BaseModel):
+    state: Literal["confirmed", "not_found"]
+    message: ChatMessageRead | None = None
+
+
 class ChatConversationRead(BaseModel):
     id: int
     participant: ChatParticipantRead
@@ -112,6 +117,17 @@ class WebPushSubscriptionCreate(BaseModel):
 
 class WebPushSubscriptionDelete(BaseModel):
     endpoint: str = Field(min_length=1, max_length=2048)
+
+
+class ChatPushConfigRead(BaseModel):
+    enabled: bool
+    public_key: str | None
+    participant_id: int
+
+
+class ChatPushSubscriptionStatus(BaseModel):
+    subscribed: bool
+    participant_id: int | None
 
 
 class ChatFcmTokenRequest(BaseModel):

@@ -817,6 +817,38 @@
       "parent": "hotel.portal.58",
       "audienceRole": "member",
       "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.chat.new",
+      "title": "Nová soukromá konverzace",
+      "path": "/sections/hotel/?view=chat",
+      "parent": "hotel.admin.2",
+      "navigation": false,
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.chat.new",
+      "title": "Nová soukromá konverzace",
+      "path": "/sections/hotel/?view=chat",
+      "parent": "hotel.portal.40",
+      "navigation": false,
+      "audienceRole": "member"
+    },
+    {
+      "id": "hotel.chat.notifications",
+      "title": "Upozornění",
+      "path": "/sections/hotel/?view=chat",
+      "parent": "hotel.admin.2",
+      "navigation": false,
+      "audienceRole": "admin"
+    },
+    {
+      "id": "hotel.chat.notifications",
+      "title": "Upozornění",
+      "path": "/sections/hotel/?view=chat",
+      "parent": "hotel.portal.40",
+      "navigation": false,
+      "audienceRole": "member"
     }
   ],
   "navigation_mode": "message",
@@ -825,5 +857,6 @@
       "key": "breakfast-date",
       "type": "date"
     }
-  ]
+  ],
+  "navigation_ready_event": "CML_SECTION_READY"
 }
