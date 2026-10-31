@@ -192,3 +192,10 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   zachované: manifest není připravený k hovoru a CML call/session mutace se
   odmítají před alokací a provider voláním. Mikrofonní řadič CML je nově
   napsaný, ale fake peer test není přejímkou WebRTC nebo skutečného hovoru.
+
+- Background `cml:` identita nyní používá vlastní účelový konzument podle
+  `docs/CML_VOICE_AUTHORITY.md`, šifrovaný vlastním Voice klíčem. Před každou
+  autorizací čte CML i lokální admin roli; nemá cookie fallback nebo kladnou
+  cache. Migrace `0051_cml_voice_authority` se neodstraňuje rollbackem.
+  Výchozí call guard zůstává vypnutý; povolení v izolované browser fixture
+  není změnou produkční aktivace ani provisioningem hlasových MCP grantů.

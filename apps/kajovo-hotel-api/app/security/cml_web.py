@@ -6,6 +6,7 @@ import hmac
 import json
 import mimetypes
 import os
+import re
 import time
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -19,15 +20,22 @@ from app.security.cml_requests import WebRequests, ReceiptFault, mutation_permis
 
 
 class CmlWebBoundary:
-    def __init__(self, app, *, audience, session_factory, resolve_identity, ui_root):
+    def __init__(self, app, *, audience, session_factory, resolve_identity, ui_root, voice_authority=None, voice_enabled=False):
         self.app = app
         self.audience = audience
         self.session_factory = session_factory
         self.resolve_identity = resolve_identity
         self.ui_root = Path(ui_root).resolve()
         self.requests = WebRequests(session_factory)
+        self.voice_authority, self.voice_enabled = voice_authority, voice_enabled
         path = os.getenv('CML_WEB_JWKS_PATH')
         self.verifier = WebVerifier.from_file(audience, path) if path else None
+
+    def _voice(self):
+        if self.voice_authority is not None:
+            return self.voice_authority
+        from app.services.cml_voice_authority import default_authority
+        return default_authority()
 
     def _identity(self, claims, selected_role):
         with self.session_factory() as db:
@@ -114,7 +122,8 @@ class CmlWebBoundary:
                 if self.audience == 'hotel':
                     from app.config import get_settings
                     config = get_settings()
-                    manifest['voice'] = {'contract': 'kajovo-voice-bridge/1', 'enabled': False, 'reason': 'activation_deferred'}
+                    ready = bool(self.voice_enabled and self._voice().available())
+                    manifest['voice'] = {'contract': 'kajovo-voice-bridge/1', 'enabled': ready, 'reason': None if ready else 'activation_deferred' if not self.voice_enabled else 'authority_unavailable'}
                     manifest['notifications'] = {'contract': 'kajovo-chat-push/1', 'signalContract': 'kajovo-hotel-chat-signal/1', 'enabled': bool(config.web_push_vapid_public_key and config.web_push_vapid_private_key)}
                 manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (not v.get('roles') or any(role in v['roles'] for role in identity['public'].get('roles', []))) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('available_permissions', identity['public'].get('permissions', [])))]
                 await JSONResponse(manifest, headers={'Cache-Control': 'no-store'})(scope, receive, send)
@@ -147,11 +156,23 @@ class CmlWebBoundary:
                 if scope['method'] not in {'GET', 'HEAD'} and (type(claims.get('reauthUntil')) is not int or claims['reauthUntil'] <= int(time.time())):
                     await JSONResponse({'error': {'code': 'cml_reauth_required', 'message': 'Nejprve čerstvě ověřte identitu v KájovoCML.'}}, status_code=403, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                     return
-            # Provisioning/activation of new voice access remains explicitly deferred.
-            # Reject before allocating a call, reading a key or contacting a provider.
-            if scope['method'] not in {'GET', 'HEAD'} and suffix.startswith(('api/v1/admin/voice-core/calls', 'api/v1/admin/voice-core/sessions')):
-                await JSONResponse({'detail': {'code': 'voice_cml_activation_deferred', 'message': 'Hlasový přístup zatím není aktivní.'}}, status_code=409, headers={'Cache-Control': 'no-store'})(scope, receive, send)
-                return
+            voice_route = self.audience == 'hotel' and re.match(r'^api/v1/admin/voice-core/(?:calls|sessions)(?:/|$)', suffix)
+            if voice_route:
+                if not self.voice_enabled:
+                    if scope['method'] not in {'GET', 'HEAD'}:
+                        await JSONResponse({'detail': {'code': 'voice_cml_activation_deferred', 'message': 'Hlasový přístup zatím není aktivní.'}}, status_code=409, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                        return
+                elif not self._voice().available():
+                    await JSONResponse({'error': {'code': 'voice_authority_unavailable'}}, status_code=503, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                    return
+                else:
+                    from app.services.cml_voice_authority import VoiceAuthorityDenied
+                    try:
+                        verified = await asyncio.to_thread(self._voice().admit, claims, headers.get('x-cml-voice-authority'), create=scope['method'] == 'POST' and suffix == 'api/v1/admin/voice-core/calls')
+                        identity['state']['_kajovo_auth_session'] = verified
+                    except VoiceAuthorityDenied:
+                        await JSONResponse({'error': {'code': 'voice_authority_denied'}}, status_code=401, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                        return
             # A signed request cannot start a local login or invoke a different public protocol.
             if not suffix.startswith(('api/v1/', 'api/auth/')) or suffix.endswith(('/login', '/logout', '/reset-password', '/request-password-reset')):
                 raise AssertionDenied('route_denied')

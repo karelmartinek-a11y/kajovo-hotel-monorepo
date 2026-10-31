@@ -68,6 +68,10 @@ class WebVerifier:
                 raise AssertionDenied("native_identity_required")
             if not isinstance(claims.get("csrf"), str) or not re.fullmatch(r"[A-Za-z0-9_-]{43}", claims["csrf"]):
                 raise AssertionDenied("invalid_csrf")
+            if "voiceAuthorityHash" in claims and (self.audience != "hotel" or claims["role"] != "admin"
+                    or not re.fullmatch(r"[0-9a-f]{64}", str(claims["voiceAuthorityHash"]))
+                    or not re.match(r"^/cml-web/api/v1/admin/voice-core/(?:calls|sessions)(?:[/?]|$)", path)):
+                raise AssertionDenied("invalid_voice_authority")
             return claims
         except (ValueError, TypeError, KeyError, InvalidSignature) as exc:
             raise AssertionDenied("assertion_denied") from exc

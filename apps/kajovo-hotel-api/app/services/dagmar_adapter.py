@@ -28,6 +28,9 @@ def request_identity(request):
 
 
 def identity(owner):
+    if isinstance(owner, str) and owner.startswith('cml:'):
+        from .cml_voice_authority import default_authority
+        return verified_identity(default_authority().identity(owner))
     with SessionLocal() as db:
         record = db.scalar(select(AuthSession).where(AuthSession.session_id == owner))
         now = datetime.now(timezone.utc)

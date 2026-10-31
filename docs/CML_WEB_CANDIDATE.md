@@ -134,7 +134,7 @@ zárukou uchování rozpracovaného textu.
 
 Společný CML dokument vlastní nový typovaný mikrofonní bridge. Opaque rámec
 nedostane stream, SDP, provider klíč ani libovolnou API cestu. Řadič ověřuje
-čerstvou hlavní relaci, grant, nativní admin identitu a explicitní připravenost
+čerstvou relaci hlavního účtu nebo konkrétního Hotel admina, grant, nativní admin identitu a explicitní připravenost
 serveru před vyžádáním mikrofonu. Ukončení uvolňuje i mikrofon/peer čekající
 na odpověď; pozdní identifikátory se uklidí jednou. Nejasné vytvoření se
 neopakuje. Místní testy řadiče používají fake media/peer/poskytovatele.
@@ -145,7 +145,9 @@ CML vytvoření/změna call/session vrací `voice_cml_activation_deferred` ješt
 před alokací logického hovoru nebo provider voláním. UI ukazuje skutečný
 neaktivní stav. Nejde o potvrzenou funkční přejímku hlasového hovoru, WebRTC,
 zvuku, M2M schopností nebo doručení pošty. Původní nativní/backendový hlasový
-lifetime se neaktivuje ani nepřepisuje jako náhradní přihlášení.
+lifetime se neaktivuje ani nepřepisuje jako náhradní přihlášení. Nový vlastní
+background konzument a místní syntetická WebRTC kvalifikace jsou popsány v
+[CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md); výchozí guard zůstává vypnutý.
 
 Chromium a WebKit kvalifikovaly oba původní management API přes skutečnou CML
 gateway, šířky 1920/834/390, jediné uložení po ztracené odpovědi konfigurace,
