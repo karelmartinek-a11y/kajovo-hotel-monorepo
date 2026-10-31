@@ -195,6 +195,56 @@ def build_fixture():
             self.writes += 1
             return {"data": [], "meta": {"action": "updated"}}
 
+    from app.services.breakfast.diets import ensure_diets
+    from app.services.breakfast.sync import BetterHotelBreakfastAggregate
+
+    reservation_id = "synthetic-stay-101"
+    metadata = {
+        reservation_id: {
+            "guest_name": "Syntetický host",
+            "arrival": today - timedelta(days=1),
+            "departure": today + timedelta(days=1),
+        }
+    }
+    with factory() as db:
+        ensure_diets(db, metadata)
+        order = db.get(BreakfastOrder, 1)
+        order.source_key = today.isoformat() + "|" + reservation_id
+        db.add(
+            BreakfastOrder(
+                id=2,
+                service_date=today + timedelta(days=1),
+                source_key=(today + timedelta(days=1)).isoformat() + "|" + reservation_id,
+                room_number="101",
+                guest_name="Syntetický host",
+                guest_count=1,
+                status="pending",
+            )
+        )
+        db.commit()
+
+    class SyntheticBreakfast:
+        def __init__(self, _settings):
+            pass
+
+        def build_aggregates(self, *, service_start, service_end):
+            return (
+                [
+                    BetterHotelBreakfastAggregate(
+                        service_date=service_start,
+                        source_key=service_start.isoformat() + "|" + reservation_id,
+                        room_number="101",
+                        guest_count=2,
+                        guest_name="Syntetický host",
+                        reservations=metadata,
+                    )
+                ],
+                1,
+                0,
+            )
+
+    breakfast.BetterHotelBreakfastClient = SyntheticBreakfast
+
     provider = SyntheticProvider()
     housekeeping._client = lambda: provider
 
@@ -203,7 +253,44 @@ def build_fixture():
 
     settings.build_email_service = no_outbound_mail
     users.build_email_service = no_outbound_mail
+    exports = []
+    fixture_errors = []
+
+    class ObservePdf:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            import hashlib
+
+            digest = hashlib.sha256()
+            size = 0
+            pdf = False
+
+            async def observed(message):
+                nonlocal size, pdf
+                if message["type"] == "http.response.start":
+                    pdf = (
+                        dict(message.get("headers", []))
+                        .get(b"content-type", b"")
+                        .startswith(b"application/pdf")
+                    )
+                if message["type"] == "http.response.body" and pdf:
+                    content = message.get("body", b"")
+                    digest.update(content)
+                    size += len(content)
+                await send(message)
+
+            try:
+                await self.app(scope, receive, observed)
+            except Exception as exc:
+                fixture_errors.append(type(exc).__name__)
+                raise
+            if pdf:
+                exports.append({"path": scope["path"], "sha256": digest.hexdigest(), "bytes": size})
+
     app = FastAPI()
+    app.add_middleware(ObservePdf)
     for module in [
         users,
         housekeeping,
@@ -230,22 +317,83 @@ def build_fixture():
         ui_root=Path(__file__).resolve().parents[1] / "app/web_ui",
     )
 
+    photo_fault = {"armed": False, "dropped": 0}
+
+    class DropPhotoReply:
+        """Lose only the ACK after the real multipart request and receipt commit.
+
+        Browser interception may replay WebKit file streams as empty files. This
+        fault leaves the actual browser upload untouched and loses the response
+        outside CmlWebBoundary, after its durable response has been recorded.
+        """
+
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            target = (scope["type"] == "http" and scope["method"] == "POST"
+                      and scope["path"].startswith("/cml-web/api/v1/reports/")
+                      and scope["path"].endswith("/photos") and photo_fault["armed"])
+            if not target:
+                await self.app(scope, receive, send)
+                return
+            messages = []
+
+            async def capture(message):
+                messages.append(message)
+
+            await self.app(scope, receive, capture)
+            status_code = next(message["status"] for message in messages
+                               if message["type"] == "http.response.start")
+            if status_code == 200:
+                from starlette.responses import JSONResponse
+
+                photo_fault["armed"] = False
+                photo_fault["dropped"] += 1
+                await JSONResponse({"error": "synthetic_photo_reply_loss"},
+                                   status_code=503)(scope, receive, send)
+            else:
+                for message in messages:
+                    await send(message)
+
+    app.add_middleware(DropPhotoReply)
+
+    @app.post("/__fixture/photo-fault")
+    def arm_photo_fault():
+        photo_fault["armed"] = True
+        return {"armed": True}
+
     @app.get("/__fixture/readback")
     def readback():
         with factory() as db:
             return {
+                "exports": list(exports),
+                "errors": list(fixture_errors),
+                "photo_replies_dropped": photo_fault["dropped"],
                 "provider_writes": provider.writes,
                 "room_states": dict(provider.states),
                 "reports": [
-                    {"id": r.id, "title": r.title, "status": r.status}
+                    {"id": r.id, "title": r.title, "status": r.status, "photos": [{"id": photo.id, "bytes": photo.size_bytes} for photo in r.photos]}
                     for r in db.scalars(select(Report))
                 ],
+                "issues": [{"id": row.id, "title": row.title, "status": row.status} for row in db.scalars(select(Issue))],
+                "lostfound": [{"id": row.id, "description": row.description, "status": row.status} for row in db.scalars(select(LostFoundItem))],
                 "inventory": [
                     {"id": r.id, "name": r.name, "stock": r.current_stock}
                     for r in db.scalars(select(InventoryItem))
                 ],
                 "breakfast": [
-                    {"id": r.id, "status": r.status} for r in db.scalars(select(BreakfastOrder))
+                    {
+                        "id": r.id,
+                        "status": r.status,
+                        "service_date": r.service_date.isoformat(),
+                        "guest_count": r.guest_count,
+                        "guest_name": r.guest_name,
+                        "diet_no_gluten": r.diet_no_gluten,
+                        "diet_no_milk": r.diet_no_milk,
+                        "diet_no_pork": r.diet_no_pork,
+                    }
+                    for r in db.scalars(select(BreakfastOrder))
                 ],
             }
 

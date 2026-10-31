@@ -19,3 +19,8 @@ export function view(id,title,description){
  const main=document.querySelector('#content');main.dataset.view=id;main.replaceChildren();const crumb=document.createElement('div');crumb.className='crumb';crumb.textContent='KájovoCML Ng Lite  ›  KájovoHotel';const label=document.createElement('div');label.className='eyebrow';label.textContent=id;const heading=document.createElement('h1');heading.textContent=title;const p=document.createElement('p');p.className='page-description';p.textContent=description;main.append(crumb,label,heading,p);parent.postMessage({type:'KAJOVO_VIEW',prefix,id},location.origin);return main;
 }
 export async function download(path,options={}){const blob=await api(path,{...options,blob:true}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=options.filename??'export';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
+
+export function exportLink(path,label){
+ const url=new URL(prefix+path,location.origin);if(url.origin!==location.origin||!url.pathname.startsWith(prefix))throw Error('Neplatná exportní cesta.');if(role)url.searchParams.set('_role',role);
+ const link=document.createElement('a');link.className='button export-link';link.href=url.href;link.setAttribute('download','');link.textContent=label;return link;
+}

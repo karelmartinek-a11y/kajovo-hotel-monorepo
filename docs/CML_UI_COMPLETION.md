@@ -53,10 +53,55 @@ uložení SMTP konfigurace bez SMTP volání a zaměstnance s více skutečnými
 Pokus použít nepřiřazenou roli admin je odmítnutý. Integrační scénář je
 `tests/library/hotel-ui.browser.mjs` v samostatném CML repozitáři.
 
+## Další ověřený lokální krok: pracovní stránky, snídaně a média
+
+Snídaně mají tabulkový denní přehled a samostatný formulář i detail podle
+předlohy. Diety pracují s původní verzí konkrétního pobytu, včetně jeho dalších
+snídaňových dnů. Výdej a vrácení používají původní časové/rolové podmínky.
+Administrátorská reaktivace výdeje, smazání vybraného období a jednotlivého
+záznamu byly ověřeny čtením izolované DB; mazání celého dne má vlastní původní
+endpoint a UI, browserová kvalifikace této konkrétní větve ještě zbývá.
+
+Hlášení, závady, nálezy a sklad mají samostatné stránky pro vytvoření, úpravu a
+detail; rozpracované formuláře se uchovávají v paměti dokumentu. Skladový stav
+není při úpravě katalogu editovatelný a neposílá se v update payloadu. Nadále se
+mění původními pohyby. Nálezy respektují omezení recepce na zpracování; mazání
+nálezu i závady je pouze administrátorské. Role s právem pouze vytvářet bez práva
+číst (pokojská) ještě potřebují dokončit vlastní tok potvrzení a fotodokumentace;
+nejde o důvod přidat jim čtecí grant nad cizí evidencí.
+
+Fotodokumentace používá původní multipart API a originální soubory. Nahrání po
+ztrátě odpovědi se obnoví pouze čtením trvalého výsledku. Formulář drží původní
+roli i nevyřízený pokus při přepnutí stránky. Náhledy se načítají autorizovaným
+fetch a blob URL se uvolňují. Původní foto GETy mají aditivní parametr `download`
+(výchozí false), který pouze vrací soubor jako přílohu. Browserový test porovnává
+bajty staženého originálu s přesným vstupem. Oba původní PDF exporty jsou přímé
+GET odkazy přes CML, se zachovaným názvem i bajty a čerstvou autorizací.
+
+Zvolený den snídaní se uchovává v sessionStorage hlavního dokumentu přes úzký
+bridge `date`, deklarovaný manifestem. Rámec nemůže vybrat cestu ve storage ani
+číst libovolný klíč. Namespace zahrnuje přihlášený účet a konkrétní sekci. Stav
+neobsahuje credentials, záznamy, rozpracované zápisy ani neprodlužuje přihlášení.
+Odpovědi jsou vázané na aktuální parent/frame, origin, prefix a UUID požadavku.
+
+Chromium i WebKit procházejí hlavní pohledy i vytváření, úpravy a detaily čtyř
+evidencí při 1920/834/390 px. Navíc ověřují snídaně, ztracenou odpověď u diety i
+fotografie, dekódovaný náhled/zvětšení, shodu původního obrázku a PDF a zvolený
+den po reloadu. Fixture nepřehrává WebKit multipart přes `route.fetch` (ten
+předával prázdný soubor); ztrátu ACK injektuje až za skutečně dokončenou boundary,
+po původním browserovém uploadu a commitu receipt. Kontroluje se jediná fotografie
+a trvalý původní výsledek. Všechny údaje a poskytovatelé zůstávají syntetičtí.
+
+Python API sada znovu prošla 374/374 testy (268 dosavadních FastAPI on_event
+warnings). Kontrola JS parsuje 13 nových modulů. Centrální CML sada prošla 26
+testy včetně dvou testů izolace deklarovaného UI data. Dva časové JS a jedenáct
+release-gate unit testů prošly. Gitleaks nad celým aplikačním zdrojem nevyžadoval
+žádnou výjimku.
+
 ## Neuzavřené části
 
 Zbývá úplná matice 111 předloh a všech jejich chybových stavů, přesné lokální
-překlady, další snídaňové a skladové operace, fotografie/exporty, oznámení a hlas.
+překlady, zbývající snídaňové a skladové operace (doklady, piktogramy), všechny rolové větve médií, oznámení a hlas.
 Hlas dosud nemá ověřený mikrofon v opaque rámci. Přímé browserové přihlášení
 není odstřižené a nový převod identit není provedený v produkci. Centrální životní
 cyklus nových profilů/pozvánek a širší členské granty mají vlastní společné brány.

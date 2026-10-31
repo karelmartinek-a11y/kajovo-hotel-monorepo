@@ -29,6 +29,10 @@ const refs={
     "detail": [
       "hotel.admin.24",
       "hotel.portal.64"
+    ],
+    "delete": [
+      "hotel.reports.delete",
+      "hotel.reports.delete"
     ]
   },
   "lost-found": {
@@ -61,6 +65,10 @@ const refs={
     "detail": [
       "hotel.admin.20",
       "hotel.portal.60"
+    ],
+    "delete": [
+      "hotel.inventory.item-delete",
+      "hotel.inventory.item-delete"
     ]
   }
 };
@@ -90,6 +98,8 @@ const titles={
   "hotel.portal.61": "Upravit skladovou položku",
   "hotel.portal.63": "Nové hlášení",
   "hotel.portal.64": "Detail hlášení",
-  "hotel.portal.65": "Upravit hlášení"
+  "hotel.portal.65": "Upravit hlášení",
+  "hotel.reports.delete": "Smazat hlášení",
+  "hotel.inventory.item-delete": "Smazat skladovou položku"
 };
 export function moduleReference(path,kind,admin){const id=refs[path]?.[kind]?.[admin?0:1];return {id,title:titles[id]??'Odstranit záznam'};}

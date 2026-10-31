@@ -5,7 +5,7 @@ import {el,button,notice,showError} from './ui.js';
 // apart from their subsequent read-back; a failed read can never create again.
 export async function saveMutation(container,{path,method='POST',body,verify,done}){
  if(container.nativeMutation)return;
- const role=container.closest('dialog')?.dataset.nativeRole||getRole();
+ const role=container.dataset.nativeRole||container.closest('dialog')?.dataset.nativeRole||getRole();
  const apiRead=(path,options={})=>api(path,{...options,roleOverride:role});
  const operation={id:crypto.randomUUID(),accepted:false,result:null,reading:false,role};
  container.nativeMutation=operation;

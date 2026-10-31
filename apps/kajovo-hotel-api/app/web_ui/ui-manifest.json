@@ -167,7 +167,7 @@
     {
       "id": "hotel.admin.15",
       "title": "Nová závada",
-      "path": "/sections/hotel/?view=issues",
+      "path": "/sections/hotel/?view=issues-new",
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
@@ -176,7 +176,7 @@
     {
       "id": "hotel.portal.55",
       "title": "Nová závada",
-      "path": "/sections/hotel/?view=issues",
+      "path": "/sections/hotel/?view=issues-new",
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
@@ -185,7 +185,7 @@
     {
       "id": "hotel.admin.17",
       "title": "Upravit závadu",
-      "path": "/sections/hotel/?view=issues",
+      "path": "/sections/hotel/?view=issues-edit",
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
@@ -194,7 +194,7 @@
     {
       "id": "hotel.portal.57",
       "title": "Upravit závadu",
-      "path": "/sections/hotel/?view=issues",
+      "path": "/sections/hotel/?view=issues-edit",
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
@@ -203,7 +203,7 @@
     {
       "id": "hotel.admin.16",
       "title": "Detail závady",
-      "path": "/sections/hotel/?view=issues",
+      "path": "/sections/hotel/?view=issues-detail",
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
@@ -212,7 +212,7 @@
     {
       "id": "hotel.portal.56",
       "title": "Detail závady",
-      "path": "/sections/hotel/?view=issues",
+      "path": "/sections/hotel/?view=issues-detail",
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
@@ -239,7 +239,7 @@
     {
       "id": "hotel.admin.23",
       "title": "Nové hlášení",
-      "path": "/sections/hotel/?view=reports",
+      "path": "/sections/hotel/?view=reports-new",
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
@@ -248,7 +248,7 @@
     {
       "id": "hotel.portal.63",
       "title": "Nové hlášení",
-      "path": "/sections/hotel/?view=reports",
+      "path": "/sections/hotel/?view=reports-new",
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
@@ -257,7 +257,7 @@
     {
       "id": "hotel.admin.25",
       "title": "Upravit hlášení",
-      "path": "/sections/hotel/?view=reports",
+      "path": "/sections/hotel/?view=reports-edit",
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
@@ -266,7 +266,7 @@
     {
       "id": "hotel.portal.65",
       "title": "Upravit hlášení",
-      "path": "/sections/hotel/?view=reports",
+      "path": "/sections/hotel/?view=reports-edit",
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
@@ -275,7 +275,7 @@
     {
       "id": "hotel.admin.24",
       "title": "Detail hlášení",
-      "path": "/sections/hotel/?view=reports",
+      "path": "/sections/hotel/?view=reports-detail",
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
@@ -284,7 +284,7 @@
     {
       "id": "hotel.portal.64",
       "title": "Detail hlášení",
-      "path": "/sections/hotel/?view=reports",
+      "path": "/sections/hotel/?view=reports-detail",
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
@@ -293,7 +293,7 @@
     {
       "id": "hotel.admin.11",
       "title": "Nový nález nebo ztráta",
-      "path": "/sections/hotel/?view=lostfound",
+      "path": "/sections/hotel/?view=lostfound-new",
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
@@ -302,7 +302,7 @@
     {
       "id": "hotel.portal.51",
       "title": "Nový nález nebo ztráta",
-      "path": "/sections/hotel/?view=lostfound",
+      "path": "/sections/hotel/?view=lostfound-new",
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
@@ -311,7 +311,7 @@
     {
       "id": "hotel.admin.13",
       "title": "Upravit nález nebo ztrátu",
-      "path": "/sections/hotel/?view=lostfound",
+      "path": "/sections/hotel/?view=lostfound-edit",
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
@@ -320,7 +320,7 @@
     {
       "id": "hotel.portal.53",
       "title": "Upravit nález nebo ztrátu",
-      "path": "/sections/hotel/?view=lostfound",
+      "path": "/sections/hotel/?view=lostfound-edit",
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
@@ -329,7 +329,7 @@
     {
       "id": "hotel.admin.12",
       "title": "Detail nálezu nebo ztráty",
-      "path": "/sections/hotel/?view=lostfound",
+      "path": "/sections/hotel/?view=lostfound-detail",
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
@@ -338,7 +338,7 @@
     {
       "id": "hotel.portal.52",
       "title": "Detail nálezu nebo ztráty",
-      "path": "/sections/hotel/?view=lostfound",
+      "path": "/sections/hotel/?view=lostfound-detail",
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
@@ -365,7 +365,7 @@
     {
       "id": "hotel.admin.19",
       "title": "Nová skladová položka",
-      "path": "/sections/hotel/?view=inventory",
+      "path": "/sections/hotel/?view=inventory-new",
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
@@ -374,7 +374,7 @@
     {
       "id": "hotel.portal.59",
       "title": "Nová skladová položka",
-      "path": "/sections/hotel/?view=inventory",
+      "path": "/sections/hotel/?view=inventory-new",
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
@@ -383,7 +383,7 @@
     {
       "id": "hotel.admin.21",
       "title": "Upravit skladovou položku",
-      "path": "/sections/hotel/?view=inventory",
+      "path": "/sections/hotel/?view=inventory-edit",
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
@@ -392,7 +392,7 @@
     {
       "id": "hotel.portal.61",
       "title": "Upravit skladovou položku",
-      "path": "/sections/hotel/?view=inventory",
+      "path": "/sections/hotel/?view=inventory-edit",
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
@@ -401,7 +401,7 @@
     {
       "id": "hotel.admin.20",
       "title": "Detail skladové položky",
-      "path": "/sections/hotel/?view=inventory",
+      "path": "/sections/hotel/?view=inventory-detail",
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
@@ -410,7 +410,7 @@
     {
       "id": "hotel.portal.60",
       "title": "Detail skladové položky",
-      "path": "/sections/hotel/?view=inventory",
+      "path": "/sections/hotel/?view=inventory-detail",
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
@@ -515,7 +515,207 @@
       "audienceRole": "member",
       "permission": "inventory:write",
       "dynamic_title": false
+    },
+    {
+      "id": "hotel.admin.7",
+      "title": "Nový snídaňový záznam",
+      "path": "/sections/hotel/?view=breakfast-new",
+      "navigation": false,
+      "parent": "hotel.admin.6",
+      "audienceRole": "admin",
+      "permission": "breakfast:read",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.portal.47",
+      "title": "Nový snídaňový záznam",
+      "path": "/sections/hotel/?view=breakfast-new",
+      "navigation": false,
+      "parent": "hotel.portal.46",
+      "audienceRole": "member",
+      "permission": "breakfast:read",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.admin.9",
+      "title": "Upravit snídaňový záznam",
+      "path": "/sections/hotel/?view=breakfast-edit",
+      "navigation": false,
+      "parent": "hotel.admin.6",
+      "audienceRole": "admin",
+      "permission": "breakfast:read",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.portal.49",
+      "title": "Upravit snídaňový záznam",
+      "path": "/sections/hotel/?view=breakfast-edit",
+      "navigation": false,
+      "parent": "hotel.portal.46",
+      "audienceRole": "member",
+      "permission": "breakfast:read",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.admin.8",
+      "title": "Detail snídaně",
+      "path": "/sections/hotel/?view=breakfast-detail",
+      "navigation": false,
+      "parent": "hotel.admin.6",
+      "audienceRole": "admin",
+      "permission": "breakfast:read",
+      "roles": [
+        "admin",
+        "recepce",
+        "snídaně"
+      ]
+    },
+    {
+      "id": "hotel.portal.48",
+      "title": "Detail snídaně",
+      "path": "/sections/hotel/?view=breakfast-detail",
+      "navigation": false,
+      "parent": "hotel.portal.46",
+      "audienceRole": "member",
+      "permission": "breakfast:read",
+      "roles": [
+        "admin",
+        "recepce",
+        "snídaně"
+      ]
+    },
+    {
+      "id": "hotel.breakfast.delete",
+      "title": "Smazat snídaňový záznam",
+      "path": "/sections/hotel/?view=breakfast",
+      "navigation": false,
+      "parent": "hotel.admin.6",
+      "audienceRole": "admin",
+      "permission": "breakfast:write",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.breakfast.delete",
+      "title": "Smazat snídaňový záznam",
+      "path": "/sections/hotel/?view=breakfast",
+      "navigation": false,
+      "parent": "hotel.portal.46",
+      "audienceRole": "member",
+      "permission": "breakfast:write",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.breakfast.manage",
+      "title": "Správa snídaní",
+      "path": "/sections/hotel/?view=breakfast",
+      "navigation": false,
+      "parent": "hotel.admin.6",
+      "audienceRole": "admin",
+      "permission": "breakfast:write",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.breakfast.manage",
+      "title": "Správa snídaní",
+      "path": "/sections/hotel/?view=breakfast",
+      "navigation": false,
+      "parent": "hotel.portal.46",
+      "audienceRole": "member",
+      "permission": "breakfast:write",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.breakfast.day-delete",
+      "title": "Smazat snídaně vybraného dne",
+      "path": "/sections/hotel/?view=breakfast",
+      "navigation": false,
+      "parent": "hotel.admin.6",
+      "audienceRole": "admin",
+      "permission": "breakfast:write",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.breakfast.day-delete",
+      "title": "Smazat snídaně vybraného dne",
+      "path": "/sections/hotel/?view=breakfast",
+      "navigation": false,
+      "parent": "hotel.portal.46",
+      "audienceRole": "member",
+      "permission": "breakfast:write",
+      "roles": [
+        "admin",
+        "recepce"
+      ]
+    },
+    {
+      "id": "hotel.reports.delete",
+      "title": "Smazat hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.admin.22",
+      "audienceRole": "admin",
+      "permission": "reports:write"
+    },
+    {
+      "id": "hotel.reports.delete",
+      "title": "Smazat hlášení",
+      "path": "/sections/hotel/?view=reports",
+      "navigation": false,
+      "parent": "hotel.portal.62",
+      "audienceRole": "member",
+      "permission": "reports:write"
+    },
+    {
+      "id": "hotel.inventory.item-delete",
+      "title": "Smazat skladovou položku",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.inventory.item-delete",
+      "title": "Smazat skladovou položku",
+      "path": "/sections/hotel/?view=inventory",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write"
     }
   ],
-  "navigation_mode": "message"
+  "navigation_mode": "message",
+  "state_keys": [
+    {
+      "key": "breakfast-date",
+      "type": "date"
+    }
+  ]
 }

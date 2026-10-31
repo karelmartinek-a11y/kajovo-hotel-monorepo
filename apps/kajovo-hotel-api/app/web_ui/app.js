@@ -1,11 +1,11 @@
 import {el,icon,field,select,button,table,panel,notice,modal,formData,showError} from './ui.js';
-import {api,view,setRole,download} from './api.js';
+import {api,view,setRole,download,exportLink} from './api.js';
 import {saveMutation} from './operations.js';
-import {inventoryExtras} from './inventory.js';
-import {pragueInput,pragueInstant} from './time.js';
 import {overview,reception} from './summary.js';
 import {hotelSettings} from './settings.js';
-import {moduleReference} from './references.js';
+import {breakfastList,breakfastEditor,breakfastDetail} from './breakfast.js';
+import {readBreakfastDate} from './preferences.js';
+import {modules,recordList,recordEditor,recordDetail} from './records.js';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
 const state={date:today(),identity:null,view:new URLSearchParams(location.search).get('view')??'rooms',generation:0,roomFilter:'',floor:'',uncertainRooms:new Set()};
 const statuses={clean:['Uklizeno pro nájezd','check'],dirty:['Neuklizeno','close'],stay_no_linen:['Pobyt bez ložního prádla','bed'],stay_with_linen:['Uklizeno s ložním prádlem','linen'],do_not_disturb:['Nerušit','do-not-disturb'],technical_issue:['Technický problém','issue'],windows_cleaned:['Umytá okna','window'],painted:['Vymalováno','paint']};
@@ -40,61 +40,6 @@ function roomDetail(room){
  return content;
  },{id:'hotel.housekeeping.room'});
 }
-const modules={
- issues:{path:'issues',title:'Závady',id:'hotel.admin.14',member:'hotel.portal.54',newId:'hotel.admin.15',fields:[['Název','title','text',true],['Popis','description','textarea'],['Umístění','location','text',true],['Pokoj','room_number','text'],['Priorita','priority',[['low','Nízká'],['medium','Střední'],['high','Vysoká'],['critical','Kritická']]],['Stav','status',[['new','Nová'],['in_progress','Řeší se'],['resolved','Vyřešeno'],['closed','Uzavřeno']]],['Přiřazeno','assignee','text']]},
- reports:{path:'reports',title:'Provozní hlášení',id:'hotel.admin.22',member:'hotel.portal.62',newId:'hotel.admin.23',fields:[['Název','title','text',true],['Popis','description','textarea'],['Stav','status',[['open','Otevřené'],['in_progress','Řeší se'],['closed','Uzavřené']]]]},
- lostfound:{path:'lost-found',title:'Ztráty a nálezy',id:'hotel.admin.10',member:'hotel.portal.50',newId:'hotel.admin.11',fields:[['Typ','item_type',[['found','Nález'],['lost','Ztráta']]],['Popis','description','textarea',true],['Kategorie','category','text',true],['Umístění','location','text',true],['Pokoj','room_number','text'],['Datum a čas','event_at','datetime-local',true],['Stav','status',[['new','Nové'],['stored','Uloženo'],['claimed','Přihlásil se majitel'],['returned','Vráceno'],['disposed','Vyřazeno']]],['Majitel','claimant_name','text'],['Kontakt','claimant_contact','text'],['Poznámka k předání','handover_note','textarea']]},
- inventory:{path:'inventory',title:'Sklad',id:'hotel.admin.18',member:'hotel.portal.58',newId:'hotel.admin.19',fields:[['Název','name','text',true],['Jednotka','unit',[['ks','ks'],['g','g'],['l','l']]],['Minimální zásoba','min_stock','number',true],['Aktuální zásoba','current_stock','number',true],['Základních jednotek na kus','amount_per_piece_base','number',true]]}
-};
-function moduleEditor(config,row){const reference=moduleReference(config.path,row?'edit':'new',state.identity.admin);modal(reference.title,close=>{
- const controls=el('div',{class:'form-grid'});
- for(const [title,key,type,required] of config.fields){
-  const value=row?.[key]??(key==='unit'?'ks':key==='amount_per_piece_base'?1:type==='number'?0:''),limits={required, ...(type==='number'?{min:key==='amount_per_piece_base'?1:0,max:2147483647,step:1}:{}),...(type==='text'?{maxlength:key==='title'||key==='name'?255:key==='room_number'?32:key==='category'?64:255}:{}),...(type==='datetime-local'?{step:1}: {})};
-  if(Array.isArray(type))controls.append(select(title,key,type,value));
-  else if(type==='textarea')controls.append(el('label',{class:'field wide'},el('span',{},title),el('textarea',{name:key,'aria-label':title,required,maxlength:key==='handover_note'?2000:4000,minlength:required?3:0},value)));
-  else controls.append(field(title,key,type,type==='datetime-local'?pragueInput(value):value,limits));
-  if(type==='datetime-local')controls.append(select('Výskyt času při změně letního času',key+'-fold',[['','Vyberte pouze při opakovaném čase'],['first','První výskyt'],['second','Druhý výskyt']],''));
- }
- if(config.path==='lost-found')controls.append(el('fieldset',{class:'wide'},el('legend',{},'Štítky'),[['kontaktova','Kontaktován'],['nezastizen','Nezastižen'],['vyzvedne','Vyzvedne'],['odesleme','Odešleme']].map(([key,title])=>el('label',{class:'check-field'},el('input',{type:'checkbox',name:'tag-'+key,checked:row?.tags?.includes(key)}),title))));
- const form=el('form',{},controls,el('button',{type:'submit',class:'primary'},'Uložit'));
- form.addEventListener('submit',event=>{
-  event.preventDefault();const raw=formData(form),payload={};
-  try{for(const [,key,type] of config.fields){
-   if(type==='number'){payload[key]=Number(raw[key]);if(!Number.isSafeInteger(payload[key]))throw Error('Zadejte celé číslo v povoleném rozsahu.');}
-   else if(type==='datetime-local'){payload[key]=row&&raw[key]===pragueInput(row[key])?(/([Zz]|[+-]\d\d:\d\d)$/.test(row[key])?row[key]:row[key]+'Z'):pragueInstant(raw[key],raw[key+'-fold']);}
-   else payload[key]=raw[key]===''?null:raw[key];
-  }}catch(error){showError(form,error);return;}
-  if(config.path==='lost-found')payload.tags=['kontaktova','nezastizen','vyzvedne','odesleme'].filter(key=>raw['tag-'+key]==='on');
-  saveMutation(form,{path:'api/v1/'+config.path+(row?'/'+row.id:''),method:row?'PUT':'POST',body:payload,verify:async (result,{read})=>{
-   if(!result?.id)throw Error('Odpověď neobsahuje identitu uloženého záznamu.');
-   const actual=await read('api/v1/'+config.path+'/'+result.id);
-   for(const [key,value] of Object.entries(payload)){
-    const same=key==='event_at'?Date.parse(actual[key]+(/([Zz]|[+-]\d\d:\d\d)$/.test(actual[key])?'':'Z'))===Date.parse(value):JSON.stringify(actual[key])===JSON.stringify(value);
-    if(!same)throw Error('Uložený údaj nebyl potvrzen následným načtením: '+(config.fields.find(f=>f[1]===key)?.[0]??'Štítky'));
-   }
-  },done:async()=>{close();await render();}});
- });return form;
-},{id:reference.id});}
-async function moduleList(key){const config=modules[key],generation=state.generation,main=heading(label(config.id,config.member),config.title,'Projděte záznamy a otevřete podrobnosti vybrané položky.');const rows=await api('api/v1/'+config.path);if(generation!==state.generation)return;const search=el('input',{type:'search',placeholder:'Hledat','aria-label':'Hledat záznam'}),list=el('div');const draw=()=>{const q=search.value.toLocaleLowerCase('cs');list.replaceChildren(table(['Záznam','Umístění / jednotka','Stav / zásoba','Akce'],rows.filter(r=>String(r.title??r.name??r.description).toLocaleLowerCase('cs').includes(q)).map(r=>[r.title??r.name??r.description,r.location??r.unit??'—',r.current_stock??r.status,button('Detail',()=>moduleDetail(config,r))])));};search.addEventListener('input',draw);draw();main.append(el('div',{class:'toolbar'},search,state.identity.permissions.includes((config.path==='lost-found'?'lost_found':config.path)+':write')?button(moduleReference(config.path,'new',state.identity.admin).title,()=>moduleEditor(config)):null),panel(config.title,list));}
-async function moduleDetail(config,row){
- try{
- const generation=state.generation,actual=await api('api/v1/'+config.path+'/'+row.id);if(generation!==state.generation)return;
- const permission=(config.path==='lost-found'?'lost_found':config.path)+':write',canWrite=state.identity.permissions.includes(permission);
- const reference=moduleReference(config.path,'detail',state.identity.admin);
- modal(reference.title,close=>{
-  const content=el('div',{},table(['Údaj','Hodnota'],config.fields.map(([title,key])=>[title,actual[key]??'—'])));
-  if(config.path==='inventory')content.append(inventoryExtras(actual,()=>state.view==='inventory'?moduleDetail(config,actual):render(),canWrite));
-  if(canWrite)content.append(el('div',{class:'actions'},button('Upravit',()=>{close();moduleEditor(config,actual);}),button('Odstranit',()=>{
-   close();const deletion=moduleReference(config.path,'delete',state.identity.admin);modal(deletion.title,end=>{
-    const confirmation=el('div',{},notice('Tuto operaci nelze automaticky vrátit.','warning'));
-    confirmation.append(button('Odstranit tento záznam',()=>saveMutation(confirmation,{path:'api/v1/'+config.path+'/'+actual.id,method:'DELETE',verify:async(_,{read})=>{try{await read('api/v1/'+config.path+'/'+actual.id);}catch(error){if(error.status===404)return;throw error;}throw Error('Záznam stále existuje.');},done:async()=>{end();await render();}}),'danger'));return confirmation;
-   },{id:deletion.id});
-  })));
-  return content;
- },{id:reference.id});
- }catch(failure){error(failure);}
-}
-async function breakfast(){const generation=state.generation,main=heading(label('hotel.admin.6','hotel.portal.46'),'Snídaně','Denní přehled zakoupených snídaní a jejich výdeje.');const data=await api('api/v1/breakfast/daily-overview?service_date='+state.date);if(generation!==state.generation)return;main.append(dateBar(),panel('Denní souhrn',el('div',{class:'metrics'},el('span',{class:'badge'},'Pokojů: '+data.summary.total_orders),el('span',{class:'badge'},'Hostů: '+data.summary.total_guests))));const grid=el('div',{class:'breakfast-grid'});for(const order of data.orders){const body=el('div',{},el('strong',{},'Pokoj '+order.room_number),el('p',{},order.guest_count+' hostů · '+order.guest_name),el('p',{},'Stav: '+order.status),order.note?notice(order.note,'warning'):null,el('p',{},[['diet_no_gluten','Bez lepku'],['diet_no_milk','Bez mléka'],['diet_no_pork','Bez vepřového']].filter(([k])=>order[k]).map(([,v])=>v).join(' · ')));if(['pending','preparing'].includes(order.status))body.append(button('Vydat snídani',async e=>{e.currentTarget.disabled=true;try{const r=await api('api/v1/breakfast/'+order.id,{method:'PUT',body:{status:'served',expected_updated_at:order.updated_at}});if(r.status!=='served')throw Error('Výdej nebyl potvrzen.');await render();}catch(err){showError(body,err);}}));grid.append(panel('Pokoj '+order.room_number,body,'breakfast'));}main.append(grid);}
 async function chat(){const main=heading(label('hotel.admin.2','hotel.portal.40'),'Soukromé zprávy','Interní týmové konverzace. Zpráva se odešle pouze vaším výslovným tlačítkem.');const conversations=await api('api/v1/chat/conversations'),list=el('div',{class:'chat-directory'}),thread=el('div',{class:'chat-thread'});for(const c of conversations)list.append(button(c.participant.display_name+(c.unread_count?' ('+c.unread_count+')':''),()=>openThread(c,thread)));main.append(el('div',{class:'toolbar'},button('Nová konverzace',async()=>{const directory=await api('api/v1/chat/directory');modal('Nová soukromá konverzace',close=>el('div',{},directory.map(p=>button(p.display_name,async()=>{try{const c=await api('api/v1/chat/conversations',{method:'POST',body:{recipient_id:p.id}});close();await openThread(c,thread);}catch(e){error(e);}}))));})),el('div',{class:'chat-layout'},list,thread));}
 async function openThread(conversation,thread){
  const messages=await api('api/v1/chat/conversations/'+conversation.id+'/messages');
@@ -117,15 +62,15 @@ async function openThread(conversation,thread){
  thread.append(form);
 }
 
-const viewPermission={reception:'breakfast:read',rooms:'housekeeping:read',breakfast:'breakfast:read',issues:'issues:read',inventory:'inventory:read',reports:'reports:read',lostfound:'lost_found:read',settings:'settings:read'};
+const viewPermission={'breakfast-new':'breakfast:read','breakfast-edit':'breakfast:read','breakfast-detail':'breakfast:read',reception:'breakfast:read',rooms:'housekeeping:read',breakfast:'breakfast:read',issues:'issues:read',inventory:'inventory:read',reports:'reports:read',lostfound:'lost_found:read',settings:'settings:read'};
 async function selectViewRole(name){
- const permission=viewPermission[name];if(!permission||state.identity.permissions.includes(permission))return;
+ const permission=viewPermission[name]??viewPermission[name.replace(/-(new|edit|detail)$/,'')];if(!permission||state.identity.permissions.includes(permission))return;
  const role=state.identity.roles.find(role=>state.identity.role_permissions?.[role]?.includes(permission));
  if(!role)throw Error('Do tohoto pohledu nemáte oprávnění.');
  setRole(role);state.identity=await api('identity');
 }
 const context={state,heading,go:async name=>{state.view=name;await render();}};
-async function render(){const generation=++state.generation;document.querySelector('#content').setAttribute('aria-busy','true');try{await selectViewRole(state.view);if(generation!==state.generation)return;if(state.view==='overview')await overview(context);else if(state.view==='reception')reception(context);else if(state.view==='settings')await hotelSettings(context);else if(state.view==='rooms')await rooms();else if(state.view==='breakfast')await breakfast();else if(state.view==='chat')await chat();else if(modules[state.view])await moduleList(state.view);else throw Error('Požadovaný pohled neexistuje.');if(generation===state.generation)document.querySelector('#content').append(el('footer',{},el('span',{},document.querySelector('#content').dataset.view),el('span',{},'KájovoHotel')));}catch(e){if(generation===state.generation)error(e);}finally{if(generation===state.generation)document.querySelector('#content').setAttribute('aria-busy','false');}}
+async function render(){for(const dispose of state.cleanup??[])dispose();state.cleanup=[];const generation=++state.generation;document.querySelector('#content').setAttribute('aria-busy','true');try{await selectViewRole(state.view);if(generation!==state.generation)return;if(state.view==='overview')await overview(context);else if(state.view==='reception')reception(context);else if(state.view==='settings')await hotelSettings(context);else if(state.view==='rooms')await rooms();else if(state.view==='breakfast')await breakfastList(context);else if(['breakfast-new','breakfast-edit'].includes(state.view))await breakfastEditor(context);else if(state.view==='breakfast-detail')await breakfastDetail(context);else if(state.view==='chat')await chat();else if(modules[state.view])await recordList(context,state.view);else if(/-(new|edit|detail)$/.test(state.view)){const [,key,mode]=state.view.match(/^(.+)-(new|edit|detail)$/);if(!modules[key])throw Error('Pohled neexistuje.');if(mode==='detail')await recordDetail(context,key);else await recordEditor(context,key,mode);}else throw Error('Požadovaný pohled neexistuje.');if(generation===state.generation)document.querySelector('#content').append(el('footer',{},el('span',{},document.querySelector('#content').dataset.view),el('span',{},'KájovoHotel')));}catch(e){if(generation===state.generation)error(e);}finally{if(generation===state.generation)document.querySelector('#content').setAttribute('aria-busy','false');}}
 
 const availableViews=await api('ui-manifest.json');
 addEventListener('message',event=>{
@@ -135,4 +80,4 @@ addEventListener('message',event=>{
  state.view=name;state.pendingNavigation=true;if(state.initialized)render();
 });
 
-try{state.identity=await api('identity');setRole(state.identity.active_role);if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'chat';state.initialized=true;await render();}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}
+try{state.breakfastDate=await readBreakfastDate();state.identity=await api('identity');setRole(state.identity.active_role);if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'chat';state.initialized=true;await render();}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}

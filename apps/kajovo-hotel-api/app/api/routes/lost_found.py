@@ -205,6 +205,7 @@ def get_lost_found_photo(
     item_id: int,
     photo_id: int,
     kind: str,
+    download: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     photo = db.scalar(
@@ -221,4 +222,4 @@ def get_lost_found_photo(
         if kind == "thumb":
             return storage.placeholder_thumb_response("NA")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media file not found")
-    return FileResponse(path, media_type=photo.mime_type)
+    return FileResponse(path, media_type=photo.mime_type, filename=path.name if download else None)
