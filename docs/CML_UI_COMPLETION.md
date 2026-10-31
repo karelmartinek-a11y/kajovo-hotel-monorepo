@@ -207,5 +207,9 @@ literály a JSX text; kontroly poškozených Unicode sekvencí nad celými soubo
 zůstávají zachované. Dva regresní testy zahrnují původní platné případy i
 poškozený český text vedle platného API volání. Oba běží v release planu.
 Samostatné copy-out instalace Dagmar a Voice Core prošly s vyhrazeným místním
-pnpm store; globální uživatelský store nebyl měněn. Úplný gate se opakuje
-nad opraveným textovým kontrolorem.
+pnpm store; globální uživatelský store nebyl měněn. Úplný místní gate následně prošel na
+`067734b67819e9d304545ecfb1648d367bd1db0d`: všech 30 kontrol PASS, včetně
+obou copy-out sestavení, kontraktů, obou web buildů, Android policy a původních
+reálných browserových baseline/voice-memory/voice-lifecycle/voice UI testů.
+Lokální JSON artefakt je `release-gate-067734b67819-20261031T072735.449360+0000.json`.
+GitHub CI, výsledný produkční image a nasazení tím nejsou doložené.
