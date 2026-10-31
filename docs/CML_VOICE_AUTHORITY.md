@@ -70,3 +70,12 @@ relaci uzavírá skutečný background lease po testovém posunu jeho deadline;
 kvality AI odpovědí, fyzického mikrofonu/reproduktorů, veřejné sítě, placeného
 modelu nebo doručení zprávy. Publikace, nasazení, úplná vizuální přejímka a
 rozhodnutí o dosud výslovně odložené aktivaci zůstávají samostatné otevřené kroky.
+
+Úplný místní release gate na zdroji
+`244a87e43574635f43b8c749662a494218814de0` prošel všech 31 povinných kontrol.
+Artefakt je
+`artifacts/release-gate/release-gate-244a87e43574-20261031T163237.676414+0000.json`.
+Obsahuje výsledek každého příkazu a přesné zdrojové SHA. Management/paměťové
+průchody přes skutečnou CML gateway znovu prošly v Chromiu a WebKitu na
+1920/834/390 px s výchozím call guardem stále vypnutým. Nejde o GitHub CI,
+publikaci nebo produkční release; ty zatím neproběhly.
