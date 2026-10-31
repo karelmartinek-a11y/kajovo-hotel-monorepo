@@ -226,7 +226,10 @@ této opravě; před vydáním musí znovu projít nad výsledným zdrojem.
 Nová migrace 0049 má vlastní regresi zachování všech původních sloupců,
 uživatele a jeho účtenky při odmítnutí downgradu. Samostatná regrese 0048
 zůstává zaměřená na tuto konkrétní původní migraci. Šest migračních testů
-prošlo. Úplný gate nad `5bc28ef` před opravou očekávání nové hlavy vykázal
-29/30 PASS a dvě migrační selhání v API sadě; aktuální kombinace vyžaduje nový
-celý běh. Samostatné Docker buildy API/admin/web a skutečný proxy runtime test
+prošlo. Úplný místní gate nad `931b602d2b7a` nyní prošel všemi 30 kontrolami,
+včetně 504 společných API/Voice Core/Dagmar testů (270 dosavadních warnings),
+obou copy-out instalací a sestavení, skutečných webových/hlasových regresí
+a kontraktů. Artefakt je `release-gate-931b602d2b7a-20261031T100659.703806+0000.json`.
+Samostatné Docker buildy API/admin/web a skutečný proxy runtime test také
 prošly včetně CML podpisu, odmítnutí nepodepsané žádosti a nonce replaye.
+GitHub CI a výsledný produkční image/nasazení nadále nejsou provedené.
