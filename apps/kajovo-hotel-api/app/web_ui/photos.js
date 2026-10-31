@@ -29,3 +29,27 @@ export async function photoDocumentation(ctx,config,row,canUpload,refresh,{write
  }
  return root;
 }
+
+export async function pictogramDocumentation(ctx,row,canUpload,refresh){
+ const role=getRole(),generation=ctx.state.generation,path='api/v1/inventory/'+row.id+'/pictogram',content=el('div',{class:'pictogram-documentation'});
+ if(row.pictogram_thumb_path){
+  const blob=await api(path+'/thumb',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return content;const url=URL.createObjectURL(blob);ctx.state.cleanup.push(()=>URL.revokeObjectURL(url));
+  content.append(el('img',{src:url,alt:'Piktogram položky '+row.name,class:'inventory-pictogram'}),exportLink(path+'/original?download=true','Stáhnout původní piktogram'));
+ }else content.append(el('div',{class:'photo-empty'},icon('camera'),'Položka nemá nahraný piktogram.'));
+ if(!canUpload)return content;
+ ctx.state.pictogramDrafts??=new Map();const existing=ctx.state.pictogramDrafts.get(row.id);if(existing){content.append(existing);return content;}
+ const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp','aria-label':'Piktogram k nahrání',required:true}),selection=el('small',{},'Žádný vybraný soubor'),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},'Piktogram položky'),el('label',{class:'photo-file-picker'},file,el('span',{},'Vybrat piktogram')),selection,el('small',{},'JPEG, PNG nebo WebP do 2 MB.')),el('button',{type:'submit'},icon('upload'),'Nahrát piktogram'));form.dataset.nativeRole=role;ctx.state.pictogramDrafts.set(row.id,form);file.addEventListener('change',()=>selection.textContent=file.files[0]?.name??'Žádný vybraný soubor');
+ const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value=>value.toString(16).padStart(2,'0')).join('');
+ let preparing=false;
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(preparing||form.nativeMutation)return;
+  const selected=file.files[0];if(!selected||!accepted.has(selected.type)||selected.size<1||selected.size>2_000_000){showError(form,Error('Vyberte obrázek JPEG, PNG nebo WebP do 2 MB.'));return;}
+  preparing=true;
+  try{
+   const fingerprint=await digest(await selected.arrayBuffer()),body=new FormData();body.append('file',selected);
+   await saveMutation(form,{path,body,verify:async(result,{read})=>{
+    if(result?.id!==row.id||!result.pictogram_path||result.pictogram_path===row.pictogram_path)throw Error('Odpověď nepotvrdila nový piktogram této položky.');const current=await read('api/v1/inventory/'+row.id);if(current.pictogram_path!==result.pictogram_path)throw Error('Aktuální piktogram se liší od původního výsledku.');const original=await read(path+'/original',{blob:true});if(original.size!==selected.size||await digest(await original.arrayBuffer())!==fingerprint)throw Error('Původní soubor piktogramu neodpovídá nahranému obrázku.');
+   },done:async()=>{ctx.state.pictogramDrafts.delete(row.id);await refresh();}});
+  }catch(error){showError(form,error);}finally{preparing=false;}
+ });content.append(form);return content;
+}

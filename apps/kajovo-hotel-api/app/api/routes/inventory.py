@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import mimetypes
 from datetime import date
@@ -5,7 +6,7 @@ from io import BytesIO
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.schemas import (
@@ -68,6 +69,14 @@ def _movement_prefix(movement_type: str) -> str:
 
 def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
     year = doc_date.year
+    if db.get_bind().dialect.name == "postgresql":
+        # Numbering spans all items. Serialize the original namespace after
+        # stock rows so disjoint documents cannot receive the same number.
+        ident = int.from_bytes(
+            hashlib.sha256(f"inventory-number:{prefix}:{year}".encode()).digest()[:8],
+            "big", signed=True,
+        )
+        db.execute(text("SELECT pg_advisory_xact_lock(:ident)"), {"ident": ident})
     like = f"{prefix}-{year}-%"
     last = db.execute(
         select(InventoryMovement.document_number)
@@ -83,8 +92,10 @@ def _next_document_number(db: Session, prefix: str, doc_date: date) -> str:
     return f"{prefix}-{year}-{seq + 1:04d}"
 
 
-def _load_item_or_404(db: Session, item_id: int) -> InventoryItem:
-    item = db.get(InventoryItem, item_id)
+def _load_item_or_404(db: Session, item_id: int, *, for_update: bool = False) -> InventoryItem:
+    item = (db.scalar(select(InventoryItem).where(InventoryItem.id == item_id)
+                      .with_for_update().execution_options(populate_existing=True))
+            if for_update else db.get(InventoryItem, item_id))
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladová položka nebyla nalezena.")
     return item
@@ -213,7 +224,8 @@ def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> 
     ingredient_ids = sorted({item.ingredient_id for item in payload.items})
     ingredients = {
         item.id: item
-        for item in db.scalars(select(InventoryItem).where(InventoryItem.id.in_(ingredient_ids)))
+        for item in db.scalars(select(InventoryItem).where(InventoryItem.id.in_(ingredient_ids))
+                               .order_by(InventoryItem.id).with_for_update())
     }
     missing_ids = [ingredient_id for ingredient_id in ingredient_ids if ingredient_id not in ingredients]
     if missing_ids:
@@ -223,9 +235,12 @@ def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> 
         )
 
     if payload.card_type in {InventoryCardType.OUT, InventoryCardType.ADJUST}:
+        quantities: dict[int, int] = {}
         for line in payload.items:
-            item = ingredients[line.ingredient_id]
-            if line.quantity_base > item.current_stock:
+            quantities[line.ingredient_id] = quantities.get(line.ingredient_id, 0) + line.quantity_base
+        for ingredient_id, quantity in quantities.items():
+            item = ingredients[ingredient_id]
+            if quantity > item.current_stock:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Nedostatečný skladový stav u položky '{item.name}'",
@@ -298,7 +313,14 @@ def delete_card(
     db: Session = Depends(get_db),
     _admin: None = Depends(require_role("admin")),
 ) -> None:
+    locked = db.scalar(select(InventoryCard).where(InventoryCard.id == card_id).with_for_update())
+    if locked is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skladový doklad nebyl nalezen.")
     card = _load_card_or_404(db, card_id)
+    stock_ids = sorted({movement.item_id for movement in card.movements})
+    db.scalars(select(InventoryItem).where(InventoryItem.id.in_(stock_ids))
+               .order_by(InventoryItem.id).with_for_update()
+               .execution_options(populate_existing=True)).all()
     for movement in card.movements:
         item = movement.item or _load_item_or_404(db, movement.item_id)
         if movement.movement_type == InventoryMovementType.IN.value:
@@ -372,7 +394,7 @@ def update_item(
     payload: InventoryItemUpdate,
     db: Session = Depends(get_db),
 ) -> InventoryItem:
-    item = _load_item_or_404(db, item_id)
+    item = _load_item_or_404(db, item_id, for_update=True)
 
     updates = payload.model_dump(exclude_unset=True)
     updates.pop("current_stock", None)
@@ -392,7 +414,7 @@ def update_item(
 def add_movement(
     item_id: int, payload: InventoryMovementCreate, db: Session = Depends(get_db)
 ) -> InventoryItem:
-    item = _load_item_or_404(db, item_id)
+    item = _load_item_or_404(db, item_id, for_update=True)
 
     doc_date = payload.document_date
     if payload.movement_type == InventoryMovementType.IN:
@@ -448,6 +470,7 @@ def delete_item(
     db: Session = Depends(get_db),
     _admin: None = Depends(require_role("admin")),
 ) -> None:
+    _load_item_or_404(db, item_id, for_update=True)
     item = _load_item_detail(db, item_id)
     has_history = db.scalar(
         select(InventoryAuditLog.id)
@@ -473,7 +496,7 @@ def delete_movement(
     db: Session = Depends(get_db),
     _admin: None = Depends(require_role("admin")),
 ) -> None:
-    item = _load_item_or_404(db, item_id)
+    item = _load_item_or_404(db, item_id, for_update=True)
     movement = db.scalar(
         select(InventoryMovement)
         .where(InventoryMovement.id == movement_id)
@@ -530,7 +553,7 @@ def upload_item_pictogram(
 
 
 @router.get("/{item_id}/pictogram/{kind}")
-def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
+def get_item_pictogram(item_id: int, kind: str, download: bool = Query(default=False), db: Session = Depends(get_db)):
     item = _load_item_or_404(db, item_id)
     if kind not in {"thumb", "original"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nepodporovaný typ obrázku.")
@@ -544,7 +567,7 @@ def get_item_pictogram(item_id: int, kind: str, db: Session = Depends(get_db)):
             return storage.placeholder_thumb_response("SK")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Soubor média nebyl nalezen.")
     media_type = "image/jpeg" if kind == "thumb" else (mimetypes.guess_type(path.name)[0] or "image/jpeg")
-    return FileResponse(path, media_type=media_type)
+    return FileResponse(path, media_type=media_type, filename=path.name if download else None)
 
 
 @router.get("/stocktake/pdf")

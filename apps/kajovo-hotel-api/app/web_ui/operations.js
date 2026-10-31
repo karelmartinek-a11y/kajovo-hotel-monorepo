@@ -33,6 +33,9 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
     await verified();box.remove();
    }catch(error){showError(box,error);}finally{operation.reading=false;if(read.isConnected)read.disabled=false;}
   });box.append(read);container.prepend(box);
+  // A long native document scrolls in the CML viewport. Bring the recovery
+  // action to its center so a fixed shell header cannot cover it in WebKit.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(read.isConnected){read.scrollIntoView({block:'center',inline:'nearest'});read.focus({preventScroll:true});}}));
  };
  try{
   operation.result=await api(path,{method,body,id:operation.id,roleOverride:role});operation.accepted=true;

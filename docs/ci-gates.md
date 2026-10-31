@@ -59,3 +59,15 @@ the runtime recorder. Whole Dagmar copy-out cleans inherited Python module paths
 before installation and uses the same FastAPI 0.115.14 as the production image for
 canonical OpenAPI. API and Dagmar manifests pin this existing runtime version;
 this is not a runtime dependency upgrade.
+
+## Skladové transakce nového CML UI kandidáta
+
+Job `validate` poskytuje izolovaný PostgreSQL `postgres:16.15-alpine3.23` pro
+`HOTEL_INVENTORY_TEST_DATABASE_URL`. API sada spouští také čtyři skutečné
+transakční scénáře v `test_inventory_postgres.py`. Testovací uživatel/heslo
+workflow patří pouze této dočasné CI databázi; nejsou produkční credentials.
+Lokální reprodukce vyžaduje explicitní PostgreSQL URL na localhost a databázi
+končící `_test`. Každý test vytváří pouze vlastní schema a uklízí právě je.
+Bez této URL se místní PG testy hlásí skipped. PASS běžné SQLite sady není
+důkazem PostgreSQL řádkových ani advisory zámků. Rozsah lokálního kandidáta
+a dosud neprovedená publikace/rollout jsou v `CML_UI_COMPLETION.md`.

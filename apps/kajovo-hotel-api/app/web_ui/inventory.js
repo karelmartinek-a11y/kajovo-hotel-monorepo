@@ -2,11 +2,11 @@ import {el,icon,field,select,button,table,notice,modal,formData,showError} from 
 import {saveMutation} from './operations.js';
 const labels={in:['Příjem','stock-in'],out:['Výdej','stock-out'],adjust:['Odpis','stock-adjust']};
 const date=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
-export function inventoryExtras(row,refresh,canWrite){
+export function inventoryExtras(row,refresh,canWrite,canDelete=false){
  const content=el('div',{},el('h3',{},'Skladové pohyby'));
  if(canWrite)content.append(el('div',{class:'actions'},Object.entries(labels).map(([type,[label,ico]])=>button([icon(ico),label],()=>movementEditor(row,type,refresh)))));
  content.append(table(['Datum','Typ','Množství','Kusy','Doklad','Poznámka','Akce'],(row.movements??[]).map(m=>[
-  m.document_date??'—',labels[m.movement_type]?.[0]??m.movement_type,m.quantity+' '+row.unit,m.quantity_pieces,m.document_number??'—',m.note??'—',canWrite?button('Odstranit pohyb',()=>removeMovement(row,m,refresh)):null,
+  m.document_date??'—',labels[m.movement_type]?.[0]??m.movement_type,m.quantity+' '+row.unit,m.quantity_pieces,m.document_number??'—',m.note??'—',canDelete?button('Odstranit pohyb',()=>removeMovement(row,m,refresh)):null,
  ])));
  if(row.audit_logs)content.append(el('h3',{},'Historie položky'),table(['Čas','Akce','Podrobnosti'],row.audit_logs.map(r=>[r.created_at,r.action,r.detail])));
  return content;

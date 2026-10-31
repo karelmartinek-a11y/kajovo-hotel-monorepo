@@ -4,7 +4,8 @@ import {saveMutation,storedMutation} from './operations.js';
 import {inventoryExtras} from './inventory.js';
 import {pragueInput,pragueInstant} from './time.js';
 import {moduleReference} from './references.js';
-import {photoDocumentation} from './photos.js';
+import {photoDocumentation,pictogramDocumentation} from './photos.js';
+import {warehouseList} from './warehouse.js';
 export const modules={
  issues:{path:'issues',title:'Závady',id:'hotel.admin.14',member:'hotel.portal.54',newId:'hotel.admin.15',fields:[['Název','title','text',true],['Popis','description','textarea'],['Umístění','location','text',true],['Pokoj','room_number','text'],['Priorita','priority',[['low','Nízká'],['medium','Střední'],['high','Vysoká'],['critical','Kritická']]],['Stav','status',[['new','Nová'],['in_progress','Řeší se'],['resolved','Vyřešeno'],['closed','Uzavřeno']]],['Přiřazeno','assignee','text']]},
  reports:{path:'reports',title:'Provozní hlášení',id:'hotel.admin.22',member:'hotel.portal.62',newId:'hotel.admin.23',fields:[['Název','title','text',true],['Popis','description','textarea'],['Stav','status',[['open','Otevřené'],['in_progress','Řeší se'],['closed','Uzavřené']]]]},
@@ -19,6 +20,7 @@ function can(ctx,config,operation){
  if(!ctx.state.identity.permissions.includes(permission(config)))return false;
  const role=ctx.state.identity.active_role;
  if(config.path==='issues')return operation==='new'||operation==='photo'?['admin','pokojská','údržba'].includes(role):operation==='delete'?role==='admin':['admin','údržba'].includes(role);
+ if(config.path==='inventory'&&operation==='delete')return role==='admin';
  if(config.path==='lost-found'&&operation==='delete')return role==='admin';
  if(config.path==='lost-found'&&operation==='edit')return role!=='recepce';
  return true;
@@ -28,6 +30,7 @@ function selected(ctx,key){return ctx.state.recordIds?.get(key);}
 function move(ctx,key,mode,row){ctx.state.recordIds??=new Map();if(row)ctx.state.recordIds.set(key,row.id);return ctx.go(key+(mode==='list'?'':'-'+mode));}
 function display(config,key,value){const type=config.fields.find(field=>field[1]===key)?.[2];if(Array.isArray(type))return type.find(([id])=>id===value)?.[1]??value??'—';if(key==='event_at'&&value)return new Date(value+(/([Zz]|[+-]\d\d:\d\d)$/.test(value)?'':'Z')).toLocaleString('cs-CZ',{timeZone:'Europe/Prague'});return value??'—';}
 export async function recordList(ctx,key){
+ if(key==='inventory')return warehouseList(ctx,{newItem:()=>move(ctx,key,'new'),detail:row=>move(ctx,key,'detail',row)});
  const config=modules[key],generation=ctx.state.generation,main=ctx.heading(ctx.state.identity.admin?config.id:config.member,config.title,'Projděte záznamy a otevřete podrobnosti vybrané položky.');
  const rows=await api('api/v1/'+config.path);if(generation!==ctx.state.generation)return;
  const search=el('input',{type:'search',placeholder:'Hledat','aria-label':'Hledat záznam'}),statusField=config.fields.find(field=>field[1]==='status'),status=statusField?select('Stav','status-filter',[['','Všechny stavy'],...statusField[2]],''):null,list=el('div');
@@ -80,7 +83,7 @@ export async function recordDetail(ctx,key){
  if(config.path==='lost-found'&&can(ctx,config,'new')&&actual.status!=='claimed')actions.append(button([icon('arrow-right'),'Označit jako zpracováno'],()=>saveMutation(actions,{path:'api/v1/'+config.path+'/'+actual.id,method:'PUT',body:{status:'claimed'},verify:async(_,{read})=>{const row=await read('api/v1/'+config.path+'/'+actual.id);if(row.status!=='claimed')throw Error('Zpracování nebylo potvrzeno.');},done:refresh}),'primary'));
  if(can(ctx,config,'delete'))actions.append(button([icon('trash'),'Odstranit'],()=>{const deletion=reference(ctx,config,'delete');modal(deletion.title,close=>{const confirmation=el('div',{},notice('Tuto operaci nelze automaticky vrátit.','warning'));confirmation.append(button('Odstranit tento záznam',()=>saveMutation(confirmation,{path:'api/v1/'+config.path+'/'+actual.id,method:'DELETE',verify:async(_,{read})=>{try{await read('api/v1/'+config.path+'/'+actual.id);}catch(error){if(error.status===404)return;throw error;}throw Error('Záznam stále existuje.');},done:async()=>{close();if(ctx.state.view===key+'-detail')await move(ctx,key,'list');}}),'danger'));return confirmation;},{id:deletion.id});},'danger'));
  content.append(actions);main.append(panel(actual.title??actual.name??ref.title,content,key==='inventory'?'inventory':key==='issues'?'issue':key==='lostfound'?'lostfound':'report'));
- if(config.path==='inventory')main.append(panel('Skladové pohyby a historie',inventoryExtras(actual,refresh,can(ctx,config,'edit')),'inventory'));
+ if(config.path==='inventory'){const pictogram=await pictogramDocumentation(ctx,actual,can(ctx,config,'edit'),refresh);if(generation!==ctx.state.generation)return;main.append(panel('Piktogram',pictogram,'camera'),panel('Skladové pohyby a historie',inventoryExtras(actual,refresh,can(ctx,config,'edit'),ctx.state.identity.active_role==='admin'),'inventory'));}
  else {
   const documentation=await photoDocumentation(ctx,config,actual,can(ctx,config,'photo'),refresh);if(generation!==ctx.state.generation)return;
   main.append(panel('Fotodokumentace a historie',el('div',{class:'record-history'},documentation,[['Záznam vytvořen',actual.created_at],['Poslední změna',actual.updated_at],['Zahájeno řešení',actual.in_progress_at],['Vyřešeno',actual.resolved_at],['Uzavřeno',actual.closed_at],['Zpracováno',actual.claimed_at],['Vráceno',actual.returned_at]].filter(([,time])=>time).map(([title,time])=>el('article',{},el('strong',{},title),el('time',{},display(config,'event_at',time))))),'clock'));

@@ -104,10 +104,60 @@ testy včetně dvou testů izolace deklarovaného UI data. Dva časové JS a jed
 release-gate unit testů prošly. Gitleaks nad celým aplikačním zdrojem nevyžadoval
 žádnou výjimku.
 
+## Skladové doklady, piktogramy a skutečné transakce PostgreSQL
+
+Nový skladový přehled má šest sloupců předlohy, správné základní jednotky,
+podmíněnou zásobu pod minimem a sbalené filtry. Nový pohyb skladu je původní
+vícerádkový doklad (příjem/výdej/odpis), s vlastními řádky, kusy, datem,
+dodavatelem, referencí a poznámkami. Formulář zachovává původní roli i rozpracované
+hodnoty při přepnutí. Před odesláním sčítá shodné položky; následné čtení kontroluje
+původní doklad i odpovídající pohyby. K dispozici jsou seznam a detail dokladů,
+historie všech pohybů a administrátorské smazání dokladu s ověřením kompenzace.
+Skladník nevidí mazání původních položek, pohybů ani dokladů, které API dovoluje
+pouze správci. Původní jednotlivé pohyby zůstávají dostupné z detailu položky.
+
+Piktogram používá původní multipart endpoint, chráněný náhled a původní soubor.
+Výsledek se ověřuje čtením aktuální vazby, velikostí a SHA-256 originálních bajtů
+oproti vybranému souboru (pouze v paměti prohlížeče). Nový volitelný `download`
+parametr původního pictogram GET zachovává výchozí chování a umožňuje attachment.
+Nejasný upload nepřidává druhý obrázek; formulář drží původní ID a čtecí obnovu.
+
+Při napojování byl prokázán starší backendový defekt: dva řádky shodné suroviny
+7+6 mohly vydat nebo odepsat 13 při zásobě 12. Nový regresní test původně selhal
+pro oba typy (201 místo 400). API nyní ověřuje součet celého dokladu ještě před
+vytvořením. V PostgreSQL se dotčené skladové řádky zamykají v pořadí primárních
+klíčů; stejného zámku se účastní doklady, samostatné pohyby i jejich mazání.
+Číselná řada původního prefixu a roku má transakční advisory lock i mezi doklady
+různých položek. Mazání nejprve zamyká vlastní doklad, aby dvojí souběžná kompenzace
+nemohla vrátit zásobu dvakrát. Žádná nová datová tabulka ani migrace není potřeba.
+
+Ověření: celá API sada 381 PASS / 0 skipped, včetně čtyř skutečných PostgreSQL
+scénářů (souběžné doklady na jednu zásobu; doklad proti jednotlivému pohybu;
+osm současných dokladů různých položek a společná číselná řada; dvojí smazání).
+Lokální databáze je samostatná `cml_hotel_inventory_test`; každý případ vytvoří
+a uklidí jen vlastní náhodné schema s pěti skladovými tabulkami. Bez explicitní
+lokální testovací URL je PG sada označená skipped, nikoli vydávaná za PASS. CI
+job `validate` nyní poskytuje PostgreSQL 16.15 a tuto URL celé povinné sadě,
+takže tyto testy v CI nevynechává. Samotný nový workflow zatím nebyl spuštěn
+na GitHubu. Neproběhla produkční změna databáze, účtů ani skladových položek.
+
+Po aditivní změně piktogram downloadu znovu prošlo devět původních a nových
+skladových API testů. Syntaxe nyní parsuje 14 nových modulů. Gitleaks nad celým
+aplikačním zdrojem a novým CI/test kontextem prošel bez allowlistu.
+
+Browserová kvalifikace zahrnuje ztrátu potvrzení vytvoření i smazání dokladu,
+jediné DELETE, řádky shodné položky, jejich součet, původní pohyby, kompenzovaný
+stav, skutečně dekódovaný piktogram i shodu stažených bajtů. Ve WebKitu byl
+opraven posun čtecí obnovy pod fixní záhlaví: připojený formulář posune obnovu
+do středu a fokusuje její tlačítko, bez vynucování kliknutí v testu. Při opuštění
+stránky se odpojený formulář nefokusuje. Zobrazení filtrů bylo ověřeno hledáním
+a kombinací s limitem zásoby. Plné screenshoty se pořizují od začátku dokumentu,
+aby se pevné záhlaví neobjevovalo uprostřed exportu dlouhé stránky.
+
 ## Neuzavřené části
 
 Zbývá úplná matice 111 předloh a všech jejich chybových stavů, přesné lokální
-překlady, zbývající snídaňové a skladové operace (doklady, piktogramy), všechny rolové větve médií, oznámení a hlas.
+překlady, zbývající snídaňové operace a všechny okrajové/rolové stavy, oznámení, úplná týmová konverzace a hlas.
 Hlas dosud nemá ověřený mikrofon v opaque rámci. Přímé browserové přihlášení
 není odstřižené a nový převod identit není provedený v produkci. Centrální životní
 cyklus nových profilů/pozvánek a širší členské granty mají vlastní společné brány.

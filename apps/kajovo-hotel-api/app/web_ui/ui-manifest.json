@@ -721,6 +721,102 @@
         "pokojská"
       ],
       "permission": "housekeeping:read"
+    },
+    {
+      "id": "hotel.inventory.cards",
+      "title": "Skladové doklady",
+      "path": "/sections/hotel/?view=inventory-cards",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.inventory.cards",
+      "title": "Skladové doklady",
+      "path": "/sections/hotel/?view=inventory-cards",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.inventory.card-new",
+      "title": "Nový pohyb skladu",
+      "path": "/sections/hotel/?view=inventory-card-new",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.inventory.card-new",
+      "title": "Nový pohyb skladu",
+      "path": "/sections/hotel/?view=inventory-card-new",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.inventory.card-detail",
+      "title": "Detail skladového dokladu",
+      "path": "/sections/hotel/?view=inventory-card-detail",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.inventory.card-detail",
+      "title": "Detail skladového dokladu",
+      "path": "/sections/hotel/?view=inventory-card-detail",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.inventory.card-delete",
+      "title": "Smazat skladový doklad",
+      "path": "/sections/hotel/?view=inventory-cards",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "roles": [
+        "admin"
+      ]
+    },
+    {
+      "id": "hotel.inventory.card-delete",
+      "title": "Smazat skladový doklad",
+      "path": "/sections/hotel/?view=inventory-cards",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "roles": [
+        "admin"
+      ]
+    },
+    {
+      "id": "hotel.inventory.movements",
+      "title": "Historie skladových pohybů",
+      "path": "/sections/hotel/?view=inventory-movements",
+      "navigation": false,
+      "parent": "hotel.admin.18",
+      "audienceRole": "admin",
+      "permission": "inventory:read"
+    },
+    {
+      "id": "hotel.inventory.movements",
+      "title": "Historie skladových pohybů",
+      "path": "/sections/hotel/?view=inventory-movements",
+      "navigation": false,
+      "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read"
     }
   ],
   "navigation_mode": "message",

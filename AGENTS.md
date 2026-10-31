@@ -152,3 +152,5 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
 - `scripts/check_cml_web_ui.mjs` a `tests/web/time.test.mjs` jsou součástí úplného release gate. Integrační prohlížečové testy s reálnou CML gateway běží v samostatném CML checkoutu; fake poskytovatel a izolovaná DB nejsou produkční nebo fyzická přejímka.
 
 - Datum pracovní stránky může opaque rámec uchovat pouze přes deklarovaný CML state bridge typu `date`; nikdy nepřidávat obecný přístup do parent storage. Formuláře evidencí zůstávají samostatnými stránkami podle předlohy a metadata nápovědy musí odpovídat skutečným polím a akcím. Skladový `current_stock` se při úpravě katalogu neposílá.
+
+- Skladové doklady a samostatné pohyby používají stejný zámek skladového řádku; při více položkách zachovat pořadí PK. PostgreSQL číslování původního prefixu/roku má vlastní transakční advisory lock. Součet opakovaných surovin se ověřuje před vytvořením dokladu. PG testy vyžadují explicitní místní databázi končící `_test`; neprovádět je nad produkcí.

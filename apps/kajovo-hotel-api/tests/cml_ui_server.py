@@ -45,6 +45,8 @@ def build_fixture():
         Base,
         BreakfastOrder,
         InventoryItem,
+        InventoryCard,
+        InventoryMovement,
         Issue,
         LostFoundItem,
         PortalUser,
@@ -332,8 +334,8 @@ def build_fixture():
 
         async def __call__(self, scope, receive, send):
             target = (scope["type"] == "http" and scope["method"] == "POST"
-                      and scope["path"].startswith(("/cml-web/api/v1/reports/", "/cml-web/api/v1/issues/", "/cml-web/api/v1/lost-found/"))
-                      and scope["path"].endswith("/photos") and photo_fault["armed"])
+                      and scope["path"].startswith(("/cml-web/api/v1/reports/", "/cml-web/api/v1/issues/", "/cml-web/api/v1/lost-found/", "/cml-web/api/v1/inventory/"))
+                      and scope["path"].endswith(("/photos", "/pictogram")) and photo_fault["armed"])
             if not target:
                 await self.app(scope, receive, send)
                 return
@@ -378,6 +380,8 @@ def build_fixture():
                 ],
                 "issues": [{"id": row.id, "title": row.title, "status": row.status, "photos": len(row.photos)} for row in db.scalars(select(Issue))],
                 "lostfound": [{"id": row.id, "description": row.description, "status": row.status, "photos": len(row.photos)} for row in db.scalars(select(LostFoundItem))],
+                "cards": [{"id": card.id, "number": card.number, "type": card.card_type, "items": [{"id": row.id, "ingredient_id": row.ingredient_id, "quantity": row.quantity_base} for row in card.items]} for card in db.scalars(select(InventoryCard))],
+                "movements": [{"id": row.id, "item_id": row.item_id, "card_id": row.card_id, "quantity": row.quantity} for row in db.scalars(select(InventoryMovement))],
                 "inventory": [
                     {"id": r.id, "name": r.name, "stock": r.current_stock}
                     for r in db.scalars(select(InventoryItem))
