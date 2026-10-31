@@ -302,3 +302,26 @@ Celková centrální sada má 51 PASS; šest nových media/peer testů jsou fake
 adaptéry. Hotelové push browserové regrese prošly znovu v obou enginech.
 Odložená hlasová aktivace, skutečné WebRTC/audio, zbývající reference,
 publikace a produkční cutover nejsou tímto lokálním gate uzavřené.
+
+## Potvrzení připraveného vybavení a smazání snídaní dne
+
+Nový detail pokoje potvrzuje pouze skutečně natíženého psa/postýlku původním
+`requirements/{kind}/confirm` API. Zachycuje původní pokoj, pobyt, den, množství,
+verzi i pracovní roli. Původní odpověď a následný přehled musí potvrdit aktivní
+zelený stav a odpovídající verzi; neexistující příznak `confirmed` se nepoužívá.
+Potvrzené vybavení zůstává připravené po reloadu a další potvrzení nenabízí.
+Při ztrátě ACK nebo následného čtení `saveMutation` pouze načte původní
+účtenku/stav a nikdy znovu neposílá změnu.
+
+Chromium a WebKit přes skutečnou lokální CML gateway reprodukovaly původní
+chybějící obnovu a poté ověřily oba typy vybavení: jeden POST na každý typ,
+verze 1 a přesně dvě původní auditní události. Provider zápisy se nezvýšily.
+Další scénář po explicitním potvrzení smazal snídaně jediného vybraného dne,
+ztratil odpověď, obnovil původní výsledek bez druhého DELETE a po reloadu
+porovnal všechny záznamy ostatních dnů s původním snímkem. Všechny údaje byly
+syntetické v izolované DB; produkční rezervace, natížení ani snídaně se neměnily.
+
+Cílených 111 backendových testů prošlo s vlastními checkouty balíčků
+`packages/voice-core-server/src` a `packages/dagmar-server/src` v PYTHONPATH.
+Původní pokus s adresáři bez `/src` načetl jiný nainstalovaný Dagmar balíček
+a skončil při setupu; tento běh nebyl úspěšnou kvalifikací.

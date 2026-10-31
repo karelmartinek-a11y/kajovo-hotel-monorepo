@@ -48,6 +48,7 @@ def build_fixture():
     from app.config import Settings
     from app.db.models import (
         AdminProfile,
+        AuditTrail,
         Base,
         BreakfastOrder,
         ChatParticipant,
@@ -63,6 +64,7 @@ def build_fixture():
         PortalUser,
         PortalUserRole,
         Report,
+        ReservationAmenity,
     )
     from app.db.session import get_db
     from app.security.cml_web import CmlWebBoundary
@@ -215,6 +217,10 @@ def build_fixture():
                         {"checkedin": day.isoformat() + "T08:00:00+00:00", "checkedout": None}
                     ],
                     "reservation_note": [{"housekeep": "Syntetická poznámka pro pokojskou"}],
+                    "bill": {"bill_item": [
+                        {"id": "synthetic-dog", "label": "Domácí mazlíček", "quantity": 2},
+                        {"id": "synthetic-cot", "label": "Dětská postýlka", "quantity": 1},
+                    ]},
                 }
             ]
 
@@ -437,6 +443,10 @@ def build_fixture():
                 "photo_replies_dropped": photo_fault["dropped"],
                 "provider_writes": provider.writes,
                 "room_states": dict(provider.states),
+                "amenities": [{"reservation_id": row.reservation_id, "kind": row.kind,
+                               "state": row.state, "version": row.version, "active": row.active}
+                              for row in db.scalars(select(ReservationAmenity))],
+                "amenity_confirmations": db.query(AuditTrail).filter_by(module="housekeeping", action="confirm").count(),
                 "reports": [
                     {"id": r.id, "title": r.title, "status": r.status, "photos": [{"id": photo.id, "bytes": photo.size_bytes} for photo in r.photos]}
                     for r in db.scalars(select(Report))

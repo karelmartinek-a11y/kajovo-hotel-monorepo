@@ -38,7 +38,17 @@ function roomDetail(room){
  }
  content.append(actions,el('h3',{},'Pobyty vybraného dne'));
  for(const [name,stays]of [['Odjezdy',room.departures],['Příjezdy',room.arrivals],['Pokračující pobyty',room.stays]])for(const stay of stays){const guests=stay.guests.map(g=>g.name).filter(Boolean);const body=el('div',{},el('p',{},stay.reservation_code??stay.reservation_id),el('p',{},stay.arrival+' → '+stay.departure),el('p',{},'Stav: '+(stay.reservation_status_name??stay.reservation_state??'neznámý')),el('p',{},'Hosté: '+(guests.join(', ')||stay.main_guest_name||stay.display_name||'—')),el('p',{},'Firma: '+(stay.company_name??'—')),el('p',{},'Osob: '+stay.persons),stay.housekeeping_note?notice(stay.housekeeping_note,'warning'):null);
-  for(const kind of ['dog','cot']){const quantity=kind==='dog'?stay.dog_count:stay.cot_required===null?null:Number(stay.cot_required),amenity=stay.amenities.find(a=>a.kind===kind);if(quantity)body.append(button((kind==='dog'?'Pes ('+quantity+')':'Dětská postýlka')+(amenity?.confirmed?' · připraveno':' · potvrdit připravení'),async e=>{e.currentTarget.disabled=true;try{await api('api/v1/housekeeping/reservations/'+encodeURIComponent(stay.reservation_id)+'/requirements/'+kind+'/confirm?room_id='+encodeURIComponent(room.room_id)+'&date='+state.date,{method:'POST',body:{quantity,version:amenity?.version??0}});close();await render();}catch(err){showError(content,err);}}));}
+  for(const kind of ['dog','cot']){
+   const quantity=kind==='dog'?stay.dog_count:stay.cot_required===null?null:Number(stay.cot_required),amenity=stay.amenities.find(a=>a.kind===kind),prepared=amenity?.active===true&&amenity.state==='green';if(!quantity)continue;
+   const version=amenity?.version??0,action=button((kind==='dog'?'Pes ('+quantity+')':'Dětská postýlka')+(prepared?' · připraveno':' · potvrdit připravení'),()=>saveMutation(content,{
+    path:'api/v1/housekeeping/reservations/'+encodeURIComponent(stay.reservation_id)+'/requirements/'+kind+'/confirm?room_id='+encodeURIComponent(room.room_id)+'&date='+selectedDate,
+    body:{quantity,version},verify:async(result,{read})=>{
+     if(result?.kind!==kind||result.active!==true||result.state!=='green'||result.version!==version+1)throw Error('Původní odpověď nepotvrzuje připravení požadavku.');
+     const overview=await read('api/v1/housekeeping/rooms'+query),actualRoom=overview.rooms.find(row=>row.room_id===room.room_id),actualStay=actualRoom&&[...actualRoom.departures,...actualRoom.arrivals,...actualRoom.stays].find(row=>row.reservation_id===stay.reservation_id),actual=actualStay?.amenities.find(row=>row.kind===kind),actualQuantity=kind==='dog'?actualStay?.dog_count:actualStay?.cot_required===true?1:0;
+     if(actualQuantity!==quantity||actual?.active!==true||actual.state!=='green'||actual.version<result.version)throw Error('Následné načtení nepotvrdilo připravený požadavek tohoto pokoje, pobytu a dne. Obnovte přehled.');
+    },done:async()=>{if(content.isConnected){close();await render();}}
+   }));action.disabled=prepared||!state.identity.permissions.includes('housekeeping:write');body.append(action);
+  }
  content.append(panel(name,body,'bed'));}
  return content;
  },{id:'hotel.housekeeping.room'});
