@@ -74,12 +74,18 @@ BROKEN_JSX_TEXT_RE = re.compile(r">(?P<value>[^<{]*\?[^<{]*)<")
 BROKEN_QUESTION_MARK_RE = re.compile(r"[A-Za-zÀ-ž]\?[A-Za-zÀ-ž?]|\?[A-Za-zÀ-ž]")
 
 
-def has_broken_question_mark_text(line: str) -> bool:
-    if not ("?" in line):
+QUERY_LITERAL_RE = re.compile(r"^(?:\?[A-Za-z_][A-Za-z0-9_]*=|(?:/|https?://|[A-Za-z0-9_.-]+/)[^\s]*\?[A-Za-z_][A-Za-z0-9_]*=)")
+
+
+def has_broken_question_mark_text(line: str, *, source_code: bool = False) -> bool:
+    if "?" not in line:
         return False
     if ".toHaveCount(0)" in line:
         return False
-    candidates = [line]
+    # In JS/TS the unquoted source contains valid ternary operators. Continue
+    # inspecting every quoted literal and JSX text instead of treating code as
+    # a human-language sentence. Raw Unicode checks below still cover all bytes.
+    candidates = [] if source_code else [line]
     for match in BROKEN_QUOTED_LITERAL_RE.finditer(line):
         candidates.append(match.group("value"))
     for match in BROKEN_JSX_TEXT_RE.finditer(line):
@@ -87,6 +93,7 @@ def has_broken_question_mark_text(line: str) -> bool:
     filtered_candidates = [
         candidate
         for candidate in candidates
+        if not QUERY_LITERAL_RE.match(candidate)
         if not any(token in candidate for token in QUESTION_MARK_ALLOWED_SUBSTRINGS)
     ]
     return any(BROKEN_QUESTION_MARK_RE.search(candidate) for candidate in filtered_candidates)
@@ -133,7 +140,9 @@ def main() -> int:
             ):
                 failures.append((path, line_number, line))
                 continue
-            if "docs" not in path.parts and has_broken_question_mark_text(line):
+            if "docs" not in path.parts and has_broken_question_mark_text(
+                line, source_code=path.suffix.lower() in {".js", ".jsx", ".ts", ".tsx", ".json"}
+            ):
                 failures.append((path, line_number, line))
                 continue
             if "docs" not in path.parts and any(

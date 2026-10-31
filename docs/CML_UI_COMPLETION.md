@@ -200,3 +200,12 @@ Celá API sada: 385 PASS / 0 skipped, 268 dosavadních FastAPI deprecation warni
 OpenAPI a sdílený TS klient jsou znovu generované z tohoto API. Povinný Python lint
 používá přesné parametry CI (`E,F`, existující `E501` ignore); syntaxe 15 modulů
 a oba testy pražských datumů prošly. Plné CI a produkční build nadále chybí.
+
+Povinný textový kontrolor při prvním úplném gate chybně odmítal platné JS
+ternární výrazy a query literály. Nyní u JS/TS/JSON posuzuje skutečné quoted
+literály a JSX text; kontroly poškozených Unicode sekvencí nad celými soubory
+zůstávají zachované. Dva regresní testy zahrnují původní platné případy i
+poškozený český text vedle platného API volání. Oba běží v release planu.
+Samostatné copy-out instalace Dagmar a Voice Core prošly s vyhrazeným místním
+pnpm store; globální uživatelský store nebyl měněn. Úplný gate se opakuje
+nad opraveným textovým kontrolorem.

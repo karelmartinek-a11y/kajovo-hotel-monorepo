@@ -89,6 +89,7 @@ def check_plan() -> list[tuple[str, list[str]]]:
         ("brand-assets", _pnpm_command("ci:brand-assets")),
         ("brand-signage", _pnpm_command("ci:signage")),
         ("text-integrity", _pnpm_command("ci:text-integrity")),
+        ("text-integrity-tests", _python_command("-m", "unittest", "discover", "-s", "scripts/tests", "-p", "test_mojibake.py")),
         ("portal-translations", _pnpm_command("ci:portal-translations")),
         ("frontend-manifest", _pnpm_command("ci:frontend-manifest")),
         ("runtime-integrity", _pnpm_command("ci:runtime-integrity")),
