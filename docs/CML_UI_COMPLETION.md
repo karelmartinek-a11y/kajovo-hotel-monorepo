@@ -288,3 +288,17 @@ Chromium a WebKit přes skutečnou CML gateway kvalifikovaly náhled z původní
 čtecího API, IndexedDB deduplikaci po souběhu/obnově a nulovou změnu potvrzení
 přečtení. Push/Notification API byla řízená; externí push ani OS doručení
 nebyly testované. GitHub publikace a produkční cutover zůstávají otevřené.
+
+
+## Nový hlasový management – lokální gate
+
+Revize `936f31e5b1fc` prošla 31/31 kontrolami release gate a 509 izolovanými
+API/VoiceCore/Dagmar testy (270 upozornění). Artefakt:
+`release-gate-936f31e5b1fc-20261031T130530.623461+0000.json`.
+Chromium i WebKit ve společném CML checkoutu prokazují původní management
+API, jednu změnu při ztracené odpovědi konfigurace/klíče/paměti a celý
+životní cyklus syntetického strukturovaného lístku s revizním read-backem.
+Celková centrální sada má 51 PASS; šest nových media/peer testů jsou fake
+adaptéry. Hotelové push browserové regrese prošly znovu v obou enginech.
+Odložená hlasová aktivace, skutečné WebRTC/audio, zbývající reference,
+publikace a produkční cutover nejsou tímto lokálním gate uzavřené.
