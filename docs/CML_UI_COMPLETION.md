@@ -266,3 +266,12 @@ Release gate má nově povinný krok `legacy-worker-retirement` (31 kroků celke
 image ani relace tímto místním krokem nebyly změněny. Před finálním cutoverem
 se znovu kvalifikují nativní WEB relace a nasazovací automatizace; Android
 a vlastní obchodní/MCP identity nesmějí být hromadně odvolané.
+
+Úplný gate výhradního vstupu nad `bf8a610fba61` prošel 31/31 kroky.
+Společná backendová suite má nadále 504 PASS (270 dosavadních warnings),
+nový povinný worker krok má tři PASS. Artefakt:
+`release-gate-bf8a610fba61-20261031T114544.652259+0000.json`.
+Předchozí místní pokus používal neinstalovaný výchozí PostgreSQL ovladač;
+finální běh používá explicitní `postgresql+psycopg` URL obou vlastních
+local-only test DB proměnných. Produkční a GitHub kroky stále neproběhly;
+nový hlasový frontend a finální grafická řada zůstávají otevřené.
