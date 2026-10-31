@@ -233,3 +233,36 @@ a kontraktů. Artefakt je `release-gate-931b602d2b7a-20261031T100659.703806+0000
 Samostatné Docker buildy API/admin/web a skutečný proxy runtime test také
 prošly včetně CML podpisu, odmítnutí nepodepsané žádosti a nonce replaye.
 GitHub CI a výsledný produkční image/nasazení nadále nejsou provedené.
+
+## Výhradní nový webový vstup – místní kandidát 31. 10. 2026
+
+Web/admin runtime image již nesestavuje ani nekopíruje původní React/Vite UI,
+brand ani login stránky. Nové obsahové moduly zůstávají pouze v podepsaném
+API `app/web_ui`. Staré dokumentové vstupy vracejí pevné 302 do
+`https://kajovocml.hcasc.cz/#hotel`, bez přenosu původního query nebo tokenu.
+Staré assets a web manifest vracejí 410. Nativní `/api/` a přesný existující
+Android download zůstávají zachované; runtime test ověřuje shodný SHA-256
+APK s původním release manifestem. Mobilní deep link `/login/reset` zůstává
+původním Android intentem; browserový fallback vede do CML.
+
+Tři známé staré worker URL dodávají nový krátký retirement worker. Ten
+ukončí jen vlastní PushSubscription, zavře vlastní oznámení a odregistruje
+sám sebe; nedispatchuje požadavky, zprávy nebo navigace a nesahá na cizí
+registrace či cache. Původní worker neměl fetch/cache vrstvu. Tři VM testy
+ověřily normální i offline větve. Skutečné Chromium a WebKit kvalifikovaly
+aktivaci a odregistrování root/admin scope se zachováním vedlejší registrace
+a cache; žádné skutečné zprávy ani provider volání. Nový CML push broker
+zůstává samostatný a vyžaduje vlastní aktivní účet, grant a gesture.
+
+Nové web/admin image prošly skutečnou HTTPS host→Nginx→API cestou: pevné
+redirecty, 410 starých assets, byte-identický nový worker na všech třech URL,
+nezměněné APK, platná podepsaná identita/nové JS a odmítnutí unsigned/replay.
+Bezpečnostní hlavičky, obsahově prázdný access audit a původní diagnostický
+error-log profil zůstaly ověřené. Mikrofon se na starých admin stránkách
+nepovoluje; nový hlasový frontend/broker v CML je samostatný otevřený gate.
+
+Release gate má nově povinný krok `legacy-worker-retirement` (31 kroků celkem).
+Úplný gate nad touto novou revizí ještě následuje. Produkční konfigurace,
+image ani relace tímto místním krokem nebyly změněny. Před finálním cutoverem
+se znovu kvalifikují nativní WEB relace a nasazovací automatizace; Android
+a vlastní obchodní/MCP identity nesmějí být hromadně odvolané.

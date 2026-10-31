@@ -157,8 +157,8 @@ def main():
                 time.sleep(.5)
             else:
                 raise AssertionError("Isolated API did not become healthy")
-            for path, expected, microphone in [("/admin/hlasovy-chat", 200, "microphone=(self)"),
-                ("/", 200, "microphone=()"), ("/api/v1/admin/voice-core/config", 401, "microphone=()")]:
+            for path, expected, microphone in [("/admin/hlasovy-chat", 302, "microphone=()"),
+                ("/", 302, "microphone=()"), ("/api/v1/admin/voice-core/config", 401, "microphone=()")]:
                 status, headers, _body = request(path)
                 assert status == expected, (path, status)
                 policies = [value for key, value in headers if key.lower() == "permissions-policy"]
@@ -175,6 +175,20 @@ def main():
             assert request("/cml-web/identity", extra_headers=signed_headers)[0] == 401
             status, _headers, body = request("/cml-web/", extra_headers=cml_headers("/cml-web/"))
             assert status == 200 and b"/sections/hotel/app.js" in body
+            for path in ["/", "/login", "/login/reset?token=synthetic-old-token", "/admin", "/admin/login"]:
+                status, headers, _body = request(path)
+                assert status == 302 and dict(headers).get("Location") == "https://kajovocml.hcasc.cz/#hotel", (path, status, headers)
+            for path in ["/assets/old.js", "/static/old.js", "/brand/old.svg", "/site.webmanifest"]:
+                assert request(path)[0] == 410, path
+            expected_worker = (ROOT / "infra/cml-web-retirement/service-worker.js").read_bytes()
+            for path in ["/sw.js", "/service-worker.js", "/admin/sw.js"]:
+                status, headers, worker = request(path)
+                assert status == 200 and worker == expected_worker, path
+                assert dict(headers).get("Service-Worker-Allowed") == "/"
+                assert len([value for name, value in headers if name.lower() == "cache-control"]) == 1
+            status, _headers, apk = request("/downloads/kajovo-hotel-android.apk")
+            release = json.loads((ROOT / "android/release/android-release.json").read_text())
+            assert status == 200 and hashlib.sha256(apk).hexdigest() == release["sha256"]
             query_marker, ref_marker = "query-" + uuid.uuid4().hex, "ref-" + uuid.uuid4().hex
             referer = "https://example.invalid/" + ref_marker
             before = len(access_rows())
@@ -182,12 +196,12 @@ def main():
             for page in ["/", "/admin/hlasovy-chat"]:
                 path = page + "?probe=" + query_marker
                 status, _, body = request(path, referer)
-                assert status == 200, (page, status)
+                assert status == 302, (page, status)
                 marked_paths.append(path)
-                asset = re.search(rb'src="([^"]+\.js)"', body)
-                assert asset, (page, "Built JavaScript asset missing")
-                path = asset[1].decode() + "?probe=" + query_marker
-                status, _, body = request(path, referer)
+                assert not re.search(rb'src="([^"]+\.js)"', body), "Retired entry must not serve a browser bundle"
+            for asset in ["app.js", "ui.js", "chat.js"]:
+                path = "/cml-web/" + asset + "?probe=" + query_marker
+                status, _, body = request(path, referer, extra_headers=cml_headers(path))
                 assert status == 200 and body and not body.startswith(b"<!doctype"), (path, status)
                 marked_paths.append(path)
             time.sleep(.1)
@@ -255,6 +269,8 @@ def main():
                 "standard_error_contains_synthetic_uri_query_referer": True,
                 "cml_signed_identity": True, "cml_unsigned_denied": True,
                 "cml_nonce_replay_denied": True, "cml_fresh_html": True,
+                "legacy_browser_redirects": True, "legacy_assets_gone": True,
+                "legacy_push_worker_retired": True, "original_android_apk_preserved": True,
                 "routing_and_security_headers": "PASS"}))
             print("Synthetic upstream error evidence: " + matching[-1])
         finally:

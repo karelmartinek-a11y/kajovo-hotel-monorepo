@@ -172,3 +172,10 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   Runtime proxy test ověřuje nepodepsané odmítnutí, platnou identitu, replay
   nonce i nové HTML přes skutečné tři Docker runtimy. Oddělené kvalifikační
   image lze určit `CML_PROXY_API_IMAGE`, `CML_PROXY_ADMIN_IMAGE`, `CML_PROXY_WEB_IMAGE`.
+
+- Kandidát výhradního webového vstupu nemá původní frontend bundle v Docker
+  runtime. Web/admin obsluhují pevný CML redirect, 410 starých assets, nový
+  retirement worker a původní nativní API/Android APK. Nepřidávat fallback
+  na samostatný login nebo staré HTML. Povinný release gate zahrnuje tři
+  worker regresní větve; skutečná Nginx/API kvalifikace je v
+  `scripts/verify_voice_core_proxy.py`. Úplný hlasový CML gate zůstává otevřený.
