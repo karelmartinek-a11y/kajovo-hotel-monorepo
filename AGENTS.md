@@ -144,7 +144,7 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
 - Nové samostatně napsané UI patří do `apps/kajovo-hotel-api/app/web_ui/` a používá `kajovo-web-ui/1`. Úprava původních frontendů není náhradou požadovaného nového UI.
 - `/cml-web/` přijímá pouze podepsané CML žádosti pro audience `hotel`, s trvalým jednorázovým jti. Nativní aktivita uživatele, přiřazené role a endpointové oprávnění se znovu ověřují lokálně; data prohlížeče nemohou vytvořit ASGI identity state.
 - Zachovat původní technickou admin identitu pro chat a hlasovou historii. Vložený frontend nesmí získat provider tokeny ani přístup k DOM CML.
-- `docs/CML_WEB_CANDIDATE.md` uvádí neuzavřené části přechodu. Opaque sandbox bez samostatného mikrofonního ověření není funkční hlasový chat a kandidát není potvrzené produkční nasazení.
+- `docs/CML_WEB_CANDIDATE.md` uvádí neuzavřené části přechodu. Hlas je výslovně mimo integraci; kandidát není potvrzené produkční nasazení.
 - CML účetní routy `/api/v1/users` připouštějí hlavní účet a pro zápis vyžadují čerstvé podepsané `reauthUntil`; lokální credentials/resetovací toky touto cestou odmítat. Zachovat původní nativní API a role, databázi i historickou technickou identitu správce.
 - Nový CML frontend používá geometrii a styl výslovné předlohy `UIKajovoCMLNgLite(1).ZIP`; starší layoutové předpisy popisují původní frontend. Obchodní DTO, lokální role, datumy a význam skutečných hodnot zůstávají autoritativní. Změna designu nesmí vyrábět demo data.
 - Volitelný `Idempotency-Key` nad podporovanou CML obchodní routou rezervuje `cml_web_request` před předáním původnímu routeru. Aktuální identita a původní oprávnění se kontrolují i při `GET /cml-web/api/request-status`. `completed` znamená uloženou HTTP odpověď, nikoli automaticky obchodní úspěch. Nejistý výsledek se neopakuje; migraci `0048_cml_web_request` nelze odstranit rollbackem.
@@ -173,12 +173,14 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   nonce i nové HTML přes skutečné tři Docker runtimy. Oddělené kvalifikační
   image lze určit `CML_PROXY_API_IMAGE`, `CML_PROXY_ADMIN_IMAGE`, `CML_PROXY_WEB_IMAGE`.
 
-- Kandidát výhradního webového vstupu nemá původní frontend bundle v Docker
-  runtime. Web/admin obsluhují pevný CML redirect, 410 starých assets, nový
-  retirement worker a původní nativní API/Android APK. Nepřidávat fallback
-  na samostatný login nebo staré HTML. Povinný release gate zahrnuje tři
-  worker regresní větve; skutečná Nginx/API kvalifikace je v
-  `scripts/verify_voice_core_proxy.py`. Úplný hlasový CML gate zůstává otevřený.
+- Nový portál vstupuje výhradně přes CML. Výslovná hlasová výjimka zachovává
+  původní admin build pro `/admin/hlasovy-chat` a `/admin/login`, jeho assets
+  a původní brand. Ostatní dokumentové cesty redirectují do CML; `/admin/`
+  vede na zachovanou hlasovou stránku po původním nativním přihlášení.
+  Nepřenášet původní komponenty do nového UI. Nativní API/Android zůstávají
+  samostatné. Povinná proxy kvalifikace ověřuje HTTPS, původní hlasový bundle,
+  login, branding a mikrofonní policy pouze hlasové stránky, nový podepsaný
+  obsah, retirement worker a přesný APK. Samotné HTTP ověření není hovor.
 
 - WebPush CML používá pouze `kajovo-hotel-chat-signal/1` bez soukromého obsahu.
   Migrace `0050_cml_web_push_authority` zachovává staré odběry jako nepovolené;
@@ -186,16 +188,9 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   s textem zprávy ani ignorovat filtr. Android FCM je oddělené. Čerstvý grant
   a konkrétní zprávu kontroluje CML gateway před náhledem, viz runbook kandidáta.
 
-- Nový `app/web_ui/voice.js` nepřebírá starý hlasový browser runtime. CML
-  management přijímá pouze ověřenou identity state, vlastní `voice:write`
-  účtenky a aktuální lokální admin. Povinné odložení hlasové aktivace zůstává
-  zachované: manifest není připravený k hovoru a CML call/session mutace se
-  odmítají před alokací a provider voláním. Mikrofonní řadič CML je nově
-  napsaný, ale fake peer test není přejímkou WebRTC nebo skutečného hovoru.
-
-- Background `cml:` identita nyní používá vlastní účelový konzument podle
-  `docs/CML_VOICE_AUTHORITY.md`, šifrovaný vlastním Voice klíčem. Před každou
-  autorizací čte CML i lokální admin roli; nemá cookie fallback nebo kladnou
-  cache. Migrace `0051_cml_voice_authority` se neodstraňuje rollbackem.
-  Výchozí call guard zůstává vypnutý; povolení v izolované browser fixture
-  není změnou produkční aktivace ani provisioningem hlasových MCP grantů.
+- Uživatel 31. 10. 2026 výslovně vyňal celý hlasový chat z integrace CML:
+  vůbec neintegrovat, ponechat původní řešení beze změn. Kandidát nesmí mít
+  nové hlasové UI, bridge, autoritu, migraci nebo přístupy. Původní hlasový
+  frontend, nativní přihlášení a Dagmar backend musí zůstat dostupné při
+  nasazení ostatního UI; jde o výjimku ze znovunapsání pouze pro původní hlas.
+  Viz `docs/CML_VOICE_AUTHORITY.md`. Historická retirement kvalifikace bez této výjimky není aktuální release důkaz.

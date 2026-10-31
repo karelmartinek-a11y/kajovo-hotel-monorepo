@@ -163,8 +163,6 @@ def create_app() -> FastAPI:
             with contextlib.suppress(asyncio.CancelledError):
                 await voice_task
         await dagmar.shutdown()
-        from app.services.cml_voice_authority import close_default_authority
-        close_default_authority()
         task = getattr(app.state, "breakfast_scheduler_task", None)
         if task is not None:
             task.cancel()

@@ -28,9 +28,6 @@ def mutation_permission(suffix: str) -> str | None:
     parts = suffix.split("/")
     if len(parts) < 3 or parts[:2] != ["api", "v1"]:
         return None
-    if suffix in {'api/v1/admin/voice-core/config', 'api/v1/admin/voice-core/api-key',
-                  'api/v1/admin/voice-memory/operations', 'api/v1/admin/voice-memory/settings'}:
-        return 'voice:write'
     module = {
         "reports": "reports",
         "issues": "issues",
@@ -39,17 +36,12 @@ def mutation_permission(suffix: str) -> str | None:
         "breakfast": "breakfast",
         "housekeeping": "housekeeping",
     }.get(parts[2])
-    # Voice calls retain their own lifetime and journals; this receipt covers only
-    # configuration and explicit memory management, never SDP or a provider call. Account changes remain
+    # Voice has its original lifetime and journals. Account changes remain
     # central; their credentials must never enter a generic response receipt.
     return module + ":write" if module else None
 
 
 def authorize(identity, permission):
-    if permission == 'voice:write':
-        if identity['public'].get('admin') and identity['public'].get('active_role') == 'admin':
-            return
-        raise ReceiptFault("WEB_REQUEST_PERMISSION_DENIED", 403)
     if permission not in identity["public"].get("permissions", []):
         raise ReceiptFault("WEB_REQUEST_PERMISSION_DENIED", 403)
 

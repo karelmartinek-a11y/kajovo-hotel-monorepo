@@ -327,43 +327,7 @@ def build_fixture():
             if pdf:
                 exports.append({"path": scope["path"], "sha256": digest.hexdigest(), "bytes": size})
 
-    from app.services.dagmar_adapter import verified_identity
-    from app.security.auth import require_session
-    from dagmar_server.application import DagmarApplication, BoundContext
-    from dagmar_server.ports import RuntimePorts
-    from dagmar_server.settings import DagmarSettings
-    from dagmar_server.migrations import upgrade as upgrade_dagmar
-    import base64
-    upgrade_dagmar(engine)
-    voice_key = base64.b64encode(os.urandom(32)).decode()
-    local_voice = None
-    if os.getenv('HOTEL_CML_UI_VOICE_LOOPBACK') == '1':
-        from cml_voice_provider import LocalVoice
-        with factory() as db:
-            db.add(PortalUser(id=7, first_name='Testovací', last_name='Správce hlasu',
-                              email='voice-admin@example.invalid', password_hash='synthetic-unused',
-                              is_active=True, roles=[PortalUserRole(role='admin')]))
-            db.commit()
-        local_voice = LocalVoice(factory, voice_key)
-    dagmar = DagmarApplication(RuntimePorts(
-        session_factory=factory,
-        settings=DagmarSettings(voice_master_key=voice_key),
-        identity=local_voice.identity if local_voice else lambda _owner: None,
-        request_identity=lambda request: verified_identity(require_session(request)),
-        provider_http=local_voice.http if local_voice else None,
-        provider_socket=local_voice.socket if local_voice else None,
-    ))
     app = FastAPI()
-    app.state.dagmar = dagmar
-    app.add_middleware(BoundContext, ports=dagmar.ports)
-    app.include_router(dagmar.core, prefix='/api/v1/admin/voice-core')
-    app.include_router(dagmar.memory, prefix='/api/v1/admin/voice-memory')
-    if local_voice:
-        local_voice.attach(app, dagmar, factory)
-        from dagmar_server.ports import bind
-        from dagmar_server.config import VoiceSecretAdapter
-        with bind(dagmar.ports), factory() as db:
-            VoiceSecretAdapter(db).save('synthetic-voice-loopback-key')
     app.add_middleware(ObservePdf)
     for module in [
         users,
@@ -389,8 +353,6 @@ def build_fixture():
         session_factory=factory,
         resolve_identity=resolve_identity,
         ui_root=Path(__file__).resolve().parents[1] / "app/web_ui",
-        voice_enabled=local_voice is not None,
-        voice_authority=local_voice.authority if local_voice else None,
     )
 
     photo_fault = {"armed": False, "dropped": 0}

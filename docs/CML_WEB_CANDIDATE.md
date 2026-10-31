@@ -8,7 +8,7 @@ CML grant se protíná s aktuálním aktivním nativním účtem a přiděleným
 
 Nové UI čte původní housekeeping, snídaňové, skladové, hlásicí a chatové kontrakty. Neověřený zápis se neopakuje automaticky. Samotná přítomnost obrazovky není uzavření jejího funkčního a vizuálního ověření.
 
-Dosud není dokončené pokrytí všech předloh, lokalizací a funkcí, centrální správa účtů/rolí, převod identit, uzavření přímých browserových přihlášení ani hlasový chat v izolovaném kontextu. Opaque sandbox se nesmí zaměnit za ověřený mikrofonní přístup. Publikace na main, produkční nasazení a úplná přejímka zůstávají neprovedené. Nativní Android, strojová API a stávající hlasová implementace nebyly odstřiženy.
+Dosud není dokončené pokrytí všech předloh, lokalizací a funkcí, centrální správa účtů/rolí, převod identit, uzavření přímých browserových přihlášení ; hlasový chat je výslovně mimo integraci CML. Publikace na main, produkční nasazení a úplná přejímka zůstávají neprovedené. Nativní Android, strojová API a stávající hlasová implementace nebyly odstřiženy.
 
 Centrální CML detail účtu používá původní Hotel API pro pracovní role a profil. CML routy `/api/v1/users` připouštějí pouze hlavní účet a pro zápis vyžadují podepsanou čerstvou reautentizaci. Lokální resetovací endpointy a heslo v JSON aktualizaci jsou odmítnuté. Nativní role se stále ověřují proti aktuálnímu Hotel účtu. Browserové ověření centrálního profilu proběhlo nad izolovaným původním API. Celý migrační cutover a produkční nasazení dosud nejsou provedené.
 
@@ -71,8 +71,8 @@ Nové web/admin image prošly skutečnou HTTPS host→Nginx→API cestou: pevné
 redirecty, 410 starých assets, byte-identický nový worker na všech třech URL,
 nezměněné APK, platná podepsaná identita/nové JS a odmítnutí unsigned/replay.
 Bezpečnostní hlavičky, obsahově prázdný access audit a původní diagnostický
-error-log profil zůstaly ověřené. Mikrofon se na starých admin stránkách
-nepovoluje; nový hlasový frontend/broker v CML je samostatný otevřený gate.
+error-log profil zůstaly ověřené. Tento starší výsledek nezachovává původní hlasovou stránku a není způsobilý
+k nasazení po výslovném vyjmutí hlasu; nová kvalifikace je povinná.
 
 Release gate má nově povinný krok `legacy-worker-retirement` (31 kroků celkem).
 Úplný gate pro výhradní vstup prošel 31/31 na `bf8a610fba61` (504 API/Voice/Dagmar testů); následná změna push protokolu má vlastní novou kvalifikaci níže. Produkční konfigurace,
@@ -114,45 +114,20 @@ nový výchozí zákaz a zachování migrace po odmítnutém downgrade. Žádný
 místních testů neměnil produkci nebo odesílal zprávy.
 
 
-## Nový hlasový frontend a správa paměti
+## Hlasový chat vyjmutý z rozsahu
 
-`app/web_ui/voice.js` je nově napsaný frontend; neimportuje původní browserový
-hlasový runtime ani React komponenty. Má samostatný pohled hovoru, konfiguraci
-z původního katalogu, paměti, textové/strukturované lístky a stručné souhrny.
-Čte a mění původní Dagmar API, revize a vlastní úložiště či nakonfigurovaný MCP
-adaptér. Původní profil identity Dagmar zůstává chráněný. Změna pošty či nová
-aktivace M2M nejsou součástí těchto obrazovkových operací.
+Uživatel výslovně požaduje hlas vůbec neintegrovat a ponechat jej beze změny.
+Nové CML hlasové UI, autorita a migrace byly odstraněné; podepsaná cesta
+hlasové API odmítá. Platí [CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md).
+Původní hlasová stránka a přihlášení musí přežít nasazení ostatního Hotel UI.
+Starší retirement kvalifikace výše přesměrovávala i hlasovou stránku, a proto
+není pro tento upravený rozsah dostatečná. Před nasazením je povinná oprava
+a nová kvalifikace zachování samostatného hlasu.
 
-Hotelový infrastrukturní adaptér přijímá ověřenou CML identity state místo
-požadavku na druhou hotelovou cookie. Nativní cookie větev se nemění. Hlasové
-konfigurační/paměťové změny mají CML účtenku `voice:write`, vyžadující skutečný
-lokální admin a aktivní admin roli. Účtenka neobsahuje vstupní klíč ani SDP.
-Obnova používá pouze GET původního ID; následné načtení porovnává revizi a
-obsah konkrétního záznamu. Rozepsaný formulář a nejistý původní pokus přežívají
-přepnutí podsekce v témže nativním dokumentu. Reload celého dokumentu není
-zárukou uchování rozpracovaného textu.
+## Aktuální výjimka pro původní hlas
 
-Společný CML dokument vlastní nový typovaný mikrofonní bridge. Opaque rámec
-nedostane stream, SDP, provider klíč ani libovolnou API cestu. Řadič ověřuje
-čerstvou relaci hlavního účtu nebo konkrétního Hotel admina, grant, nativní admin identitu a explicitní připravenost
-serveru před vyžádáním mikrofonu. Ukončení uvolňuje i mikrofon/peer čekající
-na odpověď; pozdní identifikátory se uklidí jednou. Nejasné vytvoření se
-neopakuje. Místní testy řadiče používají fake media/peer/poskytovatele.
-
-Aktivace nových hlasových přístupů zůstává podle konkrétního `AGENTS.md`
-odložená. Dynamický manifest proto uvádí `voice.enabled=false`; podepsané
-CML vytvoření/změna call/session vrací `voice_cml_activation_deferred` ještě
-před alokací logického hovoru nebo provider voláním. UI ukazuje skutečný
-neaktivní stav. Nejde o potvrzenou funkční přejímku hlasového hovoru, WebRTC,
-zvuku, M2M schopností nebo doručení pošty. Původní nativní/backendový hlasový
-lifetime se neaktivuje ani nepřepisuje jako náhradní přihlášení. Nový vlastní
-background konzument a místní syntetická WebRTC kvalifikace jsou popsány v
-[CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md); výchozí guard zůstává vypnutý.
-
-Chromium a WebKit kvalifikovaly oba původní management API přes skutečnou CML
-gateway, šířky 1920/834/390, jediné uložení po ztracené odpovědi konfigurace,
-syntetického klíče a paměti, uchování původní účtenky po navigaci, revizní
-úpravu paměti a vytvoření/úpravu/přesun/odebrání/vyprázdnění/archivaci/smazání
-syntetického seznamu. Snímky byly vizuálně prohlédnuté; úplné porovnání všech
-referencí, včetně inline nového formuláře přehledu, zůstává otevřené. Žádné
-skutečné klíče, mikrofon, placené nebo produkční obchodní účinky nebyly použité.
+Lokální HTTPS proxy kvalifikace zachování původní hlasové stránky, loginu,
+assets, brandu a mikrofonní policy prošla. Nový CML hlas není součástí
+kandidáta. Platný rozsah, důkazy a limity viz
+[CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md). Tento místní průchod není
+produkční nasazení nebo přejímka hovoru.

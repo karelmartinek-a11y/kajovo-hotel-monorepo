@@ -849,52 +849,6 @@
       "parent": "hotel.portal.40",
       "navigation": false,
       "audienceRole": "member"
-    },
-    {
-      "id": "hotel.admin.1",
-      "title": "Hlasový chat",
-      "navigation_title": "Hlasový chat",
-      "path": "/sections/hotel/?view=voice",
-      "admin": true,
-      "audienceRole": "admin",
-      "icon": "voice",
-      "group": "Administrace"
-    },
-    {
-      "id": "hotel.voice.config",
-      "title": "Hlasový chat · nastavení",
-      "path": "/sections/hotel/?view=voice-config",
-      "admin": true,
-      "audienceRole": "admin",
-      "navigation": false,
-      "parent": "hotel.admin.1"
-    },
-    {
-      "id": "hotel.voice.memory-detail",
-      "title": "Paměť hlasové asistentky · detail",
-      "path": "/sections/hotel/?view=voice-memory-detail",
-      "admin": true,
-      "audienceRole": "admin",
-      "navigation": false,
-      "parent": "hotel.admin.1"
-    },
-    {
-      "id": "hotel.voice.memory-note",
-      "title": "Paměť hlasové asistentky · lístek",
-      "path": "/sections/hotel/?view=voice-memory-detail",
-      "admin": true,
-      "audienceRole": "admin",
-      "navigation": false,
-      "parent": "hotel.admin.1"
-    },
-    {
-      "id": "hotel.voice.memory-summary",
-      "title": "Paměť hlasové asistentky · souhrn",
-      "path": "/sections/hotel/?view=voice-memory-detail",
-      "admin": true,
-      "audienceRole": "admin",
-      "navigation": false,
-      "parent": "hotel.admin.1"
     }
   ],
   "navigation_mode": "message",

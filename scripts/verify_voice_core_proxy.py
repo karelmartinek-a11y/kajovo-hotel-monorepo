@@ -157,7 +157,7 @@ def main():
                 time.sleep(.5)
             else:
                 raise AssertionError("Isolated API did not become healthy")
-            for path, expected, microphone in [("/admin/hlasovy-chat", 302, "microphone=()"),
+            for path, expected, microphone in [("/admin/hlasovy-chat", 200, "microphone=(self)"),
                 ("/", 302, "microphone=()"), ("/api/v1/admin/voice-core/config", 401, "microphone=()")]:
                 status, headers, _body = request(path)
                 assert status == expected, (path, status)
@@ -175,10 +175,20 @@ def main():
             assert request("/cml-web/identity", extra_headers=signed_headers)[0] == 401
             status, _headers, body = request("/cml-web/", extra_headers=cml_headers("/cml-web/"))
             assert status == 200 and b"/sections/hotel/app.js" in body
-            for path in ["/", "/login", "/login/reset?token=synthetic-old-token", "/admin", "/admin/login"]:
+            for path in ["/", "/login", "/login/reset?token=synthetic-old-token", "/admin/uzivatele", "/admin/nastaveni"]:
                 status, headers, _body = request(path)
                 assert status == 302 and dict(headers).get("Location") == "https://kajovocml.hcasc.cz/#hotel", (path, status, headers)
-            for path in ["/assets/old.js", "/static/old.js", "/brand/old.svg", "/site.webmanifest"]:
+            status, _headers, native_voice = request("/admin/hlasovy-chat")
+            assert status == 200 and b'/admin/assets/' in native_voice
+            assert request("/admin/login")[0] == 200
+            for path in ["/admin", "/admin/"]:
+                status, headers, _body = request(path)
+                assert status == 302 and dict(headers).get("Location", "").endswith("/admin/hlasovy-chat")
+            native_asset = re.search(rb'src="(/admin/assets/[^"?]+\.js)"', native_voice)
+            assert native_asset and request(native_asset.group(1).decode())[0] == 200
+            brand = "/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
+            assert request(brand)[0] == 200
+            for path in ["/assets/old.js", "/static/old.js", "/site.webmanifest"]:
                 assert request(path)[0] == 410, path
             expected_worker = (ROOT / "infra/cml-web-retirement/service-worker.js").read_bytes()
             for path in ["/sw.js", "/service-worker.js", "/admin/sw.js"]:
@@ -196,9 +206,12 @@ def main():
             for page in ["/", "/admin/hlasovy-chat"]:
                 path = page + "?probe=" + query_marker
                 status, _, body = request(path, referer)
-                assert status == 302, (page, status)
+                assert status == (200 if page == "/admin/hlasovy-chat" else 302), (page, status)
                 marked_paths.append(path)
-                assert not re.search(rb'src="([^"]+\.js)"', body), "Retired entry must not serve a browser bundle"
+                if page == "/admin/hlasovy-chat":
+                    assert b'/admin/assets/' in body, "Original standalone voice bundle must survive"
+                else:
+                    assert not re.search(rb'src="([^"]+\.js)"', body), "Retired portal entry must not serve a browser bundle"
             for asset in ["app.js", "ui.js", "chat.js"]:
                 path = "/cml-web/" + asset + "?probe=" + query_marker
                 status, _, body = request(path, referer, extra_headers=cml_headers(path))
@@ -269,7 +282,8 @@ def main():
                 "standard_error_contains_synthetic_uri_query_referer": True,
                 "cml_signed_identity": True, "cml_unsigned_denied": True,
                 "cml_nonce_replay_denied": True, "cml_fresh_html": True,
-                "legacy_browser_redirects": True, "legacy_assets_gone": True,
+                "non_voice_browser_redirects": True, "legacy_portal_assets_gone": True,
+                "original_standalone_voice_and_login_preserved": True,
                 "legacy_push_worker_retired": True, "original_android_apk_preserved": True,
                 "routing_and_security_headers": "PASS"}))
             print("Synthetic upstream error evidence: " + matching[-1])

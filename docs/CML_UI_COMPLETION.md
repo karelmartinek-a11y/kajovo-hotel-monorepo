@@ -258,8 +258,8 @@ Nové web/admin image prošly skutečnou HTTPS host→Nginx→API cestou: pevné
 redirecty, 410 starých assets, byte-identický nový worker na všech třech URL,
 nezměněné APK, platná podepsaná identita/nové JS a odmítnutí unsigned/replay.
 Bezpečnostní hlavičky, obsahově prázdný access audit a původní diagnostický
-error-log profil zůstaly ověřené. Mikrofon se na starých admin stránkách
-nepovoluje; nový hlasový frontend/broker v CML je samostatný otevřený gate.
+error-log profil zůstaly ověřené. Tento starší retirement výsledek není po vyjmutí hlasu způsobilý k nasazení;
+aktuální brána musí zachovat původní samostatný hlasový vstup.
 
 Release gate má nově povinný krok `legacy-worker-retirement` (31 kroků celkem).
 Úplný gate nad touto novou revizí ještě následuje. Produkční konfigurace,
@@ -274,7 +274,7 @@ nový povinný worker krok má tři PASS. Artefakt:
 Předchozí místní pokus používal neinstalovaný výchozí PostgreSQL ovladač;
 finální běh používá explicitní `postgresql+psycopg` URL obou vlastních
 local-only test DB proměnných. Produkční a GitHub kroky stále neproběhly;
-nový hlasový frontend a finální grafická řada zůstávají otevřené.
+zachování původního samostatného hlasu a finální grafická řada zůstávají otevřené.
 
 
 ## Soukromý push – úplný lokální gate
@@ -290,18 +290,14 @@ přečtení. Push/Notification API byla řízená; externí push ani OS doručen
 nebyly testované. GitHub publikace a produkční cutover zůstávají otevřené.
 
 
-## Nový hlasový management – lokální gate
+## Hlas mimo integraci CML
 
-Revize `936f31e5b1fc` prošla 31/31 kontrolami release gate a 509 izolovanými
-API/VoiceCore/Dagmar testy (270 upozornění). Artefakt:
-`release-gate-936f31e5b1fc-20261031T130530.623461+0000.json`.
-Chromium i WebKit ve společném CML checkoutu prokazují původní management
-API, jednu změnu při ztracené odpovědi konfigurace/klíče/paměti a celý
-životní cyklus syntetického strukturovaného lístku s revizním read-backem.
-Celková centrální sada má 51 PASS; šest nových media/peer testů jsou fake
-adaptéry. Hotelové push browserové regrese prošly znovu v obou enginech.
-Odložená hlasová aktivace, skutečné WebRTC/audio, zbývající reference,
-publikace a produkční cutover nejsou tímto lokálním gate uzavřené.
+Uživatel výslovně zrušil celou integraci hlasu. Platí
+[CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md): původní hlasová stránka,
+přihlášení a backend se zachovají, nové CML UI/autorita/migrace jsou odstraněné.
+Starší retirement důkazy výše neověřují tuto výjimku a nejsou aktuální
+kvalifikací přechodu. Nová kvalifikace musí ověřit původní samostatný vstup
+přes skutečné frontend/API image a HTTPS proxy bez placeného hovoru.
 
 ## Potvrzení připraveného vybavení a smazání snídaní dne
 
@@ -334,3 +330,11 @@ lokální `HOTEL_INVENTORY_TEST_DATABASE_URL` a `CML_PROFILE_TEST_DATABASE_URL`
 s ovladačem `postgresql+psycopg` a vlastní `npm_config_store_dir` pro pnpm.
 Předchozí gate skončil na neplatné globální cache pnpm; nebyl vykázán jako PASS.
 Tato kvalifikace je lokální, publikace a produkční cutover nadále neproběhly.
+
+## Aktuální výjimka pro původní hlas
+
+Lokální HTTPS proxy kvalifikace zachování původní hlasové stránky, loginu,
+assets, brandu a mikrofonní policy prošla. Nový CML hlas není součástí
+kandidáta. Platný rozsah, důkazy a limity viz
+[CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md). Tento místní průchod není
+produkční nasazení nebo přejímka hovoru.

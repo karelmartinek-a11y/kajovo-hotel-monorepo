@@ -1099,18 +1099,3 @@ class CmlProfileProvision(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     native_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
-class CmlVoiceAuthority(Base):
-    """Encrypted purpose-bound CML authority; never a native login session."""
-    __tablename__ = "cml_voice_authority"
-    sid: Mapped[str] = mapped_column(String(36), primary_key=True)
-    subject: Mapped[str] = mapped_column(String(100), nullable=False)
-    native_id: Mapped[str | None] = mapped_column(String(20))
-    epoch: Mapped[int] = mapped_column(Integer, nullable=False)
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    token_cipher: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    __table_args__ = (CheckConstraint("epoch > 0", name="cml_voice_authority_epoch"),
-                      Index("ix_cml_voice_authority_expiry", "expires_at"))

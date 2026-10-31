@@ -21,16 +21,11 @@ def verified_identity(session):
 
 
 def request_identity(request):
-    if getattr(request.state, 'cml_web_claims', None):
-        return verified_identity(auth.require_session(request))
     with SessionLocal() as db:
         return verified_identity(auth._load_session(request, db))
 
 
 def identity(owner):
-    if isinstance(owner, str) and owner.startswith('cml:'):
-        from .cml_voice_authority import default_authority
-        return verified_identity(default_authority().identity(owner))
     with SessionLocal() as db:
         record = db.scalar(select(AuthSession).where(AuthSession.session_id == owner))
         now = datetime.now(timezone.utc)

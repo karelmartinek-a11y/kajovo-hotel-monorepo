@@ -1,10 +1,40 @@
+FROM node:20.18.1-alpine3.20 AS builder
+
+WORKDIR /workspace
+
+RUN npm install -g pnpm@10.34.4
+
+COPY package.json pnpm-workspace.yaml tsconfig.base.json /workspace/
+COPY apps/kajovo-hotel-admin/package.json /workspace/apps/kajovo-hotel-admin/package.json
+COPY packages/shared/package.json /workspace/packages/shared/package.json
+COPY packages/ui/package.json /workspace/packages/ui/package.json
+COPY packages/voice-core/package.json /workspace/packages/voice-core/package.json
+COPY packages/dagmar-browser/package.json /workspace/packages/dagmar-browser/package.json
+
+COPY pnpm-lock.yaml /workspace/pnpm-lock.yaml
+
+RUN pnpm install --frozen-lockfile --filter @kajovo/kajovo-hotel-admin... --filter @kajovo/shared --filter @kajovo/ui
+
+COPY apps/kajovo-hotel-admin /workspace/apps/kajovo-hotel-admin
+COPY packages/shared /workspace/packages/shared
+COPY packages/ui /workspace/packages/ui
+COPY packages/voice-core /workspace/packages/voice-core
+COPY packages/dagmar-browser /workspace/packages/dagmar-browser
+COPY apps/kajovo-hotel /workspace/apps/kajovo-hotel
+
+RUN pnpm --filter @kajovo/kajovo-hotel-admin build
+
 FROM nginx:1.27.2-alpine3.20 AS runtime
 
 COPY apps/kajovo-hotel-admin/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /workspace/apps/kajovo-hotel-admin/dist /usr/share/nginx/html
+
+# The original standalone voice entry remains outside the CML rewrite.
 COPY infra/cml-web-retirement/service-worker.js /usr/share/nginx/html/cml-retire-worker.js
 
-# New section assets are served by the signed API; no old browser bundle enters this image.
-RUN rm -f /usr/share/nginx/html/index.html /usr/share/nginx/html/50x.html && chmod -R a+rX /usr/share/nginx/html
+# Deployment archives are private; the Nginx worker must still read public assets.
+RUN chmod -R a+rX /usr/share/nginx/html
 
 EXPOSE 80
+
 CMD ["nginx", "-g", "daemon off;"]

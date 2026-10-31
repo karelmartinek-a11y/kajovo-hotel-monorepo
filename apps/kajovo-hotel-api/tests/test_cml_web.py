@@ -54,6 +54,44 @@ def test_signature_binds_request_lifetime_identity_and_audience():
         verifier.verify(assertion(foreign,'section'),'POST','/cml-web/api/v1/echo?x=1',b'{"safe":true}')
 
 
+@pytest.mark.parametrize('route', ['voice-core/config', 'voice-core/calls', 'voice-core/sessions', 'voice-memory/notes'])
+@pytest.mark.parametrize('method', ['GET', 'POST', 'DELETE'])
+def test_voice_is_excluded_from_cml_while_native_dispatch_is_unchanged(tmp_path, monkeypatch, route, method):
+    key, jwks = fixture_key()
+    keyfile = tmp_path / 'public.json'
+    keyfile.write_text(json.dumps(jwks))
+    monkeypatch.setenv('CML_WEB_JWKS_PATH', str(keyfile))
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    factory = sessionmaker(bind=engine)
+    with engine.begin() as conn:
+        conn.execute(text('CREATE TABLE cml_web_nonce(jti text PRIMARY KEY,expires_at bigint NOT NULL)'))
+    app = FastAPI()
+    calls = []
+    native = '/api/v1/admin/' + route
+
+    @app.api_route(native, methods=['GET', 'POST', 'DELETE'])
+    def original():
+        calls.append(method)
+        return {'native_dispatch': True}
+
+    boundary = CmlWebBoundary(app, audience='hotel', session_factory=factory,
+                              resolve_identity=lambda *_: {'state': {}, 'public': {'admin': True}}, ui_root=tmp_path)
+    try:
+        with TestClient(boundary) as client:
+            path = '/cml-web' + native
+            headers = {'Origin': 'https://kajovocml.hcasc.cz', 'X-CML-Web-Prefix': '/sections/hotel/',
+                       'X-CML-Web-Assertion': assertion(key, 'hotel', path=path, method=method, body=b''),
+                       'X-CSRF-Token': 'a' * 43}
+            excluded = client.request(method, path, headers=headers)
+            assert excluded.status_code == 403
+            assert excluded.json()['error']['code'] == 'voice_outside_cml'
+            assert calls == []
+            assert client.request(method, native).json() == {'native_dispatch': True}
+            assert calls == [method]
+    finally:
+        engine.dispose()
+
+
 def test_boundary_replay_is_durable_and_cannot_create_local_login(tmp_path, monkeypatch):
     key, jwks = fixture_key()
     keyfile = tmp_path/'public.json'

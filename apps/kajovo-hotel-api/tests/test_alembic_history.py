@@ -19,7 +19,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0051_cml_voice_authority"]
+    assert script.get_heads() == ["0050_cml_web_push_authority"]
 
 
 def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_path, monkeypatch):
@@ -36,7 +36,7 @@ def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_pat
             db.execute(text("INSERT INTO chat_participants(id,principal_type,principal_id,email,display_name,is_active)VALUES(1,'portal',1,'synthetic@example.invalid','Synthetic',1)"))
             db.execute(text("INSERT INTO chat_push_subscriptions(id,participant_id,endpoint,p256dh,auth)VALUES(1,1,'https://fcm.googleapis.com/synthetic','synthetic-public-key','synthetic-auth')"))
             before = db.execute(text('SELECT * FROM chat_push_subscriptions')).mappings().one()
-        command.upgrade(config, '0050_cml_web_push_authority')
+        command.upgrade(config, 'head')
         with engine.connect() as db:
             after = dict(db.execute(text('SELECT * FROM chat_push_subscriptions')).mappings().one())
             assert after.pop('cml_authorized') == 0
@@ -68,7 +68,6 @@ def test_alembic_upgrade_head_on_clean_sqlite(
 
     assert {"voice_memory_principals", "voice_memory_settings", "voice_memories", "voice_memory_revisions", "voice_notes", "voice_note_items", "voice_conversation_summaries", "voice_memory_operations", "voice_memory_dependencies"} <= tables
     assert "voice_core_settings" in tables
-    assert "cml_voice_authority" in tables
     assert "voice_smart_operations" in tables
     assert {"request_id", "owner_session_id", "call_id", "arguments_digest", "status", "created_at"} == {column["name"] for column in inspector.get_columns("voice_smart_operations")}
     assert {"config_json", "revision", "encrypted_api_key"} <= {column["name"] for column in inspector.get_columns("voice_core_settings")}
@@ -96,31 +95,6 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "from_email" in smtp_columns
     assert "last_test_connected" in smtp_columns
     assert "last_test_send_attempted" in smtp_columns
-
-
-def test_cml_voice_authority_survives_code_rollback(tmp_path, monkeypatch):
-    from sqlalchemy import text
-
-    database = tmp_path / "voice-authority-rollback.db"
-    monkeypatch.setenv("KAJOVO_API_DATABASE_URL", f"sqlite:///{database}")
-    get_settings.cache_clear()
-    engine = create_engine(f"sqlite:///{database}")
-    config = _alembic_config()
-    try:
-        command.upgrade(config, "head")
-        with engine.begin() as db:
-            db.execute(text("INSERT INTO cml_voice_authority(sid,subject,epoch,token_hash,token_cipher,expires_at) "
-                            "VALUES('synthetic-session','KRMAR78',1,:digest,'synthetic-cipher','2030-01-01')"),
-                       {"digest": "a" * 64})
-            before = dict(db.execute(text("SELECT * FROM cml_voice_authority")).mappings().one())
-        with pytest.raises(RuntimeError, match="do not erase live authorization state"):
-            command.downgrade(config, "0050_cml_web_push_authority")
-        with engine.connect() as db:
-            assert dict(db.execute(text("SELECT * FROM cml_voice_authority")).mappings().one()) == before
-            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0051_cml_voice_authority"
-    finally:
-        engine.dispose()
-        get_settings.cache_clear()
 
 
 def test_current_checkpoint_preserves_schema_and_journal(tmp_path, monkeypatch) -> None:
