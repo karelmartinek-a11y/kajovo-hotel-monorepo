@@ -709,6 +709,18 @@
       "parent": "hotel.portal.58",
       "audienceRole": "member",
       "permission": "inventory:write"
+    },
+    {
+      "id": "hotel.record.submitted",
+      "title": "Záznam byl přijat",
+      "path": "/sections/hotel/?view=rooms",
+      "parent": "hotel.portal.45",
+      "audienceRole": "member",
+      "navigation": false,
+      "roles": [
+        "pokojská"
+      ],
+      "permission": "housekeeping:read"
     }
   ],
   "navigation_mode": "message",

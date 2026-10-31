@@ -15,7 +15,7 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
  const verified=async()=>{
   await verify?.(operation.result,{id:operation.id,read:apiRead});
   progress.remove();operation.finished=true;
-  await done?.(operation.result);
+  await done?.(operation.result,{id:operation.id,read:apiRead});
  };
  const recovery=()=>{
   progress.remove();
@@ -42,4 +42,12 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
   if(operation.accepted||error.uncertain)recovery();
   else{delete container.nativeMutation;controls.forEach((n,i)=>n.disabled=previous[i]);}
  }
+}
+
+// A write-only worker can read its own stored response, never the wider record
+// catalog. This proves the acknowledged creation, not a later business state.
+export async function storedMutation(read,id){
+ const receipt=await read('api/request-status?request_id='+encodeURIComponent(id));
+ if(receipt.state!=='completed'||receipt.status<200||receipt.status>=300)throw Error('Původní potvrzení není dostupné. Zápis se nebude opakovat.');
+ return receipt.body;
 }

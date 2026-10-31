@@ -332,7 +332,7 @@ def build_fixture():
 
         async def __call__(self, scope, receive, send):
             target = (scope["type"] == "http" and scope["method"] == "POST"
-                      and scope["path"].startswith("/cml-web/api/v1/reports/")
+                      and scope["path"].startswith(("/cml-web/api/v1/reports/", "/cml-web/api/v1/issues/", "/cml-web/api/v1/lost-found/"))
                       and scope["path"].endswith("/photos") and photo_fault["armed"])
             if not target:
                 await self.app(scope, receive, send)
@@ -376,8 +376,8 @@ def build_fixture():
                     {"id": r.id, "title": r.title, "status": r.status, "photos": [{"id": photo.id, "bytes": photo.size_bytes} for photo in r.photos]}
                     for r in db.scalars(select(Report))
                 ],
-                "issues": [{"id": row.id, "title": row.title, "status": row.status} for row in db.scalars(select(Issue))],
-                "lostfound": [{"id": row.id, "description": row.description, "status": row.status} for row in db.scalars(select(LostFoundItem))],
+                "issues": [{"id": row.id, "title": row.title, "status": row.status, "photos": len(row.photos)} for row in db.scalars(select(Issue))],
+                "lostfound": [{"id": row.id, "description": row.description, "status": row.status, "photos": len(row.photos)} for row in db.scalars(select(LostFoundItem))],
                 "inventory": [
                     {"id": r.id, "name": r.name, "stock": r.current_stock}
                     for r in db.scalars(select(InventoryItem))

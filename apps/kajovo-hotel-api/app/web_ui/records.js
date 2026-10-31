@@ -1,6 +1,6 @@
 import {el,icon,field,select,button,table,panel,notice,modal,formData,showError} from './ui.js';
 import {api,getRole,exportLink} from './api.js';
-import {saveMutation} from './operations.js';
+import {saveMutation,storedMutation} from './operations.js';
 import {inventoryExtras} from './inventory.js';
 import {pragueInput,pragueInstant} from './time.js';
 import {moduleReference} from './references.js';
@@ -13,6 +13,8 @@ export const modules={
 };
 
 const permission=config=>(config.path==='lost-found'?'lost_found':config.path)+':write';
+const readPermission=config=>permission(config).replace(':write',':read');
+const back=(ctx,key)=>ctx.go(ctx.state.identity.available_permissions.includes(readPermission(modules[key]))?key:ctx.state.identity.available_permissions.includes('housekeeping:read')?'rooms':'chat');
 function can(ctx,config,operation){
  if(!ctx.state.identity.permissions.includes(permission(config)))return false;
  const role=ctx.state.identity.active_role;
@@ -48,7 +50,7 @@ export async function recordEditor(ctx,key,mode){
    if(type==='datetime-local')controls.append(select('Výskyt času při změně letního času',name+'-fold',[['','Vyberte pouze při opakovaném čase'],['first','První výskyt'],['second','Druhý výskyt']],''));
   }
   if(config.path==='lost-found')controls.append(el('fieldset',{class:'wide'},el('legend',{},'Štítky'),[['kontaktova','Kontaktován'],['nezastizen','Nezastižen'],['vyzvedne','Vyzvedne'],['odesleme','Odešleme']].map(([name,title])=>el('label',{class:'check-field'},el('input',{type:'checkbox',name:'tag-'+name,checked:row?.tags?.includes(name)}),title))));
-  const cancel=()=>{ctx.state.recordDrafts.delete(draftKey);move(ctx,key,'list');},form=el('form',{class:'record-form'},controls,el('div',{class:'form-actions actions'},button([icon('close'),'Zrušit'],cancel),el('button',{type:'submit',class:'primary'},icon('save'),'Uložit')));form.dataset.nativeRole=getRole();draft={form,row};ctx.state.recordDrafts.set(draftKey,draft);
+  const cancel=()=>{ctx.state.recordDrafts.delete(draftKey);back(ctx,key);},form=el('form',{class:'record-form'},controls,el('div',{class:'form-actions actions'},button([icon('close'),'Zrušit'],cancel),el('button',{type:'submit',class:'primary'},icon('save'),'Uložit')));form.dataset.nativeRole=getRole();draft={form,row};ctx.state.recordDrafts.set(draftKey,draft);
   form.addEventListener('submit',event=>{
    event.preventDefault();const raw=formData(form),payload={};
    try{for(const [,name,type] of config.fields){
@@ -58,13 +60,14 @@ export async function recordEditor(ctx,key,mode){
     else payload[name]=raw[name]===''?null:raw[name];
    }}catch(error){showError(form,error);return;}
    if(config.path==='lost-found')payload.tags=['kontaktova','nezastizen','vyzvedne','odesleme'].filter(name=>raw['tag-'+name]==='on');
-   saveMutation(form,{path:'api/v1/'+config.path+(row?'/'+row.id:''),method:row?'PUT':'POST',body:payload,verify:async(result,{read})=>{
-    if(!result?.id)throw Error('Odpověď neobsahuje identitu uloženého záznamu.');const actual=await read('api/v1/'+config.path+'/'+result.id);
+   const mayRead=ctx.state.identity.role_permissions[form.dataset.nativeRole].includes(readPermission(config));
+   saveMutation(form,{path:'api/v1/'+config.path+(row?'/'+row.id:''),method:row?'PUT':'POST',body:payload,verify:async(result,{id,read})=>{
+    if(!result?.id)throw Error('Odpověď neobsahuje identitu uloženého záznamu.');const actual=mayRead?await read('api/v1/'+config.path+'/'+result.id):await storedMutation(read,id);if(actual?.id!==result.id)throw Error('Původní potvrzení obsahuje jinou identitu.');
     for(const [name,value] of Object.entries(payload)){const same=name==='event_at'?Date.parse(actual[name]+(/([Zz]|[+-]\d\d:\d\d)$/.test(actual[name])?'':'Z'))===Date.parse(value):JSON.stringify(actual[name])===JSON.stringify(value);if(!same)throw Error('Následné načtení nepotvrdilo údaj: '+(config.fields.find(field=>field[1]===name)?.[0]??'Štítky'));}
-   },done:async result=>{ctx.state.recordDrafts.delete(draftKey);if(ctx.state.view===key+'-'+mode)await move(ctx,key,'detail',result);}});
+   },done:async(result,{id})=>{ctx.state.recordDrafts.delete(draftKey);if(!mayRead){ctx.state.recordSubmissions??=new Map();ctx.state.recordSubmissions.set(key,{result,id,role:form.dataset.nativeRole,photos:[]});}if(ctx.state.view===key+'-'+mode)await move(ctx,key,mayRead?'detail':'submitted',result);}});
   });
  }
- main.append(panel(ref.title,[button([icon('arrow-left'),'Zpět na seznam'],()=>move(ctx,key,'list')),draft.form],key==='inventory'?'inventory':key==='issues'?'issue':key==='lostfound'?'lostfound':'report'));
+ main.append(panel(ref.title,[button([icon('arrow-left'),ctx.state.identity.available_permissions.includes(readPermission(config))?'Zpět na seznam':'Zpět na pokoje'],()=>back(ctx,key)),draft.form],key==='inventory'?'inventory':key==='issues'?'issue':key==='lostfound'?'lostfound':'report'));
 }
 export async function recordDetail(ctx,key){
  const config=modules[key],generation=ctx.state.generation,ref=reference(ctx,config,'detail'),main=ctx.heading(ref.id,ref.title,'Projděte uložené údaje, historii a dostupné akce záznamu.');
@@ -82,4 +85,16 @@ export async function recordDetail(ctx,key){
   const documentation=await photoDocumentation(ctx,config,actual,can(ctx,config,'photo'),refresh);if(generation!==ctx.state.generation)return;
   main.append(panel('Fotodokumentace a historie',el('div',{class:'record-history'},documentation,[['Záznam vytvořen',actual.created_at],['Poslední změna',actual.updated_at],['Zahájeno řešení',actual.in_progress_at],['Vyřešeno',actual.resolved_at],['Uzavřeno',actual.closed_at],['Zpracováno',actual.claimed_at],['Vráceno',actual.returned_at]].filter(([,time])=>time).map(([title,time])=>el('article',{},el('strong',{},title),el('time',{},display(config,'event_at',time))))),'clock'));
  }
+}
+
+export async function recordSubmitted(ctx,key){
+ const submission=ctx.state.recordSubmissions?.get(key),config=modules[key];
+ const main=ctx.heading('hotel.record.submitted','Záznam byl přijat','Potvrzení právě odeslaného záznamu v rámci vaší pracovní role.');
+ if(!submission){main.append(notice('Potvrzení tohoto zápisu není v otevřeném dokumentu dostupné. Nevytvářejte stejný záznam znovu.','warning'),button('Zpět na pokoje',()=>back(ctx,key)));return;}
+ const generation=ctx.state.generation,read=(path,options={})=>api(path,{...options,roleOverride:submission.role});
+ const accepted=await storedMutation(read,submission.id);if(generation!==ctx.state.generation)return;if(accepted.id!==submission.result.id)throw Error('Původní potvrzení obsahuje jinou identitu.');
+ main.append(panel(config.title+' · záznam č. '+accepted.id,[notice('Záznam byl přijat. V této pracovní roli nemůžete číst jeho další stav.'),el('div',{class:'record-details'},config.fields.map(([title,name])=>el('div',{},el('small',{},title),el('strong',{},display(config,name,accepted[name]))))),el('div',{class:'actions'},button([icon('arrow-left'),'Zpět na pokoje'],()=>back(ctx,key)))],key==='issues'?'issue':'lostfound'));
+ const refresh=()=>ctx.state.view===key+'-submitted'?ctx.go(key+'-submitted'):undefined;
+ const documentation=await photoDocumentation(ctx,config,{...accepted,photos:submission.photos},true,refresh,{writeOnly:true,role:submission.role,onSaved:photos=>submission.photos=photos});if(generation!==ctx.state.generation)return;
+ main.append(panel('Připojit fotografie',documentation,'camera'));
 }

@@ -67,8 +67,11 @@ detail; rozpracované formuláře se uchovávají v paměti dokumentu. Skladový
 není při úpravě katalogu editovatelný a neposílá se v update payloadu. Nadále se
 mění původními pohyby. Nálezy respektují omezení recepce na zpracování; mazání
 nálezu i závady je pouze administrátorské. Role s právem pouze vytvářet bez práva
-číst (pokojská) ještě potřebují dokončit vlastní tok potvrzení a fotodokumentace;
-nejde o důvod přidat jim čtecí grant nad cizí evidencí.
+číst (pokojská) mají vlastní tok potvrzení přes uloženou odpověď svého zápisu.
+Vlastní pokojská tedy může vytvořit závadu i nález a připojit fotografie. Čtení
+seznamu, cizího i vlastního aktuálního detailu a fotografie dále vrací 403.
+Potvrzovací stránka zobrazuje výslovně původní přijaté údaje, nikoli pozdější stav
+evidence. Nepřidává se jí čtecí grant ani nová role.
 
 Fotodokumentace používá původní multipart API a originální soubory. Nahrání po
 ztrátě odpovědi se obnoví pouze čtením trvalého výsledku. Formulář drží původní
@@ -90,7 +93,10 @@ fotografie, dekódovaný náhled/zvětšení, shodu původního obrázku a PDF a
 den po reloadu. Fixture nepřehrává WebKit multipart přes `route.fetch` (ten
 předával prázdný soubor); ztrátu ACK injektuje až za skutečně dokončenou boundary,
 po původním browserovém uploadu a commitu receipt. Kontroluje se jediná fotografie
-a trvalý původní výsledek. Všechny údaje a poskytovatelé zůstávají syntetičtí.
+a trvalý původní výsledek. Všechny údaje a poskytovatelé zůstávají syntetičtí. Nahrání a přesné stažení
+originálu je ověřené pro hlášení, závady i nálezy. Tok pokojské zahrnuje ztracenou
+odpověď při vytvoření i fotografiích a nezávislé ověření jediného DB záznamu /
+jediné přílohy. Původní oprávnění Hotelu zůstávají beze změny.
 
 Python API sada znovu prošla 374/374 testy (268 dosavadních FastAPI on_event
 warnings). Kontrola JS parsuje 13 nových modulů. Centrální CML sada prošla 26
