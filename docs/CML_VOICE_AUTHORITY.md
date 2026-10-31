@@ -25,3 +25,14 @@ Historické důkazy odstraněné CML hlasové integrace nejsou aktuální releas
 kvalifikací. Skutečný hlasový hovor ani placené volání se touto změnou netestují.
 Produkce, přihlašovací credentials, hlasové přístupy a jejich aktivace se nemění.
 Úplný gate a finální webový cutover celé migrace zůstávají samostatné brány.
+
+## Úplná místní regrese po vyjmutí hlasu
+
+Runtime zdroj `c885251ba46e6da3319ce57d74672b0ea4089e10` prošel 31/31
+povinnými kroky release gate. Společná sada API/VoiceCore/Dagmar má 518 PASS,
+0 skipped a 270 dosavadních warnings. Původní browserové hlasové regrese
+se ověřují pro zachování stávajícího řešení; neimplementují CML hlas.
+Artefakt: `release-gate-c885251ba46e-20261031T175955.635912+0000.json`.
+Admin zdroj, Dagmar browser, VoiceCore browser a nativní Dagmar adaptér se
+shodují s výchozím main `11cde6c60768ebec9eaa31788c524aef73e1c19f`.
+Povinná kvalifikace není GitHub CI, produkční deploy ani skutečný hovor.
