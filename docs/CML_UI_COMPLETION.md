@@ -325,3 +325,12 @@ Cílených 111 backendových testů prošlo s vlastními checkouty balíčků
 `packages/voice-core-server/src` a `packages/dagmar-server/src` v PYTHONPATH.
 Původní pokus s adresáři bez `/src` načetl jiný nainstalovaný Dagmar balíček
 a skončil při setupu; tento běh nebyl úspěšnou kvalifikací.
+
+Konečný úplný gate na revizi `67ce22885bf6` má 31/31 PASS a 509 úspěšných
+API/VoiceCore/Dagmar testů bez přeskočení (270 upozornění). Artefakt:
+`release-gate-67ce22885bf6-20261031T144517.002508+0000.json`.
+Reprodukce vyžaduje absolutní PYTHONPATH do tří vlastních zdrojových checkoutů,
+lokální `HOTEL_INVENTORY_TEST_DATABASE_URL` a `CML_PROFILE_TEST_DATABASE_URL`
+s ovladačem `postgresql+psycopg` a vlastní `npm_config_store_dir` pro pnpm.
+Předchozí gate skončil na neplatné globální cache pnpm; nebyl vykázán jako PASS.
+Tato kvalifikace je lokální, publikace a produkční cutover nadále neproběhly.
