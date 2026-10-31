@@ -275,3 +275,16 @@ Předchozí místní pokus používal neinstalovaný výchozí PostgreSQL ovlada
 finální běh používá explicitní `postgresql+psycopg` URL obou vlastních
 local-only test DB proměnných. Produkční a GitHub kroky stále neproběhly;
 nový hlasový frontend a finální grafická řada zůstávají otevřené.
+
+
+## Soukromý push – úplný lokální gate
+
+Runtime revize `53d6cd387861` prošla 31/31 kontrolami release gate, včetně
+506 API/Voice/Dagmar testů (270 upozornění původních závislostí), obou
+copy-out hostů, původních UI regresí a retirement workeru. Artefakt:
+`release-gate-53d6cd387861-20261031T124216.117369+0000.json`.
+Cílených 16 testů zahrnulo nedestruktivní migraci a zavřený provider payload.
+Chromium a WebKit přes skutečnou CML gateway kvalifikovaly náhled z původního
+čtecího API, IndexedDB deduplikaci po souběhu/obnově a nulovou změnu potvrzení
+přečtení. Push/Notification API byla řízená; externí push ani OS doručení
+nebyly testované. GitHub publikace a produkční cutover zůstávají otevřené.
