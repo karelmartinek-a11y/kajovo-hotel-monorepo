@@ -36,6 +36,9 @@ services:
     volumes:
       - api_data:/app/data
     environment:
+      # Public CML key only, staged in the existing api_data volume. No private
+      # signing key or provider credential is shared with this service.
+      CML_WEB_JWKS_PATH: ${CML_WEB_JWKS_PATH:-}
       KAJOVO_API_VOICE_RELEASE_SHA: ${DEPLOY_SOURCE_SHA:-unknown}
       KAJOVO_API_VOICE_MAIL_ENABLED: ${KAJOVO_API_VOICE_MAIL_ENABLED:-false}
       KAJOVO_API_VOICE_MAIL_ACCEPTANCE_SHA: ${KAJOVO_API_VOICE_MAIL_ACCEPTANCE_SHA:-}

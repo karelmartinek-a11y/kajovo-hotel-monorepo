@@ -18,7 +18,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0048_cml_web_request"]
+    assert script.get_heads() == ["0049_cml_profile_provision"]
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -148,13 +148,13 @@ def test_cml_receipt_upgrade_preserves_native_rows_and_prevents_identity_rollbac
             conn.execute(text("INSERT INTO voice_smart_deliveries(id,owner_session_id,arguments_digest,status) VALUES('receipt-preserve','owner','digest','delivered')"))
             conn.execute(text("INSERT INTO cml_web_nonce(jti,expires_at)VALUES('11111111-1111-4111-8111-111111111111',2000000000)"))
         before=schema()
-        command.upgrade(config,'head')
+        command.upgrade(config,'0048_cml_web_request')
         after=schema()
         assert set(after)==set(before)|{'cml_web_request'}
         assert {name:after[name]for name in before}==before
         with engine.begin() as conn:
             conn.execute(text("INSERT INTO cml_web_request(owner,request_id,fingerprint,permission,state)VALUES('owner','synthetic-receipt','fingerprint','reports:write','uncertain')"))
-        command.upgrade(config,'head')
+        command.upgrade(config,'0048_cml_web_request')
         with pytest.raises(RuntimeError,match='identities must survive'):
             command.downgrade(config,'0047_cml_web_nonce')
         with engine.connect() as conn:
@@ -162,6 +162,45 @@ def test_cml_receipt_upgrade_preserves_native_rows_and_prevents_identity_rollbac
             assert conn.scalar(text('SELECT count(*) FROM cml_web_nonce'))==1
             assert conn.scalar(text('SELECT state FROM cml_web_request'))=='uncertain'
             assert conn.scalar(text("SELECT status FROM voice_smart_deliveries WHERE id='receipt-preserve'"))=='delivered'
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
+
+
+def test_cml_profile_upgrade_preserves_native_data_and_immutable_receipt(tmp_path, monkeypatch):
+    import pytest
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+    from app.db.models import PortalUser, PortalUserRole
+
+    database = tmp_path / "cml-profile.db"
+    monkeypatch.setenv("KAJOVO_API_DATABASE_URL", f"sqlite:///{database}")
+    get_settings.cache_clear()
+    config = _alembic_config()
+    engine = create_engine(f"sqlite:///{database}")
+    def schema():
+        inspector = inspect(engine)
+        return {name: [{**column, "type": str(column["type"])} for column in inspector.get_columns(name)] for name in inspector.get_table_names()}
+    try:
+        command.upgrade(config, "0048_cml_web_request")
+        with Session(engine) as db:
+            user = PortalUser(first_name="Testovací", last_name="Profil", email="profile-migration@example.invalid", password_hash="synthetic-unusable", roles=[PortalUserRole(role="recepce")])
+            db.add(user)
+            db.commit()
+            native_id = user.id
+        before = schema()
+        command.upgrade(config, "head")
+        after = schema()
+        assert set(after) == set(before) | {"cml_profile_provision"}
+        assert {name: after[name] for name in before} == before
+        with engine.begin() as connection:
+            connection.execute(text("INSERT INTO cml_profile_provision(operation_id,central_user_id,fingerprint,native_id)VALUES(:operation,:central,:fingerprint,:native)"), {"operation":"11111111-1111-4111-8111-111111111111", "central":"22222222-2222-4222-8222-222222222222", "fingerprint":"a" * 64, "native":native_id})
+        with pytest.raises(RuntimeError, match="profile receipts must survive"):
+            command.downgrade(config, "0048_cml_web_request")
+        with engine.connect() as connection:
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "0049_cml_profile_provision"
+            assert connection.scalar(text("SELECT native_id FROM cml_profile_provision")) == native_id
+            assert connection.scalar(text("SELECT email FROM portal_users WHERE id=:id"), {"id":native_id}) == "profile-migration@example.invalid"
     finally:
         engine.dispose()
         get_settings.cache_clear()

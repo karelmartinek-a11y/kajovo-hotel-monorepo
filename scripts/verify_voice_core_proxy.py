@@ -1,5 +1,8 @@
 """Check the actual host + frontend Nginx chain using isolated Docker runtimes."""
+import base64
+import hashlib
 import http.client
+import os
 import json
 import re
 import shutil
@@ -10,6 +13,9 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -67,6 +73,18 @@ def main():
         filter_port = sock.getsockname()[1]
     with tempfile.TemporaryDirectory(prefix=prefix, dir=ROOT / ".tmp") as directory:
         temp = Path(directory)
+        cml_key = Ed25519PrivateKey.generate()
+        def b64(value):
+            return base64.urlsafe_b64encode(value).decode().rstrip("=")
+        public = cml_key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        (temp / "cml-jwks.json").write_text(json.dumps({"keys": [{"kty": "OKP", "crv": "Ed25519", "kid": "cml-web-1", "x": b64(public)}]}))
+        def cml_headers(path):
+            now = int(time.time())
+            head = b64(json.dumps({"typ": "cml-web+jwt", "alg": "EdDSA", "kid": "cml-web-1"}).encode())
+            claims = {"iss": "https://kajovocml.hcasc.cz", "aud": "hotel", "sub": "KRMAR78", "role": "admin", "nativeId": None, "sid": str(uuid.uuid4()), "epoch": 1, "iat": now, "exp": now + 10, "jti": str(uuid.uuid4()), "method": "GET", "path": path, "bodySha256": hashlib.sha256(b"").hexdigest(), "csrf": "a" * 43}
+            signed = head + "." + b64(json.dumps(claims).encode())
+            return {"Origin": "https://kajovocml.hcasc.cz", "X-CML-Web-Prefix": "/sections/hotel/", "X-CML-Web-Assertion": signed + "." + b64(cml_key.sign(signed.encode()))}
+
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
             "-subj", "/CN=hotel.hcasc.cz", "-keyout", str(temp / "privkey.pem"),
             "-out", str(temp / "fullchain.pem")], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -87,12 +105,12 @@ def main():
         (temp / "host.conf").write_text(config)
         run("docker", "network", "create", prefix)
         try:
-            for service, image in [("api", "voice-core-api-check"), ("admin", "voice-core-admin-check"), ("web", "voice-core-web-check")]:
+            for service, image in [("api", os.getenv("CML_PROXY_API_IMAGE", "voice-core-api-check")), ("admin", os.getenv("CML_PROXY_ADMIN_IMAGE", "voice-core-admin-check")), ("web", os.getenv("CML_PROXY_WEB_IMAGE", "voice-core-web-check"))]:
                 name = prefix + "-" + service
                 names.append(name)
                 command = ["docker", "run", "-d", "--name", name, "--network", prefix, "--network-alias", service]
                 if service == "api":
-                    command += ["-e", "KAJOVO_API_DATABASE_URL=sqlite:////tmp/voice-proxy.db", "-e", "KAJOVO_API_ENVIRONMENT=development", "-e", "KAJOVO_API_BREAKFAST_SCHEDULER_ENABLED=false"]
+                    command += ["-e", "KAJOVO_API_DATABASE_URL=sqlite:////tmp/voice-proxy.db", "-e", "KAJOVO_API_ENVIRONMENT=development", "-e", "KAJOVO_API_BREAKFAST_SCHEDULER_ENABLED=false", "-e", "CML_WEB_JWKS_PATH=/run/cml-web-jwks.json", "-v", f"{temp}/cml-jwks.json:/run/cml-web-jwks.json:ro"]
                 run(*command, image)
                 if service != "api":
                     check_frontend_config(name)
@@ -112,12 +130,12 @@ def main():
                 return [json.loads(line) for line in content.splitlines()]
             # Only this generated one-day local certificate bypasses verification.
             context = ssl._create_unverified_context()
-            def request(path, referer=None, fixture=False):
+            def request(path, referer=None, fixture=False, extra_headers=None):
                 if fixture:
                     conn = http.client.HTTPConnection("127.0.0.1", filter_port, timeout=3)
                 else:
                     conn = http.client.HTTPSConnection("127.0.0.1", port, context=context, timeout=3)
-                headers = {"Host": "hotel.hcasc.cz"}
+                headers = {"Host": "hotel.hcasc.cz", **(extra_headers or {})}
                 if referer:
                     headers["Referer"] = referer
                 conn.request("GET", path, headers=headers)
@@ -144,6 +162,14 @@ def main():
                 assert {"strict-transport-security", "x-content-type-options", "x-frame-options", "referrer-policy"} <= header_names
                 if path.startswith("/api/"):
                     assert {key.lower(): value for key, value in headers}["cache-control"] == "no-store"
+            assert request("/cml-web/identity")[0] == 401
+            assert request("/cml-web/api/profiles/11111111-1111-4111-8111-111111111111")[0] == 401
+            signed_headers = cml_headers("/cml-web/identity")
+            status, _headers, body = request("/cml-web/identity", extra_headers=signed_headers)
+            assert status == 200 and json.loads(body)["admin"] is True
+            assert request("/cml-web/identity", extra_headers=signed_headers)[0] == 401
+            status, _headers, body = request("/cml-web/", extra_headers=cml_headers("/cml-web/"))
+            assert status == 200 and b"/sections/hotel/app.js" in body
             query_marker, ref_marker = "query-" + uuid.uuid4().hex, "ref-" + uuid.uuid4().hex
             referer = "https://example.invalid/" + ref_marker
             before = len(access_rows())
@@ -222,6 +248,8 @@ def main():
                 "excluded_success_statuses": [204, 302],
                 "retained_failure_cases": len(excluded), "upstream_status": 502,
                 "standard_error_contains_synthetic_uri_query_referer": True,
+                "cml_signed_identity": True, "cml_unsigned_denied": True,
+                "cml_nonce_replay_denied": True, "cml_fresh_html": True,
                 "routing_and_security_headers": "PASS"}))
             print("Synthetic upstream error evidence: " + matching[-1])
         finally:

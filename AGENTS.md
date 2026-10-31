@@ -164,3 +164,11 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   Účtenky nemají mazací FK na pracovní profil a nesmějí se ztratit rollbackem.
   `CML_PROFILE_TEST_DATABASE_URL` je explicitní místní PostgreSQL `_test` DB;
   test dvou workerů nesmí zasáhnout produkci nebo hotelové kontakty.
+
+- Hostový Nginx směruje `/cml-web/` se zachovanou cestou/podpisem na vlastní
+  API 8202 a drží limit 8m. Compose předává jen explicitní `CML_WEB_JWKS_PATH`.
+  Soubor obsahuje veřejný JWKS CML a může být připravený ve stávajícím api_data
+  volume; privátní podpisový klíč ani cizí credentials do Hotelu nepatří.
+  Runtime proxy test ověřuje nepodepsané odmítnutí, platnou identitu, replay
+  nonce i nové HTML přes skutečné tři Docker runtimy. Oddělené kvalifikační
+  image lze určit `CML_PROXY_API_IMAGE`, `CML_PROXY_ADMIN_IMAGE`, `CML_PROXY_WEB_IMAGE`.

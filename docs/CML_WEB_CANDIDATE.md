@@ -32,3 +32,17 @@ nezávislém read-backu potvrdí vazby/granty. Pozvánku vydává až nad koneč
 revizí. Původní nativní credentials a neveboví klienti se nemění; tento kontrakt
 nevolá původní nativní onboarding. Obnova nejisté žádosti nejprve čte původní
 ID a případné pokračování je výslovné, nad stejným DB-only atomickým kontraktem.
+
+Pro vlastní publikační řetězec je v hostovém Nginxu kandidátní route
+`/cml-web/` → 8202 bez přepisu URI a s 8m limitem. Compose výslovně předá
+`CML_WEB_JWKS_PATH`; produkční konfigurace musí ukázat na veřejný JWKS CML
+v dostupném souboru, například `/app/data/cml-web-jwks.json` ve stávajícím
+api_data volume. Soubor se připraví před startem kandidáta, bez změny starých
+provider credentials nebo historických diagnostických volumes. Neobsahuje
+privátní podpisový klíč. Bez této konfigurace je boundary uzavřená (503).
+
+Samostatný lokální image a proxy test přes skutečný HTTPS Nginx/API ověřil
+401 bez podpisu, 200 s platným podpisem, 401 při replay nonce a nové HTML
+s `/sections/hotel/app.js`. Ověření používá jen syntetický veřejný JWKS,
+izolovanou SQLite a nové kvalifikační image. Produkční Nginx ani kontejnery
+nebyly tímto testem změněné; staré veřejné webové vstupy ještě nejsou uzavřené.

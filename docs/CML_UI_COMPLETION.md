@@ -222,3 +222,11 @@ WebKit následně ověřily 125 příchozích zpráv, skutečně posuvnou histor
 žádné potvrzení pod oběma dialogy a obnovení čtení po zavření. Izolované
 syntetické testy neposlaly skutečnou zprávu. Úplný release gate výše předchází
 této opravě; před vydáním musí znovu projít nad výsledným zdrojem.
+
+Nová migrace 0049 má vlastní regresi zachování všech původních sloupců,
+uživatele a jeho účtenky při odmítnutí downgradu. Samostatná regrese 0048
+zůstává zaměřená na tuto konkrétní původní migraci. Šest migračních testů
+prošlo. Úplný gate nad `5bc28ef` před opravou očekávání nové hlavy vykázal
+29/30 PASS a dvě migrační selhání v API sadě; aktuální kombinace vyžaduje nový
+celý běh. Samostatné Docker buildy API/admin/web a skutečný proxy runtime test
+prošly včetně CML podpisu, odmítnutí nepodepsané žádosti a nonce replaye.
