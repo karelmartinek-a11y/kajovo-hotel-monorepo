@@ -14,8 +14,6 @@ import time
 import uuid
 from pathlib import Path
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -73,17 +71,24 @@ def main():
         filter_port = sock.getsockname()[1]
     with tempfile.TemporaryDirectory(prefix=prefix, dir=ROOT / ".tmp") as directory:
         temp = Path(directory)
-        cml_key = Ed25519PrivateKey.generate()
+        cml_key = temp / "cml-signing-fixture.pem"
+        subprocess.run(["openssl", "genpkey", "-algorithm", "ED25519", "-out", str(cml_key)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cml_key.chmod(0o600)
         def b64(value):
             return base64.urlsafe_b64encode(value).decode().rstrip("=")
-        public = cml_key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        public_der = subprocess.run(["openssl", "pkey", "-in", str(cml_key), "-pubout", "-outform", "DER"], check=True, capture_output=True).stdout
+        assert len(public_der) == 44, "Expected an Ed25519 public key"
+        public = public_der[-32:]
         (temp / "cml-jwks.json").write_text(json.dumps({"keys": [{"kty": "OKP", "crv": "Ed25519", "kid": "cml-web-1", "x": b64(public)}]}))
         def cml_headers(path):
             now = int(time.time())
             head = b64(json.dumps({"typ": "cml-web+jwt", "alg": "EdDSA", "kid": "cml-web-1"}).encode())
             claims = {"iss": "https://kajovocml.hcasc.cz", "aud": "hotel", "sub": "KRMAR78", "role": "admin", "nativeId": None, "sid": str(uuid.uuid4()), "epoch": 1, "iat": now, "exp": now + 10, "jti": str(uuid.uuid4()), "method": "GET", "path": path, "bodySha256": hashlib.sha256(b"").hexdigest(), "csrf": "a" * 43}
             signed = head + "." + b64(json.dumps(claims).encode())
-            return {"Origin": "https://kajovocml.hcasc.cz", "X-CML-Web-Prefix": "/sections/hotel/", "X-CML-Web-Assertion": signed + "." + b64(cml_key.sign(signed.encode()))}
+            data = temp / "cml-sign-input"
+            data.write_bytes(signed.encode())
+            signature = subprocess.run(["openssl", "pkeyutl", "-sign", "-rawin", "-inkey", str(cml_key), "-in", str(data)], check=True, capture_output=True).stdout
+            return {"Origin": "https://kajovocml.hcasc.cz", "X-CML-Web-Prefix": "/sections/hotel/", "X-CML-Web-Assertion": signed + "." + b64(signature)}
 
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
             "-subj", "/CN=hotel.hcasc.cz", "-keyout", str(temp / "privkey.pem"),
