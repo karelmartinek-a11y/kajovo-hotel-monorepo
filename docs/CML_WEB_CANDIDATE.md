@@ -16,3 +16,19 @@ Aktuální podrobný místní rozsah a zbývající brány jsou v
 [CML_UI_COMPLETION.md](CML_UI_COMPLETION.md). Deset hlavních pohledů již má
 prohlížečovou kvalifikaci přes skutečnou CML gateway; toto ověření není úplným
 pokrytím všech referencí, Docker releasem nebo produkčním cutoverem.
+
+Nový atomický kontrakt `kajovo-profile-provision/1` vytváří vlastní pracovní
+profil z centrálního CML průvodce. Podepsaný POST `/cml-web/api/profiles` přijímá
+`operation_id`, `central_user_id` a původní profilová pole bez hesla/ID. Vyžaduje
+hlavního vlastníka a čerstvé reauth; GET se stejným ID pouze čte účtenku a
+aktuální profil. Pole navíc jsou odmítnutá. Účtenka obsahuje původní fingerprint,
+centrální UUID a skutečné nativní ID, nikdy heslo. Jedinečné operace a centrální
+UUID spolu s profilem vznikají jednou transakcí. Konflikt e-mailu nevytvoří
+vazbu k cizímu účtu; změna argumentů stejného ID vrací konflikt. Smazání
+pracovního profilu nemaže jeho účtenku a opakování jej nevytváří znovu.
+
+CML nejprve trvale uloží rozepsaný neaktivní účet, poté vytvoří profily a po
+nezávislém read-backu potvrdí vazby/granty. Pozvánku vydává až nad konečnou
+revizí. Původní nativní credentials a neveboví klienti se nemění; tento kontrakt
+nevolá původní nativní onboarding. Obnova nejisté žádosti nejprve čte původní
+ID a případné pokračování je výslovné, nad stejným DB-only atomickým kontraktem.

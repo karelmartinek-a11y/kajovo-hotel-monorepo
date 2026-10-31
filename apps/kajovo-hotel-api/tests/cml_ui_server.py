@@ -413,6 +413,7 @@ def build_fixture():
     def readback():
         with factory() as db:
             return {
+                "profiles": [{"id": user.id, "email": user.email, "roles": [role.role for role in user.roles]} for user in db.scalars(select(PortalUser))],
                 "exports": list(exports),
                 "errors": list(fixture_errors),
                 "photo_replies_dropped": photo_fault["dropped"],

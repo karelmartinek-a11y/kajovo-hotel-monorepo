@@ -63,6 +63,7 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       HOTEL_INVENTORY_TEST_DATABASE_URL: postgresql+psycopg://postgres:inventory_ci_only@127.0.0.1:5432/inventory_test
+      CML_PROFILE_TEST_DATABASE_URL: postgresql+psycopg://postgres:inventory_ci_only@127.0.0.1:5432/inventory_test
     steps:
       - uses: actions/checkout@v5
         with:

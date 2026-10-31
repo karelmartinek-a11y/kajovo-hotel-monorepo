@@ -154,3 +154,13 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
 - Datum pracovní stránky může opaque rámec uchovat pouze přes deklarovaný CML state bridge typu `date`; nikdy nepřidávat obecný přístup do parent storage. Formuláře evidencí zůstávají samostatnými stránkami podle předlohy a metadata nápovědy musí odpovídat skutečným polím a akcím. Skladový `current_stock` se při úpravě katalogu neposílá.
 
 - Skladové doklady a samostatné pohyby používají stejný zámek skladového řádku; při více položkách zachovat pořadí PK. PostgreSQL číslování původního prefixu/roku má vlastní transakční advisory lock. Součet opakovaných surovin se ověřuje před vytvořením dokladu. PG testy vyžadují explicitní místní databázi končící `_test`; neprovádět je nad produkcí.
+
+- Vytvoření nového profilu přes CML používá výhradně `kajovo-profile-provision/1`
+  na podepsané `/cml-web/api/profiles`. Vyžaduje hlavní účet a čerstvé reauth.
+  Migrace `0049_cml_profile_provision` ukládá profil i neměnnou účtenku v jedné
+  transakci; UUID operace i centrálního účtu jsou jedinečné. E-mailový konflikt
+  se nikdy nepřevezme. Tato cesta neposílá nativní onboarding a nevrací heslo.
+  Čtecí obnova používá původní ID; běžný CML POST `/api/v1/users` je odmítnutý.
+  Účtenky nemají mazací FK na pracovní profil a nesmějí se ztratit rollbackem.
+  `CML_PROFILE_TEST_DATABASE_URL` je explicitní místní PostgreSQL `_test` DB;
+  test dvou workerů nesmí zasáhnout produkci nebo hotelové kontakty.
