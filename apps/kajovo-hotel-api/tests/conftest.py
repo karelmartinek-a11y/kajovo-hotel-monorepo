@@ -1,4 +1,5 @@
 import hashlib
+import base64
 import http.cookiejar
 import json
 import os
@@ -11,9 +12,12 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable, Generator
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import create_engine
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives import serialization
 
 from app.db.models import Base
 from tests.test_support import admin_email, admin_login_payload, admin_password
@@ -62,7 +66,16 @@ def api_db_path(tmp_path_factory: pytest.TempPathFactory) -> Generator[Path, Non
 
 
 @pytest.fixture(scope="session")
-def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
+def cml_web_test_key(api_db_path: Path) -> tuple[Ed25519PrivateKey, Path]:
+    key = Ed25519PrivateKey.generate()
+    public = key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    path = api_db_path.parent / "synthetic-cml-public.json"
+    path.write_text(json.dumps({'keys': [{'kty':'OKP','crv':'Ed25519','kid':'cml-web-1','x':base64.urlsafe_b64encode(public).decode().rstrip('=')}]}))
+    return key, path
+
+
+@pytest.fixture(scope="session")
+def api_base_url(api_db_path: Path, cml_web_test_key: tuple[Ed25519PrivateKey, Path]) -> Generator[str, None, None]:
     database_url = f"sqlite:///{api_db_path}"
     engine = create_engine(database_url)
     Base.metadata.create_all(bind=engine)
@@ -132,6 +145,7 @@ def api_base_url(api_db_path: Path) -> Generator[str, None, None]:
     media_root.mkdir(parents=True, exist_ok=True)
     env["KAJOVO_API_MEDIA_ROOT"] = str(media_root)
     env["KAJOVO_API_SMTP_CAPTURE_PATH"] = str(api_db_path.parent / "smtp-capture.jsonl")
+    env["CML_WEB_JWKS_PATH"] = str(cml_web_test_key[1])
 
     api_app_dir = Path(__file__).resolve().parents[1]
 
@@ -244,6 +258,29 @@ def api_request(api_base_url: str) -> ApiRequest:
     return _request
 
 
+
+
+@pytest.fixture
+def cml_api_request(api_base_url: str, cml_web_test_key: tuple[Ed25519PrivateKey, Path]) -> ApiRequest:
+    key = cml_web_test_key[0]
+    def encode(value: bytes) -> str:
+        return base64.urlsafe_b64encode(value).decode().rstrip('=')
+    def request(path: str, method: str = 'GET', payload: dict[str, object] | None = None, params: dict[str, str] | None = None) -> tuple[int, ResponseData]:
+        native = '/cml-web' + path + ('?' + urllib.parse.urlencode(params) if params else '')
+        body = json.dumps(payload).encode() if payload is not None else b''
+        now = int(time.time())
+        claims = {'iss':'https://kajovocml.hcasc.cz','aud':'hotel','sub':'KRMAR78','role':'admin','nativeId':None,'sid':str(uuid4()),'epoch':1,'iat':now,'exp':now+10,'jti':str(uuid4()),'method':method,'path':native,'bodySha256':hashlib.sha256(body).hexdigest(),'csrf':'a'*43}
+        encoded = encode(json.dumps({'typ':'cml-web+jwt','alg':'EdDSA','kid':'cml-web-1'}).encode())+'.'+encode(json.dumps(claims).encode())
+        headers = {'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':encoded+'.'+encode(key.sign(encoded.encode())),'X-CSRF-Token':claims['csrf'],'Content-Type':'application/json'}
+        operation = urllib.request.Request(api_base_url+native,data=body if payload is not None else None,headers=headers,method=method)
+        try:
+            with urllib.request.urlopen(operation,timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                raw = response.read()
+                return response.status, json.loads(raw) if raw else None
+        except urllib.error.HTTPError as error:
+            raw = error.read()
+            return error.code, json.loads(raw) if raw else None
+    return request
 
 
 @pytest.fixture(autouse=True)

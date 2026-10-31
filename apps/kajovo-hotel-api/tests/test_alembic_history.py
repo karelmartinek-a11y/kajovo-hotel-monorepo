@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 
 from alembic.config import Config
@@ -18,7 +19,36 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0049_cml_profile_provision"]
+    assert script.get_heads() == ["0050_cml_web_push_authority"]
+
+
+def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_path, monkeypatch):
+    from sqlalchemy import create_engine, text
+    from app.config import get_settings
+    database = tmp_path / 'cml-push.db'
+    monkeypatch.setenv('KAJOVO_API_DATABASE_URL', f'sqlite:///{database}')
+    get_settings.cache_clear()
+    config = _alembic_config()
+    engine = create_engine(f'sqlite:///{database}')
+    try:
+        command.upgrade(config, '0049_cml_profile_provision')
+        with engine.begin() as db:
+            db.execute(text("INSERT INTO chat_participants(id,principal_type,principal_id,email,display_name,is_active)VALUES(1,'portal',1,'synthetic@example.invalid','Synthetic',1)"))
+            db.execute(text("INSERT INTO chat_push_subscriptions(id,participant_id,endpoint,p256dh,auth)VALUES(1,1,'https://fcm.googleapis.com/synthetic','synthetic-public-key','synthetic-auth')"))
+            before = db.execute(text('SELECT * FROM chat_push_subscriptions')).mappings().one()
+        command.upgrade(config, 'head')
+        with engine.connect() as db:
+            after = dict(db.execute(text('SELECT * FROM chat_push_subscriptions')).mappings().one())
+            assert after.pop('cml_authorized') == 0
+            assert after == dict(before)
+        with pytest.raises(RuntimeError, match='must survive rollback'):
+            command.downgrade(config, '0049_cml_profile_provision')
+        with engine.connect() as db:
+            assert db.scalar(text('SELECT cml_authorized FROM chat_push_subscriptions')) == 0
+            assert db.scalar(text('SELECT version_num FROM alembic_version')) == '0050_cml_web_push_authority'
+    finally:
+        engine.dispose()
+        get_settings.cache_clear()
 
 
 def test_alembic_upgrade_head_on_clean_sqlite(
@@ -189,7 +219,7 @@ def test_cml_profile_upgrade_preserves_native_data_and_immutable_receipt(tmp_pat
             db.commit()
             native_id = user.id
         before = schema()
-        command.upgrade(config, "head")
+        command.upgrade(config, "0049_cml_profile_provision")
         after = schema()
         assert set(after) == set(before) | {"cml_profile_provision"}
         assert {name: after[name] for name in before} == before

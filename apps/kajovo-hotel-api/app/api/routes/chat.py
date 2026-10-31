@@ -244,7 +244,7 @@ def push_subscription_status(
     actor = _read_actor_participant(request, db)
     if actor is None:
         return ChatPushSubscriptionStatus(subscribed=False, participant_id=None)
-    rows = db.scalars(select(ChatPushSubscription).where(ChatPushSubscription.participant_id == actor.id))
+    rows = db.scalars(select(ChatPushSubscription).where(ChatPushSubscription.participant_id == actor.id, ChatPushSubscription.cml_authorized.is_(True)))
     found = any(hashlib.sha256(json.dumps({'endpoint': row.endpoint, 'keys': {'auth': row.auth, 'p256dh': row.p256dh}}, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest() == subscription_hash for row in rows)
     return ChatPushSubscriptionStatus(subscribed=found, participant_id=actor.id)
 
@@ -431,6 +431,9 @@ def mark_read(conversation_id: int, payload: ChatReadThrough, request: Request, 
 
 @router.post("/push/subscriptions", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, operation_id="chat_register_push")
 def register_push_subscription(payload: WebPushSubscriptionCreate, request: Request, db: Session = Depends(get_db)) -> Response:
+    claims = getattr(request.state, 'cml_web_claims', None)
+    if not isinstance(claims, dict) or claims.get('aud') != 'hotel':
+        raise HTTPException(status_code=403, detail="Webová oznámení se spravují v KájovoCML.")
     _, actor = _actor_participant(request, db)
     row = db.execute(select(ChatPushSubscription).where(ChatPushSubscription.endpoint == payload.endpoint)).scalar_one_or_none()
     if row is None:
@@ -439,6 +442,7 @@ def register_push_subscription(payload: WebPushSubscriptionCreate, request: Requ
         row.participant_id = actor.id
         row.p256dh = payload.keys.p256dh
         row.auth = payload.keys.auth
+    row.cml_authorized = True
     db.add(row)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -515,14 +519,15 @@ def dispatch_pending_chat_pushes() -> None:
                 row.sent_at = utc_now()
                 continue
             recipient_id = conversation.participant_high_id if message.sender_id == conversation.participant_low_id else conversation.participant_low_id
-            recipient = db.get(ChatParticipant, recipient_id)
-            subscriptions = db.execute(select(ChatPushSubscription).where(ChatPushSubscription.participant_id == recipient_id)).scalars().all()
+            subscriptions = db.execute(select(ChatPushSubscription).where(ChatPushSubscription.participant_id == recipient_id, ChatPushSubscription.cml_authorized.is_(True))).scalars().all()
             failed = False
             for sub in subscriptions:
                 try:
                     webpush(
                         subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},
-                        data=json.dumps({"title": db.get(ChatParticipant, message.sender_id).display_name, "body": message.body[:160], "url": _notification_url(db, recipient, conversation.id) if recipient else f"/chat/{conversation.id}", "recipient_id": recipient_id}),
+                        # The provider transports only a signal. The CML worker reads
+                        # the private preview through a fresh authorized request.
+                        data=json.dumps({"contract": "kajovo-hotel-chat-signal/1", "conversation_id": conversation.id, "message_id": message.id, "recipient_id": recipient_id}),
                         vapid_private_key=settings.web_push_vapid_private_key,
                         vapid_claims={"sub": settings.web_push_vapid_subject},
                         ttl=60 * 60 * 24,

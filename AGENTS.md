@@ -179,3 +179,9 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   na samostatný login nebo staré HTML. Povinný release gate zahrnuje tři
   worker regresní větve; skutečná Nginx/API kvalifikace je v
   `scripts/verify_voice_core_proxy.py`. Úplný hlasový CML gate zůstává otevřený.
+
+- WebPush CML používá pouze `kajovo-hotel-chat-signal/1` bez soukromého obsahu.
+  Migrace `0050_cml_web_push_authority` zachovává staré odběry jako nepovolené;
+  opětovné povolení vyžaduje podepsané CML. Rollback nesmí vrátit sender
+  s textem zprávy ani ignorovat filtr. Android FCM je oddělené. Čerstvý grant
+  a konkrétní zprávu kontroluje CML gateway před náhledem, viz runbook kandidáta.

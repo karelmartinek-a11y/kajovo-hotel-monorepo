@@ -241,7 +241,7 @@ def test_incremental_chat_cursor_is_chronological_and_keeps_existing_before_pagi
     assert api_request(path, params={'after_id': '-1'})[0] == 422
 
 
-def test_push_subscription_status_is_read_only_and_bound_to_current_participant(api_request, api_base_url, api_db_path):
+def test_push_subscription_status_is_read_only_and_bound_to_current_participant(api_request, api_base_url, api_db_path, cml_api_request):
     import base64
     import hashlib
     from uuid import uuid4
@@ -255,7 +255,9 @@ def test_push_subscription_status_is_read_only_and_bound_to_current_participant(
     status, original = api_request(path, params={'subscription_hash': digest})
     assert status == 200 and original == {'subscribed': False, 'participant_id': config['participant_id']}
     key = base64.urlsafe_b64encode(b'synthetic-push-key-only').decode().rstrip('=')
-    assert api_request('/api/v1/chat/push/subscriptions', 'POST', {
+    payload = {'endpoint': endpoint, 'keys': {'p256dh': key, 'auth': key}}
+    assert api_request('/api/v1/chat/push/subscriptions', 'POST', payload)[0] == 403
+    assert cml_api_request('/api/v1/chat/push/subscriptions', 'POST', {
         'endpoint': endpoint, 'keys': {'p256dh': key, 'auth': key},
     })[0] == 204
     try:

@@ -75,7 +75,40 @@ error-log profil zůstaly ověřené. Mikrofon se na starých admin stránkách
 nepovoluje; nový hlasový frontend/broker v CML je samostatný otevřený gate.
 
 Release gate má nově povinný krok `legacy-worker-retirement` (31 kroků celkem).
-Úplný gate nad touto novou revizí ještě následuje. Produkční konfigurace,
+Úplný gate pro výhradní vstup prošel 31/31 na `bf8a610fba61` (504 API/Voice/Dagmar testů); následná změna push protokolu má vlastní novou kvalifikaci níže. Produkční konfigurace,
 image ani relace tímto místním krokem nebyly změněny. Před finálním cutoverem
 se znovu kvalifikují nativní WEB relace a nasazovací automatizace; Android
 a vlastní obchodní/MCP identity nesmějí být hromadně odvolané.
+
+
+## Soukromí webových oznámení
+
+Migrace `0050_cml_web_push_authority` pouze přidává `cml_authorized=false` ke
+všem stávajícím odběrům. Zachovává původní řádky, endpointy a klíče. Starý
+odběr se nepoužije pro odesílání. Nové založení či opětovné povolení vyžaduje
+podepsaný požadavek CML a aktuální lokální identitu; samotná nativní webová
+cookie nestačí. Androidové FCM registrace a jejich worker se tímto nemění.
+
+Provider dostává pouze uzavřený `kajovo-hotel-chat-signal/1`: `contract`,
+`recipient_id`, `conversation_id`, `message_id`. Název odesílatele, e-mail,
+text zprávy, URL ani vykreslitelný HTML obsah se do něj neposílají. Nový CML
+worker před čtením a znovu před zobrazením ověří aktuální centrální relaci,
+grant Hotelu, lokálního příjemce, veřejný push klíč a fingerprint celého
+browserového odběru. Konkrétní zprávu načte původním čtecím API přes CML.
+Nejde o callback s převzatou identitou vlastníka. Bez aktuálního oprávnění
+nedostane obsah zprávy a oznámení nezobrazí. Náhled nemění potvrzení přečtení.
+
+CML ukládá před pokusem o zobrazení vlastní jedinečnou účtenku do IndexedDB.
+Souběžný/opakovaný signál ani nejasné potvrzení zobrazení se nezobrazují
+znovu. Účtenka neobsahuje text, endpoint ani klíče. Chromium i WebKit ověřily
+reálnou CML gateway, původní API, skutečné IndexedDB a module worker;
+browserové Push/Notification API byly kontrolované adaptéry. Externí push
+provider a doručení operačním systémem nebyly testované.
+
+Bezpečný rollback zachovává migraci, filtr `cml_authorized` a obsahově prázdný
+signál. Návrat ke starému senderu s textem zprávy nebo ignorování tohoto
+příznaku není podporovaný. Při regresi lze ponechat webový push vypnutý,
+nikoli obnovit starý sender; FCM zůstává samostatné. Migrace proto downgrade
+odmítá. Test upgradu prokazuje byte-equivalentní hodnoty starých sloupců,
+nový výchozí zákaz a zachování migrace po odmítnutém downgrade. Žádný z těchto
+místních testů neměnil produkci nebo odesílal zprávy.
