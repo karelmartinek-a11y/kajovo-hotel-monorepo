@@ -32,7 +32,7 @@ export async function privateChat(ctx){
   if(current(attempt.conversationId))await selectConversation(attempt.conversationId,{keepPosition:true});
  }
  async function markVisibleRead(conversation,messages){
-  if(!current(conversation.id)||document.hidden)return;const state=local(conversation.id);if(state.marking)return;
+  if(!current(conversation.id)||document.hidden||document.querySelector('#dialog')?.open)return;const state=local(conversation.id);if(state.marking)return;
   const style=getComputedStyle(document.documentElement),visibleTop=parseFloat(style.getPropertyValue('--cml-visible-top'))||0,visibleHeight=parseFloat(style.getPropertyValue('--cml-visible-height'))||0;
   if(visibleHeight<=0)return;const pane=messages.getBoundingClientRect(),top=Math.max(pane.top,visibleTop),bottom=Math.min(pane.bottom,visibleTop+visibleHeight);if(bottom<=top)return;
   if(state.readPending){

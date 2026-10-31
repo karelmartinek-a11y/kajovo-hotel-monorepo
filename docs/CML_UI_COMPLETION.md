@@ -213,3 +213,12 @@ obou copy-out sestavení, kontraktů, obou web buildů, Android policy a původn
 reálných browserových baseline/voice-memory/voice-lifecycle/voice UI testů.
 Lokální JSON artefakt je `release-gate-067734b67819-20261031T072735.449360+0000.json`.
 GitHub CI, výsledný produkční image a nasazení tím nejsou doložené.
+
+Chat nyní drží dlouhou historii ve vnitřním posuvném panelu; vlastní zprávy
+zůstávají vpravo. Původní negativní test prokázal čtení příchozích zpráv pod
+otevřeným dialogem. Oprava blokuje read-through při nativním dialogu a CML
+předává nulovou viditelnou výšku při překrytí hlavním dialogem. Chromium i
+WebKit následně ověřily 125 příchozích zpráv, skutečně posuvnou historii,
+žádné potvrzení pod oběma dialogy a obnovení čtení po zavření. Izolované
+syntetické testy neposlaly skutečnou zprávu. Úplný release gate výše předchází
+této opravě; před vydáním musí znovu projít nad výsledným zdrojem.
