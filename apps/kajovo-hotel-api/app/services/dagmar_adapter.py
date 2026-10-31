@@ -21,6 +21,8 @@ def verified_identity(session):
 
 
 def request_identity(request):
+    if getattr(request.state, 'cml_web_claims', None):
+        return verified_identity(auth.require_session(request))
     with SessionLocal() as db:
         return verified_identity(auth._load_session(request, db))
 

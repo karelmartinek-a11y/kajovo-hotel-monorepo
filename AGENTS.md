@@ -185,3 +185,10 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   opětovné povolení vyžaduje podepsané CML. Rollback nesmí vrátit sender
   s textem zprávy ani ignorovat filtr. Android FCM je oddělené. Čerstvý grant
   a konkrétní zprávu kontroluje CML gateway před náhledem, viz runbook kandidáta.
+
+- Nový `app/web_ui/voice.js` nepřebírá starý hlasový browser runtime. CML
+  management přijímá pouze ověřenou identity state, vlastní `voice:write`
+  účtenky a aktuální lokální admin. Povinné odložení hlasové aktivace zůstává
+  zachované: manifest není připravený k hovoru a CML call/session mutace se
+  odmítají před alokací a provider voláním. Mikrofonní řadič CML je nově
+  napsaný, ale fake peer test není přejímkou WebRTC nebo skutečného hovoru.

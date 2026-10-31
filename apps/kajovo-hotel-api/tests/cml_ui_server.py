@@ -321,7 +321,25 @@ def build_fixture():
             if pdf:
                 exports.append({"path": scope["path"], "sha256": digest.hexdigest(), "bytes": size})
 
+    from app.services.dagmar_adapter import verified_identity
+    from app.security.auth import require_session
+    from dagmar_server.application import DagmarApplication, BoundContext
+    from dagmar_server.ports import RuntimePorts
+    from dagmar_server.settings import DagmarSettings
+    from dagmar_server.migrations import upgrade as upgrade_dagmar
+    import base64
+    upgrade_dagmar(engine)
+    dagmar = DagmarApplication(RuntimePorts(
+        session_factory=factory,
+        settings=DagmarSettings(voice_master_key=base64.b64encode(os.urandom(32)).decode()),
+        identity=lambda _owner: None,
+        request_identity=lambda request: verified_identity(require_session(request)),
+    ))
     app = FastAPI()
+    app.state.dagmar = dagmar
+    app.add_middleware(BoundContext, ports=dagmar.ports)
+    app.include_router(dagmar.core, prefix='/api/v1/admin/voice-core')
+    app.include_router(dagmar.memory, prefix='/api/v1/admin/voice-memory')
     app.add_middleware(ObservePdf)
     for module in [
         users,
