@@ -76,7 +76,9 @@ def main():
             "-c",
             "from app.db.session import engine; from sqlalchemy import text; c=engine.connect(); c.execute(text(\"INSERT INTO admin_profile (id,email,password_hash,display_name) VALUES (1,'test@example.invalid','test','Test')\")); c.commit(); c.close()",
         )
-        api("alembic", "upgrade", "head")
+        # Rehearse the original standalone voice checkpoint independently of
+        # additive CML revisions. Its existing invariants below remain exact.
+        api("alembic", "upgrade", "0046_current_voice_schema")
         code = """
 from app.db.session import SessionLocal,engine
 from dagmar_server.models import VoiceMemoryPrincipal,VoiceNoteItem,VoiceMemoryOperation,VoiceMemory,VoiceMemoryDependency
@@ -210,7 +212,27 @@ print('PostgreSQL additive Mail marker, encrypted credentials and single-use nat
 """
         print(api("python", "-c", code))
         api("alembic", "downgrade", "0041_voice_smart_deliveries")
+        api("alembic", "upgrade", "0046_current_voice_schema")
+        # CML receipts and push authority deliberately forbid destructive
+        # downgrade. Test their forward upgrade after the voice-only roundtrip,
+        # and prove that the original voice/Mail schema and receipt survive it.
         api("alembic", "upgrade", "head")
+        print(api("python", "-c", """
+from app.db.session import SessionLocal
+from sqlalchemy import text
+from dagmar_server.mail_storage import MailReceipt
+with SessionLocal() as db:
+    assert db.scalar(text('SELECT version_num FROM alembic_version'))=='0050_cml_web_push_authority'
+    assert db.scalar(text('SELECT version FROM dagmar_schema_version'))==1
+    assert db.scalar(text('SELECT version FROM dagmar_mail_schema_version'))==1
+    receipt=db.get(MailReceipt,'pg-mail-receipt')
+    assert receipt is not None and receipt.state=='reserved'
+    assert receipt.logical_call_id=='pg-call' and receipt.audio_event_id=='pg-native-audio'
+    assert db.scalar(text('SELECT count(*) FROM cml_profile_provision'))==0
+    assert db.scalar(text('SELECT count(*) FROM cml_web_request'))==0
+    assert db.scalar(text("SELECT count(*) FROM chat_push_subscriptions WHERE cml_authorized"))==0
+print('CML additive head preserves original voice markers and original Mail receipt PASS')
+"""))
     finally:
         subprocess.run(
             ["docker", "rm", "-fv", name],
