@@ -199,6 +199,7 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn('dagmar-copy-out', names)
         self.assertIn('browser-baseline', names)
         self.assertIn('api-and-voice-tests', names)
+        self.assertIn('native-web-role-browser', names)
         self.assertNotIn('voice-registry-ui', names)
         self.assertNotIn('smartplan-owner-ui', names)
         for _, command in plan:

@@ -139,12 +139,12 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
 
 - Věkové skupiny v pevné dlaždici mají běžná čísla 11 px a siluety 7 × 11 px, zarovnané vlevo/uprostřed/vpravo ve vlastních třetinách. Poznámka je samostatný červený vykřičník 13 px bez podkladu, rámečku či stínu.
 
-## Kandidát jednotného webu CML
+## Jednotný web CML
 
 - Nové samostatně napsané UI patří do `apps/kajovo-hotel-api/app/web_ui/` a používá `kajovo-web-ui/1`. Úprava původních frontendů není náhradou požadovaného nového UI.
 - `/cml-web/` přijímá pouze podepsané CML žádosti pro audience `hotel`, s trvalým jednorázovým jti. Nativní aktivita uživatele, přiřazené role a endpointové oprávnění se znovu ověřují lokálně; data prohlížeče nemohou vytvořit ASGI identity state.
 - Zachovat původní technickou admin identitu pro chat a hlasovou historii. Vložený frontend nesmí získat provider tokeny ani přístup k DOM CML.
-- `docs/CML_WEB_CANDIDATE.md` uvádí neuzavřené části přechodu. Hlas je výslovně mimo integraci; kandidát není potvrzené produkční nasazení.
+- `docs/CML_WEB_CANDIDATE.md` uvádí neuzavřené části přechodu. Hlas je výslovně mimo integraci; první vydání je nasazené, úplná přejímka zůstává otevřená.
 - CML účetní routy `/api/v1/users` připouštějí hlavní účet a pro zápis vyžadují čerstvé podepsané `reauthUntil`; lokální credentials/resetovací toky touto cestou odmítat. Zachovat původní nativní API a role, databázi i historickou technickou identitu správce.
 - Nový CML frontend používá geometrii a styl výslovné předlohy `UIKajovoCMLNgLite(1).ZIP`; starší layoutové předpisy popisují původní frontend. Obchodní DTO, lokální role, datumy a význam skutečných hodnot zůstávají autoritativní. Změna designu nesmí vyrábět demo data.
 - Volitelný `Idempotency-Key` nad podporovanou CML obchodní routou rezervuje `cml_web_request` před předáním původnímu routeru. Aktuální identita a původní oprávnění se kontrolují i při `GET /cml-web/api/request-status`. `completed` znamená uloženou HTTP odpověď, nikoli automaticky obchodní úspěch. Nejistý výsledek se neopakuje; migraci `0048_cml_web_request` nelze odstranit rollbackem.
@@ -207,8 +207,15 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   kompatibilního backendu před přepnutím; produkční vynucení musí být
   ověřené s 1. Jiné hodnoty zablokují start.
 
-První koordinovaný commit používá trailer `CML-Coordinated-Cutover: true`.
+Koordinované nasazení přes přímé SSH používá trailer `CML-Coordinated-Cutover: true`.
 CI a tvorba artefaktů dále běží; pouze automatický produkční job pro tento
-commit nepřepne portál před připraveným CML. Publikovaný otestovaný artefakt
-se v tomto cutoveru nasazuje přímým SSH z Codexu. Ostatní commity zachovávají
+commit nepřepne portál mimo řízené nasazení. Publikovaný otestovaný artefakt
+se v tomto režimu nasazuje přímým SSH z Codexu. Ostatní commity zachovávají
 původní automatizační pravidlo. Tato výjimka nevypíná testy.
+
+- Nové CML UI aktivuje pracovní roli až po úspěšném načtení identity pro
+  poslední aktuální generaci. Opožděná ruční či automatická volba nesmí
+  změnit identitu nebo roli dalších API požadavků. Neúspěšná volba ponechá
+  původní potvrzenou roli a zobrazí chybu; serverové RBAC se tím nemění.
+  Regrese běží přes `pnpm --filter @kajovo/kajovo-hotel-web test:cml-roles`
+  v úplném release gate; místně lze zvolit `CML_BROWSER_ENGINES=chromium,webkit`.
