@@ -1,0 +1,39 @@
+.rooms{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));grid-auto-rows:122px;gap:6px}
+.room-reference.room-tile{box-sizing:border-box;display:grid;grid-template-rows:18px minmax(0,1fr);grid-template-columns:minmax(0,1fr);justify-content:stretch;height:122px;width:100%;min-width:0;min-height:0;padding:0;gap:0;border:1px solid #d6d1c8;border-radius:9px;overflow:hidden;box-shadow:none;background:#fff;color:#000;text-align:center;font-family:Arial,sans-serif;font-weight:400;line-height:1;letter-spacing:normal;transform:none;color-scheme:light}
+.room-reference.room-tile:hover{background:#fff;border-color:#d6d1c8;box-shadow:none;transform:none;outline:2px solid #ef3340}
+.room-reference.room-tile:focus-visible{outline:3px solid #111;outline-offset:2px}
+.room-reference .room-top{display:grid;place-items:center;min-height:0;gap:0;padding:0;width:100%;color:#fff}
+.room-reference .room-top strong{font-family:Montserrat,sans-serif;font-size:15px;font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;-webkit-text-stroke:.8px #111;paint-order:stroke fill}
+.room-reference .room-body{position:relative;isolation:isolate;display:grid;grid-template-rows:repeat(2,minmax(0,1fr));min-width:0;min-height:0;overflow:hidden;width:100%}
+.room-reference.room-continuing .room-body{grid-template-rows:1fr}
+.room-reference .room-slot{display:block;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden}
+.room-reference .room-slot+.room-slot{box-shadow:inset 0 1px #d6d1c8}
+.room-reference .room-stamp{box-sizing:border-box;display:grid;grid-template-rows:13px 12px 10px 13px;align-content:start;align-items:center;padding:1px 2px;width:100%;height:100%;min-width:0;overflow:hidden;font:10px/1 Arial,sans-serif}
+.room-reference .room-identity{display:grid;grid-template-columns:minmax(0,1fr) 13px;gap:1px;align-items:center;min-width:0;height:13px;overflow:hidden}
+.room-reference .room-guest{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;font-size:11px;line-height:13px}
+.room-reference .room-country{display:grid;place-items:center;width:13px;height:10px;overflow:hidden;font-size:10px;font-weight:700}
+.room-reference .room-country img{display:block;width:13px;height:9px;border:0;box-shadow:none}
+.room-reference .room-people{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;height:12px;min-width:0;overflow:hidden}
+.room-reference .room-people>span{container-type:inline-size;display:flex;align-items:center;justify-content:center;gap:0;height:12px;min-width:0;overflow:hidden}
+.room-reference .room-people>span:first-child{justify-content:flex-start}.room-reference .room-people>span:last-child{justify-content:flex-end}
+.room-reference .reservation-checked_out .room-person{filter:invert(1)}
+.room-reference .room-person{width:7px;height:11px;flex-shrink:0;fill:currentColor}
+.room-reference .room-people b{display:block;min-width:0;font-size:min(11px,calc((100cqi - 7px)/var(--digits,1)/.65));line-height:12px;font-variant-numeric:tabular-nums}
+.room-reference .room-event{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:2px;align-items:center;height:10px;min-width:0;overflow:hidden}
+.room-reference .room-time{text-align:left;font-size:9px;line-height:10px;letter-spacing:-.4px;overflow:hidden;white-space:nowrap}
+.room-reference .room-nights{width:28px;font-size:min(9px,calc(28px/var(--digits,3)/.65));line-height:10px;text-align:right;white-space:nowrap;overflow:hidden}
+.room-reference .room-requests{display:grid;grid-template-columns:26px 16px 12px;gap:2px;height:13px;align-items:center;justify-content:start;min-width:0;overflow:hidden}
+.room-reference .room-requests>span{display:grid;place-items:center;height:13px;min-width:0;overflow:hidden}
+.room-reference .room-requests .room-dog{grid-template-columns:10px 15px;gap:1px}
+.room-reference .room-dog b{font-size:min(9px,calc(15px/var(--digits,2)/.65));line-height:13px;width:15px}
+.room-reference .room-requirement{width:10px;height:12px}.room-reference .room-cot .room-requirement{width:12px}
+.room-reference .room-note{color:#b71c1c;font-size:13px;line-height:13px;background:transparent}
+.room-reference .room-conflict{display:grid;place-items:center;height:100%;padding:2px;color:#b71c1c;background:#fff;font:10px/12px Arial,sans-serif;overflow-wrap:anywhere}
+.room-reference .room-stay-label{position:absolute;top:50%;left:0;width:100%;height:50%;display:grid;place-items:center;pointer-events:none;font:700 14px/1.4 Arial,sans-serif}
+.room-reference .room-block{position:absolute;top:0;left:0;width:100%;height:50%;pointer-events:none;fill:none;stroke:#f00;stroke-width:2px}
+.room-reference .room-block path{vector-effect:non-scaling-stroke}.room-reference .room-block-right{top:50%}.room-reference .room-block-full{height:100%}
+:is(.room-reference,.room-status-actions) .cleaning-clean{background:#22c55e}:is(.room-reference,.room-status-actions) .cleaning-dirty{background:#f97316}:is(.room-reference,.room-status-actions) .cleaning-stay_no_linen{background:#2dd4bf}:is(.room-reference,.room-status-actions) .cleaning-stay_with_linen{background:#a7e8b8}:is(.room-reference,.room-status-actions) .cleaning-do_not_disturb{background:#581c87}:is(.room-reference,.room-status-actions) .cleaning-technical_issue{background:#f04452}:is(.room-reference,.room-status-actions) .cleaning-windows_cleaned{background:#1e40af}:is(.room-reference,.room-status-actions) .cleaning-painted{background:#facc15}:is(.room-reference,.room-status-actions) .cleaning-unknown{background:#eee}
+.room-reference .reservation-confirmed{background:#66c86f;color:#000}.room-reference .reservation-checked_in{background:#54adf1;color:#000}.room-reference .reservation-checked_out{background:#686b73;color:#fff}.room-reference .reservation-option{background:#f6a34c;color:#000}.room-reference .reservation-unknown{background:#fff;color:#000}
+.room-status-actions button[class*="cleaning-"]{color:#000;border-color:#d6d1c8}.room-status-actions .cleaning-do_not_disturb,.room-status-actions .cleaning-windows_cleaned{color:#fff}
+.room-status-actions button:hover{outline:2px solid #111;outline-offset:1px}
+@media(max-width:599px){.rooms{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:122px;gap:4px}.room-reference.room-tile{padding:0;height:122px;min-height:0;gap:0}.room-reference .room-top strong{font-size:15px}}

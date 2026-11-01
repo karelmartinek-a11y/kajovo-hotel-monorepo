@@ -55,13 +55,24 @@ centrální CML release evidence `docs/unified-ui/FIRST_RELEASE.json`.
 
 ## Zachované kontrakty pracovních modulů
 
-`test:cml-rooms` ověřuje šest desktopových a dvě mobilní karty podle
-předlohy, viditelné popisky filtrů a přehled bez vodorovného přesahu na
-1400/834/390/320 px. Prázdný nebo neplatný den zachová původní přehled
-a nevolá backend. Změna dne, návrat na dnešek a filtr patra/pokoje zachovávají
-skutečné parametry čtení. Po obnově zůstává zadaný filtr a čtecí role nesmí
-změnit úklid. Oba enginy mají 8 PASS. Rychlé akce závady/nálezu podle
-původních práv zůstávají navíc oproti ukázce; úplná vizuální matice není PASS.
+**Změna zadání 1. 11. 2026:** autoritou pro Hotel → Pokojská → Přehled
+pokojů je původní Hotel UI, nikoli demo snímky CML. Toto pravidlo platí
+pro rozměry, obsah, barvy, validace i chování dlaždic na všech šířkách.
+Samostatný `room-tiles.css` používá pevnou původní paletu, nezávislou na
+barvách menu. Výška je 122 px, proužek 18 px a poloviny těla 51 px;
+pod 600 px zůstávají čtyři sloupce. Pořadí pokojů, bílé prázdné části,
+samostatné stavy rezervací, blokace bez překryvu pobytu a značka POBYT
+odpovídají původnímu přehledu. Původní piktogramy jsou statické SVG
+obrázky; React komponenty ani původní frontendová logika se nepřebírají.
+
+`test:cml-rooms` skutečně renderuje původní komponentu pouze jako testovací
+referenci. Porovnává geometrii i paletu osmi stavů na 1400/834/390/320 px,
+obsah, chybějící údaje, konflikty, blokace a odolnost proti změně tématu.
+Zachovává kontroly platného dne, filtrů a zakázaného zápisu čtecí rolí.
+Syntetický zápis ověřuje původní expected_status, idempotency ID, obnovu
+ztraceného potvrzení bez druhého zápisu a následné čtení změněné barvy.
+Přehled se obnovuje po 60 sekundách a při návratu do okna, mimo otevřený
+detail; chyba obnovy výslovně označuje možné zastarání dat.
 
 Pokoje rozlišují aktuální úklid od pobytů vybraného dne. Změna používá
 původní očekávaný stav a následné načtení. Pes/postýlka se potvrzují pro

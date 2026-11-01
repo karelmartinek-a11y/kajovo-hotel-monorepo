@@ -13,6 +13,10 @@ Tento repozitář je autoritativní zdroj pravdy pro web, admin, API, sdílené 
 - `apps/kajovo-hotel` a `brand`: design tokeny, IA, branding a exportované assety
 - `infra`: compose, reverse proxy, smoke a deploy verifikace
 
+CML přehled pokojské zachovává vzhled a sémantické barvy původních dlaždic
+na desktopu, tabletu i telefonu nezávisle na tématu menu. Referencí této
+sekce je původní Hotel UI, viz `docs/CML_UI_COMPLETION.md`.
+
 ## Dokumentace
 
 Aktivní current-state dokumentace je centralizovaná v `docs/`.

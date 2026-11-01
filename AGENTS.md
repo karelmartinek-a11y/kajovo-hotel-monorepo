@@ -219,3 +219,10 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   původní potvrzenou roli a zobrazí chybu; serverové RBAC se tím nemění.
   Regrese běží přes `pnpm --filter @kajovo/kajovo-hotel-web test:cml-roles`
   v úplném release gate; místně lze zvolit `CML_BROWSER_ENGINES=chromium,webkit`.
+
+- Zadání 1. 11. 2026 pro CML Hotel → Pokojská → Přehled pokojů mění
+  vizuální autoritu na původní Hotel UI, nikoli demo CML. Dlaždice mají
+  pevnou původní paletu a geometrii nezávislou na tématu menu. Původní
+  komponenty se používají pouze v porovnávacím testu; runtime je nový.
+  Zachovat statická SVG vyobrazení, rozlišení neznámých stavů a rezervací,
+  původní backendové validace i CML autorizaci. Viz docs/CML_UI_COMPLETION.md.

@@ -1,0 +1,1 @@
+Static SVG artwork rendered from the original Hotel room presentation: adult, child, infant, dog and cot indicators. These are visual assets only; the original React components, frontend functions and stylesheet are not shipped or imported by CML. CML builds the room UI independently in room-tiles.js and room-tiles.css.
