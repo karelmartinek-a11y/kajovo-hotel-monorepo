@@ -20,6 +20,8 @@ for(const name of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
  const properties=(node,keys)=>Object.fromEntries(keys.map(k=>[k,getComputedStyle(node)[k]]));
  assert.deepEqual(await tile.evaluate(properties,['backgroundColor','borderRadius','borderColor']),await reference.locator('article').evaluate(properties,['backgroundColor','borderRadius','borderColor']));
  assert.deepEqual(await tile.locator('button').evaluate(properties,['backgroundColor','color','borderRadius','fontSize','minHeight']),await reference.locator('button').evaluate(properties,['backgroundColor','color','borderRadius','fontSize','minHeight']));
+ await reference.locator('button').evaluate(n=>n.classList.add('secondary'));
+ assert.deepEqual(await page.locator('.breakfast-serving-tile[data-room-number="203"] button').evaluate(properties,['backgroundColor','color','borderColor']),await reference.locator('button').evaluate(properties,['backgroundColor','color','borderColor']));
  const before=await tile.evaluate(properties,['backgroundColor','color']);await page.addStyleTag({content:':root{--panel:purple;--text:lime;--accent:blue}'});assert.deepEqual(await tile.evaluate(properties,['backgroundColor','color']),before);
  await tile.getByRole('button',{name:'Vydat',exact:true}).click();await expect(page.locator('.breakfast-serving-tile[data-room-number="201"]').getByRole('button',{name:'Vydáno',exact:true})).toBeDisabled();assert.equal(writes,1);
  await page.getByLabel('Datum',{exact:true}).fill('');await expect(page.getByLabel('Datum',{exact:true})).toHaveValue('2026-11-01');await expect(page.getByRole('alert')).toContainText('platné datum');assert.equal(writes,1);

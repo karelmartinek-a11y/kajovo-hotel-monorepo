@@ -47,7 +47,7 @@ export async function breakfastList(ctx){
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()),canServe=manager(ctx)||ctx.state.identity.active_role==='snídaně'&&day===today()&&time>='05:00'&&time<='11:00';
   if(['pending','preparing'].includes(order.status)){const serve=button(compact||!manager(ctx)?'Vydat':[icon('check'),'Vydat'],()=>mark(ctx,order,'served',actions),'primary');serve.disabled=!canServe;actions.append(serve);if(!canServe)serve.title='Výdej dnes 5:00–11:00.';}
   else if(order.status==='served'&&manager(ctx))actions.append(button([icon('undo'),'Vrátit výdej'],()=>mark(ctx,order,'pending',actions)));
-  else {const unavailable=button(labels[order.status]??'Neznámý stav',()=>{});unavailable.disabled=true;actions.append(unavailable);}
+  else {const unavailable=button(labels[order.status]??'Neznámý stav',()=>{},'secondary');unavailable.disabled=true;actions.append(unavailable);}
   return actions;};const actions=makeActions(true);
   const stays=order.reservations??[],companies=[...new Set(stays.map(r=>r.company_name?.trim()).filter(Boolean))];
   const counts=['breakfast_adults','breakfast_children_0_2','breakfast_children_3_17','breakfast_age_unknown'].map(key=>stays.reduce((sum,r)=>sum+(r[key]??0),0));
