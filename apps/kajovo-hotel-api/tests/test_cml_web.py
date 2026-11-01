@@ -265,3 +265,32 @@ def test_native_receipt_admission_is_shared_between_workers(tmp_path, monkeypatc
             assert len(effects)==1
     finally:
         engine.dispose()
+
+
+def test_png_reference_artwork_requires_signed_cml_entry(tmp_path, monkeypatch):
+    key, jwks = fixture_key()
+    keyfile = tmp_path / 'public.json'
+    keyfile.write_text(json.dumps(jwks))
+    monkeypatch.setenv('CML_WEB_JWKS_PATH', str(keyfile))
+    engine = create_engine('sqlite://', connect_args={'check_same_thread': False}, poolclass=StaticPool)
+    factory = sessionmaker(bind=engine)
+    with engine.begin() as conn:
+        conn.execute(text('CREATE TABLE cml_web_nonce(jti text PRIMARY KEY,expires_at bigint NOT NULL)'))
+    artwork = tmp_path / 'breakfast-artwork'
+    artwork.mkdir()
+    payload = b'\x89PNG\r\n\x1a\nreference-only-test'
+    (artwork / 'diet.png').write_bytes(payload)
+    boundary = CmlWebBoundary(FastAPI(), audience='hotel', session_factory=factory,
+                             resolve_identity=lambda *_: {'state': {}, 'public': {'admin': True}}, ui_root=tmp_path)
+    try:
+        with TestClient(boundary) as client:
+            path = '/cml-web/breakfast-artwork/diet.png'
+            assert client.get(path).status_code == 401
+            response = client.get(path, headers={
+                'Origin': 'https://kajovocml.hcasc.cz', 'X-CML-Web-Prefix': '/sections/hotel/',
+                'X-CML-Web-Assertion': assertion(key, 'hotel', path=path, method='GET', body=b'')})
+            assert response.status_code == 200
+            assert response.content == payload
+            assert response.headers['content-type'] == 'image/png'
+    finally:
+        engine.dispose()

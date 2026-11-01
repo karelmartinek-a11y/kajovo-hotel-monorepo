@@ -12,10 +12,10 @@ const country=value=>{if(!value)return 'Neuvedeno';try{return new Intl.DisplayNa
 function move(ctx,mode,row){ctx.state.breakfastId=row?.id??null;return ctx.go(mode==='list'?'breakfast':'breakfast-'+mode);}
 function dateNavigation(ctx){
  const input=field('Datum','breakfast-date','date',ctx.state.breakfastDate,{required:true});
- const change=day=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;ctx.state.breakfastDate=day;void writeBreakfastDate(day);ctx.go('breakfast');};
+ const change=day=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day+'T12:00:00Z'))||new Date(day+'T12:00:00Z').toISOString().slice(0,10)!==day){showError(document.querySelector('#content'),Error('Vyberte platné datum.'));return false;}ctx.state.breakfastDate=day;void writeBreakfastDate(day);ctx.go('breakfast');};
  const offset=delta=>{const day=new Date(ctx.state.breakfastDate+'T12:00:00Z');day.setUTCDate(day.getUTCDate()+delta);change(day.toISOString().slice(0,10));};
  const previous=button(icon('arrow-left'),()=>offset(-1)),next=button(icon('arrow-right'),()=>offset(1));previous.setAttribute('aria-label','Předchozí den');next.setAttribute('aria-label','Další den');
- input.querySelector('input').addEventListener('change',event=>change(event.target.value));
+ input.querySelector('input').addEventListener('change',event=>{if(change(event.target.value)===false)event.target.value=ctx.state.breakfastDate;});
  return el('div',{class:'breakfast-date-bar'},el('div',{class:'actions'},previous,el('strong',{},new Date(ctx.state.breakfastDate+'T12:00:00Z').toLocaleDateString('cs-CZ',{timeZone:'Europe/Prague',day:'numeric',month:'long',year:'numeric'})),next,button([icon('arrow-right'),'Dnes'],()=>change(today()))),input);
 }
 function mark(ctx,order,status,container){
@@ -36,17 +36,34 @@ export async function breakfastList(ctx){
  ctx.state.breakfastDate??=today();const day=ctx.state.breakfastDate,generation=ctx.state.generation;
  const main=ctx.heading(ref(ctx,'hotel.admin.6','hotel.portal.46'),'Snídaně','Zkontrolujte počty, diety jednotlivých pobytů a průběh výdeje snídaní.');
  const data=await api('api/v1/breakfast/daily-overview?service_date='+day);if(generation!==ctx.state.generation)return;
+ let refreshing=false;
+ const refresh=async()=>{if(refreshing||document.hidden||document.querySelector('dialog[open]')||generation!==ctx.state.generation||[...main.querySelectorAll('.actions')].some(n=>n.nativeMutation&&!n.nativeMutation.finished))return;refreshing=true;try{const latest=await api('api/v1/breakfast/daily-overview?service_date='+day);if(generation===ctx.state.generation&&JSON.stringify(latest)!==JSON.stringify(data))await ctx.go('breakfast');}catch(error){if(generation===ctx.state.generation)showError(main,error);}finally{refreshing=false;}};
+ const refreshTimer=setInterval(refresh,60000);addEventListener('focus',refresh);addEventListener('pageshow',refresh);document.addEventListener('visibilitychange',refresh);ctx.state.cleanup.push(()=>{clearInterval(refreshTimer);removeEventListener('focus',refresh);removeEventListener('pageshow',refresh);document.removeEventListener('visibilitychange',refresh);});
  const tools=el('div',{class:'actions'},manager(ctx)?exportLink('api/v1/breakfast/export/daily?service_date='+day,'Export snídaní (PDF)'):null,manager(ctx)?button([icon('plus'),'Nový snídaňový záznam'],()=>move(ctx,'new')):null,button([icon('refresh'),'Obnovit'],()=>ctx.go('breakfast')),manager(ctx)?button([icon('menu'),'Další operace'],()=>breakfastManagement(ctx)):null);
  main.append(panel('Denní přehled snídaní',[dateNavigation(ctx),tools],'breakfast'));
- const rows=data.orders.map(order=>{
-  const actions=el('div',{class:'actions'});actions.dataset.nativeRole=getRole();
+ const tiles=el('div',{class:'breakfast-serving-tiles'});
+ const rows=[...data.orders].sort((a,b)=>a.room_number.localeCompare(b.room_number,'cs',{numeric:true})).map(order=>{
+  const makeActions=()=>{const actions=el('div',{class:'actions'});actions.dataset.nativeRole=getRole();
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()),canServe=manager(ctx)||ctx.state.identity.active_role==='snídaně'&&day===today()&&time>='05:00'&&time<='11:00';
-  if(['pending','preparing'].includes(order.status)){const serve=button([icon('check'),'Vydat'],()=>mark(ctx,order,'served',actions),'primary');serve.disabled=!canServe;actions.append(serve);if(!canServe)actions.append(el('small',{},'Výdej dnes 5:00–11:00.'));}
+  if(['pending','preparing'].includes(order.status)){const serve=button([icon('check'),'Vydat'],()=>mark(ctx,order,'served',actions),'primary');serve.disabled=!canServe;actions.append(serve);if(!canServe)serve.title='Výdej dnes 5:00–11:00.';}
   else if(order.status==='served'&&manager(ctx))actions.append(button([icon('undo'),'Vrátit výdej'],()=>mark(ctx,order,'pending',actions)));
-  else actions.append(el('span',{class:'badge'},labels[order.status]??'Neznámý stav'));
-  return [button(el('strong',{},order.room_number),()=>move(ctx,'detail',order),'breakfast-room-link'),order.guest_names||order.guest_name,country(order.country_code),order.guest_count,dietControls(ctx,order),order.note?el('span',{class:'breakfast-note'},icon('warning'),order.note):'—',actions];
+  else {const unavailable=button(labels[order.status]??'Neznámý stav',()=>{});unavailable.disabled=true;actions.append(unavailable);}
+  return actions;};const actions=makeActions();
+  const stays=order.reservations??[],companies=[...new Set(stays.map(r=>r.company_name?.trim()).filter(Boolean))];
+  const counts=['breakfast_adults','breakfast_children_0_2','breakfast_children_3_17','breakfast_age_unknown'].map(key=>stays.reduce((sum,r)=>sum+(r[key]??0),0));
+  const nights=stays.filter(r=>r.arrival&&r.departure).map(r=>{const start=Date.parse(r.arrival+'T00:00:00Z')/86400000,end=Date.parse(r.departure+'T00:00:00Z')/86400000,now=Date.parse(day+'T00:00:00Z')/86400000;return Math.max(0,Math.min(end-start,now-start))+'/'+(end-start)+' nocí';});
+  const active=el('span',{class:'breakfast-tile-diets'},diets.filter(([key])=>order[key]).map(([key,title])=>el('span',{title,'aria-label':title},el('img',{src:'/sections/hotel/breakfast-artwork/'+({diet_no_gluten:'no-gluten',diet_no_milk:'no-milk',diet_no_pork:'no-pork'}[key])+'.png',alt:'',class:'breakfast-diet-art'}))));
+  const tile=el('article',{class:'breakfast-serving-tile'+(order.status==='served'?' served':''),'data-room-number':order.room_number},
+   el('div',{class:'breakfast-tile-header'},el('strong',{class:'breakfast-tile-room'},order.room_number),companies.length?el('span',{class:'breakfast-tile-company'},'Firma: '+companies.join(', ')):el('span'),active),
+   el('div',{class:'breakfast-tile-body'},el('strong',{class:'breakfast-tile-guest'},order.guest_names||order.guest_name||'Pokoj '+order.room_number),el('span',{},order.country_code?country(order.country_code):'—'),nights.length?el('span',{class:'breakfast-tile-nights'},nights.join(' · ')):null,
+    el('span',{class:'breakfast-tile-count'},'Snídaní: '+order.guest_count+' · Dospělí: '+counts[0]+' · 0–2 roky: '+counts[1]+' · 3–17 let: '+counts[2]+(counts[3]?' · Věk neuveden: '+counts[3]:'')),order.note?el('span',{class:'breakfast-tile-note',title:order.note},order.note):null,el('div',{class:'breakfast-tile-action'},actions)));
+  if(manager(ctx))tile.append(el('details',{},el('summary',{},'Diety pobytu'),dietControls(ctx,order)));
+  if(order.guest_count>0)tiles.append(tile);
+  // Separate controls retain the original table on larger screens.
+  const desktopActions=makeActions();
+  return [button(el('strong',{},order.room_number),()=>move(ctx,'detail',order),'breakfast-room-link'),order.guest_names||order.guest_name,country(order.country_code),order.guest_count,dietControls(ctx,order),order.note?el('span',{class:'breakfast-note'},icon('warning'),order.note):'—',desktopActions];
  });
- const orders=panel('Snídaně a diety pobytů',table(['Pokoj','Ubytovaní','Národnost','Snídaní','Diety','Poznámka','Akce'],rows),'breakfast');orders.classList.add('breakfast-orders');main.append(orders);
+ const orders=panel('Snídaně a diety pobytů',table(['Pokoj','Ubytovaní','Národnost','Snídaní','Diety','Poznámka','Akce'],rows),'breakfast');orders.classList.add('breakfast-orders');orders.querySelector('.panel-body').append(tiles);main.append(orders);
  const served=data.orders.filter(row=>row.status==='served').reduce((sum,row)=>sum+row.guest_count,0),remaining=data.orders.filter(row=>['pending','preparing'].includes(row.status)).reduce((sum,row)=>sum+row.guest_count,0);
  main.append(el('div',{class:'breakfast-metrics'},[['Snídaní celkem',data.summary.total_guests,'Porce v denním přehledu','coffee'],['Vydáno',served,'Potvrzené porce','check'],['Zbývá vydat',remaining,'Dosud nevydané porce','clock']].map(([title,value,description,ico])=>el('article',{class:'hotel-summary-card'},el('div',{},title,icon(ico)),el('strong',{},value),el('small',{},description)))),el('p',{},'Poslední zdrojová synchronizace: '+(data.summary.source_imported_at?new Date(data.summary.source_imported_at).toLocaleString('cs-CZ',{timeZone:'Europe/Prague'}):'neuvedena')+'. Diety se mění podle konkrétního pobytu.'));
 }

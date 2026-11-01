@@ -161,3 +161,19 @@ historických shod ve třech nezměněných souborech (Android public client
 config, SMTP test fixtures a starší evidence); jejich bajty odpovídají
 výchozímu 270fd34, bez nové výjimky/allowlistu. CI a produkční kvalifikace
 nového SHA se dokládají až po skutečném běhu.
+
+## Pokojská a snídaně – původní portál
+
+Rozsah je omezený na tyto dva pohledy. Runtime: obnovit mobilní snídaňové
+dlaždice, jejich obsah a pevnou paletu; testy: původní room comparator,
+role a skutečná CML gateway; CI/build: stávající celý povinný plán;
+dokumentace/pokyny: tento kontrakt; API/schémata/Android/hlas: beze změn;
+fixtures: pouze izolované; překlady a další moduly: bez rozšíření.
+
+Snídaně na telefonu používají původní plnošířkové dlaždice s číslem pokoje,
+firmou, dietami, hosty, zemí, nocemi a věkovými skupinami strávníků.
+Pozadí #ffffff a oranžová výdejní akce #ff6a2e zůstávají pevné, bez vlivu CML tématu.
+Akce zachovává původní tmavé písmo #101010; u vydaného stavu se nesnižuje
+opacity celé dlaždice. Zachování kontrastu má tuto výslovnou omezenou
+odchylku od původního zeslabení. Backendové kontroly role,
+času výdeje, očekávané verze a následné čtení zůstávají stejné.

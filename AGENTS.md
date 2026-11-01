@@ -233,3 +233,7 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   nejistý výsledek se obnovuje pouze čtením, bez druhého zápisu.
   Zámek je svázaný s konkrétním nativeModalToken a nesmí změnit další
   dialog. Ostatní modaly a role ověřuje původní browserová kvalifikace.
+
+- Snídaňové mobilní dlaždice zachovávají původní obsah, uspořádání a pevné
+  pozadí. Při konfliktu čitelnosti měnit text/obrys, nikoli stavové pozadí;
+  nesnižovat opacity celého obsahu. Tabulka zůstává na širším displeji.

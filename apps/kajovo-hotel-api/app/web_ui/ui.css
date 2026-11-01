@@ -205,3 +205,19 @@ h1{margin:7px 0 5px}button,a,input,select,textarea{scroll-margin-top:100px;scrol
 
 .room-controls{margin-bottom:18px}.room-day-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}.room-day-nav>button{min-height:44px}.room-day-nav>strong{font-size:13px;white-space:nowrap}.room-day-nav>button:last-child{margin-left:4px}.room-date-filters{display:grid;grid-template-columns:200px 200px minmax(150px,1fr) auto;gap:12px;align-items:end}.room-date-filters input,.room-date-filters select{width:100%;min-width:0;max-width:100%;min-height:44px}.room-date-filters>button{min-height:44px}.room-controls+.actions:empty{display:none}.room-legend{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0;font-size:11px;color:var(--muted)}.room-legend>span{display:inline-flex;gap:6px;align-items:center}.room-legend-dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex-shrink:0}.room-legend .icon{width:18px;height:18px}.room-top strong{min-width:0;overflow-wrap:anywhere;font-weight:750;letter-spacing:.5px}.room-date-filters input[type=date]{color-scheme:dark}@media(max-width:900px){.room-date-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.room-date-filters{grid-template-columns:1fr}.room-day-nav>strong{flex:1}.room-day-nav>button{padding:8px 12px}.room-day-nav>button:last-child{margin-left:0}}
 @media(min-width:801px)and(max-width:1100px){.rooms{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(min-width:601px)and(max-width:800px){.rooms{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Original Hotel mobile breakfast structure; fixed palette is independent of CML. */
+.breakfast-serving-tiles{display:none}
+@media(max-width:640px){
+.breakfast-orders .table-scroll{display:none}.breakfast-serving-tiles{display:grid;gap:8px;padding:8px 0}
+.breakfast-serving-tile{width:100%;min-width:0;border:1px solid #d7d3ca;border-radius:16px;background:#fff;color:#101010;box-shadow:0 6px 14px rgba(83,56,46,.07);font-size:13.12px;line-height:1.35;color-scheme:light}
+.breakfast-tile-header{display:grid;grid-template-columns:minmax(32px,auto) minmax(0,1fr) auto;align-items:center;gap:8px;padding:10.4px 12px 4px;min-width:0}
+.breakfast-tile-room{font-size:16px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.breakfast-tile-company{color:#686868;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.breakfast-tile-body{display:flex;flex-direction:column;align-items:stretch;gap:4.8px;padding:4px 12px 12px;min-width:0;overflow-wrap:anywhere}.breakfast-tile-guest{font-size:16px;line-height:1.25;color:#101010;font-weight:700}.breakfast-tile-nights,.breakfast-tile-count{color:#686868}.breakfast-tile-note{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.8px;line-height:1.15}
+.breakfast-tile-diets{display:flex;gap:2.56px}.breakfast-tile-diets>span{display:grid;place-items:center}.breakfast-tile-diets .icon{width:22.08px;height:22.08px;filter:none}
+.breakfast-tile-action{margin-top:2.4px}.breakfast-tile-action .actions{margin:0}.breakfast-tile-action button{width:100%;min-height:42.4px;padding:5.6px 11.2px;font-size:14.4px;line-height:1.2;background:#ff6a2e;color:#101010;border-color:#ff6a2e;border-radius:12px;box-shadow:0 10px 24px rgba(255,106,46,.2)}.breakfast-serving-tile.served .breakfast-tile-action button{background:#fff;color:#101010;border-color:#d7d3ca}
+}
+
+@media(max-width:640px){.breakfast-orders{margin-inline:-16px;border:0;border-radius:0}.breakfast-tile-action button:disabled{opacity:1;border-style:dashed}}
+
+@media(max-width:640px){.breakfast-tile-diets>span{background:#a62920;padding:1.92px;border-radius:12px}.breakfast-diet-art{display:block;width:22.08px;height:22.08px;object-fit:cover;border-radius:11px}}
