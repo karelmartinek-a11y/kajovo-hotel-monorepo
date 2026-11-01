@@ -74,6 +74,16 @@ ztraceného potvrzení bez druhého zápisu a následné čtení změněné barv
 Přehled se obnovuje po 60 sekundách a při návratu do okna, mimo otevřený
 detail; chyba obnovy výslovně označuje možné zastarání dat.
 
+Na následné výslovné zadání kontrastu se zachovávají barvy stavů, ale
+obrys psa je zesílený na 1 zobrazovaný px, upozornění má tmavě červenou
+výplň s bílým obrysem a zaměření dvojitý světlý/tmavý okraj. Tmavé
+stavové akce mají bílé písmo i při zakázání; dostupnost nadále vyjadřuje
+skutečný `disabled` a přerušovaná hrana. Test měří kontrast textu dlaždic
+a dialogů nejméně 4,5:1 a spouští axe kontrolu dialogu. Bílá čísla pokojů
+se čtou proti původnímu tmavému obrysu; samotná výplň proti světlé
+stavové barvě není samostatným důkazem kontrastu. Žádná obecná úplná
+přejímka přístupnosti se tím neoznačuje PASS.
+
 Pokoje rozlišují aktuální úklid od pobytů vybraného dne. Změna používá
 původní očekávaný stav a následné načtení. Pes/postýlka se potvrzují pro
 konkrétní rezervaci, pokoj, den, množství a verzi teprve po skutečném

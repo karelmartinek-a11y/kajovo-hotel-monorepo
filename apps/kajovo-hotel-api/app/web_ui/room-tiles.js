@@ -48,7 +48,7 @@ export function roomTile(room,date,onSelect,statusLabel) {
  const groups=continuing?[['stay',room.stays]]:[['departure',room.departures??[]],['arrival',room.arrivals??[]]];
  const stays=groups.flatMap(([,items])=>items),blocks=room.blocks??[];
  const tile=el('button',{type:'button',class:'room-tile room-reference'+(continuing?' room-continuing':''),'data-room-id':room.room_id,onclick:()=>onSelect(room),
-  'aria-label':'Pokoj '+room.room_number+', '+statusLabel+'. '+(room.occupied?'Obsazeno':'Volno')+'. '+stays.map(stay=>guestName(stay)+', '+(reservationLabels[stay.reservation_state]??'Neurčený stav rezervace')+', '+stay.persons+' osob').join('; ')+(stays.some(stay=>stay.housekeeping_note?.trim())?'. Poznámka pro pokojskou':'')+(blocks.length?'. Blokace pokoje / zastavení prodeje':'')+'. Změnit stav pokoje.'},
+  'aria-label':'Pokoj '+room.room_number+', '+statusLabel+'. '+(room.occupied==null?'Obsazenost není známá':room.occupied?'Obsazeno':'Volno')+'. '+stays.map(stay=>guestName(stay)+', '+(reservationLabels[stay.reservation_state]??'Neurčený stav rezervace')+', '+stay.persons+' osob').join('; ')+(stays.some(stay=>stay.housekeeping_note?.trim())?'. Poznámka pro pokojskou':'')+(blocks.length?'. Blokace pokoje / zastavení prodeje':'')+'. Změnit stav pokoje.'},
   el('span',{class:'room-top cleaning-'+(room.housekeeping_status_key??'unknown'),title:statusLabel},el('strong',{},room.room_number)));
  const body=el('span',{class:'room-body'});
  for(const [kind,items]of groups){

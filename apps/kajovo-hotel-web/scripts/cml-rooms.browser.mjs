@@ -4,6 +4,7 @@ import {createRequire} from 'node:module';
 import {dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium,webkit,expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 // Synthetic read-only adapters. No production backend or device is reachable.
 const root=new URL('../../kajovo-hotel-api/app/web_ui/',import.meta.url),origin='https://hotel.example.test',prefix='/sections/hotel/';
@@ -21,6 +22,11 @@ const referenceCss=(await readFile(new URL('../../../packages/ui/src/tokens.css'
 const output=process.env.CML_UI_EVIDENCE_DIR;if(output)await mkdir(output,{recursive:true});
 
 const profile={admin:true,name:'Izolovaný správce',roles:['admin'],active_role:'admin',permissions:['housekeeping:read'],available_permissions:['housekeeping:read'],role_permissions:{admin:['housekeeping:read']}};
+const contrastAudit=async(page,selector)=>page.locator(selector).evaluateAll(nodes=>{
+ const rgb=value=>(value.match(/[\d.]+/g)??[]).slice(0,3).map(Number);
+ const light=value=>rgb(value).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+ return nodes.filter(n=>n.getClientRects().length).map(n=>{let bg=n;while(bg.parentElement&&getComputedStyle(bg).backgroundColor==='rgba(0, 0, 0, 0)')bg=bg.parentElement;const a=light(getComputedStyle(n).color),b=light(getComputedStyle(bg).backgroundColor);return {label:n.textContent,ratio:(Math.max(a,b)+.05)/(Math.min(a,b)+.05)};});
+});
 const failures=[];
 for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
  assert(['chromium','webkit'].includes(engine));const browser=await({chromium,webkit}[engine]).launch();
@@ -52,6 +58,8 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
     const actual=await tile.evaluate(node=>{const style=getComputedStyle(node),top=node.querySelector('.room-top');return {height:node.getBoundingClientRect().height,header:top.getBoundingClientRect().height,bg:getComputedStyle(top).backgroundColor,border:style.borderColor,radius:style.borderRadius,slots:[...node.querySelectorAll('.room-slot')].map(n=>getComputedStyle(n).backgroundColor)};});
     const expected=await referencePage.locator('.k-hk-room').evaluate(node=>{node.style.height='122px';const style=getComputedStyle(node),top=node.querySelector('.k-hk-room__topline');return {height:node.getBoundingClientRect().height,header:top.getBoundingClientRect().height,bg:getComputedStyle(top).backgroundColor,border:style.borderColor,radius:style.borderRadius,slots:[...node.querySelectorAll('.k-hk-room__slot')].map(n=>getComputedStyle(n).backgroundColor)};});
     assert.deepEqual(actual,expected,row.room_number+' original component geometry and palette');
+    const midpoint=(node,selector)=>{const box=node.getBoundingClientRect(),text=node.querySelector(selector).getBoundingClientRect();return Math.round((text.x+text.width/2-box.x)/box.width*100);};
+    assert.equal(await tile.evaluate(midpoint,'.room-top strong'),await referencePage.locator('.k-hk-room').evaluate(midpoint,'.k-hk-room__topline strong'),'Room number alignment follows the original');
     for(const [current,original]of [['.room-top','.k-hk-room__topline'],['.room-body','.k-hk-room__body'],['.room-stamp','.k-hk-reservation'],['.room-identity','.k-hk-reservation__identity'],['.room-people','.k-hk-person-counts'],['.room-event','.k-hk-reservation__event'],['.room-requests','.k-hk-requests--compact'],['.room-stay-label','.k-hk-room__stay-label']]){
      const dimensions=(node,selector)=>{const origin=node.getBoundingClientRect();return [...node.querySelectorAll(selector)].map(n=>{const b=n.getBoundingClientRect();return [b.x-origin.x,b.y-origin.y,b.width,b.height].map(v=>Math.round(v*10)/10);});};
      const measured=await tile.evaluate(dimensions,current),referenceSize=await referencePage.locator('.k-hk-room').evaluate(dimensions,original);
@@ -61,13 +69,15 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
     await referencePage.evaluate(()=>{document.querySelector('#reference').remove();const root=document.createElement('div');root.id='reference';root.className='k-hk-board';document.body.append(root);});
    }
    await referencePage.close();
+   const tileContrast=await contrastAudit(page,'.room-guest,.room-people b,.room-time,.room-nights,.room-stay-label b,.room-conflict');for(const result of tileContrast)assert(result.ratio>=4.5,JSON.stringify(result));
    await expect(page.locator('[data-room-id="room-101"] .room-guest')).toHaveCount(2);await expect(page.locator('[data-room-id="room-102"] .room-stay-label')).toHaveText('POBYT');await expect(page.locator('[data-room-id="room-102"] .room-time')).toHaveText('');
    await expect(page.locator('[data-room-id="room-201"] .room-block')).toHaveCount(1);await expect(page.locator('[data-room-id="room-202"] .room-conflict')).toHaveText('Neurčený stav rezervace');await expect(page.locator('[data-room-id="room-203"] .room-conflict')).toHaveText('Více rezervací');
    const appearance=()=>page.locator('.room-reference').evaluateAll(nodes=>nodes.map(node=>[node.getBoundingClientRect().height,...[node,...node.querySelectorAll('*')].map(n=>{const s=getComputedStyle(n);return [s.color,s.backgroundColor,s.fontSize,s.borderColor];})]));
    const beforeRefresh=queries.length;await page.evaluate(()=>dispatchEvent(new Event('focus')));await expect.poll(()=>queries.length).toBeGreaterThan(beforeRefresh);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.waitForFunction(()=>[...document.querySelectorAll('.room-reference img')].every(n=>n.complete&&n.naturalWidth>0));
    if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'-original-palette.png',fullPage:true});
-   const beforeTheme=await appearance();await page.addStyleTag({content:':root{--bg:hotpink;--text:lime;--accent:purple;--line:red;--panel:yellow;--muted:orange;--k-color-room-clean:blue;--k-color-reservation-confirmed:black;color-scheme:dark}'});assert.deepEqual(await appearance(),beforeTheme,'Menu theme cannot change room semantics or typography');
-   if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'.png',fullPage:true});
+   const beforeTheme=await appearance();const injectedTheme=await page.addStyleTag({content:':root{--bg:hotpink;--text:lime;--accent:purple;--line:red;--panel:yellow;--muted:orange;--k-color-room-clean:blue;--k-color-reservation-confirmed:black;color-scheme:dark}'});assert.deepEqual(await appearance(),beforeTheme,'Menu theme cannot change room semantics or typography');
+   if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'-theme.png',fullPage:true});
+   await injectedTheme.evaluate(node=>node.remove());
    await expect(page.locator('label').filter({has:page.getByLabel('Datum',{exact:true})})).toContainText('Datum');
    await expect(page.locator('label').filter({has:page.getByLabel('Hledat pokoj',{exact:true})})).toContainText('Hledat pokoj');
    const date=page.getByLabel('Datum',{exact:true}),before=queries.length;
@@ -77,7 +87,8 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
    await page.getByLabel('Hledat pokoj',{exact:true}).fill('201');await expect(page.locator('.room-tile')).toHaveCount(1);await expect(page.locator('.room-tile')).toContainText('201');
    await page.getByLabel('Patro',{exact:true}).selectOption('1');await expect(page.locator('.room-tile')).toHaveCount(0);await page.getByLabel('Patro',{exact:true}).selectOption('2');await expect(page.locator('.room-tile')).toHaveCount(1);
    await page.getByRole('button',{name:'Obnovit',exact:true}).click();await page.locator('#content[aria-busy=false]').waitFor();await expect(page.getByLabel('Hledat pokoj',{exact:true})).toHaveValue('201');await expect(page.getByLabel('Patro',{exact:true})).toHaveValue('2');await expect(page.locator('.room-tile')).toHaveCount(1);
-   await page.locator('.room-tile').click();await expect(page.getByRole('dialog')).toBeVisible();for(const button of await page.locator('.room-status-actions button').all())await expect(button).toBeDisabled();await page.getByRole('button',{name:'Zavřít',exact:true}).click();
+   await page.locator('.room-tile').click();await expect(page.getByRole('dialog')).toBeVisible();for(const button of await page.locator('.room-status-actions button').all())await expect(button).toBeDisabled();const dialogContrast=await contrastAudit(page,'#dialog button,#dialog p,#dialog h2,#dialog h3');for(const result of dialogContrast)assert(result.ratio>=4.5,JSON.stringify(result));const axe=await new AxeBuilder({page}).include('#dialog').withRules(['color-contrast']).analyze();assert.deepEqual(axe.violations,[],'Dialog color contrast');console.log(JSON.stringify({engine,width,minimumTileTextContrast:Math.min(...tileContrast.map(n=>n.ratio)),minimumDialogTextContrast:Math.min(...dialogContrast.map(n=>n.ratio)),axeDialogViolations:axe.violations.length}));
+   if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'-dialog.png',fullPage:true});await page.getByRole('button',{name:'Zavřít',exact:true}).click();
    activeProfile.permissions.push('housekeeping:write');await page.reload();await page.locator('#content[aria-busy=false]').waitFor();
    await page.getByLabel('Hledat pokoj',{exact:true}).fill('');await page.getByLabel('Patro',{exact:true}).selectOption('');await page.locator('[data-room-id="room-201"]').click();
    await page.getByRole('button',{name:'Uklizeno pro nájezd',exact:true}).hover();assert.equal(await page.getByRole('button',{name:'Uklizeno pro nájezd',exact:true}).evaluate(n=>getComputedStyle(n).backgroundColor),'rgb(34, 197, 94)');
