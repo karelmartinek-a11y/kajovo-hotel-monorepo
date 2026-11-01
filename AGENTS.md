@@ -237,3 +237,5 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
 - Snídaňové mobilní dlaždice zachovávají původní obsah, uspořádání a pevné
   pozadí. Při konfliktu čitelnosti měnit text/obrys, nikoli stavové pozadí;
   nesnižovat opacity celého obsahu. Tabulka zůstává na širším displeji.
+
+- Standard 1.3: centrální zápis přijímá také podepsanou politiku `owner-no-additional-prompts/1`, výhradně pro ověřený `KRMAR78`/`admin` bez nativního ID. Kontrola podpisu, audience, aktuální identity, CSRF a replay zůstává povinná; `reauthUntil` se nefalšuje. Členům politika nezvyšuje práva.

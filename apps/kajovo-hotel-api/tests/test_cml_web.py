@@ -161,7 +161,10 @@ def test_central_account_routes_require_owner_fresh_reauth_and_keep_credentials_
         assert call(reauthUntil=int(time.time())+120).status_code==200
         assert call(body=b'{"password":"synthetic-local-only"}',reauthUntil=int(time.time())+120).status_code==401
         assert call('GET',body=b'',sub='user:'+str(uuid.uuid4()),nativeId='1').status_code==401
-        assert calls==['GET','PATCH']
+        assert call(authzPolicy='owner-no-additional-prompts/1', reauthUntil=0).status_code==200
+        assert call(authzPolicy='unknown-policy', reauthUntil=0).status_code==403
+        assert call(authzPolicy='owner-no-additional-prompts/1', sub='user:'+str(uuid.uuid4()), nativeId='1', role='member').status_code==401
+        assert calls==['GET','PATCH','PATCH']
     engine.dispose()
 
 
@@ -294,3 +297,11 @@ def test_png_reference_artwork_requires_signed_cml_entry(tmp_path, monkeypatch):
             assert response.headers['content-type'] == 'image/png'
     finally:
         engine.dispose()
+
+
+def test_owner_policy_does_not_authorize_member_or_forged_owner():
+    from app.security.cml_web import central_write_authorized
+    valid = dict(sub='KRMAR78', role='admin', nativeId=None, authzPolicy='owner-no-additional-prompts/1', reauthUntil=0)
+    assert central_write_authorized(valid)
+    for patch in [dict(sub='user:other'), dict(role='member'), dict(nativeId='1'), dict(authzPolicy='unknown'), dict(authzPolicy=None, reauthUntil=True)]:
+        assert not central_write_authorized({**valid, **patch})

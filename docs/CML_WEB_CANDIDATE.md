@@ -96,3 +96,7 @@ Restartuje se jen potřebný runtime a chrání se původní konfigurace a stav.
 Úplná vizuální matice, kosmetika, méně používané stavy, kompletní překlady,
 tisk a přístupnost jsou **ODLOŽENO PO PRVNÍM NASAZENÍ**, nikdy PASS.
 Autorizace, zachování dat a základní funkce se neodkládají.
+
+## Standard 1.3
+
+Centrální zápisy a zakládání pracovních profilů přijímají vedle čerstvého reauth také platně podepsanou politiku `owner-no-additional-prompts/1` pro `KRMAR78`/`admin` bez nativního ID. Členové ani neznámá politika tuto možnost nemají. Podpis, CSRF, jednorázové nonce, aktuální nativní identita, obchodní autorizace a účtenky zůstávají povinné; čas `reauthUntil` se nefalšuje.
