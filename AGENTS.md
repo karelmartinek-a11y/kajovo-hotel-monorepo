@@ -194,3 +194,21 @@ Snapshot runtime má po celou výměnu API vlastní dočasný image tag a nespou
   frontend, nativní přihlášení a Dagmar backend musí zůstat dostupné při
   nasazení ostatního UI; jde o výjimku ze znovunapsání pouze pro původní hlas.
   Viz `docs/CML_VOICE_AUTHORITY.md`. Historická retirement kvalifikace bez této výjimky není aktuální release důkaz.
+
+- Přímé zadání z 1. 11. 2026 upřednostňuje první použitelné nasazení;
+  úplná vizuální matice, kosmetika a úplná přejímka méně používaných
+  stavů/překladů/tisku/přístupnosti jsou ODLOŽENO PO PRVNÍM NASAZENÍ,
+  ne PASS. Autorizace, data a skutečné základní funkce zůstávají povinné.
+- Při cutoveru musí API mít `CML_BROWSER_ENTRY_ONLY=1`. Obchodní API
+  odmítne původní webové relace a browserové Fetch Metadata/Origin i
+  s nativní cookie; ověřený CML stav je pouze serverový. Nativní klient
+  se svou původní nativní relací zůstává oddělený. Původní hlasové
+  cesty a jeho auth/adapter/core se nemění. Výchozí 0 je pouze příprava
+  kompatibilního backendu před přepnutím; produkční vynucení musí být
+  ověřené s 1. Jiné hodnoty zablokují start.
+
+První koordinovaný commit používá trailer `CML-Coordinated-Cutover: true`.
+CI a tvorba artefaktů dále běží; pouze automatický produkční job pro tento
+commit nepřepne portál před připraveným CML. Publikovaný otestovaný artefakt
+se v tomto cutoveru nasazuje přímým SSH z Codexu. Ostatní commity zachovávají
+původní automatizační pravidlo. Tato výjimka nevypíná testy.

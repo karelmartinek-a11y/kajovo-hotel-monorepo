@@ -131,3 +131,30 @@ assets, brandu a mikrofonní policy prošla. Nový CML hlas není součástí
 kandidáta. Platný rozsah, důkazy a limity viz
 [CML_VOICE_AUTHORITY.md](CML_VOICE_AUTHORITY.md). Tento místní průchod není
 produkční nasazení nebo přejímka hovoru.
+
+## První vydání – vynucení webového vstupu (1. 11. 2026)
+
+Přímé zadání upřednostňuje první použitelné nasazení. Úplné vizuální řady,
+kosmetika a úplná přejímka méně používaných stavů/jazyků/tisku/přístupnosti
+jsou ODLOŽENO PO PRVNÍM NASAZENÍ, ne PASS. Autorizace a původní data nikoli.
+
+Matice této nezbytné opravy: produkční auth/boundary a Compose aktualizovat;
+izolované negativní HTTP a nativní/hlasové regresní testy doplnit; API image
+a proxy release kontroly ověřit; current-state dokumentaci a AGENTS doplnit;
+komentáře a runtime kontrakt aktualizovat; původní voice frontend/core/adapter
+a Android beze změny; závislosti/OpenAPI DTO nerelevantní (žádná změna dat
+nebo vstupního schématu). Flag aktivovat až při koordinovaném cutoveru.
+
+Povinné `CML_BROWSER_ENTRY_ONLY=1` při aktivaci blokuje původní webové
+relace a browserové požadavky na obchodní API, včetně původního profilu.
+Nativní Android používá původní relaci mimo browser; zůstává funkční.
+Původní hlasové API i autentizace jsou výjimka a původní adapter/core/UI
+zůstávají beze změn. CML stav může vytvořit pouze ověřená gateway, nikoli
+HTTP header na původní cestě. Výchozí 0 dovoluje připravit kompatibilní
+backend před cutoverem; samo o sobě to není vynucení výhradního CML vstupu.
+
+První koordinovaný commit používá trailer `CML-Coordinated-Cutover: true`.
+CI a tvorba artefaktů dále běží; pouze automatický produkční job pro tento
+commit nepřepne portál před připraveným CML. Publikovaný otestovaný artefakt
+se v tomto cutoveru nasazuje přímým SSH z Codexu. Ostatní commity zachovávají
+původní automatizační pravidlo. Tato výjimka nevypíná testy.

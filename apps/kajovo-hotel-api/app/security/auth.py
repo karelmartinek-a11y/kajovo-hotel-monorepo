@@ -23,6 +23,30 @@ WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 SESSION_STATE_KEY = "_kajovo_auth_session"
 
 
+def _require_cml_browser_entry(request: Request, session: dict) -> None:
+    if not getattr(request.state, "cml_browser_entry_only", False):
+        return
+    if getattr(request.state, "cml_web_claims", None):
+        return
+    path = request.url.path
+    # The original independent voice and its original auth are excluded from CML.
+    business = path.startswith("/api/v1/") or path in {"/api/auth/profile", "/api/auth/locale", "/api/auth/select-role"}
+    if not business or any(
+        path == prefix or path.startswith(prefix + "/")
+        for prefix in ("/api/v1/admin/voice-core", "/api/v1/admin/voice-memory")
+    ):
+        return
+    browser = session.get("web_activity_session") is True or any(
+        name in request.headers
+        for name in ("origin", "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest")
+    ) or request.headers.get("user-agent", "").startswith("Mozilla/")
+    if browser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "cml_browser_entry_required", "url": "https://kajovocml.hcasc.cz/#hotel"},
+        )
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -221,6 +245,7 @@ def require_session(
 ) -> dict[str, str | list[str] | int | None]:
     cached = getattr(request.state, SESSION_STATE_KEY, None)
     if isinstance(cached, dict):
+        _require_cml_browser_entry(request, cached)
         return cached
 
     owns_db = db is None
@@ -236,6 +261,8 @@ def require_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
         )
+
+    _require_cml_browser_entry(request, session)
 
     setattr(request.state, SESSION_STATE_KEY, session)
     return session
