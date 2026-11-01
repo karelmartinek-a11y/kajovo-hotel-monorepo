@@ -7,11 +7,11 @@ publikovaný zdroj je `8cb10128e6382a1cab161087e66eb1f36bbbe42d`.
 Přesná následující revize patří skutečnému image/release manifestu.
 Kvalifikace zdroje sama netvrdí jeho aktivaci v produkci.
 
-| Oblast | Aktuální dopad role opravy |
+| Oblast | Kvalifikovaný rozsah nového UI |
 | --- | --- |
-| Runtime zdroj | Jen nový `web_ui/app.js`: role se aktivuje po potvrzení aktuální identity |
-| Testy | 18 cílených browserových případů; reálná gateway nad izolovanými původními routery |
-| CI a gate | Povinný `native-web-role-browser`; všechny původní gate pokračují bez opt-out |
+| Runtime zdroj | Nový `web_ui/app.js` a styly pokojů; ověřená role, platný den a čitelné mobilní karty; historie chatu dosažitelná klávesnicí |
+| Testy | 18 rolových a 8 pokojských browserových případů; reálná gateway nad izolovanými původními routery |
+| CI a gate | Povinné `native-web-role-browser` a `native-web-room-browser`; všechny původní gate pokračují bez opt-out |
 | Dokumentace | Aktuální stav, rozsah ověření a zbývající přejímka v těchto dvou dokumentech |
 | Komentáře a pravidla | `AGENTS.md` popisuje generaci role a zachování původní potvrzené identity |
 | Fixtures | Kontrolované čtecí role; existující syntetické DB a fake poskytovatelé |
@@ -54,6 +54,14 @@ nerestartují. Detail běžícího prvního vydání a následných oprav sleduj
 centrální CML release evidence `docs/unified-ui/FIRST_RELEASE.json`.
 
 ## Zachované kontrakty pracovních modulů
+
+`test:cml-rooms` ověřuje šest desktopových a dvě mobilní karty podle
+předlohy, viditelné popisky filtrů a přehled bez vodorovného přesahu na
+1400/834/390/320 px. Prázdný nebo neplatný den zachová původní přehled
+a nevolá backend. Změna dne, návrat na dnešek a filtr patra/pokoje zachovávají
+skutečné parametry čtení. Po obnově zůstává zadaný filtr a čtecí role nesmí
+změnit úklid. Oba enginy mají 8 PASS. Rychlé akce závady/nálezu podle
+původních práv zůstávají navíc oproti ukázce; úplná vizuální matice není PASS.
 
 Pokoje rozlišují aktuální úklid od pobytů vybraného dne. Změna používá
 původní očekávaný stav a následné načtení. Pes/postýlka se potvrzují pro
