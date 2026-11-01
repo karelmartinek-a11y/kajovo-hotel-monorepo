@@ -177,3 +177,10 @@ Akce zachovává původní tmavé písmo #101010; u vydaného stavu se nesnižuj
 opacity celé dlaždice. Zachování kontrastu má tuto výslovnou omezenou
 odchylku od původního zeslabení. Backendové kontroly role,
 času výdeje, očekávané verze a následné čtení zůstávají stejné.
+
+Samostatný `cml-breakfast.browser.mjs` je součástí povinného původního
+room browser gate. Ověřuje obsluhu snídaní, syntetický výdej a jeho verzi,
+nulové porce, vydané/zrušené stavy, věkové počty, firmu, noci, skutečné
+PNG, platné datum a nezávislost na CML tématu. Vlastnosti palety, hran
+a tlačítka porovnává s vykreslenými původními CSS, nikoli s odhadem
+z prvních proměnných. Místní Chrome/WebKit pokrývá 320/390/640 px.

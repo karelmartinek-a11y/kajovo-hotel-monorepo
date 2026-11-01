@@ -42,13 +42,13 @@ export async function breakfastList(ctx){
  const tools=el('div',{class:'actions'},manager(ctx)?exportLink('api/v1/breakfast/export/daily?service_date='+day,'Export snídaní (PDF)'):null,manager(ctx)?button([icon('plus'),'Nový snídaňový záznam'],()=>move(ctx,'new')):null,button([icon('refresh'),'Obnovit'],()=>ctx.go('breakfast')),manager(ctx)?button([icon('menu'),'Další operace'],()=>breakfastManagement(ctx)):null);
  main.append(panel('Denní přehled snídaní',[dateNavigation(ctx),tools],'breakfast'));
  const tiles=el('div',{class:'breakfast-serving-tiles'});
- const rows=[...data.orders].sort((a,b)=>a.room_number.localeCompare(b.room_number,'cs',{numeric:true})).map(order=>{
-  const makeActions=()=>{const actions=el('div',{class:'actions'});actions.dataset.nativeRole=getRole();
+ const rows=data.orders.filter(order=>ctx.state.identity.active_role!=='snídaně'||order.guest_count>0).sort((a,b)=>a.room_number.localeCompare(b.room_number,'cs',{numeric:true})).map(order=>{
+  const makeActions=(compact=false)=>{const actions=el('div',{class:'actions'});actions.dataset.nativeRole=getRole();
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()),canServe=manager(ctx)||ctx.state.identity.active_role==='snídaně'&&day===today()&&time>='05:00'&&time<='11:00';
-  if(['pending','preparing'].includes(order.status)){const serve=button([icon('check'),'Vydat'],()=>mark(ctx,order,'served',actions),'primary');serve.disabled=!canServe;actions.append(serve);if(!canServe)serve.title='Výdej dnes 5:00–11:00.';}
+  if(['pending','preparing'].includes(order.status)){const serve=button(compact||!manager(ctx)?'Vydat':[icon('check'),'Vydat'],()=>mark(ctx,order,'served',actions),'primary');serve.disabled=!canServe;actions.append(serve);if(!canServe)serve.title='Výdej dnes 5:00–11:00.';}
   else if(order.status==='served'&&manager(ctx))actions.append(button([icon('undo'),'Vrátit výdej'],()=>mark(ctx,order,'pending',actions)));
   else {const unavailable=button(labels[order.status]??'Neznámý stav',()=>{});unavailable.disabled=true;actions.append(unavailable);}
-  return actions;};const actions=makeActions();
+  return actions;};const actions=makeActions(true);
   const stays=order.reservations??[],companies=[...new Set(stays.map(r=>r.company_name?.trim()).filter(Boolean))];
   const counts=['breakfast_adults','breakfast_children_0_2','breakfast_children_3_17','breakfast_age_unknown'].map(key=>stays.reduce((sum,r)=>sum+(r[key]??0),0));
   const nights=stays.filter(r=>r.arrival&&r.departure).map(r=>{const start=Date.parse(r.arrival+'T00:00:00Z')/86400000,end=Date.parse(r.departure+'T00:00:00Z')/86400000,now=Date.parse(day+'T00:00:00Z')/86400000;return Math.max(0,Math.min(end-start,now-start))+'/'+(end-start)+' nocí';});
@@ -61,7 +61,7 @@ export async function breakfastList(ctx){
   if(order.guest_count>0)tiles.append(tile);
   // Separate controls retain the original table on larger screens.
   const desktopActions=makeActions();
-  return [button(el('strong',{},order.room_number),()=>move(ctx,'detail',order),'breakfast-room-link'),order.guest_names||order.guest_name,country(order.country_code),order.guest_count,dietControls(ctx,order),order.note?el('span',{class:'breakfast-note'},icon('warning'),order.note):'—',desktopActions];
+  return [button(el('strong',{},order.room_number),()=>move(ctx,'detail',order),'breakfast-room-link'),order.guest_names||order.guest_name||'Pokoj '+order.room_number,order.country_code?country(order.country_code):'—',order.guest_count,manager(ctx)?dietControls(ctx,order):active.cloneNode(true),order.note?el('span',{class:'breakfast-note'},icon('warning'),order.note):'—',desktopActions];
  });
  const orders=panel('Snídaně a diety pobytů',table(['Pokoj','Ubytovaní','Národnost','Snídaní','Diety','Poznámka','Akce'],rows),'breakfast');orders.classList.add('breakfast-orders');orders.querySelector('.panel-body').append(tiles);main.append(orders);
  const served=data.orders.filter(row=>row.status==='served').reduce((sum,row)=>sum+row.guest_count,0),remaining=data.orders.filter(row=>['pending','preparing'].includes(row.status)).reduce((sum,row)=>sum+row.guest_count,0);

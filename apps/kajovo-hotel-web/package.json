@@ -30,6 +30,6 @@
     "test:smoke": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/live-smoke.spec.ts",
     "test:visual": "node ../../scripts/run-playwright-with-api.js --app apps/kajovo-hotel-web tests/visual.spec.ts",
     "test:cml-roles": "node scripts/cml-roles.browser.mjs",
-    "test:cml-rooms": "node scripts/cml-rooms.browser.mjs"
+    "test:cml-rooms": "node scripts/cml-rooms.browser.mjs && node scripts/cml-breakfast.browser.mjs"
   }
 }

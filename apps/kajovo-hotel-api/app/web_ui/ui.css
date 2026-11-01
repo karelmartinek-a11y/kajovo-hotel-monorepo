@@ -221,3 +221,7 @@ h1{margin:7px 0 5px}button,a,input,select,textarea{scroll-margin-top:100px;scrol
 @media(max-width:640px){.breakfast-orders{margin-inline:-16px;border:0;border-radius:0}.breakfast-tile-action button:disabled{opacity:1;border-style:dashed}}
 
 @media(max-width:640px){.breakfast-tile-diets>span{background:#a62920;padding:1.92px;border-radius:12px}.breakfast-diet-art{display:block;width:22.08px;height:22.08px;object-fit:cover;border-radius:11px}}
+
+@media(max-width:640px){.breakfast-tile-action button{font-weight:700;letter-spacing:.02em}}
+
+.breakfast-serving-tile :focus-visible{outline:2px solid #111;outline-offset:2px;box-shadow:0 0 0 4px #fff}
