@@ -84,6 +84,11 @@ Piktogram má původní multipart endpoint a chráněný originál; vazba, velik
 a SHA-256 vybraných bajtů se porovnávají pouze v paměti prohlížeče.
 
 Soukromý textový chat zachovává historii a původní autoritu účastníků.
+Posuvná historie je dosažitelná klávesou Tab a Shift+Tab a posouvá se
+PageUp bez opuštění konverzace. Regrese `test:hotel-chat` v CML checkoutu
+prošla v Chromiu i WebKitu na 1920/834/390 px nad izolovanými daty;
+zahrnuje původní obnovu odpovědi a ochranu cizích konverzací. Nejde
+o skutečné odeslání v produkci nebo úplnou přejímku přístupnosti.
 Sender-bound GET `client_message_id` nevytváří zprávu, účastníka ani stav
 přečtení; nenalezení neprokazuje neodeslání. ASC `after_id` doplňuje původní
 `before_id` a dovybírá příchozí stránky bez vynechání. Rozpracovaný text,

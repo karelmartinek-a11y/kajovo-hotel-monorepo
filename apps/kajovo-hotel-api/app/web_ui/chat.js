@@ -49,7 +49,7 @@ export async function privateChat(ctx){
   catch(error){if(current(id)&&request===selection)showError(thread,error);return;}
   if(!current(id)||request!==selection)return;
   const header=el('div',{class:'private-chat-thread-head'},el('strong',{},conversation.participant.display_name),el('div',{class:'actions'},button([icon('refresh'),'Obnovit'],sync),button([icon('gear'),'Upozornění'],()=>notificationSettings(ctx))));
-  const history=el('div',{class:'messages',role:'log','aria-label':'Historie konverzace'}),older=button('Načíst starší zprávy',async()=>{
+  const history=el('div',{class:'messages',role:'log',tabindex:0,'aria-label':'Historie konverzace'}),older=button('Načíst starší zprávy',async()=>{
    if(state.loadingOlder||!state.older)return;state.loadingOlder=true;older.disabled=true;const height=history.scrollHeight,position=history.scrollTop;
    try{const rows=await read('conversations/'+id+'/messages?before_id='+state.oldest+'&limit=50');if(!current(id)||request!==selection)return;rows.forEach(message=>state.messages.set(message.id,message));state.oldest=rows[0]?.id??state.oldest;state.older=rows.length===50;drawMessages();history.scrollTop=history.scrollHeight-height+position;}catch(error){if(current(id))showError(status,error);}finally{state.loadingOlder=false;older.disabled=false;older.hidden=!state.older;}
   });
