@@ -37,4 +37,9 @@
 .room-status-actions button[class*="cleaning-"]{color:#000;border-color:#d6d1c8}.room-status-actions button.cleaning-do_not_disturb,.room-status-actions button.cleaning-windows_cleaned{color:#fff}
 .room-status-actions button:disabled{opacity:1;cursor:not-allowed;border-style:dashed}
 .room-status-actions button:hover{outline:2px solid #111;outline-offset:1px}
+/* Anchor the original bottom sheet to the visible CML region, not the full
+   auto-sized iframe. Standalone isolated rendering uses the viewport fallback. */
+body dialog.room-detail-sheet[open]{top:auto;bottom:calc(100dvh - var(--cml-visible-top,0px) - var(--cml-visible-height,100dvh));width:min(680px,100%);max-width:100%;max-height:min(calc(var(--cml-visible-height,100dvh)*.84),800px);margin:0 auto;padding:12px;border-radius:18px 18px 0 0}
+.room-detail-sheet .room-status-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.room-detail-sheet .room-status-actions button{min-height:64px}
+@media(max-width:599px){body dialog.room-detail-sheet[open]{width:100%;max-height:calc(var(--cml-visible-height,100dvh)*.8);padding:10px;border-radius:16px 16px 0 0}.room-detail-sheet .room-status-actions button{min-height:56px}}
 @media(max-width:599px){.rooms{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:122px;gap:4px}.room-reference.room-tile{padding:0;height:122px;min-height:0;gap:0}.room-reference .room-top strong{font-size:15px}}

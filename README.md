@@ -46,3 +46,8 @@ Current Dagmar capabilities and retired connector boundary: [connector retiremen
 ## Vývoj a CI
 
 Commit a push přímo na `main`, bez nových PR. Před pushem `pnpm ci:gates`; GitHub spouští jediný základní validační plán a kontrolu produkčních Docker image. Úspěšné CI nad aktuálním main SHA dovolí deploy. Rozsah a omezení důkazu: [CI gates](docs/ci-gates.md).
+
+Pokojská v CML používá původní Hotel dlaždice jako vizuální referenci.
+Nový spodní detail zůstává v právě viditelné části CML a během ukládání
+a ověřování brání zavření; nejistý zápis má jen čtecí obnovu. Viz
+[aktuální integrační kontrakt](docs/CML_UI_COMPLETION.md).

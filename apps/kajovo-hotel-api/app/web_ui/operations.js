@@ -11,6 +11,9 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
  container.nativeMutation=operation;
  const controls=[...container.querySelectorAll('button,input,select,textarea')],previous=controls.map(n=>n.disabled);
  controls.forEach(n=>n.disabled=true);
+ const dialog=container.closest('dialog.room-detail-sheet'),dialogToken=dialog?.nativeModalToken,close=dialog?.querySelector(':scope > .actions button'),closeDisabled=close?.disabled;
+ const dialogBusy=active=>{if(dialog&&dialog.nativeModalToken===dialogToken){if(active){dialog.dataset.mutationBusy='true';dialog.setAttribute('aria-busy','true');}else{delete dialog.dataset.mutationBusy;dialog.removeAttribute('aria-busy');}if(close)close.disabled=active?true:closeDisabled;}};
+ dialogBusy(true);
  const progress=notice('Ukládám a ověřuji výsledek…');container.prepend(progress);
  const verified=async()=>{
   await verify?.(operation.result,{id:operation.id,read:apiRead});
@@ -22,7 +25,7 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
   if(container.querySelector('[data-native-recovery]'))return;
   const box=el('div',{'data-native-recovery':'',class:'native-recovery'},notice('Zápis se nebude opakovat. Nejdříve ověřte původní výsledek.','warning'));
   const read=button('Načíst původní výsledek',async()=>{
-   if(operation.reading||operation.finished)return;operation.reading=true;read.disabled=true;
+   if(operation.reading||operation.finished)return;operation.reading=true;read.disabled=true;dialogBusy(true);
    try{
     if(!operation.accepted){
      const receipt=await apiRead('api/request-status?request_id='+encodeURIComponent(operation.id));
@@ -31,7 +34,7 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
      operation.result=receipt.body;operation.accepted=true;
     }
     await verified();box.remove();
-   }catch(error){showError(box,error);}finally{operation.reading=false;if(read.isConnected)read.disabled=false;}
+   }catch(error){showError(box,error);}finally{operation.reading=false;if(read.isConnected)read.disabled=false;dialogBusy(false);}
   });box.append(read);container.prepend(box);
   // A long native document scrolls in the CML viewport. Bring the recovery
   // action to its center so a fixed shell header cannot cover it in WebKit.
@@ -44,6 +47,8 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
   progress.remove();showError(container,error);
   if(operation.accepted||error.uncertain)recovery();
   else{delete container.nativeMutation;controls.forEach((n,i)=>n.disabled=previous[i]);}
+ }finally{
+  dialogBusy(false);
  }
 }
 

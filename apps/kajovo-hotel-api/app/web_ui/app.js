@@ -82,7 +82,7 @@ function roomDetail(room){
   }
  content.append(panel(name,body,'bed'));}
  return content;
- },{id:'hotel.housekeeping.room'});
+ },{id:'hotel.housekeeping.room',className:'room-detail-sheet'});
 }
 const viewPermission={'inventory-cards':'inventory:read','inventory-card-new':'inventory:write','inventory-card-detail':'inventory:read','inventory-movements':'inventory:read','breakfast-new':'breakfast:read','breakfast-edit':'breakfast:read','breakfast-detail':'breakfast:read',reception:'breakfast:read',rooms:'housekeeping:read',breakfast:'breakfast:read',issues:'issues:read',inventory:'inventory:read',reports:'reports:read',lostfound:'lost_found:read',settings:'settings:read'};
 async function selectViewRole(name,generation){

@@ -226,3 +226,10 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   komponenty se používají pouze v porovnávacím testu; runtime je nový.
   Zachovat statická SVG vyobrazení, rozlišení neznámých stavů a rezervací,
   původní backendové validace i CML autorizaci. Viz docs/CML_UI_COMPLETION.md.
+
+- Detail vybraného pokoje zachovává původní spodní sheet (680 px,
+  max. 84 % / 800 px, na telefonu 80 %). V CML se váže na skutečně
+  viditelnou část iframe. Zápis a read-back blokují Escape a zavření;
+  nejistý výsledek se obnovuje pouze čtením, bez druhého zápisu.
+  Zámek je svázaný s konkrétním nativeModalToken a nesmí změnit další
+  dialog. Ostatní modaly a role ověřuje původní browserová kvalifikace.

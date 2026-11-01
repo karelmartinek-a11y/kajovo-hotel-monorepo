@@ -123,3 +123,41 @@ přečtení; nenalezení neprokazuje neodeslání. ASC `after_id` doplňuje pův
 `before_id` a dovybírá příchozí stránky bez vynechání. Rozpracovaný text,
 kurzor a původní ID zůstávají zachované při obnově či přepnutí podsekce.
 Push metadata a skutečné OS doručení jsou oddělené podle runbooku integrace.
+
+## Původní chování otevření pokoje
+
+Rozsah dopadu navazující opravy (1. 11. 2026):
+
+| Oblast | Postup |
+| --- | --- |
+| Runtime | Aktualizovat pouze spodní detail pokoje a blokování jeho zavření při probíhajícím zápisu/ověření. |
+| Testy | Doplnit nativní room browser a skutečnou izolovanou CML gateway; původní read-back a lost-ACK scénáře zachovat. |
+| CI/gates | Ověřit beze změny celý povinný plán nad novým main. |
+| Dokumentace/manifesty | Aktualizovat tento kontrakt a provozní evidenci; katalog/API schéma beze změny. |
+| Komentáře | Doplnit jen vysvětlení vazby spodního detailu na viditelnou část iframe. |
+| Pokyny | Doplnit původní spodní detail a jeho blokující průběh do AGENTS.md. |
+| Fixtures/texty | Zachovat syntetická data a skutečné původní API argumenty, doplnit zadržení odpovědi. |
+| Build/API/Android/hlas | API image z publikovaného zdroje; Python, kontrakty, Android, hlas, proxy a credentials ověřit beze změny. |
+
+Nový runtime musí otevřít pokoj u spodního okraje právě viditelné části
+CML, nejvýše 680 px široký a 84 % dostupné výšky (maximum 800 px); na
+telefonu 80 % a původní horní zaoblení. Probíhající zápis i read-back
+blokují Escape a zavírací tlačítko. Po ověření se detail zavře; nejistota
+ponechá původní čtecí obnovu bez opakování zápisu. Barvy dlaždic se nemění.
+Úplná přejímka zůstává ODLOŽENO PO PRVNÍM NASAZENÍ.
+
+Cílená místní kvalifikace: původní comparator dlaždic a spodní detail
+1400/834/390/320 v Chromiu i WebKitu PASS, včetně dvou stavových sloupců,
+platného dne, neznámých dat, tématu, kontrastu a zadrženého zápisu i
+read-backu po ztrátě odpovědi. Původní role browser: 18 případů PASS.
+Skutečná izolovaná CML gateway: původní Hotel UI průchody obou enginů
+PASS; cílený spodní detail/zakázané zavření/ověřený návrat PASS na
+1920/390. První regrese na původním 270fd34 selhala: spodní hrana detailu
+894 místo 918 a výška 862 místo původního omezení. Oprava nepřebírá React
+implementaci; původní komponenta se dál používá pouze v testu.
+
+Secrets kontrola aplikace a task diffu je čistá. Celý strom má 9
+historických shod ve třech nezměněných souborech (Android public client
+config, SMTP test fixtures a starší evidence); jejich bajty odpovídají
+výchozímu 270fd34, bez nové výjimky/allowlistu. CI a produkční kvalifikace
+nového SHA se dokládají až po skutečném běhu.
