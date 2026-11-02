@@ -5,7 +5,8 @@ Po syntetické kvalifikaci lze provést koordinovaný cutover; neprovedený
 fyzický poslech není PASS. Hotel runtime již nepřebírá hlasové credentials.
 
 Nové přímé zadání vlastníka ruší dřívější výjimku samostatného Hotel hlasu.
-Po koordinovaném přepnutí vlastní hlasový produkt repozitář kajovocmlnglite.
+Hlasový produkt již vlastní repozitář kajovocmlnglite; Hotel runtime je
+od 2. 11. 2026 odstavený. Nasazená SHA jsou v docs/CML_VOICE_RETIREMENT.md.
 Tento Hotel zdroj obsahuje jeho retirement; viz docs/CML_VOICE_RETIREMENT.md.
 Historické hlasové podmínky níže platí pro zachovanou referenci, nikoli jako
 pokyn znovu aktivovat původní worker. Nenasazovat retirement před připraveným

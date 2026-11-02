@@ -12,9 +12,14 @@ forenzní porovnání a rollback. Nový SDK worker, per-user paměť, oprávněn
 kapacita a hlasová UI mají vlastní testy v CML. Historická data v Hotel DB
 se nemažou; diagnostické archivy a jejich klíče zůstávají nedotčené.
 
-Tento zdroj připravuje přepnutí. Nenasazovat jej před ověřením CML hlasu,
-konzistentními zálohami, migračním manifestem a potvrzením, že neprobíhá
-původní hovor. Placená přejímka vyžaduje samostatně schválený limit.
+Přepnutí bylo dokončeno 2. 11. 2026. Produkční API/admin běží ze zdroje
+`001cd148c21e72182df42eef35563bb483a04662`, CML hlas ze zdroje
+`8621aa09a82034256a35568e5162f146c5190967`. Záloha a migrační manifest jsou
+v `/var/backups/kajovocml-voice/final-20261102`; původní hlas neměl při
+přepnutí aktivní provider spojení. Ostatní Hotel web a PostgreSQL zůstaly
+ve stejných kontejnerech a data nebyla obnovována ani mazána. Vlastník
+výslovně povolil dokončení bez fyzického mikrofonu. Další placený test
+neproběhl. Aktuální přejímka je v CML `docs/voice/CUTOVER.json`.
 
 Hlasové proměnné a provider přístupy se nepředávají novému Hotel kontejneru.
 Jejich původní chráněná kopie zůstává pouze v záloze pro návrat kódu.
