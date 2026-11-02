@@ -31,11 +31,14 @@ def test_native_multirole_navigation_does_not_expand_the_active_api_role():
                     email="synthetic@example.invalid",
                     password_hash="unused",
                     is_active=True,
+                    preferred_locale="uk",
                     roles=[PortalUserRole(role="recepce"), PortalUserRole(role="sklad")],
                 )
             )
             db.commit()
             reception = resolve_identity(db, claims, "recepce")["public"]
+            assert reception["preferred_locale"] == "uk"
+            assert reception["languages"] == ["cs", "en", "uk"]
             assert "inventory:read" not in reception["permissions"]
             assert "inventory:read" in reception["available_permissions"]
             assert "inventory:read" in reception["role_permissions"]["sklad"]

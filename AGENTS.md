@@ -239,3 +239,7 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   nesnižovat opacity celého obsahu. Tabulka zůstává na širším displeji.
 
 - Standard 1.3: centrální zápis přijímá také podepsanou politiku `owner-no-additional-prompts/1`, výhradně pro ověřený `KRMAR78`/`admin` bez nativního ID. Kontrola podpisu, audience, aktuální identity, CSRF a replay zůstává povinná; `reauthUntil` se nefalšuje. Členům politika nezvyšuje práva.
+
+- Nové členské CML UI podporuje cs/en/uk přes původní vlastní profilový locale
+  endpoint s čtecím ověřením; administrace zůstává cs. Překlady statických textů
+  nesmějí měnit hosty, role, API kódy, původní geometrii/paletu pokojů ani hlas.

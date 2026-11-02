@@ -1,8 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
-const source=await readFile(new URL('../../app/web_ui/time.js',import.meta.url),'utf8');
-const {pragueInstant,pragueInput}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+import {pragueInstant,pragueInput} from '../../app/web_ui/time.js';
 test('Prague form dates reject the spring gap and require an explicit autumn instance',()=>{
  assert.throws(()=>pragueInstant('2026-03-29T02:30'),/neexistuje/);
  assert.throws(()=>pragueInstant('2026-10-25T02:30'),/dvakrát/);

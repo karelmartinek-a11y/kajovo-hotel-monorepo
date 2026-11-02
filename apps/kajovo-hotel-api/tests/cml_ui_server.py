@@ -35,6 +35,7 @@ def build_fixture():
 
     socket.socket.connect = connect_local_only
     from app.api.routes import (
+        auth,
         breakfast,
         chat,
         housekeeping,
@@ -330,6 +331,7 @@ def build_fixture():
     app = FastAPI()
     app.add_middleware(ObservePdf)
     for module in [
+        auth,
         users,
         housekeeping,
         breakfast,

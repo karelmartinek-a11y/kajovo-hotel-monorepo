@@ -1,3 +1,4 @@
+import {t,locale} from './i18n.js';
 import {api,getRole,exportLink} from './api.js';
 import {el,icon,button,notice,modal,showError} from './ui.js';
 import {saveMutation,storedMutation} from './operations.js';
@@ -7,23 +8,23 @@ export async function photoDocumentation(ctx,config,row,canUpload,refresh,{write
  ctx.state.cleanup??=[];ctx.state.cleanup.push(()=>urls.forEach(url=>URL.revokeObjectURL(url)));
  const photos=writeOnly?(row.photos??[]):await api('api/v1/'+config.path+'/'+row.id+'/photos',{roleOverride:role});if(generation!==ctx.state.generation)return root;
  const gallery=el('div',{class:'photo-gallery'});root.append(gallery);
- if(writeOnly)gallery.append(notice('Připojených fotografií: '+photos.length+'. Prohlížení evidence fotografií v této pracovní roli není dostupné.'));
- if(!writeOnly&&!photos.length)gallery.append(el('div',{class:'photo-empty'},icon('camera'),el('span',{},'K tomuto záznamu nejsou připojené fotografie.')));
+ if(writeOnly)gallery.append(notice(t('Připojených fotografií: ')+photos.length+t('. Prohlížení evidence fotografií v této pracovní roli není dostupné.')));
+ if(!writeOnly&&!photos.length)gallery.append(el('div',{class:'photo-empty'},icon('camera'),el('span',{},t('K tomuto záznamu nejsou připojené fotografie.'))));
  for(const [index,photo] of (writeOnly?[]:photos).entries()){
-  const path='api/v1/'+config.path+'/'+row.id+'/photos/'+photo.id,preview=el('img',{alt:'Fotografie záznamu '+(index+1),loading:'lazy'}),box=el('figure',{},preview,el('figcaption',{},'Fotografie '+(index+1)+' · '+photo.size_bytes.toLocaleString('cs-CZ')+' B'),el('div',{class:'actions'},button('Zvětšit',async()=>{
-   try{const image=await api(path+'/original',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return;const url=URL.createObjectURL(image);const dialog=modal('Fotografie záznamu '+(index+1),()=>el('img',{class:'photo-original',src:url,alt:'Fotografie záznamu '+(index+1)}));dialog.addEventListener('close',()=>URL.revokeObjectURL(url),{once:true});}catch(error){showError(root,error);}
-  }),exportLink(path+'/original?download=true','Stáhnout originál')));gallery.append(box);
-  try{const image=await api(path+'/thumb',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return root;const url=URL.createObjectURL(image);urls.push(url);preview.src=url;preview.addEventListener('error',()=>{preview.hidden=true;box.prepend(notice('Náhled fotografie není dostupný.','warning'));},{once:true});}catch(error){box.prepend(notice(error.message,'error'));}
+  const path='api/v1/'+config.path+'/'+row.id+'/photos/'+photo.id,preview=el('img',{alt:t('Fotografie záznamu ')+(index+1),loading:'lazy'}),box=el('figure',{},preview,el('figcaption',{},t('Fotografie ')+(index+1)+' · '+photo.size_bytes.toLocaleString(locale)+' B'),el('div',{class:'actions'},button(t('Zvětšit'),async()=>{
+   try{const image=await api(path+'/original',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return;const url=URL.createObjectURL(image);const dialog=modal(t('Fotografie záznamu ')+(index+1),()=>el('img',{class:'photo-original',src:url,alt:t('Fotografie záznamu ')+(index+1)}));dialog.addEventListener('close',()=>URL.revokeObjectURL(url),{once:true});}catch(error){showError(root,error);}
+  }),exportLink(path+'/original?download=true',t('Stáhnout originál'))));gallery.append(box);
+  try{const image=await api(path+'/thumb',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return root;const url=URL.createObjectURL(image);urls.push(url);preview.src=url;preview.addEventListener('error',()=>{preview.hidden=true;box.prepend(notice(t('Náhled fotografie není dostupný.'),'warning'));},{once:true});}catch(error){box.prepend(notice(error.message,'error'));}
  }
  if(canUpload){
   ctx.state.photoDrafts??=new Map();const draftKey=config.path+':'+row.id,existing=ctx.state.photoDrafts.get(draftKey);if(existing){root.append(existing);return root;}
-  const files=el('input',{type:'file',multiple:true,accept:'image/jpeg,image/png,image/webp','aria-label':'Fotografie k připojení',required:true}),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},'Připojit fotografie'),el('label',{class:'photo-file-picker'},files,el('span',{},'Vybrat fotografie')),el('small',{'data-photo-files':''},'Žádné vybrané fotografie'),el('small',{},'JPEG, PNG nebo WebP. Nejvýše 3 soubory, každý do 2 MB.')),el('button',{type:'submit'},icon('upload'),'Nahrát fotografie'));form.dataset.nativeRole=role;ctx.state.photoDrafts.set(draftKey,form);files.addEventListener('change',()=>form.querySelector('[data-photo-files]').textContent=[...files.files].map(file=>file.name).join(' · ')||'Žádné vybrané fotografie');
+  const files=el('input',{type:'file',multiple:true,accept:'image/jpeg,image/png,image/webp','aria-label':t('Fotografie k připojení'),required:true}),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},t('Připojit fotografie')),el('label',{class:'photo-file-picker'},files,el('span',{},t('Vybrat fotografie'))),el('small',{'data-photo-files':''},t('Žádné vybrané fotografie')),el('small',{},t('JPEG, PNG nebo WebP. Nejvýše 3 soubory, každý do 2 MB.'))),el('button',{type:'submit'},icon('upload'),t('Nahrát fotografie')));form.dataset.nativeRole=role;ctx.state.photoDrafts.set(draftKey,form);files.addEventListener('change',()=>form.querySelector('[data-photo-files]').textContent=[...files.files].map(file=>file.name).join(' · ')||t('Žádné vybrané fotografie'));
   form.addEventListener('submit',event=>{
-   event.preventDefault();const chosen=[...files.files];if(!chosen.length||chosen.length>3||chosen.some(file=>!accepted.has(file.type)||file.size<=0||file.size>2_000_000)){showError(form,Error('Vyberte 1 až 3 fotografie JPEG, PNG nebo WebP, každou do 2 MB.'));return;}
+   event.preventDefault();const chosen=[...files.files];if(!chosen.length||chosen.length>3||chosen.some(file=>!accepted.has(file.type)||file.size<=0||file.size>2_000_000)){showError(form,Error(t('Vyberte 1 až 3 fotografie JPEG, PNG nebo WebP, každou do 2 MB.')));return;}
    const previous=new Set(photos.map(photo=>photo.id)),body=new FormData();chosen.forEach(file=>body.append('photos',file));
    saveMutation(form,{path:'api/v1/'+config.path+'/'+row.id+'/photos',body,verify:async(result,{id,read})=>{
-    const added=result.filter(photo=>!previous.has(photo.id));if(added.length!==chosen.length)throw Error('Odpověď nepotvrdila všechny fotografie.');const current=writeOnly?await storedMutation(read,id):await read('api/v1/'+config.path+'/'+row.id+'/photos');
-    if(added.some((photo,index)=>!current.some(actual=>actual.id===photo.id&&actual.size_bytes===chosen[index].size&&actual.mime_type===chosen[index].type)))throw Error('Připojené fotografie nebyly potvrzeny následným načtením.');
+    const added=result.filter(photo=>!previous.has(photo.id));if(added.length!==chosen.length)throw Error(t('Odpověď nepotvrdila všechny fotografie.'));const current=writeOnly?await storedMutation(read,id):await read('api/v1/'+config.path+'/'+row.id+'/photos');
+    if(added.some((photo,index)=>!current.some(actual=>actual.id===photo.id&&actual.size_bytes===chosen[index].size&&actual.mime_type===chosen[index].type)))throw Error(t('Připojené fotografie nebyly potvrzeny následným načtením.'));
    },done:async result=>{onSaved?.(result);ctx.state.photoDrafts.delete(draftKey);await refresh();}});
   });root.append(form);
  }
@@ -34,21 +35,21 @@ export async function pictogramDocumentation(ctx,row,canUpload,refresh){
  const role=getRole(),generation=ctx.state.generation,path='api/v1/inventory/'+row.id+'/pictogram',content=el('div',{class:'pictogram-documentation'});
  if(row.pictogram_thumb_path){
   const blob=await api(path+'/thumb',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return content;const url=URL.createObjectURL(blob);ctx.state.cleanup.push(()=>URL.revokeObjectURL(url));
-  content.append(el('img',{src:url,alt:'Piktogram položky '+row.name,class:'inventory-pictogram'}),exportLink(path+'/original?download=true','Stáhnout původní piktogram'));
- }else content.append(el('div',{class:'photo-empty'},icon('camera'),'Položka nemá nahraný piktogram.'));
+  content.append(el('img',{src:url,alt:t('Piktogram položky ')+row.name,class:'inventory-pictogram'}),exportLink(path+'/original?download=true',t('Stáhnout původní piktogram')));
+ }else content.append(el('div',{class:'photo-empty'},icon('camera'),t('Položka nemá nahraný piktogram.')));
  if(!canUpload)return content;
  ctx.state.pictogramDrafts??=new Map();const existing=ctx.state.pictogramDrafts.get(row.id);if(existing){content.append(existing);return content;}
- const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp','aria-label':'Piktogram k nahrání',required:true}),selection=el('small',{},'Žádný vybraný soubor'),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},'Piktogram položky'),el('label',{class:'photo-file-picker'},file,el('span',{},'Vybrat piktogram')),selection,el('small',{},'JPEG, PNG nebo WebP do 2 MB.')),el('button',{type:'submit'},icon('upload'),'Nahrát piktogram'));form.dataset.nativeRole=role;ctx.state.pictogramDrafts.set(row.id,form);file.addEventListener('change',()=>selection.textContent=file.files[0]?.name??'Žádný vybraný soubor');
+ const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp','aria-label':t('Piktogram k nahrání'),required:true}),selection=el('small',{},t('Žádný vybraný soubor')),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},t('Piktogram položky')),el('label',{class:'photo-file-picker'},file,el('span',{},t('Vybrat piktogram'))),selection,el('small',{},t('JPEG, PNG nebo WebP do 2 MB.'))),el('button',{type:'submit'},icon('upload'),t('Nahrát piktogram')));form.dataset.nativeRole=role;ctx.state.pictogramDrafts.set(row.id,form);file.addEventListener('change',()=>selection.textContent=file.files[0]?.name??t('Žádný vybraný soubor'));
  const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value=>value.toString(16).padStart(2,'0')).join('');
  let preparing=false;
  form.addEventListener('submit',async event=>{
   event.preventDefault();if(preparing||form.nativeMutation)return;
-  const selected=file.files[0];if(!selected||!accepted.has(selected.type)||selected.size<1||selected.size>2_000_000){showError(form,Error('Vyberte obrázek JPEG, PNG nebo WebP do 2 MB.'));return;}
+  const selected=file.files[0];if(!selected||!accepted.has(selected.type)||selected.size<1||selected.size>2_000_000){showError(form,Error(t('Vyberte obrázek JPEG, PNG nebo WebP do 2 MB.')));return;}
   preparing=true;
   try{
    const fingerprint=await digest(await selected.arrayBuffer()),body=new FormData();body.append('file',selected);
    await saveMutation(form,{path,body,verify:async(result,{read})=>{
-    if(result?.id!==row.id||!result.pictogram_path||result.pictogram_path===row.pictogram_path)throw Error('Odpověď nepotvrdila nový piktogram této položky.');const current=await read('api/v1/inventory/'+row.id);if(current.pictogram_path!==result.pictogram_path)throw Error('Aktuální piktogram se liší od původního výsledku.');const original=await read(path+'/original',{blob:true});if(original.size!==selected.size||await digest(await original.arrayBuffer())!==fingerprint)throw Error('Původní soubor piktogramu neodpovídá nahranému obrázku.');
+    if(result?.id!==row.id||!result.pictogram_path||result.pictogram_path===row.pictogram_path)throw Error(t('Odpověď nepotvrdila nový piktogram této položky.'));const current=await read('api/v1/inventory/'+row.id);if(current.pictogram_path!==result.pictogram_path)throw Error(t('Aktuální piktogram se liší od původního výsledku.'));const original=await read(path+'/original',{blob:true});if(original.size!==selected.size||await digest(await original.arrayBuffer())!==fingerprint)throw Error(t('Původní soubor piktogramu neodpovídá nahranému obrázku.'));
    },done:async()=>{ctx.state.pictogramDrafts.delete(row.id);await refresh();}});
   }catch(error){showError(form,error);}finally{preparing=false;}
  });content.append(form);return content;

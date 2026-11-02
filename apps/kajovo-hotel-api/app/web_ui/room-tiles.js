@@ -1,7 +1,8 @@
+import {t,locale} from './i18n.js';
 import {el} from './ui.js';
 
 export const roomOrder = ['101','102','103','104','105','106','107','108','109','203','204','205','206','207','208','301','302','303','304','305','306','307','308','309','310','221','222','223','224','321','322','323','324','201','202','209','210'];
-export const reservationLabels = {confirmed:'Potvrzeno',checked_in:'CHECK-IN',checked_out:'CHECK-OUT',option:'Opce'};
+export const reservationLabels = {confirmed:t('Potvrzeno'),checked_in:'CHECK-IN',checked_out:'CHECK-OUT',option:t('Opce')};
 export function orderedRooms(rooms) {
  return [...rooms].sort((a,b) => (roomOrder.indexOf(a.room_number)<0?roomOrder.length:roomOrder.indexOf(a.room_number))-(roomOrder.indexOf(b.room_number)<0?roomOrder.length:roomOrder.indexOf(b.room_number)) || a.room_number.localeCompare(b.room_number,'cs',{numeric:true}));
 }
@@ -29,16 +30,16 @@ export function requirementIcon(stay,kind) {
 }
 function country(stay) {
  const code=(stay.country_code??'').toUpperCase();let name=stay.country_name||'?';
- try{if(/^[A-Z]{2}$/.test(code))name=new Intl.DisplayNames(['cs'],{type:'region'}).of(code);}catch{}
+ try{if(/^[A-Z]{2}$/.test(code))name=new Intl.DisplayNames([locale],{type:'region'}).of(code);}catch{}
  return el('span',{class:'room-country',title:name,'aria-label':name},/^[A-Z]{2}$/.test(code)?el('img',{src:'/sections/hotel/flags/'+code+'.svg',alt:'',width:13,height:9,onerror:event=>{event.target.replaceWith(document.createTextNode('?'));}}):'?');
 }
 function stamp(stay,kind,date) {
- const name=guestName(stay),nights=nightCount(stay,date),label=kind==='departure'?'CHECK-OUT':kind==='arrival'?'CHECK-IN':'POBYT',time=kind==='departure'?stay.departure_time:stay.arrival_time;
- const people=el('span',{class:'room-people'},...['adults','children','infants'].map((key,index)=>el('span',{'data-age-group':key,title:['Dospělí','Děti 2–17 let','Mimina do 2 let'][index]+': '+(stay[key]??'?'),style:'--digits:'+String(stay[key]??'?').length},person(key),el('b',{},stay[key]??'?'))));
+ const name=guestName(stay),nights=nightCount(stay,date),label=kind==='departure'?'CHECK-OUT':kind==='arrival'?'CHECK-IN':t('POBYT'),time=kind==='departure'?stay.departure_time:stay.arrival_time;
+ const people=el('span',{class:'room-people'},...['adults','children','infants'].map((key,index)=>el('span',{'data-age-group':key,title:[t('Dospělí'),t('Děti 2–17 let'),t('Mimina do 2 let')][index]+': '+(stay[key]??'?'),style:'--digits:'+String(stay[key]??'?').length},person(key),el('b',{},stay[key]??'?'))));
  const dogs=stay.dog_count,requests=el('span',{class:'room-requests'},
-  el('span',{class:'room-dog',title:'Pes: '+(dogs??'?')},dogs==null?'?':dogs>0?[requirementIcon(stay,'dog'),el('b',{style:'--digits:'+String('×'+dogs).length},'×'+dogs)]:null),
-  el('span',{class:'room-cot',title:'Dětská postýlka'},stay.cot_required==null?'?':stay.cot_required?requirementIcon(stay,'cot'):null),
-  el('span',{class:'room-note'},stay.housekeeping_note?.trim()?el('b',{title:'Poznámka pro pokojskou','aria-label':'Poznámka pro pokojskou'},'!'):null));
+  el('span',{class:'room-dog',title:t('Pes: ')+(dogs??'?')},dogs==null?'?':dogs>0?[requirementIcon(stay,'dog'),el('b',{style:'--digits:'+String('×'+dogs).length},'×'+dogs)]:null),
+  el('span',{class:'room-cot',title:t('Dětská postýlka')},stay.cot_required==null?'?':stay.cot_required?requirementIcon(stay,'cot'):null),
+  el('span',{class:'room-note'},stay.housekeeping_note?.trim()?el('b',{title:t('Poznámka pro pokojskou'),'aria-label':t('Poznámka pro pokojskou')},'!'):null));
  return el('span',{class:'room-stamp reservation-'+stay.reservation_state,'data-reservation-id':stay.reservation_id,'data-stay-kind':kind},
   el('span',{class:'room-identity'},el('b',{class:'room-guest',title:(stay.guests??[]).map(g=>g.name?.trim()).filter(Boolean).join(', ')||name},name),country(stay)),people,
   el('span',{class:'room-event',title:label+(kind==='stay'?'':' '+(time??'?'))+' · Noc pobytu: '+nights},el('b',{class:'room-time'},kind==='stay'?'':(kind==='departure'?'←':'→')+(time??'?')),el('b',{class:'room-nights',style:'--digits:'+nights.length},nights)),requests);
@@ -48,17 +49,17 @@ export function roomTile(room,date,onSelect,statusLabel) {
  const groups=continuing?[['stay',room.stays]]:[['departure',room.departures??[]],['arrival',room.arrivals??[]]];
  const stays=groups.flatMap(([,items])=>items),blocks=room.blocks??[];
  const tile=el('button',{type:'button',class:'room-tile room-reference'+(continuing?' room-continuing':''),'data-room-id':room.room_id,onclick:()=>onSelect(room),
-  'aria-label':'Pokoj '+room.room_number+', '+statusLabel+'. '+(room.occupied==null?'Obsazenost není známá':room.occupied?'Obsazeno':'Volno')+'. '+stays.map(stay=>guestName(stay)+', '+(reservationLabels[stay.reservation_state]??'Neurčený stav rezervace')+', '+stay.persons+' osob').join('; ')+(stays.some(stay=>stay.housekeeping_note?.trim())?'. Poznámka pro pokojskou':'')+(blocks.length?'. Blokace pokoje / zastavení prodeje':'')+'. Změnit stav pokoje.'},
+  'aria-label':t('Pokoj ')+room.room_number+', '+statusLabel+'. '+(room.occupied==null?t('Obsazenost není známá'):room.occupied?t('Obsazeno'):t('Volno'))+'. '+stays.map(stay=>guestName(stay)+', '+(reservationLabels[stay.reservation_state]??t('Neurčený stav rezervace'))+', '+stay.persons+' osob').join('; ')+(stays.some(stay=>stay.housekeeping_note?.trim())?t('. Poznámka pro pokojskou'):'')+(blocks.length?t('. Blokace pokoje / zastavení prodeje'):'')+t('. Změnit stav pokoje.')},
   el('span',{class:'room-top cleaning-'+(room.housekeeping_status_key??'unknown'),title:statusLabel},el('strong',{},room.room_number)));
  const body=el('span',{class:'room-body'});
  for(const [kind,items]of groups){
   const valid=items.length===1&&reservationLabels[items[0].reservation_state];
-  body.append(el('span',{class:'room-slot reservation-'+(valid?items[0].reservation_state:'unknown')},valid?stamp(items[0],kind,date):items.length?el('span',{class:'room-conflict'},items.length>1?'Více rezervací':'Neurčený stav rezervace'):null));
+  body.append(el('span',{class:'room-slot reservation-'+(valid?items[0].reservation_state:'unknown')},valid?stamp(items[0],kind,date):items.length?el('span',{class:'room-conflict'},items.length>1?t('Více rezervací'):t('Neurčený stav rezervace')):null));
  }
- if(continuing&&room.stays.length===1&&reservationLabels[room.stays[0].reservation_state])body.append(el('span',{class:'room-stay-label reservation-'+room.stays[0].reservation_state},el('b',{},'POBYT')));
+ if(continuing&&room.stays.length===1&&reservationLabels[room.stays[0].reservation_state])body.append(el('span',{class:'room-stay-label reservation-'+room.stays[0].reservation_state},el('b',{},t('POBYT'))));
  if(!continuing){
   const coverage=['left','right'].filter(side=>!(side==='left'?(room.departures??[]):(room.arrivals??[])).length&&blocks.some(block=>block.coverage==='full'||block.coverage===side));
-  for(const side of coverage.length===2&&blocks.some(block=>block.coverage==='full')?['full']:coverage)body.append(svg({viewBox:'0 0 100 100',preserveAspectRatio:'none',class:'room-block room-block-'+side,'data-block-coverage':side,role:'img','aria-label':'Blokace pokoje / zastavení prodeje'},['path',{d:'M3 3L97 97M97 3L3 97'}]));
+  for(const side of coverage.length===2&&blocks.some(block=>block.coverage==='full')?['full']:coverage)body.append(svg({viewBox:'0 0 100 100',preserveAspectRatio:'none',class:'room-block room-block-'+side,'data-block-coverage':side,role:'img','aria-label':t('Blokace pokoje / zastavení prodeje')},['path',{d:'M3 3L97 97M97 3L3 97'}]));
  }
  tile.append(body);return tile;
 }

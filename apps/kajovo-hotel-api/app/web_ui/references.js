@@ -1,3 +1,4 @@
+import {t,locale} from './i18n.js';
 const refs={
   "issues": {
     "new": [
@@ -73,33 +74,33 @@ const refs={
   }
 };
 const titles={
-  "hotel.admin.11": "Nový nález nebo ztráta",
-  "hotel.admin.12": "Detail nálezu nebo ztráty",
-  "hotel.admin.13": "Upravit nález nebo ztrátu",
-  "hotel.admin.15": "Nová závada",
-  "hotel.admin.16": "Detail závady",
-  "hotel.admin.17": "Upravit závadu",
-  "hotel.admin.19": "Nová skladová položka",
-  "hotel.admin.20": "Detail skladové položky",
-  "hotel.admin.21": "Upravit skladovou položku",
-  "hotel.admin.23": "Nové hlášení",
-  "hotel.admin.24": "Detail hlášení",
-  "hotel.admin.25": "Upravit hlášení",
-  "hotel.issues.delete": "Smazat závadu",
-  "hotel.lostfound.delete": "Smazat nález nebo ztrátu",
-  "hotel.portal.51": "Nový nález nebo ztráta",
-  "hotel.portal.52": "Detail nálezu nebo ztráty",
-  "hotel.portal.53": "Upravit nález nebo ztrátu",
-  "hotel.portal.55": "Nová závada",
-  "hotel.portal.56": "Detail závady",
-  "hotel.portal.57": "Upravit závadu",
-  "hotel.portal.59": "Nová skladová položka",
-  "hotel.portal.60": "Detail skladové položky",
-  "hotel.portal.61": "Upravit skladovou položku",
-  "hotel.portal.63": "Nové hlášení",
-  "hotel.portal.64": "Detail hlášení",
-  "hotel.portal.65": "Upravit hlášení",
-  "hotel.reports.delete": "Smazat hlášení",
-  "hotel.inventory.item-delete": "Smazat skladovou položku"
+  "hotel.admin.11": t("Nový nález nebo ztráta"),
+  "hotel.admin.12": t("Detail nálezu nebo ztráty"),
+  "hotel.admin.13": t("Upravit nález nebo ztrátu"),
+  "hotel.admin.15": t("Nová závada"),
+  "hotel.admin.16": t("Detail závady"),
+  "hotel.admin.17": t("Upravit závadu"),
+  "hotel.admin.19": t("Nová skladová položka"),
+  "hotel.admin.20": t("Detail skladové položky"),
+  "hotel.admin.21": t("Upravit skladovou položku"),
+  "hotel.admin.23": t("Nové hlášení"),
+  "hotel.admin.24": t("Detail hlášení"),
+  "hotel.admin.25": t("Upravit hlášení"),
+  "hotel.issues.delete": t("Smazat závadu"),
+  "hotel.lostfound.delete": t("Smazat nález nebo ztrátu"),
+  "hotel.portal.51": t("Nový nález nebo ztráta"),
+  "hotel.portal.52": t("Detail nálezu nebo ztráty"),
+  "hotel.portal.53": t("Upravit nález nebo ztrátu"),
+  "hotel.portal.55": t("Nová závada"),
+  "hotel.portal.56": t("Detail závady"),
+  "hotel.portal.57": t("Upravit závadu"),
+  "hotel.portal.59": t("Nová skladová položka"),
+  "hotel.portal.60": t("Detail skladové položky"),
+  "hotel.portal.61": t("Upravit skladovou položku"),
+  "hotel.portal.63": t("Nové hlášení"),
+  "hotel.portal.64": t("Detail hlášení"),
+  "hotel.portal.65": t("Upravit hlášení"),
+  "hotel.reports.delete": t("Smazat hlášení"),
+  "hotel.inventory.item-delete": t("Smazat skladovou položku")
 };
-export function moduleReference(path,kind,admin){const id=refs[path]?.[kind]?.[admin?0:1];return {id,title:titles[id]??'Odstranit záznam'};}
+export function moduleReference(path,kind,admin){const id=refs[path]?.[kind]?.[admin?0:1];return {id,title:titles[id]??t('Odstranit záznam')};}

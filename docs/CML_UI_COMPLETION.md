@@ -184,3 +184,20 @@ nulové porce, vydané/zrušené stavy, věkové počty, firmu, noci, skutečné
 PNG, platné datum a nezávislost na CML tématu. Vlastnosti palety, hran
 a tlačítka porovnává s vykreslenými původními CSS, nikoli s odhadem
 z prvních proměnných. Místní Chrome/WebKit pokrývá 320/390/640 px.
+
+
+## Překlady při zachování pozdějších úprav (2. 11. 2026)
+
+Členské nové UI nabízí cs/en/uk; hlavní administrace zachovává cs. Textové
+katalogy nemění stavové kódy, role, jména hostů ani obchodní hodnoty. Volba
+jazyka využívá původní vlastní profil a PATCH /api/auth/locale, následovaný
+čtecím ověřením identity; nejistý zápis se automaticky neopakuje. Katalog
+navigace deklaruje pouze překlady názvů, nikoli nové trasy nebo oprávnění.
+Původní paleta, výška 122 px a geometrie pokojových dlaždic i snídaňových
+karet zůstávají autoritou. Původní hlasové UI, přihlášení a backend se nemění.
+
+`pnpm --filter @kajovo/kajovo-hotel-web test:cml-languages` používá skutečný
+izolovaný backend; kontroly hlavních pohledů jsou čtecí. Pouze vlastní jazyk
+syntetického účtu se mění a čte zpět. CML_SHARED_ASSETS ukazuje na assets
+aktuálního samostatného CML checkoutu pro úplný místní render včetně ikon.
+CI bez této cesty ověřuje nativní obsah; ikony dokládá samostatný místní render.

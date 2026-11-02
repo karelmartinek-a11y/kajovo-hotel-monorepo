@@ -1,3 +1,4 @@
+import {t,locale} from './i18n.js';
 import {api,getRole} from './api.js';
 import {el,button,notice,showError} from './ui.js';
 
@@ -14,7 +15,7 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
  const dialog=container.closest('dialog.room-detail-sheet'),dialogToken=dialog?.nativeModalToken,close=dialog?.querySelector(':scope > .actions button'),closeDisabled=close?.disabled;
  const dialogBusy=active=>{if(dialog&&dialog.nativeModalToken===dialogToken){if(active){dialog.dataset.mutationBusy='true';dialog.setAttribute('aria-busy','true');}else{delete dialog.dataset.mutationBusy;dialog.removeAttribute('aria-busy');}if(close)close.disabled=active?true:closeDisabled;}};
  dialogBusy(true);
- const progress=notice('Ukládám a ověřuji výsledek…');container.prepend(progress);
+ const progress=notice(t('Ukládám a ověřuji výsledek…'));container.prepend(progress);
  const verified=async()=>{
   await verify?.(operation.result,{id:operation.id,read:apiRead});
   progress.remove();operation.finished=true;
@@ -23,14 +24,14 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
  const recovery=()=>{
   progress.remove();
   if(container.querySelector('[data-native-recovery]'))return;
-  const box=el('div',{'data-native-recovery':'',class:'native-recovery'},notice('Zápis se nebude opakovat. Nejdříve ověřte původní výsledek.','warning'));
-  const read=button('Načíst původní výsledek',async()=>{
+  const box=el('div',{'data-native-recovery':'',class:'native-recovery'},notice(t('Zápis se nebude opakovat. Nejdříve ověřte původní výsledek.'),'warning'));
+  const read=button(t('Načíst původní výsledek'),async()=>{
    if(operation.reading||operation.finished)return;operation.reading=true;read.disabled=true;dialogBusy(true);
    try{
     if(!operation.accepted){
      const receipt=await apiRead('api/request-status?request_id='+encodeURIComponent(operation.id));
-     if(receipt.state!=='completed')throw Error('Původní výsledek dosud není ověřený. Další zápis se neprovede.');
-     if(receipt.status<200||receipt.status>=300)throw Error('Původní požadavek vrátil chybu. Účinek tím není potvrzený; načtěte aktuální údaje.');
+     if(receipt.state!=='completed')throw Error(t('Původní výsledek dosud není ověřený. Další zápis se neprovede.'));
+     if(receipt.status<200||receipt.status>=300)throw Error(t('Původní požadavek vrátil chybu. Účinek tím není potvrzený; načtěte aktuální údaje.'));
      operation.result=receipt.body;operation.accepted=true;
     }
     await verified();box.remove();
@@ -56,6 +57,6 @@ export async function saveMutation(container,{path,method='POST',body,verify,don
 // catalog. This proves the acknowledged creation, not a later business state.
 export async function storedMutation(read,id){
  const receipt=await read('api/request-status?request_id='+encodeURIComponent(id));
- if(receipt.state!=='completed'||receipt.status<200||receipt.status>=300)throw Error('Původní potvrzení není dostupné. Zápis se nebude opakovat.');
+ if(receipt.state!=='completed'||receipt.status<200||receipt.status>=300)throw Error(t('Původní potvrzení není dostupné. Zápis se nebude opakovat.'));
  return receipt.body;
 }

@@ -7,7 +7,17 @@
       "path": "/sections/hotel/?view=overview",
       "icon": "dashboard",
       "admin": true,
-      "navigation_title": "Přehled"
+      "navigation_title": "Přehled",
+      "localizations": {
+        "en": {
+          "title": "Hotel · administrator overview",
+          "navigation_title": "Overview"
+        },
+        "uk": {
+          "title": "Готель · огляд адміністратора",
+          "navigation_title": "Огляд"
+        }
+      }
     },
     {
       "id": "hotel.portal.42",
@@ -15,7 +25,17 @@
       "path": "/sections/hotel/?view=overview",
       "icon": "dashboard",
       "audienceRole": "member",
-      "navigation_title": "Přehled"
+      "navigation_title": "Přehled",
+      "localizations": {
+        "en": {
+          "title": "Hotel · operational overview",
+          "navigation_title": "Overview"
+        },
+        "uk": {
+          "title": "Готель · операційний огляд",
+          "navigation_title": "Огляд"
+        }
+      }
     },
     {
       "id": "hotel.admin.2",
@@ -23,7 +43,15 @@
       "path": "/sections/hotel/?view=chat",
       "icon": "chat",
       "admin": false,
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Private messages"
+        },
+        "uk": {
+          "title": "Приватні повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.portal.40",
@@ -31,7 +59,15 @@
       "path": "/sections/hotel/?view=chat",
       "icon": "chat",
       "admin": false,
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Private messages"
+        },
+        "uk": {
+          "title": "Приватні повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.portal.43",
@@ -42,7 +78,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Reception"
+        },
+        "uk": {
+          "title": "Рецепція"
+        }
+      }
     },
     {
       "id": "hotel.admin.5",
@@ -51,7 +95,15 @@
       "icon": "housekeeping",
       "admin": false,
       "permission": "housekeeping:read",
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Rooms and housekeeping"
+        },
+        "uk": {
+          "title": "Номери та прибирання"
+        }
+      }
     },
     {
       "id": "hotel.portal.45",
@@ -61,7 +113,17 @@
       "admin": false,
       "permission": "housekeeping:read",
       "audienceRole": "member",
-      "navigation_title": "Pokoje a úklid"
+      "navigation_title": "Pokoje a úklid",
+      "localizations": {
+        "en": {
+          "title": "Housekeeping · room status",
+          "navigation_title": "Rooms and housekeeping"
+        },
+        "uk": {
+          "title": "Покоївка · стан номерів",
+          "navigation_title": "Номери та прибирання"
+        }
+      }
     },
     {
       "id": "hotel.admin.6",
@@ -70,7 +132,15 @@
       "icon": "breakfast",
       "admin": false,
       "permission": "breakfast:read",
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Breakfast"
+        },
+        "uk": {
+          "title": "Сніданки"
+        }
+      }
     },
     {
       "id": "hotel.portal.46",
@@ -79,7 +149,15 @@
       "icon": "breakfast",
       "admin": false,
       "permission": "breakfast:read",
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Breakfast"
+        },
+        "uk": {
+          "title": "Сніданки"
+        }
+      }
     },
     {
       "id": "hotel.admin.10",
@@ -88,7 +166,15 @@
       "icon": "lostfound",
       "admin": false,
       "permission": "lost_found:read",
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Lost and found"
+        },
+        "uk": {
+          "title": "Втрати та знахідки"
+        }
+      }
     },
     {
       "id": "hotel.portal.50",
@@ -97,7 +183,15 @@
       "icon": "lostfound",
       "admin": false,
       "permission": "lost_found:read",
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Lost and found"
+        },
+        "uk": {
+          "title": "Втрати та знахідки"
+        }
+      }
     },
     {
       "id": "hotel.admin.14",
@@ -106,7 +200,15 @@
       "icon": "issue",
       "admin": false,
       "permission": "issues:read",
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Issues"
+        },
+        "uk": {
+          "title": "Несправності"
+        }
+      }
     },
     {
       "id": "hotel.portal.54",
@@ -115,7 +217,15 @@
       "icon": "issue",
       "admin": false,
       "permission": "issues:read",
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Issues"
+        },
+        "uk": {
+          "title": "Несправності"
+        }
+      }
     },
     {
       "id": "hotel.admin.18",
@@ -124,7 +234,15 @@
       "icon": "inventory",
       "admin": false,
       "permission": "inventory:read",
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Stock"
+        },
+        "uk": {
+          "title": "Склад"
+        }
+      }
     },
     {
       "id": "hotel.portal.58",
@@ -133,7 +251,15 @@
       "icon": "inventory",
       "admin": false,
       "permission": "inventory:read",
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Stock"
+        },
+        "uk": {
+          "title": "Склад"
+        }
+      }
     },
     {
       "id": "hotel.admin.22",
@@ -143,7 +269,17 @@
       "admin": false,
       "permission": "reports:read",
       "audienceRole": "admin",
-      "navigation_title": "Hlášení"
+      "navigation_title": "Hlášení",
+      "localizations": {
+        "en": {
+          "title": "Operational reports",
+          "navigation_title": "Reports"
+        },
+        "uk": {
+          "title": "Операційні повідомлення",
+          "navigation_title": "Повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.portal.62",
@@ -153,7 +289,17 @@
       "admin": false,
       "permission": "reports:read",
       "audienceRole": "member",
-      "navigation_title": "Hlášení"
+      "navigation_title": "Hlášení",
+      "localizations": {
+        "en": {
+          "title": "Operational reports",
+          "navigation_title": "Reports"
+        },
+        "uk": {
+          "title": "Операційні повідомлення",
+          "navigation_title": "Повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.admin.27",
@@ -162,7 +308,17 @@
       "icon": "gear",
       "admin": true,
       "permission": "settings:read",
-      "group": "Administrace"
+      "group": "Administrace",
+      "localizations": {
+        "en": {
+          "title": "Hotel settings",
+          "group": "Administration"
+        },
+        "uk": {
+          "title": "Налаштування готелю",
+          "group": "Адміністрування"
+        }
+      }
     },
     {
       "id": "hotel.admin.15",
@@ -171,7 +327,15 @@
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
-      "permission": "issues:write"
+      "permission": "issues:write",
+      "localizations": {
+        "en": {
+          "title": "New issue"
+        },
+        "uk": {
+          "title": "Нова несправність"
+        }
+      }
     },
     {
       "id": "hotel.portal.55",
@@ -180,7 +344,15 @@
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
-      "permission": "issues:write"
+      "permission": "issues:write",
+      "localizations": {
+        "en": {
+          "title": "New issue"
+        },
+        "uk": {
+          "title": "Нова несправність"
+        }
+      }
     },
     {
       "id": "hotel.admin.17",
@@ -189,7 +361,15 @@
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
-      "permission": "issues:write"
+      "permission": "issues:write",
+      "localizations": {
+        "en": {
+          "title": "Edit issue"
+        },
+        "uk": {
+          "title": "Редагувати несправність"
+        }
+      }
     },
     {
       "id": "hotel.portal.57",
@@ -198,7 +378,15 @@
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
-      "permission": "issues:write"
+      "permission": "issues:write",
+      "localizations": {
+        "en": {
+          "title": "Edit issue"
+        },
+        "uk": {
+          "title": "Редагувати несправність"
+        }
+      }
     },
     {
       "id": "hotel.admin.16",
@@ -207,7 +395,15 @@
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
-      "permission": "issues:read"
+      "permission": "issues:read",
+      "localizations": {
+        "en": {
+          "title": "Issue details"
+        },
+        "uk": {
+          "title": "Деталі несправності"
+        }
+      }
     },
     {
       "id": "hotel.portal.56",
@@ -216,7 +412,15 @@
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
-      "permission": "issues:read"
+      "permission": "issues:read",
+      "localizations": {
+        "en": {
+          "title": "Issue details"
+        },
+        "uk": {
+          "title": "Деталі несправності"
+        }
+      }
     },
     {
       "id": "hotel.issues.delete",
@@ -225,7 +429,15 @@
       "navigation": false,
       "parent": "hotel.admin.14",
       "audienceRole": "admin",
-      "permission": "issues:write"
+      "permission": "issues:write",
+      "localizations": {
+        "en": {
+          "title": "Delete issue"
+        },
+        "uk": {
+          "title": "Видалити несправність"
+        }
+      }
     },
     {
       "id": "hotel.issues.delete",
@@ -234,7 +446,15 @@
       "navigation": false,
       "parent": "hotel.portal.54",
       "audienceRole": "member",
-      "permission": "issues:write"
+      "permission": "issues:write",
+      "localizations": {
+        "en": {
+          "title": "Delete issue"
+        },
+        "uk": {
+          "title": "Видалити несправність"
+        }
+      }
     },
     {
       "id": "hotel.admin.23",
@@ -243,7 +463,15 @@
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
-      "permission": "reports:write"
+      "permission": "reports:write",
+      "localizations": {
+        "en": {
+          "title": "New report"
+        },
+        "uk": {
+          "title": "Нове повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.portal.63",
@@ -252,7 +480,15 @@
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
-      "permission": "reports:write"
+      "permission": "reports:write",
+      "localizations": {
+        "en": {
+          "title": "New report"
+        },
+        "uk": {
+          "title": "Нове повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.admin.25",
@@ -261,7 +497,15 @@
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
-      "permission": "reports:write"
+      "permission": "reports:write",
+      "localizations": {
+        "en": {
+          "title": "Edit report"
+        },
+        "uk": {
+          "title": "Редагувати повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.portal.65",
@@ -270,7 +514,15 @@
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
-      "permission": "reports:write"
+      "permission": "reports:write",
+      "localizations": {
+        "en": {
+          "title": "Edit report"
+        },
+        "uk": {
+          "title": "Редагувати повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.admin.24",
@@ -279,7 +531,15 @@
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
-      "permission": "reports:read"
+      "permission": "reports:read",
+      "localizations": {
+        "en": {
+          "title": "Report details"
+        },
+        "uk": {
+          "title": "Деталі повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.portal.64",
@@ -288,7 +548,15 @@
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
-      "permission": "reports:read"
+      "permission": "reports:read",
+      "localizations": {
+        "en": {
+          "title": "Report details"
+        },
+        "uk": {
+          "title": "Деталі повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.admin.11",
@@ -297,7 +565,15 @@
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
-      "permission": "lost_found:write"
+      "permission": "lost_found:write",
+      "localizations": {
+        "en": {
+          "title": "New lost or found record"
+        },
+        "uk": {
+          "title": "Новий запис про знахідку або втрату"
+        }
+      }
     },
     {
       "id": "hotel.portal.51",
@@ -306,7 +582,15 @@
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
-      "permission": "lost_found:write"
+      "permission": "lost_found:write",
+      "localizations": {
+        "en": {
+          "title": "New lost or found record"
+        },
+        "uk": {
+          "title": "Новий запис про знахідку або втрату"
+        }
+      }
     },
     {
       "id": "hotel.admin.13",
@@ -315,7 +599,15 @@
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
-      "permission": "lost_found:write"
+      "permission": "lost_found:write",
+      "localizations": {
+        "en": {
+          "title": "Edit lost or found record"
+        },
+        "uk": {
+          "title": "Редагувати запис про знахідку або втрату"
+        }
+      }
     },
     {
       "id": "hotel.portal.53",
@@ -324,7 +616,15 @@
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
-      "permission": "lost_found:write"
+      "permission": "lost_found:write",
+      "localizations": {
+        "en": {
+          "title": "Edit lost or found record"
+        },
+        "uk": {
+          "title": "Редагувати запис про знахідку або втрату"
+        }
+      }
     },
     {
       "id": "hotel.admin.12",
@@ -333,7 +633,15 @@
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
-      "permission": "lost_found:read"
+      "permission": "lost_found:read",
+      "localizations": {
+        "en": {
+          "title": "Lost or found item details"
+        },
+        "uk": {
+          "title": "Деталі знахідки або втрати"
+        }
+      }
     },
     {
       "id": "hotel.portal.52",
@@ -342,7 +650,15 @@
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
-      "permission": "lost_found:read"
+      "permission": "lost_found:read",
+      "localizations": {
+        "en": {
+          "title": "Lost or found item details"
+        },
+        "uk": {
+          "title": "Деталі знахідки або втрати"
+        }
+      }
     },
     {
       "id": "hotel.lostfound.delete",
@@ -351,7 +667,15 @@
       "navigation": false,
       "parent": "hotel.admin.10",
       "audienceRole": "admin",
-      "permission": "lost_found:write"
+      "permission": "lost_found:write",
+      "localizations": {
+        "en": {
+          "title": "Delete lost or found record"
+        },
+        "uk": {
+          "title": "Видалити запис про знахідку або втрату"
+        }
+      }
     },
     {
       "id": "hotel.lostfound.delete",
@@ -360,7 +684,15 @@
       "navigation": false,
       "parent": "hotel.portal.50",
       "audienceRole": "member",
-      "permission": "lost_found:write"
+      "permission": "lost_found:write",
+      "localizations": {
+        "en": {
+          "title": "Delete lost or found record"
+        },
+        "uk": {
+          "title": "Видалити запис про знахідку або втрату"
+        }
+      }
     },
     {
       "id": "hotel.admin.19",
@@ -369,7 +701,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock item"
+        },
+        "uk": {
+          "title": "Нова складська позиція"
+        }
+      }
     },
     {
       "id": "hotel.portal.59",
@@ -378,7 +718,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock item"
+        },
+        "uk": {
+          "title": "Нова складська позиція"
+        }
+      }
     },
     {
       "id": "hotel.admin.21",
@@ -387,7 +735,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Edit stock item"
+        },
+        "uk": {
+          "title": "Редагувати складську позицію"
+        }
+      }
     },
     {
       "id": "hotel.portal.61",
@@ -396,7 +752,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Edit stock item"
+        },
+        "uk": {
+          "title": "Редагувати складську позицію"
+        }
+      }
     },
     {
       "id": "hotel.admin.20",
@@ -405,7 +769,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock item details"
+        },
+        "uk": {
+          "title": "Деталі складської позиції"
+        }
+      }
     },
     {
       "id": "hotel.portal.60",
@@ -414,7 +786,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock item details"
+        },
+        "uk": {
+          "title": "Деталі складської позиції"
+        }
+      }
     },
     {
       "id": "hotel.housekeeping.room",
@@ -424,7 +804,15 @@
       "parent": "hotel.admin.5",
       "audienceRole": "admin",
       "permission": "housekeeping:read",
-      "dynamic_title": true
+      "dynamic_title": true,
+      "localizations": {
+        "en": {
+          "title": "Room 203 · details and housekeeping"
+        },
+        "uk": {
+          "title": "Номер 203 · деталі та прибирання"
+        }
+      }
     },
     {
       "id": "hotel.housekeeping.room",
@@ -434,7 +822,15 @@
       "parent": "hotel.portal.45",
       "audienceRole": "member",
       "permission": "housekeeping:read",
-      "dynamic_title": true
+      "dynamic_title": true,
+      "localizations": {
+        "en": {
+          "title": "Room 203 · details and housekeeping"
+        },
+        "uk": {
+          "title": "Номер 203 · деталі та прибирання"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movement-in",
@@ -444,7 +840,15 @@
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · receipt"
+        },
+        "uk": {
+          "title": "Склад · надходження"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movement-in",
@@ -454,7 +858,15 @@
       "parent": "hotel.portal.58",
       "audienceRole": "member",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · receipt"
+        },
+        "uk": {
+          "title": "Склад · надходження"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movement-out",
@@ -464,7 +876,15 @@
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · issue"
+        },
+        "uk": {
+          "title": "Склад · видача"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movement-out",
@@ -474,7 +894,15 @@
       "parent": "hotel.portal.58",
       "audienceRole": "member",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · issue"
+        },
+        "uk": {
+          "title": "Склад · видача"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movement-adjust",
@@ -484,7 +912,15 @@
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · write-off"
+        },
+        "uk": {
+          "title": "Склад · списання"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movement-adjust",
@@ -494,7 +930,15 @@
       "parent": "hotel.portal.58",
       "audienceRole": "member",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · write-off"
+        },
+        "uk": {
+          "title": "Склад · списання"
+        }
+      }
     },
     {
       "id": "hotel.inventory.delete",
@@ -504,7 +948,15 @@
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Delete stock movement"
+        },
+        "uk": {
+          "title": "Видалити складський рух"
+        }
+      }
     },
     {
       "id": "hotel.inventory.delete",
@@ -514,7 +966,15 @@
       "parent": "hotel.portal.58",
       "audienceRole": "member",
       "permission": "inventory:write",
-      "dynamic_title": false
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Delete stock movement"
+        },
+        "uk": {
+          "title": "Видалити складський рух"
+        }
+      }
     },
     {
       "id": "hotel.admin.7",
@@ -527,7 +987,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "New breakfast record"
+        },
+        "uk": {
+          "title": "Новий запис про сніданок"
+        }
+      }
     },
     {
       "id": "hotel.portal.47",
@@ -540,7 +1008,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "New breakfast record"
+        },
+        "uk": {
+          "title": "Новий запис про сніданок"
+        }
+      }
     },
     {
       "id": "hotel.admin.9",
@@ -553,7 +1029,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Edit breakfast record"
+        },
+        "uk": {
+          "title": "Редагувати запис про сніданок"
+        }
+      }
     },
     {
       "id": "hotel.portal.49",
@@ -566,7 +1050,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Edit breakfast record"
+        },
+        "uk": {
+          "title": "Редагувати запис про сніданок"
+        }
+      }
     },
     {
       "id": "hotel.admin.8",
@@ -580,7 +1072,15 @@
         "admin",
         "recepce",
         "snídaně"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Breakfast details"
+        },
+        "uk": {
+          "title": "Деталі сніданку"
+        }
+      }
     },
     {
       "id": "hotel.portal.48",
@@ -594,7 +1094,15 @@
         "admin",
         "recepce",
         "snídaně"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Breakfast details"
+        },
+        "uk": {
+          "title": "Деталі сніданку"
+        }
+      }
     },
     {
       "id": "hotel.breakfast.delete",
@@ -607,7 +1115,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete breakfast record"
+        },
+        "uk": {
+          "title": "Видалити запис про сніданок"
+        }
+      }
     },
     {
       "id": "hotel.breakfast.delete",
@@ -620,7 +1136,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete breakfast record"
+        },
+        "uk": {
+          "title": "Видалити запис про сніданок"
+        }
+      }
     },
     {
       "id": "hotel.breakfast.manage",
@@ -633,7 +1157,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Breakfast management"
+        },
+        "uk": {
+          "title": "Керування сніданками"
+        }
+      }
     },
     {
       "id": "hotel.breakfast.manage",
@@ -646,7 +1178,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Breakfast management"
+        },
+        "uk": {
+          "title": "Керування сніданками"
+        }
+      }
     },
     {
       "id": "hotel.breakfast.day-delete",
@@ -659,7 +1199,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete breakfasts for selected day"
+        },
+        "uk": {
+          "title": "Видалити сніданки за вибраний день"
+        }
+      }
     },
     {
       "id": "hotel.breakfast.day-delete",
@@ -672,7 +1220,15 @@
       "roles": [
         "admin",
         "recepce"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete breakfasts for selected day"
+        },
+        "uk": {
+          "title": "Видалити сніданки за вибраний день"
+        }
+      }
     },
     {
       "id": "hotel.reports.delete",
@@ -681,7 +1237,15 @@
       "navigation": false,
       "parent": "hotel.admin.22",
       "audienceRole": "admin",
-      "permission": "reports:write"
+      "permission": "reports:write",
+      "localizations": {
+        "en": {
+          "title": "Delete report"
+        },
+        "uk": {
+          "title": "Видалити повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.reports.delete",
@@ -690,7 +1254,15 @@
       "navigation": false,
       "parent": "hotel.portal.62",
       "audienceRole": "member",
-      "permission": "reports:write"
+      "permission": "reports:write",
+      "localizations": {
+        "en": {
+          "title": "Delete report"
+        },
+        "uk": {
+          "title": "Видалити повідомлення"
+        }
+      }
     },
     {
       "id": "hotel.inventory.item-delete",
@@ -699,7 +1271,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Delete stock item"
+        },
+        "uk": {
+          "title": "Видалити складську позицію"
+        }
+      }
     },
     {
       "id": "hotel.inventory.item-delete",
@@ -708,7 +1288,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Delete stock item"
+        },
+        "uk": {
+          "title": "Видалити складську позицію"
+        }
+      }
     },
     {
       "id": "hotel.record.submitted",
@@ -720,7 +1308,15 @@
       "roles": [
         "pokojská"
       ],
-      "permission": "housekeeping:read"
+      "permission": "housekeeping:read",
+      "localizations": {
+        "en": {
+          "title": "Record accepted"
+        },
+        "uk": {
+          "title": "Запис прийнято"
+        }
+      }
     },
     {
       "id": "hotel.inventory.cards",
@@ -729,7 +1325,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock documents"
+        },
+        "uk": {
+          "title": "Складські документи"
+        }
+      }
     },
     {
       "id": "hotel.inventory.cards",
@@ -738,7 +1342,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock documents"
+        },
+        "uk": {
+          "title": "Складські документи"
+        }
+      }
     },
     {
       "id": "hotel.inventory.card-new",
@@ -747,7 +1359,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock movement"
+        },
+        "uk": {
+          "title": "Новий складський рух"
+        }
+      }
     },
     {
       "id": "hotel.inventory.card-new",
@@ -756,7 +1376,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write"
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock movement"
+        },
+        "uk": {
+          "title": "Новий складський рух"
+        }
+      }
     },
     {
       "id": "hotel.inventory.card-detail",
@@ -765,7 +1393,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock document details"
+        },
+        "uk": {
+          "title": "Деталі складського документа"
+        }
+      }
     },
     {
       "id": "hotel.inventory.card-detail",
@@ -774,7 +1410,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock document details"
+        },
+        "uk": {
+          "title": "Деталі складського документа"
+        }
+      }
     },
     {
       "id": "hotel.inventory.card-delete",
@@ -786,7 +1430,15 @@
       "permission": "inventory:write",
       "roles": [
         "admin"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete stock document"
+        },
+        "uk": {
+          "title": "Видалити складський документ"
+        }
+      }
     },
     {
       "id": "hotel.inventory.card-delete",
@@ -798,7 +1450,15 @@
       "permission": "inventory:write",
       "roles": [
         "admin"
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete stock document"
+        },
+        "uk": {
+          "title": "Видалити складський документ"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movements",
@@ -807,7 +1467,15 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock movement history"
+        },
+        "uk": {
+          "title": "Історія складських рухів"
+        }
+      }
     },
     {
       "id": "hotel.inventory.movements",
@@ -816,7 +1484,15 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read"
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock movement history"
+        },
+        "uk": {
+          "title": "Історія складських рухів"
+        }
+      }
     },
     {
       "id": "hotel.chat.new",
@@ -824,7 +1500,15 @@
       "path": "/sections/hotel/?view=chat",
       "parent": "hotel.admin.2",
       "navigation": false,
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "New private conversation"
+        },
+        "uk": {
+          "title": "Нова приватна розмова"
+        }
+      }
     },
     {
       "id": "hotel.chat.new",
@@ -832,7 +1516,15 @@
       "path": "/sections/hotel/?view=chat",
       "parent": "hotel.portal.40",
       "navigation": false,
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "New private conversation"
+        },
+        "uk": {
+          "title": "Нова приватна розмова"
+        }
+      }
     },
     {
       "id": "hotel.chat.notifications",
@@ -840,7 +1532,15 @@
       "path": "/sections/hotel/?view=chat",
       "parent": "hotel.admin.2",
       "navigation": false,
-      "audienceRole": "admin"
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Notifications"
+        },
+        "uk": {
+          "title": "Сповіщення"
+        }
+      }
     },
     {
       "id": "hotel.chat.notifications",
@@ -848,7 +1548,15 @@
       "path": "/sections/hotel/?view=chat",
       "parent": "hotel.portal.40",
       "navigation": false,
-      "audienceRole": "member"
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Notifications"
+        },
+        "uk": {
+          "title": "Сповіщення"
+        }
+      }
     }
   ],
   "navigation_mode": "message",
@@ -858,5 +1566,10 @@
       "type": "date"
     }
   ],
-  "navigation_ready_event": "CML_SECTION_READY"
+  "navigation_ready_event": "CML_SECTION_READY",
+  "locales": [
+    "cs",
+    "en",
+    "uk"
+  ]
 }
