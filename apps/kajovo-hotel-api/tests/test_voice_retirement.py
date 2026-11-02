@@ -24,3 +24,11 @@ def test_production_images_have_no_voice_package_or_provider_adapter():
         source = (root / "apps" / relative).read_text()
         assert "packages/dagmar" not in source
         assert "packages/voice-core" not in source
+
+
+def test_active_deploy_does_not_pass_voice_credentials_to_hotel():
+    root = Path(__file__).resolve().parents[3]
+    for relative in ("infra/compose.prod.yml", "infra/compose.staging.yml", ".github/workflows/deploy-production.yml"):
+        source = (root / relative).read_text()
+        assert "KAJOVO_API_VOICE_" not in source
+        assert "VOICE_MEMORY_CONTEXT_MAX_TOKENS" not in source

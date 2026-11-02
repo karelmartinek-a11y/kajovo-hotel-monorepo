@@ -15,3 +15,6 @@ se nemažou; diagnostické archivy a jejich klíče zůstávají nedotčené.
 Tento zdroj připravuje přepnutí. Nenasazovat jej před ověřením CML hlasu,
 konzistentními zálohami, migračním manifestem a potvrzením, že neprobíhá
 původní hovor. Placená přejímka vyžaduje samostatně schválený limit.
+
+Hlasové proměnné a provider přístupy se nepředávají novému Hotel kontejneru.
+Jejich původní chráněná kopie zůstává pouze v záloze pro návrat kódu.

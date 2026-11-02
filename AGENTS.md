@@ -1,5 +1,9 @@
 # Přesun hlasu do CML (2. 11. 2026)
 
+Vlastník povolil dokončení bez fyzického mikrofonu a bez své účasti.
+Po syntetické kvalifikaci lze provést koordinovaný cutover; neprovedený
+fyzický poslech není PASS. Hotel runtime již nepřebírá hlasové credentials.
+
 Nové přímé zadání vlastníka ruší dřívější výjimku samostatného Hotel hlasu.
 Po koordinovaném přepnutí vlastní hlasový produkt repozitář kajovocmlnglite.
 Tento Hotel zdroj obsahuje jeho retirement; viz docs/CML_VOICE_RETIREMENT.md.
