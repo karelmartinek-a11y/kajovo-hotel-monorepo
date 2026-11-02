@@ -24,8 +24,6 @@ ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
         'users:write',
         'settings:read',
         'settings:write',
-        'voice_core:read',
-        'voice_core:write',
     },
     'pokojská': {
         'housekeeping:read',

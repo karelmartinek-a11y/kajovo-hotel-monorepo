@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -31,9 +31,6 @@ from app.observability import RequestContextMiddleware, configure_logging
 from app.security.auth import ensure_csrf
 from app.services.admin_credentials import ensure_admin_profile
 from app.services.breakfast.scheduler import breakfast_scheduler_loop
-from app.services.dagmar_adapter import create_dagmar, migrate
-from dagmar_server.application import BoundContext
-from dagmar_server.ports import bind
 
 settings = get_settings()
 ANDROID_RELEASE_PATH = "/api/app/android-release"
@@ -63,9 +60,6 @@ def has_explicit_admin_env() -> bool:
 def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(title=settings.app_name, version=settings.app_version)
-    dagmar = create_dagmar()
-    app.state.dagmar = dagmar
-    app.add_middleware(BoundContext, ports=dagmar.ports)
     app.add_middleware(RequestContextMiddleware)
 
     @app.exception_handler(RequestValidationError)
@@ -93,6 +87,10 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def security_middleware(request: Request, call_next):
+        if request.url.path.startswith(("/api/v1/admin/voice-core", "/api/v1/admin/voice-memory")):
+            if request.method in {"GET", "HEAD"}:
+                return RedirectResponse("https://kajovocml.hcasc.cz/#account-voice", status_code=303, headers={"Cache-Control": "no-store"})
+            return JSONResponse(status_code=410, content={"detail": {"code": "voice_moved_to_cml"}}, headers={"Cache-Control": "no-store"})
         try:
             ensure_csrf(request)
         except HTTPException as exc:
@@ -140,29 +138,18 @@ def create_app() -> FastAPI:
     app.include_router(users_router)
     app.include_router(settings_router)
     app.include_router(profile_router)
-    app.include_router(dagmar.core, prefix="/api/v1/admin/voice-core", tags=["voice-core"])
-    app.include_router(dagmar.memory, prefix="/api/v1/admin/voice-memory", tags=["voice-memory"])
 
     @app.on_event("startup")
     async def startup_scheduler() -> None:
         initialize_database()
-        app.state.dagmar_migration = migrate()
         with SessionLocal() as db:
             ensure_admin_profile(db, settings, sync_from_env=has_explicit_admin_env())
         if settings.breakfast_scheduler_enabled:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
         app.state.chat_push_scheduler_task = asyncio.create_task(chat_push_scheduler_loop())
-        with bind(dagmar.ports):
-            app.state.voice_bridge_housekeeping_task = asyncio.create_task(dagmar.manager.housekeeping())
 
     @app.on_event("shutdown")
     async def shutdown_scheduler() -> None:
-        voice_task = getattr(app.state, "voice_bridge_housekeeping_task", None)
-        if voice_task:
-            voice_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await voice_task
-        await dagmar.shutdown()
         task = getattr(app.state, "breakfast_scheduler_task", None)
         if task is not None:
             task.cancel()

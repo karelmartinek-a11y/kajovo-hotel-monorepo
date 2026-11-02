@@ -29,12 +29,8 @@ def _require_cml_browser_entry(request: Request, session: dict) -> None:
     if getattr(request.state, "cml_web_claims", None):
         return
     path = request.url.path
-    # The original independent voice and its original auth are excluded from CML.
     business = path.startswith("/api/v1/") or path in {"/api/auth/profile", "/api/auth/locale", "/api/auth/select-role"}
-    if not business or any(
-        path == prefix or path.startswith(prefix + "/")
-        for prefix in ("/api/v1/admin/voice-core", "/api/v1/admin/voice-memory")
-    ):
+    if not business:
         return
     browser = session.get("web_activity_session") is True or any(
         name in request.headers

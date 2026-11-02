@@ -195,10 +195,10 @@ class ReleaseGateTests(unittest.TestCase):
         names = [name for name, _ in plan]
         self.assertEqual(len(names), len(set(names)))
         self.assertIn('api-contract', names)
-        self.assertIn('dagmar-contract', names)
-        self.assertIn('dagmar-copy-out', names)
+        self.assertNotIn('dagmar-contract', names)
+        self.assertNotIn('dagmar-copy-out', names)
         self.assertIn('browser-baseline', names)
-        self.assertIn('api-and-voice-tests', names)
+        self.assertIn('api-tests', names)
         self.assertIn('native-web-role-browser', names)
         self.assertIn('native-web-room-browser', names)
         self.assertNotIn('voice-registry-ui', names)

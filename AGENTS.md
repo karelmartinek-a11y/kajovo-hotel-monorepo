@@ -1,3 +1,13 @@
+# Přesun hlasu do CML (2. 11. 2026)
+
+Nové přímé zadání vlastníka ruší dřívější výjimku samostatného Hotel hlasu.
+Po koordinovaném přepnutí vlastní hlasový produkt repozitář kajovocmlnglite.
+Tento Hotel zdroj obsahuje jeho retirement; viz docs/CML_VOICE_RETIREMENT.md.
+Historické hlasové podmínky níže platí pro zachovanou referenci, nikoli jako
+pokyn znovu aktivovat původní worker. Nenasazovat retirement před připraveným
+CML a bezpečným přepnutím bez aktivních starých hovorů. Nativní klienti,
+hotelová data a offline diagnostické archivy zůstávají zachované.
+
 # Kájovo Hotel – závazná pravidla práce
 
 - Dagmar neobsahuje historické konektory KajaVoiceHA/SmartPlan, jejich modelové nástroje, routy ani panely. Hotel dodává pouze auth, infrastrukturu a paměťový adaptér; hlas, paměť/Lístečky a volitelný native Mail zůstávají. Nepřidávej zpět staré endpointy, tokeny ani hostové aliasy. Retired storage metadata slouží jen k nedestruktivní kompatibilitě migrací: zachovej historické řádky, původní ID a nejistotu. Současný KajovoSmart je samostatná služba mimo hotelový runtime. Viz docs/SMART_CONNECTOR_RETIREMENT.md.

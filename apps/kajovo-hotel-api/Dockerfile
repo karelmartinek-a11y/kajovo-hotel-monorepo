@@ -11,10 +11,6 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir \
     httpx==0.28.1 \
-    mcp==1.30.0 \
-    sse-starlette==2.3.6 \
-    jsonschema==4.26.0 \
-    websockets==15.0.1 \
     cryptography==43.0.3 \
     fastapi==0.115.14 \
     "uvicorn[standard]==0.34.3" \
@@ -30,9 +26,6 @@ RUN pip install --no-cache-dir \
     firebase-admin==7.7.0 \
     pillow==11.3.0
 
-COPY packages/voice-core-server /opt/voice-core-server
-COPY packages/dagmar-server /opt/dagmar-server
-RUN pip install --no-cache-dir /opt/voice-core-server /opt/dagmar-server
 
 COPY apps/kajovo-hotel-api/app /app/app
 COPY apps/kajovo-hotel-api/alembic /app/alembic

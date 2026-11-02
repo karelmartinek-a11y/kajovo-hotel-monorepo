@@ -157,8 +157,8 @@ def main():
                 time.sleep(.5)
             else:
                 raise AssertionError("Isolated API did not become healthy")
-            for path, expected, microphone in [("/admin/hlasovy-chat", 200, "microphone=(self)"),
-                ("/", 302, "microphone=()"), ("/api/v1/admin/voice-core/config", 401, "microphone=()")]:
+            for path, expected, microphone in [("/admin/hlasovy-chat", 302, "microphone=()"),
+                ("/", 302, "microphone=()"), ("/api/v1/admin/voice-core/config", 303, "microphone=()")]:
                 status, headers, _body = request(path)
                 assert status == expected, (path, status)
                 policies = [value for key, value in headers if key.lower() == "permissions-policy"]
@@ -178,14 +178,12 @@ def main():
             for path in ["/", "/login", "/login/reset?token=synthetic-old-token", "/admin/uzivatele", "/admin/nastaveni"]:
                 status, headers, _body = request(path)
                 assert status == 302 and dict(headers).get("Location") == "https://kajovocml.hcasc.cz/#hotel", (path, status, headers)
-            status, _headers, native_voice = request("/admin/hlasovy-chat")
-            assert status == 200 and b'/admin/assets/' in native_voice
-            assert request("/admin/login")[0] == 200
+            status, headers, _ = request("/admin/hlasovy-chat")
+            assert status == 302 and dict(headers).get("Location") == "https://kajovocml.hcasc.cz/#account-voice"
+            assert request("/admin/login")[0] == 302
             for path in ["/admin", "/admin/"]:
                 status, headers, _body = request(path)
-                assert status == 302 and dict(headers).get("Location", "").endswith("/admin/hlasovy-chat")
-            native_asset = re.search(rb'src="(/admin/assets/[^"?]+\.js)"', native_voice)
-            assert native_asset and request(native_asset.group(1).decode())[0] == 200
+                assert status == 302 and dict(headers).get("Location") == "https://kajovocml.hcasc.cz/#hotel"
             brand = "/brand/apps/kajovo-hotel/logo/exports/wordmark/svg/kajovo-hotel_wordmark.svg"
             assert request(brand)[0] == 200
             for path in ["/assets/old.js", "/static/old.js", "/site.webmanifest"]:
@@ -206,12 +204,9 @@ def main():
             for page in ["/", "/admin/hlasovy-chat"]:
                 path = page + "?probe=" + query_marker
                 status, _, body = request(path, referer)
-                assert status == (200 if page == "/admin/hlasovy-chat" else 302), (page, status)
+                assert status == 302, (page, status)
                 marked_paths.append(path)
-                if page == "/admin/hlasovy-chat":
-                    assert b'/admin/assets/' in body, "Original standalone voice bundle must survive"
-                else:
-                    assert not re.search(rb'src="([^"]+\.js)"', body), "Retired portal entry must not serve a browser bundle"
+                assert not re.search(rb'src="([^"]+\.js)"', body), "Retired entry must not serve a browser bundle"
             for asset in ["app.js", "ui.js", "chat.js"]:
                 path = "/cml-web/" + asset + "?probe=" + query_marker
                 status, _, body = request(path, referer, extra_headers=cml_headers(path))
@@ -260,7 +255,7 @@ def main():
             unavailable = prefix + "-unavailable-api"
             names.append(unavailable)
             run("docker", "run", "-d", "--name", unavailable, "--network", prefix,
-                "--network-alias", "api", "--entrypoint", "sleep", "voice-core-api-check", "300")
+                "--network-alias", "api", "--entrypoint", "sleep", os.getenv("CML_PROXY_API_IMAGE", "voice-core-api-check"), "300")
             run("docker", "exec", host, "nginx", "-t")
             run("docker", "exec", host, "nginx", "-s", "reload")
             time.sleep(.5)
@@ -283,7 +278,7 @@ def main():
                 "cml_signed_identity": True, "cml_unsigned_denied": True,
                 "cml_nonce_replay_denied": True, "cml_fresh_html": True,
                 "non_voice_browser_redirects": True, "legacy_portal_assets_gone": True,
-                "original_standalone_voice_and_login_preserved": True,
+                "voice_and_login_redirect_to_cml": True,
                 "legacy_push_worker_retired": True, "original_android_apk_preserved": True,
                 "routing_and_security_headers": "PASS"}))
             print("Synthetic upstream error evidence: " + matching[-1])

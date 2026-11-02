@@ -1,9 +1,9 @@
-"""Cutover denies legacy browser business APIs; native clients and voice stay original."""
+"""Cutover denies legacy browser business APIs; native clients stay original; voice belongs to CML."""
 
 import json
 
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +15,6 @@ from app.db.models import AuthSession, Base, PortalUser, PortalUserRole
 from app.db.session import get_db
 from app.security import auth
 from app.security.cml_web import CmlWebBoundary
-from app.services import dagmar_adapter
 from app.services.cml_identity import resolve_identity
 from tests.test_cml_web import assertion, fixture_key
 
@@ -32,7 +31,6 @@ def entry_backend(tmp_path, monkeypatch):
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     monkeypatch.setattr(auth, "SessionLocal", factory)
-    monkeypatch.setattr(dagmar_adapter, "SessionLocal", factory)
     with factory() as db:
         db.add(PortalUser(id=1, first_name="Synthetic", last_name="Local identity", email="entry@example.invalid", password_hash="unused", is_active=True, roles=[PortalUserRole(role="admin")]))
         cookies = {}
@@ -49,11 +47,6 @@ def entry_backend(tmp_path, monkeypatch):
     app.dependency_overrides[get_db] = database
     app.include_router(auth_router)
     app.include_router(users_router)
-
-    @app.get("/api/v1/admin/voice-core/original-identity")
-    def original_voice(request: Request):
-        identity = dagmar_adapter.request_identity(request)
-        return {"authorized": bool(identity and identity["voice_authorized"])}
 
     boundary = CmlWebBoundary(app, audience="hotel", session_factory=factory, resolve_identity=resolve_identity, ui_root=tmp_path)
     try:
@@ -80,12 +73,12 @@ def test_browser_cannot_reuse_native_cookie_for_original_business_api(entry_back
         assert db.scalar(select(AuthSession).where(AuthSession.revoked_at.is_not(None))) is None
 
 
-def test_persisted_web_session_denies_business_without_browser_headers_and_keeps_original_voice(entry_backend):
+def test_persisted_web_session_denies_business_and_has_no_voice_host(entry_backend):
     client, _, cookies, _ = entry_backend
     client.cookies.set(auth.SESSION_COOKIE_NAME, cookies["browser"])
     assert client.get("/api/v1/users").status_code == 403
     assert client.get("/api/auth/profile").status_code == 403
-    assert client.get("/api/v1/admin/voice-core/original-identity", headers={"Sec-Fetch-Site": "same-origin"}).json() == {"authorized": True}
+    assert client.get("/api/v1/admin/voice-core/original-identity", headers={"Sec-Fetch-Site": "same-origin"}).status_code == 404
     assert client.get("/api/auth/me").status_code == 200
 
 
