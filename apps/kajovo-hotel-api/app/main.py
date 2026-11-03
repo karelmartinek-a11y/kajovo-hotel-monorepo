@@ -33,6 +33,7 @@ from app.security.auth import ensure_csrf
 from app.services.admin_credentials import ensure_admin_profile
 from app.services.breakfast.scheduler import breakfast_scheduler_loop
 from app.services.breakfast.whatsapp import breakfast_whatsapp_loop
+from app.services.lost_found_whatsapp import scheduler_loop as lost_found_whatsapp_loop
 
 settings = get_settings()
 ANDROID_RELEASE_PATH = "/api/app/android-release"
@@ -149,6 +150,8 @@ def create_app() -> FastAPI:
             ensure_admin_profile(db, settings, sync_from_env=has_explicit_admin_env())
         if settings.breakfast_scheduler_enabled:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
+        if settings.lost_found_whatsapp_enabled:
+            app.state.lost_found_whatsapp_task = asyncio.create_task(lost_found_whatsapp_loop())
         app.state.chat_push_scheduler_task = asyncio.create_task(chat_push_scheduler_loop())
         app.state.breakfast_whatsapp_task = asyncio.create_task(breakfast_whatsapp_loop())
 
@@ -164,6 +167,11 @@ def create_app() -> FastAPI:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
+        whatsapp_task = getattr(app.state, "lost_found_whatsapp_task", None)
+        if whatsapp_task is not None:
+            whatsapp_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await whatsapp_task
         chat_task = getattr(app.state, "chat_push_scheduler_task", None)
         if chat_task is not None:
             chat_task.cancel()

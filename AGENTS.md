@@ -260,3 +260,10 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
 - Nové členské CML UI podporuje cs/en/uk přes původní vlastní profilový locale
   endpoint s čtecím ověřením; administrace zůstává cs. Překlady statických textů
   nesmějí měnit hosty, role, API kódy, původní geometrii/paletu pokojů ani hlas.
+
+- Nové nálezy používají vlastní trvalou WhatsApp frontu a grant `hotel-lost-found`.
+  Text se nikdy nezkracuje, fotografie se odesílají samostatně i po pozdějším
+  připojení. Staré nálezy ani ztráty nerozesílat zpětně. Pevný soukromý příjemce,
+  původní UUID, rozlišení fronty/provider přijetí/doručení a nezávislé pokračování
+  částí jsou závazné; nejisté odeslání obnovovat pouze čtením původní operace.
+  Viz docs/LOST_FOUND_WHATSAPP.md. API strojový token není provider credential.

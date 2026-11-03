@@ -477,7 +477,14 @@ class LostFoundItemUpdate(BaseModel):
         return cleaned
 
 
+class LostFoundWhatsappRead(BaseModel):
+    state: str
+    accepted_parts: int
+    total_parts: int
+
+
 class LostFoundItemRead(LostFoundItemBase):
+    whatsapp_notification: LostFoundWhatsappRead | None = None
     model_config = ConfigDict(from_attributes=True)
 
     id: int

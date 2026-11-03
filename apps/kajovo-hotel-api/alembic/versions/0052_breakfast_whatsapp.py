@@ -2,8 +2,8 @@
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0051_breakfast_whatsapp"
-down_revision = "0050_cml_web_push_authority"
+revision = "0052_breakfast_whatsapp"
+down_revision = "0051_lost_found_whatsapp"
 branch_labels = None
 depends_on = None
 

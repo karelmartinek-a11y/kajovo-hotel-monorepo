@@ -75,6 +75,7 @@ def check_plan() -> list[tuple[str, list[str]]]:
         ("native-web-syntax", ["node", "scripts/check_cml_web_ui.mjs"]),
         ("native-web-tests", ["node", "--test", "apps/kajovo-hotel-api/tests/web/time.test.mjs"]),
         ("breakfast-whatsapp-browser", ["node", "apps/kajovo-hotel-api/tests/web/breakfast-whatsapp.browser.mjs"]),
+        ("lost-found-whatsapp-browser", ["node", "apps/kajovo-hotel-api/tests/web/lost-found.browser.mjs"]),
         ("native-web-role-browser", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "test:cml-roles")),
         ("native-web-language-browser", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "test:cml-languages")),
         ("native-web-room-browser", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "test:cml-rooms")),

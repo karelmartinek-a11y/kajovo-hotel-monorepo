@@ -36,3 +36,12 @@
 - KajaVoiceHA/SmartPlan implementace, routy a panely jsou odstraněné: [provozní stav](SMART_CONNECTOR_RETIREMENT.md). Historická databázová metadata a původní ID zůstávají zachované.
 
 - Dagmar používá nativní Realtime/WebRTC a přerušení řečí; při přehrávání nepozastavuje mikrofon. Volba reproduktorů a ruční přerušení byly v etapě B odstraněny, mute/Stop zůstávají. Celá Dagmar vlastní UI/server/paměť/journals/MCP klienty nad obecným Voice Core; hotel dodává auth a technickou infrastrukturu. Živý runtime neobsahuje diagnostické nahrávání ani diagnostická API; historický archiv zůstává offline. Přesný stav nasazení a omezení akustické přejímky uvádí [protokol](dagmar/IMPLEMENTATION.md).
+
+Nové nálezy a jejich fotografie mají trvalé automatické WhatsApp oznámení přes vlastní omezenou identitu Komunikace MCP; viz [runbook](LOST_FOUND_WHATSAPP.md).
+
+## Denní WhatsApp souhrn snídaní
+
+Hotel Nastavení přidává denní čas Europe/Prague, příjemce a vypínač souhrnu
+na další den. Migrace `0052_breakfast_whatsapp` navazuje na
+`0051_lost_found_whatsapp` a zachovává nezávislou frontu nálezů.
+Provozní kontrakt: `docs/change-impact-breakfast-whatsapp.md`.

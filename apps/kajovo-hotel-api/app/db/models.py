@@ -307,6 +307,7 @@ class LostFoundItem(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    whatsapp_event_id: Mapped[str | None] = mapped_column(String(36), nullable=True, unique=True)
     photos: Mapped[list["LostFoundPhoto"]] = relationship(
         "LostFoundPhoto",
         back_populates="item",
@@ -1140,3 +1141,21 @@ class CmlProfileProvision(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     native_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LostFoundWhatsappPart(Base):
+    __tablename__ = "lost_found_whatsapp_parts"
+    __table_args__ = (UniqueConstraint("event_id", "part_key", name="uq_lost_found_whatsapp_part"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    item_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    part_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    recipient: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    media_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="pending", index=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

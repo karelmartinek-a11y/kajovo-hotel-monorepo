@@ -598,6 +598,7 @@ export type LostFoundItemRead = {
   "status"?: LostFoundStatus;
   "tags"?: Array<string>;
   "updated_at": string | null;
+  "whatsapp_notification"?: LostFoundWhatsappRead | null;
 };
 export type LostFoundItemType = "lost" | "found";
 export type LostFoundItemUpdate = {
@@ -616,6 +617,11 @@ export type LostFoundItemUpdate = {
   "tags"?: Array<string> | null;
 };
 export type LostFoundStatus = "new" | "stored" | "disposed" | "claimed" | "returned";
+export type LostFoundWhatsappRead = {
+  "accepted_parts": number;
+  "state": string;
+  "total_parts": number;
+};
 export type MailDispatchResponse = {
   "connected": boolean;
   "message": string;

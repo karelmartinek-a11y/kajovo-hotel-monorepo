@@ -11,7 +11,8 @@ RUN apt-get update \
 
 RUN pip install --no-cache-dir \
     mcp==1.30.0 \
-    sse-starlette==2.1.3 \
+    sse-starlette==2.3.6 \
+    starlette==0.46.2 \
     httpx==0.28.1 \
     cryptography==43.0.3 \
     fastapi==0.115.14 \
