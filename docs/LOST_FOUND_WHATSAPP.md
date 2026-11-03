@@ -62,8 +62,17 @@ nová identita. Migrace 0051 a účtenky přežívají rollback kódu.
 Automatické testy používají izolované adaptéry bez skutečného rozesílání.
 Živá přejímka kontroluje schválení šablon, vlastní grant, oficiální SDK
 handshake/katalog, konektor a nové runtime SHA. Výslovně autorizovaný živý
-test z 3. 11. 2026 vytvořil jeden označený testovací nález se třemi obrázky.
-Všechny čtyři zprávy provider následně odmítl kódem `131042`; doručení
-neprošlo. Samotný obecný stav účtu `AVAILABLE` není důkaz doručitelnosti.
-Konkrétní účtenky a soukromý příjemce jsou v chráněné provozní evidenci,
-nikoli v repozitáři. Neúspěšný živý test se automaticky nerozesílá znovu.
+test z 3. 11. 2026 nejprve skončil odmítnutím zpráv kódem `131042`.
+Následná kontrola přímo v Meta potvrdila platnou platební metodu a uhrazený
+zůstatek, ale neúplné firemní a daňové údaje platebního profilu. Po jejich
+doplnění podle ověřeného DIČ a státního registru nové vytvoření nálezu
+automaticky doručilo celý text a všechny tři fotografie: čtyři samostatné
+provider účtenky přešly do `delivered`, bez chyby. Tato živá přejímka prošla.
+
+Obecný stav účtu `AVAILABLE` ani schválené šablony samy neprokazují platební
+způsobilost nebo doručitelnost. Při `131042` prověřit přímo platební profil
+daného WhatsApp účtu v Meta; automaticky neměnit tokeny, kartu ani příjemce.
+Konkrétní účtenky, testovací záznamy, platební údaje a soukromý příjemce jsou
+v chráněné provozní evidenci, nikoli v repozitáři. Neúspěšné testy se
+automaticky nerozesílají znovu. Oprava platebního profilu nevyžadovala
+změnu runtime kódu, schématu, grantů ani restart služeb.
