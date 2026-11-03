@@ -35,6 +35,10 @@ Neschválená šablona drží frontu jako blokovanou a sama se znovu ověří.
 
 Stavy přijetí, doručení a přečtení jsou odlišné. API počítá jako přijatou
 část až providerem přijatou zprávu; samotná frontová účtenka nestačí.
+Přijetí není koncový stav: worker každých 60 sekund čte původní účtenku
+až do doručení, přečtení nebo chyby. Pozdější odmítnutí se promítne do
+detailu nálezu. Výpadek čtení, chybějící účtenka ani dočasně starší stav
+po prokázaném přijetí nesmějí spustit další odeslání.
 Detail ukazuje přijaté/celkové části a problém odesílání. Nález zůstává
 uložený při výpadku. Selhání jedné části nezastaví nezávislé části.
 Nejistý pokus obnovuje pouze původní UUID přes čtení stavu. Autoritativní
@@ -46,14 +50,20 @@ nová identita. Migrace 0051 a účtenky přežívají rollback kódu.
 | Oblast | Výsledek |
 | --- | --- |
 | Zdroj/API | Fronta, životní cyklus workeru, transakční hook nálezu/fotografií, aditivní DTO stavu |
-| Testy | Izolovaná DB, všechny fotografie, dlouhý Unicode text, rollback, výpadek, původní UUID, žádný historický backfill |
+| Testy | Izolovaná DB, všechny fotografie, dlouhý Unicode text, rollback, výpadek, původní UUID, žádný historický backfill; přijetí následované doručením/chybou a výpadkem čtení bez dalšího odeslání |
 | UI a překlady | Stav na detailu v cs/en/uk; původní formulář a RBAC zachovány |
-| CI | Existující API, kontraktové a browserové gates pokrývají změnu |
+| CI | Ověřit beze změny: úplný release gate a runtime image; bez živých zpráv |
 | Dokumentace a instrukce | Tento runbook, README a AGENTS |
-| Build/deploy | Připnutý MCP SDK, migrace 0051, vlastní soukromý grant; restart pouze API a Komunikace |
-| Android | Existující create/upload kontrakt zachován, nové výstupní pole je volitelné |
+| Build/deploy | Oprava sledování stavu mění pouze API image; bez migrace, změny závislostí, grantů nebo konfigurace |
+| Android / OpenAPI / klient | Ověřit beze změny: existující create/upload i výstupní kontrakt zachován |
+| Komentáře, fixtures, překlady | Aktualizovat očekávání testů; existující lokalizované upozornění na chybu zachováno |
+| Instrukce / SSOT | Aktualizovat koncové stavy a zákaz opakovaného odeslání přijaté operace |
 
-Ověření je syntetické bez rozesílání testovacích nálezů na skutečné číslo.
+Automatické testy používají izolované adaptéry bez skutečného rozesílání.
 Živá přejímka kontroluje schválení šablon, vlastní grant, oficiální SDK
-handshake/katalog, konektor a nové runtime SHA. Doručení prvního skutečného
-nálezu je samostatně pozorovatelný provider účinek, nikoli předem tvrzený PASS.
+handshake/katalog, konektor a nové runtime SHA. Výslovně autorizovaný živý
+test z 3. 11. 2026 vytvořil jeden označený testovací nález se třemi obrázky.
+Všechny čtyři zprávy provider následně odmítl kódem `131042`; doručení
+neprošlo. Samotný obecný stav účtu `AVAILABLE` není důkaz doručitelnosti.
+Konkrétní účtenky a soukromý příjemce jsou v chráněné provozní evidenci,
+nikoli v repozitáři. Neúspěšný živý test se automaticky nerozesílá znovu.

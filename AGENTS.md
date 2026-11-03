@@ -266,4 +266,6 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   připojení. Staré nálezy ani ztráty nerozesílat zpětně. Pevný soukromý příjemce,
   původní UUID, rozlišení fronty/provider přijetí/doručení a nezávislé pokračování
   částí jsou závazné; nejisté odeslání obnovovat pouze čtením původní operace.
+  Přijetí je průběžný stav: původní účtenku číst až do doručení nebo chyby.
+  Chybějící či nedostupná účtenka po přijetí nikdy neopravňuje další odeslání.
   Viz docs/LOST_FOUND_WHATSAPP.md. API strojový token není provider credential.

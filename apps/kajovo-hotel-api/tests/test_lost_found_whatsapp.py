@@ -153,10 +153,83 @@ def test_failed_text_does_not_stop_photos_and_unknown_send_only_reads_original_r
     asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
     assert all(row.state == "accepted" for row in parts(store))
     assert [name for name, _ in calls].count("whatsapp_send_message") == 2
-    assert [name for name, _ in calls].count("whatsapp_message_status") == 1
+    assert [name for name, _ in calls].count("whatsapp_message_status") == 2
     ready(store)
     asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
-    assert len(calls) == 3
+    assert [name for name, _ in calls].count("whatsapp_send_message") == 2
+    assert [name for name, _ in calls].count("whatsapp_message_status") == 4
+
+
+@pytest.mark.parametrize("final_state", ["delivered", "read", "failed"])
+def test_accepted_receipt_is_monitored_until_final_provider_result(store, final_state):
+    item_id = create(store)
+    operation_id = parts(store)[0].id
+    calls = []
+
+    async def fake(name, args):
+        calls.append((name, args))
+        if name == "whatsapp_send_message":
+            return {"id": args["operation_id"], "state": "accepted"}
+        assert args == {"notification_id": operation_id}
+        return {
+            "id": operation_id,
+            "state": final_state,
+            "error_code": "131042" if final_state == "failed" else None,
+        }
+
+    ready(store)
+    asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
+    assert parts(store)[0].state == "accepted"
+    assert parts(store)[0].next_attempt_at > utc_now().replace(tzinfo=None) + timedelta(seconds=50)
+    ready(store)
+    asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
+    result = parts(store)[0]
+    assert result.state == final_state
+    assert result.error_code == ("131042" if final_state == "failed" else None)
+    with store() as db:
+        summary = worker.notification_summary(db, db.get(LostFoundItem, item_id)).whatsapp_notification
+        assert summary["state"] == ("attention" if final_state == "failed" else "accepted")
+        assert summary["accepted_parts"] == (0 if final_state == "failed" else 1)
+    ready(store)
+    asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
+    assert [name for name, _ in calls] == ["whatsapp_send_message", "whatsapp_message_status"]
+
+
+@pytest.mark.parametrize("read_problem", ["timeout", "not_found", "unknown", "pending", "foreign"])
+def test_accepted_receipt_read_failure_never_repeats_original_send(store, read_problem):
+    create(store)
+    operation_id = parts(store)[0].id
+    calls = []
+    recovered = False
+
+    async def fake(name, args):
+        calls.append((name, args))
+        if name == "whatsapp_send_message":
+            return {"id": args["operation_id"], "state": "accepted"}
+        assert args == {"notification_id": operation_id}
+        if recovered:
+            return {"id": operation_id, "state": "delivered"}
+        if read_problem == "timeout":
+            raise TimeoutError("synthetic read failure")
+        return {
+            "id": "another-operation" if read_problem == "foreign" else operation_id,
+            "state": "accepted" if read_problem == "foreign" else read_problem,
+        }
+
+    ready(store)
+    asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
+    for _ in range(2):
+        ready(store)
+        asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
+        assert parts(store)[0].state == "accepted"
+        assert parts(store)[0].error_code
+    recovered = True
+    ready(store)
+    asyncio.run(worker.dispatch_pending(session_factory=store, call=fake))
+    assert parts(store)[0].state == "delivered"
+    assert parts(store)[0].error_code is None
+    assert [name for name, _ in calls].count("whatsapp_send_message") == 1
+    assert [name for name, _ in calls].count("whatsapp_message_status") == 3
 
 
 def test_authoritative_missing_receipt_recovers_same_uuid_on_later_tick(store):

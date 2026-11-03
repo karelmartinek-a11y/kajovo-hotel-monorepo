@@ -25,7 +25,7 @@ from app.time_utils import utc_now
 
 ENDPOINT = "https://kajovokomunikace-mcp-ai-agent.hcasc.cz/mcp"
 PREFIX = "KájovoHotel – nález #"
-TERMINAL = {"accepted", "delivered", "read", "failed", "cancelled"}
+TERMINAL = {"delivered", "read", "failed", "cancelled"}
 LABELS = {
     "new": "Nové",
     "stored": "Uloženo",
@@ -247,15 +247,20 @@ async def dispatch_pending(*, session_factory=SessionLocal, call=call_communicat
                 continue
             previous = part.state
             try:
-                if previous in {"queued", "unknown"}:
+                if previous in {"queued", "unknown", "accepted"}:
                     receipt = await call(
                         "whatsapp_message_status", {"notification_id": operation_id}
                     )
                     if receipt.get("state") == "not_found":
+                        if previous == "accepted":
+                            raise ValueError("COMMUNICATION_RECEIPT_MISSING")
                         # Authoritative absence permits the same UUID on a later worker tick.
                         part.state = "pending"
                     else:
-                        part.state = _receipt_state(receipt, operation_id)
+                        state = _receipt_state(receipt, operation_id)
+                        if previous == "accepted" and state in {"queued", "unknown"}:
+                            raise ValueError("COMMUNICATION_RECEIPT_UNCONFIRMED")
+                        part.state = state
                 else:
                     recipient = part.recipient or get_settings().lost_found_whatsapp_recipient
                     if not re.fullmatch(r"\+[1-9]\d{7,14}", recipient):
@@ -286,11 +291,13 @@ async def dispatch_pending(*, session_factory=SessionLocal, call=call_communicat
                 # Never log message bodies, image data, credentials or provider responses.
                 db.rollback()
                 part = db.get(LostFoundWhatsappPart, operation_id)
-                part.state = (
-                    "unknown"
-                    if part.state == "submitting" or previous in {"queued", "unknown"}
-                    else "blocked"
-                )
+                # Proven acceptance must survive read failures: never re-enter the send path.
+                if previous != "accepted":
+                    part.state = (
+                        "unknown"
+                        if part.state == "submitting" or previous in {"queued", "unknown"}
+                        else "blocked"
+                    )
                 safe_code = (
                     str(error)
                     if isinstance(error, ValueError)
@@ -300,7 +307,7 @@ async def dispatch_pending(*, session_factory=SessionLocal, call=call_communicat
                 part.error_code = safe_code
             part.updated_at = utc_now()
             part.next_attempt_at = utc_now() + timedelta(
-                seconds=60 if part.state in {"blocked", "unknown"} else 5
+                seconds=60 if part.state in {"blocked", "unknown", "accepted"} else 5
             )
             db.commit()
 

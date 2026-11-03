@@ -37,7 +37,7 @@
 
 - Dagmar používá nativní Realtime/WebRTC a přerušení řečí; při přehrávání nepozastavuje mikrofon. Volba reproduktorů a ruční přerušení byly v etapě B odstraněny, mute/Stop zůstávají. Celá Dagmar vlastní UI/server/paměť/journals/MCP klienty nad obecným Voice Core; hotel dodává auth a technickou infrastrukturu. Živý runtime neobsahuje diagnostické nahrávání ani diagnostická API; historický archiv zůstává offline. Přesný stav nasazení a omezení akustické přejímky uvádí [protokol](dagmar/IMPLEMENTATION.md).
 
-Nové nálezy a jejich fotografie mají trvalé automatické WhatsApp oznámení přes vlastní omezenou identitu Komunikace MCP; viz [runbook](LOST_FOUND_WHATSAPP.md).
+Nové nálezy a jejich fotografie mají trvalé automatické WhatsApp oznámení přes vlastní omezenou identitu Komunikace MCP. Přijaté zprávy se sledují až do doručení nebo chyby bez opakovaného odeslání. Živý test z 3. 11. 2026 skončil odmítnutím všech čtyř zpráv kódem `131042`, doručení není ověřené; viz [runbook](LOST_FOUND_WHATSAPP.md).
 
 ## Denní WhatsApp souhrn snídaní
 
