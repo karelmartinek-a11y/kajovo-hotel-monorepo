@@ -1,8 +1,9 @@
 import {api} from './api.js';
 import {el,icon,field,button,panel,notice,formData,showError} from './ui.js';
+import {breakfastWhatsappSettings} from './breakfast-whatsapp.js';
 const stamp=value=>value?new Date(value).toLocaleString('cs-CZ',{timeZone:'Europe/Prague'}):'Dosud netestováno';
 export async function hotelSettings(ctx){
- const generation=ctx.state.generation,main=ctx.heading('hotel.admin.27','Nastavení Hotelu','Nastavte odesílání e-mailů Hotelu a ověřte připojení testovací zprávou.');
+ const generation=ctx.state.generation,main=ctx.heading('hotel.admin.27','Nastavení Hotelu','Nastavte denní WhatsApp souhrn snídaní a odesílání e-mailů Hotelu.');
  const [stored,operational]=await Promise.all([api('api/v1/admin/settings/smtp'),api('api/v1/admin/settings/smtp/status')]);if(generation!==ctx.state.generation)return;
  const password=field('SMTP heslo','password','password','',{autocomplete:'new-password','aria-label':'SMTP heslo',maxlength:1024,required:!stored.password_masked}),secret=password.querySelector('input');
  const reveal=button(icon('eye'),event=>{const visible=secret.type==='password';secret.type=visible?'text':'password';event.currentTarget.setAttribute('aria-label',visible?'Skrýt heslo':'Zobrazit heslo');});reveal.setAttribute('aria-label','Zobrazit heslo');password.append(el('div',{class:'password-wrap'},secret,reveal));password.append(el('small',{},'Ponecháním prázdného pole zachováte uložené heslo.'));
@@ -35,4 +36,5 @@ export async function hotelSettings(ctx){
  }
  test.disabled=!operational.can_send_real_email;if(!operational.can_send_real_email)form.append(notice('Odesílání e-mailů není na serveru aktivní.'));
  main.append(panel('Odesílání e-mailů Hotelu',form,'gear'));
+ await breakfastWhatsappSettings(ctx,main);
 }

@@ -15,6 +15,8 @@ hotelová data a offline diagnostické archivy zůstávají zachované.
 
 # Kájovo Hotel – závazná pravidla práce
 
+- Denní WhatsApp souhrn snídaní vlastní Hotel API a aktivní `app/web_ui/settings.js`. Nastavení je pouze pro správce, výchozí stav vypnutý. Harmonogram běží v Europe/Prague, používá čerstvé čtení BetterHotelu a trvalé identity zásilek. Komunikace má vlastní omezený M2M grant `notification:hotel-breakfast`; provider tokeny zůstávají v Komunikaci. Po timeoutu se ověřuje původní účtenka, nikdy se nevytváří náhradní zásilka. Viz `docs/change-impact-breakfast-whatsapp.md`.
+
 - Dagmar neobsahuje historické konektory KajaVoiceHA/SmartPlan, jejich modelové nástroje, routy ani panely. Hotel dodává pouze auth, infrastrukturu a paměťový adaptér; hlas, paměť/Lístečky a volitelný native Mail zůstávají. Nepřidávej zpět staré endpointy, tokeny ani hostové aliasy. Retired storage metadata slouží jen k nedestruktivní kompatibilitě migrací: zachovej historické řádky, původní ID a nejistotu. Současný KajovoSmart je samostatná služba mimo hotelový runtime. Viz docs/SMART_CONNECTOR_RETIREMENT.md.
 
 

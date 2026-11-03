@@ -229,4 +229,5 @@ h1{margin:7px 0 5px}button,a,input,select,textarea{scroll-margin-top:100px;scrol
 @media(max-width:640px){.breakfast-tile-action button.secondary{background:#fff;color:#101010;border-color:#d7d3ca;box-shadow:0 10px 18px rgba(83,56,46,.08)}}
 
 .native-language{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:8px 0 12px;font-size:12px}.native-language select{width:auto;max-width:180px}
+.breakfast-whatsapp .phone-field{grid-column:1/-1}.breakfast-whatsapp textarea{width:100%;box-sizing:border-box;min-height:110px}.breakfast-whatsapp .actions{flex-wrap:wrap}.breakfast-whatsapp-history{overflow-wrap:anywhere;margin-top:18px}
 @media print{.native-language{display:none!important}}

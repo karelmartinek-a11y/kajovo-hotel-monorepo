@@ -83,6 +83,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("KAJOVO_API_BETTER_HOTEL_REQUEST_TIMEOUT_SECONDS"),
     )
     breakfast_runtime_artifact_dir: str = "/app/data/runtime-artifacts"
+    breakfast_whatsapp_config_path: str = "/app/data/credentials/breakfast-whatsapp.json"
     device_bootstrap_key: str = ""
     device_challenge_ttl_seconds: int = 300
     device_token_ttl_seconds: int = 86400

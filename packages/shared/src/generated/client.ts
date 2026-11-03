@@ -166,6 +166,43 @@ export type BreakfastSyncSettingsRead = {
   "scheduler_max_retries": number;
   "scheduler_retry_seconds": number;
 };
+export type BreakfastWhatsappDeliveryRead = {
+  "error_code": string | null;
+  "id": string;
+  "recipient": string;
+  "state": string;
+  "updated_at": string;
+};
+export type BreakfastWhatsappPreview = {
+  "breakfast_count": number;
+  "message": string;
+  "service_date": string;
+  "source_checked_at": string;
+};
+export type BreakfastWhatsappRead = {
+  "enabled": boolean;
+  "last_run": BreakfastWhatsappRunRead | null;
+  "next_run_at": string | null;
+  "recipients": Array<string>;
+  "revision": number;
+  "send_time": string;
+  "timezone"?: string;
+  "transport_configured": boolean;
+};
+export type BreakfastWhatsappRunRead = {
+  "breakfast_count": number | null;
+  "deliveries": Array<BreakfastWhatsappDeliveryRead>;
+  "error_code": string | null;
+  "service_date": string;
+  "source_checked_at": string | null;
+  "state": string;
+};
+export type BreakfastWhatsappUpdate = {
+  "enabled": boolean;
+  "recipients": Array<string>;
+  "revision": number;
+  "send_time": string;
+};
 export type ChatConversationCreate = {
   "recipient_id": number;
 };
@@ -852,6 +889,15 @@ export const apiClient = {
   },
   async getBreakfastSyncSettingsApiV1AdminSettingsBreakfastSyncGet(): Promise<BreakfastSyncSettingsRead> {
     return request<BreakfastSyncSettingsRead>('GET', `/api/v1/admin/settings/breakfast-sync`, undefined, undefined);
+  },
+  async getSettingsApiV1AdminSettingsBreakfastWhatsappGet(): Promise<BreakfastWhatsappRead> {
+    return request<BreakfastWhatsappRead>('GET', `/api/v1/admin/settings/breakfast-whatsapp`, undefined, undefined);
+  },
+  async putSettingsApiV1AdminSettingsBreakfastWhatsappPut(body: BreakfastWhatsappUpdate): Promise<BreakfastWhatsappRead> {
+    return request<BreakfastWhatsappRead>('PUT', `/api/v1/admin/settings/breakfast-whatsapp`, undefined, body);
+  },
+  async previewApiV1AdminSettingsBreakfastWhatsappPreviewGet(): Promise<BreakfastWhatsappPreview> {
+    return request<BreakfastWhatsappPreview>('GET', `/api/v1/admin/settings/breakfast-whatsapp/preview`, undefined, undefined);
   },
   async getSmtpSettingsApiV1AdminSettingsSmtpGet(): Promise<SmtpSettingsRead> {
     return request<SmtpSettingsRead>('GET', `/api/v1/admin/settings/smtp`, undefined, undefined);

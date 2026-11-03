@@ -10,6 +10,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir \
+    mcp==1.30.0 \
+    sse-starlette==2.1.3 \
     httpx==0.28.1 \
     cryptography==43.0.3 \
     fastapi==0.115.14 \

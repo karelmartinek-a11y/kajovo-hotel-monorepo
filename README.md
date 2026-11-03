@@ -1,5 +1,9 @@
 # Kájovo Hotel Monorepo
 
+Nastavení Hotelu v CML nabízí denní WhatsApp souhrn snídaní na následující den,
+volbu času a více příjemců. Provozní kontrakt a napojení na Komunikaci:
+[Denní přehled snídaní](docs/change-impact-breakfast-whatsapp.md).
+
 Tento repozitář je autoritativní zdroj pravdy pro web, admin, API, sdílené balíčky a branding Kájovo Hotel.
 
 ## Co je v repozitáři

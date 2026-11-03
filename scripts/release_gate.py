@@ -74,6 +74,7 @@ def check_plan() -> list[tuple[str, list[str]]]:
         ("python-lint", _python_command("-m", "ruff", "check", "--config", "apps/kajovo-hotel-api/pyproject.toml", "--select", "E,F", "--ignore", "E501", "apps/kajovo-hotel-api/app", "apps/kajovo-hotel-api/tests", "scripts/release_gate.py", "scripts/github_deploy_via_ssh.py", "scripts/select_deploy_scope.py", "scripts/check_postgres_deploy_version.py", "scripts/tests/test_release_gate.py", "scripts/check_voice_core_boundaries.py", "scripts/verify_voice_core_copy_out.py", "scripts/verify_dagmar_copy_out.py", "scripts/verify_dagmar_recovery.py", "scripts/verify_voice_core_proxy.py", "scripts/voice_core_live_smoke.py", "scripts/verify_voice_memory_postgres.py", "scripts/protected_runtime_snapshot.py", "scripts/verify_deploy_snapshot.py")),
         ("native-web-syntax", ["node", "scripts/check_cml_web_ui.mjs"]),
         ("native-web-tests", ["node", "--test", "apps/kajovo-hotel-api/tests/web/time.test.mjs"]),
+        ("breakfast-whatsapp-browser", ["node", "apps/kajovo-hotel-api/tests/web/breakfast-whatsapp.browser.mjs"]),
         ("native-web-role-browser", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "test:cml-roles")),
         ("native-web-language-browser", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "test:cml-languages")),
         ("native-web-room-browser", _pnpm_command("--filter", "@kajovo/kajovo-hotel-web", "test:cml-rooms")),

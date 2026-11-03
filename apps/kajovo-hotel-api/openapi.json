@@ -1056,6 +1056,241 @@
         "title": "BreakfastSyncSettingsRead",
         "type": "object"
       },
+      "BreakfastWhatsappDeliveryRead": {
+        "properties": {
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recipient",
+          "state",
+          "error_code",
+          "updated_at"
+        ],
+        "title": "BreakfastWhatsappDeliveryRead",
+        "type": "object"
+      },
+      "BreakfastWhatsappPreview": {
+        "properties": {
+          "breakfast_count": {
+            "title": "Breakfast Count",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "service_date": {
+            "format": "date",
+            "title": "Service Date",
+            "type": "string"
+          },
+          "source_checked_at": {
+            "format": "date-time",
+            "title": "Source Checked At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_date",
+          "breakfast_count",
+          "source_checked_at",
+          "message"
+        ],
+        "title": "BreakfastWhatsappPreview",
+        "type": "object"
+      },
+      "BreakfastWhatsappRead": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BreakfastWhatsappRunRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "next_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Run At"
+          },
+          "recipients": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "send_time": {
+            "title": "Send Time",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "Europe/Prague",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "transport_configured": {
+            "title": "Transport Configured",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "send_time",
+          "recipients",
+          "revision",
+          "next_run_at",
+          "transport_configured",
+          "last_run"
+        ],
+        "title": "BreakfastWhatsappRead",
+        "type": "object"
+      },
+      "BreakfastWhatsappRunRead": {
+        "properties": {
+          "breakfast_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breakfast Count"
+          },
+          "deliveries": {
+            "items": {
+              "$ref": "#/components/schemas/BreakfastWhatsappDeliveryRead"
+            },
+            "title": "Deliveries",
+            "type": "array"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "service_date": {
+            "format": "date",
+            "title": "Service Date",
+            "type": "string"
+          },
+          "source_checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Checked At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_date",
+          "state",
+          "breakfast_count",
+          "source_checked_at",
+          "error_code",
+          "deliveries"
+        ],
+        "title": "BreakfastWhatsappRunRead",
+        "type": "object"
+      },
+      "BreakfastWhatsappUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "recipients": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Recipients",
+            "type": "array"
+          },
+          "revision": {
+            "minimum": 0.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "send_time": {
+            "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+            "title": "Send Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "send_time",
+          "recipients",
+          "revision"
+        ],
+        "title": "BreakfastWhatsappUpdate",
+        "type": "object"
+      },
       "ChatConversationCreate": {
         "properties": {
           "recipient_id": {
@@ -5909,6 +6144,87 @@
           }
         },
         "summary": "Get Breakfast Sync Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/breakfast-whatsapp": {
+      "get": {
+        "operationId": "get_settings_api_v1_admin_settings_breakfast_whatsapp_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastWhatsappRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "put_settings_api_v1_admin_settings_breakfast_whatsapp_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BreakfastWhatsappUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastWhatsappRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/admin/settings/breakfast-whatsapp/preview": {
+      "get": {
+        "operationId": "preview_api_v1_admin_settings_breakfast_whatsapp_preview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BreakfastWhatsappPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Preview",
         "tags": [
           "settings"
         ]

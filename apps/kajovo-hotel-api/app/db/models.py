@@ -136,6 +136,47 @@ class BreakfastStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class BreakfastWhatsappSettings(Base):
+    __tablename__ = "breakfast_whatsapp_settings"
+    __table_args__ = (CheckConstraint("id = 1", name="breakfast_whatsapp_singleton"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    send_time: Mapped[str] = mapped_column(String(5), nullable=False, default="18:00")
+    recipients: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BreakfastWhatsappRun(Base):
+    __tablename__ = "breakfast_whatsapp_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    scheduled_date: Mapped[date] = mapped_column(Date, nullable=False, unique=True)
+    service_date: Mapped[date] = mapped_column(Date, nullable=False)
+    settings_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    recipients: Mapped[list] = mapped_column(JSON, nullable=False)
+    state: Mapped[str] = mapped_column(String(24), nullable=False, default="preparing")
+    breakfast_count: Mapped[int | None] = mapped_column(Integer)
+    source_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BreakfastWhatsappDelivery(Base):
+    __tablename__ = "breakfast_whatsapp_deliveries"
+    __table_args__ = (UniqueConstraint("run_id", "recipient", name="breakfast_whatsapp_recipient"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("breakfast_whatsapp_runs.id"), index=True)
+    recipient: Mapped[str] = mapped_column(String(16), nullable=False)
+    state: Mapped[str] = mapped_column(String(24), nullable=False, default="pending")
+    provider_message_id: Mapped[str | None] = mapped_column(String(255))
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ReservationBreakfastDiet(Base):
     __tablename__ = "reservation_breakfast_diets"
 
