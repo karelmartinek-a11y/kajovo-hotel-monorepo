@@ -19,7 +19,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0050_cml_web_push_authority"]
+    assert script.get_heads() == ["0051_lost_found_whatsapp"]
 
 
 def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_path, monkeypatch):
@@ -45,7 +45,7 @@ def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_pat
             command.downgrade(config, '0049_cml_profile_provision')
         with engine.connect() as db:
             assert db.scalar(text('SELECT cml_authorized FROM chat_push_subscriptions')) == 0
-            assert db.scalar(text('SELECT version_num FROM alembic_version')) == '0050_cml_web_push_authority'
+            assert db.scalar(text('SELECT version_num FROM alembic_version')) == '0051_lost_found_whatsapp'
     finally:
         engine.dispose()
         get_settings.cache_clear()

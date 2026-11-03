@@ -3959,6 +3959,16 @@
               }
             ],
             "title": "Updated At"
+          },
+          "whatsapp_notification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LostFoundWhatsappRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4155,6 +4165,29 @@
         ],
         "title": "LostFoundStatus",
         "type": "string"
+      },
+      "LostFoundWhatsappRead": {
+        "properties": {
+          "accepted_parts": {
+            "title": "Accepted Parts",
+            "type": "integer"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "total_parts": {
+            "title": "Total Parts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state",
+          "accepted_parts",
+          "total_parts"
+        ],
+        "title": "LostFoundWhatsappRead",
+        "type": "object"
       },
       "MailDispatchResponse": {
         "properties": {

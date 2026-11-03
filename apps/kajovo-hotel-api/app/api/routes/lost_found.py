@@ -17,6 +17,7 @@ from app.db.session import get_db
 from app.media.storage import MediaStorage
 from app.security.auth import SESSION_COOKIE_NAME, read_session_cookie
 from app.security.rbac import module_access_dependency, parse_identity, require_actor_type
+from app.services.lost_found_whatsapp import cancel_find, enqueue_find, enqueue_photo, notification_summary
 from app.time_utils import utc_now
 
 router = APIRouter(
@@ -52,7 +53,7 @@ def list_lost_found_items(
     if category:
         query = query.where(LostFoundItem.category == category)
 
-    return list(db.scalars(query))
+    return [notification_summary(db, item) for item in db.scalars(query)]
 
 
 @router.get("/{item_id}", response_model=LostFoundItemRead)
@@ -65,7 +66,7 @@ def get_lost_found_item(item_id: int, db: Session = Depends(get_db)) -> LostFoun
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Lost & found item not found",
         )
-    return item
+    return notification_summary(db, item)
 
 
 @router.post("", response_model=LostFoundItemRead, status_code=status.HTTP_201_CREATED)
@@ -80,9 +81,11 @@ def create_lost_found_item(
     item = LostFoundItem(**payload_data)
     item.tags = tags
     db.add(item)
+    db.flush()
+    enqueue_find(db, item)
     db.commit()
     db.refresh(item)
-    return item
+    return notification_summary(db, item)
 
 
 @router.put("/{item_id}", response_model=LostFoundItemRead)
@@ -133,7 +136,7 @@ def update_lost_found_item(
     db.add(item)
     db.commit()
     db.refresh(item)
-    return item
+    return notification_summary(db, item)
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -145,6 +148,7 @@ def delete_lost_found_item(item_id: int, db: Session = Depends(get_db), _admin: 
             detail="Lost & found item not found",
         )
 
+    cancel_find(db, item_id)
     db.delete(item)
     db.commit()
 
@@ -180,16 +184,17 @@ def upload_lost_found_photos(
             src_file=upload.file,
             src_filename=upload.filename or f"photo-{offset + 1}.jpg",
         )
-        db.add(
-            LostFoundPhoto(
-                item_id=item.id,
-                sort_order=start_idx + offset,
-                file_path=stored.original_relpath,
-                thumb_path=stored.thumb_relpath,
-                mime_type=upload.content_type or "image/jpeg",
-                size_bytes=stored.bytes,
-            )
+        photo = LostFoundPhoto(
+            item_id=item.id,
+            sort_order=start_idx + offset,
+            file_path=stored.original_relpath,
+            thumb_path=stored.thumb_relpath,
+            mime_type=upload.content_type or "image/jpeg",
+            size_bytes=stored.bytes,
         )
+        db.add(photo)
+        db.flush()
+        enqueue_photo(db, item, photo)
     db.commit()
     return list(
         db.scalars(

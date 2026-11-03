@@ -51,3 +51,5 @@ Pokojská v CML používá původní Hotel dlaždice jako vizuální referenci.
 Nový spodní detail zůstává v právě viditelné části CML a během ukládání
 a ověřování brání zavření; nejistý zápis má jen čtecí obnovu. Viz
 [aktuální integrační kontrakt](docs/CML_UI_COMPLETION.md).
+
+Nový nález i každá jeho fotografie se automaticky předávají na nakonfigurovaný WhatsApp; provoz a stavové hranice popisuje [runbook oznámení nálezů](docs/LOST_FOUND_WHATSAPP.md).

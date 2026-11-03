@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     smtp_from_email: str = "noreply@kajovohotel.local"
     smtp_encryption_key: str = "dev-only-smtp-key-change-in-production"
     smtp_capture_path: str = ""
+    lost_found_whatsapp_enabled: bool = False
+    lost_found_whatsapp_recipient: str = ""
+    lost_found_whatsapp_token_file: str = ""
     media_root: str = "/app/data/media"
     breakfast_scheduler_enabled: bool = True
     breakfast_scheduler_interval_seconds: int = 300

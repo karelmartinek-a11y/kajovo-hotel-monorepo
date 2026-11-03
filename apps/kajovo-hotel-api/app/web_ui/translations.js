@@ -1,5 +1,9 @@
 // Authored UI text only. User data, routes and backend values are never translated.
 export const translations={
+  "Části přijaté WhatsAppem: ": ["Parts accepted by WhatsApp: ", "Частини, прийняті WhatsApp: "],
+  "Odeslání vyžaduje kontrolu. Nález zůstává uložený.": ["Sending requires attention. The found item remains saved.", "Надсилання потребує перевірки. Знахідку збережено."],
+  "Přijetí WhatsAppem zatím nepotvrzuje doručení příjemci.": ["Acceptance by WhatsApp does not yet confirm delivery to the recipient.", "Прийняття WhatsApp ще не підтверджує доставку одержувачу."],
+  "Oznámení čeká na odeslání.": ["The notification is waiting to be sent.", "Повідомлення очікує надсилання."],
   "Aktuální stav": [
     "Current status",
     "Поточний стан"
