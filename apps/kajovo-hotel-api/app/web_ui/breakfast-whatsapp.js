@@ -10,7 +10,7 @@ export async function breakfastWhatsappSettings(ctx,main){
  const current=()=>generation===ctx.state.generation;
  const render=data=>{
   if(!current())return;
-  const enabled=el('input',{type:'checkbox',name:'enabled',checked:data.enabled,disabled:!data.transport_configured});
+  const enabled=el('input',{type:'checkbox',name:'enabled',checked:data.enabled,disabled:!data.transport_configured&&!data.enabled});
   const phones=el('textarea',{name:'recipients',rows:4,maxlength:1000,placeholder:'+420123456789',spellcheck:'false'},data.recipients.join('\n'));
   const feedback=el('div',{'aria-live':'polite'}),previewBox=el('div',{'aria-live':'polite'});
   const save=el('button',{type:'submit'},'Uložit zasílání snídaní');

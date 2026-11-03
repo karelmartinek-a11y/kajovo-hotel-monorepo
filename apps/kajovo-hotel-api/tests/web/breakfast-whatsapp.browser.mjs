@@ -39,6 +39,11 @@ for(const name of (process.env.CML_BROWSER_ENGINES??'chromium,webkit').split(','
   await expect(page.locator('.breakfast-whatsapp')).toContainText('nebude opakovat');assert.equal(writes,2);
   await page.getByRole('button',{name:'Obnovit nastavení'}).click();
   await expect(page.getByLabel('Čas odeslání (český čas)')).toHaveValue('20:15');assert.equal(writes,2);
+  data={...data,enabled:true,transport_configured:false};lost=false;
+  await page.getByRole('button',{name:'Obnovit nastavení'}).click();
+  await page.getByLabel('Každý den posílat počet snídaní na zítřek').uncheck();
+  await page.getByRole('button',{name:'Uložit zasílání snídaní'}).click();
+  await expect(page.locator('.breakfast-whatsapp')).toContainText('Automatické odesílání je vypnuté.');assert.equal(writes,3);
   console.log(JSON.stringify({status:'PASS',engine:name,width,saveReadback:true,previewNoSend:true,uncertainNoReplay:true}));
   await page.close();
  }}finally{await browser.close();}
