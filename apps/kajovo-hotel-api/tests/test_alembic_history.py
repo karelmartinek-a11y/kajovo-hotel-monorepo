@@ -19,7 +19,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0050_cml_web_push_authority"]
+    assert script.get_heads() == ["0051_breakfast_whatsapp"]
 
 
 def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_path, monkeypatch):
@@ -36,7 +36,7 @@ def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_pat
             db.execute(text("INSERT INTO chat_participants(id,principal_type,principal_id,email,display_name,is_active)VALUES(1,'portal',1,'synthetic@example.invalid','Synthetic',1)"))
             db.execute(text("INSERT INTO chat_push_subscriptions(id,participant_id,endpoint,p256dh,auth)VALUES(1,1,'https://fcm.googleapis.com/synthetic','synthetic-public-key','synthetic-auth')"))
             before = db.execute(text('SELECT * FROM chat_push_subscriptions')).mappings().one()
-        command.upgrade(config, 'head')
+        command.upgrade(config, '0050_cml_web_push_authority')
         with engine.connect() as db:
             after = dict(db.execute(text('SELECT * FROM chat_push_subscriptions')).mappings().one())
             assert after.pop('cml_authorized') == 0
@@ -79,6 +79,7 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "inventory_cards" in tables
     assert "inventory_card_items" in tables
     assert "breakfast_manual_refresh_jobs" in tables
+    assert {"breakfast_whatsapp_settings", "breakfast_whatsapp_runs", "breakfast_whatsapp_deliveries"} <= tables
     assert "reservation_amenities" in tables
     assert {"chat_participants", "chat_conversations", "chat_messages", "chat_push_subscriptions", "chat_push_outbox", "chat_fcm_tokens", "chat_fcm_outbox"} <= tables
     assert "delivered_token_ids" in {column["name"] for column in inspector.get_columns("chat_fcm_outbox")}
