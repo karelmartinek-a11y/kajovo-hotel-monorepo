@@ -1,0 +1,30 @@
+{
+  "contract": "kajovo-user-access-deployment/1",
+  "checked_at": "2026-11-04T12:39:40.075481+00:00",
+  "repository": "karelmartinek-a11y/kajovo-hotel-monorepo",
+  "runtime": {
+    "source": "51c61e8666b503f534661785b051f5e3d35a18b2",
+    "image_id": "sha256:1ae8f5fad8d1b5ca901d9eb920567738f2339d9763cce868c459324d1543aba9",
+    "container_id": "64225a2fa4f00a05c1d5f0cda7997c186d855212725969e8d171d047918c0ed7",
+    "environment_preserved": true,
+    "unrelated_containers_preserved": true,
+    "version": "coordinated-cml-user-access"
+  },
+  "qualification": {
+    "ci_run": 41820909159,
+    "ci": "PASS",
+    "cases": [
+      "purpose-bound central user administrator",
+      "native role and contact paths",
+      "business routes and credentials denied for provisioning identity"
+    ],
+    "deployment_scope": "API container only; web, admin and PostgreSQL containers preserved"
+  },
+  "production_business_test_effects": {
+    "user_changes": 0,
+    "messages_sent": 0,
+    "hotel_writes": 0,
+    "paid_calls": 0,
+    "physical_commands": 0
+  }
+}
