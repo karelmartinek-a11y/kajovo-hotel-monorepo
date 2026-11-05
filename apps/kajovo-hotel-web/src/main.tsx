@@ -2078,7 +2078,7 @@ function LostFoundForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
                 id="event_at"
                 type="datetime-local"
                 className="k-input"
-                value={isoUtcToLocalDateTimeInput(payload.event_at)}
+                value={isoUtcToLocalDateTimeInput(payload.event_at ?? '')}
                 onChange={(event) =>
                   setPayload((prev) => ({ ...prev, event_at: localDateTimeInputToIsoUtc(event.target.value) }))
                 }

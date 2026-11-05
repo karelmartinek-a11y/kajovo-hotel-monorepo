@@ -97,6 +97,9 @@ konkrétního dne se ověřuje vůči nedotčeným jiným dnům; import či ruč
 provider synchronizace nevzniká jako náhradní ovládání.
 
 Evidence nálezů, závad a hlášení mají samostatné nové/editor/detail stránky.
+Editor nálezu/ztráty neobsahuje kategorii, umístění, stav, datum/čas ani
+výběr opakovaného času. Nový záznam používá serverový okamžik založení;
+editace uložený čas zachovává. Viz [kontrakt formuláře](LOST_FOUND_FORM.md).
 Fotografie používají původní upload a autorizované originální soubory.
 Pokojská s write-only oprávněním může vytvořit záznam a připojit své
 fotografie bez získání read grantu: výsledkem je potvrzený počet příloh,

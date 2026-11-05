@@ -410,8 +410,8 @@ ALLOWED_LOST_FOUND_TAGS = {"kontaktova", "nezastizen", "vyzvedne", "odesleme"}
 class LostFoundItemBase(BaseModel):
     item_type: LostFoundItemType = LostFoundItemType.FOUND
     description: str = Field(min_length=3, max_length=4000)
-    category: str = Field(min_length=1, max_length=64)
-    location: str = Field(min_length=1, max_length=255)
+    category: str = Field(max_length=64)
+    location: str = Field(max_length=255)
     room_number: str | None = Field(default=None, min_length=1, max_length=32)
     event_at: datetime
     status: LostFoundStatus = LostFoundStatus.NEW
@@ -440,7 +440,9 @@ class LostFoundItemBase(BaseModel):
 
 
 class LostFoundItemCreate(LostFoundItemBase):
-    pass
+    category: str = Field(default="", max_length=64)
+    location: str = Field(default="", max_length=255)
+    event_at: datetime | None = None
 
 
 class LostFoundItemUpdate(BaseModel):

@@ -275,3 +275,8 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   Přijetí je průběžný stav: původní účtenku číst až do doručení nebo chyby.
   Chybějící či nedostupná účtenka po přijetí nikdy neopravňuje další odeslání.
   Viz docs/LOST_FOUND_WHATSAPP.md. API strojový token není provider credential.
+
+- CML formulář nálezu/ztráty při vytvoření ani úpravě neposílá kategorii,
+  umístění, stav ani čas události. API při chybějícím čase používá přesný
+  serverový okamžik založení; úprava čas zachovává. Původní explicitní
+  nativní vstupy zůstávají podporované. Viz docs/LOST_FOUND_FORM.md.

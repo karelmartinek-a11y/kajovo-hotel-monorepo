@@ -77,6 +77,9 @@ def create_lost_found_item(
     payload_data = payload.model_dump()
     payload_data["item_type"] = payload.item_type.value
     payload_data["status"] = payload.status.value
+    created_at = utc_now()
+    payload_data["created_at"] = created_at
+    payload_data["event_at"] = payload.event_at or created_at
     tags = payload_data.pop("tags", [])
     item = LostFoundItem(**payload_data)
     item.tags = tags

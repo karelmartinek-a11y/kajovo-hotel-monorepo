@@ -41,12 +41,13 @@ export async function recordList(ctx,key){
 }
 export async function recordEditor(ctx,key,mode){
  const config=modules[key],ref=reference(ctx,config,mode),main=ctx.heading(ref.id,ref.title,t('Vyplňte údaje záznamu a uložte je. Výsledek se ověří následným načtením.'));
+ const fields=config.path==='lost-found'?config.fields.filter(([,name])=>!['category','location','status','event_at'].includes(name)):config.fields;
  if(!can(ctx,config,mode)){main.append(notice(t('Pro tuto úpravu nemáte oprávnění.'),'warning'),button(t('Zpět na seznam'),()=>move(ctx,key,'list')));return;}
  ctx.state.recordDrafts??=new Map();const draftKey=key+':'+mode+':'+(mode==='new'?'new':selected(ctx,key));let draft=ctx.state.recordDrafts.get(draftKey);
  if(!draft){
   const generation=ctx.state.generation,row=mode==='edit'?await api('api/v1/'+config.path+'/'+selected(ctx,key)):null;if(generation!==ctx.state.generation)return;
   const controls=el('div',{class:'form-grid'});
-  for(const [title,name,type,required] of config.fields){
+  for(const [title,name,type,required] of fields){
    const value=row?.[name]??(name==='unit'?'ks':name==='amount_per_piece_base'?1:type==='number'?0:''),limits={required,...(row&&config.path==='inventory'&&name==='current_stock'?{readOnly:true}:{}),...(type==='number'?{min:name==='amount_per_piece_base'?1:0,max:2147483647,step:1}:{}),...(type==='text'?{minlength:required?(['title'].includes(name)?3:1):undefined,maxlength:name==='room_number'?32:name==='category'?64:255}:{}),...(type==='datetime-local'?{step:1}:{})};
    if(Array.isArray(type))controls.append(select(title,name,type,value));
    else if(type==='textarea')controls.append(el('label',{class:'field wide'},el('span',{},title),el('textarea',{name,'aria-label':title,required,maxlength:name==='handover_note'?2000:4000,minlength:required?3:0},value)));
@@ -57,7 +58,7 @@ export async function recordEditor(ctx,key,mode){
   const cancel=()=>{ctx.state.recordDrafts.delete(draftKey);back(ctx,key);},form=el('form',{class:'record-form'},controls,el('div',{class:'form-actions actions'},button([icon('close'),t('Zrušit')],cancel),el('button',{type:'submit',class:'primary'},icon('save'),t('Uložit'))));form.dataset.nativeRole=getRole();draft={form,row};ctx.state.recordDrafts.set(draftKey,draft);
   form.addEventListener('submit',event=>{
    event.preventDefault();const raw=formData(form),payload={};
-   try{for(const [,name,type] of config.fields){
+   try{for(const [,name,type] of fields){
     if(row&&config.path==='inventory'&&name==='current_stock')continue;
     if(type==='number'){payload[name]=Number(raw[name]);if(!Number.isSafeInteger(payload[name]))throw Error(t('Zadejte celé číslo v povoleném rozsahu.'));}
     else if(type==='datetime-local')payload[name]=row&&raw[name]===pragueInput(row[name])?(/([Zz]|[+-]\d\d:\d\d)$/.test(row[name])?row[name]:row[name]+'Z'):pragueInstant(raw[name],raw[name+'-fold']);

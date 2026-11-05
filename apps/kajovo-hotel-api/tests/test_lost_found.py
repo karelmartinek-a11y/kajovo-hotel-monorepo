@@ -2,6 +2,7 @@ import json
 import urllib.error
 import urllib.request
 import uuid
+from datetime import datetime, timezone
 from collections.abc import Callable
 from http.cookiejar import CookieJar
 
@@ -92,6 +93,7 @@ def test_lost_found_crud(api_request: ApiRequest) -> None:
     assert detail["category"] == "Nalez"
     assert detail["room_number"] == "402"
     assert detail["tags"] == ["kontaktova"]
+    assert datetime.fromisoformat(str(detail["event_at"])).replace(tzinfo=timezone.utc) == datetime(2026, 2, 20, 10, tzinfo=timezone.utc)
 
     update_status, updated = api_request(
         f"/api/v1/lost-found/{created['id']}",
@@ -102,9 +104,58 @@ def test_lost_found_crud(api_request: ApiRequest) -> None:
     assert isinstance(updated, dict)
     assert updated["status"] == "stored"
     assert sorted(updated["tags"]) == ["kontaktova", "vyzvedne"]
+    for name in ("category", "location", "event_at", "created_at"):
+        assert updated[name] == created[name]
 
     delete_status, _ = api_request(f"/api/v1/lost-found/{created['id']}", method="DELETE")
     assert delete_status == 204
+
+
+def test_cml_find_uses_creation_time_and_preserves_it_on_edit(cml_api_request: ApiRequest) -> None:
+    before = datetime.now(timezone.utc)
+    status, created = cml_api_request(
+        "/api/v1/lost-found", method="POST",
+        payload={"item_type": "found", "description": "Syntetický nález bez ručního času", "room_number": "402"},
+    )
+    after = datetime.now(timezone.utc)
+    assert status == 201
+    assert isinstance(created, dict)
+    event_at = datetime.fromisoformat(str(created["event_at"]))
+    created_at = datetime.fromisoformat(str(created["created_at"]))
+    if event_at.tzinfo is None:
+        event_at = event_at.replace(tzinfo=timezone.utc)
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    assert before <= event_at <= after
+    assert event_at == created_at
+    assert created["category"] == created["location"] == ""
+    assert created["status"] == "new"
+
+    status, updated = cml_api_request(
+        f"/api/v1/lost-found/{created['id']}", method="PUT",
+        payload={"description": "Doplněný popis syntetického nálezu", "tags": ["vyzvedne"]},
+    )
+    assert status == 200
+    assert isinstance(updated, dict)
+    assert updated["event_at"] == created["event_at"]
+    assert updated["created_at"] == created["created_at"]
+    assert updated["category"] == updated["location"] == ""
+    assert updated["tags"] == ["vyzvedne"]
+    status, readback = cml_api_request(f"/api/v1/lost-found/{created['id']}")
+    assert status == 200
+    assert readback == updated
+
+
+def test_lost_record_accepts_empty_location_and_default_time(api_request: ApiRequest) -> None:
+    status, created = api_request(
+        "/api/v1/lost-found", method="POST",
+        payload={"item_type": "lost", "description": "Syntetická ztráta bez ručního času", "event_at": None},
+    )
+    assert status == 201
+    assert isinstance(created, dict)
+    assert created["item_type"] == "lost"
+    assert created["event_at"] == created["created_at"]
+    assert created["category"] == created["location"] == ""
 
 
 def test_lost_found_filters(api_request: ApiRequest) -> None:

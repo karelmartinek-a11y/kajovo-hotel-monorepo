@@ -566,15 +566,15 @@ export type LogoutResponse = {
   "ok"?: boolean;
 };
 export type LostFoundItemCreate = {
-  "category": string;
+  "category"?: string;
   "claimant_contact"?: string | null;
   "claimant_name"?: string | null;
   "claimed_at"?: string | null;
   "description": string;
-  "event_at": string;
+  "event_at"?: string | null;
   "handover_note"?: string | null;
   "item_type"?: LostFoundItemType;
-  "location": string;
+  "location"?: string;
   "returned_at"?: string | null;
   "room_number"?: string | null;
   "status"?: LostFoundStatus;

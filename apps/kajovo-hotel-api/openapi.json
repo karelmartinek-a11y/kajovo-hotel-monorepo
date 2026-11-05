@@ -3927,8 +3927,8 @@
       "LostFoundItemCreate": {
         "properties": {
           "category": {
+            "default": "",
             "maxLength": 64,
-            "minLength": 1,
             "title": "Category",
             "type": "string"
           },
@@ -3975,9 +3975,16 @@
             "type": "string"
           },
           "event_at": {
-            "format": "date-time",
-            "title": "Event At",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event At"
           },
           "handover_note": {
             "anyOf": [
@@ -3996,8 +4003,8 @@
             "default": "found"
           },
           "location": {
+            "default": "",
             "maxLength": 255,
-            "minLength": 1,
             "title": "Location",
             "type": "string"
           },
@@ -4039,10 +4046,7 @@
           }
         },
         "required": [
-          "description",
-          "category",
-          "location",
-          "event_at"
+          "description"
         ],
         "title": "LostFoundItemCreate",
         "type": "object"
@@ -4051,7 +4055,6 @@
         "properties": {
           "category": {
             "maxLength": 64,
-            "minLength": 1,
             "title": "Category",
             "type": "string"
           },
@@ -4136,7 +4139,6 @@
           },
           "location": {
             "maxLength": 255,
-            "minLength": 1,
             "title": "Location",
             "type": "string"
           },
