@@ -266,6 +266,8 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   nesmějí měnit hosty, role, API kódy, původní geometrii/paletu pokojů ani hlas.
 
 - Nové nálezy používají vlastní trvalou WhatsApp frontu a grant `hotel-lost-found`.
+  První textová část obsahuje celý přímý odkaz CML `#hotel?view=lostfound-detail&id=<ID>`;
+  Hotel otevře tento záznam přes původní autentizaci a oprávnění i po obnovení.
   Text se nikdy nezkracuje, fotografie se odesílají samostatně i po pozdějším
   připojení. Staré nálezy ani ztráty nerozesílat zpětně. Pevný soukromý příjemce,
   původní UUID, rozlišení fronty/provider přijetí/doručení a nezávislé pokračování

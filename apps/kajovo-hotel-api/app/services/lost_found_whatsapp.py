@@ -53,6 +53,7 @@ def enqueue_find(db: Session, item: LostFoundItem) -> None:
     text = "\n".join(
         [
             f"{PREFIX}{item.id}",
+            f"Otevřít nález: https://kajovocml.hcasc.cz/#hotel?view=lostfound-detail&id={item.id}",
             "Typ: Nález",
             f"Popis: {item.description}",
             f"Kategorie: {item.category}",

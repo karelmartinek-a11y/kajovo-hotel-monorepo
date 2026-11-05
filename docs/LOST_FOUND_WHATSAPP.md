@@ -8,6 +8,28 @@ znovu. Každá připojená fotografie dostane vlastní operaci, i když ji uživ
 připojí až na detailu po uložení. Historické nálezy a záznamy typu `lost`
 nejsou zpětně rozesílány. UUID události odlišuje i znovu použité číselné ID.
 
+První textová část začíná identifikací nálezu a celým klikacím odkazem
+`https://kajovocml.hcasc.cz/#hotel?view=lostfound-detail&id=<ID>`.
+Odkaz otevírá konkrétní detail v sekci Hotel → Ztráty a nálezy; bez relace
+nejprve proběhne běžné přihlášení CML. CML povoluje pouze tuto konkrétní
+vstupní cestu s kladným celočíselným ID; Hotel znovu ověří původní oprávnění
+a načte záznam přes existující API. Obnovení stránky zachovává ID.
+Neexistující nebo nepřístupný záznam zobrazí původní chybu API. ID ani odkaz
+nejsou přístupový token. Odkaz je před popisem, aby jej dělení dlouhého textu
+nepřerušilo. Již uložené nebo odeslané zprávy se zpětně neupravují.
+
+### Dopady přímého odkazu
+
+| Kategorie | Rozhodnutí |
+| --- | --- |
+| Produkční zdroje | Aktualizovat text fronty a počáteční výběr konkrétního nálezu v Hotel UI; odpovídající povolený vstup vlastní CML |
+| Testy | Aktualizovat regresi úplného i dlouhého textu; otevření a obnovení detailu v Chromium/WebKit, desktop/tablet/telefon a cs/en/uk |
+| CI a validační skripty | Ověřit beze změny úplný release gate a skutečný API image; živé zprávy nejsou testem |
+| Dokumentace, SSOT, komentáře a instrukce | Aktualizovat tento runbook, README, SSOT a AGENTS; nepoužitý komentář nevytvářet |
+| Fixtures, selektory, překlady | Rozšířit existující syntetické browserové scénáře; český provozní text, UI a překlady beze změny |
+| Build, OpenAPI, klient, Android | Ověřit beze změny kontrakt i build; ID používá existující čtecí endpoint |
+| Nasazení | API image a CML veřejný frontend, bez migrací nebo změny credentials; zachovat frontu, účtenky a původní UUID |
+
 API používá oficiální Python MCP SDK a veřejný endpoint Komunikace MCP.
 Má vlastní strojový grant `hotel-lost-found`, omezený na odeslání, stav
 vlastní operace a kontrolu konektoru. Příjemce je pevná soukromá konfigurace

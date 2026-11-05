@@ -81,6 +81,10 @@ def test_complete_snapshot_is_created_in_the_item_transaction_and_never_for_loss
     item_id = create(store)
     text = "".join(part.text for part in parts(store))
     assert "Nalezená modrá taška\nVčetně popruhu 😀" in text
+    assert (
+        f"Otevřít nález: https://kajovocml.hcasc.cz/#hotel?view=lostfound-detail&id={item_id}\n"
+        in parts(store)[0].text
+    )
     assert all(
         value in text
         for value in [
@@ -104,13 +108,16 @@ def test_complete_snapshot_is_created_in_the_item_transaction_and_never_for_loss
 
 def test_long_unicode_text_is_not_truncated_and_each_part_fits_provider(store):
     description = "😀\nŽlutá  taška " * 260
-    create(store, description=description, handover_note="Další text " * 170)
+    item_id = create(store, description=description, handover_note="Další text " * 170)
     rows = parts(store)
     assert len(rows) > 4
     content = "".join(row.text.split("\n", 1)[1] for row in rows)
     assert description in content
     assert "Další text " * 170 in content
     assert all(len(row.text.encode("utf-16-le")) // 2 <= 900 for row in rows)
+    url = f"https://kajovocml.hcasc.cz/#hotel?view=lostfound-detail&id={item_id}"
+    assert url in rows[0].text
+    assert sum(row.text.count(url) for row in rows) == 1
 
 
 def test_all_later_photos_are_queued_once_and_historical_items_stay_silent(store):

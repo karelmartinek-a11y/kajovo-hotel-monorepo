@@ -39,6 +39,10 @@
 
 Nové nálezy a jejich fotografie mají trvalé automatické WhatsApp oznámení přes vlastní omezenou identitu Komunikace MCP. Přijaté zprávy se sledují až do doručení nebo chyby bez opakovaného odeslání. Živá přejímka z 3. 11. 2026 po doplnění firemních a daňových údajů platebního profilu v Meta potvrdila `delivered` pro celý text a všechny tři fotografie (4/4). Původní platební odmítnutí `131042` i úspěšné účtenky zůstávají v soukromé provozní evidenci; viz [runbook](LOST_FOUND_WHATSAPP.md).
 
+Text upozornění na nový nález obsahuje přímý CML odkaz na konkrétní detail
+`#hotel?view=lostfound-detail&id=<ID>`. Přihlášení, role i načtení záznamu
+používají původní autoritu; obnovení stránky zachová vybraný nález.
+
 ## Denní WhatsApp souhrn snídaní
 
 Hotel Nastavení přidává denní čas Europe/Prague, příjemce a vypínač souhrnu

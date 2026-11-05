@@ -56,4 +56,4 @@ Nový spodní detail zůstává v právě viditelné části CML a během uklád
 a ověřování brání zavření; nejistý zápis má jen čtecí obnovu. Viz
 [aktuální integrační kontrakt](docs/CML_UI_COMPLETION.md).
 
-Nový nález i každá jeho fotografie se automaticky předávají na nakonfigurovaný WhatsApp; provoz a stavové hranice popisuje [runbook oznámení nálezů](docs/LOST_FOUND_WHATSAPP.md).
+Nový nález i každá jeho fotografie se automaticky předávají na nakonfigurovaný WhatsApp. Text obsahuje přímý odkaz na konkrétní nález v CML, který funguje i po přihlášení a obnovení stránky; provoz a stavové hranice popisuje [runbook oznámení nálezů](docs/LOST_FOUND_WHATSAPP.md).

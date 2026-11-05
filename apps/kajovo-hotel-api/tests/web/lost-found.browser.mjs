@@ -34,6 +34,13 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     const status = page.getByText(descriptions[lang], {exact: false});
     await status.waitFor();
     assert((await status.textContent()).includes(state === 'accepted' ? '3/3' : '2/3'));
+    await page.goto(origin + prefix + '?view=lostfound-detail&id=12&lang=' + lang);
+    await page.locator('#content[aria-busy=false]').waitFor();
+    await page.getByText(item.description, {exact: true}).waitFor();
+    await page.getByText(descriptions[lang], {exact: false}).waitFor();
+    await page.reload();
+    await page.locator('#content[aria-busy=false]').waitFor();
+    await page.getByText(item.description, {exact: true}).waitFor();
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.equal(errors.length, 0, errors.join('; '));
     if(process.env.HOTEL_NOTIFICATION_SCREENSHOTS&&name==='chromium'&&lang==='cs'&&state==='attention'){await mkdir(process.env.HOTEL_NOTIFICATION_SCREENSHOTS,{recursive:true});await page.screenshot({path:process.env.HOTEL_NOTIFICATION_SCREENSHOTS+'/'+width+'.png',fullPage:true});}

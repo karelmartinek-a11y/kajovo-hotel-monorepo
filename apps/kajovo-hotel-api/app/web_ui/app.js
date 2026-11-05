@@ -12,6 +12,8 @@ import {warehouseCards,warehouseCardForm,warehouseCardDetail,warehouseMovements}
 import {modules,recordList,recordEditor,recordDetail,recordSubmitted} from './records.js';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
 const state={date:today(),identity:null,view:new URLSearchParams(location.search).get('view')??'rooms',generation:0,roomFilter:'',floor:'',uncertainRooms:new Set()};
+const foundId=new URLSearchParams(location.search).get('id');
+if(state.view==='lostfound-detail'&&/^[1-9][0-9]{0,9}$/.test(foundId??'')&&Number(foundId)<=2147483647)state.recordIds=new Map([['lostfound',Number(foundId)]]);
 const statuses={clean:[t('Uklizeno pro nájezd'),'check'],dirty:[t('Neuklizeno'),'close'],stay_no_linen:[t('Pobyt bez ložního prádla'),'bed'],stay_with_linen:[t('Uklizeno s ložním prádlem'),'linen'],do_not_disturb:[t('Nerušit'),'do-not-disturb'],technical_issue:[t('Technický problém'),'issue'],windows_cleaned:[t('Umytá okna'),'window'],painted:[t('Vymalováno'),'paint']};
 const label=(admin,member)=>state.identity.admin?admin:member;
 function heading(id,title,desc){
