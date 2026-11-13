@@ -1,10 +1,10 @@
 {
-  "version_code": 211,
-  "version_name": "2.1.1 NG",
+  "version_code": 212,
+  "version_name": "2.1.2 NG",
   "download_url": "https://hotel.hcasc.cz/downloads/kajovo-hotel-android.apk",
   "download_path": "apps/kajovo-hotel-web/public/downloads/kajovo-hotel-android.apk",
-  "sha256": "92f5943f438310f47b88b101995ef4978af1417ccf1725b2e1a71c1234c646fa",
-  "title": "Aktualizace 2.1.1 NG",
-  "message": "Vizuální sjednocení pokojů a snídaní, syté barvy a opravy navigace.",
+  "sha256": "7239d61efbb199e5c91b12b303b32756fa1d81988f4f6f18af135a8331c4af87",
+  "title": "Aktualizace 2.1.2 NG",
+  "message": "Pracovní zprávy jsou nově v KájovoCML. Hotel používá sjednocená oprávnění a evidenci Závad.",
   "required": true
 }
