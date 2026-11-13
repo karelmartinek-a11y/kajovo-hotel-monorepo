@@ -48,3 +48,13 @@ a `recipient`; produkční adresát je pouze v privátní konfiguraci obou služ
 Nejistý výsledek se ověřuje čtením stejné poštovní účtenky; opakované čtení
 ani stejný požadavek e-mail znovu neodešle. Potvrzení ve skladu znamená
 přijetí e-mailu poštovním serverem, termín od dodavatele se potvrzuje zvlášť.
+
+Produkční přejímka 13. 11. 2026: Hotel API ze zdroje
+`385c205245be1848e7a3519a2db9ac861a5da348`, image
+`sha256:f79f752b3c3cf041869927abe14b5713b80d168ea4d78280c47d3206fd7648d9`,
+PostgreSQL migrace `0053_inventory_egg_orders`. Úplná lokální kontrola
+vydání prošla včetně dialogu ANO/NE v Chromium i WebKitu. V produkci byla
+ověřena dostupnost API, odmítnutí bez relace a tlačítko v přihlášeném
+skladu CML. Poštovní přístup prošel SDK discovery a čtením stavu bez SMTP.
+Nebyla vytvořena žádná živá objednávka. Návrat používá původní image
+`kajovo-hotel-found-form:f6e92c6ab88b` se zachovanou migrací a účtenkami.
