@@ -32,3 +32,19 @@ Pohyby:
 
 ## Audit
 Auditní záznamy se ukládají do tabulky `inventory_audit_logs` pro akce create/update/movement/delete.
+
+## Objednávka 180 vajec ve webovém skladu
+
+Tlačítko je pro role s `inventory:write` v podepsané relaci CML.
+Do 18:00 včetně se počítá zítřek, potom pozítří, v pásmu Europe/Prague.
+Pokud vyjde neděle, závoz se posune na pondělí. Nový termín se po výslovném
+potvrzení znovu ověří. Další objednávka do 24 hodin od posledního odeslání
+vyžaduje ANO; dialog ukáže skutečný čas, starý a nový termín bez ohledu
+na to, který pracovník objednávku odeslal.
+
+Hotel nejprve uloží identitu pokusu a poté zavolá dedikovaný Mail MCP přístup.
+`/app/data/credentials/egg-orders.json` je soubor 0600 s `endpoint`, `token`
+a `recipient`; produkční adresát je pouze v privátní konfiguraci obou služeb.
+Nejistý výsledek se ověřuje čtením stejné poštovní účtenky; opakované čtení
+ani stejný požadavek e-mail znovu neodešle. Potvrzení ve skladu znamená
+přijetí e-mailu poštovním serverem, termín od dodavatele se potvrzuje zvlášť.

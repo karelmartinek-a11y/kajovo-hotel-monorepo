@@ -203,6 +203,10 @@ export type BreakfastWhatsappUpdate = {
   "revision": number;
   "send_time": string;
 };
+export type BusyOrder = {
+  "id": string;
+  "state"?: string;
+};
 export type ChatConversationCreate = {
   "recipient_id": number;
 };
@@ -637,6 +641,16 @@ export type MediaPhotoRead = {
   "sort_order": number;
   "thumb_path": string;
 };
+export type OrderClick = {
+  "confirmed_delivery_date"?: string | null;
+  "confirmed_previous_id"?: string | null;
+  "id": string;
+};
+export type OrderStatus = {
+  "delivery_date": string;
+  "id": string;
+  "state": "sent" | "unknown" | "rejected";
+};
 export type PortalLoginRequest = {
   "email": string;
   "password": string;
@@ -691,6 +705,13 @@ export type PortalUserUpdate = {
   "password"?: string | null;
   "phone"?: string | null;
   "roles": Array<string>;
+};
+export type RepeatOrder = {
+  "delivery_date": string;
+  "previous_delivery_date": string;
+  "previous_id": string;
+  "previous_sent_at": string;
+  "state"?: string;
 };
 export type ReportCreate = {
   "description"?: string | null;
@@ -1042,6 +1063,15 @@ export const apiClient = {
   },
   async getCardApiV1InventoryCardsCardIdGet(card_id: number): Promise<InventoryCardDetailRead> {
     return request<InventoryCardDetailRead>('GET', `/api/v1/inventory/cards/${card_id}`, undefined, undefined);
+  },
+  async submitApiV1InventoryEggOrdersPost(body: OrderClick): Promise<OrderStatus | RepeatOrder | BusyOrder> {
+    return request<OrderStatus | RepeatOrder | BusyOrder>('POST', `/api/v1/inventory/egg-orders`, undefined, body);
+  },
+  async latestApiV1InventoryEggOrdersLatestGet(): Promise<OrderStatus | null> {
+    return request<OrderStatus | null>('GET', `/api/v1/inventory/egg-orders/latest`, undefined, undefined);
+  },
+  async recoverApiV1InventoryEggOrdersOrderIdGet(order_id: string): Promise<OrderStatus> {
+    return request<OrderStatus>('GET', `/api/v1/inventory/egg-orders/${order_id}`, undefined, undefined);
   },
   async listItemsApiV1InventoryIngredientsGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('GET', `/api/v1/inventory/ingredients`, query, undefined);

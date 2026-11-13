@@ -280,3 +280,9 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   umístění, stav ani čas události. API při chybějícím čase používá přesný
   serverový okamžik založení; úprava čas zachovává. Původní explicitní
   nativní vstupy zůstávají podporované. Viz docs/LOST_FOUND_FORM.md.
+
+- Sklad objednává 180 vajec přes vlastní omezený Mail MCP grant z provozu.
+  Termín počítá server v Europe/Prague, posouvá neděli na pondělí a během
+  24 hodin po předchozím odeslání vyžaduje potvrzení konkrétního nového termínu.
+  Stav se obnovuje z původní poštovní účtenky bez nového odeslání.
+  Viz docs/module-sklad.md.

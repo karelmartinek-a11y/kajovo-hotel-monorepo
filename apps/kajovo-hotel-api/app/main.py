@@ -19,6 +19,7 @@ from app.api.routes.chat import router as chat_router
 from app.api.routes.device import router as device_router
 from app.api.routes.health import router as health_router
 from app.api.routes.housekeeping import router as housekeeping_router
+from app.api.routes.egg_orders import router as egg_orders_router
 from app.api.routes.inventory import router as inventory_router
 from app.api.routes.issues import router as issues_router
 from app.api.routes.lost_found import router as lost_found_router
@@ -138,6 +139,7 @@ def create_app() -> FastAPI:
     app.include_router(device_router)
     app.include_router(lost_found_router)
     app.include_router(issues_router)
+    app.include_router(egg_orders_router)
     app.include_router(inventory_router)
     app.include_router(users_router)
     app.include_router(settings_router)

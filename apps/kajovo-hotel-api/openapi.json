@@ -1291,6 +1291,25 @@
         "title": "BreakfastWhatsappUpdate",
         "type": "object"
       },
+      "BusyOrder": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "const": "busy",
+            "default": "busy",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "BusyOrder",
+        "type": "object"
+      },
       "ChatConversationCreate": {
         "properties": {
           "recipient_id": {
@@ -4505,6 +4524,74 @@
         "title": "MediaPhotoRead",
         "type": "object"
       },
+      "OrderClick": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed_delivery_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Delivery Date"
+          },
+          "confirmed_previous_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Previous Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "OrderClick",
+        "type": "object"
+      },
+      "OrderStatus": {
+        "properties": {
+          "delivery_date": {
+            "format": "date",
+            "title": "Delivery Date",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "sent",
+              "unknown",
+              "rejected"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "delivery_date",
+          "state"
+        ],
+        "title": "OrderStatus",
+        "type": "object"
+      },
       "PortalLoginRequest": {
         "properties": {
           "email": {
@@ -4894,6 +4981,43 @@
           "roles"
         ],
         "title": "PortalUserUpdate",
+        "type": "object"
+      },
+      "RepeatOrder": {
+        "properties": {
+          "delivery_date": {
+            "format": "date",
+            "title": "Delivery Date",
+            "type": "string"
+          },
+          "previous_delivery_date": {
+            "format": "date",
+            "title": "Previous Delivery Date",
+            "type": "string"
+          },
+          "previous_id": {
+            "title": "Previous Id",
+            "type": "string"
+          },
+          "previous_sent_at": {
+            "format": "date-time",
+            "title": "Previous Sent At",
+            "type": "string"
+          },
+          "state": {
+            "const": "confirm",
+            "default": "confirm",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previous_id",
+          "previous_sent_at",
+          "previous_delivery_date",
+          "delivery_date"
+        ],
+        "title": "RepeatOrder",
         "type": "object"
       },
       "ReportCreate": {
@@ -8344,6 +8468,121 @@
         "tags": [
           "inventory"
         ]
+      }
+    },
+    "/api/v1/inventory/egg-orders": {
+      "post": {
+        "operationId": "submit_api_v1_inventory_egg_orders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderClick"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/OrderStatus"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RepeatOrder"
+                    },
+                    {
+                      "$ref": "#/components/schemas/BusyOrder"
+                    }
+                  ],
+                  "title": "Response Submit Api V1 Inventory Egg Orders Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit"
+      }
+    },
+    "/api/v1/inventory/egg-orders/latest": {
+      "get": {
+        "operationId": "latest_api_v1_inventory_egg_orders_latest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/OrderStatus"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Api V1 Inventory Egg Orders Latest Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Latest"
+      }
+    },
+    "/api/v1/inventory/egg-orders/{order_id}": {
+      "get": {
+        "operationId": "recover_api_v1_inventory_egg_orders__order_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "order_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Order Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recover"
       }
     },
     "/api/v1/inventory/ingredients": {

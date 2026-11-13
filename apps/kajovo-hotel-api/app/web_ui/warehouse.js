@@ -10,11 +10,76 @@ const quantity=(value,unit)=>value.toLocaleString(locale)+' '+unit;
 const noteField=(label,name)=>el('label',{class:'field'},el('span',{},label),el('textarea',{name,'aria-label':label,maxlength:2000}));
 function openCard(ctx,row){ctx.state.inventoryCardId=row.id;return ctx.go('inventory-card-detail');}
 function detailFields(rows){return el('div',{class:'record-details'},rows.map(([label,value])=>el('div',{},el('small',{},label),el('strong',{},value??'—'))));}
+function eggOrderControls(){
+ const role=getRole(),path='api/v1/inventory/egg-orders';
+ const request=(suffix='',options={})=>api(path+suffix,{...options,roleOverride:role});
+ const msg=el('div',{role:'status','aria-live':'polite'});
+ let pending=null;
+ const check=button(t('Ověřit odeslání'),()=>load());
+ check.hidden=true;
+ const dateText=value=>value.split('-').reverse().map(Number).join('. ');
+ const order=button(t('OBJEDNAT 180 VAJEC'),()=>submit(),'primary');
+ async function submit(confirmation={}){
+  order.disabled=true;check.hidden=true;msg.textContent=t('Odesílám objednávku 180 vajec…');
+  pending=crypto.randomUUID();
+  try{
+   const result=await request('',{method:'POST',id:pending,body:{id:pending,...confirmation}});
+   if(result.state==='confirm'){
+    pending=null;msg.textContent='';
+    const sent=new Intl.DateTimeFormat(locale,{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Prague'}).format(new Date(result.previous_sent_at));
+    let yes=false;
+    modal(t('Objednat znovu?'),close=>{
+     const cancel=button(t('NE'),close);
+     const confirm=button(t('ANO'),()=>{
+      yes=true;close();
+      void submit({confirmed_previous_id:result.previous_id,confirmed_delivery_date:result.delivery_date});
+     },'primary');
+     return el('div',{},el('p',{},t('Poslední objednávka byla odeslána: ')+sent),
+      el('p',{},t('Původní termín závozu: ')+dateText(result.previous_delivery_date)),
+      el('p',{},t('Chcete skutečně objednat dalších 180 vajec na ')+dateText(result.delivery_date)+'?'),
+      el('div',{class:'actions'},cancel,confirm));
+    },{closeButton:false,onClose:()=>{if(!yes)order.disabled=false;}});
+    return;
+   }
+   render(result);
+  }catch{await load(true);}
+ }
+ order.disabled=true;
+ function render(data){
+  pending=['unknown','busy'].includes(data?.state)?data.id:null;
+  check.hidden=!pending;order.disabled=Boolean(pending);
+  const delivery=data?.delivery_date&&dateText(data.delivery_date);
+  msg.textContent=data?.state==='sent'?t('Objednávka 180 vajec byla odeslána na závoz: ')+delivery
+   :data?.state==='rejected'?t('Objednávku 180 vajec se nepodařilo odeslat.')
+   :data?.state==='busy'?t('Předchozí objednávka ještě nemá ověřené odeslání. Zkuste ji nejdřív ověřit ve skladu.')
+   :pending?t('Odeslání objednávky zatím není potvrzené.'): '';
+ }
+ async function load(afterFailure=false){
+  check.disabled=true;
+  try{
+   const current=pending?await request('/'+encodeURIComponent(pending)):await request('/latest');
+   render(current);
+  }catch(error){
+   // A POST may have reached the server even when its response was lost.
+   // Keep its original ID and offer only a status read.
+   if(afterFailure&&error.status===404){
+    try{
+     const receipt=await api('api/request-status?request_id='+encodeURIComponent(pending),{roleOverride:role});
+     if(receipt.state==='completed'&&receipt.status===503){render({state:'rejected'});return;}
+    }catch{}
+   }
+   msg.textContent=t('Stav objednávky se nepodařilo ověřit.');
+   check.hidden=false;
+  }finally{check.disabled=false;}
+ }
+ void load();
+ return [el('div',{class:'actions'},order,check),msg];
+}
 export async function warehouseList(ctx,{newItem,detail}){
  const generation=ctx.state.generation,main=ctx.heading(ctx.state.identity.admin?'hotel.admin.18':'hotel.portal.58',t('Sklad'),t('Skladové položky, aktuální stav a limity; filtrování a oprávněné vytváření položek.'));
  const rows=await api('api/v1/inventory');if(generation!==ctx.state.generation)return;
  const tools=el('div',{class:'actions warehouse-tools'},writable(ctx)?button([icon('plus'),t('Nová skladová položka')],newItem,'primary'):null,writable(ctx)?button([icon('plus'),t('Nový pohyb skladu')],()=>ctx.go('inventory-card-new')):null,admin(ctx)?exportLink('api/v1/inventory/stocktake/pdf',t('Inventurní protokol (PDF)')):null,button([icon('refresh'),t('Obnovit')],()=>ctx.go('inventory')));
- main.append(panel(t('Sklad'),tools,'inventory'));
+ main.append(panel(t('Sklad'),writable(ctx)?[tools,...eggOrderControls()]:tools,'inventory'));
  const search=field(t('Hledat položku'),'inventory-search','search',''),low=el('input',{type:'checkbox','aria-label':t('Pouze pod minimem')}),list=el('div');
  const draw=()=>{const q=search.querySelector('input').value.toLocaleLowerCase('cs');list.replaceChildren(table([t('Položka'),t('Veličina v 1 ks'),t('Aktuální stav'),t('Minimální stav'),t('Stav zásoby'),t('Akce')],rows.filter(row=>row.name.toLocaleLowerCase('cs').includes(q)&&(!low.checked||row.current_stock<row.min_stock)).map(row=>[el('strong',{},row.name),quantity(row.amount_per_piece_base,row.unit),quantity(row.current_stock,row.unit),quantity(row.min_stock,row.unit),el('span',{class:'badge '+(row.current_stock<row.min_stock?'stock-low':'stock-ok')},icon(row.current_stock<row.min_stock?'warning':'check'),row.current_stock<row.min_stock?t('Pod minimem'):t('Dostatečná')),button([icon('eye'),t('Detail')],()=>detail(row))])));};
  search.querySelector('input').addEventListener('input',draw);low.addEventListener('change',draw);draw();

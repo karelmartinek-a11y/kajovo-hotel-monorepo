@@ -14,8 +14,8 @@ export function showError(container,error){container.querySelector('[role=alert]
 export function modal(title,build,options={}){
  const d=document.querySelector('#dialog'),announce=(id,title)=>parent.postMessage({type:'KAJOVO_VIEW',prefix:'/sections/hotel/',id,title},location.origin);
  const modalToken=Symbol('native-modal');d.nativeModalToken=modalToken;d.dataset.nativeRole=getRole()??'';d.className=options.className??'';delete d.dataset.mutationBusy;d.removeAttribute('aria-busy');
- d.replaceChildren(el('h2',{id:'dialog-title'},title));const close=()=>{if(d.nativeModalToken===modalToken)d.close();};d.append(build(close));d.append(el('div',{class:'actions'},button(t('Zavřít'),close)));
- d.onclose=()=>{if(d.open)return;d.replaceChildren();announce(document.querySelector('#content').dataset.view);};
+ d.replaceChildren(el('h2',{id:'dialog-title'},title));const close=()=>{if(d.nativeModalToken===modalToken)d.close();};d.append(build(close));if(options.closeButton!==false)d.append(el('div',{class:'actions'},button(t('Zavřít'),close)));
+ d.onclose=()=>{if(d.open)return;d.replaceChildren();options.onClose?.();announce(document.querySelector('#content').dataset.view);};
  d.oncancel=event=>{if(d.dataset.mutationBusy==='true')event.preventDefault();};
  if(!d.open)d.showModal();if(options.id)announce(options.id,title);return d;
 }
