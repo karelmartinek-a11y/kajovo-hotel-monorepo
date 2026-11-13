@@ -15,7 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse, JSONResponse
 
-from app.security.cml_assertion import AssertionDenied, WebVerifier, central_administrator
+from app.security.cml_assertion import AssertionDenied, central_settings, WebVerifier, central_administrator
 from app.security.cml_requests import WebRequests, ReceiptFault, mutation_permission, owner_key, request_id
 
 def central_write_authorized(claims):
@@ -96,6 +96,11 @@ class CmlWebBoundary:
                          (self.audience=='dochazka' and re.fullmatch(r'api/v1/admin/(?:users/[1-9][0-9]*/employments|employments/[1-9][0-9]*)',suffix)))
                 if not allowed or query or scope['method'] not in {'GET','POST','PUT','PATCH'}:
                     raise AssertionDenied('central_administration_path_denied')
+            if central_settings(claims):
+                if not re.fullmatch(r'api/v1/admin/settings/(?:smtp(?:/(?:status|test-email))?|breakfast-whatsapp(?:/preview)?|breakfast-sync|breakfast-import-logs)', suffix) or query:
+                    raise AssertionDenied('central_settings_path_denied')
+                if scope['method'] not in {'GET', 'HEAD'} and not central_write_authorized(claims):
+                    raise AssertionDenied('central_settings_reauthentication_required')
             identity = await asyncio.to_thread(self._identity, claims, parse_qs(query).get('_role', [None])[0])
             suffix = scope['path'][len('/cml-web/'):]
             if any(v in raw_path.lower() for v in ('%2e', '%2f', '%5c', '%25')) or '..' in suffix.split('/') or '\\' in suffix:
@@ -137,11 +142,7 @@ class CmlWebBoundary:
                 return
             if suffix == 'ui-manifest.json':
                 manifest = json.loads((self.ui_root / 'ui-manifest.json').read_text(encoding='utf-8'))
-                if self.audience == 'hotel':
-                    from app.config import get_settings
-                    config = get_settings()
-                    manifest['notifications'] = {'contract': 'kajovo-chat-push/1', 'signalContract': 'kajovo-hotel-chat-signal/1', 'enabled': bool(config.web_push_vapid_public_key and config.web_push_vapid_private_key)}
-                manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (not v.get('roles') or any(role in v['roles'] for role in identity['public'].get('roles', []))) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('available_permissions', identity['public'].get('permissions', [])))]
+                manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (bool(identity['state'].get('_kajovo_auth_session', {}).get('cml_permissions')) or not v.get('roles') or any(role in v['roles'] for role in identity['public'].get('roles', []))) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('available_permissions', identity['public'].get('permissions', [])))]
                 await JSONResponse(manifest, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return
             if not suffix.startswith('api/'):
@@ -178,6 +179,14 @@ class CmlWebBoundary:
             # A signed request cannot start a local login or invoke a different public protocol.
             if not suffix.startswith(('api/v1/', 'api/auth/')) or suffix.endswith(('/login', '/logout', '/reset-password', '/request-password-reset')):
                 raise AssertionDenied('route_denied')
+            if self.audience == 'hotel' and claims['sub'] != 'KRMAR78' and not central_administrator(claims) and not central_settings(claims):
+                from app.security.web_access import PATH_MODULES
+                parts = suffix.split('/')
+                module = PATH_MODULES.get(parts[2]) if parts[:2] == ['api', 'v1'] and len(parts) > 2 else None
+                action = 'read' if scope['method'] in {'GET', 'HEAD'} else 'write'
+                locale_route = suffix == 'api/auth/locale'
+                if not locale_route and (module is None or module + ':' + action not in identity['public']['permissions']):
+                    raise AssertionDenied('module_permission_denied')
             forwarded = dict(scope)
             forwarded['path'] = '/' + suffix
             forwarded['raw_path'] = ('/' + suffix).encode()

@@ -16,14 +16,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KajovoHotelAndroid">
         <meta-data android:name="asset_statements" android:resource="@string/asset_statements" />
-        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="internal_chat" />
-        <service
-            android:name=".InternalChatMessagingService"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
-            </intent-filter>
-        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

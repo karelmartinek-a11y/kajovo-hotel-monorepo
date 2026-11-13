@@ -6,7 +6,7 @@ import {writeBreakfastDate} from './preferences.js';
 const labels={pending:t('Čeká na výdej'),preparing:t('Připravuje se'),served:t('Vydáno'),cancelled:t('Zrušeno')};
 const diets=[['diet_no_gluten',t('Bez lepku'),'diet-gluten'],['diet_no_milk',t('Bez laktózy'),'diet-lactose'],['diet_no_pork',t('Bez vepřového'),'diet-pork']];
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
-const manager=ctx=>['admin','recepce'].includes(ctx.state.identity.active_role);
+const manager=ctx=>ctx.state.identity.cml_modules?ctx.state.identity.permissions.includes('breakfast:write'):['admin','recepce'].includes(ctx.state.identity.active_role);
 const ref=(ctx,admin,member)=>ctx.state.identity.admin?admin:member;
 const readableDate=value=>new Date(value+'T12:00:00Z').toLocaleDateString(locale,{timeZone:'Europe/Prague'});
 const country=value=>{if(!value)return t('Neuvedeno');try{return new Intl.DisplayNames([locale],{type:'region'}).of(value.toUpperCase());}catch{return value;}};
@@ -43,7 +43,7 @@ export async function breakfastList(ctx){
  const tools=el('div',{class:'actions'},manager(ctx)?exportLink('api/v1/breakfast/export/daily?service_date='+day,t('Export snídaní (PDF)')):null,manager(ctx)?button([icon('plus'),t('Nový snídaňový záznam')],()=>move(ctx,'new')):null,button([icon('refresh'),t('Obnovit')],()=>ctx.go('breakfast')),manager(ctx)?button([icon('menu'),t('Další operace')],()=>breakfastManagement(ctx)):null);
  main.append(panel(t('Denní přehled snídaní'),[dateNavigation(ctx),tools],'breakfast'));
  const tiles=el('div',{class:'breakfast-serving-tiles'});
- const rows=data.orders.filter(order=>ctx.state.identity.active_role!=='snídaně'||order.guest_count>0).sort((a,b)=>a.room_number.localeCompare(b.room_number,'cs',{numeric:true})).map(order=>{
+ const rows=data.orders.filter(order=>ctx.state.identity.cml_modules||ctx.state.identity.active_role!=='snídaně'||order.guest_count>0).sort((a,b)=>a.room_number.localeCompare(b.room_number,'cs',{numeric:true})).map(order=>{
   const makeActions=(compact=false)=>{const actions=el('div',{class:'actions'});actions.dataset.nativeRole=getRole();
   const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Prague',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()),canServe=manager(ctx)||ctx.state.identity.active_role==='snídaně'&&day===today()&&time>='05:00'&&time<='11:00';
   if(['pending','preparing'].includes(order.status)){const serve=button(compact||!manager(ctx)?t('Vydat'):[icon('check'),t('Vydat')],()=>mark(ctx,order,'served',actions),'primary');serve.disabled=!canServe;actions.append(serve);if(!canServe)serve.title=t('Výdej dnes 5:00–11:00.');}
@@ -100,7 +100,7 @@ function breakfastDelete(ctx,row){
  },{id:'hotel.breakfast.delete'});
 }
 function breakfastManagement(ctx){
- const day=ctx.state.breakfastDate,admin=ctx.state.identity.active_role==='admin',nativeRole=getRole();
+ const day=ctx.state.breakfastDate,admin=ctx.state.identity.cml_modules?manager(ctx):ctx.state.identity.active_role==='admin',nativeRole=getRole();
  modal(t('Správa snídaní'),close=>{
   const content=el('div',{},notice(t('Pracovní den ')+readableDate(day)+t('. Hromadné změny se provedou pouze příslušným tlačítkem.')));
   const refresh=async()=>{close();if(ctx.state.view==='breakfast')await ctx.go('breakfast');};

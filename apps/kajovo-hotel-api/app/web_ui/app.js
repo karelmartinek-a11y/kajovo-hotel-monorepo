@@ -3,11 +3,9 @@ import {orderedRooms,roomTile,nightCount} from './room-tiles.js';
 import {el,icon,select,button,panel,notice,modal,showError} from './ui.js';
 import {api,view,setRole} from './api.js';
 import {saveMutation} from './operations.js';
-import {overview,reception} from './summary.js';
-import {hotelSettings} from './settings.js';
+import {overview} from './summary.js';
 import {breakfastList,breakfastEditor,breakfastDetail} from './breakfast.js';
 import {readBreakfastDate} from './preferences.js';
-import {privateChat} from './chat.js';
 import {warehouseCards,warehouseCardForm,warehouseCardDetail,warehouseMovements} from './warehouse.js';
 import {modules,recordList,recordEditor,recordDetail,recordSubmitted} from './records.js';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
@@ -18,7 +16,7 @@ const statuses={clean:[t('Uklizeno pro nájezd'),'check'],dirty:[t('Neuklizeno')
 const label=(admin,member)=>state.identity.admin?admin:member;
 function heading(id,title,desc){
  const main=view(id,title,desc);main.append(el('div',{id:'status','aria-live':'polite'}),languageSelector(state.identity,{save:async selected=>{let failure;try{await api('api/auth/locale',{method:'PATCH',body:{locale:selected}});}catch(e){failure=e;}const current=await api('identity');if(current.preferred_locale!==selected)throw failure??Error(t('Výsledek zápisu není ověřený. Načtěte původní výsledek.'));},error}));
- if(state.identity.roles.length>1){
+ if(!state.identity.cml_modules&&state.identity.roles.length>1){
   const roles=select(t('Pracovní role'),'role',state.identity.roles.map(r=>[r,t(r)]),state.identity.active_role);
   roles.querySelector('select').addEventListener('change',async e=>{
    const control=e.currentTarget,role=control.value,generation=++state.generation;
@@ -96,7 +94,7 @@ async function selectViewRole(name,generation){
  state.identity=identity;setRole(identity.active_role);
 }
 const context={state,heading,go:async name=>{state.view=name;await render();}};
-async function render(){for(const dispose of state.cleanup??[])dispose();state.cleanup=[];const generation=++state.generation;document.querySelector('#content').setAttribute('aria-busy','true');try{await selectViewRole(state.view,generation);if(generation!==state.generation)return;if(state.view==='overview')await overview(context);else if(state.view==='reception')reception(context);else if(state.view==='settings')await hotelSettings(context);else if(state.view==='rooms')await rooms();else if(state.view==='breakfast')await breakfastList(context);else if(['breakfast-new','breakfast-edit'].includes(state.view))await breakfastEditor(context);else if(state.view==='breakfast-detail')await breakfastDetail(context);else if(state.view==='chat')await privateChat(context);else if(state.view==='inventory-cards')await warehouseCards(context);else if(state.view==='inventory-card-new')await warehouseCardForm(context);else if(state.view==='inventory-card-detail')await warehouseCardDetail(context);else if(state.view==='inventory-movements')await warehouseMovements(context);else if(modules[state.view])await recordList(context,state.view);else if(/-(new|edit|detail|submitted)$/.test(state.view)){const [,key,mode]=state.view.match(/^(.+)-(new|edit|detail|submitted)$/);if(!modules[key])throw Error(t('Pohled neexistuje.'));if(mode==='submitted')await recordSubmitted(context,key);else if(mode==='detail')await recordDetail(context,key);else await recordEditor(context,key,mode);}else throw Error(t('Požadovaný pohled neexistuje.'));if(generation===state.generation)document.querySelector('#content').append(el('footer',{},el('span',{},document.querySelector('#content').dataset.view),el('span',{},'KájovoHotel')));}catch(e){if(generation===state.generation)error(e);}finally{if(generation===state.generation)document.querySelector('#content').setAttribute('aria-busy','false');}}
+async function render(){for(const dispose of state.cleanup??[])dispose();state.cleanup=[];const generation=++state.generation;document.querySelector('#content').setAttribute('aria-busy','true');try{await selectViewRole(state.view,generation);if(generation!==state.generation)return;if(state.view==='overview')await overview(context);else if(state.view==='rooms')await rooms();else if(state.view==='breakfast')await breakfastList(context);else if(['breakfast-new','breakfast-edit'].includes(state.view))await breakfastEditor(context);else if(state.view==='breakfast-detail')await breakfastDetail(context);else if(state.view==='inventory-cards')await warehouseCards(context);else if(state.view==='inventory-card-new')await warehouseCardForm(context);else if(state.view==='inventory-card-detail')await warehouseCardDetail(context);else if(state.view==='inventory-movements')await warehouseMovements(context);else if(modules[state.view])await recordList(context,state.view);else if(/-(new|edit|detail|submitted)$/.test(state.view)){const [,key,mode]=state.view.match(/^(.+)-(new|edit|detail|submitted)$/);if(!modules[key])throw Error(t('Pohled neexistuje.'));if(mode==='submitted')await recordSubmitted(context,key);else if(mode==='detail')await recordDetail(context,key);else await recordEditor(context,key,mode);}else throw Error(t('Požadovaný pohled neexistuje.'));if(generation===state.generation)document.querySelector('#content').append(el('footer',{},el('span',{},document.querySelector('#content').dataset.view),el('span',{},'KájovoHotel')));}catch(e){if(generation===state.generation)error(e);}finally{if(generation===state.generation)document.querySelector('#content').setAttribute('aria-busy','false');}}
 
 const availableViews=await api('ui-manifest.json');
 addEventListener('message',event=>{
@@ -107,4 +105,4 @@ addEventListener('message',event=>{
 });
 
 parent.postMessage({type:'CML_SECTION_READY',prefix:'/sections/hotel/'},location.origin);
-try{state.breakfastDate=await readBreakfastDate();state.identity=await api('identity');setRole(state.identity.active_role);if(!restoreLocale(state.identity)){if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'chat';state.initialized=true;await render();}}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}
+try{state.breakfastDate=await readBreakfastDate();state.identity=await api('identity');setRole(state.identity.active_role);if(!restoreLocale(state.identity)){if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'lostfound';state.initialized=true;await render();}}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}

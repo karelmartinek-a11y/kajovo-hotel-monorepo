@@ -34,7 +34,6 @@ object PortalRoutes {
     const val ReportsDetail = "hlaseni/detail/{reportId}"
     const val ReportsCreate = "hlaseni/nove"
     const val ReportsEdit = "hlaseni/edit/{reportId}"
-    const val Chat = "chat"
     const val Profile = "profil"
     const val ChangePassword = "zmena-hesla"
 
@@ -65,7 +64,6 @@ val PortalDestinations = listOf(
     PortalDestination(PortalRoutes.LostFound, "Ztráty a nálezy", HotelModule.LOST_FOUND, setOf(PortalRole.RECEPTION)),
     PortalDestination(PortalRoutes.Issues, "Závady", HotelModule.ISSUES, setOf(PortalRole.MAINTENANCE)),
     PortalDestination(PortalRoutes.Inventory, "Sklad", HotelModule.INVENTORY, setOf(PortalRole.INVENTORY)),
-    PortalDestination(PortalRoutes.Reports, "Hlášení", HotelModule.REPORTS, setOf(PortalRole.RECEPTION, PortalRole.INVENTORY)),
 )
 
 fun PortalRole.homeRoute(): String = when (this) {

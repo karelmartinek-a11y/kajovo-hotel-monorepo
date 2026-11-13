@@ -6,7 +6,6 @@ import './bottom-navigation.css';
 import { KajovoWordmark } from './KajovoWordmark';
 import { Icon } from '../components/Icon';
 import type { PanelLayout } from './panelLayout';
-import { ChatUnreadLink } from '../chat/ChatPage';
 import type { NavModule, NavigationRules, NavigationSection } from '../types/navigation';
 
 type AppShellProps = {
@@ -92,7 +91,6 @@ export function AppShell({
         </div>
       </header>
       <nav className={`k-bottom-nav ${panelLayout === 'portal' ? 'k-portal-mobile-tabs' : ''}`} aria-label={navigationRules.ariaLabel ?? t('Hlavní navigace')} data-testid={panelLayout === 'portal' ? 'portal-mobile-tabs' : 'admin-bottom-navigation'}>
-        <ChatUnreadLink />
         {panelLayout === 'admin' ? <>{activeModules.map((module) => <Link key={module.key} className="k-bottom-nav__link" to={module.route} aria-current={currentPath === module.route || (module.route !== '/' && currentPath.startsWith(`${module.route}/`)) ? 'page' : undefined}><Icon name={module.icon} className="k-bottom-nav__icon" /><span>{module.label}</span></Link>)}<Link className="k-bottom-nav__link" to="/profil" aria-current={currentPath === '/profil' ? 'page' : undefined}><Icon name="profile" className="k-bottom-nav__icon" /><span>{profileLabel ?? t('Profil')}</span></Link></> : portalTabs}
       </nav>
       {children}

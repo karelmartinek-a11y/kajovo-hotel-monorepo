@@ -42,8 +42,6 @@ import cz.hcasc.kajovohotel.feature.profile.ChangePasswordScreen
 import cz.hcasc.kajovohotel.feature.profile.ProfileScreen
 import cz.hcasc.kajovohotel.feature.profile.ResetPasswordScreen
 import cz.hcasc.kajovohotel.feature.reception.ReceptionHubScreen
-import cz.hcasc.kajovohotel.feature.reports.ReportsSection
-import cz.hcasc.kajovohotel.feature.reports.ReportsScreen
 import cz.hcasc.kajovohotel.feature.utility.AccessDeniedScreen
 import cz.hcasc.kajovohotel.feature.utility.AppUpdatePromptScreen
 import cz.hcasc.kajovohotel.feature.utility.GlobalBlockingErrorScreen
@@ -57,10 +55,6 @@ import kotlinx.coroutines.launch
 fun KajovoHotelApp(
     passwordResetToken: String? = null,
     onPasswordResetTokenConsumed: () -> Unit = {},
-    openChat: Boolean = false,
-    openChatConversationId: Int? = null,
-    onOpenChatConsumed: () -> Unit = {},
-    onChatConversationConsumed: () -> Unit = {},
     viewModel: AppStateViewModel = hiltViewModel(),
 ) {
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
@@ -163,10 +157,6 @@ fun KajovoHotelApp(
                         onProfileSave = viewModel::saveProfile,
                         onChangePassword = viewModel::changePassword,
                         onLogout = viewModel::logout,
-                        openChat = openChat,
-                        openChatConversationId = openChatConversationId,
-                        onOpenChatConsumed = onOpenChatConsumed,
-                        onChatConversationConsumed = onChatConversationConsumed,
                     )
                 }
             }
@@ -183,24 +173,12 @@ private fun PortalAppShell(
     onProfileSave: (String, String, String, String) -> Unit,
     onChangePassword: (String, String) -> Unit,
     onLogout: () -> Unit,
-    openChat: Boolean,
-    openChatConversationId: Int?,
-    onOpenChatConsumed: () -> Unit,
-    onChatConversationConsumed: () -> Unit,
 ) {
-    val chatViewModel: ChatViewModel = hiltViewModel()
-    val chatState by chatViewModel.state.collectAsStateWithLifecycle()
     val startRoute = resolveAppRoute(identity)
     val availableRoles = identity.assignedRoles()
 
     key(identity.email) {
         val navController = rememberNavController()
-        LaunchedEffect(openChat, openChatConversationId) {
-            if (openChat) {
-                navController.navigate(PortalRoutes.Chat) { launchSingleTop = true }
-                onOpenChatConsumed()
-            }
-        }
         CompositionLocalProvider(LocalPortalLogout provides onLogout) {
         NavHost(navController = navController, startDestination = startRoute) {
             composable(PortalRoutes.AccessDenied) {
@@ -219,12 +197,10 @@ private fun PortalAppShell(
                     onRoleChange = onRoleChange,
                     title = "Recepce",
                     availableRoles = availableRoles,
-                    unreadChatCount = chatState.unreadCount,
                 ) {
                     ReceptionHubScreen(
                         onBreakfastClick = { navController.navigate(PortalRoutes.Breakfast) },
                         onLostFoundClick = { navController.navigate(PortalRoutes.LostFound) },
-                        onReportsClick = { navController.navigate(PortalRoutes.Reports) },
                     )
                 }
             }
@@ -555,11 +531,7 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                 ) {
                     InventoryScreen(
-                        onReportsClick = if (identity.permissions.contains("reports:read")) {
-                            { navController.navigate(PortalRoutes.Reports) }
-                        } else {
-                            null
-                        },
+                        onReportsClick = null,
                         initialSection = InventorySection.LIST,
                         onNavigate = { section, itemId ->
                             when (section) {
@@ -587,11 +559,7 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                 ) {
                     InventoryScreen(
-                        onReportsClick = if (identity.permissions.contains("reports:read")) {
-                            { navController.navigate(PortalRoutes.Reports) }
-                        } else {
-                            null
-                        },
+                        onReportsClick = null,
                         initialSection = InventorySection.DETAIL,
                         selectedItemId = itemId,
                         onNavigate = { section, targetId ->
@@ -616,11 +584,7 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                 ) {
                     InventoryScreen(
-                        onReportsClick = if (identity.permissions.contains("reports:read")) {
-                            { navController.navigate(PortalRoutes.Reports) }
-                        } else {
-                            null
-                        },
+                        onReportsClick = null,
                         initialSection = InventorySection.CREATE,
                         onNavigate = { section, targetId ->
                             when (section) {
@@ -648,11 +612,7 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                 ) {
                     InventoryScreen(
-                        onReportsClick = if (identity.permissions.contains("reports:read")) {
-                            { navController.navigate(PortalRoutes.Reports) }
-                        } else {
-                            null
-                        },
+                        onReportsClick = null,
                         initialSection = InventorySection.EDIT,
                         selectedItemId = itemId,
                         onNavigate = { section, targetId ->
@@ -681,11 +641,7 @@ private fun PortalAppShell(
                     availableRoles = availableRoles,
                 ) {
                     InventoryScreen(
-                        onReportsClick = if (identity.permissions.contains("reports:read")) {
-                            { navController.navigate(PortalRoutes.Reports) }
-                        } else {
-                            null
-                        },
+                        onReportsClick = null,
                         initialSection = InventorySection.MOVEMENT,
                         selectedItemId = itemId,
                         onNavigate = { section, targetId ->
@@ -695,108 +651,6 @@ private fun PortalAppShell(
                                 InventorySection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.inventoryDetail(it)) }
                                 InventorySection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.inventoryEdit(it)) }
                                 InventorySection.MOVEMENT -> targetId?.let { navController.navigate(PortalRoutes.inventoryMovement(it)) }
-                            }
-                        },
-                    )
-                }
-            }
-            composable(PortalRoutes.Reports) {
-                GuardedRoute(
-                    identity = identity,
-                    route = PortalRoutes.Reports,
-                    navController = navController,
-                    onRoleChange = onRoleChange,
-                    title = "Hlášení",
-                    availableRoles = availableRoles,
-                ) {
-                    ReportsScreen(
-                        canManageReports = identity.permissions.contains("reports:write"),
-                        initialSection = ReportsSection.LIST,
-                        onNavigate = { section, reportId ->
-                            when (section) {
-                                ReportsSection.LIST -> navController.navigate(PortalRoutes.Reports)
-                                ReportsSection.CREATE -> navController.navigate(PortalRoutes.ReportsCreate)
-                                ReportsSection.DETAIL -> reportId?.let { navController.navigate(PortalRoutes.reportsDetail(it)) }
-                                ReportsSection.EDIT -> reportId?.let { navController.navigate(PortalRoutes.reportsEdit(it)) }
-                            }
-                        },
-                    )
-                }
-            }
-            composable(
-                route = PortalRoutes.ReportsDetail,
-                arguments = listOf(navArgument("reportId") { type = NavType.IntType }),
-            ) { backStackEntry ->
-                val reportId = backStackEntry.arguments?.getInt("reportId")
-                GuardedRoute(
-                    identity = identity,
-                    route = PortalRoutes.Reports,
-                    navController = navController,
-                    onRoleChange = onRoleChange,
-                    title = "Hlášení",
-                    availableRoles = availableRoles,
-                ) {
-                    ReportsScreen(
-                        canManageReports = identity.permissions.contains("reports:write"),
-                        initialSection = ReportsSection.DETAIL,
-                        selectedReportId = reportId,
-                        onNavigate = { section, targetId ->
-                            when (section) {
-                                ReportsSection.LIST -> navController.navigate(PortalRoutes.Reports)
-                                ReportsSection.CREATE -> navController.navigate(PortalRoutes.ReportsCreate)
-                                ReportsSection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.reportsDetail(it)) }
-                                ReportsSection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.reportsEdit(it)) }
-                            }
-                        },
-                    )
-                }
-            }
-            composable(PortalRoutes.ReportsCreate) {
-                GuardedRoute(
-                    identity = identity,
-                    route = PortalRoutes.Reports,
-                    navController = navController,
-                    onRoleChange = onRoleChange,
-                    title = "Hlášení",
-                    availableRoles = availableRoles,
-                ) {
-                    ReportsScreen(
-                        canManageReports = identity.permissions.contains("reports:write"),
-                        initialSection = ReportsSection.CREATE,
-                        onNavigate = { section, targetId ->
-                            when (section) {
-                                ReportsSection.LIST -> navController.navigate(PortalRoutes.Reports)
-                                ReportsSection.CREATE -> navController.navigate(PortalRoutes.ReportsCreate)
-                                ReportsSection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.reportsDetail(it)) }
-                                ReportsSection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.reportsEdit(it)) }
-                            }
-                        },
-                    )
-                }
-            }
-            composable(
-                route = PortalRoutes.ReportsEdit,
-                arguments = listOf(navArgument("reportId") { type = NavType.IntType }),
-            ) { backStackEntry ->
-                val reportId = backStackEntry.arguments?.getInt("reportId")
-                GuardedRoute(
-                    identity = identity,
-                    route = PortalRoutes.Reports,
-                    navController = navController,
-                    onRoleChange = onRoleChange,
-                    title = "Hlášení",
-                    availableRoles = availableRoles,
-                ) {
-                    ReportsScreen(
-                        canManageReports = identity.permissions.contains("reports:write"),
-                        initialSection = ReportsSection.EDIT,
-                        selectedReportId = reportId,
-                        onNavigate = { section, targetId ->
-                            when (section) {
-                                ReportsSection.LIST -> navController.navigate(PortalRoutes.Reports)
-                                ReportsSection.CREATE -> navController.navigate(PortalRoutes.ReportsCreate)
-                                ReportsSection.DETAIL -> targetId?.let { navController.navigate(PortalRoutes.reportsDetail(it)) }
-                                ReportsSection.EDIT -> targetId?.let { navController.navigate(PortalRoutes.reportsEdit(it)) }
                             }
                         },
                     )
@@ -813,7 +667,6 @@ private fun PortalAppShell(
                     onRoleSelected = onRoleChange,
                     sections = employeeNavigationSections(identity),
                     selectedSection = PortalRoutes.Profile,
-                    unreadChatCount = chatState.unreadCount,
                     onSectionSelected = { target ->
                         identity.roleForModuleRoute(target)?.takeIf { it != identity.resolvedActiveRole() }?.let(onRoleChange)
                         navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
@@ -828,23 +681,6 @@ private fun PortalAppShell(
                     )
                 }
             }
-            composable(PortalRoutes.Chat) {
-                GuardedRoute(
-                    identity = identity,
-                    route = PortalRoutes.Chat,
-                    navController = navController,
-                    onRoleChange = onRoleChange,
-                    title = "Chat",
-                    availableRoles = availableRoles,
-                    unreadChatCount = chatState.unreadCount,
-                ) {
-                    ChatScreen(
-                        initialConversationId = openChatConversationId,
-                        onInitialConversationHandled = onChatConversationConsumed,
-                        viewModel = chatViewModel,
-                    )
-                }
-            }
             composable(PortalRoutes.ChangePassword) {
                 PortalChrome(
                     title = "Změna hesla",
@@ -856,7 +692,6 @@ private fun PortalAppShell(
                     onRoleSelected = onRoleChange,
                     sections = employeeNavigationSections(identity),
                     selectedSection = PortalRoutes.Profile,
-                    unreadChatCount = chatState.unreadCount,
                     onSectionSelected = { target ->
                         identity.roleForModuleRoute(target)?.takeIf { it != identity.resolvedActiveRole() }?.let(onRoleChange)
                         navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
@@ -892,7 +727,6 @@ private fun GuardedRoute(
     onRoleChange: (PortalRole) -> Unit,
     title: String,
     availableRoles: List<PortalRole>,
-    unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     if (!identity.canOpenAppDestination(route)) {
@@ -921,7 +755,6 @@ private fun GuardedRoute(
         onRoleSelected = onRoleChange,
                     sections = employeeNavigationSections(identity),
         selectedSection = route.substringBefore("/"),
-        unreadChatCount = unreadChatCount,
                     onSectionSelected = { target ->
                         identity.roleForModuleRoute(target)?.takeIf { it != identity.resolvedActiveRole() }?.let(onRoleChange)
                         navController.navigate(target) { popUpTo(navController.graph.startDestinationId); launchSingleTop = true }
@@ -931,14 +764,13 @@ private fun GuardedRoute(
 }
 
 private fun employeeNavigationSections(identity: AuthenticatedIdentity): List<Pair<String, String>> =
-    listOf(PortalRoutes.Chat to "Chat") + listOf(
+    listOf(
         PortalRoutes.Housekeeping,
         PortalRoutes.Reception,
         PortalRoutes.Breakfast,
         PortalRoutes.LostFound,
         PortalRoutes.Issues,
         PortalRoutes.Inventory,
-        PortalRoutes.Reports,
     ).mapNotNull { route ->
         val destination = PortalDestinations.firstOrNull { it.route == route } ?: return@mapNotNull null
         route.takeIf { destination.allowedRoles.any(identity.assignedRoles()::contains) }?.let { it to destination.title }
@@ -966,7 +798,6 @@ private fun resolveAppRoute(identity: AuthenticatedIdentity): String {
 
 private fun AuthenticatedIdentity.canOpenAppDestination(route: String): Boolean {
     val normalizedRoute = route.substringBefore("/")
-    if (normalizedRoute == PortalRoutes.Chat) return actorType == ActorType.PORTAL
     val allowedRoles = routeAllowedRoles(normalizedRoute) ?: return normalizedRoute in setOf(
         PortalRoutes.Profile,
         PortalRoutes.ChangePassword,
@@ -989,7 +820,6 @@ private fun accessiblePortalRoute(identity: AuthenticatedIdentity): String? {
         PortalRoutes.LostFound,
         PortalRoutes.Issues,
         PortalRoutes.Inventory,
-        PortalRoutes.Reports,
     ).firstOrNull { route ->
         routeAllowedRoles(route)?.contains(currentRole) == true
     }
@@ -1002,6 +832,5 @@ private fun routeAllowedRoles(route: String): Set<PortalRole>? = when (route) {
     PortalRoutes.LostFound -> setOf(PortalRole.RECEPTION)
     PortalRoutes.Issues -> setOf(PortalRole.MAINTENANCE)
     PortalRoutes.Inventory -> setOf(PortalRole.INVENTORY)
-    PortalRoutes.Reports -> setOf(PortalRole.RECEPTION, PortalRole.INVENTORY)
     else -> null
 }

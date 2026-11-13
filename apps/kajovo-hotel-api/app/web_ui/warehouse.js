@@ -5,7 +5,7 @@ import {saveMutation} from './operations.js';
 const kinds={in:t('Příjem'),out:t('Výdej'),adjust:t('Odpis')},max=2147483647;
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
 const writable=ctx=>ctx.state.identity.permissions.includes('inventory:write');
-const admin=ctx=>ctx.state.identity.active_role==='admin';
+const admin=ctx=>ctx.state.identity.cml_modules?ctx.state.identity.permissions.includes('inventory:write'):ctx.state.identity.active_role==='admin';
 const quantity=(value,unit)=>value.toLocaleString(locale)+' '+unit;
 const noteField=(label,name)=>el('label',{class:'field'},el('span',{},label),el('textarea',{name,'aria-label':label,maxlength:2000}));
 function openCard(ctx,row){ctx.state.inventoryCardId=row.id;return ctx.go('inventory-card-detail');}

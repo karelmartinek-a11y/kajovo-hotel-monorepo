@@ -22,7 +22,6 @@ import cz.hcasc.kajovohotel.core.network.RequestIdInterceptor
 import cz.hcasc.kajovohotel.core.network.SessionGuardInterceptor
 import okhttp3.Interceptor
 import cz.hcasc.kajovohotel.core.network.api.AuthApi
-import cz.hcasc.kajovohotel.core.network.api.ChatApi
 import cz.hcasc.kajovohotel.core.network.api.BreakfastApi
 import cz.hcasc.kajovohotel.core.network.api.HousekeepingApi
 import cz.hcasc.kajovohotel.core.network.api.InventoryApi
@@ -134,10 +133,6 @@ object AppModules {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideChatApi(retrofit: Retrofit): ChatApi = retrofit.create(ChatApi::class.java)
 
     @Provides
     @Singleton

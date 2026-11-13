@@ -12,14 +12,12 @@ import androidx.compose.ui.unit.dp
 fun ReceptionHubScreen(
     onBreakfastClick: () -> Unit,
     onLostFoundClick: () -> Unit,
-    onReportsClick: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         listOf(
             "Snídaně" to onBreakfastClick,
             "Ztráty a nálezy" to onLostFoundClick,
-            "Hlášení" to onReportsClick,
         ).forEach { (title, action) ->
             FilledTonalButton(onClick = action, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
                 Text(title, style = MaterialTheme.typography.titleMedium)

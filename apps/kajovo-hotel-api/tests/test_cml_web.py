@@ -179,8 +179,8 @@ def test_native_mutation_receipt_survives_reply_loss_and_rechecks_current_permis
     factory=sessionmaker(bind=engine)
     app=FastAPI()
     writes=[]
-    permissions=['reports:read','reports:write']
-    @app.post('/api/v1/reports')
+    permissions=['issues:read','issues:write']
+    @app.post('/api/v1/issues')
     async def create(request:Request):
         writes.append(await request.json())
         return {'id':len(writes),'title':writes[-1]['title']}
@@ -189,7 +189,7 @@ def test_native_mutation_receipt_survives_reply_loss_and_rechecks_current_permis
     boundary=CmlWebBoundary(app,audience='hotel',session_factory=factory,resolve_identity=resolve,ui_root=tmp_path)
     with TestClient(boundary) as client:
         request_id=str(uuid.uuid4())
-        def call(method='POST',path='/cml-web/api/v1/reports',body=b'{"title":"Synthetic original"}',**patch):
+        def call(method='POST',path='/cml-web/api/v1/issues',body=b'{"title":"Synthetic original"}',**patch):
             return client.request(method,path,content=body,headers={'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':assertion(key,'hotel',path=path,method=method,body=body,**patch),'X-CSRF-Token':'a'*43,'Content-Type':'application/json','Idempotency-Key':request_id})
         first=call()
         assert first.status_code==200
@@ -203,11 +203,11 @@ def test_native_mutation_receipt_survives_reply_loss_and_rechecks_current_permis
         assert recovered.json()['body']==first.json()
         assert call(body=b'{"title":"Different intent"}').status_code==409
         assert len(writes)==1
-        permissions.remove('reports:write')
+        permissions.remove('issues:write')
         assert call().status_code==403
         assert call('GET',status,b'').status_code==403
         assert len(writes)==1
-        permissions.append('reports:write')
+        permissions.append('issues:write')
         foreign=call('GET',status,b'',sub='user:'+str(uuid.uuid4()),nativeId='1')
         assert foreign.status_code==200 and foreign.json()['state']=='not_found'
         assert call('GET',status+'&request_id=second-identity',b'').status_code==400
@@ -244,17 +244,17 @@ def test_native_receipt_admission_is_shared_between_workers(tmp_path, monkeypatc
     factory=sessionmaker(bind=engine)
     app=FastAPI()
     effects=[]
-    @app.post('/api/v1/reports')
+    @app.post('/api/v1/issues')
     async def create():
         effects.append('synthetic-local-effect')
         await asyncio.sleep(.05)
         return {'id':len(effects),'title':'Synthetic worker result'}
     def resolve(*_):
-        return {'state':{},'public':{'admin':True,'permissions':['reports:write']}}
+        return {'state':{},'public':{'admin':True,'permissions':['issues:write']}}
     def boundary():
         return CmlWebBoundary(app,audience='hotel',session_factory=factory,resolve_identity=resolve,ui_root=tmp_path)
     ident=str(uuid.uuid4())
-    path='/cml-web/api/v1/reports'
+    path='/cml-web/api/v1/issues'
     def call(client):
         return client.post(path,content=b'{}',headers={'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':assertion(key,'hotel',path=path,body=b'{}'),'X-CSRF-Token':'a'*43,'Content-Type':'application/json','Idempotency-Key':ident})
     try:

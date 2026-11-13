@@ -41,7 +41,7 @@ class PermissionGuardTest {
     }
 
     @Test
-    fun reportsRouteIsAvailableForReceptionAndInventoryRoles() {
+    fun retiredReportsRouteStaysClosedForLegacyPermissions() {
         val reception = AuthenticatedIdentity(
             email = "recepce@example.com",
             actorType = ActorType.PORTAL,
@@ -60,9 +60,9 @@ class PermissionGuardTest {
         )
 
         assertTrue(reception.canAccess(HotelModule.REPORTS))
-        assertTrue(reception.canOpenDestination(PortalRoutes.Reports))
+        assertFalse(reception.canOpenDestination(PortalRoutes.Reports))
         assertTrue(inventory.canAccess(HotelModule.REPORTS))
-        assertTrue(inventory.canOpenDestination(PortalRoutes.Reports))
+        assertFalse(inventory.canOpenDestination(PortalRoutes.Reports))
     }
 
     @Test

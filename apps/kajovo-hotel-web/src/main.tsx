@@ -37,8 +37,6 @@ import {
   type LostFoundItemRead,
   type LostFoundItemType,
   type LostFoundStatus,
-  type ReportCreate,
-  type ReportRead,
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
@@ -98,12 +96,6 @@ type InventoryMovement = InventoryMovementRead & {
 type InventoryDetail = Omit<InventoryItemWithAuditRead, 'movements'> & { movements: InventoryMovement[] };
 
 type InventoryItemPayload = InventoryItemCreate;
-
-type ReportStatus = 'open' | 'in_progress' | 'closed';
-
-type Report = ReportRead;
-
-type ReportPayload = ReportCreate;
 
 type MediaPhoto = {
   id: number;
@@ -344,12 +336,6 @@ const issueStatusLabels: Record<IssueStatus, string> = {
   closed: 'Uzavřena',
 };
 
-const reportStatusLabels: Record<ReportStatus, string> = {
-  open: 'Otevřené',
-  in_progress: 'V řešení',
-  closed: 'Uzavřené',
-};
-
 
 const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   in: 'Příjem',
@@ -392,13 +378,6 @@ function issueStatusLabel(status: IssueStatus | null | undefined): string {
 
 function inventoryMovementLabel(movementType: InventoryMovementType | null | undefined): string {
   return movementType ? t(inventoryMovementLabels[movementType]) : '-';
-}
-
-function reportStatusLabel(status: string | null | undefined): string {
-  if (status === 'open' || status === 'in_progress' || status === 'closed') {
-    return t(reportStatusLabels[status]);
-  }
-  return status ?? '-';
 }
 
 function compareRoomNumbers(left: string, right: string): number {
@@ -645,11 +624,6 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   const inventoryMoveId = path.match(/^\/api\/v1\/inventory\/(\d+)\/movements$/);
   if (inventoryMoveId && method === 'POST') return (await apiClient.addMovementApiV1InventoryItemIdMovementsPost(Number(inventoryMoveId[1]), body as { movement_type: InventoryMovementType; quantity: number; document_date: string; document_reference?: string | null; note?: string | null })) as T;
 
-  if (path === '/api/v1/reports' && method === 'GET') return (await apiClient.listReportsApiV1ReportsGet({ status: url.searchParams.get('status') })) as T;
-  const reportId = path.match(/^\/api\/v1\/reports\/(\d+)$/);
-  if (reportId && method === 'GET') return (await apiClient.getReportApiV1ReportsReportIdGet(Number(reportId[1]))) as T;
-  if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
-  if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
 
   const directResponse = await fetch(path + url.search, {
     ...init,
@@ -2834,71 +2808,6 @@ function InventoryDetail(): JSX.Element {
   );
 }
 
-function ReportsList(): JSX.Element {
-  const auth = useAuth();
-  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
-  const [items, setItems] = React.useState<Report[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    fetchJson<Report[]>('/api/v1/reports')
-      .then(setItems)
-      .catch(() => setError(t('Hlášení se nepodařilo načíst.')));
-  }, []);
-
-  return <main className="k-page" data-testid="reports-list-page"><h1>{t("Hlášení")}</h1>{error ? <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} /> : items.length === 0 ? <StateView title={t("Prázdný stav")} description={t("Zatím není evidováno žádné hlášení.")} stateKey="empty" action={canManageReports ? <Link className="k-button" to="/hlaseni/nove">{t("Nové hlášení")}</Link> : undefined} /> : <><div className="k-toolbar">{canManageReports ? <Link className="k-button" to="/hlaseni/nove">{t("Nové hlášení")}</Link> : null}</div><DataTable headers={[t('Název'), t('Stav'), t('Vytvořeno'), t('Akce')]} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>{t("Detail")}</Link>])} /></>}</main>;
-}
-
-function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-    const { id } = useParams();
-  const navigate = useNavigate();
-  const [error, setError] = React.useState<string | null>(null);
-  const [payload, setPayload] = React.useState<ReportPayload>({ title: '', description: '', status: 'open' });
-
-  React.useEffect(() => {
-    if (mode !== 'edit' || !id) {
-      return;
-    }
-    fetchJson<Report>(`/api/v1/reports/${id}`)
-      .then((item) => setPayload({ title: item.title, description: item.description, status: item.status }))
-      .catch(() => setError(t('Detail hlášení se nepodařilo načíst.')));
-  }, [id, mode]);
-
-  async function save(): Promise<void> {
-    try {
-      const saved = await fetchJson<Report>(mode === 'create' ? '/api/v1/reports' : `/api/v1/reports/${id}`, {
-        method: mode === 'create' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      navigate(`/hlaseni/${saved.id}`);
-    } catch {
-      setError(t('Hlášení se nepodařilo uložit.'));
-    }
-  }
-
-  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? t('Nové hlášení') : t('Upravit hlášení')}</h1>{error ? <StateView title={t("Chyba")} description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>{t("Obnovit")}</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">{t("Zpět na seznam")}</Link><button className="k-button" type="button" onClick={() => void save()}>{t("Uložit")}</button></div><div className="k-form-grid"><FormField id="report_title" label={t("Název")}><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label={t("Stav")}><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">{t("Otevřené")}</option><option value="in_progress">{t("V řešení")}</option><option value="closed">{t("Uzavřené")}</option></select></FormField><FormField id="report_description" label={t("Popis (volitelné)")}><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
-}
-
-function ReportsDetail(): JSX.Element {
-  const auth = useAuth();
-  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
-  const { id } = useParams();
-  const [item, setItem] = React.useState<Report | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!id) {
-      return;
-    }
-    fetchJson<Report>(`/api/v1/reports/${id}`)
-      .then(setItem)
-      .catch(() => setError(t('Hlášení nebylo nalezeno.')));
-  }, [id]);
-
-  return <main className="k-page" data-testid="reports-detail-page"><h1>{t("Detail hlášení")}</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">{t("Zpět na seznam")}</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">{t("Zpět na seznam")}</Link>{canManageReports ? <Link className="k-button" to={`/hlaseni/${item.id}/edit`}>{t("Upravit")}</Link> : null}</div><DataTable headers={[t('Položka'), t('Hodnota')]} rows={[[ t('Název'), item.title],[ t('Stav'), reportStatusLabel(item.status)],[ t('Popis'), item.description ?? '-' ],[ t('Vytvořeno'), formatDateTime(item.created_at) ],[ t('Aktualizováno'), formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
-}
-
 function PortalProfilePage(): JSX.Element {
   const navigate = useNavigate();
   const auth = useAuth();
@@ -3037,7 +2946,7 @@ function PortalProfilePage(): JSX.Element {
       {info ? <p className="k-text-success">{info}</p> : null}
       {profile ? (
         <>
-          {auth?.roles.includes('sklad') ? <div className="k-card"><div className="k-toolbar"><button className="k-button" type="button" onClick={() => void openWarehouseRoute('/sklad')}>{getAuthBundle('portal', getPortalLocale()).roleLabels.sklad}</button><button className="k-button secondary" type="button" onClick={() => void openWarehouseRoute('/hlaseni')}>{getAuthBundle('portal', getPortalLocale()).moduleLabels.reports}</button></div></div> : null}
+          {auth?.roles.includes('sklad') ? <div className="k-card"><div className="k-toolbar"><button className="k-button" type="button" onClick={() => void openWarehouseRoute('/sklad')}>{getAuthBundle('portal', getPortalLocale()).roleLabels.sklad}</button></div></div> : null}
           <div className="k-card">
             <div className="k-toolbar">
               <strong>{profile.email}</strong>
@@ -3177,9 +3086,6 @@ function AppRoutes(): JSX.Element {
   const loginError = authState.status === 'error' ? authState.message : null;
 
   if (authState.status !== 'authenticated') {
-    if (/^\/(?:admin\/)?chat(?:\/\d+)?$/.test(location.pathname)) {
-      window.sessionStorage.setItem('chatReturnPath', `${location.pathname}${location.search}`);
-    }
     return (
       <Routes>
         <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -3224,9 +3130,6 @@ function AppRoutes(): JSX.Element {
                 InventoryList,
                 InventoryForm,
                 InventoryDetail,
-                ReportsList,
-                ReportsForm,
-                ReportsDetail,
                 IntroRoute,
                 OfflineRoute,
                 MaintenanceRoute,

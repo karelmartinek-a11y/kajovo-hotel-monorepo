@@ -14,8 +14,6 @@ from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
 from app.api.routes.breakfast_whatsapp import router as breakfast_whatsapp_router
-from app.api.routes.chat import dispatch_pending_chat_fcm, dispatch_pending_chat_pushes
-from app.api.routes.chat import router as chat_router
 from app.api.routes.device import router as device_router
 from app.api.routes.health import router as health_router
 from app.api.routes.housekeeping import router as housekeeping_router
@@ -24,7 +22,6 @@ from app.api.routes.inventory import router as inventory_router
 from app.api.routes.issues import router as issues_router
 from app.api.routes.lost_found import router as lost_found_router
 from app.api.routes.profile import router as profile_router
-from app.api.routes.reports import router as reports_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.users import router as users_router
 from app.config import get_settings
@@ -131,10 +128,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(app_meta_router)
     app.include_router(health_router)
-    app.include_router(reports_router)
     app.include_router(breakfast_router)
     app.include_router(breakfast_whatsapp_router)
-    app.include_router(chat_router)
     app.include_router(housekeeping_router)
     app.include_router(device_router)
     app.include_router(lost_found_router)
@@ -154,7 +149,6 @@ def create_app() -> FastAPI:
             app.state.breakfast_scheduler_task = asyncio.create_task(breakfast_scheduler_loop())
         if settings.lost_found_whatsapp_enabled:
             app.state.lost_found_whatsapp_task = asyncio.create_task(lost_found_whatsapp_loop())
-        app.state.chat_push_scheduler_task = asyncio.create_task(chat_push_scheduler_loop())
         app.state.breakfast_whatsapp_task = asyncio.create_task(breakfast_whatsapp_loop())
 
     @app.on_event("shutdown")
@@ -174,11 +168,7 @@ def create_app() -> FastAPI:
             whatsapp_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await whatsapp_task
-        chat_task = getattr(app.state, "chat_push_scheduler_task", None)
-        if chat_task is not None:
-            chat_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await chat_task
+
 
     from pathlib import Path
     from app.security.cml_web import CmlWebBoundary
@@ -186,19 +176,6 @@ def create_app() -> FastAPI:
     app.add_middleware(CmlWebBoundary, audience='hotel', session_factory=SessionLocal, resolve_identity=resolve_identity, ui_root=Path(__file__).parent / 'web_ui')
     return app
 
-
-async def chat_push_scheduler_loop() -> None:
-    while True:
-        try:
-            await asyncio.to_thread(dispatch_pending_chat_pushes)
-            await asyncio.to_thread(dispatch_pending_chat_fcm)
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            import logging
-
-            logging.getLogger(__name__).exception("Chat push dispatcher failed")
-        await asyncio.sleep(5)
 
 
 app = create_app()

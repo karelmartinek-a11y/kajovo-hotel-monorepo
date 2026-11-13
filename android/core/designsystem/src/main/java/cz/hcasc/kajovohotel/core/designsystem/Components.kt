@@ -8,7 +8,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Logout
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,7 +36,6 @@ fun PortalChrome(
     sections: List<Pair<String, String>> = emptyList(),
     onSectionSelected: ((String) -> Unit)? = null,
     selectedSection: String? = null,
-    unreadChatCount: Int = 0,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -101,15 +99,8 @@ fun PortalChrome(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center,
                                 ) {
-                                    if (route == "chat") {
-                                        Icon(sectionIcon(route), contentDescription = null, modifier = Modifier.size(25.dp), tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
-                                    } else {
-                                        Image(painterResource(sectionPictogram(route)), null, Modifier.size(28.dp), contentScale = ContentScale.Fit)
-                                    }
+                                    Image(painterResource(sectionPictogram(route)), null, Modifier.size(28.dp), contentScale = ContentScale.Fit)
                                     Text(localize(label), maxLines = 1, style = MaterialTheme.typography.labelSmall, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
-                                    if (route == "chat" && unreadChatCount > 0) {
-                                        Badge { Text(unreadChatCount.coerceAtMost(99).toString()) }
-                                    }
                                 }
                             }
                         }
@@ -145,11 +136,6 @@ private fun sectionPictogram(route: String): Int = when (route.substringBefore('
     "sklad" -> R.drawable.portal_tab_inventory
     "hlaseni" -> R.drawable.portal_tab_reports
     else -> R.drawable.portal_tab_rooms
-}
-
-private fun sectionIcon(route: String) = when (route.substringBefore('/')) {
-    "chat" -> Icons.Outlined.ChatBubbleOutline
-    else -> Icons.Outlined.ChatBubbleOutline
 }
 
 @Composable

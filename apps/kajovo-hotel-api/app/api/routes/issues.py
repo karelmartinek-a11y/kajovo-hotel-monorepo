@@ -14,6 +14,7 @@ from app.api.schemas import (
     MediaPhotoRead,
 )
 from app.config import get_settings
+from app.security.web_access import module_manager
 from app.db.models import Issue, IssuePhoto
 from app.db.session import get_db
 from app.media.storage import MediaStorage
@@ -70,8 +71,8 @@ def _apply_status_timestamps(issue: Issue, next_status: str) -> None:
         issue.closed_at = now
 
 
-def _guard_issue_create(actor_role: str) -> None:
-    if _is_admin(actor_role) or _is_housekeeping(actor_role) or _is_maintenance(actor_role):
+def _guard_issue_create(actor_role: str, request: Request | None = None) -> None:
+    if (request is not None and module_manager(request, 'issues')) or _is_admin(actor_role) or _is_housekeeping(actor_role) or _is_maintenance(actor_role):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -79,8 +80,8 @@ def _guard_issue_create(actor_role: str) -> None:
     )
 
 
-def _guard_issue_photo_upload(actor_role: str) -> None:
-    if _is_admin(actor_role) or _is_housekeeping(actor_role) or _is_maintenance(actor_role):
+def _guard_issue_photo_upload(actor_role: str, request: Request | None = None) -> None:
+    if (request is not None and module_manager(request, 'issues')) or _is_admin(actor_role) or _is_housekeeping(actor_role) or _is_maintenance(actor_role):
         return
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -88,8 +89,8 @@ def _guard_issue_photo_upload(actor_role: str) -> None:
     )
 
 
-def _guard_issue_update(actor_role: str, issue: Issue, updates: dict[str, object]) -> dict[str, object]:
-    if _is_admin(actor_role) or _is_maintenance(actor_role):
+def _guard_issue_update(actor_role: str, issue: Issue, updates: dict[str, object], request: Request | None = None) -> dict[str, object]:
+    if (request is not None and module_manager(request, 'issues')) or _is_admin(actor_role) or _is_maintenance(actor_role):
         return updates
 
     raise HTTPException(
@@ -113,7 +114,7 @@ def list_issues(
         .order_by(Issue.created_at.desc(), Issue.id.desc())
     )
     actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
-    if actor_role == "údržba" and status_filter is None:
+    if actor_role == "údržba" and status_filter is None and not module_manager(request, "issues"):
         query = query.where(
             Issue.status.in_(
                 [IssueStatus.NEW.value, IssueStatus.IN_PROGRESS.value]
@@ -147,7 +148,7 @@ def create_issue(
     db: Session = Depends(get_db),
 ) -> Issue:
     actor_role = _actor_role(request)
-    _guard_issue_create(actor_role)
+    _guard_issue_create(actor_role, request)
 
     payload_data = payload.model_dump()
     payload_data["priority"] = payload.priority.value
@@ -180,7 +181,7 @@ def update_issue(
         updates["status"] = updates["status"].value
 
     actor_role = _actor_role(request)
-    allowed_updates = _guard_issue_update(actor_role, issue, updates)
+    allowed_updates = _guard_issue_update(actor_role, issue, updates, request)
 
     for key, value in allowed_updates.items():
         setattr(issue, key, value)
@@ -226,7 +227,7 @@ def upload_issue_photos(
     db: Session = Depends(get_db),
 ) -> list[IssuePhoto]:
     actor_role = _actor_role(request)
-    _guard_issue_photo_upload(actor_role)
+    _guard_issue_photo_upload(actor_role, request)
 
     issue = db.scalar(select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos)))
     if not issue:

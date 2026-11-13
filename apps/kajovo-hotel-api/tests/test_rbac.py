@@ -183,7 +183,7 @@ def test_breakfast_reservation_diets_enforce_role_and_csrf(api_base_url: str) ->
         assert code == (409 if role == "recepce" else 403)
 
 
-def test_rbac_allows_reports_for_recepce(api_base_url: str) -> None:
+def test_rbac_allows_breakfast_for_recepce(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -195,12 +195,12 @@ def test_rbac_allows_reports_for_recepce(api_base_url: str) -> None:
     )
     assert status == 200
 
-    status, data = api_request(opener, api_base_url, "/api/v1/reports")
+    status, data = api_request(opener, api_base_url, "/api/v1/breakfast")
     assert status == 200
     assert isinstance(data, list)
 
 
-def test_rbac_allows_reports_read_for_sklad(api_base_url: str) -> None:
+def test_rbac_allows_inventory_read_for_sklad(api_base_url: str) -> None:
     jar = CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, _ = api_request(
@@ -212,7 +212,7 @@ def test_rbac_allows_reports_read_for_sklad(api_base_url: str) -> None:
     )
     assert status == 200
 
-    status, data = api_request(opener, api_base_url, "/api/v1/reports")
+    status, data = api_request(opener, api_base_url, "/api/v1/inventory")
     assert status == 200
     assert isinstance(data, list)
 
@@ -234,7 +234,7 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
     status, data = api_request(
         opener,
         api_base_url,
-        "/api/v1/reports",
+        "/api/v1/inventory",
         method="POST",
         payload={"title": "No access", "status": "open"},
         headers=csrf_header(jar),
@@ -261,5 +261,5 @@ def test_rbac_write_denied_is_audited_with_actor_identity(
     assert row[1] == "udrzba@example.com"
     assert row[2] == "maintenance"
     assert row[3] == "POST"
-    assert row[4] == "/api/v1/reports"
+    assert row[4] == "/api/v1/inventory"
     assert row[5] == 403

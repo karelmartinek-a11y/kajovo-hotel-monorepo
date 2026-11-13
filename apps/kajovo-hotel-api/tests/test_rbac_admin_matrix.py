@@ -80,8 +80,8 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
             email="snidane@example.com",
             password="snidane-pass",
             method="POST",
-            path="/api/v1/reports",
-            expected_permission="Missing permission: reports:write",
+            path="/api/v1/inventory",
+            expected_permission="Missing permission: inventory:write",
         ),
         DenyCase(
             role="recepce",
@@ -130,7 +130,7 @@ def test_admin_endpoints_deny_matrix_for_insufficient_roles(api_base_url: str) -
         assert status == 200
 
         payload = {"name": "Mýdlo", "unit": "ks", "min_stock": 1, "current_stock": 3}
-        if case.path == "/api/v1/reports":
+        if case.path == "/api/v1/inventory":
             payload = {"title": "No access", "status": "open"}
         if case.path == "/api/v1/users":
             payload = {"email": "blocked.user@example.com", "password": "blocked-user-pass"}

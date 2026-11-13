@@ -19,7 +19,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0053_inventory_egg_orders"]
+    assert script.get_heads() == ["0054_merge_reports_into_issues"]
 
 
 def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_path, monkeypatch):

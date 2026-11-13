@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ia from '../../../kajovo-hotel/ux/ia.json';
-import { AppShell, ChatPage, Icon, SkeletonPage, StateView, unregisterChatPush } from '@kajovo/ui';
+import { AppShell, Icon, SkeletonPage, StateView } from '@kajovo/ui';
 import {
   canReadModule,
   canWriteModule,
@@ -18,7 +18,6 @@ import receptionPictogram from '../assets/portal-tabs/reception.webp';
 import breakfastPictogram from '../assets/portal-tabs/breakfast.webp';
 import maintenancePictogram from '../assets/portal-tabs/maintenance.webp';
 import inventoryPictogram from '../assets/portal-tabs/inventory.webp';
-import reportsPictogram from '../assets/portal-tabs/reports.webp';
 import lostFoundPictogram from '../assets/portal-tabs/lostfound.webp';
 
 type AuthCopy = AuthBundle['copy'];
@@ -90,7 +89,7 @@ function ReceptionHubPage(): JSX.Element {
           title={t("Přehled hlášení")}
           description={t("Provozní hlášení s detailem a úpravami dostupnými pro oprávněné role.")}
           stateKey="empty"
-          action={<Link className="k-button" to="/hlaseni">{t("Otevřít hlášení")}</Link>}
+          action={<Link className="k-button" to="/zavady">{t("Otevřít závady")}</Link>}
         />
       </div>
     </main>
@@ -132,9 +131,6 @@ type PortalRouteDeps = {
   InventoryList: () => JSX.Element;
   InventoryForm: ({ mode }: { mode: 'create' | 'edit' }) => JSX.Element;
   InventoryDetail: () => JSX.Element;
-  ReportsList: () => JSX.Element;
-  ReportsForm: ({ mode }: { mode: 'create' | 'edit' }) => JSX.Element;
-  ReportsDetail: () => JSX.Element;
   IntroRoute: React.ComponentType;
   OfflineRoute: React.ComponentType;
   MaintenanceRoute: React.ComponentType;
@@ -278,7 +274,6 @@ export function PortalRoutes({
     setSwitchError(null);
     window.sessionStorage.setItem('kajovo-explicit-logout', '1');
     try {
-      await unregisterChatPush();
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
@@ -333,7 +328,6 @@ export function PortalRoutes({
   const isAllowed = (moduleKey: string): boolean => canReadModule(auth.permissions, moduleKey);
   const breakfastManager = activeRole === 'recepce';
   const inventoryManager = activeRole === 'sklad';
-  const reportsWriter = canWriteModule(auth.permissions, 'reports');
   const renderAccessDenied = React.useCallback(
     (moduleKey: string) => (
       <AccessDeniedPage
@@ -363,7 +357,6 @@ export function PortalRoutes({
     { key: 'lost_found', label: moduleLabels.lost_found, route: '/ztraty-a-nalezy', pictogram: lostFoundPictogram, module: 'lost_found', role: null },
     { key: 'issues', label: moduleLabels.issues, route: '/zavady', pictogram: maintenancePictogram, module: 'issues', role: null },
     { key: 'inventory', label: localizedRoleLabel('sklad'), route: '/sklad', pictogram: inventoryPictogram, module: 'inventory', role: null },
-    { key: 'reports', label: moduleLabels.reports, route: '/hlaseni', pictogram: reportsPictogram, module: 'reports', role: null },
     { key: 'profile', label: moduleLabels.profile, route: '/profil', pictogram: profilePictogram, module: null, role: null },
   ].map((tab) => ({
     ...tab,
@@ -398,8 +391,6 @@ export function PortalRoutes({
       {switchError ? <div className="k-shell-inner"><StateView title={copy.accessDeniedTitle ?? t('Přístup odepřen')} description={switchError} stateKey="error" /></div> : null}
       {localeError ? <div className="k-shell-inner" role="alert">{localeError}</div> : null}
       <Routes>
-        <Route path="/chat" element={<ChatPage surface="portal" />} />
-        <Route path="/chat/:conversationId" element={<ChatPage surface="portal" />} />
         <Route
           path="/"
           element={primaryRoute !== '/' ? <Navigate to={`${primaryRoute}${currentSearch}`} replace /> : <deps.Dashboard />}
@@ -423,10 +414,6 @@ export function PortalRoutes({
         <Route path="/sklad/nova" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="create" /> : renderAccessDenied('inventory')} />
         <Route path="/sklad/:id" element={isAllowed('inventory') ? <deps.InventoryDetail /> : renderAccessDenied('inventory')} />
         <Route path="/sklad/:id/edit" element={isAllowed('inventory') && inventoryManager ? <deps.InventoryForm mode="edit" /> : renderAccessDenied('inventory')} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <deps.ReportsList /> : renderAccessDenied('reports')} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') && reportsWriter ? <deps.ReportsForm mode="create" /> : renderAccessDenied('reports')} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <deps.ReportsDetail /> : renderAccessDenied('reports')} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') && reportsWriter ? <deps.ReportsForm mode="edit" /> : renderAccessDenied('reports')} />
         <Route path="/intro" element={<React.Suspense fallback={<SkeletonPage />}><deps.IntroRoute /></React.Suspense>} />
         <Route path="/offline" element={<React.Suspense fallback={<SkeletonPage />}><deps.OfflineRoute /></React.Suspense>} />
         <Route path="/maintenance" element={<React.Suspense fallback={<SkeletonPage />}><deps.MaintenanceRoute /></React.Suspense>} />

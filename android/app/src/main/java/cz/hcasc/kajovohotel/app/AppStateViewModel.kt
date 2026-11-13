@@ -1,7 +1,6 @@
 package cz.hcasc.kajovohotel.app
 
 import android.content.Context
-import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.hcasc.kajovohotel.core.common.AppResult
@@ -13,9 +12,6 @@ import cz.hcasc.kajovohotel.core.network.AndroidReleaseSignalStore
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEvent
 import cz.hcasc.kajovohotel.core.network.AuthNetworkEventStore
 import cz.hcasc.kajovohotel.core.network.api.AuthApi
-import cz.hcasc.kajovohotel.core.network.api.ChatApi
-import cz.hcasc.kajovohotel.core.network.dto.ChatFcmTokenRequest
-import com.google.firebase.messaging.FirebaseMessaging
 import cz.hcasc.kajovohotel.core.network.dto.PortalPasswordResetRequest
 import cz.hcasc.kajovohotel.core.network.readableMessage
 import cz.hcasc.kajovohotel.core.session.SessionRepository
@@ -35,7 +31,6 @@ class AppStateViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sessionRepository: SessionRepository,
     private val authApi: AuthApi,
-    private val chatApi: ChatApi,
     networkEventStore: AuthNetworkEventStore,
     androidReleaseSignalStore: AndroidReleaseSignalStore,
 ) : ViewModel() {
@@ -155,24 +150,10 @@ class AppStateViewModel @Inject constructor(
     }
 
     fun logout() {
-        FcmTokenState.setEmployeeSession(context, false)
-        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            viewModelScope.launch {
-                try {
-                    task.result?.let { token ->
-                        val response = chatApi.unregisterFcmToken(ChatFcmTokenRequest(token))
-                        if (!response.isSuccessful) throw IllegalStateException("FCM token cleanup failed (${response.code()})")
-                    }
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    // The session is still cleared locally even when push-token cleanup cannot reach the API.
-                } finally {
-                    sessionRepository.logout()
-                    mutableProfile.value = null
-                    mutableMessage.value = null
-                }
-            }
+        viewModelScope.launch {
+            sessionRepository.logout()
+            mutableProfile.value = null
+            mutableMessage.value = null
         }
     }
 
@@ -237,17 +218,6 @@ class AppStateViewModel @Inject constructor(
                 when (val result = sessionRepository.loadProfile()) {
                     is AppResult.Success -> {
                         mutableProfile.value = result.value
-                        val employee = result.value.actorType == ActorType.PORTAL
-                        FcmTokenState.setEmployeeSession(context, employee)
-                        if (employee && NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-                            FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
-                                FcmTokenState.savePendingToken(context, token)
-                                viewModelScope.launch {
-                                    runCatching { chatApi.registerFcmToken(ChatFcmTokenRequest(token)) }
-                                        .onSuccess { response -> if (response.isSuccessful) FcmTokenState.clearPendingToken(context, token) }
-                                }
-                            }
-                        }
                     }
                     is AppResult.Error -> mutableMessage.value = result.message
                 }
@@ -256,7 +226,6 @@ class AppStateViewModel @Inject constructor(
             SessionState.Checking -> mutableProfile.value = null
             is SessionState.Failure -> mutableProfile.value = null
             SessionState.Unauthenticated -> {
-                FcmTokenState.setEmployeeSession(context, false)
                 mutableProfile.value = null
             }
         }

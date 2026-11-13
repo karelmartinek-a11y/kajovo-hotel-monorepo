@@ -69,7 +69,7 @@ def test_multi_role_user_must_select_active_role(api_base_url: str, api_request)
     assert me.get("active_role") is None
     assert me.get("permissions") == []
 
-    status, denied = raw_request(opener, api_base_url, "/api/v1/reports")
+    status, denied = raw_request(opener, api_base_url, "/api/v1/breakfast")
     assert status == 403
     assert isinstance(denied, dict)
 

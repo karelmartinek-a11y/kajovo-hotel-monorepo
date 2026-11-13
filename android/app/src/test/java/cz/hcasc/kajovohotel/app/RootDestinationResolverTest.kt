@@ -20,8 +20,8 @@ class RootDestinationResolverTest {
         )
         val admin = employee.copy(actorType = ActorType.ADMIN)
 
-        assertEquals(true, employee.canOpenDestination(PortalRoutes.Chat))
-        assertEquals(false, admin.canOpenDestination(PortalRoutes.Chat))
+        assertEquals(false, employee.canOpenDestination("chat"))
+        assertEquals(false, admin.canOpenDestination("chat"))
     }
 
     @Test

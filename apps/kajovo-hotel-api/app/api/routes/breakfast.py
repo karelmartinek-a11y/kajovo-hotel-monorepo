@@ -1,3 +1,4 @@
+from app.security.web_access import module_manager
 import re
 from datetime import date, datetime, time
 from io import BytesIO
@@ -86,8 +87,8 @@ def _actor_role(request: Request) -> str:
     return getattr(request.state, "actor_role", None) or parse_identity(request)[2]
 
 
-def _is_breakfast_manager(actor_role: str) -> bool:
-    return actor_role in {"admin", "recepce"}
+def _is_breakfast_manager(actor_role: str, request: Request | None = None) -> bool:
+    return (request is not None and module_manager(request, "breakfast")) or actor_role in {"admin", "recepce"}
 
 
 def _today_prague() -> date:
@@ -185,7 +186,7 @@ def get_breakfast_order(order_id: int, db: Session = Depends(get_db)) -> Breakfa
 @router.patch("/{order_id}/reservations/{reservation_id}/diet", response_model=BreakfastOrderRead)
 def update_reservation_diet(order_id: int, reservation_id: str, payload: BreakfastDietUpdate,
                             request: Request, db: Session = Depends(get_db)) -> BreakfastOrder:
-    if not _is_breakfast_manager(_actor_role(request)):
+    if not _is_breakfast_manager(_actor_role(request), request):
         raise HTTPException(403, "Diety může měnit jen recepce nebo administrátor.")
     order = db.get(BreakfastOrder, order_id)
     if order is None:
@@ -215,7 +216,7 @@ def create_breakfast_order(
     db: Session = Depends(get_db),
 ) -> BreakfastOrder:
     actor_role = _actor_role(request)
-    if actor_role not in {"admin", "recepce"}:
+    if not module_manager(request, "breakfast") and actor_role not in {"admin", "recepce"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast planning requires recepce/admin role",
@@ -250,7 +251,7 @@ def update_breakfast_order(
     expected_updated_at = updates.pop("expected_updated_at", None)
     actor_role = _actor_role(request)
     diet_keys = {"diet_no_gluten", "diet_no_milk", "diet_no_pork"}
-    is_manager = _is_breakfast_manager(actor_role)
+    is_manager = _is_breakfast_manager(actor_role, request)
 
     if expected_updated_at is not None and order.updated_at is not None and order.updated_at != expected_updated_at:
         raise HTTPException(
@@ -281,12 +282,12 @@ def update_breakfast_order(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Breakfast role can only mark orders as served",
             )
-        if actor_role not in {"admin", "recepce"} and next_status != BreakfastStatus.SERVED.value:
+        if not module_manager(request, "breakfast") and actor_role not in {"admin", "recepce"} and next_status != BreakfastStatus.SERVED.value:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Pouze recepce nebo admin mohou vracet vydané snídaně zpět.",
             )
-        if actor_role not in {"admin", "recepce"} and not _can_mark_served(actor_role, order.service_date, _prague_now()):
+        if not module_manager(request, "breakfast") and actor_role not in {"admin", "recepce"} and not _can_mark_served(actor_role, order.service_date, _prague_now()):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Snídani lze vydat jen pro dnešní den mezi 5:00 a 11:00.",
@@ -305,7 +306,7 @@ def update_breakfast_order(
 @router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_breakfast_order(order_id: int, request: Request, db: Session = Depends(get_db)) -> None:
     actor_role = _actor_role(request)
-    if actor_role not in {"admin", "recepce"}:
+    if not module_manager(request, "breakfast") and actor_role not in {"admin", "recepce"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast deletion requires recepce/admin role",
@@ -329,7 +330,7 @@ def reactivate_all_breakfast_orders(
     db: Session = Depends(get_db),
 ) -> None:
     actor_role = _actor_role(request)
-    if actor_role != "admin":
+    if not module_manager(request, "breakfast") and actor_role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast reactivation requires admin role",
@@ -349,7 +350,7 @@ def delete_breakfast_orders_for_day(
     db: Session = Depends(get_db),
 ) -> None:
     actor_role = _actor_role(request)
-    if actor_role not in {"admin", "recepce"}:
+    if not module_manager(request, "breakfast") and actor_role not in {"admin", "recepce"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast deletion requires recepce/admin role",
@@ -369,7 +370,7 @@ def delete_breakfast_orders_for_period(
     db: Session = Depends(get_db),
 ) -> None:
     actor_role = _actor_role(request)
-    if actor_role != "admin":
+    if not module_manager(request, "breakfast") and actor_role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast period deletion requires admin role",
@@ -394,7 +395,7 @@ def export_breakfast_daily_pdf(
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     actor_role = _actor_role(request)
-    if not _is_breakfast_manager(actor_role):
+    if not _is_breakfast_manager(actor_role, request):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Breakfast export requires recepce/admin role",

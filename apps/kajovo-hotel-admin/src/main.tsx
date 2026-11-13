@@ -11,7 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import ia from '../../kajovo-hotel/ux/ia.json';
-import { AppShell, Badge, Card, ChatPage, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline, unregisterChatPush } from '@kajovo/ui';
+import { AppShell, Badge, Card, DataTable, FormField, HousekeepingRooms, KajovoStartupSplash, SkeletonPage, StateView, Timeline } from '@kajovo/ui';
 import {
   apiClient,
   getAuthBundle,
@@ -33,8 +33,6 @@ import {
   type LostFoundItemRead,
   type LostFoundItemType,
   type LostFoundStatus,
-  type ReportCreate,
-  type ReportRead,
 } from '@kajovo/shared';
 import '@kajovo/ui/src/tokens.css';
 import './login.css';
@@ -153,12 +151,6 @@ type InventoryCardPayload = {
 type InventoryDetail = Omit<InventoryItemWithAuditRead, 'movements'> & { movements: InventoryMovement[] };
 
 type InventoryItemPayload = InventoryItemCreate;
-
-type ReportStatus = 'open' | 'in_progress' | 'closed';
-
-type Report = ReportRead;
-
-type ReportPayload = ReportCreate;
 
 type MediaPhoto = {
   id: number;
@@ -505,12 +497,6 @@ const issueStatusLabels: Record<IssueStatus, string> = {
   closed: 'Uzavřena',
 };
 
-const reportStatusLabels: Record<ReportStatus, string> = {
-  open: 'Otevřené',
-  in_progress: 'V řešení',
-  closed: 'Uzavřené',
-};
-
 const inventoryMovementLabels: Record<InventoryMovementType, string> = {
   in: 'Příjem',
   out: 'Výdej',
@@ -562,13 +548,6 @@ function inventoryCardTypeLabel(cardType: InventoryCardType | null | undefined):
   return cardType ? inventoryCardTypeLabels[cardType] : '-';
 }
 
-function reportStatusLabel(status: string | null | undefined): string {
-  if (status === 'open' || status === 'in_progress' || status === 'closed') {
-    return reportStatusLabels[status];
-  }
-  return status ?? '-';
-}
-
 function compareRoomNumbers(left: string, right: string): number {
   const leftMatch = left.match(/\d+/);
   const rightMatch = right.match(/\d+/);
@@ -615,10 +594,6 @@ function countOpenIssues(items: Issue[]): number {
 
 function countCriticalIssues(items: Issue[]): number {
   return items.filter((item) => item.priority === 'critical' && item.status !== 'closed').length;
-}
-
-function countActiveReports(items: Report[]): number {
-  return items.filter((item) => item.status !== 'closed').length;
 }
 
 function countStoredLostFound(items: LostFoundItem[]): number {
@@ -775,11 +750,6 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
     return (await response.json()) as T;
   }
 
-  if (path === '/api/v1/reports' && method === 'GET') return (await apiClient.listReportsApiV1ReportsGet({ status: url.searchParams.get('status') })) as T;
-  const reportId = path.match(/^\/api\/v1\/reports\/(\d+)$/);
-  if (reportId && method === 'GET') return (await apiClient.getReportApiV1ReportsReportIdGet(Number(reportId[1]))) as T;
-  if (reportId && method === 'PUT') return (await apiClient.updateReportApiV1ReportsReportIdPut(Number(reportId[1]), body as ReportCreate)) as T;
-  if (path === '/api/v1/reports' && method === 'POST') return (await apiClient.createReportApiV1ReportsPost(body as ReportCreate)) as T;
 
   if (path === '/api/v1/users' && method === 'GET') {
     const response = await fetch(path, { credentials: 'include' });
@@ -3122,71 +3092,6 @@ function InventoryWorkbench(): JSX.Element {
   );
 }
 
-function ReportsList(): JSX.Element {
-  const auth = useAuth();
-  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
-  const [items, setItems] = React.useState<Report[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    fetchJson<Report[]>('/api/v1/reports')
-      .then(setItems)
-      .catch(() => setError('Hlášení se nepodařilo načíst.'));
-  }, []);
-
-  return <main className="k-page" data-testid="reports-list-page"><h1>Hlášení</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : items.length === 0 ? <StateView title="Prázdný stav" description="Zatím není evidováno žádné hlášení." stateKey="empty" action={canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : undefined} /> : <><div className="k-toolbar">{canManageReports ? <Link className="k-button" to="/hlaseni/nove">Nové hlášení</Link> : null}</div><DataTable headers={['Název', 'Stav', 'Vytvořeno', 'Akce']} rows={items.map((item) => [item.title, <Badge key={`status-${item.id}`} tone={item.status === 'closed' ? 'success' : item.status === 'in_progress' ? 'warning' : 'neutral'}>{reportStatusLabel(item.status)}</Badge>, formatDateTime(item.created_at), <Link className="k-nav-link" key={item.id} to={`/hlaseni/${item.id}`}>Detail</Link>])} /></>}</main>;
-}
-
-function ReportsForm({ mode }: { mode: 'create' | 'edit' }): JSX.Element {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [error, setError] = React.useState<string | null>(null);
-  const [payload, setPayload] = React.useState<ReportPayload>({ title: '', description: '', status: 'open' });
-
-  React.useEffect(() => {
-    if (mode !== 'edit' || !id) {
-      return;
-    }
-    fetchJson<Report>(`/api/v1/reports/${id}`)
-      .then((item) => setPayload({ title: item.title, description: item.description, status: item.status }))
-      .catch(() => setError('Detail hlášení se nepodařilo načíst.'));
-  }, [id, mode]);
-
-  async function save(): Promise<void> {
-    try {
-      const saved = await fetchJson<Report>(mode === 'create' ? '/api/v1/reports' : `/api/v1/reports/${id}`, {
-        method: mode === 'create' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      navigate(`/hlaseni/${saved.id}`);
-    } catch {
-      setError('Hlášení se nepodařilo uložit.');
-    }
-  }
-
-  return <main className="k-page" data-testid={mode === 'create' ? 'reports-create-page' : 'reports-edit-page'}><h1>{mode === 'create' ? 'Nové hlášení' : 'Upravit hlášení'}</h1>{error ? <StateView title="Chyba" description={error} stateKey="error" action={<button className="k-button" type="button" onClick={() => window.location.reload()}>Obnovit</button>} /> : <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link><button className="k-button" type="button" onClick={() => void save()}>Uložit</button></div><div className="k-form-grid"><FormField id="report_title" label="Název"><input id="report_title" className="k-input" value={payload.title} onChange={(e) => setPayload((prev) => ({ ...prev, title: e.target.value }))} /></FormField><FormField id="report_status" label="Stav"><select id="report_status" className="k-select" value={payload.status} onChange={(e) => setPayload((prev) => ({ ...prev, status: e.target.value as ReportStatus }))}><option value="open">Otevřené</option><option value="in_progress">V řešení</option><option value="closed">Uzavřené</option></select></FormField><FormField id="report_description" label="Popis (volitelné)"><textarea id="report_description" className="k-input" value={payload.description ?? ''} onChange={(e) => setPayload((prev) => ({ ...prev, description: e.target.value }))} /></FormField></div></div>}</main>;
-}
-
-function ReportsDetail(): JSX.Element {
-  const auth = useAuth();
-  const canManageReports = auth ? canWriteModule(auth.permissions, 'reports') : false;
-  const { id } = useParams();
-  const [item, setItem] = React.useState<Report | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!id) {
-      return;
-    }
-    fetchJson<Report>(`/api/v1/reports/${id}`)
-      .then(setItem)
-      .catch(() => setError('Hlášení nebylo nalezeno.'));
-  }, [id]);
-
-  return <main className="k-page" data-testid="reports-detail-page"><h1>Detail hlášení</h1>{error ? <StateView title="404" description={error} stateKey="404" action={<Link className="k-button secondary" to="/hlaseni">Zpět na seznam</Link>} /> : item ? <div className="k-card"><div className="k-toolbar"><Link className="k-nav-link" to="/hlaseni">Zpět na seznam</Link>{canManageReports ? <Link className="k-button" to={`/hlaseni/${item.id}/edit`}>Upravit</Link> : null}</div><DataTable headers={['Položka', 'Hodnota']} rows={[[ 'Název', item.title],[ 'Stav', reportStatusLabel(item.status)],[ 'Popis', item.description ?? '-' ],[ 'Vytvořeno', formatDateTime(item.created_at) ],[ 'Aktualizováno', formatDateTime(item.updated_at) ]]} /></div> : <SkeletonPage />}</main>;
-}
-
 function SettingsAdmin(): JSX.Element {
   const [fromEmail, setFromEmail] = React.useState('');
   const [host, setHost] = React.useState('');
@@ -3613,7 +3518,6 @@ function AuthSelfServiceProfilePage(): JSX.Element {
     setError(null);
     setMessage(null);
     try {
-      await unregisterChatPush();
       await fetch('/api/auth/admin/logout', {
         method: 'POST',
         credentials: 'include',
@@ -3763,8 +3667,7 @@ function AdminLoginPage({ authError = null }: { authError?: string | null }): JS
         },
         body: JSON.stringify({ email: principal, password, web_activity_session: true }),
       });
-      const next = new URLSearchParams(window.location.search).get('next');
-      window.location.assign(next === '/admin/chat' || next?.startsWith('/admin/chat/') ? next : '/admin/');
+      window.location.assign('/admin/');
     } catch (error) {
       if (error instanceof HttpError && error.status === 423) {
         setLoginError({
@@ -3932,8 +3835,7 @@ function AppRoutes(): JSX.Element {
   }
 
   if (!auth || auth.actorType !== 'admin') {
-    const returnTo = location.pathname === '/chat' || location.pathname.startsWith('/chat/') ? `/admin${location.pathname}${location.search}` : null;
-    return <Navigate to={returnTo ? `/login?next=${encodeURIComponent(returnTo)}` : '/login'} replace />;
+    return <Navigate to='/login' replace />;
   }
 
   const adminModules = auth.role === 'admin'
@@ -3987,7 +3889,7 @@ function AppRoutes(): JSX.Element {
     ...module,
     route: toAdminNavRoute(module.route),
   }));
-  const adminHeaderModuleOrder = ['dashboard', 'housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'reports', 'profile', 'users', 'settings', 'voice_core'];
+  const adminHeaderModuleOrder = ['dashboard', 'housekeeping', 'breakfast', 'lost_found', 'issues', 'inventory', 'profile', 'users', 'settings', 'voice_core'];
   const adminShellModules = auth.role === 'admin'
     ? adminHeaderModuleOrder
       .map((key) => adminNavModules.find((module) => module.key === key))
@@ -4016,7 +3918,6 @@ function AppRoutes(): JSX.Element {
   const roleViewLabel = roleSwitcherLabels[effectiveRoleView] ?? effectiveRoleView;
   const canManageBreakfast = effectiveRoleView === 'admin' || effectiveRoleView === 'recepce';
   const canManageInventory = effectiveRoleView === 'admin' || effectiveRoleView === 'sklad';
-  const canManageReports = effectiveRoleView === 'admin' || canWriteModule(roleScopedPermissions, 'reports');
   return (
     <AuthContext.Provider value={effectiveAuth}>
       <AppShell
@@ -4027,8 +3928,6 @@ function AppRoutes(): JSX.Element {
         panelLayout={panelLayout}
       >
         <Routes>
-        <Route path="/chat" element={<ChatPage surface="admin" />} />
-        <Route path="/chat/:conversationId" element={<ChatPage surface="admin" />} />
         <Route path="/" element={effectiveRoleView !== 'admin' ? <Navigate to={roleHomeRoute} replace /> : isAllowed('dashboard') ? <DashboardLive /> : <AccessDeniedPage moduleLabel="P\u0159ehled" role={roleViewLabel} userId={auth.userId} />} />
 <Route path="/pokojska" element={isAllowed('housekeeping') ? <HousekeepingAdmin /> : <AccessDeniedPage moduleLabel="Pokojsk\u00e1" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/snidane" element={isAllowed('breakfast') ? <BreakfastList /> : <AccessDeniedPage moduleLabel="S\u00eddan\u011b" role={roleViewLabel} userId={auth.userId} />} />
@@ -4047,10 +3946,6 @@ function AppRoutes(): JSX.Element {
         <Route path="/sklad/nova" element={isAllowed('inventory') && canManageInventory ? <InventoryForm mode="create" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/sklad/:id" element={isAllowed('inventory') && canManageInventory ? <InventoryDetail /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/sklad/:id/edit" element={isAllowed('inventory') && canManageInventory ? <InventoryForm mode="edit" /> : <AccessDeniedPage moduleLabel="Skladové hospodářství" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/hlaseni" element={isAllowed('reports') ? <ReportsList /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/hlaseni/nove" element={isAllowed('reports') && canManageReports ? <ReportsForm mode="create" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id" element={isAllowed('reports') ? <ReportsDetail /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
-        <Route path="/hlaseni/:id/edit" element={isAllowed('reports') && canManageReports ? <ReportsForm mode="edit" /> : <AccessDeniedPage moduleLabel="Hlášení" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/uzivatele" element={isAllowed('users') ? <UsersAdmin /> : <AccessDeniedPage moduleLabel="Uživatelé" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/nastaveni" element={isAllowed('settings') ? <SettingsAdmin /> : <AccessDeniedPage moduleLabel="Nastavení" role={roleViewLabel} userId={auth.userId} />} />
         <Route path="/profil" element={<AdminProfilePage />} />

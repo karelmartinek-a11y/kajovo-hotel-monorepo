@@ -1,3 +1,4 @@
+from app.security.web_access import module_manager
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -121,7 +122,7 @@ def confirm_reservation_requirement(reservation_id: str, kind: ReservationAmenit
 def add_reservation_amenity(reservation_id: str, kind: ReservationAmenityKind, request: Request,
                             room_id: str, service_date: date = Query(alias="date"),
                             version: int = Query(default=0, ge=0), db: Session = Depends(get_db)) -> dict:
-    if request.state.actor_role not in {"admin", "recepce"}:
+    if not module_manager(request, "housekeeping") and request.state.actor_role not in {"admin", "recepce"}:
         raise HTTPException(403, "Ikony může přidávat jen recepce nebo administrátor.")
     _verify_reservation(reservation_id, room_id, service_date)
     return change_amenity(db, request, reservation_id, kind.value, operation="add", version=version)
@@ -139,7 +140,7 @@ def update_reservation_amenity(reservation_id: str, kind: ReservationAmenityKind
 def remove_reservation_amenity(reservation_id: str, kind: ReservationAmenityKind, request: Request,
                                room_id: str, service_date: date = Query(alias="date"),
                                version: int = Query(ge=1), db: Session = Depends(get_db)) -> dict:
-    if request.state.actor_role not in {"admin", "recepce"}:
+    if not module_manager(request, "housekeeping") and request.state.actor_role not in {"admin", "recepce"}:
         raise HTTPException(403, "Ikony může odebírat jen recepce nebo administrátor.")
     _verify_reservation(reservation_id, room_id, service_date)
     return change_amenity(db, request, reservation_id, kind.value, operation="remove", version=version)

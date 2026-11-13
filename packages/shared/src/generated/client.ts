@@ -58,9 +58,6 @@ export type Body_upload_item_pictogram_api_v1_inventory__item_id__pictogram_post
 export type Body_upload_lost_found_photos_api_v1_lost_found__item_id__photos_post = {
   "photos": Array<string>;
 };
-export type Body_upload_report_photos_api_v1_reports__report_id__photos_post = {
-  "photos": Array<string>;
-};
 export type BreakfastDailyOverview = {
   "orders": Array<BreakfastOrderRead>;
   "summary": BreakfastDailySummary;
@@ -206,54 +203,6 @@ export type BreakfastWhatsappUpdate = {
 export type BusyOrder = {
   "id": string;
   "state"?: string;
-};
-export type ChatConversationCreate = {
-  "recipient_id": number;
-};
-export type ChatConversationRead = {
-  "id": number;
-  "last_message"?: ChatMessageRead | null;
-  "participant": ChatParticipantRead;
-  "unread_count": number;
-};
-export type ChatFcmTokenRequest = {
-  "token": string;
-};
-export type ChatMessageCreate = {
-  "body": string;
-  "client_message_id": string;
-  "recipient_id": number;
-};
-export type ChatMessageRead = {
-  "body": string;
-  "conversation_id": number;
-  "id": number;
-  "is_mine"?: boolean;
-  "read_at"?: string | null;
-  "sender_id": number;
-  "sent_at": string;
-};
-export type ChatMessageResult = {
-  "message"?: ChatMessageRead | null;
-  "state": "confirmed" | "not_found";
-};
-export type ChatParticipantRead = {
-  "display_name": string;
-  "email": string;
-  "id": number;
-  "is_active": boolean;
-};
-export type ChatPushConfigRead = {
-  "enabled": boolean;
-  "participant_id": number;
-  "public_key": string | null;
-};
-export type ChatPushSubscriptionStatus = {
-  "participant_id": number | null;
-  "subscribed": boolean;
-};
-export type ChatReadThrough = {
-  "through_message_id": number;
 };
 export type DeviceChallengeRequest = {
   "device_id": string;
@@ -713,25 +662,6 @@ export type RepeatOrder = {
   "previous_sent_at": string;
   "state"?: string;
 };
-export type ReportCreate = {
-  "description"?: string | null;
-  "status"?: string;
-  "title": string;
-};
-export type ReportRead = {
-  "created_at": string | null;
-  "description": string | null;
-  "id": number;
-  "photos"?: Array<MediaPhotoRead>;
-  "status": string;
-  "title": string;
-  "updated_at": string | null;
-};
-export type ReportUpdate = {
-  "description"?: string | null;
-  "status"?: string | null;
-  "title"?: string | null;
-};
 export type ReservationAmenityKind = "dog" | "cot";
 export type ReservationAmenityRead = {
   "active": boolean;
@@ -801,17 +731,6 @@ export type ValidationError = {
   "loc": Array<string | number>;
   "msg": string;
   "type": string;
-};
-export type WebPushKeys = {
-  "auth": string;
-  "p256dh": string;
-};
-export type WebPushSubscriptionCreate = {
-  "endpoint": string;
-  "keys": WebPushKeys;
-};
-export type WebPushSubscriptionDelete = {
-  "endpoint": string;
 };
 
 type QueryValue = string | number | boolean | null | undefined;
@@ -974,48 +893,6 @@ export const apiClient = {
   async updateReservationDietApiV1BreakfastOrderIdReservationsReservationIdDietPatch(order_id: number, reservation_id: string, body: BreakfastDietUpdate): Promise<BreakfastOrderRead> {
     return request<BreakfastOrderRead>('PATCH', `/api/v1/breakfast/${order_id}/reservations/${reservation_id}/diet`, undefined, body);
   },
-  async chatConversations(): Promise<Array<ChatConversationRead>> {
-    return request<Array<ChatConversationRead>>('GET', `/api/v1/chat/conversations`, undefined, undefined);
-  },
-  async chatCreateConversation(body: ChatConversationCreate): Promise<ChatConversationRead> {
-    return request<ChatConversationRead>('POST', `/api/v1/chat/conversations`, undefined, body);
-  },
-  async chatMessages(conversation_id: number, query: { "before_id"?: number | null; "after_id"?: number | null; "limit"?: number; }): Promise<Array<ChatMessageRead>> {
-    return request<Array<ChatMessageRead>>('GET', `/api/v1/chat/conversations/${conversation_id}/messages`, query, undefined);
-  },
-  async chatMarkRead(conversation_id: number, body: ChatReadThrough): Promise<void> {
-    return request<void>('POST', `/api/v1/chat/conversations/${conversation_id}/read`, undefined, body);
-  },
-  async chatDirectory(): Promise<Array<ChatParticipantRead>> {
-    return request<Array<ChatParticipantRead>>('GET', `/api/v1/chat/directory`, undefined, undefined);
-  },
-  async chatDeleteFcmToken(body: ChatFcmTokenRequest): Promise<void> {
-    return request<void>('DELETE', `/api/v1/chat/fcm-tokens`, undefined, body);
-  },
-  async chatRegisterFcmToken(body: ChatFcmTokenRequest): Promise<void> {
-    return request<void>('POST', `/api/v1/chat/fcm-tokens`, undefined, body);
-  },
-  async chatSendMessage(body: ChatMessageCreate): Promise<ChatMessageRead> {
-    return request<ChatMessageRead>('POST', `/api/v1/chat/messages`, undefined, body);
-  },
-  async chatMessageResult(query: { "client_message_id": string; }): Promise<ChatMessageResult> {
-    return request<ChatMessageResult>('GET', `/api/v1/chat/messages/result`, query, undefined);
-  },
-  async chatPushConfig(): Promise<ChatPushConfigRead> {
-    return request<ChatPushConfigRead>('GET', `/api/v1/chat/push/config`, undefined, undefined);
-  },
-  async chatDeletePush(body: WebPushSubscriptionDelete): Promise<void> {
-    return request<void>('DELETE', `/api/v1/chat/push/subscriptions`, undefined, body);
-  },
-  async chatRegisterPush(body: WebPushSubscriptionCreate): Promise<void> {
-    return request<void>('POST', `/api/v1/chat/push/subscriptions`, undefined, body);
-  },
-  async chatPushSubscriptionStatus(query: { "subscription_hash": string; }): Promise<ChatPushSubscriptionStatus> {
-    return request<ChatPushSubscriptionStatus>('GET', `/api/v1/chat/push/subscriptions/status`, query, undefined);
-  },
-  async chatUnreadCount(): Promise<Record<string, unknown>> {
-    return request<Record<string, unknown>>('GET', `/api/v1/chat/unread-count`, undefined, undefined);
-  },
   async issueChallengeApiV1DeviceChallengePost(body: DeviceChallengeRequest): Promise<DeviceChallengeResponse> {
     return request<DeviceChallengeResponse>('POST', `/api/v1/device/challenge`, undefined, body);
   },
@@ -1150,30 +1027,6 @@ export const apiClient = {
   },
   async getLostFoundPhotoApiV1LostFoundItemIdPhotosPhotoIdKindGet(item_id: number, photo_id: number, kind: string, query: { "download"?: boolean; }): Promise<unknown> {
     return request<unknown>('GET', `/api/v1/lost-found/${item_id}/photos/${photo_id}/${kind}`, query, undefined);
-  },
-  async listReportsApiV1ReportsGet(query: { "status"?: string | null; }): Promise<Array<ReportRead>> {
-    return request<Array<ReportRead>>('GET', `/api/v1/reports`, query, undefined);
-  },
-  async createReportApiV1ReportsPost(body: ReportCreate): Promise<ReportRead> {
-    return request<ReportRead>('POST', `/api/v1/reports`, undefined, body);
-  },
-  async deleteReportApiV1ReportsReportIdDelete(report_id: number): Promise<void> {
-    return request<void>('DELETE', `/api/v1/reports/${report_id}`, undefined, undefined);
-  },
-  async getReportApiV1ReportsReportIdGet(report_id: number): Promise<ReportRead> {
-    return request<ReportRead>('GET', `/api/v1/reports/${report_id}`, undefined, undefined);
-  },
-  async updateReportApiV1ReportsReportIdPut(report_id: number, body: ReportUpdate): Promise<ReportRead> {
-    return request<ReportRead>('PUT', `/api/v1/reports/${report_id}`, undefined, body);
-  },
-  async listReportPhotosApiV1ReportsReportIdPhotosGet(report_id: number): Promise<Array<MediaPhotoRead>> {
-    return request<Array<MediaPhotoRead>>('GET', `/api/v1/reports/${report_id}/photos`, undefined, undefined);
-  },
-  async uploadReportPhotosApiV1ReportsReportIdPhotosPost(report_id: number): Promise<Array<MediaPhotoRead>> {
-    return request<Array<MediaPhotoRead>>('POST', `/api/v1/reports/${report_id}/photos`, undefined, undefined);
-  },
-  async getReportPhotoApiV1ReportsReportIdPhotosPhotoIdKindGet(report_id: number, photo_id: number, kind: string, query: { "download"?: boolean; }): Promise<unknown> {
-    return request<unknown>('GET', `/api/v1/reports/${report_id}/photos/${photo_id}/${kind}`, query, undefined);
   },
   async listUsersApiV1UsersGet(): Promise<Array<PortalUserRead>> {
     return request<Array<PortalUserRead>>('GET', `/api/v1/users`, undefined, undefined);

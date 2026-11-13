@@ -1,3 +1,7 @@
+## Přístup k webovým modulům od 13. 11. 2026
+
+CML předává přesné nezávislé volby Pokoje a úklid, Snídaně, Ztráty a nálezy, Závady a Sklad. Každá volba zahrnuje úplné funkce svého modulu. Historická pracovní role nemůže přidat jiný modul ani omezit výslovný grant. Nastavení vlastní CML s účelovým podepsaným kontraktem pro hotelová nastavení. Zprávy vlastní CML. Hotel jejich původní tabulky zachová pro ověřený převod historie, původní chatové endpointy a sender se vypínají. Hlášení včetně fotografií přebírá evidence Závad prostřednictvím migrace 0054. Tato pravidla nahrazují starší popis rolí a chatu níže.
+
 ## Delegovaná správa účtů v CML — 4. 11. 2026
 
 Výslovné zadání vlastníka nahrazuje omezení centrální správy jen na hlavní účet. Účelový kajovo-user-administration/1 přenáší skutečného user:UUID, pouze na vyjmenované cesty správy profilů a úvazků. Bez nativního osobního profilu správce, bez aliasu OWNER; další provozní agendy zůstávají oddělené. Viz docs/CML_USER_ADMINISTRATION_20261104.md.

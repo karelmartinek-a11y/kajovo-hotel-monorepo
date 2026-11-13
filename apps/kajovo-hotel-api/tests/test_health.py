@@ -26,14 +26,14 @@ def test_write_requests_are_audited(
     api_request: ApiRequest, api_db_path: Path
 ) -> None:
     status, created = api_request(
-        "/api/v1/reports",
+        "/api/v1/issues",
         method="POST",
-        payload={"title": "Leak in room 201", "description": "Water on floor", "status": "open"},
+        payload={"title": "Leak in room 201", "description": "Water on floor", "status": "new", "location": "Room 201"},
     )
     assert status == 201
     assert isinstance(created, dict)
 
-    delete_status, _ = api_request(f"/api/v1/reports/{created['id']}", method="DELETE")
+    delete_status, _ = api_request(f"/api/v1/issues/{created['id']}", method="DELETE")
     assert delete_status == 204
 
     conn = sqlite3.connect(str(api_db_path))
@@ -46,4 +46,4 @@ def test_write_requests_are_audited(
     finally:
         conn.close()
 
-    assert row == (admin_email(), "reports", "POST", "/api/v1/reports", 201)
+    assert row == (admin_email(), "issues", "POST", "/api/v1/issues", 201)

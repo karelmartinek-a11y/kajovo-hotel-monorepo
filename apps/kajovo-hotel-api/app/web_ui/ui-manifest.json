@@ -38,57 +38,6 @@
       }
     },
     {
-      "id": "hotel.admin.2",
-      "title": "Soukromé zprávy",
-      "path": "/sections/hotel/?view=chat",
-      "icon": "chat",
-      "admin": false,
-      "audienceRole": "admin",
-      "localizations": {
-        "en": {
-          "title": "Private messages"
-        },
-        "uk": {
-          "title": "Приватні повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.portal.40",
-      "title": "Soukromé zprávy",
-      "path": "/sections/hotel/?view=chat",
-      "icon": "chat",
-      "admin": false,
-      "audienceRole": "member",
-      "localizations": {
-        "en": {
-          "title": "Private messages"
-        },
-        "uk": {
-          "title": "Приватні повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.portal.43",
-      "title": "Recepce",
-      "path": "/sections/hotel/?view=reception",
-      "icon": "reception",
-      "permission": "reports:read",
-      "roles": [
-        "admin",
-        "recepce"
-      ],
-      "localizations": {
-        "en": {
-          "title": "Reception"
-        },
-        "uk": {
-          "title": "Рецепція"
-        }
-      }
-    },
-    {
       "id": "hotel.admin.5",
       "title": "Pokoje a úklid",
       "path": "/sections/hotel/?view=rooms",
@@ -262,65 +211,6 @@
       }
     },
     {
-      "id": "hotel.admin.22",
-      "title": "Provozní hlášení",
-      "path": "/sections/hotel/?view=reports",
-      "icon": "report",
-      "admin": false,
-      "permission": "reports:read",
-      "audienceRole": "admin",
-      "navigation_title": "Hlášení",
-      "localizations": {
-        "en": {
-          "title": "Operational reports",
-          "navigation_title": "Reports"
-        },
-        "uk": {
-          "title": "Операційні повідомлення",
-          "navigation_title": "Повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.portal.62",
-      "title": "Provozní hlášení",
-      "path": "/sections/hotel/?view=reports",
-      "icon": "report",
-      "admin": false,
-      "permission": "reports:read",
-      "audienceRole": "member",
-      "navigation_title": "Hlášení",
-      "localizations": {
-        "en": {
-          "title": "Operational reports",
-          "navigation_title": "Reports"
-        },
-        "uk": {
-          "title": "Операційні повідомлення",
-          "navigation_title": "Повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.admin.27",
-      "title": "Nastavení Hotelu",
-      "path": "/sections/hotel/?view=settings",
-      "icon": "gear",
-      "admin": true,
-      "permission": "settings:read",
-      "group": "Administrace",
-      "localizations": {
-        "en": {
-          "title": "Hotel settings",
-          "group": "Administration"
-        },
-        "uk": {
-          "title": "Налаштування готелю",
-          "group": "Адміністрування"
-        }
-      }
-    },
-    {
       "id": "hotel.admin.15",
       "title": "Nová závada",
       "path": "/sections/hotel/?view=issues-new",
@@ -453,108 +343,6 @@
         },
         "uk": {
           "title": "Видалити несправність"
-        }
-      }
-    },
-    {
-      "id": "hotel.admin.23",
-      "title": "Nové hlášení",
-      "path": "/sections/hotel/?view=reports-new",
-      "navigation": false,
-      "parent": "hotel.admin.22",
-      "audienceRole": "admin",
-      "permission": "reports:write",
-      "localizations": {
-        "en": {
-          "title": "New report"
-        },
-        "uk": {
-          "title": "Нове повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.portal.63",
-      "title": "Nové hlášení",
-      "path": "/sections/hotel/?view=reports-new",
-      "navigation": false,
-      "parent": "hotel.portal.62",
-      "audienceRole": "member",
-      "permission": "reports:write",
-      "localizations": {
-        "en": {
-          "title": "New report"
-        },
-        "uk": {
-          "title": "Нове повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.admin.25",
-      "title": "Upravit hlášení",
-      "path": "/sections/hotel/?view=reports-edit",
-      "navigation": false,
-      "parent": "hotel.admin.22",
-      "audienceRole": "admin",
-      "permission": "reports:write",
-      "localizations": {
-        "en": {
-          "title": "Edit report"
-        },
-        "uk": {
-          "title": "Редагувати повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.portal.65",
-      "title": "Upravit hlášení",
-      "path": "/sections/hotel/?view=reports-edit",
-      "navigation": false,
-      "parent": "hotel.portal.62",
-      "audienceRole": "member",
-      "permission": "reports:write",
-      "localizations": {
-        "en": {
-          "title": "Edit report"
-        },
-        "uk": {
-          "title": "Редагувати повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.admin.24",
-      "title": "Detail hlášení",
-      "path": "/sections/hotel/?view=reports-detail",
-      "navigation": false,
-      "parent": "hotel.admin.22",
-      "audienceRole": "admin",
-      "permission": "reports:read",
-      "localizations": {
-        "en": {
-          "title": "Report details"
-        },
-        "uk": {
-          "title": "Деталі повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.portal.64",
-      "title": "Detail hlášení",
-      "path": "/sections/hotel/?view=reports-detail",
-      "navigation": false,
-      "parent": "hotel.portal.62",
-      "audienceRole": "member",
-      "permission": "reports:read",
-      "localizations": {
-        "en": {
-          "title": "Report details"
-        },
-        "uk": {
-          "title": "Деталі повідомлення"
         }
       }
     },
@@ -1231,40 +1019,6 @@
       }
     },
     {
-      "id": "hotel.reports.delete",
-      "title": "Smazat hlášení",
-      "path": "/sections/hotel/?view=reports",
-      "navigation": false,
-      "parent": "hotel.admin.22",
-      "audienceRole": "admin",
-      "permission": "reports:write",
-      "localizations": {
-        "en": {
-          "title": "Delete report"
-        },
-        "uk": {
-          "title": "Видалити повідомлення"
-        }
-      }
-    },
-    {
-      "id": "hotel.reports.delete",
-      "title": "Smazat hlášení",
-      "path": "/sections/hotel/?view=reports",
-      "navigation": false,
-      "parent": "hotel.portal.62",
-      "audienceRole": "member",
-      "permission": "reports:write",
-      "localizations": {
-        "en": {
-          "title": "Delete report"
-        },
-        "uk": {
-          "title": "Видалити повідомлення"
-        }
-      }
-    },
-    {
       "id": "hotel.inventory.item-delete",
       "title": "Smazat skladovou položku",
       "path": "/sections/hotel/?view=inventory",
@@ -1491,70 +1245,6 @@
         },
         "uk": {
           "title": "Історія складських рухів"
-        }
-      }
-    },
-    {
-      "id": "hotel.chat.new",
-      "title": "Nová soukromá konverzace",
-      "path": "/sections/hotel/?view=chat",
-      "parent": "hotel.admin.2",
-      "navigation": false,
-      "audienceRole": "admin",
-      "localizations": {
-        "en": {
-          "title": "New private conversation"
-        },
-        "uk": {
-          "title": "Нова приватна розмова"
-        }
-      }
-    },
-    {
-      "id": "hotel.chat.new",
-      "title": "Nová soukromá konverzace",
-      "path": "/sections/hotel/?view=chat",
-      "parent": "hotel.portal.40",
-      "navigation": false,
-      "audienceRole": "member",
-      "localizations": {
-        "en": {
-          "title": "New private conversation"
-        },
-        "uk": {
-          "title": "Нова приватна розмова"
-        }
-      }
-    },
-    {
-      "id": "hotel.chat.notifications",
-      "title": "Upozornění",
-      "path": "/sections/hotel/?view=chat",
-      "parent": "hotel.admin.2",
-      "navigation": false,
-      "audienceRole": "admin",
-      "localizations": {
-        "en": {
-          "title": "Notifications"
-        },
-        "uk": {
-          "title": "Сповіщення"
-        }
-      }
-    },
-    {
-      "id": "hotel.chat.notifications",
-      "title": "Upozornění",
-      "path": "/sections/hotel/?view=chat",
-      "parent": "hotel.portal.40",
-      "navigation": false,
-      "audienceRole": "member",
-      "localizations": {
-        "en": {
-          "title": "Notifications"
-        },
-        "uk": {
-          "title": "Сповіщення"
         }
       }
     }
