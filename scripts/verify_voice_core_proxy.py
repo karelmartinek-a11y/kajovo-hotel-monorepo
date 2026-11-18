@@ -207,10 +207,12 @@ def main():
                 assert status == 302, (page, status)
                 marked_paths.append(path)
                 assert not re.search(rb'src="([^"]+\.js)"', body), "Retired entry must not serve a browser bundle"
-            for asset in ["app.js", "ui.js", "chat.js"]:
+            for asset, expected in [("app.js", 200), ("ui.js", 200), ("chat.js", 404)]:
                 path = "/cml-web/" + asset + "?probe=" + query_marker
                 status, _, body = request(path, referer, extra_headers=cml_headers(path))
-                assert status == 200 and body and not body.startswith(b"<!doctype"), (path, status)
+                assert status == expected, (path, status)
+                if expected == 200:
+                    assert body and not body.startswith(b"<!doctype"), path
                 marked_paths.append(path)
             time.sleep(.1)
             rows = access_rows()
