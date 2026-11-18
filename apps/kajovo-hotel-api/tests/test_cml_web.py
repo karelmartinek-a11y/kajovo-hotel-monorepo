@@ -193,6 +193,14 @@ def test_native_mutation_receipt_survives_reply_loss_and_rechecks_current_permis
             return client.request(method,path,content=body,headers={'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':assertion(key,'hotel',path=path,method=method,body=body,**patch),'X-CSRF-Token':'a'*43,'Content-Type':'application/json','Idempotency-Key':request_id})
         first=call()
         assert first.status_code==200
+        history='/cml-web/api/personal-activity'
+        assert call('GET',history+'?cursor=',b'').status_code==400
+        own=call('GET',history,b'').json()['items']
+        assert len(own)==1 and own[0]['action']=='issues:write' and own[0]['status']=='completed'
+        assert set(own[0])=={'seq','action','status','at'}
+        other={'sub':'user:'+str(uuid.uuid4()),'nativeId':'1'}
+        assert call('GET',history,b'',**other).json()=={'items':[],'next':None}
+        assert call('GET',history+'?cursor='+request_id,b'',**other).status_code==400
         # A new signed request after a lost response must return the old result.
         assert call().json()==first.json()
         assert len(writes)==1

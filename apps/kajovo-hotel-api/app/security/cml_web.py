@@ -132,6 +132,18 @@ class CmlWebBoundary:
             if suffix == 'identity':
                 await JSONResponse(identity['public'], headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return
+            if suffix == 'api/personal-activity':
+                params = parse_qs(query, keep_blank_values=True)
+                cursor = params.get('cursor', [])
+                if scope['method'] != 'GET' or set(params) - {'cursor'} or len(cursor) > 1:
+                    raise ReceiptFault('WEB_REQUEST_ID_INVALID', 400)
+                if cursor:
+                    request_id(cursor[0])
+                result = await asyncio.to_thread(
+                    self.requests.personal_activity, owner_key(claims), identity, cursor[0] if cursor else None,
+                )
+                await JSONResponse(result, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                return
             if suffix == 'api/request-status':
                 params = parse_qs(query, keep_blank_values=True)
                 if scope['method'] != 'GET' or set(params) - {'request_id', '_role'} or len(params.get('request_id', [])) != 1:

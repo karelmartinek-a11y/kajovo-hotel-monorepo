@@ -6,6 +6,9 @@ import asyncio
 import hashlib
 import json
 import re
+from datetime import timezone
+
+from sqlalchemy import and_, or_, select
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -64,6 +67,50 @@ class WebRequests:
                 return self.result(row)
         except SQLAlchemyError as exc:
             raise ReceiptFault("WEB_REQUEST_STORAGE_UNAVAILABLE", 503) from exc
+
+    def personal_activity(self, owner, identity, cursor):
+        public = identity["public"]
+        permissions = public.get("available_permissions", public.get("permissions", []))
+        table = CmlWebRequest
+        query = select(
+            table.request_id, table.permission, table.state, table.response_status, table.created_at
+        ).where(table.owner == owner, table.permission.in_(permissions))
+        try:
+            with self.factory() as db:
+                if cursor:
+                    row = db.get(table, (owner, request_id(cursor)))
+                    if row is None or row.permission not in permissions:
+                        raise ReceiptFault("WEB_REQUEST_ID_INVALID", 400)
+                    query = query.where(or_(
+                        table.created_at < row.created_at,
+                        and_(table.created_at == row.created_at, table.request_id < row.request_id),
+                    ))
+                rows = db.execute(query.order_by(table.created_at.desc(), table.request_id.desc()).limit(101)).all()
+        except SQLAlchemyError as exc:
+            raise ReceiptFault("WEB_REQUEST_STORAGE_UNAVAILABLE", 503) from exc
+
+        items = []
+        for ident, permission, state, status, at in rows[:100]:
+            if state == "completed":
+                if status == 202:
+                    state = "accepted"
+                elif status == 206 or status == 207:
+                    state = "partial"
+                elif status is not None and 200 <= status < 300:
+                    state = "completed"
+                elif status is not None and 400 <= status < 500:
+                    state = "rejected"
+                else:
+                    state = "uncertain"
+            if state == "pending":
+                state = "uncertain"
+            items.append({
+                "seq": hashlib.sha256(ident.encode()).hexdigest(),
+                "at": at.replace(tzinfo=at.tzinfo or timezone.utc).isoformat(),
+                "action": permission,
+                "status": state,
+            })
+        return {"items": items, "next": rows[99].request_id if len(rows) > 100 else None}
 
     @staticmethod
     def result(row):
