@@ -22,16 +22,22 @@ function svg(attrs,...children) {
  return node;
 }
 function person(kind) {
- return el('img',{src:'/sections/hotel/room-artwork/'+kind+'.svg',class:'room-person',alt:'',width:7,height:11});
+ return el('img',{src:'/assets/icons/hotel-'+kind+'.svg',class:'room-person',alt:'',width:7,height:11});
 }
 export function requirementIcon(stay,kind) {
  const state=prepared(stay,kind)?'green':'red';
- return el('img',{src:'/sections/hotel/room-artwork/'+kind+'-'+state+'.svg',class:'room-requirement','data-request-kind':kind,'data-request-state':state,alt:'',width:10,height:12});
+ return el('img',{src:'/assets/icons/hotel-'+kind+'-'+state+'.svg',class:'room-requirement','data-request-kind':kind,'data-request-state':state,alt:'',width:10,height:12});
 }
 function country(stay) {
  const code=(stay.country_code??'').toUpperCase();let name=stay.country_name||'?';
  try{if(/^[A-Z]{2}$/.test(code))name=new Intl.DisplayNames([locale],{type:'region'}).of(code);}catch{}
- return el('span',{class:'room-country',title:name,'aria-label':name},/^[A-Z]{2}$/.test(code)?el('img',{src:'/sections/hotel/flags/'+code+'.svg',alt:'',width:13,height:9,onerror:event=>{event.target.replaceWith(document.createTextNode('?'));}}):'?');
+ const fallback='/assets/icons/globe.svg';
+ const flag=/^[A-Z]{2}$/.test(code)?'/assets/icons/hotel-vlajka-'+code.toLowerCase()+'.svg':fallback;
+ return el('span',{class:'room-country',title:name,'aria-label':name},el('img',{
+  src:flag,alt:'',width:13,height:9,onerror:({currentTarget})=>{
+   if(currentTarget.getAttribute('src')!==fallback)currentTarget.src=fallback;
+  },
+ }));
 }
 function stamp(stay,kind,date) {
  const name=guestName(stay),nights=nightCount(stay,date),label=kind==='departure'?'CHECK-OUT':kind==='arrival'?'CHECK-IN':t('POBYT'),time=kind==='departure'?stay.departure_time:stay.arrival_time;

@@ -36,6 +36,10 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
   page.setDefaultTimeout(5000);page.on('pageerror',error=>errors.push(error.message));await page.clock.setFixedTime(new Date('2026-10-30T12:00:00Z'));
   await context.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());assert.equal(url.origin,origin);if(request.method()!=='GET'){assert.equal(request.method(),'PATCH');assert.equal(url.pathname,prefix+'api/v1/housekeeping/rooms/room-201');assert(activeProfile.permissions.includes('housekeeping:write'));const body=request.postDataJSON();assert.equal(body.expected_status,serverRooms[3].housekeeping_status_key);assert.equal(body.status,'clean');writeCount++;assert.equal(writeCount,1,'Lost acknowledgement must never repeat a write');const id=request.headers()['idempotency-key'];assert(id);serverRooms[3].housekeeping_status_key='clean';receipt={id,body:structuredClone(serverRooms[3])};await writeGate.promise;await route.fulfill({status:503,json:{error:{message:'Isolated lost acknowledgement'}}});return;}
+   if(/^\/assets\/icons\/(hotel-[a-z-]+|globe)\.svg$/.test(url.pathname)){
+    const body=process.env.CML_SHARED_ASSETS?await readFile(process.env.CML_SHARED_ASSETS+'/'+url.pathname.slice('/assets/'.length)):'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"/>';
+    await route.fulfill({body,contentType:'image/svg+xml'});return;
+   }
    if(url.pathname.startsWith('/assets/')){await route.fulfill({status:204});return;}
    const path=url.pathname.slice(prefix.length);
    if(path==='identity'){await route.fulfill({json:activeProfile});return;}
@@ -77,6 +81,9 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
    const appearance=()=>page.locator('.room-reference').evaluateAll(nodes=>nodes.map(node=>[node.getBoundingClientRect().height,...[node,...node.querySelectorAll('*')].map(n=>{const s=getComputedStyle(n);return [s.color,s.backgroundColor,s.fontSize,s.borderColor];})]));
    const beforeRefresh=queries.length;await page.evaluate(()=>dispatchEvent(new Event('focus')));await expect.poll(()=>queries.length).toBeGreaterThan(beforeRefresh);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.waitForFunction(()=>[...document.querySelectorAll('.room-reference img')].every(n=>n.complete&&n.naturalWidth>0));
    if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'-original-palette.png',fullPage:true});
+   await expect(page.locator('.room-country img').first()).toHaveAttribute('src','/assets/icons/hotel-vlajka-cz.svg');
+   await expect(page.locator('.room-person').first()).toHaveAttribute('src','/assets/icons/hotel-adults.svg');
+   await expect(page.locator('.room-requirement[data-request-kind=dog][data-request-state=green]').first()).toHaveAttribute('src','/assets/icons/hotel-dog-green.svg');
    const beforeTheme=await appearance();const injectedTheme=await page.addStyleTag({content:':root{--bg:hotpink;--text:lime;--accent:purple;--line:red;--panel:yellow;--muted:orange;--k-color-room-clean:blue;--k-color-reservation-confirmed:black;color-scheme:dark}'});assert.deepEqual(await appearance(),beforeTheme,'Menu theme cannot change room semantics or typography');
    if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'-theme.png',fullPage:true});
    await injectedTheme.evaluate(node=>node.remove());
