@@ -90,7 +90,16 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
    await page.getByLabel('Patro',{exact:true}).selectOption('1');await expect(page.locator('.room-tile')).toHaveCount(0);await page.getByLabel('Patro',{exact:true}).selectOption('2');await expect(page.locator('.room-tile')).toHaveCount(1);
    await page.getByRole('button',{name:'Obnovit',exact:true}).click();await page.locator('#content[aria-busy=false]').waitFor();await expect(page.getByLabel('Hledat pokoj',{exact:true})).toHaveValue('201');await expect(page.getByLabel('Patro',{exact:true})).toHaveValue('2');await expect(page.locator('.room-tile')).toHaveCount(1);
    await page.locator('.room-tile').click();await expect(page.getByRole('dialog')).toBeVisible();
-   const sheet=await page.locator('#dialog').boundingBox();assert(Math.abs(sheet.y+sheet.height-1000)<2,'Original room sheet is bottom anchored');assert(Math.abs(sheet.width-Math.min(680,width))<2);assert(sheet.height<=Math.min(width<600?800:840,800)+1);assert.equal(await page.locator('.room-status-actions').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length),2);
+   const sheet=await page.locator('#dialog').boundingBox();
+   if(width>=640){
+    assert(Math.abs(sheet.x+sheet.width-(width-12))<2,'Desktop detail is anchored to the right');
+    assert(Math.abs(sheet.y-12)<2,'Desktop detail uses the top inset');
+    assert(Math.abs(sheet.width-440)<2&&sheet.height<=977,'Desktop detail fits the right panel');
+   }else{
+    assert(Math.abs(sheet.y+sheet.height-1000)<2,'Compact detail is anchored to the bottom');
+    assert(Math.abs(sheet.width-width)<2&&sheet.height<=801,'Compact detail fits the screen');
+   }
+   assert.equal(await page.locator('.room-status-actions').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length),2);
    for(const button of await page.locator('.room-status-actions button').all())await expect(button).toBeDisabled();const dialogContrast=await contrastAudit(page,'#dialog button,#dialog p,#dialog h2,#dialog h3');for(const result of dialogContrast)assert(result.ratio>=4.5,JSON.stringify(result));const axe=await new AxeBuilder({page}).include('#dialog').withRules(['color-contrast']).analyze();assert.deepEqual(axe.violations,[],'Dialog color contrast');console.log(JSON.stringify({engine,width,minimumTileTextContrast:Math.min(...tileContrast.map(n=>n.ratio)),minimumDialogTextContrast:Math.min(...dialogContrast.map(n=>n.ratio)),axeDialogViolations:axe.violations.length}));
    if(output)await page.screenshot({path:output+'/'+engine+'-'+width+'-dialog.png',fullPage:true});await page.getByRole('button',{name:'Zavřít',exact:true}).click();
    activeProfile.permissions.push('housekeeping:write');await page.reload();await page.locator('#content[aria-busy=false]').waitFor();

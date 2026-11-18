@@ -37,12 +37,11 @@ def build_fixture():
     from app.api.routes import (
         auth,
         breakfast,
-        chat,
+        egg_orders,
         housekeeping,
         inventory,
         issues,
         lost_found,
-        reports,
         settings,
         users,
     )
@@ -335,11 +334,10 @@ def build_fixture():
         users,
         housekeeping,
         breakfast,
-        reports,
+        egg_orders,
         issues,
         inventory,
         lost_found,
-        chat,
         settings,
     ]:
         app.include_router(module.router)
@@ -372,7 +370,7 @@ def build_fixture():
 
         async def __call__(self, scope, receive, send):
             target = (scope["type"] == "http" and scope["method"] == "POST"
-                      and scope["path"].startswith(("/cml-web/api/v1/reports/", "/cml-web/api/v1/issues/", "/cml-web/api/v1/lost-found/", "/cml-web/api/v1/inventory/"))
+                      and scope["path"].startswith(("/cml-web/api/v1/issues/", "/cml-web/api/v1/lost-found/", "/cml-web/api/v1/inventory/"))
                       and scope["path"].endswith(("/photos", "/pictogram")) and photo_fault["armed"])
             if not target:
                 await self.app(scope, receive, send)

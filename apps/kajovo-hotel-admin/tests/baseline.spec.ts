@@ -50,7 +50,7 @@ test('admin login, user write, reload and delete use the real API', async ({ pag
   }
 });
 
-test('portal login, RBAC, CSRF and chat persistence use the real API', async ({ page, request }, info) => {
+test('portal login, RBAC, CSRF and navigation use the real API', async ({ page, request }, info) => {
   const credentials = getAdminCredentials();
   expect((await request.post('/api/auth/admin/login', { data: credentials })).status()).toBe(200);
   const state = await request.storageState();
@@ -73,21 +73,18 @@ test('portal login, RBAC, CSRF and chat persistence use the real API', async ({ 
     await expect(tabs).toBeVisible();
     await expect(page.getByTestId('role-select-page')).toHaveCount(0);
     const links = tabs.locator('a, button');
-    await expect(links.first()).toContainText('Chat');
+    await expect(links.first()).toContainText('Sklad');
+    await expect(tabs.getByRole('link', { name: 'Chat', exact: true })).toHaveCount(0);
     await expect(links.last()).toContainText('Profil');
     await expect(tabs.getByRole('link', { name: 'Snídaně', exact: true })).toHaveCount(0);
     expect((await page.request.get('http://127.0.0.1:4173/api/v1/users')).status()).toBe(403);
     expect((await page.request.post('http://127.0.0.1:4173/api/auth/activity')).status()).toBe(403);
-    await page.goto('http://127.0.0.1:4173/chat');
-    await page.getByRole('button', { name: new RegExp(credentials.email, 'i') }).click();
-    const message = `CI persistence ${info.project.name} ${Date.now()}`;
-    await page.getByLabel('Napište zprávu').fill(message);
-    await page.getByRole('button', { name: 'Odeslat', exact: true }).click();
-    await expect(page.locator('.k-chat-bubble.is-own').last()).toContainText(message);
+    expect((await page.request.get('http://127.0.0.1:4173/api/v1/chat')).status()).toBe(404);
     await page.reload();
-    await expect(page.locator('.k-chat-bubble.is-own').last()).toContainText(message);
+    await expect(page).toHaveURL(/\/(sklad)?$/);
+    await expect(tabs.getByRole('link', { name: 'Sklad', exact: true })).toBeVisible();
     await geometry(page);
-    await page.screenshot({ path: info.outputPath('portal-chat.png'), fullPage: true });
+    await page.screenshot({ path: info.outputPath('portal-inventory.png'), fullPage: true });
     await page.getByRole('button', { name: /odhlásit/i }).click();
     await expect(page).toHaveURL(/\/login$/);
     expect((await page.request.get('http://127.0.0.1:4173/api/auth/me')).status()).toBe(401);

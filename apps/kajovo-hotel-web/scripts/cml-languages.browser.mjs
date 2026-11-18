@@ -19,14 +19,18 @@ try{
  let ready=false;for(let i=0;i<600;i++){if(child.exitCode!==null)throw Error(err);try{await fetch('http://127.0.0.1:'+port+'/health');ready=true;break;}catch{/* Wait for the isolated local server. */}await new Promise(r=>setTimeout(r,100));}assert(ready,err);
  browser=await chromium.launch();const context=await browser.newContext({viewport:{width:1440,height:900},locale:'cs-CZ'}),page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>console.log('PAGE_ERROR',e.message));page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE_ERROR',m.text());});
  let role='admin',closing=false,forwarding=Promise.resolve();
+ const failedRequests=[];
  await context.route('**/*',async route=>{try{if(closing)return await route.abort();const req=route.request(),url=new URL(req.url());assert.equal(url.origin,origin);
   if(url.pathname.startsWith('/assets/')){try{const content=await readFile((process.env.CML_SHARED_ASSETS??root+'/public/cml-assets')+'/'+url.pathname.slice('/assets/'.length));await route.fulfill({body:content,contentType:url.pathname.endsWith('.svg')?'image/svg+xml':url.pathname.endsWith('.ttf')?'font/ttf':'application/octet-stream'});}catch{await route.fulfill({status:404});}return;}
   const path='/cml-web/'+url.pathname.slice(prefix.length)+url.search,body=req.postDataBuffer()??Buffer.alloc(0),now=Math.floor(Date.now()/1000);
   const claims={iss:'https://kajovocml.hcasc.cz',aud:'hotel',sub:role==='admin'?'KRMAR78':'user:11111111-1111-4111-8111-111111111111',role,nativeId:role==='admin'?null:'1',sid:randomUUID(),epoch:1,iat:now,exp:now+10,jti:randomUUID(),method:req.method(),path,bodySha256:createHash('sha256').update(body).digest('hex'),csrf:'a'.repeat(43)};
+  if(role==='member')claims.grant={contract:'kajovo-web-grant/1',
+   permissions:['hotel.rooms','hotel.breakfast','hotel.lostfound','hotel.issues','hotel.inventory'],
+   dataScope:{kind:'service'}};
   const raw=Buffer.from(JSON.stringify({typ:'cml-web+jwt',alg:'EdDSA',kid:'cml-web-1'})).toString('base64url')+'.'+Buffer.from(JSON.stringify(claims)).toString('base64url');
   const response=forwarding.then(async()=>{const r=await fetch('http://127.0.0.1:'+port+path,{method:req.method(),headers:{Origin:'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':prefix,'X-CML-Web-Assertion':raw+'.'+sign(null,Buffer.from(raw),privateKey).toString('base64url'),'X-CSRF-Token':'a'.repeat(43),'Content-Type':'application/json'},body:['GET','HEAD'].includes(req.method())?undefined:body});
   return {r,bytes:Buffer.from(await r.arrayBuffer())};});forwarding=response.catch(()=>{});
-  const {r,bytes}=await response;if(!r.ok)console.log('HTTP_ERROR',path,r.status,bytes.toString().slice(0,200));await route.fulfill({status:r.status,contentType:r.headers.get('content-type')??'application/octet-stream',body:bytes});
+  const {r,bytes}=await response;if(!r.ok)failedRequests.push({path,status:r.status});await route.fulfill({status:r.status,contentType:r.headers.get('content-type')??'application/octet-stream',body:bytes});
  }catch(error){if(!closing)throw error;} });
 
  if(!process.env.HOTEL_LOCALE_PREFERENCE_ONLY)for(role of ['admin','member'])for(const lang of (role==='admin'?['cs']:['cs','en','uk']))for(const width of [1440,768,390])for(const view of ['rooms','breakfast']){
@@ -59,5 +63,6 @@ try{
  // A preference is saved by the original profile route, then confirmed by a fresh identity read.
  console.log('PREFERENCE start');role='member';await page.goto(origin+prefix+'?view=rooms&lang=cs');await page.locator('#content[aria-busy=false]').waitFor();console.log('PREFERENCE select');await page.locator('select[name=locale]').selectOption('uk');await page.waitForURL(/lang=uk/);await page.locator('#content[aria-busy=false]').waitFor();assert.equal(await page.locator('html').getAttribute('lang'),'uk');
  await page.goto(origin+prefix+'?view=rooms');await page.waitForURL(/lang=uk/);assert.equal(await page.locator('select[name=locale]').inputValue(),'uk');
+ assert.deepEqual(failedRequests,[],'Every signed qualification request must succeed');
  console.log('PREFERENCE passed');closing=true;await page.goto('about:blank');console.log('CLEANUP blank');await context.close();console.log('CLEANUP context');console.log('PASS persisted own language and reload without business writes');
 }finally{if(err.includes('ERROR:'))console.error(err);if(browser)await browser.close();if(process.env.HOTEL_CML_TEST_IMAGE)spawnSync('docker',['stop',container],{stdio:'ignore'});child.kill('SIGTERM');await rm(keyDir,{recursive:true,force:true});}
