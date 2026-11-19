@@ -7,17 +7,18 @@ import {pragueInput,pragueInstant} from './time.js';
 import {moduleReference} from './references.js';
 import {photoDocumentation,pictogramDocumentation} from './photos.js';
 import {warehouseList} from './warehouse.js';
+import {warehousePermission} from './warehouse-selection.js';
 export const modules={
  issues:{path:'issues',title:t('Závady'),id:'hotel.admin.14',member:'hotel.portal.54',newId:'hotel.admin.15',fields:[[t('Název'),'title','text',true],[t('Popis'),'description','textarea'],[t('Umístění'),'location','text',true],[t('Pokoj'),'room_number','text'],[t('Priorita'),'priority',[['low',t('Nízká')],['medium',t('Střední')],['high',t('Vysoká')],['critical',t('Kritická')]]],[t('Stav'),'status',[['new',t('Nová')],['in_progress',t('Řeší se')],['resolved',t('Vyřešeno')],['closed',t('Uzavřeno')]]],[t('Přiřazeno'),'assignee','text']]},
  lostfound:{path:'lost-found',title:t('Ztráty a nálezy'),id:'hotel.admin.10',member:'hotel.portal.50',newId:'hotel.admin.11',fields:[[t('Typ'),'item_type',[['found',t('Nález')],['lost',t('Ztráta')]]],[t('Popis'),'description','textarea',true],[t('Kategorie'),'category','text',true],[t('Umístění'),'location','text',true],[t('Pokoj'),'room_number','text'],[t('Datum a čas'),'event_at','datetime-local',true],[t('Stav'),'status',[['new',t('Nové')],['stored',t('Uloženo')],['claimed',t('Přihlásil se majitel')],['returned',t('Vráceno')],['disposed',t('Vyřazeno')]]],[t('Majitel'),'claimant_name','text'],[t('Kontakt'),'claimant_contact','text'],[t('Poznámka k předání'),'handover_note','textarea']]},
  inventory:{path:'inventory',title:t('Sklad'),id:'hotel.admin.18',member:'hotel.portal.58',newId:'hotel.admin.19',fields:[[t('Název'),'name','text',true],[t('Jednotka'),'unit',[['ks','ks'],['g','g'],['l','l']]],[t('Minimální zásoba'),'min_stock','number',true],[t('Aktuální zásoba'),'current_stock','number',true],[t('Základních jednotek na kus'),'amount_per_piece_base','number',true]]}
 };
 
-const permission=config=>(config.path==='lost-found'?'lost_found':config.path)+':write';
-const readPermission=config=>permission(config).replace(':write',':read');
-const back=(ctx,key)=>ctx.go(ctx.state.identity.available_permissions.includes(readPermission(modules[key]))?key:ctx.state.identity.available_permissions.includes('housekeeping:read')?'rooms':'lostfound');
+const permission=(ctx,config)=>ctx.warehouse?warehousePermission(ctx.warehouse,'write'):(config.path==='lost-found'?'lost_found':config.path)+':write';
+const readPermission=(ctx,config)=>permission(ctx,config).replace(':write',':read');
+const back=(ctx,key)=>ctx.go(ctx.state.identity.available_permissions.includes(readPermission(ctx,modules[key]))?key:ctx.state.identity.available_permissions.includes('housekeeping:read')?'rooms':'lostfound');
 function can(ctx,config,operation){
- if(!ctx.state.identity.permissions.includes(permission(config)))return false;
+ if(!ctx.state.identity.permissions.includes(permission(ctx,config)))return false;
  if(ctx.state.identity.cml_modules)return true;
  const role=ctx.state.identity.active_role;
  if(config.path==='issues')return operation==='new'||operation==='photo'?['admin','pokojská','údržba'].includes(role):operation==='delete'?role==='admin':['admin','údržba'].includes(role);
@@ -68,14 +69,14 @@ export async function recordEditor(ctx,key,mode){
     else payload[name]=raw[name]===''?null:raw[name];
    }}catch(error){showError(form,error);return;}
    if(config.path==='lost-found')payload.tags=['kontaktova','nezastizen','vyzvedne','odesleme'].filter(name=>raw['tag-'+name]==='on');
-   const mayRead=ctx.state.identity.role_permissions[form.dataset.nativeRole].includes(readPermission(config));
+   const mayRead=ctx.state.identity.role_permissions[form.dataset.nativeRole].includes(readPermission(ctx,config));
    saveMutation(form,{path:recordPath(ctx,config,row?'/'+row.id:''),method:row?'PUT':'POST',body:payload,verify:async(result,{id,read})=>{
     if(!result?.id)throw Error(t('Odpověď neobsahuje identitu uloženého záznamu.'));const actual=mayRead?await read(recordPath(ctx,config,'/'+result.id)):await storedMutation(read,id);if(actual?.id!==result.id)throw Error(t('Původní potvrzení obsahuje jinou identitu.'));
     for(const [name,value] of Object.entries(payload)){const same=name==='event_at'?Date.parse(actual[name]+(/([Zz]|[+-]\d\d:\d\d)$/.test(actual[name])?'':'Z'))===Date.parse(value):JSON.stringify(actual[name])===JSON.stringify(value);if(!same)throw Error(t('Následné načtení nepotvrdilo údaj: ')+(config.fields.find(field=>field[1]===name)?.[0]??t('Štítky')));}
    },done:async(result,{id})=>{ctx.state.recordDrafts.delete(draftKey);if(!mayRead){ctx.state.recordSubmissions??=new Map();ctx.state.recordSubmissions.set(key,{result,id,role:form.dataset.nativeRole,photos:[]});}if(isRecordView(ctx,key+'-'+mode))await move(ctx,key,mayRead?'detail':'submitted',result);}});
   });
  }
- main.append(panel(ref.title,[button([icon('arrow-left'),ctx.state.identity.available_permissions.includes(readPermission(config))?t('Zpět na seznam'):t('Zpět na pokoje')],()=>back(ctx,key)),draft.form],key==='inventory'?'inventory':key==='issues'?'issue':key==='lostfound'?'lostfound':'report'));
+ main.append(panel(ref.title,[button([icon('arrow-left'),ctx.state.identity.available_permissions.includes(readPermission(ctx,config))?t('Zpět na seznam'):t('Zpět na pokoje')],()=>back(ctx,key)),draft.form],key==='inventory'?'inventory':key==='issues'?'issue':key==='lostfound'?'lostfound':'report'));
 }
 export async function recordDetail(ctx,key){
  const config=modules[key],generation=ctx.state.generation,ref=reference(ctx,config,'detail'),main=ctx.heading(ref.id,ref.title,t('Projděte uložené údaje, historii a dostupné akce záznamu.'));

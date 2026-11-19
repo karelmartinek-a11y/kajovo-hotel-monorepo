@@ -2,17 +2,18 @@ import {t,locale} from './i18n.js';
 import {api,getRole,exportLink} from './api.js';
 import {el,icon,field,select,button,table,panel,notice,modal,formData,showError} from './ui.js';
 import {saveMutation} from './operations.js';
+import {warehousePermission} from './warehouse-selection.js';
 const kinds={in:t('Příjem'),out:t('Výdej'),adjust:t('Odpis')},max=2147483647;
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
-const writable=ctx=>ctx.state.identity.permissions.includes('inventory:write');
-const admin=ctx=>ctx.state.identity.cml_modules?ctx.state.identity.permissions.includes('inventory:write'):ctx.state.identity.active_role==='admin';
+const writable=ctx=>ctx.state.identity.permissions.includes(warehousePermission(ctx.warehouse,'write'));
+const admin=ctx=>ctx.state.identity.cml_modules?ctx.state.identity.permissions.includes(warehousePermission(ctx.warehouse,'write')):ctx.state.identity.active_role==='admin';
 const quantity=(value,unit)=>value.toLocaleString(locale)+' '+unit;
 const noteField=(label,name)=>el('label',{class:'field'},el('span',{},label),el('textarea',{name,'aria-label':label,maxlength:2000}));
 function openCard(ctx,row){ctx.stock.cardId=row.id;return ctx.go('inventory-card-detail');}
 function detailFields(rows){return el('div',{class:'record-details'},rows.map(([label,value])=>el('div',{},el('small',{},label),el('strong',{},value??'—'))));}
 function eggOrderControls(ctx){
- const role=getRole(),generation=ctx.state.generation,path='api/v1/inventory/egg-orders';
- const request=(suffix='',options={})=>api(path+suffix,{...options,roleOverride:role});
+ const role=getRole(),generation=ctx.state.generation;
+ const request=(suffix='',options={})=>api(ctx.inventoryPath('/egg-orders'+suffix),{...options,roleOverride:role});
  const msg=el('div',{role:'status','aria-live':'polite'});
  let pending=null;
  const check=button(t('Ověřit odeslání'),()=>load());

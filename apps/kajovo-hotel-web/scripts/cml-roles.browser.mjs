@@ -7,9 +7,9 @@ import {chromium,webkit,expect} from '@playwright/test';
 const root=new URL('../../kajovo-hotel-api/app/web_ui/',import.meta.url);
 const origin='https://hotel.example.test',prefix='/sections/hotel/';
 const manifest=JSON.parse(await readFile(new URL('ui-manifest.json',root)));
-const permissions={recepce:['housekeeping:read'],sklad:['inventory:read'],admin:['housekeeping:read','inventory:read']};
+const permissions={recepce:['housekeeping:read'],sklad:['inventory_snidane:read'],admin:['housekeeping:read','inventory_snidane:read']};
 const profile=role=>({admin:role==='admin',name:'Testovací účet',roles:Object.keys(permissions),active_role:role,
- permissions:permissions[role],available_permissions:['housekeeping:read','inventory:read'],role_permissions:permissions});
+ permissions:permissions[role],available_permissions:['housekeeping:read','inventory_snidane:read'],role_permissions:permissions});
 const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
 
 async function fixture(browser,width,identity){

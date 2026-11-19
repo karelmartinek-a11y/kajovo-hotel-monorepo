@@ -37,7 +37,7 @@ def test_every_module_combination_is_exact_and_local_account_must_remain_active(
             )
             db.add(user)
             db.commit()
-            for count in range(1, 6):
+            for count in range(1, len(MODULES) + 1):
                 for values in itertools.combinations(MODULES, count):
                     claims["grant"] = {
                         "contract": "kajovo-web-grant/1",
@@ -84,8 +84,8 @@ def test_explicit_module_manager_can_use_admin_module_actions_only():
         "role": "recepce",
         "active_role": "recepce",
         "cml_permissions": [
-            "inventory:read",
-            "inventory:write",
+            "inventory_snidane:read",
+            "inventory_snidane:write",
             "issues:read",
             "issues:write",
             "breakfast:read",
@@ -99,6 +99,7 @@ def test_explicit_module_manager_can_use_admin_module_actions_only():
                 "type": "http",
                 "method": "DELETE",
                 "path": path,
+                "query_string": b"",
                 "headers": [],
                 "state": {"_kajovo_auth_session": session},
             }

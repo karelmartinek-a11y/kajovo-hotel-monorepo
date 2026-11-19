@@ -32,7 +32,7 @@ for(const engine of [chromium,webkit]){
     import {warehouseList} from './warehouse.js';import {view,setRole} from './api.js';import {warehouses,inventoryPath} from './warehouse-selection.js';
     setRole('sklad');
     const warehouse=warehouses[0];
-    await warehouseList({heading:view,warehouse,inventoryPath:suffix=>inventoryPath(warehouse,suffix),state:{generation:1,identity:{permissions:['inventory:read','inventory:write']}}},{newItem:()=>{},detail:()=>{}});
+    await warehouseList({heading:view,warehouse,inventoryPath:suffix=>inventoryPath(warehouse,suffix),state:{generation:1,identity:{permissions:['inventory_snidane:read','inventory_snidane:write']}}},{newItem:()=>{},detail:()=>{}});
     </script></html>`});
    if(!asset.includes('/')&&asset.endsWith('.js'))return route.fulfill({contentType:'text/javascript',body:await readFile(new URL(asset,root))});
    return route.fulfill({status:204});

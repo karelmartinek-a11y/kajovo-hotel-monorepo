@@ -16,7 +16,8 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse, JSONResponse
 
 from app.security.cml_assertion import AssertionDenied, central_settings, WebVerifier, central_administrator
-from app.security.cml_requests import WebRequests, ReceiptFault, mutation_permission, owner_key, request_id
+from app.security.cml_requests import WebRequests, ReceiptFault, owner_key, request_id
+from app.security.web_access import path_module
 
 def central_write_authorized(claims):
     """Accept an authenticated owner policy or the original fresh verification."""
@@ -191,13 +192,20 @@ class CmlWebBoundary:
             # A signed request cannot start a local login or invoke a different public protocol.
             if not suffix.startswith(('api/v1/', 'api/auth/')) or suffix.endswith(('/login', '/logout', '/reset-password', '/request-password-reset')):
                 raise AssertionDenied('route_denied')
+            module = None
+            warehouse_route = suffix.split('/')[:3] == ['api', 'v1', 'inventory']
+            if self.audience == 'hotel':
+                module = path_module(suffix, parse_qs(query, keep_blank_values=True).get('warehouse', ()))
+                if warehouse_route and module is None:
+                    await JSONResponse({'detail': 'Neplatný výběr skladu.'}, status_code=422, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                    return
             if self.audience == 'hotel' and claims['sub'] != 'KRMAR78' and not central_administrator(claims) and not central_settings(claims):
-                from app.security.web_access import PATH_MODULES
-                parts = suffix.split('/')
-                module = PATH_MODULES.get(parts[2]) if parts[:2] == ['api', 'v1'] and len(parts) > 2 else None
                 action = 'read' if scope['method'] in {'GET', 'HEAD'} else 'write'
                 locale_route = suffix == 'api/auth/locale'
                 if not locale_route and (module is None or module + ':' + action not in identity['public']['permissions']):
+                    if warehouse_route:
+                        await JSONResponse({'detail': 'K tomuto skladu nemáte oprávnění.'}, status_code=403, headers={'Cache-Control': 'no-store'})(scope, receive, send)
+                        return
                     raise AssertionDenied('module_permission_denied')
             forwarded = dict(scope)
             forwarded['path'] = '/' + suffix
@@ -212,7 +220,8 @@ class CmlWebBoundary:
                     return {'type': 'http.request', 'body': bytes(body), 'more_body': False}
                 return await receive()
 
-            permission = mutation_permission(suffix) if self.audience == 'hotel' else None
+            # Only business module routes participate in the generic receipt journal.
+            permission = module + ':write' if module else None
             if scope['method'] not in {'GET', 'HEAD'} and permission and 'idempotency-key' in headers:
                 ident = request_id(headers['idempotency-key'])
                 previous = await asyncio.to_thread(self.requests.admit, owner_key(claims), ident, identity, scope['method'], exact_path, bytes(body), permission)

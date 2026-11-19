@@ -266,13 +266,18 @@ def cml_api_request(api_base_url: str, cml_web_test_key: tuple[Ed25519PrivateKey
     key = cml_web_test_key[0]
     def encode(value: bytes) -> str:
         return base64.urlsafe_b64encode(value).decode().rstrip('=')
-    def request(path: str, method: str = 'GET', payload: dict[str, object] | None = None, params: dict[str, str] | None = None) -> tuple[int, ResponseData]:
+    def request(path: str, method: str = 'GET', payload: dict[str, object] | None = None, params=None, *, permissions=None, operation_id=None) -> tuple[int, ResponseData]:
         native = '/cml-web' + path + ('?' + urllib.parse.urlencode(params) if params else '')
         body = json.dumps(payload).encode() if payload is not None else b''
         now = int(time.time())
         claims = {'iss':'https://kajovocml.hcasc.cz','aud':'hotel','sub':'KRMAR78','role':'admin','nativeId':None,'sid':str(uuid4()),'epoch':1,'iat':now,'exp':now+10,'jti':str(uuid4()),'method':method,'path':native,'bodySha256':hashlib.sha256(body).hexdigest(),'csrf':'a'*43}
+        if permissions is not None:
+            claims.update(sub='user:11111111-1111-4111-8111-111111111111', role='member', nativeId='2')
+            claims['grant'] = {'contract':'kajovo-web-grant/1','permissions':permissions,'dataScope':{'kind':'service'}}
         encoded = encode(json.dumps({'typ':'cml-web+jwt','alg':'EdDSA','kid':'cml-web-1'}).encode())+'.'+encode(json.dumps(claims).encode())
         headers = {'Origin':'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':'/sections/hotel/','X-CML-Web-Assertion':encoded+'.'+encode(key.sign(encoded.encode())),'X-CSRF-Token':claims['csrf'],'Content-Type':'application/json'}
+        if operation_id is not None:
+            headers['Idempotency-Key'] = operation_id
         operation = urllib.request.Request(api_base_url+native,data=body if payload is not None else None,headers=headers,method=method)
         try:
             with urllib.request.urlopen(operation,timeout=REQUEST_TIMEOUT_SECONDS) as response:

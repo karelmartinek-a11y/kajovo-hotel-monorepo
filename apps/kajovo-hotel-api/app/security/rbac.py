@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 from fastapi import Depends, HTTPException, Request, status
-from app.security.web_access import module_manager
+from app.security.web_access import module_manager, warehouse_module
 
 Role = str
 Permission = str
@@ -176,10 +176,17 @@ def require_permission(module: str, action: str) -> Callable[[Request], None]:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Active role must be selected',
             )
-        if required not in session.get('cml_permissions', ROLE_PERMISSIONS.get(actor_role, set())):
+        permission = required
+        if module == 'inventory':
+            stock_module = warehouse_module(request.query_params.getlist('warehouse'))
+            if stock_module is None:
+                raise HTTPException(status_code=422, detail='Neplatný výběr skladu.')
+            if 'cml_permissions' in session or (stock_module == 'inventory_drogerie' and actor_role != 'admin'):
+                permission = f'{stock_module}:{action}'
+        if permission not in session.get('cml_permissions', ROLE_PERMISSIONS.get(actor_role, set())):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f'Missing permission: {required}',
+                detail=f'Missing permission: {permission}',
             )
 
     return _check_permission

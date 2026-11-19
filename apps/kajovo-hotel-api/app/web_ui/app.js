@@ -7,7 +7,7 @@ import {overview} from './summary.js';
 import {breakfastList,breakfastEditor,breakfastDetail} from './breakfast.js';
 import {readBreakfastDate} from './preferences.js';
 import {warehouseCards,warehouseCardForm,warehouseCardDetail,warehouseMovements} from './warehouse.js';
-import {warehouseForView,inventoryPath} from './warehouse-selection.js';
+import {warehouseForView,inventoryPath,warehouses,warehousePermission} from './warehouse-selection.js';
 import {modules,recordList,recordEditor,recordDetail,recordSubmitted} from './records.js';
 const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Prague'}).format(new Date());
 const state={date:today(),identity:null,view:new URLSearchParams(location.search).get('view')??'rooms',generation:0,roomFilter:'',floor:'',uncertainRooms:new Set()};
@@ -15,6 +15,14 @@ const foundId=new URLSearchParams(location.search).get('id');
 if(state.view==='lostfound-detail'&&/^[1-9][0-9]{0,9}$/.test(foundId??'')&&Number(foundId)<=2147483647)state.recordIds=new Map([['lostfound',Number(foundId)]]);
 const statuses={clean:[t('Uklizeno pro nájezd'),'check'],dirty:[t('Neuklizeno'),'close'],stay_no_linen:[t('Pobyt bez ložního prádla'),'bed'],stay_with_linen:[t('Uklizeno s ložním prádlem'),'linen'],do_not_disturb:[t('Nerušit'),'do-not-disturb'],technical_issue:[t('Technický problém'),'issue'],windows_cleaned:[t('Umytá okna'),'window'],painted:[t('Vymalováno'),'paint']};
 const label=(admin,member)=>state.identity.admin?admin:member;
+function defaultView(){
+ if(state.identity.admin)return 'overview';
+ const permissions=state.identity.permissions;
+ for(const [name,permission] of [['rooms','housekeeping:read'],['breakfast','breakfast:read'],['issues','issues:read']]){
+  if(permissions.includes(permission))return name;
+ }
+ return warehouses.find(warehouse=>permissions.includes(warehousePermission(warehouse,'read')))?.view??'lostfound';
+}
 function heading(id,title,desc,section){
  const main=view(id,title,desc,section);main.append(el('div',{id:'status','aria-live':'polite'}),languageSelector(state.identity,{save:async selected=>{let failure;try{await api('api/auth/locale',{method:'PATCH',body:{locale:selected}});}catch(e){failure=e;}const current=await api('identity');if(current.preferred_locale!==selected)throw failure??Error(t('Výsledek zápisu není ověřený. Načtěte původní výsledek.'));},error}));
  if(!state.identity.cml_modules&&state.identity.roles.length>1){
@@ -24,7 +32,7 @@ function heading(id,title,desc,section){
    try{
     const identity=await api('identity',{roleOverride:role});if(generation!==state.generation)return;
     state.identity=identity;setRole(identity.active_role);
-    if(!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'chat';
+    if(!new URLSearchParams(location.search).has('view'))state.view=defaultView();
     await render();
    }catch(e){if(generation===state.generation){control.value=state.identity.active_role;error(e);}}
   });
@@ -87,8 +95,10 @@ function roomDetail(room){
  },{id:'hotel.housekeeping.room',className:'room-detail-sheet'});
 }
 const viewPermission={'inventory-cards':'inventory:read','inventory-card-new':'inventory:write','inventory-card-detail':'inventory:read','inventory-movements':'inventory:read','breakfast-new':'breakfast:read','breakfast-edit':'breakfast:read','breakfast-detail':'breakfast:read',reception:'breakfast:read',rooms:'housekeeping:read',breakfast:'breakfast:read',issues:'issues:read',inventory:'inventory:read',reports:'reports:read',lostfound:'lost_found:read',settings:'settings:read'};
-async function selectViewRole(name,generation){
- const base=name.replace(/-(new|edit|detail|submitted)$/,''),permission=viewPermission[name]??(viewPermission[base]&&(/-(new|submitted)$/.test(name)?viewPermission[base].replace(':read',':write'):viewPermission[base]));if(!permission||state.identity.permissions.includes(permission))return;
+async function selectViewRole(name,generation,warehouse){
+ const base=name.replace(/-(new|edit|detail|submitted)$/,''),basePermission=viewPermission[name]??(viewPermission[base]&&(/-(new|submitted)$/.test(name)?viewPermission[base].replace(':read',':write'):viewPermission[base]));
+ const permission=warehouse&&basePermission?warehousePermission(warehouse,basePermission.split(':')[1]):basePermission;
+ if(!permission||state.identity.permissions.includes(permission))return;
  const role=state.identity.roles.find(role=>state.identity.role_permissions?.[role]?.includes(permission));
  if(!role)throw Error(t('Do tohoto pohledu nemáte oprávnění.'));
  const identity=await api('identity',{roleOverride:role});if(generation!==state.generation)return;
@@ -111,7 +121,7 @@ async function render(){
  const ctx=warehouse?warehouseContext(warehouse):context;
  const content=document.querySelector('#content');content.setAttribute('aria-busy','true');
  try{
-  await selectViewRole(name,generation);if(generation!==state.generation)return;
+  await selectViewRole(name,generation,warehouse);if(generation!==state.generation)return;
   if(name==='overview')await overview(ctx);
   else if(name==='rooms')await rooms();
   else if(name==='breakfast')await breakfastList(ctx);
@@ -143,4 +153,4 @@ addEventListener('message',event=>{
 });
 
 parent.postMessage({type:'CML_SECTION_READY',prefix:'/sections/hotel/'},location.origin);
-try{state.breakfastDate=await readBreakfastDate();state.identity=await api('identity');setRole(state.identity.active_role);if(!restoreLocale(state.identity)){if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=state.identity.admin?'overview':state.identity.permissions.includes('housekeeping:read')?'rooms':state.identity.permissions.includes('breakfast:read')?'breakfast':state.identity.permissions.includes('issues:read')?'issues':state.identity.permissions.includes('inventory:read')?'inventory':'lostfound';state.initialized=true;await render();}}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}
+try{state.breakfastDate=await readBreakfastDate();state.identity=await api('identity');setRole(state.identity.active_role);if(!restoreLocale(state.identity)){if(!state.pendingNavigation&&!new URLSearchParams(location.search).has('view'))state.view=defaultView();state.initialized=true;await render();}}catch(e){document.querySelector('#content').replaceChildren(notice(e.message,'error'));}

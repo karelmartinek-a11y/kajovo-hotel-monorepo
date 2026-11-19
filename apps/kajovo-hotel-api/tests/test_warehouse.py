@@ -1,4 +1,7 @@
 import sqlite3
+from uuid import uuid4
+
+import pytest
 
 
 def test_cml_warehouse_data_and_legacy_default_are_isolated(cml_api_request, api_request, api_db_path):
@@ -43,3 +46,59 @@ def test_cml_warehouse_data_and_legacy_default_are_isolated(cml_api_request, api
             assert stock.execute("SELECT name FROM sqlite_master WHERE name = 'portal_users'").fetchone() is None
     with sqlite3.connect(api_db_path) as hotel:
         assert hotel.execute("SELECT count(*) FROM inventory_items").fetchone() == (0,)
+
+
+@pytest.mark.parametrize(("grants", "visible"), [
+    (["hotel.issues"], set()),
+    (["hotel.inventory.snidane"], {"snidane"}),
+    (["hotel.inventory.drogerie"], {"drogerie"}),
+    (["hotel.inventory.snidane", "hotel.inventory.drogerie"], {"snidane", "drogerie"}),
+    (["hotel.inventory"], {"snidane", "drogerie"}),
+])
+def test_warehouse_grants_apply_to_manifest_reads_and_writes(cml_api_request, grants, visible):
+    base = "/api/v1/inventory"
+    status, manifest = cml_api_request("/ui-manifest.json", permissions=grants)
+    assert status == 200
+    assert {
+        view["permission"].split(":")[0].removeprefix("inventory_")
+        for view in manifest["views"] if view.get("permission", "").startswith("inventory_")
+    } == visible
+    for warehouse in ("snidane", "drogerie"):
+        params = {"warehouse": warehouse}
+        allowed = warehouse in visible
+        for suffix in ("", "/cards", "/movements", "/egg-orders/latest"):
+            assert cml_api_request(base + suffix, params=params, permissions=grants)[0] == (200 if allowed else 403)
+        if not allowed:
+            for suffix in ("/1", "/1/pictogram/original", "/stocktake/pdf"):
+                assert cml_api_request(base + suffix, params=params, permissions=grants)[0] == 403
+        code, item = cml_api_request(base, "POST", {
+            "name": "Izolované oprávnění", "unit": "ks", "min_stock": 0, "current_stock": 0,
+        }, params, permissions=grants)
+        assert code == (201 if allowed else 403)
+        if allowed:
+            assert cml_api_request(f"{base}/{item['id']}", "DELETE", params=params, permissions=grants)[0] == 204
+    assert cml_api_request(base, permissions=grants)[0] == (200 if "snidane" in visible else 403)
+
+
+def test_receipt_and_duplicate_selector_respect_warehouse_permission(cml_api_request, api_db_path):
+    base = "/api/v1/inventory"
+    breakfast, drugstore = ["hotel.inventory.snidane"], ["hotel.inventory.drogerie"]
+    ambiguous = [("warehouse", "snidane"), ("warehouse", "drogerie")]
+    assert cml_api_request(base, params=ambiguous, permissions=breakfast)[0] == 422
+    assert cml_api_request(base, params={"warehouse": ""}, permissions=breakfast)[0] == 422
+
+    ident = str(uuid4())
+    params = {"warehouse": "drogerie"}
+    payload = {"name": "Skladová účtenka", "unit": "ks", "min_stock": 0, "current_stock": 0}
+    code, item = cml_api_request(base, "POST", payload, params, permissions=drugstore, operation_id=ident)
+    assert code == 201
+    assert cml_api_request(base, "POST", payload, params, permissions=drugstore, operation_id=ident) == (201, item)
+    assert cml_api_request(base, "POST", payload, params, permissions=breakfast, operation_id=ident)[0] == 403
+    receipt = {"request_id": ident}
+    assert cml_api_request("/api/request-status", params=receipt, permissions=breakfast)[0] == 403
+    assert cml_api_request("/api/request-status", params=receipt, permissions=drugstore)[1]["body"] == item
+    with sqlite3.connect(api_db_path) as hotel:
+        assert hotel.execute("SELECT permission FROM cml_web_request WHERE request_id = ?", (ident,)).fetchone() == ("inventory_drogerie:write",)
+        hotel.execute("UPDATE cml_web_request SET permission = 'inventory:write' WHERE request_id = ?", (ident,))
+    assert cml_api_request("/api/request-status", params=receipt, permissions=drugstore)[0] == 403
+    assert cml_api_request("/api/request-status", params=receipt, permissions=breakfast + drugstore)[1]["body"] == item

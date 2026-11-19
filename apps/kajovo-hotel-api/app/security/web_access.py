@@ -1,5 +1,6 @@
 """Explicit CML module grants, independent of historical native job roles."""
 
+from app.db.warehouse import Warehouse
 from app.security.cml_assertion import AssertionDenied
 
 MODULES = {
@@ -7,8 +8,11 @@ MODULES = {
     "hotel.breakfast": "breakfast",
     "hotel.lostfound": "lost_found",
     "hotel.issues": "issues",
-    "hotel.inventory": "inventory",
+    "hotel.inventory.snidane": "inventory_snidane",
+    "hotel.inventory.drogerie": "inventory_drogerie",
 }
+WAREHOUSE_MODULES = {warehouse.value: f"inventory_{warehouse.value}" for warehouse in Warehouse}
+LEGACY_WAREHOUSE_GRANT = "hotel.inventory"
 PATH_MODULES = {
     "housekeeping": "housekeeping",
     "breakfast": "breakfast",
@@ -16,6 +20,26 @@ PATH_MODULES = {
     "issues": "issues",
     "inventory": "inventory",
 }
+
+def warehouse_module(values=()):
+    if not values:
+        return WAREHOUSE_MODULES[Warehouse.BREAKFAST]
+    return WAREHOUSE_MODULES.get(values[0]) if len(values) == 1 else None
+
+
+def path_module(suffix, warehouse_values=()):
+    parts = suffix.split("/")
+    if len(parts) < 3 or parts[:2] != ["api", "v1"]:
+        return None
+    module = PATH_MODULES.get(parts[2])
+    return warehouse_module(warehouse_values) if module == "inventory" else module
+
+
+def native_warehouse_permissions(permissions):
+    return permissions | {
+        f"{module}:{action}" for module in WAREHOUSE_MODULES.values()
+        for action in ("read", "write") if f"inventory:{action}" in permissions
+    }
 
 
 def grant_permissions(claims):
@@ -32,10 +56,13 @@ def grant_permissions(claims):
         or not values
         or any(not isinstance(value, str) for value in values)
         or len(set(values)) != len(values)
-        or any(value not in MODULES for value in values)
+        or any(value not in MODULES and value != LEGACY_WAREHOUSE_GRANT for value in values)
     ):
         raise AssertionDenied("module_grant_invalid")
-    return {MODULES[value] + ":" + action for value in values for action in ("read", "write")}
+    modules = {MODULES[value] for value in values if value in MODULES}
+    if LEGACY_WAREHOUSE_GRANT in values:
+        modules.update(WAREHOUSE_MODULES.values())
+    return {f"{module}:{action}" for module in modules for action in ("read", "write")}
 
 
 def module_manager(request, module=None):
@@ -43,8 +70,6 @@ def module_manager(request, module=None):
     if not session or "cml_permissions" not in session:
         return False
     if module is None:
-        parts = request.url.path.removeprefix("/cml-web").split("/")
-        module = (
-            PATH_MODULES.get(parts[3]) if len(parts) > 3 and parts[1:3] == ["api", "v1"] else None
-        )
+        suffix = request.url.path.removeprefix("/cml-web").lstrip("/")
+        module = path_module(suffix, request.query_params.getlist("warehouse"))
     return module is not None and module + ":write" in session["cml_permissions"]

@@ -182,7 +182,7 @@
       "path": "/sections/hotel/?view=inventory",
       "icon": "inventory",
       "admin": false,
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "audienceRole": "admin",
       "localizations": {
         "en": {
@@ -199,7 +199,7 @@
       "path": "/sections/hotel/?view=inventory-drogerie",
       "icon": "inventory",
       "admin": false,
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "audienceRole": "admin",
       "localizations": {
         "en": {
@@ -216,7 +216,7 @@
       "path": "/sections/hotel/?view=inventory",
       "icon": "inventory",
       "admin": false,
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "audienceRole": "member",
       "localizations": {
         "en": {
@@ -233,7 +233,7 @@
       "path": "/sections/hotel/?view=inventory-drogerie",
       "icon": "inventory",
       "admin": false,
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "audienceRole": "member",
       "localizations": {
         "en": {
@@ -523,7 +523,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "New stock item"
@@ -540,7 +540,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "New stock item"
@@ -557,7 +557,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "New stock item"
@@ -574,7 +574,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "New stock item"
@@ -591,7 +591,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "Edit stock item"
@@ -608,7 +608,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "Edit stock item"
@@ -625,7 +625,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "Edit stock item"
@@ -642,7 +642,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "Edit stock item"
@@ -659,7 +659,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock item details"
@@ -676,7 +676,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock item details"
@@ -693,7 +693,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock item details"
@@ -710,7 +710,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock item details"
@@ -763,7 +763,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -781,7 +781,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -799,7 +799,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -817,7 +817,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -835,7 +835,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -853,7 +853,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -871,7 +871,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -889,7 +889,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -907,7 +907,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -925,7 +925,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -943,7 +943,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -961,7 +961,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -979,7 +979,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -997,7 +997,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -1015,7 +1015,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -1033,7 +1033,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "dynamic_title": false,
       "localizations": {
         "en": {
@@ -1305,7 +1305,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "Delete stock item"
@@ -1322,7 +1322,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "Delete stock item"
@@ -1339,7 +1339,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "Delete stock item"
@@ -1356,7 +1356,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "Delete stock item"
@@ -1393,7 +1393,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock documents"
@@ -1410,7 +1410,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock documents"
@@ -1427,7 +1427,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock documents"
@@ -1444,7 +1444,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock documents"
@@ -1461,7 +1461,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "New stock movement"
@@ -1478,7 +1478,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "New stock movement"
@@ -1495,7 +1495,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "localizations": {
         "en": {
           "title": "New stock movement"
@@ -1512,7 +1512,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "localizations": {
         "en": {
           "title": "New stock movement"
@@ -1529,7 +1529,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock document details"
@@ -1546,7 +1546,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock document details"
@@ -1563,7 +1563,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock document details"
@@ -1580,7 +1580,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock document details"
@@ -1597,7 +1597,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "roles": [
         "admin"
       ],
@@ -1617,7 +1617,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "roles": [
         "admin"
       ],
@@ -1637,7 +1637,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_snidane:write",
       "roles": [
         "admin"
       ],
@@ -1657,7 +1657,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:write",
+      "permission": "inventory_drogerie:write",
       "roles": [
         "admin"
       ],
@@ -1677,7 +1677,7 @@
       "navigation": false,
       "parent": "hotel.admin.18",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock movement history"
@@ -1694,7 +1694,7 @@
       "navigation": false,
       "parent": "hotel.admin.18.drogerie",
       "audienceRole": "admin",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock movement history"
@@ -1711,7 +1711,7 @@
       "navigation": false,
       "parent": "hotel.portal.58",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_snidane:read",
       "localizations": {
         "en": {
           "title": "Stock movement history"
@@ -1728,7 +1728,7 @@
       "navigation": false,
       "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
-      "permission": "inventory:read",
+      "permission": "inventory_drogerie:read",
       "localizations": {
         "en": {
           "title": "Stock movement history"

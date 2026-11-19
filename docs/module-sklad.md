@@ -22,7 +22,13 @@ Každá view podporuje stavy: `default`, `loading`, `empty`, `error`, `offline`,
 ## API
 Parametr `warehouse` nabývá hodnot `snidane` a `drogerie`. Bez parametru
 se vždy použije Sklad Snídaně. Původní klienti tak používají stejné adresy.
-Oprávnění a autorizace se ověřují v hlavní databázi Hotelu.
+Hotel ověřuje místní účet v hlavní databázi a u člena CML vyžaduje
+podepsané právo `hotel.inventory.snidane` nebo `hotel.inventory.drogerie`
+podle cíle požadavku. Každé právo umožňuje čtení i obsluhu jednoho skladu.
+Stejnou podmínku mají navigace, piktogramy, PDF, doklady, stavové změny
+a čtení jejich účtenek. Starší účtenka bez rozlišení skladu vyžaduje
+přístup k oběma skladům. Původní nativní role skladníka trvale používá
+Sklad Snídaně. Správce Hotelu má oba sklady.
 
 - `GET /api/v1/inventory`
 - `POST /api/v1/inventory`
@@ -68,9 +74,11 @@ si vývojová instalace zachová původní data jako Sklad Snídaně. Samostatn�
 Sklad Drogerie potřebuje vždy vlastní soubor SQLite nebo databázi PostgreSQL.
 
 Změna zasahuje Hotel API a CML skladové obrazovky, jejich manifest a překlady,
-OpenAPI s TypeScript klientem a skladové testy. Nativní API klient bez
-parametru skladu a centrální oprávnění `hotel.inventory` používají původní
-kontrakt. Nová databázová inicializace se ověřuje při startu API a testy
+OpenAPI s TypeScript klientem a skladové testy. Při přechodu zachová
+Hotel starému podepsanému grantu `hotel.inventory` jeho dosavadní přístup
+k oběma skladům. CML editor ukládá obě práva samostatně. Nasazení
+Hotel API musí předcházet nasazení nového katalogu CML.
+Databázová inicializace se ověřuje při startu API a testy
 procházejí izolovaným HTTP tokem se skutečnými zápisy a následným čtením.
 
 ## Objednávka 180 vajec ve webovém skladu

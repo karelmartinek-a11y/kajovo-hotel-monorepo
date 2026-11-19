@@ -8,3 +8,5 @@ export const warehouseForView = name =>
 
 export const inventoryPath = (warehouse, suffix = '', query = '') =>
  'api/v1/inventory' + suffix + '?warehouse=' + warehouse.id + query;
+
+export const warehousePermission = (warehouse, action) => 'inventory_' + warehouse.id + ':' + action;

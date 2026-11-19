@@ -297,3 +297,8 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   Každý sklad má vlastní pohyby, doklady, audit, piktogramy a rozpracované
   formuláře. Objednávky vajec používají společnou poštovní historii pro
   zachování kontroly opakované objednávky. Viz docs/module-sklad.md.
+
+- Přístup členů CML se ověřuje samostatně podle podepsaných grantů
+  `hotel.inventory.snidane` a `hotel.inventory.drogerie` při navigaci,
+  čtení, zápisu, exportu i čtení účtenek. Starý podepsaný grant
+  `hotel.inventory` zachovává obě oprávnění při koordinovaném nasazení.

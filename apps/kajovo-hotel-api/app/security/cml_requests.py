@@ -13,6 +13,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.db.models import CmlWebRequest
+from app.security.web_access import WAREHOUSE_MODULES
 
 
 class ReceiptFault(Exception):
@@ -27,25 +28,17 @@ def request_id(value: str | None) -> str:
     return value
 
 
-def mutation_permission(suffix: str) -> str | None:
-    parts = suffix.split("/")
-    if len(parts) < 3 or parts[:2] != ["api", "v1"]:
-        return None
-    module = {
-        "reports": "reports",
-        "issues": "issues",
-        "inventory": "inventory",
-        "lost-found": "lost_found",
-        "breakfast": "breakfast",
-        "housekeeping": "housekeeping",
-    }.get(parts[2])
-    # Voice has its original lifetime and journals. Account changes remain
-    # central; their credentials must never enter a generic response receipt.
-    return module + ":write" if module else None
+def receipt_permissions(permissions):
+    # Older inventory receipts lack the warehouse in their stored permission.
+    # Their request path was hashed, so only accounts with both grants can read them.
+    allowed = set(permissions) - {"inventory:write"}
+    if all(f"{module}:write" in allowed for module in WAREHOUSE_MODULES.values()):
+        allowed.add("inventory:write")
+    return allowed
 
 
 def authorize(identity, permission):
-    if permission not in identity["public"].get("permissions", []):
+    if permission not in receipt_permissions(identity["public"].get("permissions", [])):
         raise ReceiptFault("WEB_REQUEST_PERMISSION_DENIED", 403)
 
 
@@ -70,7 +63,7 @@ class WebRequests:
 
     def personal_activity(self, owner, identity, cursor):
         public = identity["public"]
-        permissions = public.get("available_permissions", public.get("permissions", []))
+        permissions = receipt_permissions(public.get("available_permissions", public.get("permissions", [])))
         table = CmlWebRequest
         query = select(
             table.request_id, table.permission, table.state, table.response_status, table.created_at
