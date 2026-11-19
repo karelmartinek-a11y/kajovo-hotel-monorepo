@@ -27,11 +27,11 @@
 .room-reference .room-requests .room-dog{grid-template-columns:10px 15px;gap:1px}
 .room-reference .room-dog b{font-size:min(9px,calc(15px/var(--digits,2)/.65));line-height:13px;width:15px}
 .room-reference .room-requirement{width:10px;height:12px}.room-reference .room-cot .room-requirement{width:12px}
-.room-reference .room-note{color:#780000;font-size:13px;line-height:13px;background:transparent;-webkit-text-stroke:1px #fff;paint-order:stroke fill}
+.room-reference .room-note{display:inline-flex;align-items:center}
 .room-reference .room-conflict{display:grid;place-items:center;height:100%;padding:2px;color:#b71c1c;background:#fff;font:10px/12px Arial,sans-serif;overflow-wrap:anywhere}
 .room-reference .room-stay-label{position:absolute;top:50%;left:0;width:100%;height:50%;display:grid;place-items:center;pointer-events:none;font:700 14px/1.4 Arial,sans-serif}
-.room-reference .room-block{position:absolute;top:0;left:0;width:100%;height:50%;pointer-events:none;fill:none;stroke:#f00;stroke-width:2px}
-.room-reference .room-block path{vector-effect:non-scaling-stroke}.room-reference .room-block-right{top:50%}.room-reference .room-block-full{height:100%}
+.room-reference .room-block{position:absolute;top:0;left:0;width:100%;height:50%;pointer-events:none;background:#d01922;mask:url("/assets/icons/close.svg") center / 80% 80% no-repeat}
+.room-reference .room-reference .room-block-right{top:50%}.room-reference .room-block-full{height:100%}
 :is(.room-reference,.room-status-actions) .cleaning-clean{background:#22c55e}:is(.room-reference,.room-status-actions) .cleaning-dirty{background:#f97316}:is(.room-reference,.room-status-actions) .cleaning-stay_no_linen{background:#2dd4bf}:is(.room-reference,.room-status-actions) .cleaning-stay_with_linen{background:#a7e8b8}:is(.room-reference,.room-status-actions) .cleaning-do_not_disturb{background:#581c87}:is(.room-reference,.room-status-actions) .cleaning-technical_issue{background:#f04452}:is(.room-reference,.room-status-actions) .cleaning-windows_cleaned{background:#1e40af}:is(.room-reference,.room-status-actions) .cleaning-painted{background:#facc15}:is(.room-reference,.room-status-actions) .cleaning-unknown{background:#eee}
 .room-reference .reservation-confirmed{background:#66c86f;color:#000}.room-reference .reservation-checked_in{background:#54adf1;color:#000}.room-reference .reservation-checked_out{background:#686b73;color:#fff}.room-reference .reservation-option{background:#f6a34c;color:#000}.room-reference .reservation-unknown{background:#fff;color:#000}
 .room-status-actions button[class*="cleaning-"]{color:#000;border-color:#d6d1c8}.room-status-actions button.cleaning-do_not_disturb,.room-status-actions button.cleaning-windows_cleaned{color:#fff}

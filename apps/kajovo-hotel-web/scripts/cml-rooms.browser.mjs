@@ -36,7 +36,7 @@ for(const engine of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
   page.setDefaultTimeout(5000);page.on('pageerror',error=>errors.push(error.message));await page.clock.setFixedTime(new Date('2026-10-30T12:00:00Z'));
   await context.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());assert.equal(url.origin,origin);if(request.method()!=='GET'){assert.equal(request.method(),'PATCH');assert.equal(url.pathname,prefix+'api/v1/housekeeping/rooms/room-201');assert(activeProfile.permissions.includes('housekeeping:write'));const body=request.postDataJSON();assert.equal(body.expected_status,serverRooms[3].housekeeping_status_key);assert.equal(body.status,'clean');writeCount++;assert.equal(writeCount,1,'Lost acknowledgement must never repeat a write');const id=request.headers()['idempotency-key'];assert(id);serverRooms[3].housekeeping_status_key='clean';receipt={id,body:structuredClone(serverRooms[3])};await writeGate.promise;await route.fulfill({status:503,json:{error:{message:'Isolated lost acknowledgement'}}});return;}
-   if(/^\/assets\/icons\/(hotel-[a-z-]+|globe)\.svg$/.test(url.pathname)){
+   if(/^\/assets\/icons\/(hotel-[a-z-]+|globe|note|close)\.svg$/.test(url.pathname)){
     const body=process.env.CML_SHARED_ASSETS?await readFile(process.env.CML_SHARED_ASSETS+'/'+url.pathname.slice('/assets/'.length)):'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"/>';
     await route.fulfill({body,contentType:'image/svg+xml'});return;
    }

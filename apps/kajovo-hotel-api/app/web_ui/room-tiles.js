@@ -15,12 +15,6 @@ export function nightCount(stay,date) {
  return Number.isInteger(length)&&length>=0&&Number.isFinite(selected)?Math.max(0,Math.min(length,selected-start))+'/'+length:'?/?';
 }
 export const prepared=(stay,kind)=>(stay.amenities??[]).some(item=>item.kind===kind&&item.active===true&&item.state==='green');
-function svg(attrs,...children) {
- const node=document.createElementNS('http://www.w3.org/2000/svg','svg');
- for(const [name,value]of Object.entries(attrs))node.setAttribute(name,value);
- for(const [tag,attributes]of children){const child=document.createElementNS(node.namespaceURI,tag);for(const [name,value]of Object.entries(attributes))child.setAttribute(name,value);node.append(child);}
- return node;
-}
 function person(kind) {
  return el('img',{src:'/assets/icons/hotel-'+kind+'.svg',class:'room-person',alt:'',width:7,height:11});
 }
@@ -45,7 +39,7 @@ function stamp(stay,kind,date) {
  const dogs=stay.dog_count,requests=el('span',{class:'room-requests'},
   el('span',{class:'room-dog',title:t('Pes: ')+(dogs??'?')},dogs==null?'?':dogs>0?[requirementIcon(stay,'dog'),el('b',{style:'--digits:'+String('×'+dogs).length},'×'+dogs)]:null),
   el('span',{class:'room-cot',title:t('Dětská postýlka')},stay.cot_required==null?'?':stay.cot_required?requirementIcon(stay,'cot'):null),
-  el('span',{class:'room-note'},stay.housekeeping_note?.trim()?el('b',{title:t('Poznámka pro pokojskou'),'aria-label':t('Poznámka pro pokojskou')},'!'):null));
+  el('span',{class:'room-note'},stay.housekeeping_note?.trim()?el('img',{src:'/assets/icons/note.svg',title:t('Poznámka pro pokojskou'),alt:t('Poznámka pro pokojskou'),width:13,height:13}):null));
  return el('span',{class:'room-stamp reservation-'+stay.reservation_state,'data-reservation-id':stay.reservation_id,'data-stay-kind':kind},
   el('span',{class:'room-identity'},el('b',{class:'room-guest',title:(stay.guests??[]).map(g=>g.name?.trim()).filter(Boolean).join(', ')||name},name),country(stay)),people,
   el('span',{class:'room-event',title:label+(kind==='stay'?'':' '+(time??'?'))+' · Noc pobytu: '+nights},el('b',{class:'room-time'},kind==='stay'?'':(kind==='departure'?'←':'→')+(time??'?')),el('b',{class:'room-nights',style:'--digits:'+nights.length},nights)),requests);
@@ -65,7 +59,7 @@ export function roomTile(room,date,onSelect,statusLabel) {
  if(continuing&&room.stays.length===1&&reservationLabels[room.stays[0].reservation_state])body.append(el('span',{class:'room-stay-label reservation-'+room.stays[0].reservation_state},el('b',{},t('POBYT'))));
  if(!continuing){
   const coverage=['left','right'].filter(side=>!(side==='left'?(room.departures??[]):(room.arrivals??[])).length&&blocks.some(block=>block.coverage==='full'||block.coverage===side));
-  for(const side of coverage.length===2&&blocks.some(block=>block.coverage==='full')?['full']:coverage)body.append(svg({viewBox:'0 0 100 100',preserveAspectRatio:'none',class:'room-block room-block-'+side,'data-block-coverage':side,role:'img','aria-label':t('Blokace pokoje / zastavení prodeje')},['path',{d:'M3 3L97 97M97 3L3 97'}]));
+  for(const side of coverage.length===2&&blocks.some(block=>block.coverage==='full')?['full']:coverage)body.append(el('span',{class:'room-block room-block-'+side,'data-block-coverage':side,role:'img','aria-label':t('Blokace pokoje / zastavení prodeje')}));
  }
  tile.append(body);return tile;
 }
