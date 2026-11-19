@@ -732,6 +732,7 @@ export type ValidationError = {
   "msg": string;
   "type": string;
 };
+export type Warehouse = "snidane" | "drogerie";
 
 type QueryValue = string | number | boolean | null | undefined;
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -923,23 +924,23 @@ export const apiClient = {
   async updateHousekeepingRoomStatusApiV1HousekeepingRoomsRoomIdPatch(room_id: string, query: { "date": string; "include_options"?: boolean; "include_blocks"?: boolean; }, body: HousekeepingRoomStatusUpdate): Promise<HousekeepingRoomRead> {
     return request<HousekeepingRoomRead>('PATCH', `/api/v1/housekeeping/rooms/${room_id}`, query, body);
   },
-  async listItemsApiV1InventoryGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {
+  async listItemsApiV1InventoryGet(query: { "low_stock"?: boolean; "warehouse"?: Warehouse; }): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('GET', `/api/v1/inventory`, query, undefined);
   },
-  async createItemApiV1InventoryPost(body: InventoryItemCreate): Promise<InventoryItemRead> {
-    return request<InventoryItemRead>('POST', `/api/v1/inventory`, undefined, body);
+  async createItemApiV1InventoryPost(query: { "warehouse"?: Warehouse; }, body: InventoryItemCreate): Promise<InventoryItemRead> {
+    return request<InventoryItemRead>('POST', `/api/v1/inventory`, query, body);
   },
-  async listCardsApiV1InventoryCardsGet(): Promise<Array<InventoryCardRead>> {
-    return request<Array<InventoryCardRead>>('GET', `/api/v1/inventory/cards`, undefined, undefined);
+  async listCardsApiV1InventoryCardsGet(query: { "warehouse"?: Warehouse; }): Promise<Array<InventoryCardRead>> {
+    return request<Array<InventoryCardRead>>('GET', `/api/v1/inventory/cards`, query, undefined);
   },
-  async createCardApiV1InventoryCardsPost(body: InventoryCardCreate): Promise<InventoryCardDetailRead> {
-    return request<InventoryCardDetailRead>('POST', `/api/v1/inventory/cards`, undefined, body);
+  async createCardApiV1InventoryCardsPost(query: { "warehouse"?: Warehouse; }, body: InventoryCardCreate): Promise<InventoryCardDetailRead> {
+    return request<InventoryCardDetailRead>('POST', `/api/v1/inventory/cards`, query, body);
   },
-  async deleteCardApiV1InventoryCardsCardIdDelete(card_id: number): Promise<void> {
-    return request<void>('DELETE', `/api/v1/inventory/cards/${card_id}`, undefined, undefined);
+  async deleteCardApiV1InventoryCardsCardIdDelete(card_id: number, query: { "warehouse"?: Warehouse; }): Promise<void> {
+    return request<void>('DELETE', `/api/v1/inventory/cards/${card_id}`, query, undefined);
   },
-  async getCardApiV1InventoryCardsCardIdGet(card_id: number): Promise<InventoryCardDetailRead> {
-    return request<InventoryCardDetailRead>('GET', `/api/v1/inventory/cards/${card_id}`, undefined, undefined);
+  async getCardApiV1InventoryCardsCardIdGet(card_id: number, query: { "warehouse"?: Warehouse; }): Promise<InventoryCardDetailRead> {
+    return request<InventoryCardDetailRead>('GET', `/api/v1/inventory/cards/${card_id}`, query, undefined);
   },
   async submitApiV1InventoryEggOrdersPost(body: OrderClick): Promise<OrderStatus | RepeatOrder | BusyOrder> {
     return request<OrderStatus | RepeatOrder | BusyOrder>('POST', `/api/v1/inventory/egg-orders`, undefined, body);
@@ -950,34 +951,34 @@ export const apiClient = {
   async recoverApiV1InventoryEggOrdersOrderIdGet(order_id: string): Promise<OrderStatus> {
     return request<OrderStatus>('GET', `/api/v1/inventory/egg-orders/${order_id}`, undefined, undefined);
   },
-  async listItemsApiV1InventoryIngredientsGet(query: { "low_stock"?: boolean; }): Promise<Array<InventoryItemRead>> {
+  async listItemsApiV1InventoryIngredientsGet(query: { "low_stock"?: boolean; "warehouse"?: Warehouse; }): Promise<Array<InventoryItemRead>> {
     return request<Array<InventoryItemRead>>('GET', `/api/v1/inventory/ingredients`, query, undefined);
   },
-  async listMovementsApiV1InventoryMovementsGet(): Promise<Array<InventoryMovementRead>> {
-    return request<Array<InventoryMovementRead>>('GET', `/api/v1/inventory/movements`, undefined, undefined);
+  async listMovementsApiV1InventoryMovementsGet(query: { "warehouse"?: Warehouse; }): Promise<Array<InventoryMovementRead>> {
+    return request<Array<InventoryMovementRead>>('GET', `/api/v1/inventory/movements`, query, undefined);
   },
-  async exportStocktakePdfApiV1InventoryStocktakePdfGet(): Promise<unknown> {
-    return request<unknown>('GET', `/api/v1/inventory/stocktake/pdf`, undefined, undefined);
+  async exportStocktakePdfApiV1InventoryStocktakePdfGet(query: { "warehouse"?: Warehouse; }): Promise<unknown> {
+    return request<unknown>('GET', `/api/v1/inventory/stocktake/pdf`, query, undefined);
   },
-  async deleteItemApiV1InventoryItemIdDelete(item_id: number): Promise<void> {
-    return request<void>('DELETE', `/api/v1/inventory/${item_id}`, undefined, undefined);
+  async deleteItemApiV1InventoryItemIdDelete(item_id: number, query: { "warehouse"?: Warehouse; }): Promise<void> {
+    return request<void>('DELETE', `/api/v1/inventory/${item_id}`, query, undefined);
   },
-  async getItemApiV1InventoryItemIdGet(item_id: number): Promise<InventoryItemWithAuditRead> {
-    return request<InventoryItemWithAuditRead>('GET', `/api/v1/inventory/${item_id}`, undefined, undefined);
+  async getItemApiV1InventoryItemIdGet(item_id: number, query: { "warehouse"?: Warehouse; }): Promise<InventoryItemWithAuditRead> {
+    return request<InventoryItemWithAuditRead>('GET', `/api/v1/inventory/${item_id}`, query, undefined);
   },
-  async updateItemApiV1InventoryItemIdPut(item_id: number, body: InventoryItemUpdate): Promise<InventoryItemRead> {
-    return request<InventoryItemRead>('PUT', `/api/v1/inventory/${item_id}`, undefined, body);
+  async updateItemApiV1InventoryItemIdPut(item_id: number, query: { "warehouse"?: Warehouse; }, body: InventoryItemUpdate): Promise<InventoryItemRead> {
+    return request<InventoryItemRead>('PUT', `/api/v1/inventory/${item_id}`, query, body);
   },
-  async addMovementApiV1InventoryItemIdMovementsPost(item_id: number, body: InventoryMovementCreate): Promise<InventoryItemDetailRead> {
-    return request<InventoryItemDetailRead>('POST', `/api/v1/inventory/${item_id}/movements`, undefined, body);
+  async addMovementApiV1InventoryItemIdMovementsPost(item_id: number, query: { "warehouse"?: Warehouse; }, body: InventoryMovementCreate): Promise<InventoryItemDetailRead> {
+    return request<InventoryItemDetailRead>('POST', `/api/v1/inventory/${item_id}/movements`, query, body);
   },
-  async deleteMovementApiV1InventoryItemIdMovementsMovementIdDelete(item_id: number, movement_id: number): Promise<void> {
-    return request<void>('DELETE', `/api/v1/inventory/${item_id}/movements/${movement_id}`, undefined, undefined);
+  async deleteMovementApiV1InventoryItemIdMovementsMovementIdDelete(item_id: number, movement_id: number, query: { "warehouse"?: Warehouse; }): Promise<void> {
+    return request<void>('DELETE', `/api/v1/inventory/${item_id}/movements/${movement_id}`, query, undefined);
   },
-  async uploadItemPictogramApiV1InventoryItemIdPictogramPost(item_id: number): Promise<InventoryItemRead> {
-    return request<InventoryItemRead>('POST', `/api/v1/inventory/${item_id}/pictogram`, undefined, undefined);
+  async uploadItemPictogramApiV1InventoryItemIdPictogramPost(item_id: number, query: { "warehouse"?: Warehouse; }): Promise<InventoryItemRead> {
+    return request<InventoryItemRead>('POST', `/api/v1/inventory/${item_id}/pictogram`, query, undefined);
   },
-  async getItemPictogramApiV1InventoryItemIdPictogramKindGet(item_id: number, kind: string, query: { "download"?: boolean; }): Promise<unknown> {
+  async getItemPictogramApiV1InventoryItemIdPictogramKindGet(item_id: number, kind: string, query: { "download"?: boolean; "warehouse"?: Warehouse; }): Promise<unknown> {
     return request<unknown>('GET', `/api/v1/inventory/${item_id}/pictogram/${kind}`, query, undefined);
   },
   async listIssuesApiV1IssuesGet(query: { "priority"?: IssuePriority | null; "status"?: IssueStatus | null; "location"?: string | null; "room_number"?: string | null; }): Promise<Array<IssueRead>> {

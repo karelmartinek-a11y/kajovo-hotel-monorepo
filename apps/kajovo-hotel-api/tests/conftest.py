@@ -138,6 +138,7 @@ def api_base_url(api_db_path: Path, cml_web_test_key: tuple[Ed25519PrivateKey, P
 
     env = os.environ.copy()
     env["KAJOVO_API_DATABASE_URL"] = database_url
+    env["KAJOVO_API_WAREHOUSE_SEPARATE_DATABASES"] = "true"
     env["KAJOVO_API_ADMIN_EMAIL"] = admin_email()
     env["KAJOVO_API_ADMIN_PASSWORD"] = admin_password()
     env["KAJOVO_API_DEVICE_BOOTSTRAP_KEY"] = "test-device-bootstrap-key"

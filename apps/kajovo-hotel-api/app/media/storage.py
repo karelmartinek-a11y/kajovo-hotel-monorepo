@@ -107,9 +107,11 @@ class MediaStorage:
 
 
 class InventoryMediaStorage(MediaStorage):
-    def store_pictogram(self, *, ingredient_id: int, src_file: BinaryIO, src_filename: str) -> StoredMedia:
+    def store_pictogram(
+        self, *, ingredient_id: int, src_file: BinaryIO, src_filename: str, warehouse: str | None = None,
+    ) -> StoredMedia:
         return self.store_image(
-            category='inventory/ingredients',
+            category=f'inventory/{warehouse}/ingredients' if warehouse else 'inventory/ingredients',
             resource_id=ingredient_id,
             src_file=src_file,
             src_filename=src_filename,

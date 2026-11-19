@@ -29,9 +29,10 @@ for(const engine of [chromium,webkit]){
    if(sent&&asset===path+'/'+sent.id)return route.fulfill({json:sent});
    if(asset==='api/v1/inventory')return route.fulfill({json:[]});
    if(asset==='test.html')return route.fulfill({contentType:'text/html; charset=utf-8',body:`<!doctype html><html><meta charset="utf-8"><main id="content"></main><dialog id="dialog"></dialog><script type="module">
-    import {warehouseList} from './warehouse.js';import {view,setRole} from './api.js';
+    import {warehouseList} from './warehouse.js';import {view,setRole} from './api.js';import {warehouses,inventoryPath} from './warehouse-selection.js';
     setRole('sklad');
-    await warehouseList({heading:view,state:{generation:1,identity:{permissions:['inventory:read','inventory:write']}}},{newItem:()=>{},detail:()=>{}});
+    const warehouse=warehouses[0];
+    await warehouseList({heading:view,warehouse,inventoryPath:suffix=>inventoryPath(warehouse,suffix),state:{generation:1,identity:{permissions:['inventory:read','inventory:write']}}},{newItem:()=>{},detail:()=>{}});
     </script></html>`});
    if(!asset.includes('/')&&asset.endsWith('.js'))return route.fulfill({contentType:'text/javascript',body:await readFile(new URL(asset,root))});
    return route.fulfill({status:204});

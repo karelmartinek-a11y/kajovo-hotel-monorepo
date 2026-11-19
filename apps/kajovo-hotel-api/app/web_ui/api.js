@@ -16,8 +16,8 @@ export async function api(path,{method='GET',body,blob=false,id,roleOverride}={}
  }
  if(r.status===204)return null;return blob?r.blob():r.json();
 }
-export function view(id,title,description){
- const main=document.querySelector('#content');main.dataset.view=id;main.replaceChildren();const crumb=document.createElement('div');crumb.className='crumb';crumb.textContent='KájovoCML Ng Lite  ›  KájovoHotel';const label=document.createElement('div');label.className='eyebrow';label.textContent=id;const heading=document.createElement('h1');heading.textContent=title;const p=document.createElement('p');p.className='page-description';p.textContent=description;main.append(crumb,label,heading,p);parent.postMessage({type:'KAJOVO_VIEW',prefix,id,locale},location.origin);return main;
+export function view(id,title,description,section){
+ const main=document.querySelector('#content');main.dataset.view=id;main.replaceChildren();const crumb=document.createElement('div');crumb.className='crumb';crumb.textContent=['KájovoCML Ng Lite','KájovoHotel',section].filter(Boolean).join('  ›  ');const label=document.createElement('div');label.className='eyebrow';label.textContent=id;const heading=document.createElement('h1');heading.textContent=title;const p=document.createElement('p');p.className='page-description';p.textContent=description;main.append(crumb,label,heading,p);parent.postMessage({type:'KAJOVO_VIEW',prefix,id,locale},location.origin);return main;
 }
 export async function download(path,options={}){const blob=await api(path,{...options,blob:true}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=options.filename??'export';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 

@@ -2030,6 +2030,14 @@ export const translations={
     "Reference",
     "Посилання"
   ],
+  "Sklad Snídaně": [
+    "Breakfast Warehouse",
+    "Склад сніданків"
+  ],
+  "Sklad Drogerie": [
+    "Cleaning Supplies Warehouse",
+    "Склад господарських товарів"
+  ],
   "Sklad": [
     "Stock",
     "Склад"

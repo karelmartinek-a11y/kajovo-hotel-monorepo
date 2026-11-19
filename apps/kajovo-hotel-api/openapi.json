@@ -5140,6 +5140,14 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "Warehouse": {
+        "enum": [
+          "snidane",
+          "drogerie"
+        ],
+        "title": "Warehouse",
+        "type": "string"
       }
     }
   },
@@ -7247,6 +7255,15 @@
               "title": "Low Stock",
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
           }
         ],
         "responses": {
@@ -7282,6 +7299,17 @@
       },
       "post": {
         "operationId": "create_item_api_v1_inventory_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7323,6 +7351,17 @@
     "/api/v1/inventory/cards": {
       "get": {
         "operationId": "list_cards_api_v1_inventory_cards_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7337,6 +7376,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Cards",
@@ -7346,6 +7395,17 @@
       },
       "post": {
         "operationId": "create_card_api_v1_inventory_cards_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7396,6 +7456,15 @@
               "title": "Card Id",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
           }
         ],
         "responses": {
@@ -7428,6 +7497,15 @@
             "schema": {
               "title": "Card Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],
@@ -7587,6 +7665,15 @@
               "title": "Low Stock",
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
           }
         ],
         "responses": {
@@ -7624,6 +7711,17 @@
     "/api/v1/inventory/movements": {
       "get": {
         "operationId": "list_movements_api_v1_inventory_movements_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7638,6 +7736,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Movements",
@@ -7649,6 +7757,17 @@
     "/api/v1/inventory/stocktake/pdf": {
       "get": {
         "operationId": "export_stocktake_pdf_api_v1_inventory_stocktake_pdf_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7657,6 +7776,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Export Stocktake Pdf",
@@ -7676,6 +7805,15 @@
             "schema": {
               "title": "Item Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],
@@ -7709,6 +7847,15 @@
             "schema": {
               "title": "Item Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],
@@ -7749,6 +7896,15 @@
             "schema": {
               "title": "Item Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],
@@ -7801,6 +7957,15 @@
             "schema": {
               "title": "Item Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],
@@ -7863,6 +8028,15 @@
               "title": "Movement Id",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
+            }
           }
         ],
         "responses": {
@@ -7897,6 +8071,15 @@
             "schema": {
               "title": "Item Id",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],
@@ -7968,6 +8151,15 @@
               "default": false,
               "title": "Download",
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "warehouse",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Warehouse",
+              "default": "snidane"
             }
           }
         ],

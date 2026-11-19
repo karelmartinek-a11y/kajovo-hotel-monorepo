@@ -1,9 +1,17 @@
 # Modul: Skladové hospodářství
 
 ## Přehled
-Modul `Skladové hospodářství` pokrývá evidenci zásob a pohybů skladu pro provoz hotelu.
+V sekci KájovoHotel jsou dvě samostatné podsekce **Sklad Snídaně** a
+**Sklad Drogerie**. Obě mají stejné formuláře a oprávnění pro evidenci
+položek, příjem, výdej, odpis, doklady, historii, piktogramy a PDF inventuru.
+Provozní přehled načítá stav každého skladu zvlášť.
 
 ## Trasy
+
+CML otevírá `/sections/hotel/?view=inventory` pro Sklad Snídaně a
+`/sections/hotel/?view=inventory-drogerie` pro Sklad Drogerie. Původní
+adresy zaměstnaneckého webu používají Sklad Snídaně.
+
 - `/sklad` - seznam skladových položek s indikací podlimitních zásob.
 - `/sklad/nova` - vytvoření nové položky.
 - `/sklad/:id` - detail položky včetně historie pohybů a auditní stopy.
@@ -12,6 +20,10 @@ Modul `Skladové hospodářství` pokrývá evidenci zásob a pohybů skladu pro
 Každá view podporuje stavy: `default`, `loading`, `empty`, `error`, `offline`, `maintenance`, `404`.
 
 ## API
+Parametr `warehouse` nabývá hodnot `snidane` a `drogerie`. Bez parametru
+se vždy použije Sklad Snídaně. Původní klienti tak používají stejné adresy.
+Oprávnění a autorizace se ověřují v hlavní databázi Hotelu.
+
 - `GET /api/v1/inventory`
 - `POST /api/v1/inventory`
 - `GET /api/v1/inventory/{item_id}`
@@ -22,7 +34,7 @@ Každá view podporuje stavy: `default`, `loading`, `empty`, `error`, `offline`,
 Pohyby:
 - `in` - navýšení skladu o `quantity`
 - `out` - snížení skladu o `quantity` (validace proti zápornému stavu)
-- `adjust` - přímé nastavení stavu skladu na `quantity`
+- `adjust` - odpis `quantity` (validace proti zápornému stavu)
 
 ## Validace formuláře
 - `name` je povinný.
@@ -33,9 +45,39 @@ Pohyby:
 ## Audit
 Auditní záznamy se ukládají do tabulky `inventory_audit_logs` pro akce create/update/movement/delete.
 
+## Databáze a nasazení
+
+Produkční PostgreSQL používá dvě databáze odvozené od názvu hlavní databáze
+Hotelu s příponami `_sklad_snidane` a `_sklad_drogerie`. Před prvním startem
+je založ jako prázdné databáze ve stejném clusteru s vlastníkem shodným
+s účtem Hotel API. API vytvoří skladové tabulky v obou databázích a při
+nedostupnosti některé z nich start nedokončí. Při každém dalším startu
+tabulky a data zůstávají zachované. Piktogramy mají samostatné adresáře
+`inventory/snidane/ingredients` a `inventory/drogerie/ingredients`.
+
+Při přechodu se původní skladové tabulky a piktogramy ponechají ve svém
+úložišti pro návrat. Do aktivních skladů se nekopírují. Před přepnutím
+ověř nulové počty položek, řádků dokladů, dokladů, pohybů a auditu v cílových
+databázích. Návrat předchozího image obnoví původní skladový pohled a data
+nových skladů zůstanou ve vlastních databázích. Pokud v nich mezitím vznikly
+zápisy, vyhodnoť obnovení provozu s jejich vědomím před přepnutím zpět.
+
+Lokální a testovací instalace mohou aktivovat obě samostatné databáze přes
+`KAJOVO_API_WAREHOUSE_SEPARATE_DATABASES=true`. Bez tohoto nastavení
+si vývojová instalace zachová původní data jako Sklad Snídaně. Samostatný
+Sklad Drogerie potřebuje vždy vlastní soubor SQLite nebo databázi PostgreSQL.
+
+Změna zasahuje Hotel API a CML skladové obrazovky, jejich manifest a překlady,
+OpenAPI s TypeScript klientem a skladové testy. Nativní API klient bez
+parametru skladu a centrální oprávnění `hotel.inventory` používají původní
+kontrakt. Nová databázová inicializace se ověřuje při startu API a testy
+procházejí izolovaným HTTP tokem se skutečnými zápisy a následným čtením.
+
 ## Objednávka 180 vajec ve webovém skladu
 
-Tlačítko je pro role s `inventory:write` v podepsané relaci CML.
+Tlačítko je v obou skladech pro role s `inventory:write` v podepsané
+relaci CML. Historii objednávek využívají oba sklady společně kvůli
+obnově účtenek a kontrole opakovaného odeslání.
 Do 18:00 včetně se počítá zítřek, potom pozítří, v pásmu Europe/Prague.
 Pokud vyjde neděle, závoz se posune na pondělí. Nový termín se po výslovném
 potvrzení znovu ověří. Další objednávka do 24 hodin od posledního odeslání

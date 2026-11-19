@@ -34,6 +34,7 @@ from app.db.models import (
     InventoryMovement,
 )
 from app.db.session import get_db
+from app.db.warehouse import Warehouse, get_warehouse_db, separate_warehouse_databases
 from app.media.storage import InventoryMediaStorage
 from app.security.auth import preferred_locale_for_session
 from app.security.rbac import module_access_dependency, require_role
@@ -185,7 +186,7 @@ def _load_item_detail(db: Session, item_id: int) -> InventoryItem:
 @router.get("", response_model=list[InventoryItemRead])
 @router.get("/ingredients", response_model=list[InventoryItemRead])
 def list_items(
-    low_stock: bool = Query(default=False), db: Session = Depends(get_db)
+    low_stock: bool = Query(default=False), db: Session = Depends(get_warehouse_db)
 ) -> list[InventoryItem]:
     query = select(InventoryItem).order_by(InventoryItem.name.asc(), InventoryItem.id.asc())
     if low_stock:
@@ -194,7 +195,7 @@ def list_items(
 
 
 @router.get("/movements", response_model=list[InventoryMovementRead])
-def list_movements(db: Session = Depends(get_db)) -> list[InventoryMovementRead]:
+def list_movements(db: Session = Depends(get_warehouse_db)) -> list[InventoryMovementRead]:
     movements = list(
         db.scalars(
             select(InventoryMovement)
@@ -210,7 +211,7 @@ def list_movements(db: Session = Depends(get_db)) -> list[InventoryMovementRead]
 
 
 @router.get("/cards", response_model=list[InventoryCardRead])
-def list_cards(db: Session = Depends(get_db)) -> list[InventoryCard]:
+def list_cards(db: Session = Depends(get_warehouse_db)) -> list[InventoryCard]:
     return list(
         db.scalars(
             select(InventoryCard)
@@ -220,7 +221,7 @@ def list_cards(db: Session = Depends(get_db)) -> list[InventoryCard]:
 
 
 @router.post("/cards", response_model=InventoryCardDetailRead, status_code=status.HTTP_201_CREATED)
-def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> InventoryCardDetailRead:
+def create_card(payload: InventoryCardCreate, db: Session = Depends(get_warehouse_db)) -> InventoryCardDetailRead:
     ingredient_ids = sorted({item.ingredient_id for item in payload.items})
     ingredients = {
         item.id: item
@@ -303,14 +304,14 @@ def create_card(payload: InventoryCardCreate, db: Session = Depends(get_db)) -> 
 
 
 @router.get("/cards/{card_id}", response_model=InventoryCardDetailRead)
-def get_card(card_id: int, db: Session = Depends(get_db)) -> InventoryCardDetailRead:
+def get_card(card_id: int, db: Session = Depends(get_warehouse_db)) -> InventoryCardDetailRead:
     return _serialize_card(_load_card_or_404(db, card_id))
 
 
 @router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_card(
     card_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
     _admin: None = Depends(require_role("admin")),
 ) -> None:
     locked = db.scalar(select(InventoryCard).where(InventoryCard.id == card_id).with_for_update())
@@ -347,7 +348,7 @@ def delete_card(
 @router.post("", response_model=InventoryItemRead, status_code=status.HTTP_201_CREATED)
 def create_item(
     payload: InventoryItemCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
 ) -> InventoryItem:
     item = InventoryItem(**payload.model_dump())
     db.add(item)
@@ -361,7 +362,7 @@ def create_item(
 @router.get("/{item_id}", response_model=InventoryItemWithAuditRead)
 def get_item(
     item_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
 ) -> InventoryItemWithAuditRead:
     try:
         item = _load_item_detail(db, item_id)
@@ -392,7 +393,7 @@ def get_item(
 def update_item(
     item_id: int,
     payload: InventoryItemUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id, for_update=True)
 
@@ -412,7 +413,7 @@ def update_item(
 
 @router.post("/{item_id}/movements", response_model=InventoryItemDetailRead)
 def add_movement(
-    item_id: int, payload: InventoryMovementCreate, db: Session = Depends(get_db)
+    item_id: int, payload: InventoryMovementCreate, db: Session = Depends(get_warehouse_db)
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id, for_update=True)
 
@@ -467,7 +468,7 @@ def add_movement(
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_item(
     item_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
     _admin: None = Depends(require_role("admin")),
 ) -> None:
     _load_item_or_404(db, item_id, for_update=True)
@@ -493,7 +494,7 @@ def delete_item(
 def delete_movement(
     item_id: int,
     movement_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
     _admin: None = Depends(require_role("admin")),
 ) -> None:
     item = _load_item_or_404(db, item_id, for_update=True)
@@ -534,7 +535,8 @@ def delete_movement(
 def upload_item_pictogram(
     item_id: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    warehouse: Warehouse = Warehouse.BREAKFAST,
+    db: Session = Depends(get_warehouse_db),
 ) -> InventoryItem:
     item = _load_item_or_404(db, item_id)
 
@@ -543,6 +545,7 @@ def upload_item_pictogram(
         ingredient_id=item.id,
         src_file=file.file,
         src_filename=file.filename or "pictogram.jpg",
+        warehouse=warehouse if separate_warehouse_databases() or warehouse == Warehouse.DRUGSTORE else None,
     )
     item.pictogram_path = stored.original_relpath
     item.pictogram_thumb_path = stored.thumb_relpath
@@ -553,7 +556,7 @@ def upload_item_pictogram(
 
 
 @router.get("/{item_id}/pictogram/{kind}")
-def get_item_pictogram(item_id: int, kind: str, download: bool = Query(default=False), db: Session = Depends(get_db)):
+def get_item_pictogram(item_id: int, kind: str, download: bool = Query(default=False), db: Session = Depends(get_warehouse_db)):
     item = _load_item_or_404(db, item_id)
     if kind not in {"thumb", "original"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nepodporovaný typ obrázku.")
@@ -573,13 +576,14 @@ def get_item_pictogram(item_id: int, kind: str, download: bool = Query(default=F
 @router.get("/stocktake/pdf")
 def export_stocktake_pdf(
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_warehouse_db),
+    hotel_db: Session = Depends(get_db),
     _admin: None = Depends(require_role("admin")),
 ):
     items = list(
         db.scalars(select(InventoryItem).order_by(InventoryItem.name.asc(), InventoryItem.id.asc()))
     )
-    pdf_bytes = build_inventory_stocktake_pdf(items, stock_date=date.today(), locale=preferred_locale_for_session(request, db))
+    pdf_bytes = build_inventory_stocktake_pdf(items, stock_date=date.today(), locale=preferred_locale_for_session(request, hotel_db))
     return StreamingResponse(
         BytesIO(pdf_bytes),
         media_type="application/pdf",

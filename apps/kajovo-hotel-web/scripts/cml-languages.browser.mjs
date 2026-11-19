@@ -6,6 +6,7 @@ import {generateKeyPairSync,sign,createHash,randomUUID} from 'node:crypto';
 import {readFile,writeFile,mkdir,mkdtemp,rm} from 'node:fs/promises';
 import {spawn,spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
+import {expect} from '@playwright/test';
 const root=fileURLToPath(new URL('../../../',import.meta.url));
 const out=process.env.CML_PRINT_EVIDENCE_DIR??await mkdtemp(join(tmpdir(),'cml-print-'));await mkdir(out,{recursive:true});
 const keyDir=await mkdtemp(join(process.env.HOTEL_CML_SHARED_TMP??tmpdir(),'hotel-language-'));
@@ -28,10 +29,40 @@ try{
    permissions:['hotel.rooms','hotel.breakfast','hotel.lostfound','hotel.issues','hotel.inventory'],
    dataScope:{kind:'service'}};
   const raw=Buffer.from(JSON.stringify({typ:'cml-web+jwt',alg:'EdDSA',kid:'cml-web-1'})).toString('base64url')+'.'+Buffer.from(JSON.stringify(claims)).toString('base64url');
-  const response=forwarding.then(async()=>{const r=await fetch('http://127.0.0.1:'+port+path,{method:req.method(),headers:{Origin:'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':prefix,'X-CML-Web-Assertion':raw+'.'+sign(null,Buffer.from(raw),privateKey).toString('base64url'),'X-CSRF-Token':'a'.repeat(43),'Content-Type':'application/json'},body:['GET','HEAD'].includes(req.method())?undefined:body});
+  const response=forwarding.then(async()=>{const r=await fetch('http://127.0.0.1:'+port+path,{method:req.method(),headers:{Origin:'https://kajovocml.hcasc.cz','X-CML-Web-Prefix':prefix,'X-CML-Web-Assertion':raw+'.'+sign(null,Buffer.from(raw),privateKey).toString('base64url'),'X-CSRF-Token':'a'.repeat(43),'Content-Type':req.headers()['content-type']??'application/json',...(req.headers()['idempotency-key']?{'Idempotency-Key':req.headers()['idempotency-key']}:{})},body:['GET','HEAD'].includes(req.method())?undefined:body});
   return {r,bytes:Buffer.from(await r.arrayBuffer())};});forwarding=response.catch(()=>{});
   const {r,bytes}=await response;if(!r.ok)failedRequests.push({path,status:r.status});await route.fulfill({status:r.status,contentType:r.headers.get('content-type')??'application/octet-stream',body:bytes});
  }catch(error){if(!closing)throw error;} });
+
+ if(!process.env.HOTEL_LOCALE_PREFERENCE_ONLY){
+  await page.goto(origin+prefix+'?view=inventory');
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Sklad Snídaně');
+  const manifest=await page.evaluate(async()=>await(await fetch('/sections/hotel/ui-manifest.json')).json());
+  const stock=manifest.views.filter(view=>view.navigation!==false&&view.permission==='inventory:read');
+  assert.deepEqual(stock.map(view=>view.title),['Sklad Snídaně','Sklad Drogerie']);
+  const open=async entry=>page.evaluate(({id,path,prefix})=>window.postMessage({type:'CML_SECTION_NAVIGATE',id,path,prefix},location.origin),{...entry,prefix});
+  await page.getByRole('button',{name:'Nová skladová položka'}).click();
+  await page.getByLabel('Název',{exact:true}).fill('Rozpracovaná položka snídaně');
+  await open(stock[1]);
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Sklad Drogerie');
+  await expect(page.getByText('Syntetická skladová položka',{exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Nová skladová položka'}).click();
+  await expect(page.getByLabel('Název',{exact:true})).toBeEmpty();
+  await page.getByLabel('Název',{exact:true}).fill('Izolovaná drogerie z UI');
+  await page.getByRole('button',{name:'Uložit',exact:true}).click();
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Detail skladové položky');
+  await expect(page.locator('.crumb')).toContainText('Sklad Drogerie');
+  await page.getByRole('button',{name:'Zpět na seznam'}).click();
+  await expect(page.getByText('Izolovaná drogerie z UI',{exact:true})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Inventurní protokol (PDF)'})).toHaveAttribute('href',/warehouse=drogerie/);
+  await open(stock[0]);
+  await expect(page.getByRole('heading',{level:1})).toHaveText('Sklad Snídaně');
+  await expect(page.getByText('Syntetická skladová položka',{exact:true})).toBeVisible();
+  await expect(page.getByText('Izolovaná drogerie z UI',{exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Nová skladová položka'}).click();
+  await expect(page.getByLabel('Název',{exact:true})).toHaveValue('Rozpracovaná položka snídaně');
+  console.log('PASS distinct warehouse tabs, lists, drafts, verified write and stocktake route');
+ }
 
  if(!process.env.HOTEL_LOCALE_PREFERENCE_ONLY)for(role of ['admin','member'])for(const lang of (role==='admin'?['cs']:['cs','en','uk']))for(const width of [1440,768,390])for(const view of ['rooms','breakfast']){
   await page.setViewportSize({width,height:width===768?1024:width===390?844:900});

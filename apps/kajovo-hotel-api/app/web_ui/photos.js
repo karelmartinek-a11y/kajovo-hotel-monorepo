@@ -32,14 +32,14 @@ export async function photoDocumentation(ctx,config,row,canUpload,refresh,{write
 }
 
 export async function pictogramDocumentation(ctx,row,canUpload,refresh){
- const role=getRole(),generation=ctx.state.generation,path='api/v1/inventory/'+row.id+'/pictogram',content=el('div',{class:'pictogram-documentation'});
+ const role=getRole(),generation=ctx.state.generation,pictogram=(suffix='',query='')=>ctx.inventoryPath('/'+row.id+'/pictogram'+suffix,query),draftKey=ctx.warehouse.id+':'+row.id,content=el('div',{class:'pictogram-documentation'});
  if(row.pictogram_thumb_path){
-  const blob=await api(path+'/thumb',{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return content;const url=URL.createObjectURL(blob);ctx.state.cleanup.push(()=>URL.revokeObjectURL(url));
-  content.append(el('img',{src:url,alt:t('Piktogram položky ')+row.name,class:'inventory-pictogram'}),exportLink(path+'/original?download=true',t('Stáhnout původní piktogram')));
+  const blob=await api(pictogram('/thumb'),{blob:true,roleOverride:role});if(generation!==ctx.state.generation)return content;const url=URL.createObjectURL(blob);ctx.state.cleanup.push(()=>URL.revokeObjectURL(url));
+  content.append(el('img',{src:url,alt:t('Piktogram položky ')+row.name,class:'inventory-pictogram'}),exportLink(pictogram('/original','&download=true'),t('Stáhnout původní piktogram')));
  }else content.append(el('div',{class:'photo-empty'},icon('camera'),t('Položka nemá nahraný piktogram.')));
  if(!canUpload)return content;
- ctx.state.pictogramDrafts??=new Map();const existing=ctx.state.pictogramDrafts.get(row.id);if(existing){content.append(existing);return content;}
- const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp','aria-label':t('Piktogram k nahrání'),required:true}),selection=el('small',{},t('Žádný vybraný soubor')),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},t('Piktogram položky')),el('label',{class:'photo-file-picker'},file,el('span',{},t('Vybrat piktogram'))),selection,el('small',{},t('JPEG, PNG nebo WebP do 2 MB.'))),el('button',{type:'submit'},icon('upload'),t('Nahrát piktogram')));form.dataset.nativeRole=role;ctx.state.pictogramDrafts.set(row.id,form);file.addEventListener('change',()=>selection.textContent=file.files[0]?.name??t('Žádný vybraný soubor'));
+ ctx.state.pictogramDrafts??=new Map();const existing=ctx.state.pictogramDrafts.get(draftKey);if(existing){content.append(existing);return content;}
+ const file=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp','aria-label':t('Piktogram k nahrání'),required:true}),selection=el('small',{},t('Žádný vybraný soubor')),form=el('form',{class:'photo-upload'},el('div',{class:'field'},el('span',{},t('Piktogram položky')),el('label',{class:'photo-file-picker'},file,el('span',{},t('Vybrat piktogram'))),selection,el('small',{},t('JPEG, PNG nebo WebP do 2 MB.'))),el('button',{type:'submit'},icon('upload'),t('Nahrát piktogram')));form.dataset.nativeRole=role;ctx.state.pictogramDrafts.set(draftKey,form);file.addEventListener('change',()=>selection.textContent=file.files[0]?.name??t('Žádný vybraný soubor'));
  const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(value=>value.toString(16).padStart(2,'0')).join('');
  let preparing=false;
  form.addEventListener('submit',async event=>{
@@ -48,9 +48,9 @@ export async function pictogramDocumentation(ctx,row,canUpload,refresh){
   preparing=true;
   try{
    const fingerprint=await digest(await selected.arrayBuffer()),body=new FormData();body.append('file',selected);
-   await saveMutation(form,{path,body,verify:async(result,{read})=>{
-    if(result?.id!==row.id||!result.pictogram_path||result.pictogram_path===row.pictogram_path)throw Error(t('Odpověď nepotvrdila nový piktogram této položky.'));const current=await read('api/v1/inventory/'+row.id);if(current.pictogram_path!==result.pictogram_path)throw Error(t('Aktuální piktogram se liší od původního výsledku.'));const original=await read(path+'/original',{blob:true});if(original.size!==selected.size||await digest(await original.arrayBuffer())!==fingerprint)throw Error(t('Původní soubor piktogramu neodpovídá nahranému obrázku.'));
-   },done:async()=>{ctx.state.pictogramDrafts.delete(row.id);await refresh();}});
+   await saveMutation(form,{path:pictogram(),body,verify:async(result,{read})=>{
+    if(result?.id!==row.id||!result.pictogram_path||result.pictogram_path===row.pictogram_path)throw Error(t('Odpověď nepotvrdila nový piktogram této položky.'));const current=await read(ctx.inventoryPath('/'+row.id));if(current.pictogram_path!==result.pictogram_path)throw Error(t('Aktuální piktogram se liší od původního výsledku.'));const original=await read(pictogram('/original'),{blob:true});if(original.size!==selected.size||await digest(await original.arrayBuffer())!==fingerprint)throw Error(t('Původní soubor piktogramu neodpovídá nahranému obrázku.'));
+   },done:async()=>{ctx.state.pictogramDrafts.delete(draftKey);await refresh();}});
   }catch(error){showError(form,error);}finally{preparing=false;}
  });content.append(form);return content;
 }

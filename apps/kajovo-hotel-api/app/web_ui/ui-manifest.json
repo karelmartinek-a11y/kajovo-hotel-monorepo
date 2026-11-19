@@ -178,7 +178,7 @@
     },
     {
       "id": "hotel.admin.18",
-      "title": "Sklad",
+      "title": "Sklad Snídaně",
       "path": "/sections/hotel/?view=inventory",
       "icon": "inventory",
       "admin": false,
@@ -186,16 +186,33 @@
       "audienceRole": "admin",
       "localizations": {
         "en": {
-          "title": "Stock"
+          "title": "Breakfast Warehouse"
         },
         "uk": {
-          "title": "Склад"
+          "title": "Склад сніданків"
+        }
+      }
+    },
+    {
+      "id": "hotel.admin.18.drogerie",
+      "title": "Sklad Drogerie",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "icon": "inventory",
+      "admin": false,
+      "permission": "inventory:read",
+      "audienceRole": "admin",
+      "localizations": {
+        "en": {
+          "title": "Cleaning Supplies Warehouse"
+        },
+        "uk": {
+          "title": "Склад господарських товарів"
         }
       }
     },
     {
       "id": "hotel.portal.58",
-      "title": "Sklad",
+      "title": "Sklad Snídaně",
       "path": "/sections/hotel/?view=inventory",
       "icon": "inventory",
       "admin": false,
@@ -203,10 +220,27 @@
       "audienceRole": "member",
       "localizations": {
         "en": {
-          "title": "Stock"
+          "title": "Breakfast Warehouse"
         },
         "uk": {
-          "title": "Склад"
+          "title": "Склад сніданків"
+        }
+      }
+    },
+    {
+      "id": "hotel.portal.58.drogerie",
+      "title": "Sklad Drogerie",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "icon": "inventory",
+      "admin": false,
+      "permission": "inventory:read",
+      "audienceRole": "member",
+      "localizations": {
+        "en": {
+          "title": "Cleaning Supplies Warehouse"
+        },
+        "uk": {
+          "title": "Склад господарських товарів"
         }
       }
     },
@@ -500,11 +534,45 @@
       }
     },
     {
+      "id": "hotel.admin.19.drogerie",
+      "title": "Nová skladová položka",
+      "path": "/sections/hotel/?view=inventory-drogerie-new",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock item"
+        },
+        "uk": {
+          "title": "Нова складська позиція"
+        }
+      }
+    },
+    {
       "id": "hotel.portal.59",
       "title": "Nová skladová položka",
       "path": "/sections/hotel/?view=inventory-new",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock item"
+        },
+        "uk": {
+          "title": "Нова складська позиція"
+        }
+      }
+    },
+    {
+      "id": "hotel.portal.59.drogerie",
+      "title": "Nová skladová položka",
+      "path": "/sections/hotel/?view=inventory-drogerie-new",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "localizations": {
@@ -534,11 +602,45 @@
       }
     },
     {
+      "id": "hotel.admin.21.drogerie",
+      "title": "Upravit skladovou položku",
+      "path": "/sections/hotel/?view=inventory-drogerie-edit",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Edit stock item"
+        },
+        "uk": {
+          "title": "Редагувати складську позицію"
+        }
+      }
+    },
+    {
       "id": "hotel.portal.61",
       "title": "Upravit skladovou položku",
       "path": "/sections/hotel/?view=inventory-edit",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Edit stock item"
+        },
+        "uk": {
+          "title": "Редагувати складську позицію"
+        }
+      }
+    },
+    {
+      "id": "hotel.portal.61.drogerie",
+      "title": "Upravit skladovou položku",
+      "path": "/sections/hotel/?view=inventory-drogerie-edit",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "localizations": {
@@ -568,11 +670,45 @@
       }
     },
     {
+      "id": "hotel.admin.20.drogerie",
+      "title": "Detail skladové položky",
+      "path": "/sections/hotel/?view=inventory-drogerie-detail",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock item details"
+        },
+        "uk": {
+          "title": "Деталі складської позиції"
+        }
+      }
+    },
+    {
       "id": "hotel.portal.60",
       "title": "Detail skladové položky",
       "path": "/sections/hotel/?view=inventory-detail",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock item details"
+        },
+        "uk": {
+          "title": "Деталі складської позиції"
+        }
+      }
+    },
+    {
+      "id": "hotel.portal.60.drogerie",
+      "title": "Detail skladové položky",
+      "path": "/sections/hotel/?view=inventory-drogerie-detail",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:read",
       "localizations": {
@@ -639,11 +775,47 @@
       }
     },
     {
+      "id": "hotel.inventory.movement-in.drogerie",
+      "title": "Sklad · příjem",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · receipt"
+        },
+        "uk": {
+          "title": "Склад · надходження"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.movement-in",
       "title": "Sklad · příjem",
       "path": "/sections/hotel/?view=inventory",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · receipt"
+        },
+        "uk": {
+          "title": "Склад · надходження"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.movement-in.drogerie",
+      "title": "Sklad · příjem",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "dynamic_title": false,
@@ -675,11 +847,47 @@
       }
     },
     {
+      "id": "hotel.inventory.movement-out.drogerie",
+      "title": "Sklad · výdej",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · issue"
+        },
+        "uk": {
+          "title": "Склад · видача"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.movement-out",
       "title": "Sklad · výdej",
       "path": "/sections/hotel/?view=inventory",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · issue"
+        },
+        "uk": {
+          "title": "Склад · видача"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.movement-out.drogerie",
+      "title": "Sklad · výdej",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "dynamic_title": false,
@@ -711,11 +919,47 @@
       }
     },
     {
+      "id": "hotel.inventory.movement-adjust.drogerie",
+      "title": "Sklad · odpis",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · write-off"
+        },
+        "uk": {
+          "title": "Склад · списання"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.movement-adjust",
       "title": "Sklad · odpis",
       "path": "/sections/hotel/?view=inventory",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Inventory · write-off"
+        },
+        "uk": {
+          "title": "Склад · списання"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.movement-adjust.drogerie",
+      "title": "Sklad · odpis",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "dynamic_title": false,
@@ -747,11 +991,47 @@
       }
     },
     {
+      "id": "hotel.inventory.delete.drogerie",
+      "title": "Smazat skladový pohyb",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Delete stock movement"
+        },
+        "uk": {
+          "title": "Видалити складський рух"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.delete",
       "title": "Smazat skladový pohyb",
       "path": "/sections/hotel/?view=inventory",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "dynamic_title": false,
+      "localizations": {
+        "en": {
+          "title": "Delete stock movement"
+        },
+        "uk": {
+          "title": "Видалити складський рух"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.delete.drogerie",
+      "title": "Smazat skladový pohyb",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "dynamic_title": false,
@@ -1036,11 +1316,45 @@
       }
     },
     {
+      "id": "hotel.inventory.item-delete.drogerie",
+      "title": "Smazat skladovou položku",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Delete stock item"
+        },
+        "uk": {
+          "title": "Видалити складську позицію"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.item-delete",
       "title": "Smazat skladovou položku",
       "path": "/sections/hotel/?view=inventory",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "Delete stock item"
+        },
+        "uk": {
+          "title": "Видалити складську позицію"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.item-delete.drogerie",
+      "title": "Smazat skladovou položku",
+      "path": "/sections/hotel/?view=inventory-drogerie",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "localizations": {
@@ -1090,11 +1404,45 @@
       }
     },
     {
+      "id": "hotel.inventory.cards.drogerie",
+      "title": "Skladové doklady",
+      "path": "/sections/hotel/?view=inventory-drogerie-cards",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock documents"
+        },
+        "uk": {
+          "title": "Складські документи"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.cards",
       "title": "Skladové doklady",
       "path": "/sections/hotel/?view=inventory-cards",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock documents"
+        },
+        "uk": {
+          "title": "Складські документи"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.cards.drogerie",
+      "title": "Skladové doklady",
+      "path": "/sections/hotel/?view=inventory-drogerie-cards",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:read",
       "localizations": {
@@ -1124,11 +1472,45 @@
       }
     },
     {
+      "id": "hotel.inventory.card-new.drogerie",
+      "title": "Nový pohyb skladu",
+      "path": "/sections/hotel/?view=inventory-drogerie-card-new",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock movement"
+        },
+        "uk": {
+          "title": "Новий складський рух"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.card-new",
       "title": "Nový pohyb skladu",
       "path": "/sections/hotel/?view=inventory-card-new",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "localizations": {
+        "en": {
+          "title": "New stock movement"
+        },
+        "uk": {
+          "title": "Новий складський рух"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.card-new.drogerie",
+      "title": "Nový pohyb skladu",
+      "path": "/sections/hotel/?view=inventory-drogerie-card-new",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "localizations": {
@@ -1158,11 +1540,45 @@
       }
     },
     {
+      "id": "hotel.inventory.card-detail.drogerie",
+      "title": "Detail skladového dokladu",
+      "path": "/sections/hotel/?view=inventory-drogerie-card-detail",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock document details"
+        },
+        "uk": {
+          "title": "Деталі складського документа"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.card-detail",
       "title": "Detail skladového dokladu",
       "path": "/sections/hotel/?view=inventory-card-detail",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock document details"
+        },
+        "uk": {
+          "title": "Деталі складського документа"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.card-detail.drogerie",
+      "title": "Detail skladového dokladu",
+      "path": "/sections/hotel/?view=inventory-drogerie-card-detail",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:read",
       "localizations": {
@@ -1195,11 +1611,51 @@
       }
     },
     {
+      "id": "hotel.inventory.card-delete.drogerie",
+      "title": "Smazat skladový doklad",
+      "path": "/sections/hotel/?view=inventory-drogerie-cards",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:write",
+      "roles": [
+        "admin"
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete stock document"
+        },
+        "uk": {
+          "title": "Видалити складський документ"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.card-delete",
       "title": "Smazat skladový doklad",
       "path": "/sections/hotel/?view=inventory-cards",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:write",
+      "roles": [
+        "admin"
+      ],
+      "localizations": {
+        "en": {
+          "title": "Delete stock document"
+        },
+        "uk": {
+          "title": "Видалити складський документ"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.card-delete.drogerie",
+      "title": "Smazat skladový doklad",
+      "path": "/sections/hotel/?view=inventory-drogerie-cards",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:write",
       "roles": [
@@ -1232,11 +1688,45 @@
       }
     },
     {
+      "id": "hotel.inventory.movements.drogerie",
+      "title": "Historie skladových pohybů",
+      "path": "/sections/hotel/?view=inventory-drogerie-movements",
+      "navigation": false,
+      "parent": "hotel.admin.18.drogerie",
+      "audienceRole": "admin",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock movement history"
+        },
+        "uk": {
+          "title": "Історія складських рухів"
+        }
+      }
+    },
+    {
       "id": "hotel.inventory.movements",
       "title": "Historie skladových pohybů",
       "path": "/sections/hotel/?view=inventory-movements",
       "navigation": false,
       "parent": "hotel.portal.58",
+      "audienceRole": "member",
+      "permission": "inventory:read",
+      "localizations": {
+        "en": {
+          "title": "Stock movement history"
+        },
+        "uk": {
+          "title": "Історія складських рухів"
+        }
+      }
+    },
+    {
+      "id": "hotel.inventory.movements.drogerie",
+      "title": "Historie skladových pohybů",
+      "path": "/sections/hotel/?view=inventory-drogerie-movements",
+      "navigation": false,
+      "parent": "hotel.portal.58.drogerie",
       "audienceRole": "member",
       "permission": "inventory:read",
       "localizations": {

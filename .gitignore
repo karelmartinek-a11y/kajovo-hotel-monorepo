@@ -18,6 +18,8 @@ out
 .parcel-cache
 *.egg-info/
 kajovo_hotel.db
+kajovo_hotel_sklad_snidane.db
+kajovo_hotel_sklad_drogerie.db
 artifacts/pytest/
 artifacts/breakfast-runtime-smoke/
 artifacts/kajovo-*/

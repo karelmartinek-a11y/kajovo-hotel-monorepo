@@ -17,6 +17,8 @@ def build_fixture():
     from sqlalchemy.orm import sessionmaker
 
     _private = tempfile.TemporaryDirectory(prefix="cml-hotel-fixture-")
+    database_url = "sqlite:///" + _private.name + "/state.db"
+    os.environ["KAJOVO_API_DATABASE_URL"] = database_url
     os.environ["KAJOVO_API_MEDIA_ROOT"] = _private.name
     os.environ["KAJOVO_API_SMTP_ENABLED"] = "false"
     os.environ["KAJOVO_API_FIREBASE_SERVICE_ACCOUNT_JSON_B64"] = ""
@@ -71,9 +73,7 @@ def build_fixture():
     from app.services.cml_identity import resolve_identity
     from app.services.housekeeping import STATUS_NAMES, BetterHotelHousekeepingClient
 
-    engine = create_engine(
-        "sqlite:///" + _private.name + "/state.db", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine(database_url, connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     today = datetime.now(ZoneInfo("Europe/Prague")).date()

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     database_url: str = "sqlite:///./kajovo_hotel.db"
+    warehouse_separate_databases: bool | None = None
     admin_email: str = Field(
         default="admin@kajovohotel.local",
         validation_alias=AliasChoices("KAJOVO_API_ADMIN_EMAIL", "HOTEL_ADMIN_EMAIL"),

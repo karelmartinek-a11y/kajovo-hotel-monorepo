@@ -290,3 +290,10 @@ původní automatizační pravidlo. Tato výjimka nevypíná testy.
   24 hodin po předchozím odeslání vyžaduje potvrzení konkrétního nového termínu.
   Stav se obnovuje z původní poštovní účtenky bez nového odeslání.
   Viz docs/module-sklad.md.
+
+- KájovoCML → KájovoHotel obsahuje Sklad Snídaně a Sklad Drogerie. Oba používají
+  stejné skladové routy s parametrem `warehouse` a v produkci vlastní
+  PostgreSQL databázi. Neurčený sklad na původním API je Sklad Snídaně.
+  Každý sklad má vlastní pohyby, doklady, audit, piktogramy a rozpracované
+  formuláře. Objednávky vajec používají společnou poštovní historii pro
+  zachování kontroly opakované objednávky. Viz docs/module-sklad.md.
