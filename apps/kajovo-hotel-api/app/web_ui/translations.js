@@ -1,5 +1,6 @@
 // Authored UI text only. User data, routes and backend values are never translated.
 export const translations={
+  "Znovu nastavit světla": ["Reapply lighting", "Повторити налаштування освітлення"],
   "Světla v prvním patře": ["First-floor lights", "Освітлення на першому поверсі"],
   "Ověřuji nastavení světel…": ["Checking the light settings…", "Перевіряємо налаштування освітлення…"],
   "Některá světla se nepodařilo ověřit.": ["Some lights could not be verified.", "Не вдалося перевірити деякі світильники."],

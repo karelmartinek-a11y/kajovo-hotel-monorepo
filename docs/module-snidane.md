@@ -24,3 +24,6 @@ grant pouze k nástroji `hotel_breakfast_lighting`. Produkční připojení se
 načítá z chráněného souboru `/app/data/credentials/breakfast-lighting.json`
 s endpointem a tokenem konkrétního grantu. Přihlášení a právo k modulu ověřuje
 CML. Po nejisté odpovědi web znovu přečte stav místo opakování povelu.
+
+Částečný výsledek jednotlivého světla nebrání dalšímu přepnutí. Tlačítko
+**Znovu nastavit světla** znovu ověří a prosadí právě zvolený režim.

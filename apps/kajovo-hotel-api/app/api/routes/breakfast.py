@@ -197,8 +197,8 @@ async def _breakfast_lighting(request: Request, change: BreakfastLightingChange 
     }
     try:
         return await lighting.smart_lighting(config, arguments)
-    except lighting.LightingScheduleUnavailable:
-        raise HTTPException(422, detail="Smart nemůže ověřit stav světel podle aktuálních scénářů.") from None
+    except lighting.LightingNotSent as exc:
+        raise HTTPException(422, detail=str(exc)) from None
     except Exception:
         detail = "Stav světel je nedostupný." if change is None else "Výsledek ovládání světel se nepodařilo ověřit."
         raise HTTPException(503, detail=detail) from None

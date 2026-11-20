@@ -7,6 +7,7 @@ import stat
 from pathlib import Path
 
 from mcp import ClientSession
+from mcp.types import CallToolResult
 from mcp.client.streamable_http import streamablehttp_client
 
 CONFIG = Path("/app/data/credentials/breakfast-lighting.json")
@@ -44,21 +45,43 @@ async def smart_lighting(config: dict[str, str], arguments: dict) -> dict:
             async with ClientSession(reader, writer) as session:
                 await session.initialize()
                 result = await session.call_tool(TOOL, arguments)
+    return read_result(result)
+
+
+def read_result(result: CallToolResult) -> dict:
     body = result.structuredContent
+    if result.isError:
+        error = body if isinstance(body, dict) else {}
+        if not error.get("error_code"):
+            for part in result.content:
+                if part.type == "text":
+                    try:
+                        candidate = json.loads(part.text)
+                    except ValueError:
+                        continue
+                    if isinstance(candidate, dict) and candidate.get("status") == "error":
+                        error = candidate
+                        break
+        message = NOT_SENT.get(error.get("error_code"))
+        if message:
+            raise LightingNotSent(message)
+        raise ValueError("Breakfast lighting command unavailable")
     if not isinstance(body, dict):
         raise ValueError("Invalid breakfast lighting response")
-    if result.isError:
-        if body.get("error_code") in {
-            "breakfast_scenario_action_unresolved", "breakfast_scenario_schedule_unresolved",
-            "breakfast_lighting_membership_changed",
-        }:
-            raise LightingScheduleUnavailable
-        raise ValueError("Breakfast lighting command unavailable")
     if (type(body.get("active")) is not bool or type(body.get("revision")) is not int
             or body.get("status") not in {"ready", "pending", "success", "partial", "interrupted"}):
         raise ValueError("Invalid breakfast lighting status")
     return {key: body[key] for key in ("active", "status", "revision")}
 
 
-class LightingScheduleUnavailable(Exception):
+NOT_SENT = {
+    "breakfast_scenario_action_unresolved": "Smart nemůže určit stav podle aktuálních scénářů.",
+    "breakfast_scenario_schedule_unresolved": "Smart nemůže určit stav podle aktuálních scénářů.",
+    "ha_stream_discontinuous_not_sent": "Smart nemá spojení se světly. Zkuste to znovu.",
+    "catalog_unavailable": "Smart zatím nemá katalog světel. Zkuste to znovu.",
+    "no_targets_not_sent": "Smart v prvním patře nenašel žádná světla.",
+}
+
+
+class LightingNotSent(Exception):
     pass

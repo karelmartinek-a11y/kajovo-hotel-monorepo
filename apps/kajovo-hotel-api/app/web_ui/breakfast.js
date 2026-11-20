@@ -15,13 +15,15 @@ function breakfastLighting(ctx){
  if(!ctx.state.identity.breakfast_lighting||!ctx.state.identity.permissions.includes('breakfast:write'))return null;
  const path='api/v1/breakfast/lighting',generation=ctx.state.generation;
  const label=t('Světla v prvním patře'),status=el('span',{role:'status'});
- const action=button(icon('bulb'),switchLighting,'breakfast-lighting-button');
+ const action=button(icon('bulb'),()=>switchLighting(!state?.active),'breakfast-lighting-button');
+ const retry=button(t('Znovu nastavit světla'),()=>switchLighting(state?.active));retry.hidden=true;
  action.title=label;action.setAttribute('aria-label',label);action.disabled=true;
- const control=el('div',{class:'breakfast-lighting'},action,status);
- let state,timer;
- const current=()=>generation===ctx.state.generation&&control.isConnected;
+ const control=el('div',{class:'breakfast-lighting'},action,retry,status);
+ let state,timer,sequence=0;
+ const current=request=>request===sequence&&generation===ctx.state.generation&&control.isConnected;
  const show=result=>{
   state=result;action.disabled=result.status==='pending';
+  retry.hidden=!['partial','interrupted'].includes(result.status);retry.disabled=false;
   action.setAttribute('aria-pressed',String(result.active));
   status.textContent={
    pending:t('Ověřuji nastavení světel…'),
@@ -31,27 +33,27 @@ function breakfastLighting(ctx){
   if(result.status==='pending')timer=setTimeout(read,1500);
  };
  async function read(){
-  clearTimeout(timer);
-  try{const result=await api(path);if(current())show(result);}
+  clearTimeout(timer);const request=++sequence;
+  try{const result=await api(path);if(current(request))show(result);}
   catch(error){
-   if(!current())return;
+   if(!current(request))return;
    if(error.status===404){control.hidden=true;return;}
-   state=null;action.disabled=true;status.textContent=error.message;
-   timer=setTimeout(read,5000);
+   action.disabled=!state;retry.disabled=!state;status.textContent=error.message;
+   if(!state||state.status==='pending')timer=setTimeout(read,5000);
   }
  }
- async function switchLighting(){
+ async function switchLighting(active){
   if(!state||action.disabled)return;
-  clearTimeout(timer);action.disabled=true;
+  clearTimeout(timer);const request=++sequence;action.disabled=true;retry.disabled=true;
   status.textContent=t('Ověřuji nastavení světel…');
   try{
-   const result=await api(path,{method:'POST',body:{active:!state.active,revision:state.revision}});
-   if(current())show(result);
+   const result=await api(path,{method:'POST',body:{active,revision:state.revision}});
+   if(current(request))show(result);
   }catch(error){
-   if(!current())return;
+   if(!current(request))return;
    status.textContent=error.message;
-   if(error.uncertain){state=null;timer=setTimeout(read,1500);}
-   else action.disabled=false;
+   if(error.uncertain)timer=setTimeout(read,1500);
+   else{action.disabled=false;retry.disabled=false;}
   }
  }
  ctx.state.cleanup.push(()=>clearTimeout(timer));

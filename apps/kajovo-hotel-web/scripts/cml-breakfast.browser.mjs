@@ -24,7 +24,7 @@ for(const name of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
    lightingWrites.push(change);light={...change,revision:change.revision+1,status:'pending'};
    return route.fulfill({json:light});
   }
-  if(light.status==='pending')light={...light,status:'success'};
+  if(light.status==='pending')light={...light,status:light.revision===1?'partial':'success'};
   return route.fulfill({json:light});
  }
  if(path==='api/v1/breakfast/daily-overview')return route.fulfill({json:{orders:[order,{...order,id:2,room_number:'202',guest_count:2,status:'served'},{...order,id:3,room_number:'203',guest_count:1,status:'cancelled'},{...order,id:4,guest_count:0}],summary:{total_guests:6,source_imported_at:null}}});
@@ -46,8 +46,10 @@ for(const name of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
   await expect(bulb).toHaveAttribute('aria-pressed','false');
   assert((await bulb.boundingBox()).y>(await page.getByRole('button',{name:'Další den',exact:true}).boundingBox()).y);
   await bulb.click();await expect(bulb).toHaveAttribute('aria-pressed','true');await expect(bulb).toBeEnabled();
+  const retry=page.getByRole('button',{name:'Znovu nastavit světla',exact:true});
+  await expect(retry).toBeVisible();await retry.click();await expect(retry).toBeHidden();await expect(bulb).toBeEnabled();
   await bulb.click();await expect(bulb).toHaveAttribute('aria-pressed','false');await expect(bulb).toBeEnabled();
-  assert.deepEqual(lightingWrites,[{active:true,revision:0},{active:false,revision:1}]);
+  assert.deepEqual(lightingWrites,[{active:true,revision:0},{active:true,revision:1},{active:false,revision:2}]);
  }else await expect(bulb).toHaveCount(0);
  await page.getByLabel('Datum',{exact:true}).fill('');await expect(page.getByLabel('Datum',{exact:true})).toHaveValue('2026-11-01');await expect(page.getByRole('alert')).toContainText('platné datum');assert.equal(writes,1);
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await reference.close();console.log(JSON.stringify({status:'PASS',engine:name,width,originalPaletteAndGeometry:true,catalogSvg:true,content:true,servingRole:true,syntheticWrites:writes,invalidDateRetained:true}));

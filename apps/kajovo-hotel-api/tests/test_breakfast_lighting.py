@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from mcp.types import CallToolResult, TextContent
+import pytest
 
 from app.api.routes import breakfast
 from app.services.breakfast import lighting
@@ -49,3 +51,24 @@ def test_breakfast_lighting_authority_and_fixed_payload(monkeypatch):
         {"operation": "state"},
         {"operation": "set", "active": True, "revision": 0, "actor": "user:synthetic"},
     ]
+
+
+
+def test_smart_rejection_with_empty_structured_response_is_known_not_sent():
+    response = CallToolResult(
+        isError=True,
+        structuredContent={},
+        content=[TextContent(type="text", text='{"status":"error","error_code":"ha_stream_discontinuous_not_sent"}')],
+    )
+    with pytest.raises(lighting.LightingNotSent, match="Smart nemá spojení"):
+        lighting.read_result(response)
+
+
+def test_smart_unknown_response_stays_unverified():
+    response = CallToolResult(
+        isError=True,
+        structuredContent={},
+        content=[TextContent(type="text", text='{"status":"error","error_code":"unclassified_error"}')],
+    )
+    with pytest.raises(ValueError, match="command unavailable"):
+        lighting.read_result(response)
