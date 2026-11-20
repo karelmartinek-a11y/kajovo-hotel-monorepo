@@ -1,5 +1,9 @@
 // Authored UI text only. User data, routes and backend values are never translated.
 export const translations={
+  "Světla v prvním patře": ["First-floor lights", "Освітлення на першому поверсі"],
+  "Ověřuji nastavení světel…": ["Checking the light settings…", "Перевіряємо налаштування освітлення…"],
+  "Některá světla se nepodařilo ověřit.": ["Some lights could not be verified.", "Не вдалося перевірити деякі світильники."],
+  "Nastavení světel bylo přerušeno.": ["The lighting change was interrupted.", "Зміну освітлення було перервано."],
   "OBJEDNAT 180 VAJEC": ["ORDER 180 EGGS", "ЗАМОВИТИ 180 ЯЄЦЬ"],
   "Ověřit odeslání": ["Check sending status", "Перевірити надсилання"],
   "Odesílám objednávku 180 vajec…": ["Sending an order for 180 eggs…", "Надсилаємо замовлення на 180 яєць…"],

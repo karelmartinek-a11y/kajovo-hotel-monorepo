@@ -238,3 +238,5 @@ h1{margin:7px 0 5px}button,a,input,select,textarea{scroll-margin-top:100px;scrol
  #content .table-scroll th{position:sticky;top:0;background:var(--header);z-index:2}
  #content .table-scroll :is(th,td){font-size:12px;line-height:1.4}
 }
+
+.breakfast-lighting{display:flex;align-items:center;gap:8px;margin-top:8px}.breakfast-lighting[hidden]{display:none}.breakfast-lighting-button{width:36px;padding:0;display:inline-grid;place-items:center}.breakfast-lighting-button[aria-pressed=true]{color:#ffc65e;border-color:currentColor}.breakfast-lighting [role=status]{font-size:.875rem}

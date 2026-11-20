@@ -11,13 +11,60 @@ const ref=(ctx,admin,member)=>ctx.state.identity.admin?admin:member;
 const readableDate=value=>new Date(value+'T12:00:00Z').toLocaleDateString(locale,{timeZone:'Europe/Prague'});
 const country=value=>{if(!value)return t('Neuvedeno');try{return new Intl.DisplayNames([locale],{type:'region'}).of(value.toUpperCase());}catch{return value;}};
 function move(ctx,mode,row){ctx.state.breakfastId=row?.id??null;return ctx.go(mode==='list'?'breakfast':'breakfast-'+mode);}
+function breakfastLighting(ctx){
+ if(!ctx.state.identity.permissions.includes('breakfast:write'))return null;
+ const path='api/v1/breakfast/lighting',generation=ctx.state.generation;
+ const label=t('Světla v prvním patře'),status=el('span',{role:'status'});
+ const action=button(icon('bulb'),switchLighting,'breakfast-lighting-button');
+ action.title=label;action.setAttribute('aria-label',label);action.disabled=true;
+ const control=el('div',{class:'breakfast-lighting'},action,status);
+ let state,timer;
+ const current=()=>generation===ctx.state.generation&&control.isConnected;
+ const show=result=>{
+  state=result;action.disabled=result.status==='pending';
+  action.setAttribute('aria-pressed',String(result.active));
+  status.textContent={
+   pending:t('Ověřuji nastavení světel…'),
+   partial:t('Některá světla se nepodařilo ověřit.'),
+   interrupted:t('Nastavení světel bylo přerušeno.'),
+  }[result.status]??'';
+  if(result.status==='pending')timer=setTimeout(read,1500);
+ };
+ async function read(){
+  clearTimeout(timer);
+  try{const result=await api(path);if(current())show(result);}
+  catch(error){
+   if(!current())return;
+   if(error.status===404){control.hidden=true;return;}
+   state=null;action.disabled=true;status.textContent=error.message;
+   timer=setTimeout(read,5000);
+  }
+ }
+ async function switchLighting(){
+  if(!state||action.disabled)return;
+  clearTimeout(timer);action.disabled=true;
+  status.textContent=t('Ověřuji nastavení světel…');
+  try{
+   const result=await api(path,{method:'POST',body:{active:!state.active,revision:state.revision}});
+   if(current())show(result);
+  }catch(error){
+   if(!current())return;
+   status.textContent=error.message;
+   if(error.uncertain){state=null;timer=setTimeout(read,1500);}
+   else action.disabled=false;
+  }
+ }
+ ctx.state.cleanup.push(()=>clearTimeout(timer));
+ void read();
+ return control;
+}
 function dateNavigation(ctx){
  const input=field(t('Datum'),'breakfast-date','date',ctx.state.breakfastDate,{required:true});
  const change=day=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day+'T12:00:00Z'))||new Date(day+'T12:00:00Z').toISOString().slice(0,10)!==day){showError(document.querySelector('#content'),Error(t('Vyberte platné datum.')));return false;}ctx.state.breakfastDate=day;void writeBreakfastDate(day);ctx.go('breakfast');};
  const offset=delta=>{const day=new Date(ctx.state.breakfastDate+'T12:00:00Z');day.setUTCDate(day.getUTCDate()+delta);change(day.toISOString().slice(0,10));};
  const previous=button(icon('arrow-left'),()=>offset(-1)),next=button(icon('arrow-right'),()=>offset(1));previous.setAttribute('aria-label',t('Předchozí den'));next.setAttribute('aria-label',t('Další den'));
  input.querySelector('input').addEventListener('change',event=>{if(change(event.target.value)===false)event.target.value=ctx.state.breakfastDate;});
- return el('div',{class:'breakfast-date-bar'},el('div',{class:'actions'},previous,el('strong',{},new Date(ctx.state.breakfastDate+'T12:00:00Z').toLocaleDateString(locale,{timeZone:'Europe/Prague',day:'numeric',month:'long',year:'numeric'})),next,button([icon('arrow-right'),t('Dnes')],()=>change(today()))),input);
+ return el('div',{class:'breakfast-date-bar'},el('div',{},el('div',{class:'actions'},previous,el('strong',{},new Date(ctx.state.breakfastDate+'T12:00:00Z').toLocaleDateString(locale,{timeZone:'Europe/Prague',day:'numeric',month:'long',year:'numeric'})),next,button([icon('arrow-right'),t('Dnes')],()=>change(today()))),breakfastLighting(ctx)),input);
 }
 function mark(ctx,order,status,container){
  container.dataset.nativeRole=getRole();

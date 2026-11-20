@@ -13,6 +13,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,8 @@ from app.db.models import (
 )
 from app.db.session import get_db
 from app.security.auth import preferred_locale_for_session
-from app.security.rbac import module_access_dependency, parse_identity
+from app.security.rbac import module_access_dependency, parse_identity, require_permission
+from app.services.breakfast import lighting
 from app.services.breakfast.diets import DIET_KEYS, change_diet, enrich_orders, reservation_ids
 from app.services.breakfast.sync import (
     BetterHotelBreakfastClient,
@@ -170,6 +172,46 @@ def get_daily_overview(
         orders=enrich_orders(db, orders),
         summary=_build_daily_summary(service_date, orders, source_imported_at=source_imported_at),
     )
+
+
+class BreakfastLightingChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    active: StrictBool
+    revision: int = Field(strict=True, ge=0)
+
+
+async def _breakfast_lighting(request: Request, change: BreakfastLightingChange | None):
+    claims = getattr(request.state, "cml_web_claims", None)
+    if not claims:
+        raise HTTPException(403, detail="Ovládání světel patří do webového modulu Snídaně.")
+    require_permission("breakfast", "write")(request)
+    try:
+        config = lighting.load_config()
+    except FileNotFoundError:
+        raise HTTPException(404, detail="Ovládání světel není zapojené.") from None
+    except (OSError, ValueError, TypeError):
+        raise HTTPException(503, detail="Ovládání světel je nedostupné.") from None
+    arguments = {"operation": "state"} if change is None else {
+        "operation": "set", **change.model_dump(), "actor": claims["sub"],
+    }
+    try:
+        return await lighting.smart_lighting(config, arguments)
+    except lighting.LightingScheduleUnavailable:
+        raise HTTPException(422, detail="Smart nemůže ověřit stav světel podle aktuálních scénářů.") from None
+    except Exception:
+        detail = "Stav světel je nedostupný." if change is None else "Výsledek ovládání světel se nepodařilo ověřit."
+        raise HTTPException(503, detail=detail) from None
+
+
+@router.get("/lighting", include_in_schema=False)
+async def get_breakfast_lighting(request: Request):
+    return await _breakfast_lighting(request, None)
+
+
+@router.post("/lighting", include_in_schema=False)
+async def set_breakfast_lighting(request: Request, change: BreakfastLightingChange):
+    return await _breakfast_lighting(request, change)
 
 
 @router.get("/{order_id}", response_model=BreakfastOrderRead)

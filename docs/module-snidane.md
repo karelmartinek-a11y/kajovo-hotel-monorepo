@@ -11,3 +11,16 @@ Synchronizace mapuje kódy stravování na snídani od dne po příjezdu do dne 
 Role `snídaně` může v povoleném čase označit snídani jako vydanou. `recepce` a `admin` mohou vrátit výdej, spravovat snídani a měnit diety ověřené rezervace přes `PATCH /api/v1/breakfast/{order_id}/reservations/{reservation_id}/diet` s verzí. Diety patří ID rezervace v `reservation_breakfast_diets`; číslo pokoje není identita pobytu. Denní `PUT` diety nemění. Exportní PDF endpoint `/api/v1/breakfast/export/daily` zůstává pro oprávněné role. PDF import a ruční spuštění synchronizace nemají aktivní routu.
 
 Denní přehled čte `GET /api/v1/breakfast/daily-overview?service_date=YYYY-MM-DD`. Souhrn a seznam jsou v jedné odpovědi. Produkční deploy ověřuje tento kontrakt a pokojské poznámky skriptem `scripts/verify_live_breakfast_overview.mjs`.
+
+## Světla v prvním patře
+
+Žárovka pod posunem data ovládá společný režim osvětlení prvního patra.
+S oprávněním k zápisu ve Snídaních první stisk zapne světla na 100 % a teplou
+bílou (2700 K). Druhý stisk obnoví hodnoty podle scénářů platných právě v tu
+chvíli. Nastavené datum přehledu snídaní na osvětlení nemá vliv.
+
+KájovoSmart vlastní stav, plánování i povely. Hotel přistupuje přes samostatný
+grant pouze k nástroji `hotel_breakfast_lighting`. Produkční připojení se
+načítá z chráněného souboru `/app/data/credentials/breakfast-lighting.json`
+s endpointem a tokenem konkrétního grantu. Přihlášení a právo k modulu ověřuje
+CML. Po nejisté odpovědi web znovu přečte stav místo opakování povelu.
