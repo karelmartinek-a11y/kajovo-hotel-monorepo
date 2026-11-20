@@ -27,6 +27,14 @@ def load_config() -> dict[str, str]:
     return config
 
 
+def configured() -> bool:
+    try:
+        load_config()
+    except (OSError, ValueError, TypeError):
+        return False
+    return True
+
+
 async def smart_lighting(config: dict[str, str], arguments: dict) -> dict:
     async with asyncio.timeout(12):
         async with streamablehttp_client(

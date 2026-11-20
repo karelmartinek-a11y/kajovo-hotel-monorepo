@@ -131,6 +131,10 @@ class CmlWebBoundary:
                 await profile_response(scope, receive, send)
                 return
             if suffix == 'identity':
+                if self.audience == 'hotel' and 'breakfast:write' in identity['public'].get('permissions', []):
+                    from app.services.breakfast.lighting import configured
+                    if configured():
+                        identity['public']['breakfast_lighting'] = True
                 await JSONResponse(identity['public'], headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return
             if suffix == 'api/personal-activity':

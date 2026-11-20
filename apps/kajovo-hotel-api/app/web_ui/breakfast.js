@@ -12,7 +12,7 @@ const readableDate=value=>new Date(value+'T12:00:00Z').toLocaleDateString(locale
 const country=value=>{if(!value)return t('Neuvedeno');try{return new Intl.DisplayNames([locale],{type:'region'}).of(value.toUpperCase());}catch{return value;}};
 function move(ctx,mode,row){ctx.state.breakfastId=row?.id??null;return ctx.go(mode==='list'?'breakfast':'breakfast-'+mode);}
 function breakfastLighting(ctx){
- if(!ctx.state.identity.permissions.includes('breakfast:write'))return null;
+ if(!ctx.state.identity.breakfast_lighting||!ctx.state.identity.permissions.includes('breakfast:write'))return null;
  const path='api/v1/breakfast/lighting',generation=ctx.state.generation;
  const label=t('Světla v prvním patře'),status=el('span',{role:'status'});
  const action=button(icon('bulb'),switchLighting,'breakfast-lighting-button');

@@ -16,7 +16,7 @@ for(const name of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
   return route.fulfill({body,contentType:'image/svg+xml'});
  }
  if(url.pathname.startsWith('/assets/'))return route.fulfill({status:204});
- if(path==='identity')return route.fulfill({json:{admin:false,name:'Test',roles:['snídaně'],active_role:'snídaně',permissions,available_permissions:permissions,role_permissions:{'snídaně':permissions}}});
+ if(path==='identity')return route.fulfill({json:{admin:false,name:'Test',breakfast_lighting:allowed,roles:['snídaně'],active_role:'snídaně',permissions,available_permissions:permissions,role_permissions:{'snídaně':permissions}}});
  if(path==='api/v1/breakfast/lighting'){
   assert(allowed);
   if(request.method()==='POST'){
