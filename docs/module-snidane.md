@@ -27,3 +27,8 @@ CML. Po nejisté odpovědi web znovu přečte stav místo opakování povelu.
 
 Částečný výsledek jednotlivého světla nebrání dalšímu přepnutí. Tlačítko
 **Znovu nastavit světla** znovu ověří a prosadí právě zvolený režim.
+
+Automatický návrat určuje okamžik zapnutí v pražském čase. Od 5:00 včetně
+do 10:00 platí pozdější z termínů 10:00 a dvě hodiny po zapnutí. Od 10:00
+včetně do 5:00 platí bližší termín, tedy dvě hodiny po zapnutí. Žárovka
+nadále umožňuje okamžitý ruční návrat a opakované prosazení termín nemění.

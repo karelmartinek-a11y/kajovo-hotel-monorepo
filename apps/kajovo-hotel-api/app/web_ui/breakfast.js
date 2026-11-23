@@ -31,6 +31,7 @@ function breakfastLighting(ctx){
    interrupted:t('Nastavení světel bylo přerušeno.'),
   }[result.status]??'';
   if(result.status==='pending')timer=setTimeout(read,1500);
+  else if(result.active)timer=setTimeout(read,15000);
  };
  async function read(){
   clearTimeout(timer);const request=++sequence;
@@ -39,7 +40,7 @@ function breakfastLighting(ctx){
    if(!current(request))return;
    if(error.status===404){control.hidden=true;return;}
    action.disabled=!state;retry.disabled=!state;status.textContent=error.message;
-   if(!state||state.status==='pending')timer=setTimeout(read,5000);
+   if(!state||state.active||state.status==='pending')timer=setTimeout(read,5000);
   }
  }
  async function switchLighting(active){
@@ -53,7 +54,7 @@ function breakfastLighting(ctx){
    if(!current(request))return;
    status.textContent=error.message;
    if(error.uncertain)timer=setTimeout(read,1500);
-   else{action.disabled=false;retry.disabled=false;}
+   else{action.disabled=false;retry.disabled=false;if(state.active)timer=setTimeout(read,5000);}
   }
  }
  ctx.state.cleanup.push(()=>clearTimeout(timer));

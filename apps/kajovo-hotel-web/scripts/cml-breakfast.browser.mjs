@@ -49,7 +49,12 @@ for(const name of(process.env.CML_BROWSER_ENGINES??'chromium').split(',')){
   const retry=page.getByRole('button',{name:'Znovu nastavit světla',exact:true});
   await expect(retry).toBeVisible();await retry.click();await expect(retry).toBeHidden();await expect(bulb).toBeEnabled();
   await bulb.click();await expect(bulb).toHaveAttribute('aria-pressed','false');await expect(bulb).toBeEnabled();
-  assert.deepEqual(lightingWrites,[{active:true,revision:0},{active:true,revision:1},{active:false,revision:2}]);
+  await page.clock.install();
+  await bulb.click();await expect(bulb).toHaveAttribute('aria-pressed','true');await expect(bulb).toBeEnabled();
+  light={active:false,revision:5,status:'success'};
+  await page.clock.fastForward(16000);
+  await expect(bulb).toHaveAttribute('aria-pressed','false');
+  assert.deepEqual(lightingWrites,[{active:true,revision:0},{active:true,revision:1},{active:false,revision:2},{active:true,revision:3}]);
  }else await expect(bulb).toHaveCount(0);
  await page.getByLabel('Datum',{exact:true}).fill('');await expect(page.getByLabel('Datum',{exact:true})).toHaveValue('2026-11-01');await expect(page.getByRole('alert')).toContainText('platné datum');assert.equal(writes,1);
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await reference.close();console.log(JSON.stringify({status:'PASS',engine:name,width,originalPaletteAndGeometry:true,catalogSvg:true,content:true,servingRole:true,syntheticWrites:writes,invalidDateRetained:true}));
