@@ -25,6 +25,10 @@ zápisy. Výchozí OAuth rozsah obsahuje čtení obou modulů. Podepsané CML pr
 s aktuálním grantem modulu. Výchozí výpisy vracejí stručné položky a kurzor.
 Úplný detail a soubor se vyžádají samostatně.
 
+Dynamická registrace bez uvedených rozsahů dovolí klientovi požádat o některý
+z podporovaných rozsahů. Výchozí autorizační žádost získá jen čtení. Zápisy
+vyžadují výslovnou žádost a následný souhlas v CML.
+
 ## Dopady
 
 | Oblast | Kontrola a změna |

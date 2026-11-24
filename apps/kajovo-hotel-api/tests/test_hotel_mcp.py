@@ -168,7 +168,7 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app, write
                     "token_endpoint_auth_method": "none",
                     "grant_types": ["authorization_code", "refresh_token"],
                     "response_types": ["code"],
-                    "scope": " ".join(scopes),
+                    **({} if write_access else {"scope": BREAKFAST_READ}),
                 },
             )
             assert registration.status_code == 201, registration.text
@@ -183,13 +183,36 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app, write
                 "code_challenge_method": "S256",
                 "code_challenge": challenge,
             }
+            owner = {"authzPolicy": "owner-no-additional-prompts/1"}
+            if write_access:
+                default = await http.get(ISSUER + "/authorize", params=request)
+                assert default.status_code == 302
+                default_ticket = parse_qs(urlsplit(default.headers["location"]).fragment)[
+                    "ticket"
+                ][0]
+                payload = json.dumps({"ticket": default_ticket, "action": "inspect"}).encode()
+                default_consent = await http.post(
+                    WEB_CONSENT,
+                    content=payload,
+                    headers=signed(key, "POST", WEB_CONSENT, payload, **owner),
+                )
+                assert default_consent.json() == {"scopes": [BREAKFAST_READ, LOST_FOUND_READ]}
+                request["scope"] = " ".join(scopes)
+            else:
+                expanded = await http.get(
+                    ISSUER + "/authorize",
+                    params={**request, "scope": f"{BREAKFAST_READ} {BREAKFAST_WRITE}"},
+                )
+                assert expanded.status_code == 302
+                assert parse_qs(urlsplit(expanded.headers["location"]).query)["error"] == [
+                    "invalid_scope"
+                ]
             started = await http.get(ISSUER + "/authorize", params=request)
             assert started.status_code == 302
             location = urlsplit(started.headers["location"])
             assert not location.query and location.netloc == urlsplit(CML).netloc
             ticket = parse_qs(location.fragment)["ticket"][0]
 
-            owner = {"authzPolicy": "owner-no-additional-prompts/1"}
             assert (
                 await http.get(WEB_CONSENT, headers=signed(key, "GET", WEB_CONSENT, **owner))
             ).status_code == 200

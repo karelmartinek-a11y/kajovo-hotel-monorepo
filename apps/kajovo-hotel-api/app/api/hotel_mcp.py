@@ -44,7 +44,6 @@ from app.security.hotel_oauth import (
     BREAKFAST_READ,
     BREAKFAST_WRITE,
     CML,
-    DEFAULT_SCOPES,
     ISSUER,
     LOST_FOUND_READ,
     LOST_FOUND_WRITE,
@@ -187,7 +186,9 @@ class HotelMCP:
         registration = ClientRegistrationOptions(
             enabled=True,
             valid_scopes=list(SCOPES),
-            default_scopes=list(DEFAULT_SCOPES),
+            # Dynamic clients can omit scope during registration. An authorization
+            # request still needs to explicitly ask for any scope above the read default.
+            default_scopes=list(SCOPES),
         )
         revocation = RevocationOptions(enabled=True)
         issuer = AnyHttpUrl(ISSUER)

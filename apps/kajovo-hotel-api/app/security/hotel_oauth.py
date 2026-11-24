@@ -154,7 +154,11 @@ class HotelOAuth(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToke
 
     def _authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         registered = set((client.scope or " ".join(DEFAULT_SCOPES)).split())
-        scopes = set(params.scopes) if params.scopes is not None else registered
+        scopes = (
+            set(params.scopes)
+            if params.scopes is not None
+            else registered.intersection(DEFAULT_SCOPES)
+        )
         if (
             not _callback(str(params.redirect_uri))
             or params.resource not in (None, RESOURCE)
