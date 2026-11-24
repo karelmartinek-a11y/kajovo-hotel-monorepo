@@ -4,12 +4,14 @@ import asyncio
 import hashlib
 import json
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from io import BytesIO
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
 import pytest
+from fastapi import HTTPException
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from PIL import Image
@@ -28,7 +30,16 @@ from app.db.models import (
     PortalUserRole,
 )
 from app.db.session import get_db
-from app.security.hotel_oauth import BREAKFAST_READ, CML, ISSUER, LOST_FOUND_READ, ORIGIN, RESOURCE
+from app.security.hotel_oauth import (
+    BREAKFAST_READ,
+    BREAKFAST_WRITE,
+    CML,
+    ISSUER,
+    LOST_FOUND_READ,
+    ORIGIN,
+    RESOURCE,
+)
+from app.services import hotel_mcp_file
 from tests.test_cml_web import assertion, b64, fixture_key
 
 DAY = date(2026, 11, 24)
@@ -133,8 +144,10 @@ def signed(key, method, path, body=b"", **claims):
     }
 
 
-def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app):
+@pytest.mark.parametrize("write_access", [False, True])
+def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app, write_access):
     app, key, _factory = hotel_mcp_app
+    scopes = [BREAKFAST_READ, BREAKFAST_WRITE] if write_access else [BREAKFAST_READ]
 
     async def run():
         async with (
@@ -155,7 +168,7 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app):
                     "token_endpoint_auth_method": "none",
                     "grant_types": ["authorization_code", "refresh_token"],
                     "response_types": ["code"],
-                    "scope": BREAKFAST_READ,
+                    "scope": " ".join(scopes),
                 },
             )
             assert registration.status_code == 201, registration.text
@@ -186,7 +199,7 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app):
                 content=inspect,
                 headers=signed(key, "POST", WEB_CONSENT, inspect, **owner),
             )
-            assert inspected.json() == {"scopes": [BREAKFAST_READ]}
+            assert inspected.json() == {"scopes": scopes}
             approve = json.dumps({"ticket": ticket, "action": "approve"}).encode()
             approved = await http.post(
                 WEB_CONSENT,
@@ -216,11 +229,22 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app):
             ):
                 await sdk.initialize()
                 discovery = (await sdk.list_tools()).tools
-                assert {item.name for item in discovery} == {
+                expected_tools = {
                     "breakfast_day_get",
                     "breakfast_order_get",
                     "breakfast_daily_export",
                 }
+                if write_access:
+                    expected_tools |= {
+                        "breakfast_order_create",
+                        "breakfast_order_update",
+                        "breakfast_order_delete",
+                        "breakfast_diet_set",
+                        "breakfast_orders_reactivate",
+                        "breakfast_orders_delete",
+                        "hotel_operation_get",
+                    }
+                assert {item.name for item in discovery} == expected_tools
                 assert all("title" not in item.inputSchema for item in discovery)
                 day = await sdk.call_tool("breakfast_day_get", {"day": DAY.isoformat(), "limit": 1})
                 assert not day.isError
@@ -241,6 +265,32 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app):
                 assert data.structuredContent["reservations"] == []
                 denied = await sdk.call_tool("lost_found_list", {})
                 assert denied.isError
+                if write_access:
+                    receipt = await sdk.call_tool(
+                        "hotel_operation_get", {"operation_id": str(uuid.uuid4())}
+                    )
+                    assert receipt.structuredContent["state"] == "not_found"
+                    created = await sdk.call_tool(
+                        "breakfast_order_create",
+                        {
+                            "operation_id": str(uuid.uuid4()),
+                            "day": DAY.isoformat(),
+                            "room_number": "104",
+                            "guest_name": "Synthetic OAuth guest",
+                            "guest_count": 1,
+                        },
+                    )
+                    assert created.structuredContent["state"] == "completed"
+                    order = await sdk.call_tool(
+                        "breakfast_order_get", {"order_id": created.structuredContent["record_id"]}
+                    )
+                    assert order.structuredContent["room_number"] == "104"
+                else:
+                    scope_denied = await sdk.call_tool(
+                        "breakfast_order_delete",
+                        {"operation_id": str(uuid.uuid4()), "order_id": first["id"]},
+                    )
+                    assert scope_denied.isError
                 pdf = await sdk.call_tool("breakfast_daily_export", {"day": DAY.isoformat()})
                 link = pdf.structuredContent["href"].replace(CML + "/sections/hotel", "/cml-web")
                 response = await http.get(link, headers=signed(key, "GET", link, **owner))
@@ -306,7 +356,16 @@ def test_signed_member_discovery_is_current_and_uses_native_module_permissions(h
         ):
             await sdk.initialize()
             names = {tool.name for tool in (await sdk.list_tools()).tools}
-            assert names == {"lost_found_list", "lost_found_get", "lost_found_photo_get"}
+            assert names == {
+                "lost_found_list",
+                "lost_found_get",
+                "lost_found_photo_get",
+                "lost_found_create",
+                "lost_found_update",
+                "lost_found_delete",
+                "lost_found_photo_add",
+                "hotel_operation_get",
+            }
             blocked = await sdk.call_tool("breakfast_day_get", {"day": DAY.isoformat()})
             assert blocked.isError
             first = (
@@ -341,6 +400,19 @@ def test_signed_member_discovery_is_current_and_uses_native_module_permissions(h
                 "lost_found_list", {"start_day": DAY.isoformat(), "end_day": DAY.isoformat()}
             )
             assert [item["id"] for item in day_filter.structuredContent["items"]] == [3, 2]
+            created = await sdk.call_tool(
+                "lost_found_create",
+                {
+                    "operation_id": str(uuid.uuid4()),
+                    "item": {"item_type": "lost", "description": "Synthetic member report"},
+                },
+            )
+            assert created.structuredContent["state"] == "completed"
+            blocked_write = await sdk.call_tool(
+                "breakfast_orders_delete",
+                {"operation_id": str(uuid.uuid4()), "start_day": DAY.isoformat()},
+            )
+            assert blocked_write.isError
             consent = await http.get(WEB_CONSENT)
             assert consent.status_code == 401
             with factory.begin() as db:
@@ -348,3 +420,218 @@ def test_signed_member_discovery_is_current_and_uses_native_module_permissions(h
             assert (await http.post("/cml-web/mcp", json={})).status_code == 401
 
     asyncio.run(run())
+
+
+def test_writes_reuse_native_actions_and_resume_only_the_original_receipt(
+    hotel_mcp_app, monkeypatch
+):
+    app, key, _factory = hotel_mcp_app
+
+    decoded = BytesIO()
+    Image.new("RGB", (2, 2)).save(decoded, format="PNG")
+    raw_image = decoded.getvalue()
+    monkeypatch.setattr(
+        hotel_mcp_file, "_address", lambda url: ("files.example.invalid", "192.0.2.1", "/photo")
+    )
+    monkeypatch.setattr(hotel_mcp_file, "_receive", lambda *_: BytesIO(raw_image))
+
+    class SignedOwner(httpx.Auth):
+        async def async_auth_flow(self, request):
+            body = await request.aread()
+            request.headers.update(
+                signed(
+                    key,
+                    request.method,
+                    request.url.raw_path.decode(),
+                    body,
+                    authzPolicy="owner-no-additional-prompts/1",
+                )
+            )
+            yield request
+
+    async def run():
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app),
+                base_url=ORIGIN,
+                auth=SignedOwner(),
+            ) as http,
+            streamable_http_client(ORIGIN + "/cml-web/mcp", http_client=http) as (
+                stream,
+                writer,
+                *_,
+            ),
+            ClientSession(stream, writer) as sdk,
+        ):
+            await sdk.initialize()
+
+            async def run_tool(name, **args):
+                result = await sdk.call_tool(name, args)
+                assert not result.isError, result.content
+                return result.structuredContent
+
+            existing_ids = {
+                item["id"]
+                for item in (await run_tool("breakfast_day_get", day=DAY.isoformat()))["items"]
+            }
+            order_input = {
+                "operation_id": str(uuid.uuid4()),
+                "day": DAY.isoformat(),
+                "room_number": "104",
+                "guest_name": "Synthetic booking",
+                "guest_count": 2,
+            }
+            created = await run_tool("breakfast_order_create", **order_input)
+            assert created["state"] == "completed" and created["http_status"] == 201
+            assert created["record_id"] not in existing_ids
+            assert await run_tool("breakfast_order_create", **order_input) == created
+            assert (
+                await run_tool(
+                    "hotel_operation_get",
+                    operation_id=order_input["operation_id"],
+                )
+                == created
+            )
+            altered = await sdk.call_tool(
+                "breakfast_order_create",
+                {**order_input, "guest_count": 3},
+            )
+            assert altered.isError and "WEB_REQUEST_CONFLICT" in altered.content[0].text
+
+            order_id = created["record_id"]
+            updated = await run_tool(
+                "breakfast_order_update",
+                operation_id=str(uuid.uuid4()),
+                order_id=order_id,
+                expected_updated_at=created["updated_at"],
+                changes={"guest_count": 4},
+            )
+            assert updated["state"] == "completed", updated
+            detail = await run_tool("breakfast_order_get", order_id=order_id)
+            assert detail["guest_count"] == 4
+            served = await run_tool(
+                "breakfast_order_update",
+                operation_id=str(uuid.uuid4()),
+                order_id=order_id,
+                expected_updated_at=detail["updated_at"],
+                changes={"status": "served"},
+            )
+            assert served["state"] == "completed"
+            reset = await run_tool(
+                "breakfast_orders_reactivate",
+                operation_id=str(uuid.uuid4()),
+                day=DAY.isoformat(),
+            )
+            assert reset["state"] == "completed" and reset["http_status"] == 204
+            assert (await run_tool("breakfast_order_get", order_id=order_id))["status"] == "pending"
+            diet = await run_tool(
+                "breakfast_diet_set",
+                operation_id=str(uuid.uuid4()),
+                order_id=order_id,
+                reservation_id="fixture-no-reservation",
+                version=1,
+                kind="diet_no_milk",
+                enabled=True,
+            )
+            assert diet["state"] == "rejected" and diet["http_status"] == 409
+
+            deleted = await run_tool(
+                "breakfast_order_delete",
+                operation_id=str(uuid.uuid4()),
+                order_id=order_id,
+            )
+            assert deleted["state"] == "completed" and deleted["http_status"] == 204
+            assert (await sdk.call_tool("breakfast_order_get", {"order_id": order_id})).isError
+            next_day = (DAY + timedelta(days=1)).isoformat()
+            outside = await run_tool(
+                "breakfast_order_create",
+                **{**order_input, "operation_id": str(uuid.uuid4()), "day": next_day},
+            )
+            invalid_range = await run_tool(
+                "breakfast_orders_delete",
+                operation_id=str(uuid.uuid4()),
+                start_day=next_day,
+                end_day=DAY.isoformat(),
+            )
+            assert invalid_range["state"] == "rejected" and invalid_range["http_status"] == 400
+            assert (await run_tool("breakfast_day_get", day=DAY.isoformat()))["items"]
+            cleared = await run_tool(
+                "breakfast_orders_delete",
+                operation_id=str(uuid.uuid4()),
+                start_day=(DAY - timedelta(days=1)).isoformat(),
+                end_day=DAY.isoformat(),
+            )
+            assert cleared["state"] == "completed" and cleared["http_status"] == 204
+            assert not (await run_tool("breakfast_day_get", day=DAY.isoformat()))["items"]
+            assert (await run_tool("breakfast_order_get", order_id=outside["record_id"]))[
+                "room_number"
+            ] == "104"
+
+            saved = await run_tool(
+                "lost_found_create",
+                operation_id=str(uuid.uuid4()),
+                item={
+                    "item_type": "lost",
+                    "description": "Synthetic property",
+                    "room_number": "104",
+                },
+            )
+            assert saved["state"] == "completed", saved
+            item_id = saved["record_id"]
+            upload = {
+                "operation_id": str(uuid.uuid4()),
+                "item_id": item_id,
+                "file": {
+                    "file_id": "synthetic-file",
+                    "download_url": "https://files.example.invalid/photo",
+                },
+            }
+            photo = await run_tool("lost_found_photo_add", **upload)
+            assert photo["state"] == "completed" and photo["photo_id"]
+            assert await run_tool("lost_found_photo_add", **upload) == photo
+            entry = await run_tool("lost_found_get", item_id=item_id)
+            assert [asset["id"] for asset in entry["photos"]] == [photo["photo_id"]]
+            schema = next(
+                item
+                for item in (await sdk.list_tools()).tools
+                if item.name == "lost_found_photo_add"
+            )
+            assert schema.model_dump(mode="json", by_alias=True)["_meta"]["openai/fileParams"] == [
+                "file"
+            ]
+            denied = await run_tool(
+                "lost_found_update",
+                operation_id=str(uuid.uuid4()),
+                item_id=item_id,
+                expected_updated_at="2000-01-01T00:00:00",
+                changes={"description": "Too old"},
+            )
+            assert denied["state"] == "rejected" and denied["http_status"] == 409
+            applied = await run_tool(
+                "lost_found_update",
+                operation_id=str(uuid.uuid4()),
+                item_id=item_id,
+                expected_updated_at=saved["updated_at"],
+                changes={"description": "Updated property"},
+            )
+            assert applied["state"] == "completed"
+            data = await run_tool("lost_found_get", item_id=item_id)
+            assert data["description"] == "Updated property"
+            deleted = await run_tool(
+                "lost_found_delete", operation_id=str(uuid.uuid4()), item_id=item_id
+            )
+            assert deleted["state"] == "completed"
+            assert (await sdk.call_tool("lost_found_get", {"item_id": item_id})).isError
+
+    asyncio.run(run())
+
+
+def test_photo_url_cannot_resolve_to_a_private_address():
+    reference = hotel_mcp_file.ChatFile(
+        file_id="synthetic",
+        download_url="https://127.0.0.1/photo",
+    )
+    with pytest.raises(HTTPException) as error:
+        hotel_mcp_file.download_photo(reference)
+    assert error.value.status_code == 422

@@ -17,7 +17,13 @@ from app.db.session import get_db
 from app.media.storage import MediaStorage
 from app.security.auth import SESSION_COOKIE_NAME, read_session_cookie
 from app.security.rbac import module_access_dependency, parse_identity, require_actor_type
-from app.services.lost_found_whatsapp import cancel_find, enqueue_find, enqueue_photo, notification_summary
+from app.security.web_access import module_manager
+from app.services.lost_found_whatsapp import (
+    cancel_find,
+    enqueue_find,
+    enqueue_photo,
+    notification_summary,
+)
 from app.time_utils import utc_now
 
 router = APIRouter(
@@ -107,7 +113,7 @@ def update_lost_found_item(
 
     updates = payload.model_dump(exclude_unset=True)
     actor_role = getattr(request.state, "actor_role", "") or parse_identity(request)[2]
-    if actor_role == "recepce":
+    if actor_role == "recepce" and not module_manager(request, "lost_found"):
         allowed_fields = {"status"}
         if set(updates) - allowed_fields:
             raise HTTPException(
@@ -172,7 +178,7 @@ def upload_lost_found_photos(
     photos: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ) -> list[LostFoundPhoto]:
-    item = db.get(LostFoundItem, item_id)
+    item = db.get(LostFoundItem, item_id, with_for_update=True)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lost & found item not found")
     if len(photos) > 3:

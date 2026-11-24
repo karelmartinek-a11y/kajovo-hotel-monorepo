@@ -34,7 +34,10 @@ CML = "https://kajovocml.hcasc.cz"
 OWNER = "KRMAR78"
 BREAKFAST_READ = "breakfast:read"
 LOST_FOUND_READ = "lost_found:read"
-SCOPES = (BREAKFAST_READ, LOST_FOUND_READ)
+BREAKFAST_WRITE = "breakfast:write"
+LOST_FOUND_WRITE = "lost_found:write"
+DEFAULT_SCOPES = (BREAKFAST_READ, LOST_FOUND_READ)
+SCOPES = (*DEFAULT_SCOPES, BREAKFAST_WRITE, LOST_FOUND_WRITE)
 
 
 def _digest(value: str) -> str:
@@ -79,6 +82,25 @@ def _grant(db: Session, kind: str, value: str, *, lock: bool = False) -> HotelOA
     return db.scalar(statement.with_for_update() if lock else statement)
 
 
+def access_digest(token: AccessToken) -> str:
+    return _digest(token.token)
+
+
+def check_active_scope(db: Session, digest: str, permission: str | None) -> bool:
+    query = select(HotelOAuthGrant).where(
+        HotelOAuthGrant.digest == digest,
+        HotelOAuthGrant.kind == "access",
+        HotelOAuthGrant.expires_at > int(time.time()),
+    )
+    row = db.scalar(query.with_for_update() if permission is not None else query)
+    return bool(
+        row is not None
+        and row.payload["resource"] == RESOURCE
+        and row.payload["subject"] == OWNER
+        and (permission is None or permission in row.payload["scopes"])
+    )
+
+
 def _lock_client(db: Session, client_id: str) -> bool:
     return (
         db.scalar(
@@ -107,7 +129,7 @@ class HotelOAuth(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToke
             or not client.redirect_uris
             or len(client.redirect_uris) > 4
             or not all(_callback(str(uri)) for uri in client.redirect_uris)
-            or not set((client.scope or " ".join(SCOPES)).split()) <= set(SCOPES)
+            or not set((client.scope or " ".join(DEFAULT_SCOPES)).split()) <= set(SCOPES)
         ):
             raise RegistrationError("invalid_client_metadata")
         with self.sessions() as db, db.begin():
@@ -131,7 +153,7 @@ class HotelOAuth(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToke
         await run_in_threadpool(self._register, client_info)
 
     def _authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
-        registered = set((client.scope or " ".join(SCOPES)).split())
+        registered = set((client.scope or " ".join(DEFAULT_SCOPES)).split())
         scopes = set(params.scopes) if params.scopes is not None else registered
         if (
             not _callback(str(params.redirect_uri))
@@ -179,7 +201,7 @@ class HotelOAuth(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToke
                 90,
                 {
                     "client_id": row.payload["client_id"],
-                    "scopes": params.scopes or list(SCOPES),
+                    "scopes": params.scopes or list(DEFAULT_SCOPES),
                     "resource": RESOURCE,
                     "subject": OWNER,
                     "code_challenge": params.code_challenge,
@@ -199,7 +221,7 @@ class HotelOAuth(OAuthAuthorizationServerProvider[AuthorizationCode, RefreshToke
             if row is None:
                 raise PermissionError("Připojení vypršelo.")
             params = AuthorizationParams.model_validate(row.payload["params"])
-            return params.scopes or list(SCOPES)
+            return params.scopes or list(DEFAULT_SCOPES)
 
     def _load(self, kind: str, value: str) -> dict[str, Any] | None:
         with self.sessions() as db:

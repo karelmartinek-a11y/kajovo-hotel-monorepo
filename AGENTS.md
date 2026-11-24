@@ -7,6 +7,12 @@ cookie CSRF platí pouze pro přesné OAuth a MCP cesty. Souhlas v CML nadále
 vyžaduje podpis, čerstvou platnou identitu a CSRF. Odkazy na fotografie a PDF
 vyžadují běžný přihlášený CML přístup. Viz [kontrakt MCP](docs/CML_HOTEL_MCP.md).
 
+Přímé připojení získává zápisy jen s výslovným rozsahem příslušného modulu.
+Zápisy používají nativní akce, stabilní UUIDv4 a účtenku v existujícím
+žurnálu CML. Po nejistém výsledku ověř původní účtenku a skutečný stav.
+Zkoušky měnící objednávky, nálezy a přílohy používají izolovaná data a
+falešné poskytovatele.
+
 ## Přístup k webovým modulům od 13. 11. 2026
 
 CML předává přesné nezávislé volby Pokoje a úklid, Snídaně, Ztráty a nálezy, Závady a Sklad. Každá volba zahrnuje úplné funkce svého modulu. Historická pracovní role nemůže přidat jiný modul ani omezit výslovný grant. Nastavení vlastní CML s účelovým podepsaným kontraktem pro hotelová nastavení. Zprávy vlastní CML. Hotel jejich původní tabulky zachová pro ověřený převod historie, původní chatové endpointy a sender se vypínají. Hlášení včetně fotografií přebírá evidence Závad prostřednictvím migrace 0054. Tato pravidla nahrazují starší popis rolí a chatu níže.

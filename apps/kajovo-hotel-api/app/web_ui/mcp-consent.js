@@ -17,8 +17,11 @@ async function showScope() {
   try {
     if (!ticket) throw new Error("Chybí žádost o připojení.");
     const {scopes} = await consent("inspect");
-    const labels = {"breakfast:read": "Snídaně", "lost_found:read": "Ztráty a nálezy"};
-    scope.textContent = `ChatGPT žádá o čtení modulů ${scopes.map(value => labels[value]).join(", ")}.`;
+    const labels = {
+      "breakfast:read": "čtení snídaní", "breakfast:write": "změny snídaní",
+      "lost_found:read": "čtení ztrát a nálezů", "lost_found:write": "změny ztrát a nálezů",
+    };
+    scope.textContent = `ChatGPT žádá o ${scopes.map(value => labels[value]).join(", ")}.`;
     button.disabled = false;
   } catch (error) {
     status.textContent = error.message;
