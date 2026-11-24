@@ -35,3 +35,31 @@ tokenů nezobrazil. Při přejímce nebyla měněna žádná provozní data.
 | Snídaně | 10 | 13 179 | 3 432 |
 | Ztráty a nálezy | 8 | 13 575 | 3 614 |
 | Oba moduly | 17 | 25 742 | 6 784 |
+
+## Pokoje, závady a sklady, 25. 11. 2026
+
+- Produkční API používá zdroj `36496b57fce42843936ad3075b006b251ad668a0`
+  v obrazu `sha256:c383587040e74cc220e589d116dcf2126bb6851ca7857577415f42b051bf8b6e`.
+  Prošlo 407 API testů, úplná lokální sada a GitHub CI. Změna nevyžadovala
+  databázovou migraci. Ověřené snímky potvrzují shodu Nginxu a kontejnerů
+  webu, administrace a PostgreSQL před a po výměně API.
+  [GitHub CI](https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/45506857047)
+- Přes veřejný OAuth a SDK prošlo čtení pokojů, závad i obou skladů,
+  čtecí a zápisové katalogy a odmítnutí přístupu k druhému skladu. Oba
+  sklady v okamžiku zkoušky vrátily prázdnou stránku, shodnou s počtem
+  položek v jejich databázích. Dočasné registrace a granty byly odstraněny.
+- V izolaci prošly nativní zápisy, přílohy, storno skladových dokladů
+  a opakování objednávky vajec pomocí náhradního Mailu. Živá zkouška
+  neposílala objednávku. Čtecí připojení Snídaní a Ztrát a nálezů prošlo
+  v ChatGPT výše. Ověření nového zápisového připojení a dalších modulů
+  v ChatGPT přerušilo zamknutí Macu.
+
+| Modul | Čtecí nástroje | Odhad tokenů | Nástroje se zápisem | Odhad tokenů |
+| --- | ---: | ---: | ---: | ---: |
+| Pokoje a úklid | 2 | 2 263 | 6 | 3 755 |
+| Závady | 3 | 1 106 | 8 | 3 057 |
+| Sklad Snídaně | 9 | 3 016 | 21 | 7 267 |
+| Sklad Drogerie | 9 | 3 016 | 18 | 6 560 |
+
+Instrukce aktuálního katalogu mají 150 B a odhad 41 tokenů. U původních
+Snídaní a Ztrát a nálezů velikosti nástrojů zůstaly shodné s tabulkami výše.
