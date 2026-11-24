@@ -29,6 +29,10 @@ tokenů nezobrazil. Při přejímce nebyla měněna žádná provozní data.
 - Zkoušky zápisů, verzí, hromadného výběru, přílohy a účtenky proběhly
   na izolovaných datech. Přejímka v produkci používala čtení a dotaz na
   neexistující účtenku. Výměna API zachovala stav chráněných kontejnerů a Nginxu.
+- ChatGPT připojil všechny čtyři rozsahy pro čtení a zápis ve Snídaních
+  a Ztrátách a nálezech. Při volání `hotel_operation_get` s vymyšleným UUID
+  vrátil stav `not_found`. Původní zkušební instalace se starou registrací
+  byla odinstalována. [Plugin](https://chatgpt.com/plugins/plugin_asdk_app_6b06172453a481918f80db22096e2c47) · [Zkušební chat](https://chatgpt.com/local/6b061cca-9c04-83eb-8df8-25c95151604d)
 
 | Profil s povolenými zápisy | Nástrojů | Definice v B | Odhad tokenů |
 | --- | ---: | ---: | ---: |
@@ -50,9 +54,11 @@ tokenů nezobrazil. Při přejímce nebyla měněna žádná provozní data.
   položek v jejich databázích. Dočasné registrace a granty byly odstraněny.
 - V izolaci prošly nativní zápisy, přílohy, storno skladových dokladů
   a opakování objednávky vajec pomocí náhradního Mailu. Živá zkouška
-  neposílala objednávku. Čtecí připojení Snídaní a Ztrát a nálezů prošlo
-  v ChatGPT výše. Ověření nového zápisového připojení a dalších modulů
-  v ChatGPT přerušilo zamknutí Macu.
+  neposílala objednávku. V ChatGPT prošel vlastní profil se čtyřmi
+  čtecími rozsahy. `housekeeping_rooms_list` a `issue_list` vrátily
+  po jedné položce při limitu 1. Dvě volání `inventory_items_list`
+  vrátila prázdné stránky pro Snídaně a Drogerii.
+  [Plugin](https://chatgpt.com/plugins/plugin_asdk_app_6b061d7187dc81918e53455f84a8287d) · [Zkušební chat](https://chatgpt.com/local/6b061f65-1bb0-83ed-afa7-096a50cb304b)
 
 | Modul | Čtecí nástroje | Odhad tokenů | Nástroje se zápisem | Odhad tokenů |
 | --- | ---: | ---: | ---: | ---: |
