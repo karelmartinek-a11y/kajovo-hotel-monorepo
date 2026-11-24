@@ -1110,6 +1110,32 @@ class VoiceMemoryDependency(Base):
     )
 
 
+class HotelOAuthClient(Base):
+    __tablename__ = "hotel_oauth_client"
+
+    id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
+class HotelOAuthGrant(Base):
+    __tablename__ = "hotel_oauth_grant"
+    __table_args__ = (
+        Index("ix_hotel_oauth_grant_family", "family"),
+        Index("ix_hotel_oauth_grant_expiration", "expires_at"),
+    )
+
+    digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(12), nullable=False)
+    family: Mapped[str] = mapped_column(String(64), nullable=False)
+    client_id: Mapped[str] = mapped_column(
+        String(160), ForeignKey("hotel_oauth_client.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    expires_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+
+
 class CmlWebNonce(Base):
     """Single-use signed requests, shared by every process of this application."""
 

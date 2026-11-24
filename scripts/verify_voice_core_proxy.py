@@ -167,6 +167,15 @@ def main():
                 assert {"strict-transport-security", "x-content-type-options", "x-frame-options", "referrer-policy"} <= header_names
                 if path.startswith("/api/"):
                     assert {key.lower(): value for key, value in headers}["cache-control"] == "no-store"
+            status, headers, _body = request("/mcp")
+            assert status == 401
+            challenge = {key.lower(): value for key, value in headers}["www-authenticate"]
+            assert 'resource_metadata="https://hotel.hcasc.cz/.well-known/oauth-protected-resource/mcp"' in challenge
+            status, _headers, body = request("/.well-known/oauth-protected-resource/mcp")
+            assert status == 200 and json.loads(body)["resource"] == "https://hotel.hcasc.cz/mcp"
+            status, _headers, body = request("/.well-known/oauth-authorization-server/hotel-oauth")
+            assert status == 200 and json.loads(body)["issuer"] == "https://hotel.hcasc.cz/hotel-oauth"
+            assert request("/cml-web/mcp")[0] == 401
             assert request("/cml-web/identity")[0] == 401
             assert request("/cml-web/api/profiles/11111111-1111-4111-8111-111111111111")[0] == 401
             signed_headers = cml_headers("/cml-web/identity")

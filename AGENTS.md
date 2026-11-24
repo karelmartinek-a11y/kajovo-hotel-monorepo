@@ -1,3 +1,12 @@
+## Přístup MCP k hotelovým modulům
+
+Hotel MCP používá stávající připnuté SDK. Přímý `/mcp` přijímá samostatné
+OAuth připojení s právě schválenými rozsahy. Podepsaný `/cml-web/mcp` používá
+aktuální identitu a stávající grant konkrétního modulu. Výjimka z nativního
+cookie CSRF platí pouze pro přesné OAuth a MCP cesty. Souhlas v CML nadále
+vyžaduje podpis, čerstvou platnou identitu a CSRF. Odkazy na fotografie a PDF
+vyžadují běžný přihlášený CML přístup. Viz [kontrakt MCP](docs/CML_HOTEL_MCP.md).
+
 ## Přístup k webovým modulům od 13. 11. 2026
 
 CML předává přesné nezávislé volby Pokoje a úklid, Snídaně, Ztráty a nálezy, Závady a Sklad. Každá volba zahrnuje úplné funkce svého modulu. Historická pracovní role nemůže přidat jiný modul ani omezit výslovný grant. Nastavení vlastní CML s účelovým podepsaným kontraktem pro hotelová nastavení. Zprávy vlastní CML. Hotel jejich původní tabulky zachová pro ověřený převod historie, původní chatové endpointy a sender se vypínají. Hlášení včetně fotografií přebírá evidence Závad prostřednictvím migrace 0054. Tato pravidla nahrazují starší popis rolí a chatu níže.

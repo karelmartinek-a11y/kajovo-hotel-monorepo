@@ -49,3 +49,11 @@ Hotel Nastavení přidává denní čas Europe/Prague, příjemce a vypínač so
 na další den. Migrace `0052_breakfast_whatsapp` navazuje na
 `0051_lost_found_whatsapp` a zachovává nezávislou frontu nálezů.
 Provozní kontrakt: `docs/change-impact-breakfast-whatsapp.md`.
+
+## Doménové MCP
+
+`https://hotel.hcasc.cz/mcp` nabízí čtení přístupných modulů Snídaně a
+Ztráty a nálezy. Vlastnický OAuth má účelové rozsahy `breakfast:read` a
+`lost_found:read`. Podepsaný vstup CML používá aktuální ověřené modulové
+oprávnění. PDF snídaní vyžaduje stejnou roli jako stávající výstup. Fotografie
+a PDF zůstávají chráněné běžnou CML autorizací.

@@ -17,6 +17,7 @@ from starlette.responses import FileResponse, JSONResponse
 
 from app.security.cml_assertion import AssertionDenied, central_settings, WebVerifier, central_administrator
 from app.security.cml_requests import WebRequests, ReceiptFault, owner_key, request_id
+from app.security.hotel_mcp_consent import consent as hotel_consent
 from app.security.web_access import path_module
 
 def central_write_authorized(claims):
@@ -33,13 +34,14 @@ def central_write_authorized(claims):
 
 
 class CmlWebBoundary:
-    def __init__(self, app, *, audience, session_factory, resolve_identity, ui_root):
+    def __init__(self, app, *, audience, session_factory, resolve_identity, ui_root, hotel_oauth=None):
         self.app = app
         self.audience = audience
         self.session_factory = session_factory
         self.resolve_identity = resolve_identity
         self.ui_root = Path(ui_root).resolve()
         self.requests = WebRequests(session_factory)
+        self.hotel_oauth = hotel_oauth
         path = os.getenv('CML_WEB_JWKS_PATH')
         self.verifier = WebVerifier.from_file(audience, path) if path else None
         entry_only = os.getenv('CML_BROWSER_ENTRY_ONLY', '0')
@@ -130,6 +132,15 @@ class CmlWebBoundary:
                     profile_response = JSONResponse({'error': {'code': exc.code}}, status_code=exc.status, headers={'Cache-Control': 'no-store'})
                 await profile_response(scope, receive, send)
                 return
+            if self.audience == 'hotel' and suffix == 'oauth/consent' and self.hotel_oauth:
+                if claims['sub'] != 'KRMAR78' or not central_write_authorized(claims):
+                    raise AssertionDenied('hotel_oauth_owner_required')
+                response = await hotel_consent(
+                    self.hotel_oauth, scope['method'], query,
+                    headers.get('content-type', '').split(';')[0], bytes(body), claims['sub'],
+                )
+                await response(scope, receive, send)
+                return
             if suffix == 'identity':
                 if self.audience == 'hotel' and 'breakfast:write' in identity['public'].get('permissions', []):
                     from app.services.breakfast.lighting import configured
@@ -162,7 +173,8 @@ class CmlWebBoundary:
                 manifest['views'] = [v for v in manifest['views'] if (not v.get('admin') or identity['public']['admin']) and (bool(identity['state'].get('_kajovo_auth_session', {}).get('cml_permissions')) or not v.get('roles') or any(role in v['roles'] for role in identity['public'].get('roles', []))) and (v.get('audienceRole') is None or v['audienceRole']==('admin' if identity['public']['admin'] else 'member')) and (not v.get('permission') or v['permission'] in identity['public'].get('available_permissions', identity['public'].get('permissions', [])))]
                 await JSONResponse(manifest, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                 return
-            if not suffix.startswith('api/'):
+            hotel_mcp = self.audience == 'hotel' and suffix == 'mcp' and self.hotel_oauth is not None
+            if not suffix.startswith('api/') and not hotel_mcp:
                 path = self.ui_root / (suffix or 'index.html')
                 if path.resolve().is_relative_to(self.ui_root) and path.is_file() and path.suffix in {'.html', '.js', '.css', '.svg', '.ttf', '.png'}:
                     response = FileResponse(path, media_type=mimetypes.guess_type(path)[0], headers={'Cache-Control': 'no-store'})
@@ -194,7 +206,7 @@ class CmlWebBoundary:
                     await JSONResponse({'error': {'code': 'cml_reauth_required', 'message': 'Nejprve čerstvě ověřte identitu v KájovoCML.'}}, status_code=403, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                     return
             # A signed request cannot start a local login or invoke a different public protocol.
-            if not suffix.startswith(('api/v1/', 'api/auth/')) or suffix.endswith(('/login', '/logout', '/reset-password', '/request-password-reset')):
+            if (not hotel_mcp and not suffix.startswith(('api/v1/', 'api/auth/'))) or suffix.endswith(('/login', '/logout', '/reset-password', '/request-password-reset')):
                 raise AssertionDenied('route_denied')
             module = None
             warehouse_route = suffix.split('/')[:3] == ['api', 'v1', 'inventory']
@@ -206,7 +218,7 @@ class CmlWebBoundary:
             if self.audience == 'hotel' and claims['sub'] != 'KRMAR78' and not central_administrator(claims) and not central_settings(claims):
                 action = 'read' if scope['method'] in {'GET', 'HEAD'} else 'write'
                 locale_route = suffix == 'api/auth/locale'
-                if not locale_route and (module is None or module + ':' + action not in identity['public']['permissions']):
+                if not (locale_route or hotel_mcp) and (module is None or module + ':' + action not in identity['public']['permissions']):
                     if warehouse_route:
                         await JSONResponse({'detail': 'K tomuto skladu nemáte oprávnění.'}, status_code=403, headers={'Cache-Control': 'no-store'})(scope, receive, send)
                         return
@@ -215,6 +227,13 @@ class CmlWebBoundary:
             forwarded['path'] = '/' + suffix
             forwarded['raw_path'] = ('/' + suffix).encode()
             forwarded['state'] = {**scope.get('state', {}), **identity.get('state', {}), 'cml_web_claims': claims}
+            if hotel_mcp:
+                public = identity["public"]
+                forwarded["state"]["hotel_mcp_permissions"] = public["permissions"]
+                forwarded["state"]["hotel_mcp_breakfast_manager"] = (
+                    public["active_role"] in {"admin", "recepce"}
+                    or "breakfast:write" in public["permissions"]
+                )
             consumed = False
 
             async def replay_body():

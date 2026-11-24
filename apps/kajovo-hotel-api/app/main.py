@@ -2,6 +2,8 @@ import asyncio
 import contextlib
 import os
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
@@ -10,6 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.android_release import get_android_release_manifest
+from app.api.hotel_mcp import HotelMCP
 from app.api.routes.app_meta import router as app_meta_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.breakfast import router as breakfast_router
@@ -63,6 +66,18 @@ def create_app() -> FastAPI:
     configure_logging()
     app = FastAPI(title=settings.app_name, version=settings.app_version)
     app.add_middleware(RequestContextMiddleware)
+    hotel_mcp = HotelMCP(SessionLocal)
+    mcp_routes = hotel_mcp.routes()
+    mcp_paths = frozenset(route.path for route in mcp_routes)
+    app.router.routes.extend(mcp_routes)
+    native_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def lifespan(service):
+        async with native_lifespan(service), hotel_mcp.server.session_manager.run():
+            yield
+
+    app.router.lifespan_context = lifespan
 
     @app.exception_handler(RequestValidationError)
     async def safe_validation_error(request: Request, exc: RequestValidationError):
@@ -94,7 +109,9 @@ def create_app() -> FastAPI:
                 return RedirectResponse("https://kajovocml.hcasc.cz/#account-voice", status_code=303, headers={"Cache-Control": "no-store"})
             return JSONResponse(status_code=410, content={"detail": {"code": "voice_moved_to_cml"}}, headers={"Cache-Control": "no-store"})
         try:
-            ensure_csrf(request)
+            # These exact routes use OAuth or the signed CML boundary and ignore web cookies.
+            if request.url.path not in mcp_paths:
+                ensure_csrf(request)
         except HTTPException as exc:
             return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
@@ -175,7 +192,11 @@ def create_app() -> FastAPI:
     from pathlib import Path
     from app.security.cml_web import CmlWebBoundary
     from app.services.cml_identity import resolve_identity
-    app.add_middleware(CmlWebBoundary, audience='hotel', session_factory=SessionLocal, resolve_identity=resolve_identity, ui_root=Path(__file__).parent / 'web_ui')
+    app.add_middleware(
+        CmlWebBoundary, audience='hotel', session_factory=SessionLocal,
+        resolve_identity=resolve_identity, ui_root=Path(__file__).parent / 'web_ui',
+        hotel_oauth=hotel_mcp.provider,
+    )
     return app
 
 

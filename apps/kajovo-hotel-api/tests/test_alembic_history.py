@@ -19,7 +19,7 @@ def _alembic_config() -> Config:
 
 def test_alembic_has_single_head() -> None:
     script = ScriptDirectory.from_config(_alembic_config())
-    assert script.get_heads() == ["0054_merge_reports_into_issues"]
+    assert script.get_heads() == ["0055_hotel_mcp_oauth"]
 
 
 def test_cml_push_migration_retains_legacy_keys_without_authorizing_them(tmp_path, monkeypatch):
@@ -71,6 +71,7 @@ def test_alembic_upgrade_head_on_clean_sqlite(
     assert "voice_smart_operations" in tables
     assert {"request_id", "owner_session_id", "call_id", "arguments_digest", "status", "created_at"} == {column["name"] for column in inspector.get_columns("voice_smart_operations")}
     assert {"config_json", "revision", "encrypted_api_key"} <= {column["name"] for column in inspector.get_columns("voice_core_settings")}
+    assert {"hotel_oauth_client", "hotel_oauth_grant"} <= tables
     assert "admin_profile" in tables
     assert "report_photos" in tables
     assert "device_registrations" in tables
