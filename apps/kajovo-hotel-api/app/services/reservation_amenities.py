@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.audit_utils import audit_detail_json
 from app.db.models import AuditTrail, ReservationAmenity
+from app.security.web_access import module_manager
 
 
 def amenity_read(row: ReservationAmenity) -> dict:
@@ -27,9 +28,10 @@ def enrich_overview(db: Session, overview: dict) -> dict:
 
 def change_amenity(db: Session, request: Request, reservation_id: str, kind: str, *, operation: str, version: int, state: str = "red") -> dict:
     role = request.state.actor_role
-    if operation not in {"color", "confirm"} and role not in {"admin", "recepce"}:
+    managed = module_manager(request, "housekeeping")
+    if operation not in {"color", "confirm"} and not managed and role not in {"admin", "recepce"}:
         raise HTTPException(403, "Ikony může přidávat a odebírat jen recepce nebo administrátor.")
-    if operation == "confirm" and role not in {"admin", "recepce", "pokojská"}:
+    if operation == "confirm" and not managed and role not in {"admin", "recepce", "pokojská"}:
         raise HTTPException(403, "Aktivní role nemůže potvrdit připravený požadavek.")
     row = db.scalar(select(ReservationAmenity).where(ReservationAmenity.reservation_id == reservation_id, ReservationAmenity.kind == kind))
     before = amenity_read(row) if row else None

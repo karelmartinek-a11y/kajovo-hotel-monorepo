@@ -8,14 +8,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from starlette.requests import Request
 
-from app.api.routes import breakfast, lost_found
+from app.api.routes import breakfast, issues, lost_found
 from app.api.schemas import (
     BreakfastOrderUpdate,
     BreakfastStatus,
+    IssueUpdate,
     LostFoundItemCreate,
     LostFoundItemUpdate,
 )
-from app.db.models import BreakfastOrder, LostFoundItem
+from app.db.models import BreakfastOrder, Issue, LostFoundItem
 from app.security.rbac import require_actor_type
 from app.services.hotel_mcp_file import ChatFile, download_photo
 
@@ -34,7 +35,7 @@ class BreakfastPatch(BaseModel):
         return BreakfastOrderUpdate(expected_updated_at=expected_updated_at, **changes)
 
 
-def receipt(record: BreakfastOrder | LostFoundItem) -> dict[str, Any]:
+def receipt(record: BreakfastOrder | Issue | LostFoundItem) -> dict[str, Any]:
     return {
         "record_id": record.id,
         "updated_at": record.updated_at.isoformat() if record.updated_at else None,
@@ -109,6 +110,51 @@ def add_lost_found_photo(db: Session, item_id: int, file: ChatFile) -> dict[str,
     if len(added) != 1:
         raise RuntimeError("Foto záznam nelze jednoznačně přečíst.")
     return {"record_id": item_id, "photo_id": added[0]}
+
+
+def update_issue(
+    db: Session,
+    request: Request,
+    issue_id: int,
+    payload: IssueUpdate,
+    expected_updated_at: datetime,
+) -> dict[str, Any]:
+    issue = db.get(Issue, issue_id, with_for_update=True)
+    if issue is None:
+        raise HTTPException(404, "Závada nebyla nalezena.")
+    if issue.updated_at != expected_updated_at:
+        raise HTTPException(409, "Závada se změnila. Načti ji znovu.")
+    updated = payload.model_dump(exclude_unset=True)
+    if not updated:
+        raise HTTPException(400, "Vyber alespoň jedno pole ke změně.")
+    required = {"title", "location", "priority", "status"}
+    if any(field in required and value is None for field, value in updated.items()):
+        raise HTTPException(400, "Povinné pole nelze vymazat.")
+    return receipt(issues.update_issue(issue_id, payload, request, db))
+
+
+def delete_issue(db: Session, request: Request, issue_id: int) -> dict[str, Any]:
+    require_actor_type("admin")(request)
+    issues.delete_issue(issue_id, db, None)
+    return {"record_id": issue_id}
+
+
+def add_issue_photo(db: Session, request: Request, issue_id: int, file: ChatFile) -> dict[str, Any]:
+    issue = db.get(Issue, issue_id, with_for_update=True)
+    if issue is None:
+        raise HTTPException(404, "Závada nebyla nalezena.")
+    previous_ids = {photo.id for photo in issue.photos}
+    if len(previous_ids) >= 3:
+        raise HTTPException(400, "K závadě lze přidat nejvýše tři fotografie.")
+    upload = download_photo(file)
+    try:
+        photos = issues.upload_issue_photos(issue_id, request, [upload], db)
+    finally:
+        upload.file.close()
+    added = [photo.id for photo in photos if photo.id not in previous_ids]
+    if len(added) != 1:
+        raise RuntimeError("Fotografii závady nelze jednoznačně přečíst.")
+    return {"record_id": issue_id, "photo_id": added[0]}
 
 
 def reactivate_breakfast_day(request: Request, db: Session, day: date) -> dict[str, Any]:

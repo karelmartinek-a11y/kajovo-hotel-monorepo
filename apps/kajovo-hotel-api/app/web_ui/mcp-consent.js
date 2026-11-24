@@ -20,6 +20,10 @@ async function showScope() {
     const labels = {
       "breakfast:read": "čtení snídaní", "breakfast:write": "změny snídaní",
       "lost_found:read": "čtení ztrát a nálezů", "lost_found:write": "změny ztrát a nálezů",
+      "issues:read": "čtení závad", "issues:write": "změny závad",
+      "housekeeping:read": "čtení pokojů a úklidu", "housekeeping:write": "změny úklidu a přípravy pokojů",
+      "inventory_snidane:read": "čtení Skladu Snídaně", "inventory_drogerie:read": "čtení Skladu Drogerie",
+      "inventory_snidane:write": "změny ve Skladu Snídaně", "inventory_drogerie:write": "změny ve Skladu Drogerie",
     };
     scope.textContent = `ChatGPT žádá o ${scopes.map(value => labels[value]).join(", ")}.`;
     button.disabled = false;

@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from app.api.routes import breakfast, lost_found
+from app.api.routes import breakfast, issues, lost_found
 from app.api.schemas import (
     BreakfastDailySummary,
     BreakfastReservationRead,
@@ -19,6 +19,9 @@ from app.api.schemas import (
 from app.db.models import (
     BreakfastOrder,
     BreakfastStatus,
+    Issue,
+    IssuePriority,
+    IssueStatus,
     LostFoundItem,
     LostFoundItemType,
     LostFoundStatus,
@@ -231,6 +234,87 @@ def lost_found_photo(
     response = lost_found.get_lost_found_photo(item_id, photo_id, kind, download=False, db=db)
     return FileLink(
         href=f"{SECTION}/api/v1/lost-found/{item_id}/photos/{photo_id}/{kind}",
+        media_type=response.media_type,
+        kind="photo" if hasattr(response, "path") else "placeholder",
+    )
+
+
+class IssueSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    location: str
+    room_number: str | None
+    priority: IssuePriority
+    status: IssueStatus
+    updated_at: datetime
+
+
+class IssuePage(BaseModel):
+    items: list[IssueSummary]
+    next_before_id: int | None = None
+
+
+class IssueDetail(IssueSummary):
+    description: str | None
+    assignee: str | None
+    created_at: datetime
+    in_progress_at: datetime | None
+    resolved_at: datetime | None
+    closed_at: datetime | None
+    photos: list[PhotoInfo]
+
+
+def issue_list(
+    db: Session,
+    *,
+    priority: IssuePriority | None,
+    status: IssueStatus | None,
+    location: str | None,
+    room_number: str | None,
+    before_id: int | None,
+    limit: int,
+) -> IssuePage:
+    query = select(Issue)
+    for column, value in (
+        (Issue.priority, priority),
+        (Issue.status, status),
+        (Issue.location, location),
+        (Issue.room_number, room_number),
+    ):
+        if value is not None:
+            query = query.where(column == value)
+    if before_id is not None:
+        cursor = query.where(Issue.id == before_id)
+        if db.scalar(cursor.with_only_columns(Issue.id)) is None:
+            raise HTTPException(409, "Položka kurzoru zmizela. Načti první stránku.")
+        timestamp = cursor.with_only_columns(Issue.created_at).correlate(None).scalar_subquery()
+        query = query.where(
+            or_(
+                Issue.created_at < timestamp,
+                and_(Issue.created_at == timestamp, Issue.id < before_id),
+            )
+        )
+    rows = list(
+        db.scalars(query.order_by(Issue.created_at.desc(), Issue.id.desc()).limit(limit + 1))
+    )
+    return IssuePage(
+        items=[IssueSummary.model_validate(row) for row in rows[:limit]],
+        next_before_id=rows[limit - 1].id if len(rows) > limit else None,
+    )
+
+
+def issue_detail(db: Session, issue_id: int) -> IssueDetail:
+    return IssueDetail.model_validate(issues.get_issue(issue_id, db))
+
+
+def issue_photo(
+    db: Session, issue_id: int, photo_id: int, kind: Literal["thumb", "original"]
+) -> FileLink:
+    response = issues.get_issue_photo(issue_id, photo_id, kind, download=False, db=db)
+    return FileLink(
+        href=f"{SECTION}/api/v1/issues/{issue_id}/photos/{photo_id}/{kind}",
         media_type=response.media_type,
         kind="photo" if hasattr(response, "path") else "placeholder",
     )

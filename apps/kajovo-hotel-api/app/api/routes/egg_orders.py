@@ -89,7 +89,10 @@ def lookup(db: Session, row: InventoryEggOrder, config: dict, payload: dict) -> 
 
 @router.get("/latest")
 def latest(request: Request, db: Session = Depends(get_db)) -> OrderStatus | None:
-    owner = cml_owner(request)
+    return latest_for_owner(cml_owner(request), db)
+
+
+def latest_for_owner(owner: str, db: Session) -> OrderStatus | None:
     row = db.scalar(select(InventoryEggOrder).where(InventoryEggOrder.owner == owner)
                     .order_by(InventoryEggOrder.created_at.desc()).limit(1))
     if row and row.state == "unknown":
@@ -101,7 +104,10 @@ def latest(request: Request, db: Session = Depends(get_db)) -> OrderStatus | Non
 
 @router.post("")
 def submit(click: OrderClick, request: Request, db: Session = Depends(get_db)) -> OrderStatus | RepeatOrder | BusyOrder:
-    owner = cml_owner(request)
+    return submit_for_owner(click, cml_owner(request), db)
+
+
+def submit_for_owner(click: OrderClick, owner: str, db: Session) -> OrderStatus | RepeatOrder | BusyOrder:
     ident = str(click.id)
     # Serialize decisions across warehouse users; release the transaction
     # before calling Mail. The committed unknown row guards that interval.
@@ -155,6 +161,10 @@ def submit(click: OrderClick, request: Request, db: Session = Depends(get_db)) -
 @router.get("/{order_id}")
 def recover(order_id: UUID, request: Request, db: Session = Depends(get_db)) -> OrderStatus:
     cml_owner(request)
+    return recover_status(order_id, db)
+
+
+def recover_status(order_id: UUID, db: Session) -> OrderStatus:
     row = db.get(InventoryEggOrder, str(order_id))
     if row is None:
         raise HTTPException(404, "Objednávka nebyla nalezena.")

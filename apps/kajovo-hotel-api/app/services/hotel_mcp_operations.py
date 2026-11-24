@@ -14,6 +14,7 @@ from starlette.requests import Request
 from app.db.models import PortalUser
 from app.security.cml_requests import ReceiptFault, WebRequests
 from app.security.hotel_oauth import ORIGIN, check_active_scope
+from app.security.rbac import parse_identity
 
 
 class OperationOut(BaseModel):
@@ -37,22 +38,28 @@ class Actor:
     def identity(self) -> dict[str, Any]:
         return {"public": {"permissions": sorted(self.permissions)}}
 
-    def request(self, method: str, path: str) -> Request:
-        return Request(
+    def request(self, method: str, path: str, operation_id: str) -> Request:
+        pathname, _, query = path.partition("?")
+        request = Request(
             {
                 "type": "http",
                 "scheme": "https",
                 "server": (ORIGIN.removeprefix("https://"), 443),
                 "method": method,
-                "path": path,
+                "path": pathname,
                 "headers": [],
-                "query_string": b"",
-                "state": {"_kajovo_auth_session": self.session},
+                "query_string": query.encode(),
+                "state": {
+                    "_kajovo_auth_session": self.session,
+                    "request_id": operation_id,
+                },
             }
         )
+        request.state.actor_id, _, request.state.actor_role = parse_identity(request)
+        return request
 
 
-def _require_current(db: Session, actor: Actor, permission: str | None = None) -> None:
+def require_current(db: Session, actor: Actor, permission: str | None = None) -> None:
     if permission is not None and permission not in actor.permissions:
         raise HTTPException(403, "hotel_scope_denied")
     if actor.oauth_digest is not None and not check_active_scope(
@@ -93,7 +100,7 @@ def lookup(
     actor: Actor,
     operation_id: str,
 ) -> OperationOut:
-    _require_current(db, actor)
+    require_current(db, actor)
     if not any(permission.endswith(":write") for permission in actor.permissions):
         raise HTTPException(403, "hotel_scope_denied")
     return _receipt(journal.read(actor.key, operation_id, actor.identity()))
@@ -113,7 +120,7 @@ def execute(
     change: Callable[[Request, Session], dict[str, Any]],
     success_status: int,
 ) -> OperationOut:
-    _require_current(db, actor, permission)
+    require_current(db, actor, permission)
     encoded = json.dumps(
         arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode()
@@ -129,8 +136,8 @@ def execute(
     if previous is not None:
         return _receipt(previous)
     try:
-        _require_current(db, actor, permission)
-        body = change(actor.request(method, path), db)
+        require_current(db, actor, permission)
+        body = change(actor.request(method, path, operation_id), db)
         journal.finish(actor.key, operation_id, success_status, body)
     except HTTPException as error:
         db.rollback()

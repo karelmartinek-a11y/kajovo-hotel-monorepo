@@ -229,7 +229,12 @@ def upload_issue_photos(
     actor_role = _actor_role(request)
     _guard_issue_photo_upload(actor_role, request)
 
-    issue = db.scalar(select(Issue).where(Issue.id == issue_id).options(selectinload(Issue.photos)))
+    issue = db.scalar(
+        select(Issue)
+        .where(Issue.id == issue_id)
+        .options(selectinload(Issue.photos))
+        .with_for_update()
+    )
     if not issue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
     if len(issue.photos) + len(photos) > 3:

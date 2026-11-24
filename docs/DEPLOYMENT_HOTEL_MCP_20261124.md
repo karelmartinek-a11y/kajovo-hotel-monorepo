@@ -15,3 +15,23 @@
 
 Odhady používají `o200k_base`. ChatGPT v ověřovacím chatu počet vstupních
 tokenů nezobrazil. Při přejímce nebyla měněna žádná provozní data.
+
+## Zápisy snídaní a ztrát a nálezů
+
+- Produkční zdroj zápisů `38757e9511fe4ca247c71fa29681fc7a9755dc0f`
+  prošel 403 API testy, úplnou lokální sadou a GitHub kontrolou obrazu
+  a kontraktu. [GitHub CI](https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/45501993931)
+- Oprava registrace pro ChatGPT `6c0ccc97c71bff8cbb6bea448b5daede0ea234e2`
+  běží v obrazu `sha256:8d79513529d5e349d372305ab8439c394aeffee5e78b0097ec6d8308bf799156`.
+  Lokální a GitHub sada prošly. Veřejný SDK ověřil registraci bez uvedeného
+  rozsahu, výslovnou autorizační žádost pro každý zápisový profil a následné
+  použití nástrojů podle schválených rozsahů. [GitHub CI](https://github.com/karelmartinek-a11y/kajovo-hotel-monorepo/actions/runs/45504506475)
+- Zkoušky zápisů, verzí, hromadného výběru, přílohy a účtenky proběhly
+  na izolovaných datech. Přejímka v produkci používala čtení a dotaz na
+  neexistující účtenku. Výměna API zachovala stav chráněných kontejnerů a Nginxu.
+
+| Profil s povolenými zápisy | Nástrojů | Definice v B | Odhad tokenů |
+| --- | ---: | ---: | ---: |
+| Snídaně | 10 | 13 179 | 3 432 |
+| Ztráty a nálezy | 8 | 13 575 | 3 614 |
+| Oba moduly | 17 | 25 742 | 6 784 |

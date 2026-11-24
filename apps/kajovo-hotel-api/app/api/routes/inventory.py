@@ -102,7 +102,7 @@ def _load_item_or_404(db: Session, item_id: int, *, for_update: bool = False) ->
     return item
 
 
-def _serialize_movement(movement: InventoryMovement) -> InventoryMovementRead:
+def serialize_movement(movement: InventoryMovement) -> InventoryMovementRead:
     return InventoryMovementRead.model_validate(
         {
             "id": movement.id,
@@ -207,7 +207,7 @@ def list_movements(db: Session = Depends(get_warehouse_db)) -> list[InventoryMov
             )
         )
     )
-    return [_serialize_movement(movement) for movement in movements]
+    return [serialize_movement(movement) for movement in movements]
 
 
 @router.get("/cards", response_model=list[InventoryCardRead])
@@ -376,7 +376,7 @@ def get_item(
         item_payload = InventoryItemRead.model_validate(item).model_dump()
         return InventoryItemWithAuditRead(
             **item_payload,
-            movements=[_serialize_movement(movement) for movement in item.movements],
+            movements=[serialize_movement(movement) for movement in item.movements],
             audit_logs=[InventoryAuditLogRead.model_validate(log) for log in audit_logs],
         )
     except HTTPException:
@@ -415,6 +415,11 @@ def update_item(
 def add_movement(
     item_id: int, payload: InventoryMovementCreate, db: Session = Depends(get_warehouse_db)
 ) -> InventoryItem:
+    record_movement(item_id, payload, db)
+    return _load_item_detail(db, item_id)
+
+
+def record_movement(item_id: int, payload: InventoryMovementCreate, db: Session) -> int:
     item = _load_item_or_404(db, item_id, for_update=True)
 
     doc_date = payload.document_date
@@ -454,6 +459,8 @@ def add_movement(
             "movement",
             f"Recorded movement {payload.movement_type.value} ({payload.quantity}).",
         )
+        db.flush()
+        movement_id = movement.id
         db.commit()
     except Exception:
         db.rollback()
@@ -462,7 +469,7 @@ def add_movement(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Pohyb skladu se nepodařilo uložit.",
         )
-    return _load_item_detail(db, item_id)
+    return movement_id
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)

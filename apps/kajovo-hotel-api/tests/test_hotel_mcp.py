@@ -24,12 +24,16 @@ from app.api.hotel_mcp import AUTH_METADATA
 from app.db.models import (
     Base,
     BreakfastOrder,
+    InventoryEggOrder,
+    InventoryItem,
+    Issue,
     LostFoundItem,
     LostFoundPhoto,
     PortalUser,
     PortalUserRole,
 )
 from app.db.session import get_db
+from app.db.warehouse import STOCK_TABLES, Warehouse
 from app.security.hotel_oauth import (
     BREAKFAST_READ,
     BREAKFAST_WRITE,
@@ -39,8 +43,9 @@ from app.security.hotel_oauth import (
     ORIGIN,
     RESOURCE,
 )
-from app.services import hotel_mcp_file
+from app.services import egg_orders, hotel_mcp_file
 from tests.test_cml_web import assertion, b64, fixture_key
+from tests.test_housekeeping import FakeHousekeepingClient, _reservation
 
 DAY = date(2026, 11, 24)
 CALLBACK = "https://chatgpt.com/connector_platform_oauth_redirect"
@@ -60,6 +65,9 @@ def hotel_mcp_app(monkeypatch, tmp_path):
     Image.new("RGB", (2, 2)).save(portrait)
     monkeypatch.setattr(
         "app.api.routes.lost_found.get_settings", lambda: SimpleNamespace(media_root=media_root)
+    )
+    monkeypatch.setattr(
+        "app.api.routes.issues.get_settings", lambda: SimpleNamespace(media_root=media_root)
     )
     with factory.begin() as db:
         for room, guests in (("101", 2), ("102", 1), ("103", 0)):
@@ -144,6 +152,28 @@ def signed(key, method, path, body=b"", **claims):
     }
 
 
+class SignedFixtureMember(httpx.Auth):
+    def __init__(self, key, permissions):
+        self.key = key
+        self.claims = {
+            "sub": "user:" + str(uuid.uuid4()),
+            "nativeId": "1",
+            "role": "member",
+            "grant": {
+                "contract": "kajovo-web-grant/1",
+                "permissions": permissions,
+                "dataScope": {"kind": "service"},
+            },
+        }
+
+    async def async_auth_flow(self, request):
+        body = await request.aread()
+        request.headers.update(
+            signed(self.key, request.method, request.url.raw_path.decode(), body, **self.claims)
+        )
+        yield request
+
+
 @pytest.mark.parametrize("write_access", [False, True])
 def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app, write_access):
     app, key, _factory = hotel_mcp_app
@@ -187,9 +217,9 @@ def test_oauth_single_module_and_pkce_over_real_application(hotel_mcp_app, write
             if write_access:
                 default = await http.get(ISSUER + "/authorize", params=request)
                 assert default.status_code == 302
-                default_ticket = parse_qs(urlsplit(default.headers["location"]).fragment)[
-                    "ticket"
-                ][0]
+                default_ticket = parse_qs(urlsplit(default.headers["location"]).fragment)["ticket"][
+                    0
+                ]
                 payload = json.dumps({"ticket": default_ticket, "action": "inspect"}).encode()
                 default_consent = await http.post(
                     WEB_CONSENT,
@@ -658,3 +688,481 @@ def test_photo_url_cannot_resolve_to_a_private_address():
     with pytest.raises(HTTPException) as error:
         hotel_mcp_file.download_photo(reference)
     assert error.value.status_code == 422
+
+
+def test_issues_member_has_only_the_granted_catalog_and_uses_native_actions(
+    hotel_mcp_app, monkeypatch
+):
+    app, key, factory = hotel_mcp_app
+    with factory.begin() as db:
+        db.add_all(
+            [
+                Issue(title="Synthetic issue one", location="Corridor", room_number="104"),
+                Issue(title="Synthetic issue two", location="Reception", room_number="104"),
+            ]
+        )
+    raw = BytesIO()
+    Image.new("RGB", (2, 2)).save(raw, format="PNG")
+    monkeypatch.setattr(
+        hotel_mcp_file, "_address", lambda _: ("files.example.invalid", "192.0.2.1", "/image")
+    )
+    monkeypatch.setattr(hotel_mcp_file, "_receive", lambda *_: BytesIO(raw.getvalue()))
+
+    async def run():
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app),
+                base_url=ORIGIN,
+                auth=SignedFixtureMember(key, ["hotel.issues"]),
+            ) as http,
+            streamable_http_client(ORIGIN + "/cml-web/mcp", http_client=http) as (read, write, *_),
+            ClientSession(read, write) as sdk,
+        ):
+            await sdk.initialize()
+            catalog = (await sdk.list_tools()).tools
+            assert {tool.name for tool in catalog} == {
+                "issue_list",
+                "issue_get",
+                "issue_photo_get",
+                "issue_create",
+                "issue_update",
+                "issue_delete",
+                "issue_photo_add",
+                "hotel_operation_get",
+            }
+            denied = await sdk.call_tool("breakfast_day_get", {"day": DAY.isoformat()})
+            assert denied.isError
+
+            async def call(name, **args):
+                result = await sdk.call_tool(name, args)
+                assert not result.isError, result.content
+                return result.structuredContent
+
+            first = await call("issue_list", room_number="104", limit=1)
+            second = await call(
+                "issue_list", room_number="104", limit=1, before_id=first["next_before_id"]
+            )
+            assert [item["id"] for item in first["items"] + second["items"]] == [2, 1]
+            created = await call(
+                "issue_create",
+                operation_id=str(uuid.uuid4()),
+                issue={"title": "Test door", "location": "Third corridor", "priority": "high"},
+            )
+            assert created["state"] == "completed"
+            issue_id = created["record_id"]
+            stale = await call(
+                "issue_update",
+                issue_id=issue_id,
+                operation_id=str(uuid.uuid4()),
+                expected_updated_at="2000-01-01T00:00:00",
+                changes={"status": "resolved"},
+            )
+            assert stale["http_status"] == 409
+            update = await call(
+                "issue_update",
+                issue_id=issue_id,
+                operation_id=str(uuid.uuid4()),
+                expected_updated_at=created["updated_at"],
+                changes={"status": "in_progress"},
+            )
+            assert update["state"] == "completed"
+
+            upload = {
+                "issue_id": issue_id,
+                "operation_id": str(uuid.uuid4()),
+                "file": {
+                    "file_id": "fixture",
+                    "download_url": "https://files.example.invalid/image",
+                },
+            }
+            photo = await call("issue_photo_add", **upload)
+            assert photo["state"] == "completed"
+            assert await call("issue_photo_add", **upload) == photo
+            detail = await call("issue_get", issue_id=issue_id)
+            assert detail["status"] == "in_progress" and detail["in_progress_at"]
+            assert [item["id"] for item in detail["photos"]] == [photo["photo_id"]]
+            assert "file_path" not in detail["photos"][0]
+            link = await call(
+                "issue_photo_get", issue_id=issue_id, photo_id=photo["photo_id"], kind="original"
+            )
+            response = await http.get(link["href"].replace(CML + "/sections/hotel", "/cml-web"))
+            assert response.status_code == 200 and response.content == raw.getvalue()
+            deleted = await call("issue_delete", issue_id=issue_id, operation_id=str(uuid.uuid4()))
+            assert deleted["http_status"] == 204
+            assert (await sdk.call_tool("issue_get", {"issue_id": issue_id})).isError
+
+    asyncio.run(run())
+
+
+def test_housekeeping_keeps_the_native_room_and_amenity_checks(hotel_mcp_app, monkeypatch):
+    app, key, factory = hotel_mcp_app
+    day = date(2026, 9, 17)
+    client = FakeHousekeepingClient()
+    reservation = _reservation(
+        "stay-101",
+        "room-101",
+        "101 KOMFORT",
+        arrival=day.isoformat(),
+        departure="2026-09-18",
+        label="Fixture guest",
+        persons=2,
+    )
+    reservation["bill"] = {"bill_item": [{"label": "Dětská postýlka", "quantity": 1}]}
+    monkeypatch.setattr(client, "blocks_for_day", lambda day: [])
+    monkeypatch.setattr(client, "reservations_for_day", lambda day, **_: [reservation])
+    monkeypatch.setattr("app.services.housekeeping.current_hotel_date", lambda: day)
+    monkeypatch.setattr("app.api.routes.housekeeping._client", lambda: client)
+    with factory.begin() as db:
+        db.get(PortalUser, 1).roles[0].role = "snídaně"
+
+    async def run():
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app),
+                base_url=ORIGIN,
+                auth=SignedFixtureMember(key, ["hotel.rooms"]),
+            ) as http,
+            streamable_http_client(ORIGIN + "/cml-web/mcp", http_client=http) as (read, write, *_),
+            ClientSession(read, write) as sdk,
+        ):
+            await sdk.initialize()
+            assert {item.name for item in (await sdk.list_tools()).tools} == {
+                "housekeeping_rooms_list",
+                "housekeeping_room_get",
+                "housekeeping_room_status_set",
+                "housekeeping_requirement_confirm",
+                "housekeeping_amenity_set",
+                "hotel_operation_get",
+            }
+            assert (await sdk.call_tool("issue_list", {})).isError
+
+            async def call(name, **args):
+                result = await sdk.call_tool(name, args)
+                assert not result.isError, result.content
+                return result.structuredContent
+
+            same_day = {"day": day.isoformat()}
+            page = await call("housekeeping_rooms_list", **same_day, limit=1)
+            assert page["items"][0]["room_id"] == "room-101"
+            assert page["items"][0]["arrival_count"] == 1
+            assert "guest_label" not in page["items"][0]
+            next_page = await call(
+                "housekeeping_rooms_list", **same_day, after_room_id=page["next_after_room_id"]
+            )
+            assert next_page["items"][0]["room_id"] == "room-102"
+            room = {"room_id": "room-101", **same_day}
+            detail = await call("housekeeping_room_get", **room)
+            assert detail["room"]["housekeeping_status_key"] == "dirty"
+            assert detail["reservations"] is None
+
+            rejected = await call(
+                "housekeeping_room_status_set",
+                **room,
+                operation_id=str(uuid.uuid4()),
+                status="clean",
+                expected_status="painted",
+            )
+            assert rejected["http_status"] == 409 and client.patch_body is None
+            change = {
+                **room,
+                "operation_id": str(uuid.uuid4()),
+                "status": "clean",
+                "expected_status": "dirty",
+            }
+            saved = await call("housekeeping_room_status_set", **change)
+            assert saved["state"] == "completed"
+            assert client.patch_body["room_status_id"] == "clean-id"
+            client.patch_body = None
+            assert await call("housekeeping_room_status_set", **change) == saved
+            assert client.patch_body is None
+            detail = await call("housekeeping_room_get", **room, include_reservations=True)
+            assert detail["room"]["housekeeping_status_key"] == "clean"
+            assert detail["reservations"]["arrivals"][0]["reservation_id"] == "stay-101"
+
+            ready = {
+                **room,
+                "reservation_id": "stay-101",
+                "kind": "cot",
+                "version": 0,
+                "quantity": 1,
+            }
+            wrong = await call(
+                "housekeeping_requirement_confirm",
+                **{**ready, "quantity": 2},
+                operation_id=str(uuid.uuid4()),
+            )
+            assert wrong["http_status"] == 409
+            confirmed = await call(
+                "housekeeping_requirement_confirm", **ready, operation_id=str(uuid.uuid4())
+            )
+            assert confirmed["state"] == "completed"
+            stay = (await call("housekeeping_room_get", **room, include_reservations=True))[
+                "reservations"
+            ]["arrivals"][0]
+            assert stay["amenities"] == [
+                {"kind": "cot", "state": "green", "version": 1, "active": True}
+            ]
+            manual = {**room, "reservation_id": "stay-101", "kind": "dog"}
+            for action, version, extra in (
+                ("add", 0, {}),
+                ("set_state", 1, {"state": "green"}),
+                ("remove", 2, {}),
+            ):
+                changed = await call(
+                    "housekeeping_amenity_set",
+                    **manual,
+                    action=action,
+                    version=version,
+                    operation_id=str(uuid.uuid4()),
+                    **extra,
+                )
+                assert changed["state"] == "completed"
+            stay = (await call("housekeeping_room_get", **room, include_reservations=True))[
+                "reservations"
+            ]["arrivals"][0]
+            dog = next(amenity for amenity in stay["amenities"] if amenity["kind"] == "dog")
+            assert dog == {"kind": "dog", "state": "green", "version": 3, "active": False}
+
+    asyncio.run(run())
+
+
+def test_inventory_resolves_only_the_scoped_warehouse_and_reuses_native_transactions(
+    hotel_mcp_app, monkeypatch, tmp_path
+):
+    app, key, _factory = hotel_mcp_app
+    media_root = tmp_path / "inventory-media"
+    monkeypatch.setattr(
+        "app.api.routes.inventory.get_settings", lambda: SimpleNamespace(media_root=media_root)
+    )
+    monkeypatch.setattr("app.db.warehouse.separate_warehouse_databases", lambda: True)
+    monkeypatch.setattr("app.api.routes.inventory.separate_warehouse_databases", lambda: True)
+    engines = {
+        warehouse: create_engine(f"sqlite:///{tmp_path / (warehouse.value + '.sqlite')}")
+        for warehouse in Warehouse
+    }
+    for engine in engines.values():
+        Base.metadata.create_all(engine, tables=STOCK_TABLES)
+    monkeypatch.setattr("app.db.warehouse.warehouse_engine", lambda _, value: engines[value])
+    with sessionmaker(engines[Warehouse.BREAKFAST]).begin() as db:
+        db.add_all(
+            [
+                InventoryItem(name="Synthetic oat", unit="g", current_stock=12, min_stock=3),
+                InventoryItem(name="Synthetic oat", unit="g", current_stock=8, min_stock=2),
+            ]
+        )
+    with sessionmaker(engines[Warehouse.DRUGSTORE]).begin() as db:
+        db.add(InventoryItem(name="Other warehouse", unit="ks", current_stock=99, min_stock=1))
+    raw = BytesIO()
+    Image.new("RGB", (2, 2)).save(raw, format="PNG")
+    monkeypatch.setattr(
+        hotel_mcp_file, "_address", lambda _: ("files.example.invalid", "192.0.2.1", "/image")
+    )
+    monkeypatch.setattr(hotel_mcp_file, "_receive", lambda *_: BytesIO(raw.getvalue()))
+
+    async def run():
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app),
+                base_url=ORIGIN,
+                auth=SignedFixtureMember(key, ["hotel.inventory.snidane"]),
+            ) as http,
+            streamable_http_client(ORIGIN + "/cml-web/mcp", http_client=http) as (read, write, *_),
+            ClientSession(read, write) as sdk,
+        ):
+            await sdk.initialize()
+            catalog = {item.name: item.inputSchema for item in (await sdk.list_tools()).tools}
+            assert len(catalog) == 21 and "issue_list" not in catalog
+            assert catalog["inventory_items_list"]["$defs"]["Warehouse"]["enum"] == ["snidane"]
+            assert catalog["inventory_movement_add"]["$defs"]["Warehouse"]["enum"] == ["snidane"]
+            denied = await sdk.call_tool(
+                "inventory_item_get", {"warehouse": "drogerie", "item_id": 1}
+            )
+            assert denied.isError
+
+            async def call(name, **args):
+                result = await sdk.call_tool(name, {"warehouse": "snidane", **args})
+                assert not result.isError, result.content
+                return result.structuredContent
+
+            page = await call("inventory_items_list", search="synthetic oat", limit=1)
+            second = await call("inventory_items_list", limit=1, after_id=page["next_id"])
+            assert [item["id"] for item in page["items"] + second["items"]] == [1, 2]
+            item = await call("inventory_item_get", item_id=1)
+            updated = await call(
+                "inventory_item_update",
+                operation_id=str(uuid.uuid4()),
+                item_id=1,
+                expected_updated_at=item["updated_at"],
+                changes={"min_stock": 6},
+            )
+            assert updated["state"] == "completed"
+            move = {
+                "operation_id": str(uuid.uuid4()),
+                "item_id": 1,
+                "movement": {
+                    "movement_type": "out",
+                    "quantity": 3,
+                    "document_date": DAY.isoformat(),
+                },
+            }
+            receipt = await call("inventory_movement_add", **move)
+            assert receipt["state"] == "completed"
+            assert await call("inventory_movement_add", **move) == receipt
+            assert (await call("inventory_item_get", item_id=1))["current_stock"] == 9
+            movement_id = receipt["record_id"]
+            movement = await call("inventory_movement_get", movement_id=movement_id)
+            assert movement["quantity"] == 3 and movement["document_number"].startswith("VY-")
+
+            created = await call(
+                "inventory_card_create",
+                operation_id=str(uuid.uuid4()),
+                card={
+                    "card_type": "out",
+                    "card_date": DAY.isoformat(),
+                    "items": [
+                        {"ingredient_id": 1, "quantity_base": 2},
+                        {"ingredient_id": 2, "quantity_base": 4},
+                    ],
+                },
+            )
+            assert created["state"] == "completed"
+            card_id = created["record_id"]
+            assert (await call("inventory_cards_list"))["items"][0]["id"] == card_id
+            card = await call("inventory_card_get", card_id=card_id, limit=1)
+            other_line = await call(
+                "inventory_card_get", card_id=card_id, after_id=card["lines"]["next_id"]
+            )
+            assert {
+                line["ingredient_id"]
+                for line in card["lines"]["items"] + other_line["lines"]["items"]
+            } == {1, 2}
+            first_move = await call("inventory_movements_list", item_id=1, limit=1)
+            next_move = await call(
+                "inventory_movements_list", item_id=1, before_id=first_move["next_id"], limit=1
+            )
+            assert next_move["items"][0]["id"] == movement_id
+            assert (await call("inventory_item_get", item_id=2))["current_stock"] == 4
+            card_deleted = await call(
+                "inventory_card_delete", operation_id=str(uuid.uuid4()), card_id=card_id
+            )
+            assert card_deleted["http_status"] == 204
+            assert (await call("inventory_item_get", item_id=2))["current_stock"] == 8
+            move_deleted = await call(
+                "inventory_movement_delete",
+                operation_id=str(uuid.uuid4()),
+                item_id=1,
+                movement_id=movement_id,
+            )
+            assert move_deleted["http_status"] == 204
+            assert (await call("inventory_item_get", item_id=1))["current_stock"] == 12
+            activity = await call("inventory_item_activity", item_id=1)
+            assert "movement_delete" in {row["action"] for row in activity["items"]}
+            blocked = await call("inventory_item_delete", operation_id=str(uuid.uuid4()), item_id=1)
+            assert blocked["http_status"] == 400
+
+            photo = await call(
+                "inventory_pictogram_set",
+                operation_id=str(uuid.uuid4()),
+                item_id=2,
+                file={
+                    "file_id": "inventory-fixture",
+                    "download_url": "https://files.example.invalid/image",
+                },
+            )
+            assert photo["state"] == "completed"
+            image_link = await call("inventory_pictogram_get", item_id=2, kind="original")
+            assert image_link["href"].endswith("warehouse=snidane")
+            pdf = await call("inventory_stocktake_pdf")
+            assert pdf["href"].endswith("stocktake/pdf?warehouse=snidane")
+
+    try:
+        asyncio.run(run())
+    finally:
+        for engine in engines.values():
+            engine.dispose()
+
+
+def test_egg_order_mcp_reuses_pending_mail_receipt_and_exact_repeat_confirmation(
+    hotel_mcp_app, monkeypatch
+):
+    app, key, factory = hotel_mcp_app
+    recipient = "supplier@example.invalid"
+    calls = []
+
+    async def fake_mail(config, payload):
+        assert config == {"recipient": recipient}
+        order_id = payload["send_intent_id"]
+        calls.append((payload["kind"], order_id))
+        if payload["kind"] == "send":
+            raise TimeoutError
+        with factory() as db:
+            order = db.get(InventoryEggOrder, order_id)
+            assert order is not None
+            digest = order.content_hash
+        return {
+            "receipt": {
+                "send_intent_id": order_id,
+                "idempotency_key": order_id,
+                "content_hash": digest,
+                "smtp_state": "accepted",
+                "operation_id": str(uuid.uuid4()),
+                "accepted_recipient_addresses": [recipient],
+            }
+        }
+
+    monkeypatch.setattr(egg_orders, "mail_config", lambda: {"recipient": recipient})
+    monkeypatch.setattr(egg_orders, "call_mail", fake_mail)
+
+    async def run():
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app),
+                base_url=ORIGIN,
+                auth=SignedFixtureMember(key, ["hotel.inventory.snidane"]),
+            ) as http,
+            streamable_http_client(ORIGIN + "/cml-web/mcp", http_client=http) as (read, write, *_),
+            ClientSession(read, write) as sdk,
+        ):
+            await sdk.initialize()
+
+            async def call(name, **args):
+                result = await sdk.call_tool(name, args)
+                assert not result.isError, result.content
+                return result.structuredContent
+
+            assert (await call("inventory_egg_order_latest"))["order"] is None
+            ident = str(uuid.uuid4())
+            first = await call("inventory_egg_order_submit", operation_id=ident)
+            assert first["outcome"]["state"] == "unknown"
+            assert await call("inventory_egg_order_submit", operation_id=ident) == first
+            repeat = str(uuid.uuid4())
+            busy = await call("inventory_egg_order_submit", operation_id=repeat)
+            assert busy["outcome"] == {"state": "busy", "id": ident}
+            resolved = await call("inventory_egg_order_status", order_id=ident)
+            assert resolved["state"] == "sent"
+            assert (await call("inventory_egg_order_latest"))["order"] == resolved
+            confirmation = await call("inventory_egg_order_submit", operation_id=repeat)
+            details = confirmation["outcome"]
+            assert details["state"] == "confirm" and details["previous_id"] == ident
+            wrong = await call(
+                "inventory_egg_order_submit",
+                operation_id=repeat,
+                confirmed_previous_id=ident,
+                confirmed_delivery_date="2000-01-01",
+            )
+            assert wrong == confirmation
+            assert calls == [("send", ident), ("status", ident)]
+            authorized = await call(
+                "inventory_egg_order_submit",
+                operation_id=repeat,
+                confirmed_previous_id=ident,
+                confirmed_delivery_date=details["delivery_date"],
+            )
+            assert authorized["outcome"]["state"] == "unknown"
+            assert calls[-1] == ("send", repeat)
+
+    asyncio.run(run())

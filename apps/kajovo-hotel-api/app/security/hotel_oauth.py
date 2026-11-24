@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.db.models import HotelOAuthClient, HotelOAuthGrant
+from app.db.warehouse import Warehouse
 
 ORIGIN = "https://hotel.hcasc.cz"
 ISSUER = ORIGIN + "/hotel-oauth"
@@ -36,8 +37,24 @@ BREAKFAST_READ = "breakfast:read"
 LOST_FOUND_READ = "lost_found:read"
 BREAKFAST_WRITE = "breakfast:write"
 LOST_FOUND_WRITE = "lost_found:write"
+ISSUES_READ = "issues:read"
+ISSUES_WRITE = "issues:write"
+HOUSEKEEPING_READ = "housekeeping:read"
+HOUSEKEEPING_WRITE = "housekeeping:write"
+WAREHOUSE_READ_SCOPES = tuple(f"inventory_{warehouse}:read" for warehouse in Warehouse)
+WAREHOUSE_WRITE_SCOPES = tuple(f"inventory_{warehouse}:write" for warehouse in Warehouse)
 DEFAULT_SCOPES = (BREAKFAST_READ, LOST_FOUND_READ)
-SCOPES = (*DEFAULT_SCOPES, BREAKFAST_WRITE, LOST_FOUND_WRITE)
+SCOPES = (
+    *DEFAULT_SCOPES,
+    BREAKFAST_WRITE,
+    LOST_FOUND_WRITE,
+    ISSUES_READ,
+    ISSUES_WRITE,
+    HOUSEKEEPING_READ,
+    HOUSEKEEPING_WRITE,
+    *WAREHOUSE_READ_SCOPES,
+    *WAREHOUSE_WRITE_SCOPES,
+)
 
 
 def _digest(value: str) -> str:
