@@ -313,3 +313,44 @@ def test_owner_policy_does_not_authorize_member_or_forged_owner():
     assert central_write_authorized(valid)
     for patch in [dict(sub='user:other'), dict(role='member'), dict(nativeId='1'), dict(authzPolicy='unknown'), dict(authzPolicy=None, reauthUntil=True)]:
         assert not central_write_authorized({**valid, **patch})
+
+
+def test_phone_presentation_keeps_hotel_and_consent_authorities(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    key, jwks = fixture_key()
+    key_path = tmp_path / "public.json"
+    key_path.write_text(json.dumps(jwks))
+    monkeypatch.setenv("CML_WEB_JWKS_PATH", str(key_path))
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE cml_web_nonce(jti text PRIMARY KEY,expires_at bigint NOT NULL)"))
+    root = Path(__file__).resolve().parents[1] / "app" / "web_ui"
+    boundary = CmlWebBoundary(
+        FastAPI(), audience="hotel", session_factory=sessionmaker(bind=engine), ui_root=root,
+        resolve_identity=lambda *_: {"state": {}, "public": {"admin": True}}, hotel_oauth=object(),
+    )
+    with TestClient(boundary) as client:
+        def signed(path, **claims):
+            proof = assertion(key, "hotel", path=path, method="GET", body=b"", **claims)
+            return client.get(path, headers={
+                "Origin": "https://kajovocml.hcasc.cz", "X-CML-Web-Prefix": "/sections/hotel/",
+                "X-CML-Web-Assertion": proof,
+            })
+
+        assert client.get("/cml-web/?ui=phone").status_code == 401
+        phone = signed("/cml-web/?view=lostfound-detail&id=1&ui=phone")
+        assert phone.status_code == 200 and "/phone/hotel.js" in phone.text
+        assert phone.headers["cache-control"] == "no-store"
+        desktop = signed("/cml-web/?view=lostfound-detail&id=1")
+        assert desktop.status_code == 200 and "/sections/hotel/app.js" in desktop.text
+        assert "/phone/hotel.js" not in desktop.text
+        owner = {"authzPolicy": "owner-no-additional-prompts/1"}
+        consent = signed("/cml-web/oauth/consent?ui=phone", **owner)
+        assert consent.status_code == 200 and "/phone/consent.js" in consent.text
+        assert consent.headers["referrer-policy"] == "no-referrer"
+        original = signed("/cml-web/oauth/consent", **owner)
+        assert original.status_code == 200 and "/sections/hotel/mcp-consent.js" in original.text
+        assert signed("/cml-web/oauth/consent?ui=phone", sub="user:"+str(uuid.uuid4()), nativeId="1", role="member").status_code == 401
+        assert signed("/cml-web/phone/consent.html", **owner).status_code == 401
+    engine.dispose()
