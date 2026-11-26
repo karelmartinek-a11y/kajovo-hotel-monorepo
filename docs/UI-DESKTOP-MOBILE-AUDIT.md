@@ -14,3 +14,12 @@ Zdroj přejímky je nasazené API `36496b57fce42843936ad3075b006b251ad668a0`, ob
 | Souhlas MCP | Vlastník ověřuje účel a rozsah individuálního připojení. `oauth/consent` s existujícím jednorázovým kontextem, serverovou kontrolou vlastníka a potvrzením uživatele. | Zachovat oddělené rozsahy explicitního čtení a zápisu. Volba neobchází autentizaci ani nemění webová práva. |
 
 Důkazy návrhu, jednotlivých stavů, skutečných režimů přístupu a testů živého UI se vedou v místním inventáři `outputs/cml-mobile-20261125`. Potvrzení provozních zápisů je kvalifikováno na izolovaných záznamech s oddělenými poskytovateli. Snímky produkce mají maskovat provozní a osobní podrobnosti.
+
+## Produkční přejímka
+
+Telefonní API obraz `kajovo-hotel-phone:0fb80af2c32ea4211595231628380a90c8ee732d` má hash `sha256:26177525a8f0cc1052c5ad5915242fdff0ea7f25cdccb4178b132439c34f2c6e`. CML brána běží jako `4.1.59-phone-hotel-a49a464bae43`. Porovnání otisků ověřilo shodu desktopového UI i ostatních Python souborů s výchozím obrazem. Úprava běží v kontejneru API. Procesy správy, původního webu, PostgreSQL a Nginx mají před změnou i po ní shodné identifikátory a evidované otisky.
+
+- Izolovaný Chromium a WebKit prošly nativními routami s podepsaným vlastníkem i omezeným členem. Pokryty jsou stav pokoje s falešným Better Hotelem a ověřeným zpětným čtením, výdej a jeho vrácení, stránky PDF, ztráta odpovědi po úspěšném založení závady, nález, příjem, doklad s více řádky a konečný zůstatek. Člen s právem jen pro drogerii neměl přístup ke skladu snídaní. Změna jazyka se ověřila uloženým stavem.
+- Plná lokální sada měla 406 úspěšných testů, jeden oddělený přeskok podle prostředí a varování závislostí. Doplněný test nativního rozlišení telefonu a desktopu prošel vlastní sadou 21 testů. CI Gates úspěšné pro finální zdroj.
+- V produkci prošel podepsaný vlastník čtrnácti čtecími cestami. Galerie obsahuje 72 anonymizovaných snímků ve 24 stavech při 320, 390 a 430 CSS px, po úpravě ovládání dlouhých dialogů. Oba živé sklady zobrazily prázdný katalog a odpovídající omezení před vytvořením dokladu. Naplněný sklad a provozní zápisy mají izolované důkazy.
+- Produkční průchod neprovedl vydání snídaně, úpravu pokoje, přepnutí světel, odeslání oznámení, objednávku vajec ani udělení OAuth oprávnění. Vizuální audit jiných stavů a jazykových poboček sleduje společný registr.
