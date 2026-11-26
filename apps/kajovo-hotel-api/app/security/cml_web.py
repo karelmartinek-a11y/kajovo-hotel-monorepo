@@ -135,13 +135,6 @@ class CmlWebBoundary:
             if self.audience == 'hotel' and suffix == 'oauth/consent' and self.hotel_oauth:
                 if claims['sub'] != 'KRMAR78' or not central_write_authorized(claims):
                     raise AssertionDenied('hotel_oauth_owner_required')
-                if scope['method'] == 'GET' and query == 'ui=phone':
-                    response = FileResponse(
-                        self.ui_root / 'phone' / 'consent.html', media_type='text/html',
-                        headers={'Cache-Control':'no-store','Referrer-Policy':'no-referrer'},
-                    )
-                    await response(scope, receive, send)
-                    return
                 response = await hotel_consent(
                     self.hotel_oauth, scope['method'], query,
                     headers.get('content-type', '').split(';')[0], bytes(body), claims['sub'],
@@ -182,10 +175,7 @@ class CmlWebBoundary:
                 return
             hotel_mcp = self.audience == 'hotel' and suffix == 'mcp' and self.hotel_oauth is not None
             if not suffix.startswith('api/') and not hotel_mcp:
-                if self.audience == 'hotel' and suffix == 'phone/consent.html':
-                    raise AssertionDenied('hotel_oauth_owner_required')
-                phone = self.audience == 'hotel' and suffix in {'', 'index.html'} and parse_qs(query).get('ui') == ['phone']
-                path = self.ui_root / ('phone/index.html' if phone else (suffix or 'index.html'))
+                path = self.ui_root / (suffix or 'index.html')
                 if path.resolve().is_relative_to(self.ui_root) and path.is_file() and path.suffix in {'.html', '.js', '.css', '.svg', '.ttf', '.png'}:
                     response = FileResponse(path, media_type=mimetypes.guess_type(path)[0], headers={'Cache-Control': 'no-store'})
                     await response(scope, receive, send)
