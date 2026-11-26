@@ -37,8 +37,13 @@ export function facts(rows) {
 }
 
 export function sheet(title,content) {
-  const dialog = element('dialog',{'aria-label':text(title)},
-    element('h2',{},text(title)),content,action('Zavřít',()=>dialog.close()));
+  const heading = element('h2',{},text(title));
+  const close = action('Zavřít',()=>{if (!content.querySelector('[data-pending]')&&!content.dataset.pending) dialog.close();});
+  const toolbar = element('header',{class:'sheet-head'},heading,close);
+  const dialog = element('dialog',{'aria-label':text(title)},toolbar,content);
+  dialog.addEventListener('cancel',event=>{
+    if (content.querySelector('[data-pending]')||content.dataset.pending) event.preventDefault();
+  });
   dialog.addEventListener('close',()=>dialog.remove(),{once:true});
   document.body.append(dialog);
   dialog.showModal();

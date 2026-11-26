@@ -69,6 +69,21 @@ dt { font-weight: 620; }
 dd { margin: 0 0 7px; }
 details summary { min-height: 44px; padding: 8px 0; cursor: pointer; }
 dialog { width: min(calc(100% - 24px), 38rem); max-height: calc(100dvh - 24px); border: 1px solid var(--line); border-radius: 12px; padding: 14px; color: inherit; }
+.sheet-head {
+  position: sticky;
+  top: -14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -14px -14px 12px;
+  padding: 9px 14px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  z-index: 1;
+}
+.sheet-head h2 { margin: 0; }
+.sheet-head button { flex-shrink: 0; }
 dialog::backdrop { background: #33270d80; }
 [role=status]:empty { display: none; }
 [role=alert] { color: #802020; }

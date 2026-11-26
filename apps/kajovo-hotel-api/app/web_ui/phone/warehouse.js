@@ -46,7 +46,7 @@ async function catalog(context,warehouseId) {
       ['Aktuální stav',qty(row.current_stock,row.unit)],['V 1 ks',qty(row.amount_per_piece_base,row.unit)],
       ['Minimální zásoba',qty(row.min_stock,row.unit)],['Stav',row.current_stock<row.min_stock?'Pod minimem':'Dostatečná'],
     ]),action('Otevřít položku',()=>branch('detail',row.id)))));
-    if (!visible.length) display.append(element('p',{},'Hledání nevrátilo žádnou položku.'));
+    if (!visible.length) display.append(element('p',{},data.length?'Žádná položka neodpovídá filtru.':'Sklad zatím nemá žádnou položku.'));
   }
   search.addEventListener('input',draw);
   stocked.addEventListener('change',draw);
